@@ -10,17 +10,8 @@ import * as bcrypt from 'bcryptjs';
 import type { Database } from '../db/types';
 import { up } from '../db/migrations/001_initial';
 import { now } from '../db/types';
-import {
-    createAuthRoutes,
-    verifyToken,
-    getJwtSecret,
-    type AuthDependencies,
-} from './auth';
-import {
-    findUserByEmail,
-    findUserById,
-    createUser,
-} from '../db/queries';
+import { createAuthRoutes, verifyToken, getJwtSecret, type AuthDependencies } from './auth';
+import { findUserByEmail, findUserById, createUser } from '../db/queries';
 
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
@@ -603,8 +594,7 @@ describe('Auth Routes', () => {
             const response = await app.handle(
                 new Request('http://localhost/api/auth/check', {
                     headers: {
-                        Authorization:
-                            'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImV4cCI6MH0.invalid',
+                        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImV4cCI6MH0.invalid',
                     },
                 }),
             );
@@ -874,9 +864,7 @@ describe('Auth Routes', () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             process.env.APP_AUTH_METHODS = 'password,guest';
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback?ticket=ST-12345'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-12345'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             expect(response.status).toBe(404);
@@ -889,9 +877,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             process.env.CAS_URL = prevCasUrl;
@@ -908,9 +894,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             delete process.env.CAS_URL;
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback?ticket=ST-12345'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-12345'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevCasUrl) process.env.CAS_URL = prevCasUrl;
@@ -928,9 +912,7 @@ describe('Auth Routes', () => {
             globalThis.fetch = async () =>
                 new Response('<cas:serviceResponse><cas:authenticationFailure /></cas:serviceResponse>');
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback?ticket=ST-invalid'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-invalid'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             process.env.CAS_URL = prevCasUrl;
@@ -957,9 +939,7 @@ describe('Auth Routes', () => {
                     </cas:serviceResponse>
                 `);
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback?ticket=ST-valid'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-valid'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             process.env.CAS_URL = prevCasUrl;
@@ -993,9 +973,7 @@ describe('Auth Routes', () => {
                     </cas:serviceResponse>
                 `);
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback?ticket=ST-email'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-email'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             process.env.CAS_URL = prevCasUrl;
@@ -1026,9 +1004,7 @@ describe('Auth Routes', () => {
                     </cas:serviceResponse>
                 `);
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback?ticket=ST-username'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-username'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             process.env.CAS_URL = prevCasUrl;
@@ -1090,9 +1066,7 @@ describe('Auth Routes', () => {
                 throw new Error('Network error');
             };
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback?ticket=ST-error'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-error'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             process.env.CAS_URL = prevCasUrl;
@@ -1132,9 +1106,7 @@ describe('Auth Routes', () => {
                     </cas:serviceResponse>
                 `);
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas/callback?ticket=ST-existing'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-existing'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             process.env.CAS_URL = prevCasUrl;
@@ -1166,9 +1138,7 @@ describe('Auth Routes', () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             process.env.APP_AUTH_METHODS = 'password,guest';
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=abc123'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=abc123'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             expect(response.status).toBe(404);
@@ -1196,7 +1166,9 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
 
             const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?error=server_error&error_description=Something%20went%20wrong'),
+                new Request(
+                    'http://localhost/login/openid/callback?error=server_error&error_description=Something%20went%20wrong',
+                ),
             );
 
             process.env.APP_AUTH_METHODS = prevMethods;
@@ -1211,9 +1183,7 @@ describe('Auth Routes', () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             process.env.APP_AUTH_METHODS = 'password,openid';
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid/callback'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
 
@@ -1254,9 +1224,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
             delete process.env.OIDC_TOKEN_ENDPOINT;
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=abc123'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=abc123'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1276,23 +1244,25 @@ describe('Auth Routes', () => {
             process.env.OIDC_CLIENT_SECRET = 'test-secret';
 
             // Create mock ID token with email in payload
-            const idTokenPayload = Buffer.from(JSON.stringify({
-                sub: 'oidc-user-123',
-                email: 'oidcuser@example.com',
-                iat: Math.floor(Date.now() / 1000),
-                exp: Math.floor(Date.now() / 1000) + 3600,
-            })).toString('base64url');
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'oidc-user-123',
+                    email: 'oidcuser@example.com',
+                    iat: Math.floor(Date.now() / 1000),
+                    exp: Math.floor(Date.now() / 1000) + 3600,
+                }),
+            ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
             globalThis.fetch = async () =>
-                new Response(JSON.stringify({
-                    access_token: 'access-token-123',
-                    id_token: mockIdToken,
-                }));
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-123',
+                        id_token: mockIdToken,
+                    }),
+                );
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=valid-code'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=valid-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1322,10 +1292,12 @@ describe('Auth Routes', () => {
             process.env.OIDC_USERINFO_ENDPOINT = 'https://oidc.example.com/userinfo';
 
             // ID token without email
-            const idTokenPayload = Buffer.from(JSON.stringify({
-                sub: 'userinfo-user-123',
-                iat: Math.floor(Date.now() / 1000),
-            })).toString('base64url');
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'userinfo-user-123',
+                    iat: Math.floor(Date.now() / 1000),
+                }),
+            ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
             let requestCount = 0;
@@ -1333,20 +1305,22 @@ describe('Auth Routes', () => {
                 requestCount++;
                 const urlStr = typeof url === 'string' ? url : url.toString();
                 if (urlStr.includes('userinfo')) {
-                    return new Response(JSON.stringify({
-                        sub: 'userinfo-user-123',
-                        email: 'userinfo@example.com',
-                    }));
+                    return new Response(
+                        JSON.stringify({
+                            sub: 'userinfo-user-123',
+                            email: 'userinfo@example.com',
+                        }),
+                    );
                 }
-                return new Response(JSON.stringify({
-                    access_token: 'access-token-456',
-                    id_token: mockIdToken,
-                }));
+                return new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-456',
+                        id_token: mockIdToken,
+                    }),
+                );
             };
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=userinfo-code'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=userinfo-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1371,17 +1345,21 @@ describe('Auth Routes', () => {
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
             // ID token with subject as email but no email field
-            const idTokenPayload = Buffer.from(JSON.stringify({
-                sub: 'subject@asdomain.com',
-                iat: Math.floor(Date.now() / 1000),
-            })).toString('base64url');
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'subject@asdomain.com',
+                    iat: Math.floor(Date.now() / 1000),
+                }),
+            ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
             globalThis.fetch = async () =>
-                new Response(JSON.stringify({
-                    access_token: 'access-token-789',
-                    id_token: mockIdToken,
-                }));
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-789',
+                        id_token: mockIdToken,
+                    }),
+                );
 
             const response = await app.handle(
                 new Request('http://localhost/login/openid/callback?code=subject-email-code'),
@@ -1408,21 +1386,23 @@ describe('Auth Routes', () => {
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
             // ID token with only subject (not an email)
-            const idTokenPayload = Buffer.from(JSON.stringify({
-                sub: 'user-no-email',
-                iat: Math.floor(Date.now() / 1000),
-            })).toString('base64url');
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'user-no-email',
+                    iat: Math.floor(Date.now() / 1000),
+                }),
+            ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
             globalThis.fetch = async () =>
-                new Response(JSON.stringify({
-                    access_token: 'access-token-noemail',
-                    id_token: mockIdToken,
-                }));
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-noemail',
+                        id_token: mockIdToken,
+                    }),
+                );
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=no-email-code'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=no-email-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1449,9 +1429,7 @@ describe('Auth Routes', () => {
                 throw new Error('Network error');
             };
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=error-code'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=error-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1466,17 +1444,21 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
-            const idTokenPayload = Buffer.from(JSON.stringify({
-                sub: 'return-user',
-                email: 'return@oidc.example.com',
-            })).toString('base64url');
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'return-user',
+                    email: 'return@oidc.example.com',
+                }),
+            ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
             globalThis.fetch = async () =>
-                new Response(JSON.stringify({
-                    access_token: 'access-token-return',
-                    id_token: mockIdToken,
-                }));
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-return',
+                        id_token: mockIdToken,
+                    }),
+                );
 
             const response = await app.handle(
                 new Request('http://localhost/login/openid/callback?code=return-code', {
@@ -1501,21 +1483,23 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
-            const idTokenPayload = Buffer.from(JSON.stringify({
-                sub: 'idtoken-user',
-                email: 'idtoken@example.com',
-            })).toString('base64url');
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'idtoken-user',
+                    email: 'idtoken@example.com',
+                }),
+            ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
             globalThis.fetch = async () =>
-                new Response(JSON.stringify({
-                    access_token: 'access-token-idtoken',
-                    id_token: mockIdToken,
-                }));
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-idtoken',
+                        id_token: mockIdToken,
+                    }),
+                );
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid/callback?code=idtoken-code'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=idtoken-code'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
@@ -1775,9 +1759,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            const response = await app.handle(
-                new Request('http://localhost/login/cas?returnUrl=/projects/123'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/cas?returnUrl=/projects/123'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             process.env.CAS_URL = prevCasUrl;
@@ -1839,9 +1821,7 @@ describe('Auth Routes', () => {
             process.env.OIDC_AUTHORIZATION_ENDPOINT = 'https://oidc.example.com/auth';
             process.env.OIDC_CLIENT_ID = 'test-client';
 
-            const response = await app.handle(
-                new Request('http://localhost/login/openid?returnUrl=/projects/456'),
-            );
+            const response = await app.handle(new Request('http://localhost/login/openid?returnUrl=/projects/456'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevEndpoint) process.env.OIDC_AUTHORIZATION_ENDPOINT = prevEndpoint;

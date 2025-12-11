@@ -258,9 +258,24 @@ describe('Yjs Queries', () => {
 
         describe('findUpdatesByProjectId', () => {
             it('should return all updates ordered by version', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '300', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '100', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([3]), version: '200', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '300',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '100',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([3]),
+                    version: '200',
+                    client_id: null,
+                });
 
                 const updates = await findUpdatesByProjectId(db, testProjectId);
 
@@ -278,9 +293,24 @@ describe('Yjs Queries', () => {
 
         describe('findUpdatesSince', () => {
             it('should return updates after specified version', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '100', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '200', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([3]), version: '300', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '100',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '200',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([3]),
+                    version: '300',
+                    client_id: null,
+                });
 
                 const updates = await findUpdatesSince(db, testProjectId, '150');
 
@@ -290,7 +320,12 @@ describe('Yjs Queries', () => {
             });
 
             it('should return empty when no updates after version', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '100', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '100',
+                    client_id: null,
+                });
 
                 const updates = await findUpdatesSince(db, testProjectId, '200');
                 expect(updates).toEqual([]);
@@ -299,9 +334,24 @@ describe('Yjs Queries', () => {
 
         describe('deleteAllUpdates', () => {
             it('should delete all updates for project', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '1', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '2', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([3]), version: '3', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '1',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '2',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([3]),
+                    version: '3',
+                    client_id: null,
+                });
 
                 const count = await deleteAllUpdates(db, testProjectId);
 
@@ -313,8 +363,18 @@ describe('Yjs Queries', () => {
 
             it('should not delete other projects updates', async () => {
                 const otherProjectId = await seedTestProject(db, testUserId, { uuid: `other-${Date.now()}` });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '1', client_id: null });
-                await createUpdate(db, { project_id: otherProjectId, update_data: new Uint8Array([2]), version: '2', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '1',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: otherProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '2',
+                    client_id: null,
+                });
 
                 await deleteAllUpdates(db, testProjectId);
 
@@ -330,9 +390,24 @@ describe('Yjs Queries', () => {
 
         describe('deleteUpdatesBefore', () => {
             it('should delete updates before specified version', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '100', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '200', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([3]), version: '300', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '100',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '200',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([3]),
+                    version: '300',
+                    client_id: null,
+                });
 
                 const count = await deleteUpdatesBefore(db, testProjectId, 200);
 
@@ -346,9 +421,24 @@ describe('Yjs Queries', () => {
 
         describe('getLatestVersion', () => {
             it('should return latest version', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '100', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '500', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([3]), version: '300', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '100',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '500',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([3]),
+                    version: '300',
+                    client_id: null,
+                });
 
                 const version = await getLatestVersion(db, testProjectId);
 
@@ -363,8 +453,18 @@ describe('Yjs Queries', () => {
 
         describe('countUpdates', () => {
             it('should count updates', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '1', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '2', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '1',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '2',
+                    client_id: null,
+                });
 
                 const count = await countUpdates(db, testProjectId);
 
@@ -379,7 +479,12 @@ describe('Yjs Queries', () => {
 
         describe('documentExists', () => {
             it('should return true when updates exist', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '1', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '1',
+                    client_id: null,
+                });
 
                 const exists = await documentExists(db, testProjectId);
                 expect(exists).toBe(true);
@@ -400,8 +505,18 @@ describe('Yjs Queries', () => {
         describe('saveFullState', () => {
             it('should replace all existing updates with new state', async () => {
                 // Create some existing updates
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '1', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '2', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '1',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '2',
+                    client_id: null,
+                });
 
                 const newState = new Uint8Array([10, 20, 30]);
                 const update = await saveFullState(db, testProjectId, newState, 'client-1');
@@ -439,8 +554,18 @@ describe('Yjs Queries', () => {
             });
 
             it('should return first update when multiple exist', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '1', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '2', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '1',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '2',
+                    client_id: null,
+                });
 
                 const loaded = await loadDocumentState(db, testProjectId);
 
@@ -450,8 +575,18 @@ describe('Yjs Queries', () => {
 
         describe('getAllUpdateBuffers', () => {
             it('should return all update buffers', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1, 2]), version: '1', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([3, 4]), version: '2', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1, 2]),
+                    version: '1',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([3, 4]),
+                    version: '2',
+                    client_id: null,
+                });
 
                 const buffers = await getAllUpdateBuffers(db, testProjectId);
 
@@ -474,9 +609,24 @@ describe('Yjs Queries', () => {
     describe('Incremental Update Operations', () => {
         describe('getUpdateStats', () => {
             it('should return stats for updates', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1, 2, 3]), version: '100', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([4, 5]), version: '200', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([6]), version: '300', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1, 2, 3]),
+                    version: '100',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([4, 5]),
+                    version: '200',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([6]),
+                    version: '300',
+                    client_id: null,
+                });
 
                 const stats = await getUpdateStats(db, testProjectId);
 
@@ -510,7 +660,12 @@ describe('Yjs Queries', () => {
             it('should indicate compaction needed when threshold exceeded', async () => {
                 // Create updates up to threshold
                 for (let i = 0; i < 10; i++) {
-                    await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([i]), version: String(i), client_id: null });
+                    await createUpdate(db, {
+                        project_id: testProjectId,
+                        update_data: new Uint8Array([i]),
+                        version: String(i),
+                        client_id: null,
+                    });
                 }
 
                 const result = await saveIncrementalUpdate(db, testProjectId, new Uint8Array([99]), undefined, 10);
@@ -527,9 +682,24 @@ describe('Yjs Queries', () => {
 
         describe('deleteUpdatesUpToVersion', () => {
             it('should delete updates up to and including version', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '100', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '200', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([3]), version: '300', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '100',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '200',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([3]),
+                    version: '300',
+                    client_id: null,
+                });
 
                 const count = await deleteUpdatesUpToVersion(db, testProjectId, '200');
 
@@ -551,9 +721,24 @@ describe('Yjs Queries', () => {
                 });
 
                 // Create updates before and after snapshot
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([10]), version: '50', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([20]), version: '150', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([30]), version: '200', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([10]),
+                    version: '50',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([20]),
+                    version: '150',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([30]),
+                    version: '200',
+                    client_id: null,
+                });
 
                 const result = await loadDocumentWithUpdates(db, testProjectId);
 
@@ -566,8 +751,18 @@ describe('Yjs Queries', () => {
             });
 
             it('should return all updates when no snapshot exists', async () => {
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([1]), version: '100', client_id: null });
-                await createUpdate(db, { project_id: testProjectId, update_data: new Uint8Array([2]), version: '200', client_id: null });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([1]),
+                    version: '100',
+                    client_id: null,
+                });
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '200',
+                    client_id: null,
+                });
 
                 const result = await loadDocumentWithUpdates(db, testProjectId);
 
@@ -592,7 +787,13 @@ describe('Yjs Queries', () => {
         describe('createVersionSnapshot', () => {
             it('should create a version snapshot', async () => {
                 const snapshotData = new Uint8Array([1, 2, 3, 4, 5]);
-                const version = await createVersionSnapshot(db, testProjectId, snapshotData, 'Initial version', testUserId);
+                const version = await createVersionSnapshot(
+                    db,
+                    testProjectId,
+                    snapshotData,
+                    'Initial version',
+                    testUserId,
+                );
 
                 expect(version.id).toBeDefined();
                 expect(version.project_id).toBe(testProjectId);
@@ -666,7 +867,12 @@ describe('Yjs Queries', () => {
 
         describe('getVersionById', () => {
             it('should get version by ID', async () => {
-                const created = await createVersionSnapshot(db, testProjectId, new Uint8Array([1, 2, 3]), 'Test version');
+                const created = await createVersionSnapshot(
+                    db,
+                    testProjectId,
+                    new Uint8Array([1, 2, 3]),
+                    'Test version',
+                );
 
                 const found = await getVersionById(db, created.id, testProjectId);
 

@@ -212,9 +212,7 @@ describe('PageExporter', () => {
             expect(zip.files.has('index.html')).toBe(true);
 
             // Should NOT have separate HTML files in html/ directory
-            const htmlDirFiles = Array.from(zip.files.keys()).filter((f) =>
-                f.startsWith('html/')
-            );
+            const htmlDirFiles = Array.from(zip.files.keys()).filter(f => f.startsWith('html/'));
             expect(htmlDirFiles.length).toBe(0);
         });
 
@@ -251,11 +249,7 @@ describe('PageExporter', () => {
     describe('Single Page HTML Generation', () => {
         it('should generate single page HTML with all pages', () => {
             const usedIdevices = ['FreeTextIdevice'];
-            const html = exporter.generateSinglePageHtml(
-                samplePages,
-                document.getMetadata(),
-                usedIdevices
-            );
+            const html = exporter.generateSinglePageHtml(samplePages, document.getMetadata(), usedIdevices);
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('Introduction');
@@ -264,21 +258,13 @@ describe('PageExporter', () => {
         });
 
         it('should include project title', () => {
-            const html = exporter.generateSinglePageHtml(
-                samplePages,
-                document.getMetadata(),
-                []
-            );
+            const html = exporter.generateSinglePageHtml(samplePages, document.getMetadata(), []);
 
             expect(html).toContain('Test Project');
         });
 
         it('should include exe-single-page class', () => {
-            const html = exporter.generateSinglePageHtml(
-                samplePages,
-                document.getMetadata(),
-                []
-            );
+            const html = exporter.generateSinglePageHtml(samplePages, document.getMetadata(), []);
 
             expect(html).toContain('exe-single-page');
         });
@@ -320,9 +306,7 @@ describe('PageExporter', () => {
             const loadedZip = await JSZip.loadAsync(result.data!);
 
             // Only one HTML file should exist
-            const htmlFiles = Object.keys(loadedZip.files).filter((f) =>
-                f.endsWith('.html')
-            );
+            const htmlFiles = Object.keys(loadedZip.files).filter(f => f.endsWith('.html'));
             expect(htmlFiles).toEqual(['index.html']);
         });
     });

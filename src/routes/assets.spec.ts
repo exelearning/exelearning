@@ -91,13 +91,31 @@ describe('Assets Routes', () => {
                     mockAssets.set(id, asset);
                     return asset;
                 },
+                createAssets: async (_db: any, dataArray: any[]) => {
+                    return dataArray.map(data => {
+                        const id = assetIdCounter++;
+                        const asset = {
+                            id,
+                            ...data,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                        };
+                        mockAssets.set(id, asset);
+                        return asset;
+                    });
+                },
                 findAssetById: async (_db: any, id: number) => mockAssets.get(id),
                 findAllAssetsForProject: async (_db: any, projectId: number) => {
-                    return Array.from(mockAssets.values()).filter((a) => a.project_id === projectId);
+                    return Array.from(mockAssets.values()).filter(a => a.project_id === projectId);
                 },
                 findAssetByClientId: async (_db: any, clientId: string, projectId?: number) => {
                     return Array.from(mockAssets.values()).find(
-                        (a) => a.client_id === clientId && (projectId === undefined || a.project_id === projectId),
+                        a => a.client_id === clientId && (projectId === undefined || a.project_id === projectId),
+                    );
+                },
+                findAssetsByClientIds: async (_db: any, clientIds: string[], projectId: number) => {
+                    return Array.from(mockAssets.values()).filter(
+                        a => clientIds.includes(a.client_id) && a.project_id === projectId,
                     );
                 },
                 deleteAsset: async (_db: any, id: number) => {
@@ -111,6 +129,15 @@ describe('Assets Routes', () => {
                         return updated;
                     }
                     return undefined;
+                },
+                bulkUpdateAssets: async (_db: any, updates: Array<{ id: number; data: any }>) => {
+                    for (const { id, data } of updates) {
+                        const asset = mockAssets.get(id);
+                        if (asset) {
+                            const updated = { ...asset, ...data, updated_at: new Date().toISOString() };
+                            mockAssets.set(id, updated);
+                        }
+                    }
                 },
                 findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
             },
@@ -945,7 +972,9 @@ describe('Assets Routes', () => {
             formData.append('files', new Blob(['new content']), 'existing.txt');
             formData.append(
                 'metadata',
-                JSON.stringify([{ clientId: 'sync-existing-client', filename: 'existing.txt', mimeType: 'text/plain' }]),
+                JSON.stringify([
+                    { clientId: 'sync-existing-client', filename: 'existing.txt', mimeType: 'text/plain' },
+                ]),
             );
 
             const res = await app.handle(

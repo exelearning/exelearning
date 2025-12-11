@@ -21,10 +21,7 @@ export {
     ODE_XML_CONTEXT_PATH,
 } from '../utils/url.util';
 
-import {
-    getSessionDateComponents,
-    getOdeSessionPath,
-} from '../utils/url.util';
+import { getSessionDateComponents, getOdeSessionPath } from '../utils/url.util';
 
 // ============================================================================
 // Types and Interfaces
@@ -177,20 +174,14 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
         const distDir = getOdeSessionDistDir(odeSessionId);
         const tempDir = getOdeSessionTempDir(odeSessionId);
 
-        await Promise.all([
-            fs.ensureDir(distDir),
-            fs.ensureDir(tempDir),
-        ]);
+        await Promise.all([fs.ensureDir(distDir), fs.ensureDir(tempDir)]);
     };
 
     const cleanupSessionDirectories = async (odeSessionId: string): Promise<void> => {
         const distDir = getOdeSessionDistDir(odeSessionId);
         const tempDir = getOdeSessionTempDir(odeSessionId);
 
-        await Promise.all([
-            fs.remove(distDir).catch(() => {}),
-            fs.remove(tempDir).catch(() => {}),
-        ]);
+        await Promise.all([fs.remove(distDir).catch(() => {}), fs.remove(tempDir).catch(() => {})]);
     };
 
     // ========================================================================

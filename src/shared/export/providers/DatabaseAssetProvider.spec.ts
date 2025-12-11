@@ -28,7 +28,9 @@ describe('DatabaseAssetProvider', () => {
     });
 
     // Create mock queries that return nothing by default
-    const createMockQueries = (overrides: Partial<DatabaseAssetProviderQueries> = {}): DatabaseAssetProviderQueries => ({
+    const createMockQueries = (
+        overrides: Partial<DatabaseAssetProviderQueries> = {},
+    ): DatabaseAssetProviderQueries => ({
         findAssetByClientId: async () => undefined,
         findAllAssetsForProject: async () => [],
         ...overrides,
@@ -48,7 +50,7 @@ describe('DatabaseAssetProvider', () => {
 
     afterEach(async () => {
         // Clean up temp directory
-        if (tempDir && await fs.pathExists(tempDir)) {
+        if (tempDir && (await fs.pathExists(tempDir))) {
             await fs.remove(tempDir);
         }
     });
@@ -79,11 +81,12 @@ describe('DatabaseAssetProvider', () => {
             await fs.writeFile(storagePath, Buffer.from('db asset data'));
 
             const mockQueries = createMockQueries({
-                findAssetByClientId: async () => createMockDbAsset({
-                    client_id: 'db-asset-uuid',
-                    filename: 'asset.png',
-                    storage_path: storagePath,
-                }),
+                findAssetByClientId: async () =>
+                    createMockDbAsset({
+                        client_id: 'db-asset-uuid',
+                        filename: 'asset.png',
+                        storage_path: storagePath,
+                    }),
             });
 
             const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
@@ -143,11 +146,12 @@ describe('DatabaseAssetProvider', () => {
             await fs.writeFile(dbStoragePath, Buffer.from('database content'));
 
             const mockQueries = createMockQueries({
-                findAssetByClientId: async () => createMockDbAsset({
-                    client_id: 'asset-uuid-123',
-                    filename: 'db-image.png',
-                    storage_path: dbStoragePath,
-                }),
+                findAssetByClientId: async () =>
+                    createMockDbAsset({
+                        client_id: 'asset-uuid-123',
+                        filename: 'db-image.png',
+                        storage_path: dbStoragePath,
+                    }),
             });
 
             const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, mockQueries);

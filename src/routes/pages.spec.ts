@@ -165,9 +165,7 @@ describe('Pages Routes', () => {
 
     describe('GET /', () => {
         it('should redirect to /workarea', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/'),
-            );
+            const res = await app.handle(new Request('http://localhost/'));
 
             expect(res.status).toBe(302);
             const location = res.headers.get('location');
@@ -177,9 +175,7 @@ describe('Pages Routes', () => {
 
     describe('GET /login', () => {
         it('should return HTML login page', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             expect(res.status).toBe(200);
             expect(res.headers.get('content-type')).toContain('text/html');
@@ -202,9 +198,7 @@ describe('Pages Routes', () => {
             process.env.APP_ONLINE_MODE = '0';
             process.env.DEFAULT_USER_EMAIL = 'offline@test.com';
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             expect(res.status).toBe(302);
             expect(res.headers.get('location')).toContain('/workarea');
@@ -213,9 +207,7 @@ describe('Pages Routes', () => {
         it('should set guest nonce cookie when guest auth enabled', async () => {
             process.env.APP_AUTH_METHODS = 'form,guest';
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             // Should have set-cookie header for guestNonce
             const cookies = res.headers.get('set-cookie');
@@ -223,17 +215,13 @@ describe('Pages Routes', () => {
         });
 
         it('should handle returnUrl parameter', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/login?returnUrl=/workarea?project=123'),
-            );
+            const res = await app.handle(new Request('http://localhost/login?returnUrl=/workarea?project=123'));
 
             expect(res.status).toBe(200);
         });
 
         it('should handle error parameter', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/login?error=invalid_credentials'),
-            );
+            const res = await app.handle(new Request('http://localhost/login?error=invalid_credentials'));
 
             expect(res.status).toBe(200);
         });
@@ -241,9 +229,7 @@ describe('Pages Routes', () => {
 
     describe('GET /workarea', () => {
         it('should redirect to login if not authenticated', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/workarea'),
-            );
+            const res = await app.handle(new Request('http://localhost/workarea'));
 
             expect(res.status).toBe(302);
             const location = res.headers.get('location');
@@ -251,9 +237,7 @@ describe('Pages Routes', () => {
         });
 
         it('should include returnUrl when redirecting to login', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/workarea?project=test123'),
-            );
+            const res = await app.handle(new Request('http://localhost/workarea?project=test123'));
 
             expect(res.status).toBe(302);
             const location = res.headers.get('location');
@@ -271,7 +255,7 @@ describe('Pages Routes', () => {
             // Build app with JWT
             const testApp = new Elysia()
                 .use(jwtPlugin)
-                .derive(async ({ jwt }) => {
+                .derive(async () => {
                     return {
                         currentUser: { id: 1, email: 'test@test.com' },
                         isGuest: false,
@@ -285,9 +269,7 @@ describe('Pages Routes', () => {
                     return Response.redirect('/workarea?project=new-session', 302);
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea'));
 
             // Should redirect to create new project or show workarea
             expect([200, 302]).toContain(res.status);
@@ -306,7 +288,7 @@ describe('Pages Routes', () => {
                     currentUser: { id: 1, email: 'test@test.com' },
                     isGuest: false,
                 }))
-                .get('/workarea', async ({ currentUser, query }) => {
+                .get('/workarea', async ({ currentUser }) => {
                     if (!currentUser) {
                         return Response.redirect('/login', 302);
                     }
@@ -315,9 +297,7 @@ describe('Pages Routes', () => {
                     });
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea?project=test-project-123'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea?project=test-project-123'));
 
             expect(res.status).toBe(200);
         });
@@ -348,9 +328,7 @@ describe('Pages Routes', () => {
                     return new Response('OK', { status: 200 });
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea?project=owned-project'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea?project=owned-project'));
 
             expect(res.status).toBe(200);
         });
@@ -378,9 +356,7 @@ describe('Pages Routes', () => {
                     return new Response('OK', { status: 200 });
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea?project=other-project'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea?project=other-project'));
 
             expect(res.status).toBe(403);
         });
@@ -412,9 +388,7 @@ describe('Pages Routes', () => {
                     return new Response('Not Found', { status: 404 });
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea?project=memory-session'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea?project=memory-session'));
 
             expect(res.status).toBe(200);
         });
@@ -446,9 +420,7 @@ describe('Pages Routes', () => {
                     return new Response('Not Found', { status: 404 });
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea?project=other-user-session'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea?project=other-user-session'));
 
             expect(res.status).toBe(403);
         });
@@ -460,7 +432,7 @@ describe('Pages Routes', () => {
                     currentUser: { id: 1, email: 'test@test.com' },
                     isGuest: false,
                 }))
-                .get('/workarea', async ({ currentUser, query }) => {
+                .get('/workarea', async ({ query }) => {
                     const projectUuid = query.project as string;
                     const session = mockSessions.get(projectUuid);
                     const project = mockProjects.get(projectUuid);
@@ -472,9 +444,7 @@ describe('Pages Routes', () => {
                     return new Response('OK', { status: 200 });
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea?project=non-existent-uuid'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea?project=non-existent-uuid'));
 
             expect(res.status).toBe(404);
         });
@@ -499,8 +469,10 @@ describe('Pages Routes', () => {
 
                     if (project) {
                         // Check owner or collaborator
-                        if (project.owner_id === currentUser.id ||
-                            (project.collaborators && project.collaborators.includes(currentUser.id))) {
+                        if (
+                            project.owner_id === currentUser.id ||
+                            (project.collaborators && project.collaborators.includes(currentUser.id))
+                        ) {
                             return new Response('OK', { status: 200 });
                         }
                         return new Response('Access Denied', { status: 403 });
@@ -509,9 +481,7 @@ describe('Pages Routes', () => {
                     return new Response('Not Found', { status: 404 });
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea?project=shared-project'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea?project=shared-project'));
 
             expect(res.status).toBe(200);
         });
@@ -539,8 +509,10 @@ describe('Pages Routes', () => {
                             return new Response('OK', { status: 200 });
                         }
                         // Check owner or collaborator
-                        if (project.owner_id === currentUser.id ||
-                            (project.collaborators && project.collaborators.includes(currentUser.id))) {
+                        if (
+                            project.owner_id === currentUser.id ||
+                            (project.collaborators && project.collaborators.includes(currentUser.id))
+                        ) {
                             return new Response('OK', { status: 200 });
                         }
                         return new Response('Access Denied', { status: 403 });
@@ -549,9 +521,7 @@ describe('Pages Routes', () => {
                     return new Response('Not Found', { status: 404 });
                 });
 
-            const res = await testApp.handle(
-                new Request('http://localhost/workarea?project=public-project'),
-            );
+            const res = await testApp.handle(new Request('http://localhost/workarea?project=public-project'));
 
             expect(res.status).toBe(200);
         });
@@ -595,9 +565,7 @@ describe('Pages Routes', () => {
         it('should auto-login in offline mode', async () => {
             process.env.APP_ONLINE_MODE = '0';
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             expect(res.status).toBe(302);
             expect(res.headers.get('location')).toContain('/workarea');
@@ -610,9 +578,7 @@ describe('Pages Routes', () => {
             // User doesn't exist yet
             expect(mockUsers.size).toBe(1); // Only test user
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             expect(res.status).toBe(302);
         });
@@ -620,9 +586,7 @@ describe('Pages Routes', () => {
         it('should set auth cookie in offline mode', async () => {
             process.env.APP_ONLINE_MODE = '0';
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             const cookies = res.headers.get('set-cookie');
             expect(cookies).toContain('auth');
@@ -633,9 +597,7 @@ describe('Pages Routes', () => {
         it('should support form authentication', async () => {
             process.env.APP_AUTH_METHODS = 'form';
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             expect(res.status).toBe(200);
         });
@@ -643,9 +605,7 @@ describe('Pages Routes', () => {
         it('should support guest authentication', async () => {
             process.env.APP_AUTH_METHODS = 'guest';
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             expect(res.status).toBe(200);
             // Should set guest nonce
@@ -656,9 +616,7 @@ describe('Pages Routes', () => {
         it('should support multiple auth methods', async () => {
             process.env.APP_AUTH_METHODS = 'form,guest,ldap';
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             expect(res.status).toBe(200);
         });
@@ -918,9 +876,7 @@ describe('Pages Routes', () => {
         });
 
         it('should handle missing auth cookie', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/workarea'),
-            );
+            const res = await app.handle(new Request('http://localhost/workarea'));
 
             expect(res.status).toBe(302);
             expect(res.headers.get('location')).toContain('/login');
@@ -1462,9 +1418,7 @@ describe('Pages Routes', () => {
             process.env.APP_ONLINE_MODE = '0';
             process.env.DEFAULT_USER_EMAIL = 'test@test.com';
 
-            const res = await app.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await app.handle(new Request('http://localhost/login'));
 
             expect(res.status).toBe(302);
             expect(res.headers.get('location')).toContain('/workarea');
@@ -1490,9 +1444,7 @@ describe('Pages Routes', () => {
             };
             const customApp = new Elysia().use(createPagesRoutes(customDeps));
 
-            const res = await customApp.handle(
-                new Request('http://localhost/login'),
-            );
+            const res = await customApp.handle(new Request('http://localhost/login'));
 
             // Should still redirect even if user creation fails
             expect(res.status).toBe(302);
@@ -1542,9 +1494,7 @@ describe('Pages Routes', () => {
         it('should include basePath in redirects', async () => {
             process.env.BASE_PATH = '/myapp';
 
-            const res = await app.handle(
-                new Request('http://localhost/'),
-            );
+            const res = await app.handle(new Request('http://localhost/'));
 
             expect(res.status).toBe(302);
             const location = res.headers.get('location');
@@ -1555,9 +1505,7 @@ describe('Pages Routes', () => {
             process.env.BASE_PATH = '/myapp';
 
             // Request to workarea without auth - should redirect to login
-            const res = await app.handle(
-                new Request('http://localhost/workarea?project=test'),
-            );
+            const res = await app.handle(new Request('http://localhost/workarea?project=test'));
 
             expect(res.status).toBe(302);
             const location = res.headers.get('location');

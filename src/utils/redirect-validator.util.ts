@@ -59,10 +59,7 @@ export function isValidReturnUrl(url: string | undefined | null): boolean {
  * @param defaultPath - The default path to use if returnUrl is invalid (default: '/workarea')
  * @returns A safe URL string for redirect
  */
-export function getSafeRedirectUrl(
-    returnUrl: string | undefined | null,
-    defaultPath: string = '/workarea'
-): string {
+export function getSafeRedirectUrl(returnUrl: string | undefined | null, defaultPath: string = '/workarea'): string {
     const basePath = getBasePath();
 
     if (isValidReturnUrl(returnUrl)) {

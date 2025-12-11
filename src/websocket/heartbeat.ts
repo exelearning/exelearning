@@ -64,9 +64,7 @@ export function startHeartbeat(clientId: string, ws: ServerWebSocket<WsData>): v
         const timeSinceLastPong = Date.now() - state.lastPong;
         if (timeSinceLastPong > config.pingInterval + config.pongTimeout) {
             if (DEBUG) {
-                console.log(
-                    `[Heartbeat] Client ${clientId} timed out (${timeSinceLastPong}ms since last pong)`,
-                );
+                console.log(`[Heartbeat] Client ${clientId} timed out (${timeSinceLastPong}ms since last pong)`);
             }
             ws.close(4008, 'Heartbeat timeout');
             stopHeartbeat(clientId);

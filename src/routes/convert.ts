@@ -23,6 +23,7 @@ import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import type { Database } from '../db/types';
 import { findUserById as findUserByIdDefault } from '../db/queries';
+import type { ConvertRequest } from './types/request-payloads';
 
 // Centralized export system
 import {
@@ -74,7 +75,22 @@ const EXPORT_FORMATS = [
 
 // Allowed file extensions for upload
 const ALLOWED_EXTENSIONS = ['.elp', '.elpx', '.zip'];
-const ALLOWED_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
+const _ALLOWED_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
+
+/**
+ * File with optional name property (for Blob/File uploads)
+ */
+interface FileWithName extends Blob {
+    name?: string;
+}
+
+/**
+ * Export options type
+ */
+interface ExportOptions {
+    baseUrl?: string;
+    theme?: string;
+}
 
 // Max upload size (default 100MB)
 const getMaxUploadSize = (): number => {
@@ -132,7 +148,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
         }
 
         // Check file extension
-        const filename = (file as any).name || '';
+        const filename = (file as FileWithName).name || '';
         const ext = path.extname(filename).toLowerCase();
         if (ext && !ALLOWED_EXTENSIONS.includes(ext)) {
             return {
@@ -167,7 +183,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     async function runExport(
         extractedPath: string,
         exportType: string,
-        options: any = {}
+        options: ExportOptions = {},
     ): Promise<ExportResult & { filename?: string }> {
         try {
             // Create document adapter from extracted ELP
@@ -210,9 +226,10 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
             // Run export
             const result = await exporter.export(options);
             return result;
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[Convert] Error during ${exportType} export:`, error);
-            return { success: false, error: error.message };
+            return { success: false, error: errorMessage };
         }
     }
 
@@ -220,227 +237,231 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     // Routes
     // =========================================================================
 
-    return new Elysia({ name: 'convert-routes' })
-        .use(cookie())
-        .use(
-            jwt({
-                name: 'jwt',
-                secret: getJwtSecret(),
-                exp: '7d',
-            })
-        )
+    return (
+        new Elysia({ name: 'convert-routes' })
+            .use(cookie())
+            .use(
+                jwt({
+                    name: 'jwt',
+                    secret: getJwtSecret(),
+                    exp: '7d',
+                }),
+            )
 
-        // Derive auth context from request
-        .derive(async ({ jwt, cookie, request }) => {
-            let token: string | undefined;
+            // Derive auth context from request
+            .derive(async ({ jwt, cookie, request }) => {
+                let token: string | undefined;
 
-            // Get token from Authorization header
-            const authHeader = request.headers.get('authorization');
-            if (authHeader?.startsWith('Bearer ')) {
-                token = authHeader.slice(7);
-            } else if (cookie.auth?.value) {
-                token = cookie.auth.value;
-            }
+                // Get token from Authorization header
+                const authHeader = request.headers.get('authorization');
+                if (authHeader?.startsWith('Bearer ')) {
+                    token = authHeader.slice(7);
+                } else if (cookie.auth?.value) {
+                    token = cookie.auth.value;
+                }
 
-            if (!token) {
-                return { currentUser: null };
-            }
-
-            try {
-                const payload = (await jwt.verify(token)) as JwtPayload | false;
-                if (!payload || !payload.sub) {
+                if (!token) {
                     return { currentUser: null };
                 }
 
-                const user = await findUserById(db, payload.sub);
-                return { currentUser: user || null };
-            } catch {
-                return { currentUser: null };
-            }
-        })
-
-        // =====================================================
-        // GET /api/convert/formats - List available formats
-        // =====================================================
-        .get('/api/convert/formats', () => {
-            return {
-                success: true,
-                formats: EXPORT_FORMATS,
-            };
-        })
-
-        // =====================================================
-        // POST /api/convert/elp - Convert ELP to ELPX
-        // =====================================================
-        .post(
-            '/api/convert/elp',
-            async ({ body, query, set, currentUser }) => {
-                // Require authentication
-                if (!currentUser) {
-                    set.status = 401;
-                    return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
-                }
-
-                const data = body as any;
-                const download = query.download === '1';
-
-                // Validate file
-                const validation = validateFile(data.file);
-                if (!validation.valid) {
-                    set.status = 400;
-                    return { code: 'MISSING_FILE', detail: validation.error };
-                }
-
-                let tempDirPath: string | null = null;
-
                 try {
-                    // Create temp directory
-                    tempDirPath = await createTempDir();
+                    const payload = (await jwt.verify(token)) as JwtPayload | false;
+                    if (!payload || !payload.sub) {
+                        return { currentUser: null };
+                    }
 
-                    // Write uploaded file
-                    const filename = (data.file as any).name || 'upload.elp';
-                    const uploadPath = path.join(tempDirPath, filename);
-                    await writeUploadedFile(data.file, uploadPath);
+                    const user = await findUserById(db, payload.sub);
+                    return { currentUser: user || null };
+                } catch {
+                    return { currentUser: null };
+                }
+            })
 
-                    // Run ELPX export (conversion)
-                    const result = await runExport(uploadPath, 'elpx');
+            // =====================================================
+            // GET /api/convert/formats - List available formats
+            // =====================================================
+            .get('/api/convert/formats', () => {
+                return {
+                    success: true,
+                    formats: EXPORT_FORMATS,
+                };
+            })
 
-                    if (!result.success) {
+            // =====================================================
+            // POST /api/convert/elp - Convert ELP to ELPX
+            // =====================================================
+            .post(
+                '/api/convert/elp',
+                async ({ body, query, set, currentUser }) => {
+                    // Require authentication
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
+                    }
+
+                    const data = body as ConvertRequest;
+                    const download = query.download === '1';
+
+                    // Validate file
+                    const validation = validateFile(data.file);
+                    if (!validation.valid) {
+                        set.status = 400;
+                        return { code: 'MISSING_FILE', detail: validation.error };
+                    }
+
+                    let tempDirPath: string | null = null;
+
+                    try {
+                        // Create temp directory
+                        tempDirPath = await createTempDir();
+
+                        // Write uploaded file
+                        const filename = (data.file as FileWithName).name || 'upload.elp';
+                        const uploadPath = path.join(tempDirPath, filename);
+                        await writeUploadedFile(data.file, uploadPath);
+
+                        // Run ELPX export (conversion)
+                        const result = await runExport(uploadPath, 'elpx');
+
+                        if (!result.success) {
+                            set.status = 500;
+                            return { code: 'CONVERSION_FAILED', detail: result.error };
+                        }
+
+                        // Return result
+                        if (download && result.data) {
+                            const exportFilename = result.filename || 'converted.elpx';
+                            set.headers['content-type'] = 'application/x-exelearning';
+                            set.headers['content-disposition'] = `attachment; filename="${exportFilename}"`;
+                            set.headers['content-length'] = String(result.data.length);
+                            return result.data;
+                        }
+
+                        return {
+                            status: 'success',
+                            fileName: result.filename || 'converted.elpx',
+                            size: result.data?.length || 0,
+                            message: 'Conversion completed. Use ?download=1 to download the file directly.',
+                        };
+                    } catch (error: unknown) {
                         set.status = 500;
-                        return { code: 'CONVERSION_FAILED', detail: result.error };
-                    }
-
-                    // Return result
-                    if (download && result.data) {
-                        const exportFilename = result.filename || 'converted.elpx';
-                        set.headers['content-type'] = 'application/x-exelearning';
-                        set.headers['content-disposition'] = `attachment; filename="${exportFilename}"`;
-                        set.headers['content-length'] = String(result.data.length);
-                        return result.data;
-                    }
-
-                    return {
-                        status: 'success',
-                        fileName: result.filename || 'converted.elpx',
-                        size: result.data?.length || 0,
-                        message: 'Conversion completed. Use ?download=1 to download the file directly.',
-                    };
-                } catch (error: any) {
-                    set.status = 500;
-                    return { code: 'INTERNAL_ERROR', detail: error.message };
-                } finally {
-                    // Cleanup temp directory
-                    if (tempDirPath) {
-                        try {
-                            await fs.remove(tempDirPath);
-                        } catch {
-                            // Ignore cleanup errors
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        return { code: 'INTERNAL_ERROR', detail: errorMessage };
+                    } finally {
+                        // Cleanup temp directory
+                        if (tempDirPath) {
+                            try {
+                                await fs.remove(tempDirPath);
+                            } catch {
+                                // Ignore cleanup errors
+                            }
                         }
                     }
-                }
-            },
-            {
-                query: t.Object({
-                    download: t.Optional(t.String()),
-                }),
-            }
-        )
+                },
+                {
+                    query: t.Object({
+                        download: t.Optional(t.String()),
+                    }),
+                },
+            )
 
-        // =====================================================
-        // POST /api/convert/export/:format - Export to format (stateless)
-        // =====================================================
-        .post(
-            '/api/convert/export/:format',
-            async ({ params, body, query, set, currentUser }) => {
-                const { format } = params;
+            // =====================================================
+            // POST /api/convert/export/:format - Export to format (stateless)
+            // =====================================================
+            .post(
+                '/api/convert/export/:format',
+                async ({ params, body, query, set, currentUser }) => {
+                    const { format } = params;
 
-                // Require authentication
-                if (!currentUser) {
-                    set.status = 401;
-                    return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
-                }
+                    // Require authentication
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
+                    }
 
-                // Validate format
-                const formatInfo = EXPORT_FORMATS.find((f) => f.id === format);
-                if (!formatInfo) {
-                    set.status = 400;
-                    return {
-                        code: 'INVALID_FORMAT',
-                        detail: `Invalid export format: ${format}`,
-                        validFormats: EXPORT_FORMATS.map((f) => f.id),
-                    };
-                }
+                    // Validate format
+                    const formatInfo = EXPORT_FORMATS.find(f => f.id === format);
+                    if (!formatInfo) {
+                        set.status = 400;
+                        return {
+                            code: 'INVALID_FORMAT',
+                            detail: `Invalid export format: ${format}`,
+                            validFormats: EXPORT_FORMATS.map(f => f.id),
+                        };
+                    }
 
-                const data = body as any;
-                const download = query.download === '1';
-                const baseUrl = data.baseUrl || undefined;
-                const theme = data.theme || undefined;
+                    const data = body as ConvertRequest;
+                    const download = query.download === '1';
+                    const baseUrl = data.baseUrl || undefined;
+                    const theme = data.theme || undefined;
 
-                // Validate file
-                const validation = validateFile(data.file);
-                if (!validation.valid) {
-                    set.status = 400;
-                    return { code: 'MISSING_FILE', detail: validation.error };
-                }
+                    // Validate file
+                    const validation = validateFile(data.file);
+                    if (!validation.valid) {
+                        set.status = 400;
+                        return { code: 'MISSING_FILE', detail: validation.error };
+                    }
 
-                let tempDirPath: string | null = null;
+                    let tempDirPath: string | null = null;
 
-                try {
-                    // Create temp directory
-                    tempDirPath = await createTempDir();
+                    try {
+                        // Create temp directory
+                        tempDirPath = await createTempDir();
 
-                    // Write uploaded file
-                    const filename = (data.file as any).name || 'upload.elp';
-                    const uploadPath = path.join(tempDirPath, filename);
-                    await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file
+                        const filename = (data.file as FileWithName).name || 'upload.elp';
+                        const uploadPath = path.join(tempDirPath, filename);
+                        await writeUploadedFile(data.file, uploadPath);
 
-                    // Run export
-                    const result = await runExport(uploadPath, format, { baseUrl, theme });
+                        // Run export
+                        const result = await runExport(uploadPath, format, { baseUrl, theme });
 
-                    if (!result.success) {
+                        if (!result.success) {
+                            set.status = 500;
+                            return { code: 'EXPORT_FAILED', detail: result.error };
+                        }
+
+                        // Return result
+                        if (download && result.data) {
+                            const exportFilename = result.filename || `export_${format}.${formatInfo.extension}`;
+                            set.headers['content-type'] = formatInfo.mimeType;
+                            set.headers['content-disposition'] = `attachment; filename="${exportFilename}"`;
+                            set.headers['content-length'] = String(result.data.length);
+                            return result.data;
+                        }
+
+                        return {
+                            status: 'success',
+                            format: format,
+                            fileName: result.filename || `export_${format}.${formatInfo.extension}`,
+                            size: result.data?.length || 0,
+                            message: 'Export completed. Use ?download=1 to download the file directly.',
+                        };
+                    } catch (error: unknown) {
                         set.status = 500;
-                        return { code: 'EXPORT_FAILED', detail: result.error };
-                    }
-
-                    // Return result
-                    if (download && result.data) {
-                        const exportFilename = result.filename || `export_${format}.${formatInfo.extension}`;
-                        set.headers['content-type'] = formatInfo.mimeType;
-                        set.headers['content-disposition'] = `attachment; filename="${exportFilename}"`;
-                        set.headers['content-length'] = String(result.data.length);
-                        return result.data;
-                    }
-
-                    return {
-                        status: 'success',
-                        format: format,
-                        fileName: result.filename || `export_${format}.${formatInfo.extension}`,
-                        size: result.data?.length || 0,
-                        message: 'Export completed. Use ?download=1 to download the file directly.',
-                    };
-                } catch (error: any) {
-                    set.status = 500;
-                    return { code: 'INTERNAL_ERROR', detail: error.message };
-                } finally {
-                    // Cleanup temp directory
-                    if (tempDirPath) {
-                        try {
-                            await fs.remove(tempDirPath);
-                        } catch {
-                            // Ignore cleanup errors
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        return { code: 'INTERNAL_ERROR', detail: errorMessage };
+                    } finally {
+                        // Cleanup temp directory
+                        if (tempDirPath) {
+                            try {
+                                await fs.remove(tempDirPath);
+                            } catch {
+                                // Ignore cleanup errors
+                            }
                         }
                     }
-                }
-            },
-            {
-                params: t.Object({
-                    format: t.String(),
-                }),
-                query: t.Object({
-                    download: t.Optional(t.String()),
-                }),
-            }
-        );
+                },
+                {
+                    params: t.Object({
+                        format: t.String(),
+                    }),
+                    query: t.Object({
+                        download: t.Optional(t.String()),
+                    }),
+                },
+            )
+    );
 }
 
 // =============================================================================

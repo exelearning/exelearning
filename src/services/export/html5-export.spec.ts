@@ -7,11 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 import { ParsedOdeStructure, NormalizedPage } from '../xml/interfaces';
 import { ExportFormat } from './interfaces';
-import {
-    createHtml5ExportService,
-    type Html5ExportService,
-    type Html5ExportDeps,
-} from './html5-export';
+import { createHtml5ExportService, type Html5ExportService, type Html5ExportDeps } from './html5-export';
 
 // Test directories
 const TEST_EXPORT_DIR = '/tmp/html5-export-test';
@@ -76,8 +72,7 @@ function createMockDeps(): Html5ExportDeps {
         },
         getFilesDir: () => TEST_EXPORT_DIR,
         getTempPath: (subpath: string) => path.join(TEST_EXPORT_DIR, 'tmp', subpath),
-        getPreviewExportPath: (sessionId: string, tempPath: string) =>
-            path.join(TEST_PREVIEW_DIR, sessionId, tempPath),
+        getPreviewExportPath: (sessionId: string, tempPath: string) => path.join(TEST_PREVIEW_DIR, sessionId, tempPath),
         getSession: (sessionId: string) => mockSessions.get(sessionId),
         preview: {
             generateRandomTempPath: () => 'random-temp-path/',
@@ -89,24 +84,24 @@ function createMockDeps(): Html5ExportDeps {
                 `/preview/${sessionId}/${tempPath}/${filename}`,
         },
         htmlGenerator: {
-            generateIndexHtml: (structure: ParsedOdeStructure, options: any) => `
+            generateIndexHtml: (structure: ParsedOdeStructure, _options: unknown) => `
 <!DOCTYPE html>
 <html>
 <head><title>${structure.meta.title}</title></head>
 <body>
 <h1>${structure.meta.title}</h1>
 <nav>
-${structure.pages.map((p) => `<a href="${p.id}.html">${p.title}</a>`).join('\n')}
+${structure.pages.map(p => `<a href="${p.id}.html">${p.title}</a>`).join('\n')}
 </nav>
 </body>
 </html>`,
-            generatePageHtml: (page: NormalizedPage, structure: ParsedOdeStructure, options: any) => `
+            generatePageHtml: (page: NormalizedPage, _structure: ParsedOdeStructure, _options: unknown) => `
 <!DOCTYPE html>
 <html>
 <head><title>${page.title}</title></head>
 <body>
 <h1>${page.title}</h1>
-${page.components?.map((c) => `<div>${c.content || ''}</div>`).join('\n') || ''}
+${page.components?.map(c => `<div>${c.content || ''}</div>`).join('\n') || ''}
 </body>
 </html>`,
         },
@@ -248,9 +243,7 @@ describe('HTML5 Export Service', () => {
 
         describe('Error Handling', () => {
             it('should throw error for non-existent session', async () => {
-                await expect(
-                    service.exportToHtml5('non-existent-session', {}),
-                ).rejects.toThrow('Session not found');
+                await expect(service.exportToHtml5('non-existent-session', {})).rejects.toThrow('Session not found');
             });
 
             it('should handle missing session structure gracefully', async () => {
@@ -261,9 +254,7 @@ describe('HTML5 Export Service', () => {
                 });
 
                 // Should throw when accessing structure.pages
-                await expect(
-                    service.exportToHtml5('broken-session', { preview: true }),
-                ).rejects.toThrow();
+                await expect(service.exportToHtml5('broken-session', { preview: true })).rejects.toThrow();
             });
         });
 

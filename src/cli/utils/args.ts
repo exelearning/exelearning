@@ -72,11 +72,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
 /**
  * Add a flag value, supporting repeated flags as arrays
  */
-function addFlag(
-    flags: Record<string, string | boolean | string[]>,
-    key: string,
-    value: string,
-): void {
+function addFlag(flags: Record<string, string | boolean | string[]>, key: string, value: string): void {
     const existing = flags[key];
     if (existing === undefined) {
         flags[key] = value;
@@ -136,10 +132,7 @@ export function getBoolean(
 /**
  * Get all values for a repeated flag as array
  */
-export function getArray(
-    flags: Record<string, string | boolean | string[]>,
-    key: string,
-): string[] {
+export function getArray(flags: Record<string, string | boolean | string[]>, key: string): string[] {
     const value = flags[key];
     if (Array.isArray(value)) return value;
     if (typeof value === 'string') return [value];

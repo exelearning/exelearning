@@ -10,7 +10,7 @@
  *   --dry-run        Show changes without applying
  */
 import { parseArgs, getArray, getBoolean, hasHelp } from '../utils/args';
-import { success, error, warning, info, colors, list, EXIT_CODES } from '../utils/output';
+import { success, error, colors, list, EXIT_CODES } from '../utils/output';
 import { findUserByEmail, updateUserRoles } from '../../db/queries/users';
 import { db } from '../../db/client';
 import { parseRoles } from '../../db/types';
@@ -210,7 +210,7 @@ ${colors.cyan('Examples:')}
 export async function runCli(
     argv: string[],
     deps: UserRoleDependencies = defaultDependencies,
-    exitFn: (code: number) => void = (code) => process.exit(code),
+    exitFn: (code: number) => void = code => process.exit(code),
 ): Promise<void> {
     const { positional, flags } = parseArgs(argv);
 

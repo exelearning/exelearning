@@ -131,9 +131,7 @@ function parseThemeConfig(
                 : `/${version}/files/perm/themes/users/${themeId}`;
 
         const previewPath =
-            type === 'base'
-                ? `/${version}/style/${themeId}/preview.png`
-                : `${themeBasePath}/preview.png`;
+            type === 'base' ? `/${version}/style/${themeId}/preview.png` : `${themeBasePath}/preview.png`;
 
         // Scan for CSS files
         const cssFiles = scanThemeFiles(themePath, '.css');
@@ -219,12 +217,7 @@ function scanThemes(basePath: string, type: 'base' | 'user'): ThemeConfig[] {
         const configPath = path.join(basePath, entry.name, 'config.xml');
         if (fs.existsSync(configPath)) {
             const xmlContent = fs.readFileSync(configPath, 'utf-8');
-            const config = parseThemeConfig(
-                xmlContent,
-                entry.name,
-                path.join(basePath, entry.name),
-                type,
-            );
+            const config = parseThemeConfig(xmlContent, entry.name, path.join(basePath, entry.name), type);
             if (config) {
                 themes.push(config);
             }

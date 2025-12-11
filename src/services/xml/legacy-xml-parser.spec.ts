@@ -29,10 +29,7 @@ describe('legacy-xml-parser', () => {
                     '@_class': 'exe.engine.package.Package',
                     dictionary: {
                         string: ['_title', '_author'],
-                        unicode: [
-                            { '@_value': 'Test Title' },
-                            { '@_value': 'Test Author' },
-                        ],
+                        unicode: [{ '@_value': 'Test Title' }, { '@_value': 'Test Author' }],
                     },
                 },
             };
@@ -93,7 +90,7 @@ describe('legacy-xml-parser', () => {
 
             expect(result.pages.length).toBe(2);
             // Check that parent-child relationship was established
-            const childPage = result.pages.find((p) => p.id === 'child-node');
+            const childPage = result.pages.find(p => p.id === 'child-node');
             expect(childPage?.parent_id).toBe('parent-node');
             expect(childPage?.level).toBe(1);
         });
@@ -125,7 +122,7 @@ describe('legacy-xml-parser', () => {
 
             expect(result.pages.length).toBeGreaterThanOrEqual(1);
             // The CDATA content should be extracted
-            const page = result.pages.find((p) => p.id === 'node-1');
+            const page = result.pages.find(p => p.id === 'node-1');
             if (page && page.components.length > 0) {
                 expect(page.components[0].content).toContain('CDATA content');
             }
@@ -215,9 +212,9 @@ describe('legacy-xml-parser', () => {
 
             const result = parse(parsed);
 
-            const page = result.pages.find((p) => p.id === 'node-1');
+            const page = result.pages.find(p => p.id === 'node-1');
             if (page && page.components.length > 0) {
-                const types = page.components.map((c) => c.type);
+                const types = page.components.map(c => c.type);
                 expect(types).toContain('free-text');
             }
         });
@@ -302,9 +299,9 @@ describe('legacy-xml-parser', () => {
 
             const result = parse(parsed);
 
-            const root = result.pages.find((p) => p.id === 'root');
-            const level1 = result.pages.find((p) => p.id === 'level1');
-            const level2 = result.pages.find((p) => p.id === 'level2');
+            const root = result.pages.find(p => p.id === 'root');
+            const level1 = result.pages.find(p => p.id === 'level1');
+            const level2 = result.pages.find(p => p.id === 'level2');
 
             expect(root?.level).toBe(0);
             expect(level1?.level).toBe(1);
@@ -332,7 +329,7 @@ describe('legacy-xml-parser', () => {
 
             const result = parse(parsed);
 
-            expect(result.pages.every((p) => typeof p.position === 'number')).toBe(true);
+            expect(result.pages.every(p => typeof p.position === 'number')).toBe(true);
         });
     });
 });

@@ -139,7 +139,10 @@ describe('elp:export command', () => {
             expect(result.message).toContain('html5');
 
             // Verify output file exists
-            const exists = await fs.access(outputPath).then(() => true).catch(() => false);
+            const exists = await fs
+                .access(outputPath)
+                .then(() => true)
+                .catch(() => false);
             expect(exists).toBe(true);
         });
 
@@ -196,7 +199,10 @@ describe('elp:export command', () => {
             expect(result.success).toBe(true);
 
             // Verify file was created with .zip extension
-            const exists = await fs.access(outputPath + '.zip').then(() => true).catch(() => false);
+            const exists = await fs
+                .access(outputPath + '.zip')
+                .then(() => true)
+                .catch(() => false);
             expect(exists).toBe(true);
         });
 
@@ -284,6 +290,55 @@ describe('elp:export command', () => {
                 expect(logs.some(log => log.includes('Base URL'))).toBe(true);
             } finally {
                 console.log = originalLog;
+            }
+        });
+    });
+
+    describe('execute - stdin input', () => {
+        it('should read ELP from stdin when input is "-"', async () => {
+            // Create test ELP content
+            const zip = new JSZip();
+            zip.file(
+                'content.xml',
+                `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <pp_title>Stdin Project</pp_title>
+  <pp_author>Test</pp_author>
+  <pp_lang>en</pp_lang>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure odeNavStructureId="p1" odePageName="Page" odeNavStructureOrder="0">
+  <odePagStructure odePagStructureId="b1" blockName="Block" odePagStructureOrder="0">
+    <odeComponent odeComponentId="c1" odeIdeviceTypeDirName="FreeTextIdevice" odeComponentOrder="0">
+      <htmlView><![CDATA[<p>Test</p>]]></htmlView>
+    </odeComponent>
+  </odePagStructure>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`,
+            );
+            const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+            // Mock stdin
+            const originalStdin = process.stdin;
+            const mockStdin = {
+                [Symbol.asyncIterator]: async function* () {
+                    yield buffer;
+                },
+            };
+            Object.defineProperty(process, 'stdin', { value: mockStdin, writable: true });
+
+            try {
+                await fs.mkdir(TEST_DIR, { recursive: true });
+                const outputPath = path.join(TEST_OUTPUT_DIR, 'stdin_test.zip');
+                const result = await execute(['-', outputPath], { debug: true });
+
+                expect(result.success).toBe(true);
+                expect(result.message).toContain('html5');
+            } finally {
+                Object.defineProperty(process, 'stdin', { value: originalStdin, writable: true });
+                await cleanupTestDir();
             }
         });
     });

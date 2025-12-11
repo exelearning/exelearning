@@ -201,9 +201,7 @@ describe('Html5Exporter', () => {
             await exporter.export();
 
             // Second page should be in html/ directory
-            const htmlFiles = Array.from(zip.files.keys()).filter((f) =>
-                f.startsWith('html/')
-            );
+            const htmlFiles = Array.from(zip.files.keys()).filter(f => f.startsWith('html/'));
             expect(htmlFiles.length).toBe(1);
         });
 
@@ -255,12 +253,7 @@ describe('Html5Exporter', () => {
 
     describe('HTML Page Generation', () => {
         it('should generate page HTML with correct structure', () => {
-            const html = exporter.generatePageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('<html');
@@ -270,34 +263,19 @@ describe('Html5Exporter', () => {
         });
 
         it('should include project title in page HTML', () => {
-            const html = exporter.generatePageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('Test Project');
         });
 
         it('should include page content', () => {
-            const html = exporter.generatePageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('Welcome to the course');
         });
 
         it('should use correct base path for index page', () => {
-            const html = exporter.generatePageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             // Index page should have no base path prefix
             expect(html).toContain('href="theme/');
@@ -305,12 +283,7 @@ describe('Html5Exporter', () => {
         });
 
         it('should use correct base path for other pages', () => {
-            const html = exporter.generatePageHtml(
-                samplePages[1],
-                samplePages,
-                document.getMetadata(),
-                false
-            );
+            const html = exporter.generatePageHtml(samplePages[1], samplePages, document.getMetadata(), false);
 
             // Other pages should have ../ prefix
             expect(html).toContain('href="../theme/');

@@ -149,11 +149,7 @@ describe('User Queries', () => {
             const users = await getAllUsers(db);
 
             expect(users.length).toBe(3);
-            expect(users.map(u => u.email).sort()).toEqual([
-                'u1@test.com',
-                'u2@test.com',
-                'u3@test.com',
-            ]);
+            expect(users.map(u => u.email).sort()).toEqual(['u1@test.com', 'u2@test.com', 'u3@test.com']);
         });
     });
 
@@ -233,11 +229,13 @@ describe('User Queries', () => {
                 password: 'h',
             });
 
-            await expect(createUser(db, {
-                email: 'dupe@example.com',
-                user_id: 'user-2',
-                password: 'h',
-            })).rejects.toThrow();
+            await expect(
+                createUser(db, {
+                    email: 'dupe@example.com',
+                    user_id: 'user-2',
+                    password: 'h',
+                }),
+            ).rejects.toThrow();
         });
     });
 

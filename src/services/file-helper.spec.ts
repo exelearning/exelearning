@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { createFileHelper, type FileHelper, type FileHelperDeps } from './file-helper';
+import { createFileHelper, type FileHelper } from './file-helper';
 
 describe('File Helper Service', () => {
     const testDir = path.join(process.cwd(), 'test', 'temp', 'file-helper-test');
@@ -32,21 +32,21 @@ describe('File Helper Service', () => {
     describe('getFilesDir', () => {
         it('should return ELYSIA_FILES_DIR if set', () => {
             const helper = createFileHelper({
-                getEnv: (key) => key === 'ELYSIA_FILES_DIR' ? '/custom/elysia/files' : undefined,
+                getEnv: key => (key === 'ELYSIA_FILES_DIR' ? '/custom/elysia/files' : undefined),
             });
             expect(helper.getFilesDir()).toBe('/custom/elysia/files');
         });
 
         it('should return FILES_DIR if set and not /mnt', () => {
             const helper = createFileHelper({
-                getEnv: (key) => key === 'FILES_DIR' ? '/custom/files' : undefined,
+                getEnv: key => (key === 'FILES_DIR' ? '/custom/files' : undefined),
             });
             expect(helper.getFilesDir()).toBe('/custom/files');
         });
 
         it('should skip FILES_DIR if it starts with /mnt', () => {
             const helper = createFileHelper({
-                getEnv: (key) => key === 'FILES_DIR' ? '/mnt/shared/files' : undefined,
+                getEnv: key => (key === 'FILES_DIR' ? '/mnt/shared/files' : undefined),
                 getCwd: () => '/test/cwd',
             });
             const result = helper.getFilesDir();
@@ -65,7 +65,7 @@ describe('File Helper Service', () => {
 
         it('should prefer ELYSIA_FILES_DIR over FILES_DIR', () => {
             const helper = createFileHelper({
-                getEnv: (key) => {
+                getEnv: key => {
                     if (key === 'ELYSIA_FILES_DIR') return '/elysia/path';
                     if (key === 'FILES_DIR') return '/files/path';
                     return undefined;
@@ -136,7 +136,7 @@ describe('File Helper Service', () => {
 
         it('should use PUBLIC_DIR env if set', () => {
             const helper = createFileHelper({
-                getEnv: (key) => key === 'PUBLIC_DIR' ? '/custom/public' : undefined,
+                getEnv: key => (key === 'PUBLIC_DIR' ? '/custom/public' : undefined),
             });
             expect(helper.getPublicDirectory()).toBe('/custom/public');
         });
@@ -406,7 +406,9 @@ describe('File Helper Service', () => {
         it('should use injected fs module', async () => {
             let ensureDirCalled = false;
             const mockFs = {
-                ensureDir: async () => { ensureDirCalled = true; },
+                ensureDir: async () => {
+                    ensureDirCalled = true;
+                },
                 remove: async () => {},
             } as any;
 
@@ -425,7 +427,11 @@ describe('File Helper Service', () => {
                 resolve: (...args: string[]) => args.join('/'),
                 dirname: (p: string) => p.split('/').slice(0, -1).join('/'),
                 extname: (p: string) => '.' + p.split('.').pop(),
-                basename: (p: string, ext?: string) => p.split('/').pop()?.replace(ext || '', '') || '',
+                basename: (p: string, ext?: string) =>
+                    p
+                        .split('/')
+                        .pop()
+                        ?.replace(ext || '', '') || '',
             } as any;
 
             const helper = createFileHelper({

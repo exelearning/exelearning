@@ -33,12 +33,9 @@ describe('HTML Path Normalizer Utility', () => {
         });
 
         it('should handle srcset attribute with multiple paths', () => {
-            const html =
-                '<source srcset="images\\small\\pic.jpg 480w, images\\large\\pic.jpg 800w">';
+            const html = '<source srcset="images\\small\\pic.jpg 480w, images\\large\\pic.jpg 800w">';
             const result = normalizeHtmlPaths(html);
-            expect(result).toBe(
-                '<source srcset="images/small/pic.jpg 480w, images/large/pic.jpg 800w">',
-            );
+            expect(result).toBe('<source srcset="images/small/pic.jpg 480w, images/large/pic.jpg 800w">');
         });
 
         it('should handle data attributes', () => {

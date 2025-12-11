@@ -13,14 +13,15 @@ import { sql } from 'kysely';
 // ============================================================================
 
 export async function findAssetById(db: Kysely<Database>, id: number): Promise<Asset | undefined> {
-    return db.selectFrom('assets')
-        .selectAll()
-        .where('id', '=', id)
-        .executeTakeFirst();
+    return db.selectFrom('assets').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
-export async function findAssetByIdWithProject(db: Kysely<Database>, id: number): Promise<(Asset & { project: Project }) | undefined> {
-    const result = await db.selectFrom('assets')
+export async function findAssetByIdWithProject(
+    db: Kysely<Database>,
+    id: number,
+): Promise<(Asset & { project: Project }) | undefined> {
+    const result = await db
+        .selectFrom('assets')
         .innerJoin('projects', 'assets.project_id', 'projects.id')
         .selectAll('assets')
         .select([
@@ -79,10 +80,12 @@ export async function findAssetByIdWithProject(db: Kysely<Database>, id: number)
     };
 }
 
-export async function findAssetByClientId(db: Kysely<Database>, clientId: string, projectId?: number): Promise<Asset | undefined> {
-    let query = db.selectFrom('assets')
-        .selectAll()
-        .where('client_id', '=', clientId);
+export async function findAssetByClientId(
+    db: Kysely<Database>,
+    clientId: string,
+    projectId?: number,
+): Promise<Asset | undefined> {
+    let query = db.selectFrom('assets').selectAll().where('client_id', '=', clientId);
 
     if (projectId !== undefined) {
         query = query.where('project_id', '=', projectId);
@@ -91,18 +94,28 @@ export async function findAssetByClientId(db: Kysely<Database>, clientId: string
     return query.executeTakeFirst();
 }
 
-export async function findAssetsByClientIds(db: Kysely<Database>, clientIds: string[], projectId: number): Promise<Asset[]> {
+export async function findAssetsByClientIds(
+    db: Kysely<Database>,
+    clientIds: string[],
+    projectId: number,
+): Promise<Asset[]> {
     if (clientIds.length === 0) return [];
 
-    return db.selectFrom('assets')
+    return db
+        .selectFrom('assets')
         .selectAll()
         .where('project_id', '=', projectId)
         .where('client_id', 'in', clientIds)
         .execute();
 }
 
-export async function findAssetByHash(db: Kysely<Database>, projectId: number, contentHash: string): Promise<Asset | undefined> {
-    return db.selectFrom('assets')
+export async function findAssetByHash(
+    db: Kysely<Database>,
+    projectId: number,
+    contentHash: string,
+): Promise<Asset | undefined> {
+    return db
+        .selectFrom('assets')
         .selectAll()
         .where('project_id', '=', projectId)
         .where('content_hash', '=', contentHash)
@@ -112,7 +125,8 @@ export async function findAssetByHash(db: Kysely<Database>, projectId: number, c
 export async function findAssetsByHashes(db: Kysely<Database>, projectId: number, hashes: string[]): Promise<Asset[]> {
     if (hashes.length === 0) return [];
 
-    return db.selectFrom('assets')
+    return db
+        .selectFrom('assets')
         .selectAll()
         .where('project_id', '=', projectId)
         .where('content_hash', 'in', hashes)
@@ -120,7 +134,8 @@ export async function findAssetsByHashes(db: Kysely<Database>, projectId: number
 }
 
 export async function findAllAssetsForProject(db: Kysely<Database>, projectId: number): Promise<Asset[]> {
-    return db.selectFrom('assets')
+    return db
+        .selectFrom('assets')
         .selectAll()
         .where('project_id', '=', projectId)
         .orderBy('created_at', 'desc')
@@ -128,7 +143,8 @@ export async function findAllAssetsForProject(db: Kysely<Database>, projectId: n
 }
 
 export async function getProjectStorageSize(db: Kysely<Database>, projectId: number): Promise<number> {
-    const result = await db.selectFrom('assets')
+    const result = await db
+        .selectFrom('assets')
         .select(sql<string>`SUM(CAST(file_size AS INTEGER))`.as('total_size'))
         .where('project_id', '=', projectId)
         .executeTakeFirst();
@@ -142,7 +158,8 @@ export async function getProjectStorageSize(db: Kysely<Database>, projectId: num
 
 export async function createAsset(db: Kysely<Database>, data: NewAsset): Promise<Asset> {
     const timestamp = now();
-    return db.insertInto('assets')
+    return db
+        .insertInto('assets')
         .values({
             ...data,
             created_at: timestamp,
@@ -162,14 +179,12 @@ export async function createAssets(db: Kysely<Database>, data: NewAsset[]): Prom
         updated_at: timestamp,
     }));
 
-    return db.insertInto('assets')
-        .values(withTimestamps)
-        .returningAll()
-        .execute();
+    return db.insertInto('assets').values(withTimestamps).returningAll().execute();
 }
 
 export async function updateAsset(db: Kysely<Database>, id: number, data: AssetUpdate): Promise<Asset | undefined> {
-    return db.updateTable('assets')
+    return db
+        .updateTable('assets')
         .set({
             ...data,
             updated_at: now(),
@@ -180,7 +195,8 @@ export async function updateAsset(db: Kysely<Database>, id: number, data: AssetU
 }
 
 export async function updateAssetClientId(db: Kysely<Database>, id: number, clientId: string): Promise<void> {
-    await db.updateTable('assets')
+    await db
+        .updateTable('assets')
         .set({
             client_id: clientId,
             updated_at: now(),
@@ -190,16 +206,11 @@ export async function updateAssetClientId(db: Kysely<Database>, id: number, clie
 }
 
 export async function deleteAsset(db: Kysely<Database>, id: number): Promise<void> {
-    await db.deleteFrom('assets')
-        .where('id', '=', id)
-        .execute();
+    await db.deleteFrom('assets').where('id', '=', id).execute();
 }
 
 export async function deleteAllAssetsForProject(db: Kysely<Database>, projectId: number): Promise<number> {
-    const result = await db.deleteFrom('assets')
-        .where('project_id', '=', projectId)
-        .returningAll()
-        .execute();
+    const result = await db.deleteFrom('assets').where('project_id', '=', projectId).returningAll().execute();
     return result.length;
 }
 
@@ -207,15 +218,46 @@ export async function deleteAllAssetsForProject(db: Kysely<Database>, projectId:
 // BULK OPERATIONS
 // ============================================================================
 
-export async function bulkUpdateClientIds(db: Kysely<Database>, updates: Array<{ id: number; clientId: string }>): Promise<void> {
+export async function bulkUpdateClientIds(
+    db: Kysely<Database>,
+    updates: Array<{ id: number; clientId: string }>,
+): Promise<void> {
+    if (updates.length === 0) return;
+
     const timestamp = now();
-    for (const { id, clientId } of updates) {
-        await db.updateTable('assets')
-            .set({
-                client_id: clientId,
-                updated_at: timestamp,
-            })
-            .where('id', '=', id)
-            .execute();
-    }
+    // Parallel updates for better performance
+    await Promise.all(
+        updates.map(({ id, clientId }) =>
+            db
+                .updateTable('assets')
+                .set({
+                    client_id: clientId,
+                    updated_at: timestamp,
+                })
+                .where('id', '=', id)
+                .execute(),
+        ),
+    );
+}
+
+export async function bulkUpdateAssets(
+    db: Kysely<Database>,
+    updates: Array<{ id: number; data: AssetUpdate }>,
+): Promise<void> {
+    if (updates.length === 0) return;
+
+    const timestamp = now();
+    // Parallel updates for better performance
+    await Promise.all(
+        updates.map(({ id, data }) =>
+            db
+                .updateTable('assets')
+                .set({
+                    ...data,
+                    updated_at: timestamp,
+                })
+                .where('id', '=', id)
+                .execute(),
+        ),
+    );
 }

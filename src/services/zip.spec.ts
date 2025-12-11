@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { createZipService, type ZipService, type ZipDeps } from './zip';
+import { createZipService, type ZipService } from './zip';
 
 describe('ZIP Service', () => {
     const testDir = path.join(process.cwd(), 'test', 'temp', 'zip-service-test');
@@ -105,7 +105,7 @@ describe('ZIP Service', () => {
             const sourceDir = path.join(testDir, 'source');
             await fs.ensureDir(sourceDir);
             // Create a binary file (simple PNG header)
-            const binaryData = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+            const binaryData = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
             await fs.writeFile(path.join(sourceDir, 'test.bin'), binaryData);
 
             const zipBuffer = await zipService.createZipBuffer(sourceDir);
@@ -329,7 +329,7 @@ describe('ZIP Service', () => {
         it('should read binary file correctly', async () => {
             const sourceDir = path.join(testDir, 'source');
             await fs.ensureDir(sourceDir);
-            const binaryData = Buffer.from([0x00, 0xFF, 0x10, 0x20, 0x30]);
+            const binaryData = Buffer.from([0x00, 0xff, 0x10, 0x20, 0x30]);
             await fs.writeFile(path.join(sourceDir, 'binary.bin'), binaryData);
 
             const zipPath = path.join(testDir, 'test.zip');
@@ -439,10 +439,10 @@ describe('ZIP Service', () => {
 
     describe('dependency injection', () => {
         it('should use injected fs module', async () => {
-            let readFileCalled = false;
+            let _readFileCalled = false;
             const mockFs = {
                 readFile: async () => {
-                    readFileCalled = true;
+                    _readFileCalled = true;
                     return Buffer.from('PK'); // Minimal ZIP signature
                 },
                 ensureDir: async () => {},

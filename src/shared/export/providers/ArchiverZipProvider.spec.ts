@@ -135,14 +135,8 @@ describe('ArchiverZipProvider', () => {
             provider.addFile('content.xml', '<?xml version="1.0"?><ode/>');
             provider.addFile('content/css/base.css', '.exe-content { color: black; }');
             provider.addFile('theme/content.css', 'body { margin: 0; }');
-            provider.addFile(
-                'libs/jquery/jquery.min.js',
-                '/* jQuery minified */'
-            );
-            provider.addFile(
-                'content/resources/abc123/image.png',
-                Buffer.from([0x89, 0x50, 0x4e, 0x47])
-            ); // PNG header
+            provider.addFile('libs/jquery/jquery.min.js', '/* jQuery minified */');
+            provider.addFile('content/resources/abc123/image.png', Buffer.from([0x89, 0x50, 0x4e, 0x47])); // PNG header
 
             expect(provider.getFileCount()).toBe(6);
 

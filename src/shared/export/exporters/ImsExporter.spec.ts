@@ -260,12 +260,7 @@ describe('ImsExporter', () => {
 
     describe('IMS Page HTML', () => {
         it('should generate standard HTML page (no SCORM)', () => {
-            const html = exporter.generateImsPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).not.toContain('loadPage');
@@ -273,35 +268,20 @@ describe('ImsExporter', () => {
         });
 
         it('should have exe-ims class', () => {
-            const html = exporter.generateImsPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('exe-web-site');
             expect(html).toContain('exe-ims');
         });
 
         it('should include page content', () => {
-            const html = exporter.generateImsPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('IMS Content Introduction');
         });
 
         it('should include project title', () => {
-            const html = exporter.generateImsPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('Test IMS Project');
         });
@@ -342,9 +322,7 @@ describe('ImsExporter', () => {
             expect(zip.files.has('index.html')).toBe(true);
 
             // Other pages in html/ directory
-            const htmlFiles = Array.from(zip.files.keys()).filter((f) =>
-                f.startsWith('html/')
-            );
+            const htmlFiles = Array.from(zip.files.keys()).filter(f => f.startsWith('html/'));
             expect(htmlFiles.length).toBe(1); // page-2 = chapter-1.html
         });
 

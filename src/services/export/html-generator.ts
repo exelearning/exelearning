@@ -2,11 +2,7 @@
  * HTML Generator Helper for Elysia
  * Generates HTML files for export (index.html, page files, etc.)
  */
-import {
-    ParsedOdeStructure,
-    NormalizedPage,
-    NormalizedComponent,
-} from '../xml/interfaces';
+import { ParsedOdeStructure, NormalizedPage, NormalizedComponent } from '../xml/interfaces';
 import { Html5ExportOptions } from './interfaces';
 import { normalizeHtmlPaths } from '../../utils/html-path-normalizer.util';
 
@@ -69,11 +65,7 @@ export function generateIndexHtml(
 /**
  * Generate HTML Head section
  */
-function generateHead(
-    page: NormalizedPage,
-    structure: ParsedOdeStructure,
-    resourcesPrefix: string,
-): string {
+function generateHead(page: NormalizedPage, structure: ParsedOdeStructure, resourcesPrefix: string): string {
     const title = `${escapeHtml(page.title)} | ${escapeHtml(structure.meta.title || 'eXeLearning')}`;
 
     return `
@@ -105,7 +97,7 @@ function generateHeader(structure: ParsedOdeStructure): string {
  * Generate Navigation Menu
  */
 function generateNavigation(pages: NormalizedPage[], currentPageId: string): string {
-    const rootPages = pages.filter((p) => p.parent_id === null);
+    const rootPages = pages.filter(p => p.parent_id === null);
 
     let html = '<ul>\n';
 
@@ -123,7 +115,7 @@ function generateNavItem(
     currentPageId: string,
     level: number,
 ): string {
-    const children = allPages.filter((p) => p.parent_id === page.id);
+    const children = allPages.filter(p => p.parent_id === page.id);
     const isCurrent = page.id === currentPageId;
     const isParentOfCurrent = isParentOf(page, currentPageId, allPages);
 
@@ -147,12 +139,8 @@ function generateNavItem(
     return html;
 }
 
-function isParentOf(
-    potentialParent: NormalizedPage,
-    childId: string,
-    allPages: NormalizedPage[],
-): boolean {
-    const child = allPages.find((p) => p.id === childId);
+function isParentOf(potentialParent: NormalizedPage, childId: string, allPages: NormalizedPage[]): boolean {
+    const child = allPages.find(p => p.id === childId);
     if (!child || !child.parent_id) return false;
     if (child.parent_id === potentialParent.id) return true;
     return isParentOf(potentialParent, child.parent_id, allPages);
@@ -166,15 +154,11 @@ function generatePageContent(page: NormalizedPage, resourcesPrefix: string = '')
         return '';
     }
 
-    const sortedComponents = [...page.components].sort(
-        (a, b) => (a.order || 0) - (b.order || 0),
-    );
+    const sortedComponents = [...page.components].sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const blocks = groupComponentsByBlock(sortedComponents);
 
-    return blocks
-        .map((block) => renderBlock(block, resourcesPrefix))
-        .join('\n');
+    return blocks.map(block => renderBlock(block, resourcesPrefix)).join('\n');
 }
 
 /**
@@ -235,9 +219,7 @@ function renderBlock(
         headerHtml = '<div class="box-head"></div>';
     }
 
-    const contentHtml = block.components
-        .map((component) => renderIdevice(component, resourcesPrefix))
-        .join('\n');
+    const contentHtml = block.components.map(component => renderIdevice(component, resourcesPrefix)).join('\n');
 
     return `<article id="${escapeAttr(block.id)}" class="${classes.join(' ')}">
 ${headerHtml}
@@ -323,12 +305,9 @@ function fixAssetUrls(content: string, basePath: string): string {
     });
 
     // Fix files/tmp/ paths
-    fixed = fixed.replace(
-        /files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g,
-        (_match, relativePath) => {
-            return `${basePath}content/resources/${relativePath}`;
-        },
-    );
+    fixed = fixed.replace(/files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g, (_match, relativePath) => {
+        return `${basePath}content/resources/${relativePath}`;
+    });
 
     // Fix relative paths that start with /files/
     fixed = fixed.replace(/["']\/files\/tmp\/[^"']+\/([^"']+)["']/g, (_match, path) => {
@@ -342,7 +321,7 @@ function fixAssetUrls(content: string, basePath: string): string {
  * Generate Pagination (Prev/Next buttons)
  */
 function generatePagination(page: NormalizedPage, allPages: NormalizedPage[]): string {
-    const currentIndex = allPages.findIndex((p) => p.id === page.id);
+    const currentIndex = allPages.findIndex(p => p.id === page.id);
     const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
     const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
@@ -369,7 +348,7 @@ function generatePagination(page: NormalizedPage, allPages: NormalizedPage[]): s
 /**
  * Generate Footer
  */
-function generateFooter(structure: ParsedOdeStructure): string {
+function generateFooter(_structure: ParsedOdeStructure): string {
     return '';
 }
 
@@ -385,7 +364,7 @@ function escapeHtml(text: string): string {
         '"': '&quot;',
         "'": '&#039;',
     };
-    return text.replace(/[&<>"']/g, (m) => map[m]);
+    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
 /**
@@ -393,9 +372,5 @@ function escapeHtml(text: string): string {
  */
 function escapeAttr(str: string): string {
     if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/"/g, '&quot;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

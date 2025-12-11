@@ -79,11 +79,7 @@ describe('ID Generator Utilities', () => {
 
     describe('generateIdCheckUnique', () => {
         it('should generate a unique ID not in the provided array', () => {
-            const existingIds = [
-                '20250116143027ABCDEF',
-                '20250116143028GHIJKL',
-                '20250116143029MNOPQR',
-            ];
+            const existingIds = ['20250116143027ABCDEF', '20250116143028GHIJKL', '20250116143029MNOPQR'];
 
             const newId = generateIdCheckUnique(existingIds);
 
@@ -167,7 +163,7 @@ describe('ID Generator Utilities', () => {
 
             // With 1000 characters and 26 letters, we expect roughly 38 of each letter
             // Allow for natural variance (between 15 and 70) to avoid flaky test failures
-            Object.values(letterCounts).forEach((count) => {
+            Object.values(letterCounts).forEach(count => {
                 expect(count).toBeGreaterThanOrEqual(15);
                 expect(count).toBeLessThanOrEqual(70);
             });

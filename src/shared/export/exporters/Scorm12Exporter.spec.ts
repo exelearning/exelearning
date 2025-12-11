@@ -270,46 +270,26 @@ describe('Scorm12Exporter', () => {
 
     describe('SCORM Page HTML', () => {
         it('should generate SCORM-enabled HTML', () => {
-            const html = exporter.generateScormPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('SCORM_API_wrapper');
             expect(html).toContain('SCOFunctions');
         });
 
         it('should include onload handler', () => {
-            const html = exporter.generateScormPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('loadPage');
         });
 
         it('should include onunload handler', () => {
-            const html = exporter.generateScormPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('unloadPage');
         });
 
         it('should have exe-scorm class', () => {
-            const html = exporter.generateScormPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('exe-scorm');
             expect(html).toContain('exe-scorm12');

@@ -13,21 +13,19 @@ import { v4 as uuidv4 } from 'uuid';
 // ============================================================================
 
 export async function findProjectById(db: Kysely<Database>, id: number): Promise<Project | undefined> {
-    return db.selectFrom('projects')
-        .selectAll()
-        .where('id', '=', id)
-        .executeTakeFirst();
+    return db.selectFrom('projects').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 export async function findProjectByUuid(db: Kysely<Database>, uuid: string): Promise<Project | undefined> {
-    return db.selectFrom('projects')
-        .selectAll()
-        .where('uuid', '=', uuid)
-        .executeTakeFirst();
+    return db.selectFrom('projects').selectAll().where('uuid', '=', uuid).executeTakeFirst();
 }
 
-export async function findProjectWithOwner(db: Kysely<Database>, id: number): Promise<(Project & { owner: User }) | undefined> {
-    const result = await db.selectFrom('projects')
+export async function findProjectWithOwner(
+    db: Kysely<Database>,
+    id: number,
+): Promise<(Project & { owner: User }) | undefined> {
+    const result = await db
+        .selectFrom('projects')
         .innerJoin('users', 'projects.owner_id', 'users.id')
         .selectAll('projects')
         .select([
@@ -84,8 +82,12 @@ export async function findProjectWithOwner(db: Kysely<Database>, id: number): Pr
     };
 }
 
-export async function findProjectByUuidWithOwner(db: Kysely<Database>, uuid: string): Promise<(Project & { owner: User }) | undefined> {
-    const result = await db.selectFrom('projects')
+export async function findProjectByUuidWithOwner(
+    db: Kysely<Database>,
+    uuid: string,
+): Promise<(Project & { owner: User }) | undefined> {
+    const result = await db
+        .selectFrom('projects')
         .innerJoin('users', 'projects.owner_id', 'users.id')
         .selectAll('projects')
         .select([
@@ -147,7 +149,8 @@ export async function findProjectByUuidWithOwner(db: Kysely<Database>, uuid: str
 // ============================================================================
 
 export async function getProjectCollaborators(db: Kysely<Database>, projectId: number): Promise<User[]> {
-    return db.selectFrom('project_collaborators')
+    return db
+        .selectFrom('project_collaborators')
         .innerJoin('users', 'project_collaborators.user_id', 'users.id')
         .selectAll('users')
         .where('project_collaborators.project_id', '=', projectId)
@@ -155,21 +158,24 @@ export async function getProjectCollaborators(db: Kysely<Database>, projectId: n
 }
 
 export async function addCollaborator(db: Kysely<Database>, projectId: number, userId: number): Promise<void> {
-    await db.insertInto('project_collaborators')
+    await db
+        .insertInto('project_collaborators')
         .values({ project_id: projectId, user_id: userId })
-        .onConflict((oc) => oc.doNothing())
+        .onConflict(oc => oc.doNothing())
         .execute();
 }
 
 export async function removeCollaborator(db: Kysely<Database>, projectId: number, userId: number): Promise<void> {
-    await db.deleteFrom('project_collaborators')
+    await db
+        .deleteFrom('project_collaborators')
         .where('project_id', '=', projectId)
         .where('user_id', '=', userId)
         .execute();
 }
 
 export async function isCollaborator(db: Kysely<Database>, projectId: number, userId: number): Promise<boolean> {
-    const result = await db.selectFrom('project_collaborators')
+    const result = await db
+        .selectFrom('project_collaborators')
         .select('project_id')
         .where('project_id', '=', projectId)
         .where('user_id', '=', userId)
@@ -184,9 +190,10 @@ export async function isCollaborator(db: Kysely<Database>, projectId: number, us
 export async function findProjectsByOwner(
     db: Kysely<Database>,
     ownerId: number,
-    statuses: string[] = ['active', 'archived']
+    statuses: string[] = ['active', 'archived'],
 ): Promise<Project[]> {
-    return db.selectFrom('projects')
+    return db
+        .selectFrom('projects')
         .selectAll()
         .where('owner_id', '=', ownerId)
         .where('status', 'in', statuses)
@@ -197,18 +204,24 @@ export async function findProjectsByOwner(
 export async function findProjectsAsCollaborator(
     db: Kysely<Database>,
     userId: number,
-    statuses: string[] = ['active', 'archived']
+    statuses: string[] = ['active', 'archived'],
 ): Promise<Project[]> {
-    const projectIds = await db.selectFrom('project_collaborators')
+    const projectIds = await db
+        .selectFrom('project_collaborators')
         .select('project_id')
         .where('user_id', '=', userId)
         .execute();
 
     if (projectIds.length === 0) return [];
 
-    return db.selectFrom('projects')
+    return db
+        .selectFrom('projects')
         .selectAll()
-        .where('id', 'in', projectIds.map(p => p.project_id))
+        .where(
+            'id',
+            'in',
+            projectIds.map(p => p.project_id),
+        )
         .where('status', 'in', statuses)
         .orderBy('updated_at', 'desc')
         .execute();
@@ -238,7 +251,8 @@ export async function findAllProjectsForUser(db: Kysely<Database>, userId: numbe
 }
 
 export async function findSavedProjectsForUser(db: Kysely<Database>, userId: number): Promise<Project[]> {
-    const owned = await db.selectFrom('projects')
+    const owned = await db
+        .selectFrom('projects')
         .selectAll()
         .where('owner_id', '=', userId)
         .where('status', 'in', ['active', 'archived'])
@@ -246,16 +260,22 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
         .orderBy('updated_at', 'desc')
         .execute();
 
-    const projectIds = await db.selectFrom('project_collaborators')
+    const projectIds = await db
+        .selectFrom('project_collaborators')
         .select('project_id')
         .where('user_id', '=', userId)
         .execute();
 
     let collaborating: Project[] = [];
     if (projectIds.length > 0) {
-        collaborating = await db.selectFrom('projects')
+        collaborating = await db
+            .selectFrom('projects')
             .selectAll()
-            .where('id', 'in', projectIds.map(p => p.project_id))
+            .where(
+                'id',
+                'in',
+                projectIds.map(p => p.project_id),
+            )
             .where('status', 'in', ['active', 'archived'])
             .where('saved_once', '=', 1)
             .orderBy('updated_at', 'desc')
@@ -286,7 +306,8 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
 
 export async function createProject(db: Kysely<Database>, data: Omit<NewProject, 'uuid'>): Promise<Project> {
     const timestamp = now();
-    return db.insertInto('projects')
+    return db
+        .insertInto('projects')
         .values({
             ...data,
             uuid: uuidv4(),
@@ -298,8 +319,13 @@ export async function createProject(db: Kysely<Database>, data: Omit<NewProject,
         .executeTakeFirstOrThrow();
 }
 
-export async function updateProject(db: Kysely<Database>, id: number, data: ProjectUpdate): Promise<Project | undefined> {
-    return db.updateTable('projects')
+export async function updateProject(
+    db: Kysely<Database>,
+    id: number,
+    data: ProjectUpdate,
+): Promise<Project | undefined> {
+    return db
+        .updateTable('projects')
         .set({
             ...data,
             updated_at: now(),
@@ -309,8 +335,13 @@ export async function updateProject(db: Kysely<Database>, id: number, data: Proj
         .executeTakeFirst();
 }
 
-export async function updateProjectByUuid(db: Kysely<Database>, uuid: string, data: ProjectUpdate): Promise<Project | undefined> {
-    return db.updateTable('projects')
+export async function updateProjectByUuid(
+    db: Kysely<Database>,
+    uuid: string,
+    data: ProjectUpdate,
+): Promise<Project | undefined> {
+    return db
+        .updateTable('projects')
         .set({
             ...data,
             updated_at: now(),
@@ -321,7 +352,8 @@ export async function updateProjectByUuid(db: Kysely<Database>, uuid: string, da
 }
 
 export async function markProjectAsSaved(db: Kysely<Database>, projectId: number): Promise<void> {
-    await db.updateTable('projects')
+    await db
+        .updateTable('projects')
         .set({
             saved_once: 1,
             updated_at: now(),
@@ -331,7 +363,8 @@ export async function markProjectAsSaved(db: Kysely<Database>, projectId: number
 }
 
 export async function updateLastAccessed(db: Kysely<Database>, projectId: number): Promise<void> {
-    await db.updateTable('projects')
+    await db
+        .updateTable('projects')
         .set({
             last_accessed_at: now(),
         })
@@ -340,7 +373,8 @@ export async function updateLastAccessed(db: Kysely<Database>, projectId: number
 }
 
 export async function softDeleteProject(db: Kysely<Database>, id: number): Promise<void> {
-    await db.updateTable('projects')
+    await db
+        .updateTable('projects')
         .set({
             status: 'deleted',
             updated_at: now(),
@@ -351,9 +385,7 @@ export async function softDeleteProject(db: Kysely<Database>, id: number): Promi
 
 export async function hardDeleteProject(db: Kysely<Database>, id: number): Promise<void> {
     // Collaborators are deleted via cascade
-    await db.deleteFrom('projects')
-        .where('id', '=', id)
-        .execute();
+    await db.deleteFrom('projects').where('id', '=', id).execute();
 }
 
 // ============================================================================
@@ -371,7 +403,11 @@ export async function hasAccess(db: Kysely<Database>, projectId: number, userId:
     return isCollaborator(db, projectId, userId);
 }
 
-export async function checkProjectAccess(db: Kysely<Database>, project: Project | undefined, userId?: number): Promise<{
+export async function checkProjectAccess(
+    db: Kysely<Database>,
+    project: Project | undefined,
+    userId?: number,
+): Promise<{
     hasAccess: boolean;
     reason?: string;
 }> {
@@ -411,7 +447,8 @@ export async function checkProjectAccess(db: Kysely<Database>, project: Project 
 // ============================================================================
 
 export async function findSavedProjectsByOwner(db: Kysely<Database>, ownerId: number): Promise<Project[]> {
-    return db.selectFrom('projects')
+    return db
+        .selectFrom('projects')
         .selectAll()
         .where('owner_id', '=', ownerId)
         .where('saved_once', '=', 1)
@@ -420,9 +457,14 @@ export async function findSavedProjectsByOwner(db: Kysely<Database>, ownerId: nu
         .execute();
 }
 
-export async function createProjectWithUuid(db: Kysely<Database>, uuid: string, data: Omit<NewProject, 'uuid'>): Promise<Project> {
+export async function createProjectWithUuid(
+    db: Kysely<Database>,
+    uuid: string,
+    data: Omit<NewProject, 'uuid'>,
+): Promise<Project> {
     const timestamp = now();
-    return db.insertInto('projects')
+    return db
+        .insertInto('projects')
         .values({
             ...data,
             uuid,
@@ -457,7 +499,7 @@ export interface TransferOwnershipResult {
 export async function transferOwnership(
     db: Kysely<Database>,
     projectId: number,
-    newOwnerId: number
+    newOwnerId: number,
 ): Promise<TransferOwnershipResult> {
     // 1. Get current project to find previous owner
     const project = await findProjectById(db, projectId);
@@ -485,7 +527,8 @@ export async function transferOwnership(
     await addCollaborator(db, projectId, previousOwnerId);
 
     // 6. Update owner_id
-    await db.updateTable('projects')
+    await db
+        .updateTable('projects')
         .set({
             owner_id: newOwnerId,
             updated_at: now(),
@@ -511,7 +554,7 @@ export async function transferOwnership(
 export async function transferOwnershipByUuid(
     db: Kysely<Database>,
     uuid: string,
-    newOwnerId: number
+    newOwnerId: number,
 ): Promise<TransferOwnershipResult> {
     const project = await findProjectByUuid(db, uuid);
     if (!project) {
@@ -520,8 +563,13 @@ export async function transferOwnershipByUuid(
     return transferOwnership(db, project.id, newOwnerId);
 }
 
-export async function updateProjectVisibility(db: Kysely<Database>, projectId: number, visibility: string): Promise<void> {
-    await db.updateTable('projects')
+export async function updateProjectVisibility(
+    db: Kysely<Database>,
+    projectId: number,
+    visibility: string,
+): Promise<void> {
+    await db
+        .updateTable('projects')
         .set({
             visibility,
             updated_at: now(),
@@ -530,8 +578,13 @@ export async function updateProjectVisibility(db: Kysely<Database>, projectId: n
         .execute();
 }
 
-export async function updateProjectVisibilityByUuid(db: Kysely<Database>, uuid: string, visibility: string): Promise<void> {
-    await db.updateTable('projects')
+export async function updateProjectVisibilityByUuid(
+    db: Kysely<Database>,
+    uuid: string,
+    visibility: string,
+): Promise<void> {
+    await db
+        .updateTable('projects')
         .set({
             visibility,
             updated_at: now(),

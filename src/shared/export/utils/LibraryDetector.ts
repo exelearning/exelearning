@@ -82,9 +82,7 @@ export class LibraryDetector {
         switch (lib.type) {
             case 'class':
                 // Match class="...pattern..." (with possible other classes)
-                return new RegExp(`class="[^"]*${this._escapeRegex(lib.pattern as string)}[^"]*"`, 'i').test(
-                    html
-                );
+                return new RegExp(`class="[^"]*${this._escapeRegex(lib.pattern as string)}[^"]*"`, 'i').test(html);
 
             case 'rel':
                 // Match rel="...pattern..."

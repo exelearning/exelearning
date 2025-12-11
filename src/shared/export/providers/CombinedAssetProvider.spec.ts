@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, mock } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 import { CombinedAssetProvider } from './CombinedAssetProvider';
 import type { AssetProvider, ExportAsset } from '../interfaces';
 
@@ -20,7 +20,7 @@ describe('CombinedAssetProvider', () => {
         data: Buffer.from('mock image data 2'),
     };
 
-    const mockAsset3: ExportAsset = {
+    const _mockAsset3: ExportAsset = {
         id: 'asset-3',
         filename: 'document.pdf',
         originalPath: 'asset-3/document.pdf',
@@ -104,7 +104,9 @@ describe('CombinedAssetProvider', () => {
 
         it('should handle provider errors gracefully', async () => {
             const errorProvider: AssetProvider = {
-                getAsset: async () => { throw new Error('Provider error'); },
+                getAsset: async () => {
+                    throw new Error('Provider error');
+                },
                 getAllAssets: async () => [],
                 getProjectAssets: async () => [],
             };
@@ -156,7 +158,9 @@ describe('CombinedAssetProvider', () => {
         it('should handle provider errors gracefully', async () => {
             const errorProvider: AssetProvider = {
                 getAsset: async () => null,
-                getAllAssets: async () => { throw new Error('Provider error'); },
+                getAllAssets: async () => {
+                    throw new Error('Provider error');
+                },
                 getProjectAssets: async () => [],
             };
             const provider2 = createMockProvider([mockAsset2]);
@@ -241,9 +245,13 @@ describe('CombinedAssetProvider', () => {
         it('should call clearCache on all providers that have it', () => {
             let clearedCount = 0;
             const provider1 = createMockProvider([mockAsset1]);
-            provider1.clearCache = () => { clearedCount++; };
+            provider1.clearCache = () => {
+                clearedCount++;
+            };
             const provider2 = createMockProvider([mockAsset2]);
-            provider2.clearCache = () => { clearedCount++; };
+            provider2.clearCache = () => {
+                clearedCount++;
+            };
 
             const combined = new CombinedAssetProvider([provider1, provider2]);
             combined.clearCache();

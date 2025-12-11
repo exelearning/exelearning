@@ -23,20 +23,23 @@ class SaveManager {
     this.progressModal = null;
 
     // Maximum files per batch (will be reduced if total size exceeds MAX_BATCH_BYTES)
-    this.MAX_BATCH_FILES = 15;
+    this.MAX_BATCH_FILES = 30;
 
-    // Maximum total bytes per batch (10MB - conservative to avoid 413 errors)
-    this.MAX_BATCH_BYTES = 10 * 1024 * 1024;
+    // Maximum total bytes per batch (20MB - backend processes in parallel now)
+    this.MAX_BATCH_BYTES = 20 * 1024 * 1024;
 
     // Maximum concurrent batch uploads (aggressive parallelization)
-    this.MAX_CONCURRENT_BATCHES = 5;
+    this.MAX_CONCURRENT_BATCHES = 10;
 
     // Chunked upload settings for large files
     this.CHUNK_UPLOAD_THRESHOLD = 20 * 1024 * 1024; // 20MB - files larger than this use chunked upload
-    this.CHUNK_SIZE = 1 * 1024 * 1024; // 1MB chunks
+    this.CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks (5x fewer requests than 1MB)
 
     // Maximum concurrent chunk uploads per large file
-    this.MAX_CONCURRENT_CHUNKS = 3;
+    this.MAX_CONCURRENT_CHUNKS = 6; // 2x more parallel uploads
+
+    // Maximum concurrent large file uploads
+    this.MAX_CONCURRENT_LARGE_FILES = 2;
 
     // Saving state
     this.isSaving = false;
@@ -372,39 +375,71 @@ class SaveManager {
     const largeProgressRange = range * largeProgressWeight;
     const smallProgressRange = range * smallProgressWeight;
 
-    // Step 1: Upload large assets using chunked upload (sequential to avoid overwhelming server)
+    // Step 1: Upload large assets using chunked upload (parallel, max MAX_CONCURRENT_LARGE_FILES)
     if (largeAssets.length > 0) {
-      Logger.log(`[SaveManager] Uploading ${largeAssets.length} large assets via chunked upload...`);
+      Logger.log(`[SaveManager] Uploading ${largeAssets.length} large assets via chunked upload (max ${this.MAX_CONCURRENT_LARGE_FILES} concurrent)...`);
 
-      for (let i = 0; i < largeAssets.length; i++) {
-        const asset = largeAssets[i];
-        const assetSize = (asset.blob?.size || 0) / (1024 * 1024);
+      // Track progress for each large asset
+      const largeProgressMap = new Map();
+      let completedLargeFiles = 0;
+
+      const updateLargeProgress = () => {
+        if (toast) {
+          // Calculate average progress across all large files
+          let totalProgress = completedLargeFiles;
+          for (const progress of largeProgressMap.values()) {
+            totalProgress += progress;
+          }
+          const avgProgress = totalProgress / largeAssets.length;
+          const overallProgress = baseProgress + avgProgress * largeProgressRange;
+          toast.setProgress(overallProgress);
+        }
+      };
+
+      // Upload large files in parallel batches
+      for (let i = 0; i < largeAssets.length; i += this.MAX_CONCURRENT_LARGE_FILES) {
+        const batch = largeAssets.slice(i, i + this.MAX_CONCURRENT_LARGE_FILES);
 
         if (toast) {
-          const progress = baseProgress + (i / largeAssets.length) * largeProgressRange;
+          const totalSize = batch.reduce((sum, a) => sum + (a.blob?.size || 0), 0) / (1024 * 1024);
           toast.updateBodyWithProgress(
-            _('Uploading large file') + ` (${assetSize.toFixed(1)} MB)...`,
-            progress
+            _('Uploading large files') + ` (${batch.length} files, ${totalSize.toFixed(1)} MB)...`,
+            baseProgress + (i / largeAssets.length) * largeProgressRange
           );
         }
 
-        try {
-          await this.uploadLargeAsset(projectId, asset, (chunkProgress) => {
-            // Update progress within this asset's upload
-            if (toast) {
-              const assetBaseProgress = baseProgress + (i / largeAssets.length) * largeProgressRange;
-              const assetProgressRange = largeProgressRange / largeAssets.length;
-              const progress = assetBaseProgress + chunkProgress * assetProgressRange;
-              toast.setProgress(progress);
-            }
-          });
+        const results = await Promise.allSettled(
+          batch.map(async (asset, batchIndex) => {
+            const assetIndex = i + batchIndex;
+            const assetSize = (asset.blob?.size || 0) / (1024 * 1024);
 
-          await assetManager.markAssetUploaded(asset.id);
-          uploadedCount++;
-          Logger.log(`[SaveManager] Large asset uploaded: ${asset.filename} (${assetSize.toFixed(1)} MB)`);
-        } catch (error) {
-          console.error(`[SaveManager] Large asset upload failed: ${asset.filename}`, error);
-          failedCount++;
+            try {
+              await this.uploadLargeAsset(projectId, asset, (chunkProgress) => {
+                largeProgressMap.set(assetIndex, chunkProgress);
+                updateLargeProgress();
+              });
+
+              await assetManager.markAssetUploaded(asset.id);
+              largeProgressMap.delete(assetIndex);
+              completedLargeFiles++;
+              updateLargeProgress();
+              Logger.log(`[SaveManager] Large asset uploaded: ${asset.filename} (${assetSize.toFixed(1)} MB)`);
+              return { success: true, asset };
+            } catch (error) {
+              console.error(`[SaveManager] Large asset upload failed: ${asset.filename}`, error);
+              largeProgressMap.delete(assetIndex);
+              return { success: false, asset, error };
+            }
+          })
+        );
+
+        // Count results
+        for (const result of results) {
+          if (result.status === 'fulfilled' && result.value.success) {
+            uploadedCount++;
+          } else {
+            failedCount++;
+          }
         }
       }
     }

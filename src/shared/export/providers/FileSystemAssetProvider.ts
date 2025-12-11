@@ -15,7 +15,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { AssetProvider, ExportAsset } from '../interfaces';
-import { getExtensionFromMime, MIME_TO_EXTENSION } from '../constants';
+import { MIME_TO_EXTENSION } from '../constants';
 
 /**
  * Reverse lookup: extension to MIME type
@@ -150,9 +150,7 @@ export class FileSystemAssetProvider implements AssetProvider {
         const dirPath = path.isAbsolute(directory) ? directory : path.join(this.basePath, directory);
 
         if (await fs.pathExists(dirPath)) {
-            const relativePath = path.isAbsolute(directory)
-                ? path.relative(this.basePath, directory)
-                : directory;
+            const relativePath = path.isAbsolute(directory) ? path.relative(this.basePath, directory) : directory;
             await this.collectAssetsFromDirectory(dirPath, relativePath, assets);
         }
 
@@ -168,7 +166,7 @@ export class FileSystemAssetProvider implements AssetProvider {
     private async collectAssetsFromDirectory(
         dirPath: string,
         relativePath: string,
-        assets: ExportAsset[]
+        assets: ExportAsset[],
     ): Promise<void> {
         const entries = await fs.readdir(dirPath, { withFileTypes: true });
 

@@ -175,7 +175,7 @@ describe('Yjs WebSocket Service', () => {
     describe('Connection Access Control', () => {
         it('should allow owner access to own project', async () => {
             // User 1 owns test-uuid project
-            const ws = createMockWebSocket({
+            const _ws = createMockWebSocket({
                 params: { docName: 'project-test-uuid' },
                 query: { token: 'valid-token-user-1' },
             });
@@ -522,7 +522,9 @@ describe('Yjs WebSocket Service', () => {
     describe('Document Name Parsing', () => {
         it('should extract project UUID from document name', () => {
             // Real extractProjectUuid uses stricter regex: project-<uuid-format>
-            expect(roomManager.extractProjectUuid('project-a1b2c3d4-e5f6-7890-abcd-ef1234567890')).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+            expect(roomManager.extractProjectUuid('project-a1b2c3d4-e5f6-7890-abcd-ef1234567890')).toBe(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+            );
         });
 
         it('should return null for invalid document names', () => {
@@ -1103,7 +1105,11 @@ describe('Yjs WebSocket Service', () => {
         it('should return error for invalid token', async () => {
             const ws = createMockWebSocket() as any;
 
-            const result = await handleWebSocketOpen(ws, 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'invalid-token');
+            const result = await handleWebSocketOpen(
+                ws,
+                'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'invalid-token',
+            );
 
             expect(result.success).toBe(false);
             expect(result.error?.code).toBe(4001);
@@ -1137,7 +1143,11 @@ describe('Yjs WebSocket Service', () => {
                 fileName: 'Test.elp',
             });
 
-            const result = await handleWebSocketOpen(ws, 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'valid-token-user-1');
+            const result = await handleWebSocketOpen(
+                ws,
+                'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'valid-token-user-1',
+            );
 
             expect(result.success).toBe(true);
             expect(result.error).toBeUndefined();
@@ -1157,7 +1167,9 @@ describe('Yjs WebSocket Service', () => {
             });
 
             const ws = createMockWebSocket() as any;
-            mockSessions.set('b1b2c3d4-e5f6-7890-abcd-ef1234567890', { sessionId: 'b1b2c3d4-e5f6-7890-abcd-ef1234567890' });
+            mockSessions.set('b1b2c3d4-e5f6-7890-abcd-ef1234567890', {
+                sessionId: 'b1b2c3d4-e5f6-7890-abcd-ef1234567890',
+            });
 
             await handleWebSocketOpen(ws, 'project-b1b2c3d4-e5f6-7890-abcd-ef1234567890', 'valid-token-user-1');
 
@@ -1259,7 +1271,7 @@ describe('Yjs WebSocket Service', () => {
             handleWebSocketMessage(ws as any, data, assetMsg);
 
             // Give async handler time to execute
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            await new Promise(resolve => setTimeout(resolve, 10));
             expect(handleMessageSpy).toHaveBeenCalled();
         });
 

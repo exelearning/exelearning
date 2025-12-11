@@ -78,12 +78,7 @@ class MockAssetProvider implements AssetProvider {
         data: Buffer;
     }> = [];
 
-    addAsset(
-        id: string,
-        filename: string,
-        mimeType: string,
-        data: Buffer
-    ): void {
+    addAsset(id: string, filename: string, mimeType: string, data: Buffer): void {
         this.assets.push({
             id,
             filename,
@@ -94,7 +89,7 @@ class MockAssetProvider implements AssetProvider {
     }
 
     async getAsset(path: string): Promise<Buffer | null> {
-        const asset = this.assets.find((a) => a.path === path);
+        const asset = this.assets.find(a => a.path === path);
         return asset ? asset.data : null;
     }
 
@@ -309,7 +304,7 @@ describe('BaseExporter', () => {
             expect(exporter.escapeXml('Hello & World')).toBe('Hello &amp; World');
             expect(exporter.escapeXml('<script>')).toBe('&lt;script&gt;');
             expect(exporter.escapeXml('"quoted"')).toBe('&quot;quoted&quot;');
-            expect(exporter.escapeXml("it's")).toBe("it&apos;s");
+            expect(exporter.escapeXml("it's")).toBe('it&apos;s');
             expect(exporter.escapeXml(null)).toBe('');
             expect(exporter.escapeXml(undefined)).toBe('');
         });
@@ -421,27 +416,9 @@ describe('BaseExporter', () => {
                 },
             ];
 
-            expect(
-                exporter.isAncestorOf(
-                    hierarchicalPages[0],
-                    'child',
-                    hierarchicalPages
-                )
-            ).toBe(true);
-            expect(
-                exporter.isAncestorOf(
-                    hierarchicalPages[0],
-                    'grandchild',
-                    hierarchicalPages
-                )
-            ).toBe(true);
-            expect(
-                exporter.isAncestorOf(
-                    hierarchicalPages[1],
-                    'root',
-                    hierarchicalPages
-                )
-            ).toBe(false);
+            expect(exporter.isAncestorOf(hierarchicalPages[0], 'child', hierarchicalPages)).toBe(true);
+            expect(exporter.isAncestorOf(hierarchicalPages[0], 'grandchild', hierarchicalPages)).toBe(true);
+            expect(exporter.isAncestorOf(hierarchicalPages[1], 'root', hierarchicalPages)).toBe(false);
         });
     });
 
@@ -568,6 +545,73 @@ describe('BaseExporter', () => {
             const html = exporter.collectAllHtmlContent(pages);
             expect(html).toContain('Content 1');
             expect(html).toContain('Content 2');
+        });
+    });
+
+    describe('Asset Handling', () => {
+        it('should add assets to ZIP', async () => {
+            assets.addAsset('uuid-123', 'image.png', 'image/png', Buffer.from('image-data'));
+            assets.addAsset('uuid-456', 'doc.pdf', 'application/pdf', Buffer.from('pdf-data'));
+
+            const count = await exporter.addAssetsToZip();
+
+            expect(count).toBe(2);
+            expect(zip.files.has('uuid-123/image.png')).toBe(true);
+            expect(zip.files.has('uuid-456/doc.pdf')).toBe(true);
+        });
+
+        it('should add assets with prefix', async () => {
+            assets.addAsset('uuid-789', 'file.txt', 'text/plain', Buffer.from('text'));
+
+            const count = await exporter.addAssetsToZip('content/');
+
+            expect(count).toBe(1);
+            expect(zip.files.has('content/uuid-789/file.txt')).toBe(true);
+        });
+
+        it('should handle empty assets gracefully', async () => {
+            const count = await exporter.addAssetsToZip();
+            expect(count).toBe(0);
+        });
+
+        it('should add filenames to asset URLs', async () => {
+            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
+
+            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            expect(result).toBe('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/image.jpg">');
+        });
+
+        it('should not modify asset URLs that already have filenames', async () => {
+            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
+
+            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/existing.png">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            // Should not modify since it already has a path
+            expect(result).toBe(content);
+        });
+
+        it('should return empty string for empty content', async () => {
+            const result = await exporter.addFilenamesToAssetUrls('');
+            expect(result).toBe('');
+        });
+
+        it('should return content unchanged when no assets', async () => {
+            const content = '<p>No assets here</p>';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+            expect(result).toBe(content);
+        });
+
+        it('should not modify unknown asset UUIDs', async () => {
+            assets.addAsset('known-uuid', 'file.txt', 'text/plain', Buffer.from(''));
+
+            const content = '<img src="asset://unknown-uuid-here">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            // Should not modify unknown UUID
+            expect(result).toBe(content);
         });
     });
 

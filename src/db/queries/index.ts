@@ -70,6 +70,7 @@ export {
     deleteAsset,
     deleteAllAssetsForProject,
     bulkUpdateClientIds,
+    bulkUpdateAssets,
 } from './assets';
 
 // Yjs queries

@@ -1099,6 +1099,62 @@ export default class modalOpenUserOdeFiles extends Modal {
                     });
                 }, this.timeMax);
             }
+
+            // === CLIENT-SIDE IMPORT: Process .idevice/.block files directly in browser ===
+            try {
+                Logger.log(`[ComponentImport] Importing ${odeFileName} client-side...`);
+
+                // Get document manager and asset manager from Yjs bridge
+                const documentManager = eXeLearning.app.project._yjsBridge?.getDocumentManager();
+                const assetManager = eXeLearning.app.project._yjsBridge?.assetManager;
+
+                if (!documentManager) {
+                    throw new Error('Yjs document manager not available');
+                }
+
+                // Create ComponentImporter instance
+                const ComponentImporter = window.ComponentImporter;
+                if (!ComponentImporter) {
+                    throw new Error('ComponentImporter not loaded');
+                }
+
+                const importer = new ComponentImporter(documentManager, assetManager);
+
+                // Get current page ID from selected node
+                const currentPageId = eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected?.getAttribute('nav-id');
+                if (!currentPageId) {
+                    throw new Error('No page selected');
+                }
+
+                // Close modal before processing
+                if (this.modal && this.modal._isShown) {
+                    this.close();
+                }
+
+                // Import the component file
+                const result = await importer.importComponent(odeFile, currentPageId);
+
+                if (result.success) {
+                    Logger.log(`[ComponentImport] Import successful, block ID: ${result.blockId}`);
+                    // Refresh only the page content (blocks/idevices) - stays on current page
+                    await eXeLearning.app.project.idevices.loadApiIdevicesInPage(true);
+                } else {
+                    throw new Error(result.error || 'Import failed');
+                }
+
+                return; // Skip the server upload flow
+            } catch (error) {
+                console.error('[ComponentImport] Client-side import failed:', error);
+                setTimeout(() => {
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Import error'),
+                        body: error.message || _('An error occurred while importing the component.'),
+                        contentId: 'error',
+                    });
+                }, this.timeMax);
+                return;
+            }
+            // === END CLIENT-SIDE IMPORT ===
         }
 
         const hasPreUploadedData =
@@ -1202,10 +1258,14 @@ export default class modalOpenUserOdeFiles extends Modal {
                 // Create a new project via API to get UUID
                 const projectTitle = odeFileName.replace(/\.(elp|elpx)$/i, '') || 'Imported Project';
                 const basePath = window.eXeLearning?.symfony?.basePath || '';
+                const authToken = this.getAuthToken();
                 const createResponse = await fetch(`${basePath}/api/project/create-quick`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include', // Include session cookies
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+                    },
+                    credentials: 'include',
                     body: JSON.stringify({ title: projectTitle })
                 });
 

@@ -55,10 +55,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     // Extraction Functions
     // ========================================================================
 
-    const extractZip = async (
-        zipPath: string,
-        targetDir: string
-    ): Promise<string[]> => {
+    const extractZip = async (zipPath: string, targetDir: string): Promise<string[]> => {
         // Read the zip file
         const zipData = await fs.readFile(zipPath);
         const zip = await JSZip.loadAsync(zipData);
@@ -93,10 +90,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
         return extractedFiles;
     };
 
-    const extractZipFromBuffer = async (
-        zipBuffer: Buffer,
-        targetDir: string
-    ): Promise<string[]> => {
+    const extractZipFromBuffer = async (zipBuffer: Buffer, targetDir: string): Promise<string[]> => {
         const zip = await JSZip.loadAsync(zipBuffer);
 
         // Ensure target directory exists
@@ -136,7 +130,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     const createZip = async (
         sourceDir: string,
         outputPath: string,
-        options: { compressionLevel?: number } = {}
+        options: { compressionLevel?: number } = {},
     ): Promise<void> => {
         return new Promise((resolve, reject) => {
             const output = fs.createWriteStream(outputPath);
@@ -185,10 +179,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
         });
     };
 
-    const addToZip = async (
-        zipPath: string,
-        files: Array<{ path: string; name: string }>
-    ): Promise<void> => {
+    const addToZip = async (zipPath: string, files: Array<{ path: string; name: string }>): Promise<void> => {
         // Load existing zip or create new
         let zip: JSZipModule;
 
@@ -225,10 +216,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
         return Object.keys(zip.files).filter(name => !zip.files[name].dir);
     };
 
-    const readFileFromZip = async (
-        zipPath: string,
-        fileName: string
-    ): Promise<Buffer | null> => {
+    const readFileFromZip = async (zipPath: string, fileName: string): Promise<Buffer | null> => {
         const zipData = await fs.readFile(zipPath);
         const zip = await JSZip.loadAsync(zipData);
 
@@ -241,17 +229,14 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     const readFileFromZipAsString = async (
         zipPath: string,
         fileName: string,
-        encoding: BufferEncoding = 'utf-8'
+        encoding: BufferEncoding = 'utf-8',
     ): Promise<string | null> => {
         const buffer = await readFileFromZip(zipPath, fileName);
         if (!buffer) return null;
         return buffer.toString(encoding);
     };
 
-    const fileExistsInZip = async (
-        zipPath: string,
-        fileName: string
-    ): Promise<boolean> => {
+    const fileExistsInZip = async (zipPath: string, fileName: string): Promise<boolean> => {
         const zipData = await fs.readFile(zipPath);
         const zip = await JSZip.loadAsync(zipData);
         return zip.file(fileName) !== null;

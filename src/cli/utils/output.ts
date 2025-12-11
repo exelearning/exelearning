@@ -66,12 +66,10 @@ export function table(headers: string[], rows: string[][]): void {
     if (headers.length === 0) return;
 
     // Calculate column widths
-    const colWidths = headers.map((h, i) =>
-        Math.max(h.length, ...rows.map((r) => (r[i] || '').length)),
-    );
+    const colWidths = headers.map((h, i) => Math.max(h.length, ...rows.map(r => (r[i] || '').length)));
 
     // Create separator line
-    const separator = '+' + colWidths.map((w) => '-'.repeat(w + 2)).join('+') + '+';
+    const separator = '+' + colWidths.map(w => '-'.repeat(w + 2)).join('+') + '+';
 
     // Format a row
     const formatRow = (row: string[]) =>
@@ -81,7 +79,7 @@ export function table(headers: string[], rows: string[][]): void {
     console.log(separator);
     console.log(formatRow(headers));
     console.log(separator);
-    rows.forEach((row) => console.log(formatRow(row)));
+    rows.forEach(row => console.log(formatRow(row)));
     console.log(separator);
 }
 
@@ -89,7 +87,7 @@ export function table(headers: string[], rows: string[][]): void {
  * Print key-value pairs
  */
 export function keyValue(pairs: Record<string, string | number | boolean | null | undefined>): void {
-    const maxKeyLen = Math.max(...Object.keys(pairs).map((k) => k.length));
+    const maxKeyLen = Math.max(...Object.keys(pairs).map(k => k.length));
     for (const [key, value] of Object.entries(pairs)) {
         const displayValue = value === null || value === undefined ? colors.dim('(none)') : String(value);
         console.log(`  ${colors.cyan(key.padEnd(maxKeyLen))}  ${displayValue}`);

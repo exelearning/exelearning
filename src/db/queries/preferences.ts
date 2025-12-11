@@ -12,14 +12,16 @@ import { now } from '../types';
 // ============================================================================
 
 export async function findPreferenceById(db: Kysely<Database>, id: number): Promise<UserPreference | undefined> {
-    return db.selectFrom('users_preferences')
-        .selectAll()
-        .where('id', '=', id)
-        .executeTakeFirst();
+    return db.selectFrom('users_preferences').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
-export async function findPreference(db: Kysely<Database>, userId: string, preferenceKey: string): Promise<UserPreference | undefined> {
-    return db.selectFrom('users_preferences')
+export async function findPreference(
+    db: Kysely<Database>,
+    userId: string,
+    preferenceKey: string,
+): Promise<UserPreference | undefined> {
+    return db
+        .selectFrom('users_preferences')
         .selectAll()
         .where('user_id', '=', userId)
         .where('preference_key', '=', preferenceKey)
@@ -27,13 +29,14 @@ export async function findPreference(db: Kysely<Database>, userId: string, prefe
 }
 
 export async function findAllPreferencesForUser(db: Kysely<Database>, userId: string): Promise<UserPreference[]> {
-    return db.selectFrom('users_preferences')
-        .selectAll()
-        .where('user_id', '=', userId)
-        .execute();
+    return db.selectFrom('users_preferences').selectAll().where('user_id', '=', userId).execute();
 }
 
-export async function getPreferenceValue(db: Kysely<Database>, userId: string, preferenceKey: string): Promise<string | undefined> {
+export async function getPreferenceValue(
+    db: Kysely<Database>,
+    userId: string,
+    preferenceKey: string,
+): Promise<string | undefined> {
     const pref = await findPreference(db, userId, preferenceKey);
     return pref?.value;
 }
@@ -42,7 +45,7 @@ export async function getPreferenceValueOrDefault(
     db: Kysely<Database>,
     userId: string,
     preferenceKey: string,
-    defaultValue: string
+    defaultValue: string,
 ): Promise<string> {
     const value = await getPreferenceValue(db, userId, preferenceKey);
     return value ?? defaultValue;
@@ -54,7 +57,8 @@ export async function getPreferenceValueOrDefault(
 
 export async function createPreference(db: Kysely<Database>, data: NewUserPreference): Promise<UserPreference> {
     const timestamp = now();
-    return db.insertInto('users_preferences')
+    return db
+        .insertInto('users_preferences')
         .values({
             ...data,
             created_at: timestamp,
@@ -65,8 +69,13 @@ export async function createPreference(db: Kysely<Database>, data: NewUserPrefer
         .executeTakeFirstOrThrow();
 }
 
-export async function updatePreference(db: Kysely<Database>, id: number, data: UserPreferenceUpdate): Promise<UserPreference | undefined> {
-    return db.updateTable('users_preferences')
+export async function updatePreference(
+    db: Kysely<Database>,
+    id: number,
+    data: UserPreferenceUpdate,
+): Promise<UserPreference | undefined> {
+    return db
+        .updateTable('users_preferences')
         .set({
             ...data,
             updated_at: now(),
@@ -81,13 +90,14 @@ export async function setPreference(
     userId: string,
     preferenceKey: string,
     value: string,
-    description?: string
+    description?: string,
 ): Promise<UserPreference> {
     const existing = await findPreference(db, userId, preferenceKey);
     const timestamp = now();
 
     if (existing) {
-        const updated = await db.updateTable('users_preferences')
+        const updated = await db
+            .updateTable('users_preferences')
             .set({
                 value,
                 description: description ?? existing.description,
@@ -99,7 +109,8 @@ export async function setPreference(
         return updated!;
     }
 
-    return db.insertInto('users_preferences')
+    return db
+        .insertInto('users_preferences')
         .values({
             user_id: userId,
             preference_key: preferenceKey,
@@ -117,17 +128,12 @@ export async function deletePreference(db: Kysely<Database>, userId: string, pre
     const existing = await findPreference(db, userId, preferenceKey);
     if (!existing) return false;
 
-    await db.deleteFrom('users_preferences')
-        .where('id', '=', existing.id)
-        .execute();
+    await db.deleteFrom('users_preferences').where('id', '=', existing.id).execute();
     return true;
 }
 
 export async function deleteAllPreferencesForUser(db: Kysely<Database>, userId: string): Promise<number> {
-    const result = await db.deleteFrom('users_preferences')
-        .where('user_id', '=', userId)
-        .returningAll()
-        .execute();
+    const result = await db.deleteFrom('users_preferences').where('user_id', '=', userId).returningAll().execute();
     return result.length;
 }
 
@@ -135,7 +141,11 @@ export async function deleteAllPreferencesForUser(db: Kysely<Database>, userId: 
 // BULK OPERATIONS
 // ============================================================================
 
-export async function setMultiplePreferences(db: Kysely<Database>, userId: string, preferences: Record<string, string>): Promise<void> {
+export async function setMultiplePreferences(
+    db: Kysely<Database>,
+    userId: string,
+    preferences: Record<string, string>,
+): Promise<void> {
     for (const [key, value] of Object.entries(preferences)) {
         await setPreference(db, userId, key, value);
     }

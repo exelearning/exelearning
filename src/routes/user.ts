@@ -6,13 +6,17 @@ import { Elysia } from 'elysia';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { db } from '../db/client';
-import {
-    findAllPreferencesForUser,
-    findPreference,
-    setPreference,
-} from '../db/queries';
+import { findAllPreferencesForUser, findPreference, setPreference } from '../db/queries';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
+import type { JwtPayload, UserPreferencesRequest } from './types/request-payloads';
+
+/**
+ * Preference value wrapper type expected by frontend
+ */
+interface PreferenceValue {
+    value: string | number | boolean;
+}
 
 // Get JWT secret (same as auth.ts)
 const getJwtSecret = () => {
@@ -70,9 +74,9 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
      * Get user preferences from database
      * Returns format: { key: { value: x } }
      */
-    async function getUserPreferences(userId: string): Promise<Record<string, { value: any }>> {
+    async function getUserPreferences(userId: string): Promise<Record<string, PreferenceValue>> {
         // Start with deep copy of defaults
-        const result: Record<string, { value: any }> = JSON.parse(JSON.stringify(DEFAULT_PREFERENCES));
+        const result: Record<string, PreferenceValue> = JSON.parse(JSON.stringify(DEFAULT_PREFERENCES));
 
         try {
             const prefs = await queries.findAllPreferencesForUser(database, userId);
@@ -103,7 +107,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
     /**
      * Save user preference to database
      */
-    async function saveUserPreference(userId: string, key: string, value: any): Promise<void> {
+    async function saveUserPreference(userId: string, key: string, value: unknown): Promise<void> {
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
 
         try {
@@ -113,52 +117,53 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
         }
     }
 
-    return new Elysia({ name: 'user-routes' })
-        .use(cookie())
-        .use(jwt({
-            name: 'jwt',
-            secret: getJwtSecret(),
-            exp: '7d',
-        }))
+    return (
+        new Elysia({ name: 'user-routes' })
+            .use(cookie())
+            .use(
+                jwt({
+                    name: 'jwt',
+                    secret: getJwtSecret(),
+                    exp: '7d',
+                }),
+            )
 
-        // Derive user from JWT token
-        .derive(async ({ jwt, cookie }) => {
-            const token = cookie.auth?.value;
-            if (!token) return { currentUser: null };
+            // Derive user from JWT token
+            .derive(async ({ jwt, cookie }) => {
+                const token = cookie.auth?.value;
+                if (!token) return { currentUser: null };
 
-            try {
-                const payload = await jwt.verify(token) as any;
-                if (!payload) return { currentUser: null };
+                try {
+                    const payload = (await jwt.verify(token)) as JwtPayload | false;
+                    if (!payload) return { currentUser: null };
 
-                return {
-                    currentUser: {
-                        id: payload.sub,
-                        email: payload.email,
-                        isGuest: payload.isGuest || false,
-                    },
-                };
-            } catch {
-                return { currentUser: null };
-            }
-        })
+                    return {
+                        currentUser: {
+                            id: payload.sub,
+                            email: payload.email,
+                            isGuest: payload.isGuest || false,
+                        },
+                    };
+                } catch {
+                    return { currentUser: null };
+                }
+            })
 
-        // GET /api/user/preferences - Get user preferences
-        .get('/api/user/preferences', async ({ currentUser }) => {
-            // Require authentication - guests get empty preferences
-            if (!currentUser) {
-                return { userPreferences: {} };
-            }
+            // GET /api/user/preferences - Get user preferences
+            .get('/api/user/preferences', async ({ currentUser }) => {
+                // Require authentication - guests get empty preferences
+                if (!currentUser) {
+                    return { userPreferences: {} };
+                }
 
-            const userId = String(currentUser.id);
-            const preferences = await getUserPreferences(userId);
-            // Frontend expects: { userPreferences: { key: { value: x } } }
-            return { userPreferences: preferences };
-        })
+                const userId = String(currentUser.id);
+                const preferences = await getUserPreferences(userId);
+                // Frontend expects: { userPreferences: { key: { value: x } } }
+                return { userPreferences: preferences };
+            })
 
-        // POST /api/user/preferences - Save user preferences
-        .post(
-            '/api/user/preferences',
-            async ({ body, set, currentUser }) => {
+            // POST /api/user/preferences - Save user preferences
+            .post('/api/user/preferences', async ({ body, set, currentUser }) => {
                 // Require authentication to save preferences
                 if (!currentUser) {
                     set.status = 401;
@@ -168,7 +173,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                 const userId = String(currentUser.id);
 
                 try {
-                    const preferences = body as Record<string, any>;
+                    const preferences = body as UserPreferencesRequest;
 
                     for (const [key, value] of Object.entries(preferences)) {
                         await saveUserPreference(userId, key, value);
@@ -180,13 +185,10 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                     set.status = 500;
                     return { error: 'Internal Error', message: 'Failed to save preferences' };
                 }
-            },
-        )
+            })
 
-        // PUT /api/user/preferences - Save user preferences (Symfony compatibility)
-        .put(
-            '/api/user/preferences',
-            async ({ body, set, currentUser }) => {
+            // PUT /api/user/preferences - Save user preferences (Symfony compatibility)
+            .put('/api/user/preferences', async ({ body, set, currentUser }) => {
                 // Require authentication to save preferences
                 if (!currentUser) {
                     set.status = 401;
@@ -196,7 +198,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                 const userId = String(currentUser.id);
 
                 try {
-                    const preferences = body as Record<string, any>;
+                    const preferences = body as UserPreferencesRequest;
 
                     for (const [key, value] of Object.entries(preferences)) {
                         await saveUserPreference(userId, key, value);
@@ -208,29 +210,29 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                     set.status = 500;
                     return { error: 'Internal Error', message: 'Failed to save preferences' };
                 }
-            },
-        )
+            })
 
-        // POST /api/user/lopd-accepted - Accept LOPD terms
-        .post('/api/user/lopd-accepted', async ({ set, currentUser }) => {
-            // Require authentication to accept LOPD
-            if (!currentUser) {
-                set.status = 401;
-                return { error: 'Unauthorized', message: 'Authentication required' };
-            }
+            // POST /api/user/lopd-accepted - Accept LOPD terms
+            .post('/api/user/lopd-accepted', async ({ set, currentUser }) => {
+                // Require authentication to accept LOPD
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
 
-            const userId = String(currentUser.id);
+                const userId = String(currentUser.id);
 
-            try {
-                await saveUserPreference(userId, 'lopdAccepted', true);
-                await saveUserPreference(userId, 'lopdAcceptedAt', new Date().toISOString());
-                return { success: true, message: 'LOPD accepted' };
-            } catch (error) {
-                console.error('[User] Failed to save LOPD acceptance:', error);
-                set.status = 500;
-                return { error: 'Internal Error', message: 'Failed to save LOPD acceptance' };
-            }
-        });
+                try {
+                    await saveUserPreference(userId, 'lopdAccepted', true);
+                    await saveUserPreference(userId, 'lopdAcceptedAt', new Date().toISOString());
+                    return { success: true, message: 'LOPD accepted' };
+                } catch (error) {
+                    console.error('[User] Failed to save LOPD acceptance:', error);
+                    set.status = 500;
+                    return { error: 'Internal Error', message: 'Failed to save LOPD acceptance' };
+                }
+            })
+    );
 }
 
 /**

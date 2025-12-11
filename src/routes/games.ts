@@ -59,18 +59,75 @@ interface SessionIdeviceItem {
 }
 
 /**
+ * Type guard to check if structure has raw ODE format
+ */
+interface RawOdeStructure {
+    raw: {
+        ode: {
+            odeNavStructures: {
+                odeNavStructure: unknown;
+            };
+        };
+    };
+}
+
+interface SimplifiedStructure {
+    pages: unknown[];
+}
+
+/**
+ * Helper type for simplified page/block/component objects
+ */
+type DynamicObject = Record<string, unknown>;
+
+/**
+ * Helper function to safely get a string property from a dynamic object
+ */
+function getString(obj: unknown, key: string, fallback: string = ''): string {
+    if (typeof obj !== 'object' || obj === null) return fallback;
+    const value = (obj as DynamicObject)[key];
+    return typeof value === 'string' ? value : fallback;
+}
+
+/**
+ * Helper function to safely get an array property from a dynamic object
+ */
+function getArray(obj: unknown, key: string): unknown[] {
+    if (typeof obj !== 'object' || obj === null) return [];
+    const value = (obj as DynamicObject)[key];
+    return Array.isArray(value) ? value : [];
+}
+
+function hasRawOdeStructure(structure: unknown): structure is RawOdeStructure {
+    return (
+        typeof structure === 'object' &&
+        structure !== null &&
+        'raw' in structure &&
+        typeof (structure as RawOdeStructure).raw === 'object' &&
+        (structure as RawOdeStructure).raw !== null &&
+        'ode' in (structure as RawOdeStructure).raw
+    );
+}
+
+function hasSimplifiedStructure(structure: unknown): structure is SimplifiedStructure {
+    return (
+        typeof structure === 'object' &&
+        structure !== null &&
+        'pages' in structure &&
+        Array.isArray((structure as SimplifiedStructure).pages)
+    );
+}
+
+/**
  * Extract iDevices from session structure
  * Flattens the hierarchy: pages -> blocks -> components into a single array
  */
-function extractIdevicesFromStructure(
-    sessionId: string,
-    structure: any
-): SessionIdeviceItem[] {
+function extractIdevicesFromStructure(sessionId: string, structure: unknown): SessionIdeviceItem[] {
     const items: SessionIdeviceItem[] = [];
 
-    if (!structure?.raw?.ode?.odeNavStructures?.odeNavStructure) {
+    if (!hasRawOdeStructure(structure) || !structure.raw.ode.odeNavStructures?.odeNavStructure) {
         // Also check for simplified structure (pages array)
-        if (structure?.pages && Array.isArray(structure.pages)) {
+        if (hasSimplifiedStructure(structure)) {
             return extractFromPagesArray(sessionId, structure.pages);
         }
         return items;
@@ -174,7 +231,8 @@ function extractIdevicesFromStructure(
                     navIsActive: 1,
                     componentId: componentId,
                     htmlViewer: typeof htmlViewer === 'string' ? htmlViewer : JSON.stringify(htmlViewer),
-                    jsonProperties: typeof jsonProperties === 'string' ? jsonProperties : JSON.stringify(jsonProperties),
+                    jsonProperties:
+                        typeof jsonProperties === 'string' ? jsonProperties : JSON.stringify(jsonProperties),
                     ode_idevice_id: ideviceId,
                     odeIdeviceTypeName: ideviceType,
                     ode_pag_structure_sync_id: block.id || blockId,
@@ -196,16 +254,16 @@ function extractIdevicesFromStructure(
 /**
  * Extract from simplified pages array structure
  */
-function extractFromPagesArray(sessionId: string, pages: any[]): SessionIdeviceItem[] {
+function extractFromPagesArray(sessionId: string, pages: unknown[]): SessionIdeviceItem[] {
     const items: SessionIdeviceItem[] = [];
 
     for (let pageIdx = 0; pageIdx < pages.length; pageIdx++) {
         const page = pages[pageIdx];
-        const pageId = page.id || `page_${pageIdx}`;
-        const pageName = page.title || page.name || '';
-        const parentPageId = page.parentId || null;
+        const pageId = getString(page, 'id') || `page_${pageIdx}`;
+        const pageName = getString(page, 'title') || getString(page, 'name');
+        const parentPageId = getString(page, 'parentId') || null;
 
-        const blocks = page.blocks || [];
+        const blocks = getArray(page, 'blocks');
         if (blocks.length === 0) {
             items.push({
                 odePageId: pageId,
@@ -235,10 +293,10 @@ function extractFromPagesArray(sessionId: string, pages: any[]): SessionIdeviceI
 
         for (let blockIdx = 0; blockIdx < blocks.length; blockIdx++) {
             const block = blocks[blockIdx];
-            const blockId = block.id || `block_${blockIdx}`;
-            const blockName = block.name || block.title || '';
+            const blockId = getString(block, 'id') || `block_${blockIdx}`;
+            const blockName = getString(block, 'name') || getString(block, 'title');
 
-            const components = block.components || [];
+            const components = getArray(block, 'components');
             if (components.length === 0) {
                 items.push({
                     odePageId: pageId,
@@ -267,7 +325,11 @@ function extractFromPagesArray(sessionId: string, pages: any[]): SessionIdeviceI
             }
 
             for (let compIdx = 0; compIdx < components.length; compIdx++) {
-                const comp = components[compIdx];
+                const comp = components[compIdx] as DynamicObject | null;
+                const compId = getString(comp, 'id') || `comp_${compIdx}`;
+                const htmlView = getString(comp, 'htmlView') || getString(comp, 'content') || null;
+                const jsonPropsRaw = comp?.jsonProperties;
+                const jsonProperties = jsonPropsRaw ? JSON.stringify(jsonPropsRaw) : null;
                 items.push({
                     odePageId: pageId,
                     odeParentPageId: parentPageId,
@@ -277,11 +339,11 @@ function extractFromPagesArray(sessionId: string, pages: any[]): SessionIdeviceI
                     ode_session_id: sessionId,
                     ode_nav_structure_sync_order: pageIdx,
                     navIsActive: 1,
-                    componentId: comp.id || `comp_${compIdx}`,
-                    htmlViewer: comp.htmlView || comp.content || null,
-                    jsonProperties: comp.jsonProperties ? JSON.stringify(comp.jsonProperties) : null,
-                    ode_idevice_id: comp.ideviceId || comp.id || null,
-                    odeIdeviceTypeName: comp.type || null,
+                    componentId: compId,
+                    htmlViewer: htmlView,
+                    jsonProperties: jsonProperties,
+                    ode_idevice_id: getString(comp, 'ideviceId') || compId || null,
+                    odeIdeviceTypeName: getString(comp, 'type') || null,
                     ode_pag_structure_sync_id: blockId,
                     componentSessionId: sessionId,
                     componentPageId: pageId,
@@ -310,33 +372,37 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
      *
      * Response format matches the legacy Symfony/NestJS implementation.
      */
-    .get('/:odeSessionId/idevices', async ({ params, set }) => {
-        const { odeSessionId } = params;
+    .get(
+        '/:odeSessionId/idevices',
+        async ({ params }) => {
+            const { odeSessionId } = params;
 
-        // Get session from memory (using DI)
-        const session = deps.getSession(odeSessionId);
+            // Get session from memory (using DI)
+            const session = deps.getSession(odeSessionId);
 
-        if (!session) {
-            // Session not found - return empty data (not an error)
-            // This can happen if the session expired or was never created
-            console.log(`[Games] Session not found: ${odeSessionId}`);
+            if (!session) {
+                // Session not found - return empty data (not an error)
+                // This can happen if the session expired or was never created
+                console.log(`[Games] Session not found: ${odeSessionId}`);
+                return {
+                    success: true,
+                    data: [],
+                };
+            }
+
+            // Extract iDevices from session structure
+            const data = extractIdevicesFromStructure(odeSessionId, session.structure);
+
+            console.log(`[Games] Returning ${data.length} items for session ${odeSessionId}`);
+
             return {
                 success: true,
-                data: [],
+                data,
             };
-        }
-
-        // Extract iDevices from session structure
-        const data = extractIdevicesFromStructure(odeSessionId, session.structure);
-
-        console.log(`[Games] Returning ${data.length} items for session ${odeSessionId}`);
-
-        return {
-            success: true,
-            data,
-        };
-    }, {
-        params: t.Object({
-            odeSessionId: t.String(),
-        }),
-    });
+        },
+        {
+            params: t.Object({
+                odeSessionId: t.String(),
+            }),
+        },
+    );

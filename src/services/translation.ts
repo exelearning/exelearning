@@ -222,7 +222,8 @@ export function loadAllTranslations(): void {
                 const content = fs.readFileSync(filePath, 'utf-8');
                 const result = parseXlfContent(content);
                 catalogues.set(locale, result.translations);
-                if (DEBUG) console.log(`[Translation] Loaded ${result.translations.size} translations for locale: ${locale}`);
+                if (DEBUG)
+                    console.log(`[Translation] Loaded ${result.translations.size} translations for locale: ${locale}`);
             } else {
                 if (DEBUG) console.log(`[Translation] Translation file not found: ${filePath}`);
                 catalogues.set(locale, new Map());
@@ -278,11 +279,7 @@ function replaceParameters(text: string, params: Record<string, string>): string
 /**
  * Translate a message with fallback to English
  */
-export function trans(
-    id: string,
-    parameters: Record<string, string> = {},
-    locale?: string,
-): string {
+export function trans(id: string, parameters: Record<string, string> = {}, locale?: string): string {
     const targetLocale = locale || currentLocale;
     const mergedParams = { ...globalParameters, ...parameters };
 
@@ -325,16 +322,16 @@ export function translateValue(value: string, locale?: string): string {
 /**
  * Recursively translate all TRANSLATABLE_TEXT: values in an object
  */
-export function translateObject<T extends Record<string, any>>(obj: T, locale?: string): T {
+export function translateObject<T extends Record<string, unknown>>(obj: T, locale?: string): T {
     if (!obj || typeof obj !== 'object') return obj;
 
-    const result: any = Array.isArray(obj) ? [] : {};
+    const result = (Array.isArray(obj) ? [] : {}) as Record<string, unknown>;
 
     for (const [key, value] of Object.entries(obj)) {
         if (typeof value === 'string') {
             result[key] = translateValue(value, locale);
         } else if (typeof value === 'object' && value !== null) {
-            result[key] = translateObject(value, locale);
+            result[key] = translateObject(value as Record<string, unknown>, locale);
         } else {
             result[key] = value;
         }
@@ -448,7 +445,7 @@ export function detectLocaleFromHeader(acceptLanguage: string | null): string {
     }
 
     // Parse Accept-Language header (e.g., "en-US,en;q=0.9,es;q=0.8")
-    const languages = acceptLanguage.split(',').map((lang) => {
+    const languages = acceptLanguage.split(',').map(lang => {
         const [code, qValue] = lang.trim().split(';q=');
         return {
             code: code.split('-')[0].toLowerCase(), // Take just the language code, not the region

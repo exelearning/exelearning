@@ -39,12 +39,7 @@ import { BaseExporter } from './BaseExporter';
 const ODE_VERSION = '4.0';
 
 export class ElpxExporter extends BaseExporter {
-    constructor(
-        document: ExportDocument,
-        resources: ResourceProvider,
-        assets: AssetProvider,
-        zip: ZipProvider
-    ) {
+    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         super(document, resources, assets, zip);
     }
 
@@ -358,7 +353,7 @@ export class ElpxExporter extends BaseExporter {
         component: ExportComponent,
         pageId: string,
         blockId: string,
-        order: number
+        order: number,
     ): string {
         const componentId = component.id;
         const ideviceType = component.type || 'FreeTextIdevice';

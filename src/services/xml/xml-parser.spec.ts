@@ -56,7 +56,9 @@ describe('xml-parser', () => {
     describe('parseFromString', () => {
         it('should throw error for invalid XML root element', () => {
             const invalidXml = '<invalid><content>test</content></invalid>';
-            expect(() => parseFromString(invalidXml)).toThrow('Invalid ODE XML: Missing ode or exe_document root element');
+            expect(() => parseFromString(invalidXml)).toThrow(
+                'Invalid ODE XML: Missing ode or exe_document root element',
+            );
         });
 
         it('should detect and parse real ODE format', () => {

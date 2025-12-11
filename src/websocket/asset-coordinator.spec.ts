@@ -6,11 +6,7 @@
  * with injected mock dependencies
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import {
-    createAssetCoordinator,
-    type AssetCoordinator,
-    type AssetCoordinatorDeps,
-} from './asset-coordinator';
+import { createAssetCoordinator, type AssetCoordinator, type AssetCoordinatorDeps } from './asset-coordinator';
 
 // Create mock WebSocket
 function createMockSocket(): any {
@@ -203,7 +199,7 @@ describe('Asset Coordinator Service (DI)', () => {
             coordinator.unregisterClient('project-1', 'client-1');
 
             // Stats should reflect removal
-            const stats = coordinator.getStats();
+            const _stats = coordinator.getStats();
             // Availability map may still exist but client won't be in it
         });
     });
@@ -236,7 +232,7 @@ describe('Asset Coordinator Service (DI)', () => {
 
             coordinator.cleanupProject('test-project');
 
-            const stats = coordinator.getStats();
+            const _stats = coordinator.getStats();
             // Pending requests for project should be cleared
         });
     });
@@ -699,7 +695,7 @@ describe('Asset Coordinator Service (DI)', () => {
             await coordinator.onCollaborationDetected('project-1');
 
             // Client 2 should receive request for missing assets
-            const client2Messages = socket2.messages.filter((m) => {
+            const _client2Messages = socket2.messages.filter(m => {
                 try {
                     if (m instanceof Uint8Array && m[0] === 0xff) {
                         const json = JSON.parse(new TextDecoder().decode(m.slice(1)));
@@ -730,8 +726,8 @@ describe('Asset Coordinator Service (DI)', () => {
                 data: { availableAssets: ['asset-1', 'asset-2'] },
             });
 
-            const initialMessages1 = socket1.messages.length;
-            const initialMessages2 = socket2.messages.length;
+            const _initialMessages1 = socket1.messages.length;
+            const _initialMessages2 = socket2.messages.length;
 
             await coordinator.onCollaborationDetected('project-1');
 
@@ -912,7 +908,9 @@ describe('Asset Coordinator Service (DI)', () => {
         it('should handle broadcast send errors during bulk upload complete', async () => {
             const socket1 = createMockSocket();
             const socket2 = createMockSocket();
-            socket2.send = () => { throw new Error('Broadcast failed'); };
+            socket2.send = () => {
+                throw new Error('Broadcast failed');
+            };
 
             coordinator.registerClient('project-1', 'client-1', socket1);
             coordinator.registerClient('project-1', 'client-2', socket2);
@@ -989,7 +987,9 @@ describe('Asset Coordinator Service (DI)', () => {
         it('should handle database error during priority update', async () => {
             const errorCoordinator = createAssetCoordinator({
                 ...mockDeps,
-                findProjectByUuid: async () => { throw new Error('DB error'); },
+                findProjectByUuid: async () => {
+                    throw new Error('DB error');
+                },
             });
 
             const socket = createMockSocket();
@@ -1013,7 +1013,9 @@ describe('Asset Coordinator Service (DI)', () => {
         it('should handle database error during navigation hint', async () => {
             const errorCoordinator = createAssetCoordinator({
                 ...mockDeps,
-                findProjectByUuid: async () => { throw new Error('DB error'); },
+                findProjectByUuid: async () => {
+                    throw new Error('DB error');
+                },
             });
 
             const socket = createMockSocket();

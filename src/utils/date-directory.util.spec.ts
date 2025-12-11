@@ -1,7 +1,4 @@
-import {
-    getDateDirStructureFromIdentifier,
-    getCurrentDateDirStructure,
-} from './date-directory.util';
+import { getDateDirStructureFromIdentifier, getCurrentDateDirStructure } from './date-directory.util';
 
 describe('Date Directory Utilities', () => {
     describe('getDateDirStructureFromIdentifier', () => {
@@ -32,33 +29,25 @@ describe('Date Directory Utilities', () => {
         it('should throw error for identifier too short', () => {
             const identifier = '2025011';
 
-            expect(() => getDateDirStructureFromIdentifier(identifier)).toThrow(
-                'Invalid identifier format',
-            );
+            expect(() => getDateDirStructureFromIdentifier(identifier)).toThrow('Invalid identifier format');
         });
 
         it('should throw error for invalid year', () => {
             const identifier = '19990118101235DEF'; // Year 1999 is invalid
 
-            expect(() => getDateDirStructureFromIdentifier(identifier)).toThrow(
-                'Invalid year in identifier',
-            );
+            expect(() => getDateDirStructureFromIdentifier(identifier)).toThrow('Invalid year in identifier');
         });
 
         it('should throw error for invalid month', () => {
             const identifier = '20251318101235DEF'; // Month 13 is invalid
 
-            expect(() => getDateDirStructureFromIdentifier(identifier)).toThrow(
-                'Invalid month in identifier',
-            );
+            expect(() => getDateDirStructureFromIdentifier(identifier)).toThrow('Invalid month in identifier');
         });
 
         it('should throw error for invalid day', () => {
             const identifier = '20250132101235DEF'; // Day 32 is invalid
 
-            expect(() => getDateDirStructureFromIdentifier(identifier)).toThrow(
-                'Invalid day in identifier',
-            );
+            expect(() => getDateDirStructureFromIdentifier(identifier)).toThrow('Invalid day in identifier');
         });
 
         it('should accept valid edge case dates', () => {

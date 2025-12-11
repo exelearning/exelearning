@@ -3,13 +3,7 @@
  * Tests the REAL implementation - no mock.module()
  */
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
-import {
-    startHeartbeat,
-    stopHeartbeat,
-    onPong,
-    getHeartbeatStats,
-    stopAllHeartbeats,
-} from './heartbeat';
+import { startHeartbeat, stopHeartbeat, onPong, getHeartbeatStats, stopAllHeartbeats } from './heartbeat';
 
 // Mock WebSocket for testing
 function createMockWebSocket() {

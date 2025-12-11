@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser, seedTestProject } from '../../../test/helpers/test-db';
 import type { Kysely } from 'kysely';
-import type { Database, Asset, Project } from '../types';
+import type { Database } from '../types';
 import {
     findAssetById,
     findAssetByIdWithProject,
@@ -176,7 +176,10 @@ describe('Asset Queries', () => {
         });
 
         it('should not find asset with wrong project_id', async () => {
-            const otherProjectId = await seedTestProject(db, testUserId, { title: 'Other', uuid: `other-proj-${Date.now()}-1` });
+            const otherProjectId = await seedTestProject(db, testUserId, {
+                title: 'Other',
+                uuid: `other-proj-${Date.now()}-1`,
+            });
             await createAsset(db, {
                 project_id: testProjectId,
                 filename: 'asset.png',
@@ -203,9 +206,24 @@ describe('Asset Queries', () => {
 
     describe('findAssetsByClientIds', () => {
         it('should find multiple assets by client IDs', async () => {
-            await createAsset(db, { project_id: testProjectId, filename: 'a.png', storage_path: '/a', client_id: 'id-1' });
-            await createAsset(db, { project_id: testProjectId, filename: 'b.png', storage_path: '/b', client_id: 'id-2' });
-            await createAsset(db, { project_id: testProjectId, filename: 'c.png', storage_path: '/c', client_id: 'id-3' });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                client_id: 'id-1',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.png',
+                storage_path: '/b',
+                client_id: 'id-2',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.png',
+                storage_path: '/c',
+                client_id: 'id-3',
+            });
 
             const assets = await findAssetsByClientIds(db, ['id-1', 'id-3'], testProjectId);
 
@@ -253,9 +271,24 @@ describe('Asset Queries', () => {
 
     describe('findAssetsByHashes', () => {
         it('should find multiple assets by hashes', async () => {
-            await createAsset(db, { project_id: testProjectId, filename: 'h1.png', storage_path: '/h1', content_hash: 'hash-1' });
-            await createAsset(db, { project_id: testProjectId, filename: 'h2.png', storage_path: '/h2', content_hash: 'hash-2' });
-            await createAsset(db, { project_id: testProjectId, filename: 'h3.png', storage_path: '/h3', content_hash: 'hash-3' });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'h1.png',
+                storage_path: '/h1',
+                content_hash: 'hash-1',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'h2.png',
+                storage_path: '/h2',
+                content_hash: 'hash-2',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'h3.png',
+                storage_path: '/h3',
+                content_hash: 'hash-3',
+            });
 
             const assets = await findAssetsByHashes(db, testProjectId, ['hash-1', 'hash-3']);
 
@@ -280,7 +313,10 @@ describe('Asset Queries', () => {
         });
 
         it('should not include assets from other projects', async () => {
-            const otherProjectId = await seedTestProject(db, testUserId, { title: 'Other', uuid: `other-proj-${Date.now()}-2` });
+            const otherProjectId = await seedTestProject(db, testUserId, {
+                title: 'Other',
+                uuid: `other-proj-${Date.now()}-2`,
+            });
             await createAsset(db, { project_id: testProjectId, filename: 'mine.png', storage_path: '/m' });
             await createAsset(db, { project_id: otherProjectId, filename: 'other.png', storage_path: '/o' });
 
@@ -298,9 +334,24 @@ describe('Asset Queries', () => {
 
     describe('getProjectStorageSize', () => {
         it('should return total size of assets', async () => {
-            await createAsset(db, { project_id: testProjectId, filename: 'a.png', storage_path: '/a', file_size: '1000' });
-            await createAsset(db, { project_id: testProjectId, filename: 'b.png', storage_path: '/b', file_size: '2000' });
-            await createAsset(db, { project_id: testProjectId, filename: 'c.png', storage_path: '/c', file_size: '3000' });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                file_size: '1000',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.png',
+                storage_path: '/b',
+                file_size: '2000',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.png',
+                storage_path: '/c',
+                file_size: '3000',
+            });
 
             const size = await getProjectStorageSize(db, testProjectId);
 
@@ -408,7 +459,10 @@ describe('Asset Queries', () => {
         });
 
         it('should not delete other projects assets', async () => {
-            const otherProjectId = await seedTestProject(db, testUserId, { title: 'Other', uuid: `other-proj-${Date.now()}-3` });
+            const otherProjectId = await seedTestProject(db, testUserId, {
+                title: 'Other',
+                uuid: `other-proj-${Date.now()}-3`,
+            });
             await createAsset(db, { project_id: testProjectId, filename: 'mine.png', storage_path: '/m' });
             await createAsset(db, { project_id: otherProjectId, filename: 'other.png', storage_path: '/o' });
 

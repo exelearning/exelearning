@@ -17,6 +17,9 @@ export interface Database {
     yjs_documents: YjsDocumentsTable;
     yjs_updates: YjsUpdatesTable;
     yjs_version_history: YjsVersionHistoryTable;
+    // Kysely internal migration tables
+    kysely_migration: KyselyMigrationTable;
+    kysely_migration_lock: KyselyMigrationLockTable;
 }
 
 // ============================================================================
@@ -112,6 +115,17 @@ interface YjsVersionHistoryTable {
     description: string | null; // Optional description (e.g., "Manual save", "Auto-backup")
     created_by: number | null; // User ID who created this version
     created_at: string;
+}
+
+// Kysely internal migration tables
+interface KyselyMigrationTable {
+    name: string;
+    timestamp: string;
+}
+
+interface KyselyMigrationLockTable {
+    id: string;
+    is_locked: number;
 }
 
 // ============================================================================

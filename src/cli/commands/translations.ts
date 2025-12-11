@@ -35,18 +35,14 @@ async function extractTranslationKeys(): Promise<Set<string>> {
 
     // Patterns to search for trans() calls
     const patterns = [
-        /trans\(\s*['"]([^'"]+)['"]/g,           // trans('key') or trans("key")
-        /trans\(\s*`([^`]+)`/g,                   // trans(`key`)
-        /__\(\s*['"]([^'"]+)['"]/g,               // __('key') or __("key")
-        /\bt\(\s*['"]([^'"]+)['"]/g,              // t('key') or t("key")
+        /trans\(\s*['"]([^'"]+)['"]/g, // trans('key') or trans("key")
+        /trans\(\s*`([^`]+)`/g, // trans(`key`)
+        /__\(\s*['"]([^'"]+)['"]/g, // __('key') or __("key")
+        /\bt\(\s*['"]([^'"]+)['"]/g, // t('key') or t("key")
     ];
 
     // Source directories to scan
-    const sourceGlobs = [
-        new Glob('src/**/*.ts'),
-        new Glob('views/**/*.njk'),
-        new Glob('public/app/**/*.js'),
-    ];
+    const sourceGlobs = [new Glob('src/**/*.ts'), new Glob('views/**/*.njk'), new Glob('public/app/**/*.js')];
 
     for (const glob of sourceGlobs) {
         for await (const filePath of glob.scan({ cwd: process.cwd(), absolute: true })) {
@@ -93,7 +89,7 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
     }
 
     // Find keys to add
-    const keysToAdd = [...newKeys].filter((k) => !existingKeys.has(k));
+    const keysToAdd = [...newKeys].filter(k => !existingKeys.has(k));
 
     if (keysToAdd.length === 0) {
         return { content: xlfContent, added: 0 };
@@ -101,7 +97,7 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
 
     // Generate new trans-units
     const newUnits = keysToAdd
-        .map((key) => {
+        .map(key => {
             const id = generateTransUnitId();
             return `      <trans-unit id="${id}" resname="${escapeXml(key)}">
         <source>${escapeXml(key)}</source>
@@ -117,8 +113,7 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
         return { content: xlfContent, added: 0 };
     }
 
-    const newContent =
-        xlfContent.slice(0, bodyCloseIndex) + newUnits + '\n    ' + xlfContent.slice(bodyCloseIndex);
+    const newContent = xlfContent.slice(0, bodyCloseIndex) + newUnits + '\n    ' + xlfContent.slice(bodyCloseIndex);
 
     return { content: newContent, added: keysToAdd.length };
 }
@@ -150,8 +145,7 @@ function cleanXlfContent(content: string): { content: string; cleaned: boolean }
     }
 
     // 2. Remove trans-units with source starting with \\
-    const backslashPattern =
-        /<trans-unit\b[^>]*>[\s\S]*?<source>\\\\[^<]*<\/source>[\s\S]*?<\/trans-unit>\s*/g;
+    const backslashPattern = /<trans-unit\b[^>]*>[\s\S]*?<source>\\\\[^<]*<\/source>[\s\S]*?<\/trans-unit>\s*/g;
     if (backslashPattern.test(result)) {
         result = result.replace(backslashPattern, '');
         cleaned = true;
@@ -323,7 +317,7 @@ if (import.meta.main) {
     }
 
     execute(positional, flags)
-        .then((result) => {
+        .then(result => {
             if (result.success) {
                 success(result.message);
                 process.exit(EXIT_CODES.SUCCESS);
@@ -332,7 +326,7 @@ if (import.meta.main) {
                 process.exit(EXIT_CODES.FAILURE);
             }
         })
-        .catch((err) => {
+        .catch(err => {
             error(err instanceof Error ? err.message : String(err));
             process.exit(EXIT_CODES.FAILURE);
         });

@@ -15,13 +15,7 @@
  * ```
  */
 
-import type {
-    ExportDocument,
-    ExportMetadata,
-    ExportPage,
-    ExportBlock,
-    ExportComponent,
-} from '../interfaces';
+import type { ExportDocument, ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
 
 /**
  * Type definitions for Yjs structures used by YjsDocumentManager
@@ -76,10 +70,8 @@ export class YjsDocumentAdapter implements ExportDocument {
             keywords: (meta.get('keywords') as string) || '',
             theme: (meta.get('theme') as string) || 'base',
             version: (meta.get('version') as string) || '4.0',
-            created:
-                (meta.get('createdAt') as string) || new Date().toISOString(),
-            modified:
-                (meta.get('modifiedAt') as string) || new Date().toISOString(),
+            created: (meta.get('createdAt') as string) || new Date().toISOString(),
+            modified: (meta.get('modifiedAt') as string) || new Date().toISOString(),
             // Custom styles support
             customStyles: (meta.get('customStyles') as string) || undefined,
         };
@@ -105,14 +97,12 @@ export class YjsDocumentAdapter implements ExportDocument {
      * @param result - Result array to populate
      */
     private flattenNavigation(navigation: YArray, result: ExportPage[]): void {
-        navigation.forEach((pageMap) => {
+        navigation.forEach(pageMap => {
             const page = this.convertPage(pageMap as YMap);
             result.push(page);
 
             // Process children recursively
-            const children = (pageMap as YMap).get('children') as
-                | YArray
-                | undefined;
+            const children = (pageMap as YMap).get('children') as YArray | undefined;
             if (children && children.length > 0) {
                 this.flattenNavigation(children, result);
             }
@@ -135,14 +125,8 @@ export class YjsDocumentAdapter implements ExportDocument {
         }
 
         return {
-            id:
-                (pageMap.get('id') as string) ||
-                (pageMap.get('pageId') as string) ||
-                '',
-            title:
-                (pageMap.get('title') as string) ||
-                (pageMap.get('pageName') as string) ||
-                'Page',
+            id: (pageMap.get('id') as string) || (pageMap.get('pageId') as string) || '',
+            title: (pageMap.get('title') as string) || (pageMap.get('pageName') as string) || 'Page',
             parentId: (pageMap.get('parentId') as string | null) || null,
             order: (pageMap.get('order') as number) || 0,
             blocks,
@@ -156,25 +140,18 @@ export class YjsDocumentAdapter implements ExportDocument {
      * @returns Export block
      */
     private convertBlock(blockMap: YMap, index: number): ExportBlock {
-        const componentsArray = blockMap.get('components') as
-            | YArray
-            | undefined;
+        const componentsArray = blockMap.get('components') as YArray | undefined;
         const components: ExportComponent[] = [];
 
         if (componentsArray) {
             componentsArray.forEach((compMap, compIndex) => {
-                components.push(
-                    this.convertComponent(compMap as YMap, compIndex)
-                );
+                components.push(this.convertComponent(compMap as YMap, compIndex));
             });
         }
 
         return {
             id: (blockMap.get('id') as string) || `block-${index}`,
-            name:
-                (blockMap.get('name') as string) ||
-                (blockMap.get('blockName') as string) ||
-                'Block',
+            name: (blockMap.get('name') as string) || (blockMap.get('blockName') as string) || 'Block',
             order: (blockMap.get('order') as number) || index,
             components,
         };
@@ -201,16 +178,11 @@ export class YjsDocumentAdapter implements ExportDocument {
 
         // Get properties as plain object
         const propsMap = compMap.get('properties') as YMap | undefined;
-        const properties: Record<string, unknown> = propsMap
-            ? propsMap.toJSON()
-            : {};
+        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
 
         return {
             id: (compMap.get('id') as string) || `comp-${index}`,
-            type:
-                (compMap.get('type') as string) ||
-                (compMap.get('ideviceType') as string) ||
-                'FreeTextIdevice',
+            type: (compMap.get('type') as string) || (compMap.get('ideviceType') as string) || 'FreeTextIdevice',
             order: (compMap.get('order') as number) || index,
             content,
             properties,

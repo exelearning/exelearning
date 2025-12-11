@@ -147,15 +147,7 @@ export function createHtml5ExportService(deps: Html5ExportDeps = {}): Html5Expor
      * Copy theme files to export directory
      */
     async function copyThemeFiles(exportDir: string, themeName: string = 'base'): Promise<void> {
-        const themeSourceDir = path.join(
-            getCwd(),
-            'public',
-            'files',
-            'perm',
-            'themes',
-            'base',
-            themeName,
-        );
+        const themeSourceDir = path.join(getCwd(), 'public', 'files', 'perm', 'themes', 'base', themeName);
         const themeDestDir = path.join(exportDir, 'theme');
 
         if (DEBUG) console.log(`[Html5Export] Copying theme "${themeName}" from ${themeSourceDir}`);
@@ -244,10 +236,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
      * Export session to HTML5 format
      * Supports both preview mode (direct file serving) and download mode (ZIP)
      */
-    async function exportToHtml5(
-        odeSessionId: string,
-        options: Html5ExportOptions = {},
-    ): Promise<ExportResult> {
+    async function exportToHtml5(odeSessionId: string, options: Html5ExportOptions = {}): Promise<ExportResult> {
         try {
             const isPreviewMode = options.preview === true;
             if (DEBUG) {
@@ -280,12 +269,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
 
             try {
                 // Generate HTML5 files
-                await generateHtml5Files(
-                    exportDir,
-                    session.structure,
-                    session.sessionPath,
-                    options,
-                );
+                await generateHtml5Files(exportDir, session.structure, session.sessionPath, options);
 
                 if (isPreviewMode) {
                     // Preview mode: return preview URL (no ZIP, don't delete files)
@@ -294,11 +278,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                         throw new Error('Failed to extract session path components');
                     }
 
-                    const previewUrl = preview.buildPreviewUrl(
-                        odeSessionId,
-                        options.tempPath || '',
-                        'index.html',
-                    );
+                    const previewUrl = preview.buildPreviewUrl(odeSessionId, options.tempPath || '', 'index.html');
 
                     console.log(`[Html5Export] Successfully generated preview at ${previewUrl}`);
 
@@ -336,8 +316,9 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                     await fs.remove(exportDir);
                 }
             }
-        } catch (error: any) {
-            console.error(`[Html5Export] Failed to export HTML5: ${error.message}`);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[Html5Export] Failed to export HTML5: ${errorMessage}`);
             throw error;
         }
     }
@@ -345,10 +326,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
     /**
      * Export preview - convenience wrapper
      */
-    async function exportPreview(
-        sessionId: string,
-        tempPath?: string,
-    ): Promise<ExportResult> {
+    async function exportPreview(sessionId: string, tempPath?: string): Promise<ExportResult> {
         return exportToHtml5(sessionId, {
             preview: true,
             tempPath,
@@ -358,10 +336,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
     /**
      * Export download - convenience wrapper
      */
-    async function exportDownload(
-        sessionId: string,
-        compressionLevel: number = 9,
-    ): Promise<ExportResult> {
+    async function exportDownload(sessionId: string, compressionLevel: number = 9): Promise<ExportResult> {
         return exportToHtml5(sessionId, {
             preview: false,
             compressionLevel,

@@ -291,7 +291,9 @@ describe('Generate JWT Command', () => {
 
         it('should show help when --help flag is passed', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', '--help'], defaultDeps, mockExit);
 
@@ -300,7 +302,9 @@ describe('Generate JWT Command', () => {
 
         it('should show help when -h flag is passed', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', '-h'], defaultDeps, mockExit);
 
@@ -309,7 +313,9 @@ describe('Generate JWT Command', () => {
 
         it('should exit with error when email is missing', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'jwt:generate'], defaultDeps, mockExit);
 
@@ -318,7 +324,9 @@ describe('Generate JWT Command', () => {
 
         it('should exit with success when generating token', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'jwt:generate', 'test@test.com'], defaultDeps, mockExit);
 
@@ -334,7 +342,9 @@ describe('Generate JWT Command', () => {
                 },
             };
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'jwt:generate', 'any@test.com'], noUserDeps, mockExit);
 

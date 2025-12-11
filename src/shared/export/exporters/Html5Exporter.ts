@@ -28,12 +28,7 @@ import type {
 import { BaseExporter } from './BaseExporter';
 
 export class Html5Exporter extends BaseExporter {
-    constructor(
-        document: ExportDocument,
-        resources: ResourceProvider,
-        assets: AssetProvider,
-        zip: ZipProvider
-    ) {
+    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         super(document, resources, assets, zip);
     }
 
@@ -72,10 +67,7 @@ export class Html5Exporter extends BaseExporter {
                 const page = pages[i];
                 const html = this.generatePageHtml(page, pages, meta, i === 0);
                 // First page is index.html, others go in html/ directory
-                const pageFilename =
-                    i === 0
-                        ? 'index.html'
-                        : `html/${this.sanitizePageFilename(page.title)}.html`;
+                const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 this.zip.addFile(pageFilename, html);
             }
 
@@ -103,17 +95,12 @@ export class Html5Exporter extends BaseExporter {
 
             // 5. Detect and fetch required libraries
             const allHtmlContent = this.collectAllHtmlContent(pages);
-            const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(
-                allHtmlContent,
-                {
-                    includeAccessibilityToolbar:
-                        meta.accessibilityToolbar === true,
-                }
-            );
+            const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
+                includeAccessibilityToolbar: meta.accessibilityToolbar === true,
+            });
 
             try {
-                const libFiles =
-                    await this.resources.fetchLibraryFiles(allRequiredFiles);
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles);
                 for (const [path, content] of libFiles) {
                     this.zip.addFile(`libs/${path}`, content);
                 }
@@ -134,16 +121,11 @@ export class Html5Exporter extends BaseExporter {
             for (const idevice of usedIdevices) {
                 try {
                     // Normalize iDevice type to directory name (e.g., 'FreeTextIdevice' -> 'text')
-                    const normalizedType =
-                        this.resources.normalizeIdeviceType(idevice);
-                    const ideviceFiles =
-                        await this.resources.fetchIdeviceResources(idevice);
+                    const normalizedType = this.resources.normalizeIdeviceType(idevice);
+                    const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [filePath, content] of ideviceFiles) {
                         // Use normalized type for ZIP path
-                        this.zip.addFile(
-                            `idevices/${normalizedType}/${filePath}`,
-                            content
-                        );
+                        this.zip.addFile(`idevices/${normalizedType}/${filePath}`, content);
                     }
                 } catch {
                     // Many iDevices don't have extra files - this is normal
@@ -172,12 +154,7 @@ export class Html5Exporter extends BaseExporter {
     /**
      * Generate complete HTML for a page
      */
-    generatePageHtml(
-        page: ExportPage,
-        allPages: ExportPage[],
-        meta: ExportMetadata,
-        isIndex: boolean
-    ): string {
+    generatePageHtml(page: ExportPage, allPages: ExportPage[], meta: ExportMetadata, isIndex: boolean): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
 
@@ -198,11 +175,7 @@ export class Html5Exporter extends BaseExporter {
     /**
      * Get page link for HTML5 export
      */
-    getPageLinkForHtml5(
-        page: ExportPage,
-        allPages: ExportPage[],
-        basePath: string
-    ): string {
+    getPageLinkForHtml5(page: ExportPage, allPages: ExportPage[], basePath: string): string {
         const isFirstPage = page.id === allPages[0]?.id;
         if (isFirstPage) {
             return basePath ? `${basePath}index.html` : 'index.html';

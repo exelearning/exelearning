@@ -82,9 +82,7 @@ describe('Filemanager Routes', () => {
 
     describe('GET /filemanager/index/:plugin/:sessionId', () => {
         it('should return HTML for FileGator interface', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/filemanager/index/plugin/${testSessionId}`),
-            );
+            const res = await app.handle(new Request(`http://localhost/filemanager/index/plugin/${testSessionId}`));
 
             expect(res.status).toBe(200);
             expect(res.headers.get('content-type')).toContain('text/html');
@@ -94,9 +92,7 @@ describe('Filemanager Routes', () => {
         });
 
         it('should include FileGator JS and CSS loader', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/filemanager/index/plugin/${testSessionId}`),
-            );
+            const res = await app.handle(new Request(`http://localhost/filemanager/index/plugin/${testSessionId}`));
 
             const html = await res.text();
             expect(html).toContain('loadFile("css/app.css")');
@@ -106,9 +102,7 @@ describe('Filemanager Routes', () => {
 
     describe('GET /filemanager/getconfig', () => {
         it('should return FileGator configuration', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/filemanager/getconfig'),
-            );
+            const res = await app.handle(new Request('http://localhost/filemanager/getconfig'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -119,9 +113,7 @@ describe('Filemanager Routes', () => {
         });
 
         it('should include upload configuration', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/filemanager/getconfig'),
-            );
+            const res = await app.handle(new Request('http://localhost/filemanager/getconfig'));
 
             const body = await res.json();
             expect(body.data.upload_max_size).toBe(100 * 1024 * 1024);
@@ -129,9 +121,7 @@ describe('Filemanager Routes', () => {
         });
 
         it('should include editable extensions', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/filemanager/getconfig'),
-            );
+            const res = await app.handle(new Request('http://localhost/filemanager/getconfig'));
 
             const body = await res.json();
             expect(body.data.editable).toContain('txt');
@@ -490,9 +480,7 @@ describe('Filemanager Routes', () => {
 
         it('should return 404 when no session', async () => {
             const encodedPath = Buffer.from('test.txt').toString('base64');
-            const res = await app.handle(
-                new Request(`http://localhost/filemanager/download?path=${encodedPath}`),
-            );
+            const res = await app.handle(new Request(`http://localhost/filemanager/download?path=${encodedPath}`));
 
             expect(res.status).toBe(404);
         });
@@ -523,12 +511,7 @@ describe('Filemanager Routes', () => {
 
         it('should return 200 when chunk exists', async () => {
             // Create a chunk file
-            const chunkPath = path.join(
-                testDir,
-                'tmp',
-                testSessionId,
-                'multipart_abc123test.txt.part1',
-            );
+            const chunkPath = path.join(testDir, 'tmp', testSessionId, 'multipart_abc123test.txt.part1');
             await fs.ensureDir(path.dirname(chunkPath));
             await fs.writeFile(chunkPath, 'chunk content');
 

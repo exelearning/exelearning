@@ -45,45 +45,47 @@ const defaultDependencies: YjsDependencies = {
 export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
     const { db: database, queries } = deps;
 
-    return new Elysia({ prefix: '/api/projects' })
+    return (
+        new Elysia({ prefix: '/api/projects' })
 
-        // GET - Load Yjs document state
-        .get('/uuid/:uuid/yjs-document', async ({ params, set }) => {
-            const project = await queries.findProjectByUuid(database, params.uuid);
-            if (!project) {
-                set.status = 404;
-                return { error: 'Not Found', message: 'Project not found' };
-            }
+            // GET - Load Yjs document state
+            .get('/uuid/:uuid/yjs-document', async ({ params, set }) => {
+                const project = await queries.findProjectByUuid(database, params.uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'Project not found' };
+                }
 
-            const snapshot = await queries.findSnapshotByProjectId(database, project.id);
-            if (!snapshot) {
-                set.status = 404;
-                return { error: 'Not Found', message: 'No document saved' };
-            }
+                const snapshot = await queries.findSnapshotByProjectId(database, project.id);
+                if (!snapshot) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'No document saved' };
+                }
 
-            set.headers['Content-Type'] = 'application/octet-stream';
-            return snapshot.snapshot_data;
-        })
+                set.headers['Content-Type'] = 'application/octet-stream';
+                return snapshot.snapshot_data;
+            })
 
-        // POST - Save Yjs document state
-        .post('/uuid/:uuid/yjs-document', async ({ params, body, set }) => {
-            const project = await queries.findProjectByUuid(database, params.uuid);
-            if (!project) {
-                set.status = 404;
-                return { error: 'Not Found', message: 'Project not found' };
-            }
+            // POST - Save Yjs document state
+            .post('/uuid/:uuid/yjs-document', async ({ params, body, set }) => {
+                const project = await queries.findProjectByUuid(database, params.uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'Project not found' };
+                }
 
-            // body is ArrayBuffer from binary request
-            const binaryData = new Uint8Array(body as ArrayBuffer);
-            const version = Date.now().toString();
+                // body is ArrayBuffer from binary request
+                const binaryData = new Uint8Array(body as ArrayBuffer);
+                const version = Date.now().toString();
 
-            await queries.upsertSnapshot(database, project.id, binaryData, version);
+                await queries.upsertSnapshot(database, project.id, binaryData, version);
 
-            // Mark project as saved so it appears in the project list
-            await queries.markProjectAsSaved(database, project.id);
+                // Mark project as saved so it appears in the project list
+                await queries.markProjectAsSaved(database, project.id);
 
-            return { success: true, message: 'Document saved', version };
-        });
+                return { success: true, message: 'Document saved', version };
+            })
+    );
 }
 
 /**

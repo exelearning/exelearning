@@ -109,15 +109,11 @@ describe('BasePath Utilities', () => {
             });
 
             it('should handle paths with query strings', () => {
-                expect(prefixPath('/login?error=invalid')).toBe(
-                    '/exelearning/login?error=invalid',
-                );
+                expect(prefixPath('/login?error=invalid')).toBe('/exelearning/login?error=invalid');
             });
 
             it('should handle complex paths', () => {
-                expect(prefixPath('/api/project/sessions')).toBe(
-                    '/exelearning/api/project/sessions',
-                );
+                expect(prefixPath('/api/project/sessions')).toBe('/exelearning/api/project/sessions');
             });
 
             it('should handle paths with hash fragments', () => {
@@ -186,9 +182,7 @@ describe('BasePath Utilities', () => {
 
         it('should handle login error redirect', () => {
             process.env.BASE_PATH = '/exelearning';
-            expect(prefixPath('/login?error=invalid_credentials')).toBe(
-                '/exelearning/login?error=invalid_credentials',
-            );
+            expect(prefixPath('/login?error=invalid_credentials')).toBe('/exelearning/login?error=invalid_credentials');
         });
 
         it('should handle workarea with project UUID', () => {

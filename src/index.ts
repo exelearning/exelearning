@@ -19,7 +19,13 @@ import { gamesRoutes } from './routes/games';
 import { themesRoutes } from './routes/themes';
 import { userRoutes } from './routes/user';
 import { yjsRoutes } from './routes/yjs';
-import { createWebSocketRoutes, initialize as initWebSocket, getServerInfo, getActiveRooms, stop as stopWebSocket } from './websocket/yjs-websocket';
+import {
+    createWebSocketRoutes,
+    initialize as initWebSocket,
+    getServerInfo,
+    getActiveRooms,
+    stop as stopWebSocket,
+} from './websocket/yjs-websocket';
 import { getFilesDir } from './services/file-helper';
 import { db } from './db/client';
 import { migrateToLatest } from './db/migrations';
@@ -50,11 +56,14 @@ const app = new Elysia()
 
         // Log error (5xx = error, 4xx = warning)
         const logLevel = statusCode >= 500 ? 'error' : 'warn';
-        console[logLevel](`[${logLevel.toUpperCase()}] ${request.method} ${pathname} - ${statusCode}: ${error.message}`);
+        console[logLevel](
+            `[${logLevel.toUpperCase()}] ${request.method} ${pathname} - ${statusCode}: ${error.message}`,
+        );
         if (statusCode >= 500) console.error(error.stack);
 
         // Detect if API request
-        const isApi = pathname.startsWith('/api/') ||
+        const isApi =
+            pathname.startsWith('/api/') ||
             request.headers.get('accept')?.includes('application/json') ||
             request.headers.get('content-type')?.includes('application/json');
 
@@ -72,9 +81,8 @@ const app = new Elysia()
         }
 
         // Web: render HTML error page
-        const template = pathname.startsWith('/workarea') || pathname.startsWith('/project')
-            ? 'workarea/error'
-            : 'security/error';
+        const template =
+            pathname.startsWith('/workarea') || pathname.startsWith('/project') ? 'workarea/error' : 'security/error';
 
         // Detect user locale from Accept-Language header
         const acceptLanguage = request.headers.get('accept-language') || 'en';
@@ -102,14 +110,16 @@ const app = new Elysia()
 <a href="${basePath}/login">Return to login</a></body></html>`;
         }
     })
-    .use(cors({
-        origin: true,
-        credentials: true,
-    }))
+    .use(
+        cors({
+            origin: true,
+            credentials: true,
+        }),
+    )
     // Serve files from FILES_DIR for /files/tmp/* and /files/dist/* paths
     // Also handle versioned paths like /v0.0.0-alpha/libs/* -> /libs/*
     // Also handle BASE_PATH prefixed static files
-    .onRequest(({ request, set }) => {
+    .onRequest(({ request }) => {
         const url = new URL(request.url);
         let pathname = url.pathname;
 
@@ -141,7 +151,7 @@ const app = new Elysia()
                             },
                         });
                     }
-                } catch (err) {
+                } catch {
                     // Fall through to let other handlers process
                 }
             }
@@ -220,11 +230,13 @@ const app = new Elysia()
         }
     })
     // Static files from public directory (served at root, BASE_PATH handled in onRequest)
-    .use(staticPlugin({
-        assets: 'public',
-        prefix: '/',
-        alwaysStatic: false,
-    }));
+    .use(
+        staticPlugin({
+            assets: 'public',
+            prefix: '/',
+            alwaysStatic: false,
+        }),
+    );
 
 // Get BASE_PATH for route registration and add routes
 // Routes are always added at root, PLUS at BASE_PATH if configured
@@ -232,8 +244,7 @@ const app = new Elysia()
 const routePrefix = getBasePath();
 
 // Always register routes at root
-app
-    .use(healthRoutes)
+app.use(healthRoutes)
     .use(healthCheckAlias)
     .use(authRoutes)
     .use(pagesRoutes)
@@ -261,7 +272,7 @@ app
 
 // Also register routes at BASE_PATH if configured
 if (routePrefix) {
-    app.group(routePrefix, (group) =>
+    app.group(routePrefix, group =>
         group
             .use(healthRoutes)
             .use(healthCheckAlias)
@@ -286,7 +297,7 @@ if (routePrefix) {
                 runtime: 'Bun',
             }))
             .get('/api/websocket/info', () => getServerInfo())
-            .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() }))
+            .get('/api/websocket/rooms', () => ({ rooms: getActiveRooms() })),
     );
 }
 
@@ -333,7 +344,7 @@ async function bootstrap() {
     console.log(`Static files: /public/*`);
 }
 
-bootstrap().catch((err) => {
+bootstrap().catch(err => {
     console.error('[FATAL] Bootstrap failed:', err);
     process.exit(1);
 });

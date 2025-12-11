@@ -95,9 +95,7 @@ describe('Yjs Document Routes', () => {
         });
 
         it('should return binary snapshot data for existing project', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document'));
 
             expect(res.status).toBe(200);
             expect(res.headers.get('Content-Type')).toBe('application/octet-stream');

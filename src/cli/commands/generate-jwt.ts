@@ -112,9 +112,7 @@ export async function execute(
 
     // Sign JWT
     const secretKey = new TextEncoder().encode(secret);
-    const token = await new jose.SignJWT(payload)
-        .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
-        .sign(secretKey);
+    const token = await new jose.SignJWT(payload).setProtectedHeader({ alg: 'HS256', typ: 'JWT' }).sign(secretKey);
 
     return {
         success: true,
@@ -161,7 +159,7 @@ ${colors.cyan('Output:')}
 export async function runCli(
     argv: string[],
     deps: GenerateJwtDependencies = defaultDependencies,
-    exitFn: (code: number) => void = (code) => process.exit(code),
+    exitFn: (code: number) => void = code => process.exit(code),
 ): Promise<void> {
     const { positional, flags } = parseArgs(argv);
 

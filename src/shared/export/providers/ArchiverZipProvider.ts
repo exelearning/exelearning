@@ -16,10 +16,7 @@ export class ArchiverZipProvider implements ZipProvider {
      */
     addFile(path: string, content: string | Buffer | Uint8Array): void {
         // Convert Uint8Array to Buffer if needed
-        const data =
-            content instanceof Uint8Array && !(content instanceof Buffer)
-                ? Buffer.from(content)
-                : content;
+        const data = content instanceof Uint8Array && !(content instanceof Buffer) ? Buffer.from(content) : content;
         this.files.set(path, data);
     }
 

@@ -1,21 +1,15 @@
 /**
  * Tests for XML Builder Service
  */
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as path from 'path';
 import * as fs from 'fs-extra';
-import { ParsedOdeStructure, NormalizedPage, OdeXmlMeta } from './interfaces';
+import { ParsedOdeStructure } from './interfaces';
 
 // Test output directory
 const TEST_OUTPUT_DIR = '/tmp/xml-builder-test';
 
-import {
-    buildFromStructure,
-    writeToFile,
-    createDefaultMetadata,
-    createSimpleStructure,
-    buildRaw,
-} from './xml-builder';
+import { buildFromStructure, writeToFile, createDefaultMetadata, createSimpleStructure, buildRaw } from './xml-builder';
 
 describe('XML Builder Service', () => {
     beforeEach(async () => {

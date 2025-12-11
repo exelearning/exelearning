@@ -17,9 +17,7 @@ describe('Themes Routes', () => {
 
     describe('GET /api/themes/installed', () => {
         it('should return themes wrapper object', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -28,18 +26,14 @@ describe('Themes Routes', () => {
         });
 
         it('should return at least one theme', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             expect(body.themes.length).toBeGreaterThan(0);
         });
 
         it('should include required theme properties', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             const theme = body.themes[0];
@@ -56,9 +50,7 @@ describe('Themes Routes', () => {
         });
 
         it('should include cssFiles array', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             const theme = body.themes[0];
@@ -68,9 +60,7 @@ describe('Themes Routes', () => {
         });
 
         it('should include js array', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             const theme = body.themes[0];
@@ -79,9 +69,7 @@ describe('Themes Routes', () => {
         });
 
         it('should include icons object', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             const theme = body.themes[0];
@@ -90,9 +78,7 @@ describe('Themes Routes', () => {
         });
 
         it('should have type as base or user', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             for (const theme of body.themes) {
@@ -101,9 +87,7 @@ describe('Themes Routes', () => {
         });
 
         it('should have theme URLs with version', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             const theme = body.themes[0];
@@ -114,9 +98,7 @@ describe('Themes Routes', () => {
         });
 
         it('should sort themes by displayName', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             const displayNames = body.themes.map((t: any) => t.displayName);
@@ -126,9 +108,7 @@ describe('Themes Routes', () => {
         });
 
         it('should include base theme', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             // The default 'base' theme should exist
@@ -142,9 +122,7 @@ describe('Themes Routes', () => {
     describe('GET /api/themes/installed/:themeId', () => {
         it('should return specific theme by ID', async () => {
             // First get list to find a valid theme ID
-            const listRes = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const listRes = await app.handle(new Request('http://localhost/api/themes/installed'));
             const listBody = await listRes.json();
             const themeId = listBody.themes[0]?.dirName;
 
@@ -153,9 +131,7 @@ describe('Themes Routes', () => {
                 return;
             }
 
-            const res = await app.handle(
-                new Request(`http://localhost/api/themes/installed/${themeId}`),
-            );
+            const res = await app.handle(new Request(`http://localhost/api/themes/installed/${themeId}`));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -174,9 +150,7 @@ describe('Themes Routes', () => {
         });
 
         it('should return full theme config for base theme', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed/base'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/base'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -190,9 +164,7 @@ describe('Themes Routes', () => {
         });
 
         it('should include metadata fields', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed/base'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/base'));
 
             const body = await res.json();
 
@@ -203,9 +175,7 @@ describe('Themes Routes', () => {
         });
 
         it('should return icon definitions', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed/base'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/base'));
 
             const body = await res.json();
 
@@ -223,9 +193,7 @@ describe('Themes Routes', () => {
         });
 
         it('should handle theme ID with special characters safely', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed/../../../etc/passwd'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed/../../../etc/passwd'));
 
             // Should return 404, not expose filesystem
             expect(res.status).toBe(404);
@@ -234,15 +202,11 @@ describe('Themes Routes', () => {
 
     describe('theme icon format', () => {
         it('should have correct icon structure', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/themes/installed'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
             // Find a theme with icons
-            const themeWithIcons = body.themes.find(
-                (t: any) => Object.keys(t.icons || {}).length > 0,
-            );
+            const themeWithIcons = body.themes.find((t: any) => Object.keys(t.icons || {}).length > 0);
 
             if (themeWithIcons) {
                 const firstIconKey = Object.keys(themeWithIcons.icons)[0];

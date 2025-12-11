@@ -39,24 +39,24 @@ const COMMANDS: Record<string, CommandModule> = {
 };
 
 // Command aliases
-const ALIASES: Record<string, { command: string; transform?: (args: any) => any }> = {
+const ALIASES: Record<string, { command: string; transform?: (args: ParsedArgs) => ParsedArgs }> = {
     'promote-admin': {
         command: 'user:role',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, add: 'ROLE_ADMIN' },
         }),
     },
     'demote-admin': {
         command: 'user:role',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, remove: 'ROLE_ADMIN' },
         }),
     },
     'grant-role': {
         command: 'user:role',
-        transform: (parsed) => {
+        transform: parsed => {
             // grant-role <email> <role> -> user:role <email> --add=<role>
             const [email, role, ...rest] = parsed.positional;
             return {
@@ -68,7 +68,7 @@ const ALIASES: Record<string, { command: string; transform?: (args: any) => any 
     },
     'revoke-role': {
         command: 'user:role',
-        transform: (parsed) => {
+        transform: parsed => {
             // revoke-role <email> <role> -> user:role <email> --remove=<role>
             const [email, role, ...rest] = parsed.positional;
             return {
@@ -84,49 +84,49 @@ const ALIASES: Record<string, { command: string; transform?: (args: any) => any 
     },
     'export-html5': {
         command: 'elp:export',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, format: 'html5' },
         }),
     },
     'export-html5-sp': {
         command: 'elp:export',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, format: 'html5-sp' },
         }),
     },
     'export-scorm12': {
         command: 'elp:export',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, format: 'scorm12' },
         }),
     },
     'export-scorm2004': {
         command: 'elp:export',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, format: 'scorm2004' },
         }),
     },
     'export-ims': {
         command: 'elp:export',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, format: 'ims' },
         }),
     },
     'export-epub3': {
         command: 'elp:export',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, format: 'epub3' },
         }),
     },
     'export-elpx': {
         command: 'elp:export',
-        transform: (parsed) => ({
+        transform: parsed => ({
             ...parsed,
             flags: { ...parsed.flags, format: 'elpx' },
         }),

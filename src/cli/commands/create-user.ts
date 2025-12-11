@@ -72,14 +72,15 @@ export async function execute(
     if (!email || !password || !username) {
         return {
             success: false,
-            message: 'Missing required arguments. Use: --email, --password, --username (or positional: email password username)',
+            message:
+                'Missing required arguments. Use: --email, --password, --username (or positional: email password username)',
         };
     }
 
     // Parse options
     const noFail = getBoolean(flags, 'no-fail', false);
     const rolesStr = getString(flags, 'roles', 'ROLE_USER');
-    const roles = rolesStr!.split(',').map((r) => r.trim().toUpperCase());
+    const roles = rolesStr!.split(',').map(r => r.trim().toUpperCase());
     const quotaMb = getNumber(flags, 'quota', 4096);
 
     // Check if user already exists
@@ -155,7 +156,7 @@ ${colors.cyan('Examples:')}
 export async function runCli(
     argv: string[],
     deps: CreateUserDependencies = defaultDependencies,
-    exitFn: (code: number) => void = (code) => process.exit(code),
+    exitFn: (code: number) => void = code => process.exit(code),
 ): Promise<void> {
     const { positional, flags } = parseArgs(argv);
 

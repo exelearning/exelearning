@@ -24,7 +24,10 @@ describe('FileSystemAssetProvider', () => {
 
         // Create test files
         await fs.writeFile(path.join(testDir, 'resources', 'images', 'photo.jpg'), Buffer.from([0xff, 0xd8, 0xff])); // JPEG magic bytes
-        await fs.writeFile(path.join(testDir, 'resources', 'images', 'icon.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47])); // PNG magic bytes
+        await fs.writeFile(
+            path.join(testDir, 'resources', 'images', 'icon.png'),
+            Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+        ); // PNG magic bytes
         await fs.writeFile(path.join(testDir, 'resources', 'media', 'video.mp4'), Buffer.from('fake mp4 content'));
         await fs.writeFile(path.join(testDir, 'content', 'document.pdf'), Buffer.from('fake pdf content'));
 
@@ -214,7 +217,7 @@ describe('FileSystemAssetProvider', () => {
             await fs.ensureDir(path.join(testDir, 'resources', 'images', 'level1', 'level2'));
             await fs.writeFile(
                 path.join(testDir, 'resources', 'images', 'level1', 'level2', 'deep.jpg'),
-                Buffer.from([0xff, 0xd8, 0xff])
+                Buffer.from([0xff, 0xd8, 0xff]),
             );
 
             const asset = await provider.getAsset('resources/images/level1/level2/deep.jpg');

@@ -7,14 +7,16 @@ import { execute, printHelp, type MigrateDependencies } from './migrate';
 
 describe('Migrate Command', () => {
     // Create mock dependencies for each test
-    function createMockDependencies(options: {
-        migrateSuccess?: boolean;
-        executedMigrations?: string[];
-        rolledBack?: string;
-        executed?: string[];
-        pending?: string[];
-        error?: Error;
-    } = {}): MigrateDependencies {
+    function createMockDependencies(
+        options: {
+            migrateSuccess?: boolean;
+            executedMigrations?: string[];
+            rolledBack?: string;
+            executed?: string[];
+            pending?: string[];
+            error?: Error;
+        } = {},
+    ): MigrateDependencies {
         const {
             migrateSuccess = true,
             executedMigrations = [],

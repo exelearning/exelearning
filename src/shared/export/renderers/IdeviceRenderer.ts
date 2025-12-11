@@ -16,7 +16,7 @@ import type {
     BlockRenderOptions,
     ExportBlockProperties,
 } from '../interfaces';
-import { IDEVICE_CONFIGS, getIdeviceConfig } from '../constants';
+import { getIdeviceConfig } from '../constants';
 
 /**
  * CSS link for an iDevice
@@ -45,7 +45,10 @@ export class IdeviceRenderer {
      * @param options - Rendering options
      * @returns HTML string
      */
-    render(component: ExportComponent, options: ComponentRenderOptions = { basePath: '', includeDataAttributes: true }): string {
+    render(
+        component: ExportComponent,
+        options: ComponentRenderOptions = { basePath: '', includeDataAttributes: true },
+    ): string {
         const { basePath = '', includeDataAttributes = true } = options;
 
         const type = component.type || 'text';
@@ -75,9 +78,7 @@ export class IdeviceRenderer {
             // For preview mode (server paths), basePath already contains /files/perm/idevices/base/
             // For export mode (ZIP), basePath is empty or relative and we need to add idevices/
             const isPreviewPath = basePath.includes('/files/perm/idevices/base/');
-            const idevicePath = isPreviewPath
-                ? `${basePath}${type}/export/`
-                : `${basePath}idevices/${type}/`;
+            const idevicePath = isPreviewPath ? `${basePath}${type}/export/` : `${basePath}idevices/${type}/`;
 
             dataAttrs = ` data-idevice-path="${this.escapeAttr(idevicePath)}"`;
             dataAttrs += ` data-idevice-type="${this.escapeAttr(type)}"`;
@@ -114,7 +115,10 @@ ${contentHtml}
      * @param options - Rendering options
      * @returns HTML string
      */
-    renderBlock(block: ExportBlock, options: BlockRenderOptions = { basePath: '', includeDataAttributes: true }): string {
+    renderBlock(
+        block: ExportBlock,
+        options: BlockRenderOptions = { basePath: '', includeDataAttributes: true },
+    ): string {
         const { basePath = '', includeDataAttributes = true } = options;
 
         const blockId = block.id;
@@ -200,15 +204,12 @@ ${contentHtml}
 
         // Fix files/tmp/ paths (from server temp paths)
         // Skip blob: URLs that might be embedded in paths
-        result = result.replace(
-            /files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g,
-            (_match, relativePath) => {
-                if (relativePath.startsWith('blob:') || relativePath.startsWith('data:')) {
-                    return _match;
-                }
-                return `${basePath}content/resources/${relativePath}`;
+        result = result.replace(/files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g, (_match, relativePath) => {
+            if (relativePath.startsWith('blob:') || relativePath.startsWith('data:')) {
+                return _match;
             }
-        );
+            return `${basePath}content/resources/${relativePath}`;
+        });
 
         // Fix relative paths that start with /files/
         result = result.replace(/["']\/files\/tmp\/[^"']+\/([^"']+)["']/g, (_match, path) => {
@@ -245,11 +246,7 @@ ${contentHtml}
      */
     escapeAttr(str: string): string {
         if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     /**

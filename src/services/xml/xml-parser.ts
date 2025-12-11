@@ -9,16 +9,12 @@ import {
     OdeXmlMeta,
     OdeXmlNavigation,
     OdeXmlPage,
-    OdeXmlComponent,
     NormalizedPage,
     NormalizedComponent,
     ParsedOdeStructure,
     RealOdeXmlDocument,
     RealOdeNavStructure,
-    RealOdePagStructure,
-    RealOdeComponent,
     LegacyInstanceXmlDocument,
-    LegacyInstanceNode,
 } from './interfaces';
 import { generateId } from '../../utils/id-generator.util';
 import * as legacyParser from './legacy-xml-parser';
@@ -71,7 +67,9 @@ export function parseFromString(xmlContent: string, sessionId?: string): ParsedO
 
     if (DEBUG) {
         console.log(`[XmlParser] Parsed object keys: ${JSON.stringify(Object.keys(parsed))}`);
-        console.log(`[XmlParser] Has ode: ${!!parsed.ode}, Has exe_document: ${!!parsed.exe_document}, Has instance: ${!!parsed.instance}`);
+        console.log(
+            `[XmlParser] Has ode: ${!!parsed.ode}, Has exe_document: ${!!parsed.exe_document}, Has instance: ${!!parsed.instance}`,
+        );
     }
 
     // Check format and parse accordingly
@@ -144,9 +142,22 @@ function parseRealOdeFormat(parsed: RealOdeXmlDocument): ParsedOdeStructure {
 }
 
 /**
+ * Normalized metadata type
+ */
+interface NormalizedMetadata {
+    title: string;
+    author: string;
+    description: string;
+    license: string;
+    locale: string;
+    theme: string;
+    version: string;
+}
+
+/**
  * Extract metadata from exe_document format
  */
-function extractMetadata(meta: OdeXmlMeta): Record<string, any> {
+function extractMetadata(meta: OdeXmlMeta): NormalizedMetadata {
     return {
         title: meta.title || 'Untitled',
         author: meta.author || '',
@@ -161,8 +172,10 @@ function extractMetadata(meta: OdeXmlMeta): Record<string, any> {
 /**
  * Extract metadata from odeProperties
  */
-function extractMetadataFromOdeProperties(properties: Array<{ propertyKey: string; propertyValue: string }>): Record<string, any> {
-    const meta: Record<string, any> = {
+function extractMetadataFromOdeProperties(
+    properties: Array<{ propertyKey: string; propertyValue: string }>,
+): NormalizedMetadata {
+    const meta: NormalizedMetadata = {
         title: 'Untitled',
         author: '',
         description: '',
@@ -321,14 +334,14 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
 /**
  * Parse raw XML string
  */
-export function parseRawXml(xmlContent: string): any {
+export function parseRawXml(xmlContent: string): unknown {
     return parser.parse(xmlContent);
 }
 
 /**
  * Build XML from object
  */
-export function buildXml(obj: any): string {
+export function buildXml(obj: unknown): string {
     const builder = new XMLBuilder({
         ignoreAttributes: false,
         attributeNamePrefix: '@_',

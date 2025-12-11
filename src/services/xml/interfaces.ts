@@ -62,15 +62,20 @@ export interface OdeXmlPage {
 }
 
 /**
+ * Property value types allowed in component/page properties
+ */
+export type PropertyValue = string | number | boolean | null;
+
+/**
  * Component structure within a page
  */
 export interface OdeXmlComponent {
     id?: string;
     type: string;
     position?: number;
-    properties?: Record<string, any>;
+    properties?: Record<string, PropertyValue>;
     content?: string;
-    data?: any;
+    data?: Record<string, unknown>;
 }
 
 /**
@@ -90,12 +95,12 @@ export interface NormalizedComponent {
     id: string;
     title?: string; // Component title
     type: string;
-    content: any; // HTML or structured content
+    content: string | Record<string, unknown>; // HTML or structured content
     blockName?: string; // Block name for legacy support
     order?: number; // Order within the page
     position?: number; // Position within the page
-    properties?: Record<string, any>; // Component properties
-    data?: any; // Additional JSON data
+    properties?: Record<string, PropertyValue>; // Component properties
+    data?: Record<string, unknown>; // Additional JSON data
 }
 
 /**
@@ -119,6 +124,19 @@ export interface LegacyXmlFormat {
 }
 
 /**
+ * ODE Resources structure
+ */
+export interface OdeResourcesStructure {
+    odeResource?: OdeResource | OdeResource[];
+}
+
+export interface OdeResource {
+    resourceId: string;
+    resourcePath?: string;
+    resourceType?: string;
+}
+
+/**
  * Real ODE XML format (from actual ELP files)
  */
 export interface RealOdeXmlDocument {
@@ -132,11 +150,9 @@ export interface RealOdeXmlDocument {
         odeNavStructures?: {
             odeNavStructure: RealOdeNavStructure | RealOdeNavStructure[];
         };
-        odeResources?: any;
+        odeResources?: OdeResourcesStructure;
         userPreferences?: {
-            userPreference:
-                | { key: string; value: string }
-                | Array<{ key: string; value: string }>;
+            userPreference: { key: string; value: string } | Array<{ key: string; value: string }>;
         };
     };
 }
@@ -157,13 +173,20 @@ export interface RealOdeNavStructure {
     };
 }
 
+/**
+ * Structure properties map (key-value pairs)
+ */
+export interface StructurePropertiesMap {
+    odeProperty?: Array<{ propertyKey: string; propertyValue: string }>;
+}
+
 export interface RealOdePagStructure {
     odePageId: string;
     odeBlockId: string;
     blockName?: string;
     iconName?: string;
     odePagStructureOrder?: number;
-    odePagStructureProperties?: any;
+    odePagStructureProperties?: StructurePropertiesMap;
     odeComponents?: {
         odeComponent: RealOdeComponent | RealOdeComponent[];
     };
@@ -177,7 +200,7 @@ export interface RealOdeComponent {
     htmlView?: string;
     jsonProperties?: string;
     odeComponentsOrder?: number;
-    odeComponentsProperties?: any;
+    odeComponentsProperties?: StructurePropertiesMap;
 }
 
 /**
@@ -185,6 +208,21 @@ export interface RealOdeComponent {
  */
 export interface LegacyInstanceXmlDocument {
     instance: LegacyInstanceNode;
+}
+
+/**
+ * Legacy value types from old XML format
+ */
+export interface LegacyBoolNode {
+    '@_value': string; // "True" or "False"
+}
+
+export interface LegacyIntNode {
+    '@_value': string; // Numeric string
+}
+
+export interface LegacyReferenceNode {
+    '@_reference': string;
 }
 
 export interface LegacyInstanceNode {
@@ -195,11 +233,11 @@ export interface LegacyInstanceNode {
         instance?: LegacyInstanceNode | LegacyInstanceNode[];
         list?: LegacyListNode | LegacyListNode[];
         unicode?: LegacyValueNode | LegacyValueNode[];
-        dictionary?: any; // Nested dictionary support
-        bool?: any;
-        int?: any;
-        reference?: any;
-        none?: any;
+        dictionary?: Record<string, unknown>; // Nested dictionary support
+        bool?: LegacyBoolNode | LegacyBoolNode[];
+        int?: LegacyIntNode | LegacyIntNode[];
+        reference?: LegacyReferenceNode | LegacyReferenceNode[];
+        none?: Record<string, never>; // Empty placeholder
     };
 }
 

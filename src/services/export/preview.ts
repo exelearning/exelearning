@@ -132,7 +132,7 @@ export interface SessionPathComponents {
 export function extractSessionPathComponents(sessionPath: string): SessionPathComponents | null {
     // Normalize path separators for cross-platform compatibility
     const normalizedPath = sessionPath.replace(/\\/g, '/');
-    const pathParts = normalizedPath.split('/').filter((part) => part.length > 0);
+    const pathParts = normalizedPath.split('/').filter(part => part.length > 0);
     const len = pathParts.length;
 
     // Check for standard date-based structure

@@ -2,7 +2,7 @@
  * Tests for ElpDocumentAdapter
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect } from 'bun:test';
 import { ElpDocumentAdapter, ParsedOdeStructure, NormalizedPage, NormalizedComponent } from './ElpDocumentAdapter';
 
 describe('ElpDocumentAdapter', () => {
@@ -181,9 +181,7 @@ describe('ElpDocumentAdapter', () => {
             const parsed = createTestStructure({
                 pages: [
                     createTestPage({
-                        components: [
-                            createTestComponent({ id: 'c1', blockName: undefined }),
-                        ],
+                        components: [createTestComponent({ id: 'c1', blockName: undefined })],
                     }),
                 ],
             });
@@ -290,9 +288,7 @@ describe('ElpDocumentAdapter', () => {
                     }),
                     createTestPage({
                         id: 'page-2',
-                        components: [
-                            createTestComponent({ content: '<p>Third</p>' }),
-                        ],
+                        components: [createTestComponent({ content: '<p>Third</p>' })],
                     }),
                 ],
             });

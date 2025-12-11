@@ -1,7 +1,7 @@
 /**
  * Tests for Translations Command
  */
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 
@@ -190,10 +190,7 @@ describe('Translations Command', () => {
             // Create a source file with translation keys
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
-            await fs.writeFile(
-                path.join(srcDir, 'test.ts'),
-                `const msg = trans('new.key.from.source');`,
-            );
+            await fs.writeFile(path.join(srcDir, 'test.ts'), `const msg = trans('new.key.from.source');`);
 
             const { execute } = await import('./translations');
             await execute([], { locale: 'es', 'extract-only': true });
@@ -249,10 +246,7 @@ describe('Translations Command', () => {
         it('should skip template expressions', async () => {
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
-            await fs.writeFile(
-                path.join(srcDir, 'template.ts'),
-                `const msg = trans(\`dynamic.\${var}\`);`,
-            );
+            await fs.writeFile(path.join(srcDir, 'template.ts'), `const msg = trans(\`dynamic.\${var}\`);`);
 
             const { execute } = await import('./translations');
             await execute([], { locale: 'es', 'extract-only': true });
@@ -321,10 +315,7 @@ describe('Translations Command', () => {
         it('should escape XML special characters in keys', async () => {
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
-            await fs.writeFile(
-                path.join(srcDir, 'special.ts'),
-                `const msg = trans('key.with<special>&chars');`,
-            );
+            await fs.writeFile(path.join(srcDir, 'special.ts'), `const msg = trans('key.with<special>&chars');`);
 
             const { execute } = await import('./translations');
             await execute([], { locale: 'es', 'extract-only': true });

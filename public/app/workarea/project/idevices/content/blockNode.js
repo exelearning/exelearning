@@ -929,37 +929,50 @@ export default class IdeviceBlockNode {
     */
 
     /**
+     * Download block as .block.elp file using ComponentExporter.
+     * Uses the Yjs document in memory (no server call).
      *
-     * @param {*} odeBlockId
+     * @param {string} odeBlockId - Block ID to export
      */
     async downloadBlockSelected(odeBlockId) {
-        let odeSessionId = eXeLearning.app.project.odeSession;
+        try {
+            // Get the Yjs document manager and asset manager from eXeLearning app
+            const documentManager = eXeLearning.app.project._yjsBridge?.getDocumentManager();
+            const assetManager = eXeLearning.app.project._yjsBridge?.assetManager;
 
-        let response = await eXeLearning.app.api.getOdeIdevicesDownload(
-            odeSessionId,
-            odeBlockId,
-            null
-        );
-        const responseBody = response['response'];
-        if (
-            typeof responseBody === 'string' &&
-            responseBody.includes('responseMessage')
-        ) {
-            // Response to show always on 3
-            let bodyResponse = responseBody.split('"');
-            eXeLearning.app.modals.alert.show({
-                title: _('Download error'),
-                body: bodyResponse[3],
-                contentId: 'error',
-            });
-        } else {
-            const downloadUrl = response['url'];
-            if (downloadUrl) {
-                const fileName = buildComponentFileName(odeBlockId, '.block');
-                await downloadComponentFile(downloadUrl, fileName, {
-                    absoluteKey: buildComponentStorageKey(odeBlockId, 'block'),
+            if (!documentManager) {
+                console.error('[blockNode] DocumentManager not available');
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: _('Document manager not available'),
+                    contentId: 'error',
+                });
+                return;
+            }
+
+            // Create ComponentExporter and configure it
+            const exporter = new ComponentExporter(documentManager, null);
+            if (assetManager) {
+                exporter.setAssetManager(assetManager);
+            }
+
+            // Export the block (ideviceId = null exports entire block)
+            const result = await exporter.exportComponent(odeBlockId, null);
+
+            if (!result.success) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: _(result.error || 'Export failed'),
+                    contentId: 'error',
                 });
             }
+        } catch (error) {
+            console.error('[blockNode] Export error:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Download error'),
+                body: error.message || _('An unexpected error occurred'),
+                contentId: 'error',
+            });
         }
     }
 

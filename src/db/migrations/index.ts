@@ -29,7 +29,7 @@ class StaticMigrationProvider implements MigrationProvider {
 // MIGRATOR FACTORY
 // ============================================================================
 
-export function createMigrator(db: Kysely<any>): Migrator {
+export function createMigrator(db: Kysely<unknown>): Migrator {
     return new Migrator({
         db,
         provider: new StaticMigrationProvider(),
@@ -41,7 +41,7 @@ export function createMigrator(db: Kysely<any>): Migrator {
 // ============================================================================
 
 export interface MigrationDependencies {
-    createMigrator: (db: Kysely<any>) => Migrator;
+    createMigrator: (db: Kysely<unknown>) => Migrator;
 }
 
 const defaultDependencies: MigrationDependencies = {
@@ -55,7 +55,7 @@ const defaultDependencies: MigrationDependencies = {
 /**
  * Check if a table exists in the database (cross-database compatible)
  */
-export async function tableExists(db: Kysely<any>, tableName: string): Promise<boolean> {
+export async function tableExists(db: Kysely<unknown>, tableName: string): Promise<boolean> {
     try {
         // Use information_schema for PostgreSQL/MySQL, sqlite_master for SQLite
         // We try SQLite first since it's our primary target
@@ -83,7 +83,7 @@ export async function tableExists(db: Kysely<any>, tableName: string): Promise<b
  * Check if this is a legacy database with tables but no migration tracking.
  * If so, register existing migrations as already applied.
  */
-async function syncLegacyMigrations(db: Kysely<any>): Promise<void> {
+async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
     // 1. Check if application tables exist (users is the first one created)
     const usersTableExists = await tableExists(db, 'users');
 
@@ -103,31 +103,29 @@ async function syncLegacyMigrations(db: Kysely<any>): Promise<void> {
         await db.schema
             .createTable('kysely_migration')
             .ifNotExists()
-            .addColumn('name', 'varchar(255)', (col) => col.primaryKey())
-            .addColumn('timestamp', 'varchar(255)', (col) => col.notNull())
+            .addColumn('name', 'varchar(255)', col => col.primaryKey())
+            .addColumn('timestamp', 'varchar(255)', col => col.notNull())
             .execute();
 
         await db.schema
             .createTable('kysely_migration_lock')
             .ifNotExists()
-            .addColumn('id', 'varchar(255)', (col) => col.primaryKey())
-            .addColumn('is_locked', 'integer', (col) => col.notNull().defaultTo(0))
+            .addColumn('id', 'varchar(255)', col => col.primaryKey())
+            .addColumn('is_locked', 'integer', col => col.notNull().defaultTo(0))
             .execute();
 
         // Insert the initial migration as already executed
-        await db
-            .insertInto('kysely_migration' as any)
-            .values({
-                name: '001_initial',
-                timestamp: new Date().toISOString(),
-            })
-            .execute();
+        const migrationTimestamp = new Date().toISOString();
+        await sql`
+            INSERT INTO kysely_migration (name, timestamp)
+            VALUES ('001_initial', ${migrationTimestamp})
+        `.execute(db);
 
         // Initialize lock
-        await db
-            .insertInto('kysely_migration_lock' as any)
-            .values({ id: 'migration_lock', is_locked: 0 })
-            .execute();
+        await sql`
+            INSERT INTO kysely_migration_lock (id, is_locked)
+            VALUES ('migration_lock', 0)
+        `.execute(db);
 
         console.log('[DB] Migration tracking created, 001_initial marked as applied');
         return;
@@ -140,13 +138,11 @@ async function syncLegacyMigrations(db: Kysely<any>): Promise<void> {
 
     if (migrationRecord.rows.length === 0) {
         console.log('[DB] Detected existing tables without migration record, syncing...');
-        await db
-            .insertInto('kysely_migration' as any)
-            .values({
-                name: '001_initial',
-                timestamp: new Date().toISOString(),
-            })
-            .execute();
+        const syncTimestamp = new Date().toISOString();
+        await sql`
+            INSERT INTO kysely_migration (name, timestamp)
+            VALUES ('001_initial', ${syncTimestamp})
+        `.execute(db);
         console.log('[DB] 001_initial marked as applied');
     }
 }
@@ -159,7 +155,7 @@ async function syncLegacyMigrations(db: Kysely<any>): Promise<void> {
  * Run all pending migrations
  */
 export async function migrateToLatest(
-    db: Kysely<any>,
+    db: Kysely<unknown>,
     deps: MigrationDependencies = defaultDependencies,
 ): Promise<{
     success: boolean;
@@ -172,9 +168,7 @@ export async function migrateToLatest(
     const migrator = deps.createMigrator(db);
     const { error, results } = await migrator.migrateToLatest();
 
-    const executedMigrations = results
-        ?.filter((r) => r.status === 'Success')
-        .map((r) => r.migrationName) || [];
+    const executedMigrations = results?.filter(r => r.status === 'Success').map(r => r.migrationName) || [];
 
     if (error) {
         console.error('Migration failed:', error);
@@ -194,7 +188,7 @@ export async function migrateToLatest(
  * Rollback the last migration
  */
 export async function migrateDown(
-    db: Kysely<any>,
+    db: Kysely<unknown>,
     deps: MigrationDependencies = defaultDependencies,
 ): Promise<{
     success: boolean;
@@ -204,7 +198,7 @@ export async function migrateDown(
     const migrator = deps.createMigrator(db);
     const { error, results } = await migrator.migrateDown();
 
-    const rolledBack = results?.find((r) => r.status === 'Success')?.migrationName;
+    const rolledBack = results?.find(r => r.status === 'Success')?.migrationName;
 
     if (error) {
         console.error('Rollback failed:', error);
@@ -224,7 +218,7 @@ export async function migrateDown(
  * Get migration status
  */
 export async function getMigrationStatus(
-    db: Kysely<any>,
+    db: Kysely<unknown>,
     deps: MigrationDependencies = defaultDependencies,
 ): Promise<{
     executed: string[];
@@ -255,7 +249,7 @@ export async function getMigrationStatus(
  * CLI dependencies for testing
  */
 export interface CliDependencies {
-    db: Kysely<any>;
+    db: Kysely<unknown>;
     argv: string[];
     exit: (code: number) => void;
 }
@@ -275,11 +269,12 @@ export async function runCli(deps: CliDependencies): Promise<void> {
             case 'down':
                 await migrateDown(db);
                 break;
-            case 'status':
+            case 'status': {
                 const status = await getMigrationStatus(db);
                 console.log('Executed migrations:', status.executed);
                 console.log('Pending migrations:', status.pending);
                 break;
+            }
             default:
                 console.error('Unknown command:', command);
                 console.log('Usage: bun run migrations/index.ts [up|down|status]');
@@ -295,7 +290,7 @@ export async function runCli(deps: CliDependencies): Promise<void> {
  * Main dependencies for testing
  */
 export interface MainDependencies {
-    getDb: () => Promise<Kysely<any>>;
+    getDb: () => Promise<Kysely<unknown>>;
     argv: string[];
     exit: (code: number) => void;
 }

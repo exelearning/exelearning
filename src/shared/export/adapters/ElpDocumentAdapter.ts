@@ -19,13 +19,7 @@ import * as fs from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
 import JSZip from 'jszip';
 
-import type {
-    ExportDocument,
-    ExportMetadata,
-    ExportPage,
-    ExportBlock,
-    ExportComponent,
-} from '../interfaces';
+import type { ExportDocument, ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
 
 // Import the correct XML parser and types
 import { parseFromString } from '../../../services/xml/xml-parser';
@@ -69,10 +63,7 @@ export class ElpDocumentAdapter implements ExportDocument {
         const zip = await JSZip.loadAsync(elpBuffer);
 
         // Create extraction directory
-        const extractDir = path.join(
-            '/tmp',
-            `elp-extract-${Date.now()}-${Math.random().toString(36).substring(7)}`
-        );
+        const extractDir = path.join('/tmp', `elp-extract-${Date.now()}-${Math.random().toString(36).substring(7)}`);
         if (!existsSync(extractDir)) {
             mkdirSync(extractDir, { recursive: true });
         }
@@ -90,7 +81,7 @@ export class ElpDocumentAdapter implements ExportDocument {
                             mkdirSync(fileDir, { recursive: true });
                         }
                         await fs.writeFile(filePath, content);
-                    })()
+                    })(),
                 );
             }
         });

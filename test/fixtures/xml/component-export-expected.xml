@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-1234</odeBlockId>
+    <blockName>Example Block</blockName>
+    <iconName></iconName>
+    <odePagStructureOrder>0</odePagStructureOrder>
+    <odePagStructureProperties>{}</odePagStructureProperties>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-5678</odeIdeviceId>
+        <odePageId>page-9012</odePageId>
+        <odeBlockId>block-1234</odeBlockId>
+        <odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>
+        <ideviceSrcType>json</ideviceSrcType>
+        <userIdevice>0</userIdevice>
+        <htmlView><![CDATA[<p>This is sample content</p>]]></htmlView>
+        <jsonProperties><![CDATA[{"title":"Sample Title","showTitle":true}]]></jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties></odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>

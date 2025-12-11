@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { createUserRoutes, type UserDependencies } from './user';
 
 // Test JWT secret (must match what user.ts uses)
@@ -66,11 +65,13 @@ describe('User Routes', () => {
 
         // Create JWT helper with same secret
         const jwtApp = new Elysia()
-            .use(jwt({
-                name: 'jwt',
-                secret: TEST_JWT_SECRET,
-                exp: '7d',
-            }))
+            .use(
+                jwt({
+                    name: 'jwt',
+                    secret: TEST_JWT_SECRET,
+                    exp: '7d',
+                }),
+            )
             .get('/sign', async ({ jwt, query }) => {
                 const token = await jwt.sign({ sub: Number(query.sub), email: query.email });
                 return { token };
@@ -98,9 +99,7 @@ describe('User Routes', () => {
 
     describe('GET /api/user/preferences', () => {
         it('should return empty preferences for unauthenticated user', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/user/preferences'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/user/preferences'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -108,9 +107,7 @@ describe('User Routes', () => {
         });
 
         it('should return userPreferences wrapper object', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/user/preferences'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/user/preferences'));
 
             const body = await res.json();
             expect(Object.keys(body)).toContain('userPreferences');
@@ -118,10 +115,13 @@ describe('User Routes', () => {
 
         it('should return saved preferences for authenticated user', async () => {
             // Pre-populate preferences for user '1'
-            savedPreferences.set('1', new Map([
-                ['theme', 'dark'],
-                ['locale', 'en'],
-            ]));
+            savedPreferences.set(
+                '1',
+                new Map([
+                    ['theme', 'dark'],
+                    ['locale', 'en'],
+                ]),
+            );
 
             const authCookie = await generateAuthCookie(1);
             const res = await app.handle(
@@ -150,9 +150,7 @@ describe('User Routes', () => {
         });
 
         it('should handle JSON-wrapped preference values', async () => {
-            savedPreferences.set('1', new Map([
-                ['customPref', JSON.stringify({ value: 'custom', extra: 'data' })],
-            ]));
+            savedPreferences.set('1', new Map([['customPref', JSON.stringify({ value: 'custom', extra: 'data' })]]));
 
             const authCookie = await generateAuthCookie(1);
             const res = await app.handle(
@@ -368,9 +366,7 @@ describe('User Routes', () => {
     describe('error handling', () => {
         it('should return empty preferences when unauthenticated (regardless of db errors)', async () => {
             // Unauthenticated users always get empty preferences
-            const res = await app.handle(
-                new Request('http://localhost/api/user/preferences'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/user/preferences'));
 
             expect(res.status).toBe(200);
             const body = await res.json();

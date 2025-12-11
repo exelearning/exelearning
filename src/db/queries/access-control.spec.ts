@@ -24,10 +24,7 @@ async function checkProjectAccess(
     userId: number,
 ): Promise<{ hasAccess: boolean; reason?: string }> {
     // Check database for project
-    const project = await db.selectFrom('projects')
-        .selectAll()
-        .where('uuid', '=', projectUuid)
-        .executeTakeFirst();
+    const project = await db.selectFrom('projects').selectAll().where('uuid', '=', projectUuid).executeTakeFirst();
 
     if (!project) {
         // Project not found - deny access
@@ -40,7 +37,8 @@ async function checkProjectAccess(
     }
 
     // Check collaborators
-    const collab = await db.selectFrom('project_collaborators')
+    const collab = await db
+        .selectFrom('project_collaborators')
         .select('project_id')
         .where('project_id', '=', project.id)
         .where('user_id', '=', userId)
@@ -72,7 +70,8 @@ describe('WebSocket Access Control', () => {
         const timestamp = now();
         const hashedPassword = await Bun.password.hash('test123', 'bcrypt');
 
-        owner = await testDb.insertInto('users')
+        owner = await testDb
+            .insertInto('users')
             .values({
                 email: 'owner@test.com',
                 user_id: 'user-owner-001',
@@ -85,7 +84,8 @@ describe('WebSocket Access Control', () => {
             .returningAll()
             .executeTakeFirstOrThrow();
 
-        collaborator = await testDb.insertInto('users')
+        collaborator = await testDb
+            .insertInto('users')
             .values({
                 email: 'collab@test.com',
                 user_id: 'user-collab-002',
@@ -98,7 +98,8 @@ describe('WebSocket Access Control', () => {
             .returningAll()
             .executeTakeFirstOrThrow();
 
-        randomUser = await testDb.insertInto('users')
+        randomUser = await testDb
+            .insertInto('users')
             .values({
                 email: 'random@test.com',
                 user_id: 'user-random-003',
@@ -124,7 +125,8 @@ describe('WebSocket Access Control', () => {
         const timestamp = now();
 
         // Create a private project owned by owner
-        privateProject = await testDb.insertInto('projects')
+        privateProject = await testDb
+            .insertInto('projects')
             .values({
                 uuid: uuidv4(),
                 title: 'Private Project',
@@ -140,7 +142,8 @@ describe('WebSocket Access Control', () => {
             .executeTakeFirstOrThrow();
 
         // Create a public project
-        publicProject = await testDb.insertInto('projects')
+        publicProject = await testDb
+            .insertInto('projects')
             .values({
                 uuid: uuidv4(),
                 title: 'Public Project',
@@ -156,7 +159,8 @@ describe('WebSocket Access Control', () => {
             .executeTakeFirstOrThrow();
 
         // Add collaborator to private project
-        await testDb.insertInto('project_collaborators')
+        await testDb
+            .insertInto('project_collaborators')
             .values({
                 project_id: privateProject.id,
                 user_id: collaborator.id,
@@ -200,7 +204,8 @@ describe('WebSocket Access Control', () => {
 
     it('should deny access when user is not owner, collaborator, or project is private', async () => {
         // Create another private project without collaborators
-        const isolatedProject = await testDb.insertInto('projects')
+        const isolatedProject = await testDb
+            .insertInto('projects')
             .values({
                 uuid: uuidv4(),
                 title: 'Isolated Project',
@@ -223,7 +228,8 @@ describe('WebSocket Access Control', () => {
 
     it('should handle multiple collaborators correctly', async () => {
         // Add another collaborator
-        const anotherCollab = await testDb.insertInto('users')
+        const anotherCollab = await testDb
+            .insertInto('users')
             .values({
                 email: 'another@test.com',
                 user_id: 'user-another-004',
@@ -236,7 +242,8 @@ describe('WebSocket Access Control', () => {
             .returningAll()
             .executeTakeFirstOrThrow();
 
-        await testDb.insertInto('project_collaborators')
+        await testDb
+            .insertInto('project_collaborators')
             .values({
                 project_id: privateProject.id,
                 user_id: anotherCollab.id,

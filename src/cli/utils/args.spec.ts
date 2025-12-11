@@ -2,14 +2,7 @@
  * Tests for CLI Argument Parser
  */
 import { describe, it, expect } from 'bun:test';
-import {
-    parseArgs,
-    getString,
-    getNumber,
-    getBoolean,
-    getArray,
-    hasHelp,
-} from './args';
+import { parseArgs, getString, getNumber, getBoolean, getArray, hasHelp } from './args';
 
 describe('CLI args parser', () => {
     describe('parseArgs', () => {

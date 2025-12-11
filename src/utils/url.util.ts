@@ -121,10 +121,7 @@ export function getOdeSessionPath(odeSessionId: string, basePath?: string): stri
  *
  * @see symfony_legacy/src/Util/net/exelearning/Util/UrlUtil.php::getOdeComponentsSyncUrl()
  */
-export function getOdeComponentsSyncUrl(
-    odeSessionId: string,
-    odeIdeviceId: string,
-): string | false {
+export function getOdeComponentsSyncUrl(odeSessionId: string, odeIdeviceId: string): string | false {
     const sessionUrl = getOdeSessionUrl(odeSessionId);
 
     if (!sessionUrl) {
@@ -217,10 +214,7 @@ export const ODE_XML_CONTEXT_PATH = '{{context_path}}';
  *
  * @see symfony_legacy/src/Util/net/exelearning/Util/OdeXmlUtil.php (lines 587, 783, 1678)
  */
-export function replaceContextPath(
-    content: string | null | undefined,
-    odeSessionId: string,
-): string | null {
+export function replaceContextPath(content: string | null | undefined, odeSessionId: string): string | null {
     if (!content || content === null || content === undefined) {
         return content || null;
     }
@@ -252,10 +246,7 @@ export function replaceContextPath(
  *
  * @see symfony_legacy/src/Util/net/exelearning/Util/OdeXmlUtil.php (lines 131, 388)
  */
-export function unreplaceContextPath(
-    content: string | null | undefined,
-    odeSessionId: string,
-): string | null {
+export function unreplaceContextPath(content: string | null | undefined, odeSessionId: string): string | null {
     if (!content || content === null || content === undefined) {
         return content || null;
     }

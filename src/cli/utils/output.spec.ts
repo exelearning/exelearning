@@ -2,18 +2,7 @@
  * Tests for CLI Output Utilities
  */
 import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
-import {
-    colors,
-    success,
-    error,
-    warning,
-    info,
-    table,
-    keyValue,
-    list,
-    section,
-    EXIT_CODES,
-} from './output';
+import { colors, success, error, warning, info, table, keyValue, list, section, EXIT_CODES } from './output';
 
 describe('CLI output utilities', () => {
     let consoleLogSpy: ReturnType<typeof spyOn>;
@@ -131,7 +120,13 @@ describe('CLI output utilities', () => {
 
     describe('table', () => {
         it('should print formatted table', () => {
-            table(['Name', 'Age'], [['Alice', '30'], ['Bob', '25']]);
+            table(
+                ['Name', 'Age'],
+                [
+                    ['Alice', '30'],
+                    ['Bob', '25'],
+                ],
+            );
             expect(consoleLogSpy).toHaveBeenCalled();
             // Should have separators + header + rows
             expect(consoleLogSpy.mock.calls.length).toBeGreaterThanOrEqual(4);

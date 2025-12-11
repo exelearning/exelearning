@@ -30,12 +30,7 @@ import { ImsManifestGenerator } from '../generators/ImsManifest';
 export class ImsExporter extends Html5Exporter {
     protected manifestGenerator: ImsManifestGenerator | null = null;
 
-    constructor(
-        document: ExportDocument,
-        resources: ResourceProvider,
-        assets: AssetProvider,
-        zip: ZipProvider
-    ) {
+    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         super(document, resources, assets, zip);
     }
 
@@ -56,45 +51,31 @@ export class ImsExporter extends Html5Exporter {
             let pages = this.buildPageList();
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
-            const themeName = (options as any)?.theme || meta.theme || 'base';
+            const themeName = options?.theme || meta.theme || 'base';
             const projectId = this.generateProjectId();
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
             // Initialize manifest generator
-            this.manifestGenerator = new ImsManifestGenerator(
-                projectId,
-                pages,
-                {
-                    title: meta.title || 'eXeLearning',
-                    language: meta.language || 'en',
-                    author: meta.author || '',
-                    description: meta.description || '',
-                    license: meta.license || '',
-                }
-            );
+            this.manifestGenerator = new ImsManifestGenerator(projectId, pages, {
+                title: meta.title || 'eXeLearning',
+                language: meta.language || 'en',
+                author: meta.author || '',
+                description: meta.description || '',
+                license: meta.license || '',
+            });
 
             // Track files for manifest
             const commonFiles: string[] = [];
-            const pageFiles: Record<
-                string,
-                { fileUrl: string; files: string[] }
-            > = {};
+            const pageFiles: Record<string, { fileUrl: string; files: string[] }> = {};
 
             // 1. Generate HTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                const html = this.generateImsPageHtml(
-                    page,
-                    pages,
-                    meta,
-                    isIndex
-                );
-                const pageFilename = isIndex
-                    ? 'index.html'
-                    : `html/${this.sanitizePageFilename(page.title)}.html`;
+                const html = this.generateImsPageHtml(page, pages, meta, isIndex);
+                const pageFilename = isIndex ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 this.zip.addFile(pageFilename, html);
 
                 pageFiles[page.id] = {
@@ -135,8 +116,7 @@ export class ImsExporter extends Html5Exporter {
             const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
-                    const ideviceFiles =
-                        await this.resources.fetchIdeviceResources(idevice);
+                    const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [path, content] of ideviceFiles) {
                         this.zip.addFile(`idevices/${idevice}/${path}`, content);
                         commonFiles.push(`idevices/${idevice}/${path}`);
@@ -176,20 +156,13 @@ export class ImsExporter extends Html5Exporter {
      * Generate project ID for IMS package
      */
     generateProjectId(): string {
-        return (
-            Date.now().toString(36) + Math.random().toString(36).substring(2, 7)
-        );
+        return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
     }
 
     /**
      * Generate IMS CP HTML page (standard website, no SCORM)
      */
-    generateImsPageHtml(
-        page: ExportPage,
-        allPages: ExportPage[],
-        meta: ExportMetadata,
-        isIndex: boolean
-    ): string {
+    generateImsPageHtml(page: ExportPage, allPages: ExportPage[], meta: ExportMetadata, isIndex: boolean): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
 

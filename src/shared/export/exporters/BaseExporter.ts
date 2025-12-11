@@ -44,12 +44,7 @@ export abstract class BaseExporter {
     // Cache for asset filename lookups
     protected assetFilenameMap: Map<string, string> | null = null;
 
-    constructor(
-        document: ExportDocument,
-        resources: ResourceProvider,
-        assets: AssetProvider,
-        zip: ZipProvider
-    ) {
+    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         this.document = document;
         this.resources = resources;
         this.assets = assets;
@@ -145,14 +140,14 @@ export abstract class BaseExporter {
      * Get root pages (pages without parent)
      */
     getRootPages(pages: ExportPage[]): ExportPage[] {
-        return pages.filter((p) => !p.parentId);
+        return pages.filter(p => !p.parentId);
     }
 
     /**
      * Get child pages of a given page
      */
     getChildPages(parentId: string, pages: ExportPage[]): ExportPage[] {
-        return pages.filter((p) => p.parentId === parentId);
+        return pages.filter(p => p.parentId === parentId);
     }
 
     // =========================================================================
@@ -184,7 +179,7 @@ export abstract class BaseExporter {
             '"': '&quot;',
             "'": '&#039;',
         };
-        return String(str).replace(/[&<>"']/g, (m) => map[m]);
+        return String(str).replace(/[&<>"']/g, m => map[m]);
     }
 
     /**
@@ -304,12 +299,8 @@ export abstract class BaseExporter {
     /**
      * Check if a page is an ancestor of another page
      */
-    isAncestorOf(
-        potentialAncestor: ExportPage,
-        childId: string,
-        allPages: ExportPage[]
-    ): boolean {
-        const child = allPages.find((p) => p.id === childId);
+    isAncestorOf(potentialAncestor: ExportPage, childId: string, allPages: ExportPage[]): boolean {
+        const child = allPages.find(p => p.id === childId);
         if (!child || !child.parentId) return false;
         if (child.parentId === potentialAncestor.id) return true;
         return this.isAncestorOf(potentialAncestor, child.parentId, allPages);
@@ -318,11 +309,7 @@ export abstract class BaseExporter {
     /**
      * Get page link (index.html for first page, id.html for others)
      */
-    getPageLink(
-        page: ExportPage,
-        allPages: ExportPage[],
-        extension = '.html'
-    ): string {
+    getPageLink(page: ExportPage, allPages: ExportPage[], extension = '.html'): string {
         if (page.id === allPages[0]?.id) {
             return `index${extension}`;
         }
@@ -332,25 +319,17 @@ export abstract class BaseExporter {
     /**
      * Get previous page in flat list
      */
-    getPreviousPage(
-        currentPage: ExportPage,
-        allPages: ExportPage[]
-    ): ExportPage | null {
-        const currentIndex = allPages.findIndex((p) => p.id === currentPage.id);
+    getPreviousPage(currentPage: ExportPage, allPages: ExportPage[]): ExportPage | null {
+        const currentIndex = allPages.findIndex(p => p.id === currentPage.id);
         return currentIndex > 0 ? allPages[currentIndex - 1] : null;
     }
 
     /**
      * Get next page in flat list
      */
-    getNextPage(
-        currentPage: ExportPage,
-        allPages: ExportPage[]
-    ): ExportPage | null {
-        const currentIndex = allPages.findIndex((p) => p.id === currentPage.id);
-        return currentIndex < allPages.length - 1
-            ? allPages[currentIndex + 1]
-            : null;
+    getNextPage(currentPage: ExportPage, allPages: ExportPage[]): ExportPage | null {
+        const currentIndex = allPages.findIndex(p => p.id === currentPage.id);
+        return currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
     }
 
     // =========================================================================
@@ -409,9 +388,7 @@ export abstract class BaseExporter {
 
                 if (!filename) {
                     // Generate filename from mime type
-                    const ext = this.getExtensionFromMime(
-                        asset.mimeType || 'application/octet-stream'
-                    );
+                    const ext = this.getExtensionFromMime(asset.mimeType || 'application/octet-stream');
                     filename = `asset-${id.substring(0, 8)}${ext}`;
                 }
 
@@ -437,16 +414,13 @@ export abstract class BaseExporter {
         }
 
         // Transform asset://uuid to asset://uuid/filename (keeping asset:// protocol)
-        return content.replace(
-            /asset:\/\/([a-f0-9-]+)(?![\/a-zA-Z0-9._-])/gi,
-            (match, uuid) => {
-                const filename = assetMap.get(uuid);
-                if (filename) {
-                    return `asset://${uuid}/${filename}`;
-                }
-                return match;
+        return content.replace(/asset:\/\/([a-f0-9-]+)(?![/a-zA-Z0-9._-])/gi, (match, uuid) => {
+            const filename = assetMap.get(uuid);
+            if (filename) {
+                return `asset://${uuid}/${filename}`;
             }
-        );
+            return match;
+        });
     }
 
     /**
@@ -457,9 +431,7 @@ export abstract class BaseExporter {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
-                        component.content = await this.addFilenamesToAssetUrls(
-                            component.content
-                        );
+                        component.content = await this.addFilenamesToAssetUrls(component.content);
                     }
                 }
             }
@@ -579,10 +551,7 @@ export abstract class BaseExporter {
     /**
      * Generate component XML
      */
-    protected generateComponentXml(
-        component: ExportComponent,
-        index: number
-    ): string {
+    protected generateComponentXml(component: ExportComponent, index: number): string {
         const compId = component.id;
         const ideviceType = component.type || 'FreeTextIdevice';
         const order = component.order ?? index;

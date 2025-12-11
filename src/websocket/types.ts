@@ -50,13 +50,30 @@ export type AssetMessageType =
     | 'navigation-hint';
 
 /**
+ * Union type for all asset message data payloads
+ */
+export type AssetMessageData =
+    | AwarenessUpdateData
+    | AssetRequestData
+    | AssetUploadedData
+    | PrefetchProgressData
+    | BulkUploadProgressData
+    | PriorityUpdateData
+    | NavigationHintData
+    | PriorityAckData
+    | PreemptUploadData
+    | ResumeUploadData
+    | SlotAvailableData
+    | Record<string, unknown>; // For extensibility of future message types
+
+/**
  * Base asset message structure
  */
 export interface AssetMessage {
     type: AssetMessageType;
     projectId?: string;
     clientId?: string;
-    data: any;
+    data: AssetMessageData;
 }
 
 /**
@@ -144,14 +161,7 @@ export interface AssetCoordinatorStats {
 /**
  * Priority reason for asset requests
  */
-export type PriorityReason =
-    | 'render'
-    | 'navigation'
-    | 'prefetch'
-    | 'save'
-    | 'p2p-request'
-    | 'retry'
-    | 'preempted';
+export type PriorityReason = 'render' | 'navigation' | 'prefetch' | 'save' | 'p2p-request' | 'retry' | 'preempted';
 
 /**
  * Priority update message data (client -> server)

@@ -80,15 +80,7 @@ interface ResourceFetcherLike {
 /**
  * Export format type
  */
-type ExportFormat =
-    | 'html5'
-    | 'html5-sp'
-    | 'page'
-    | 'scorm12'
-    | 'scorm2004'
-    | 'ims'
-    | 'epub3'
-    | 'elpx';
+type ExportFormat = 'html5' | 'html5-sp' | 'page' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elpx';
 
 /**
  * Create an exporter instance for the specified format
@@ -103,18 +95,12 @@ export function createExporter(
     format: ExportFormat | string,
     documentManager: YjsDocumentManagerLike,
     assetCache: AssetCacheManagerLike,
-    resourceFetcher: ResourceFetcherLike
+    resourceFetcher: ResourceFetcherLike,
 ) {
     // Create adapters
-    const document = new YjsDocumentAdapter(
-        documentManager as Parameters<typeof YjsDocumentAdapter>[0]
-    );
-    const resources = new BrowserResourceProvider(
-        resourceFetcher as Parameters<typeof BrowserResourceProvider>[0]
-    );
-    const assets = new BrowserAssetProvider(
-        assetCache as Parameters<typeof BrowserAssetProvider>[0]
-    );
+    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    const resources = new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0]);
+    const assets = new BrowserAssetProvider(assetCache as Parameters<typeof BrowserAssetProvider>[0]);
     const zip = new JSZipZipProvider();
 
     // Normalize format
@@ -169,14 +155,9 @@ export async function quickExport(
     documentManager: YjsDocumentManagerLike,
     assetCache: AssetCacheManagerLike,
     resourceFetcher: ResourceFetcherLike,
-    options?: ExportOptions
+    options?: ExportOptions,
 ) {
-    const exporter = createExporter(
-        format,
-        documentManager,
-        assetCache,
-        resourceFetcher
-    );
+    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher);
     return exporter.export(options);
 }
 
@@ -196,14 +177,9 @@ export async function exportAndDownload(
     assetCache: AssetCacheManagerLike,
     resourceFetcher: ResourceFetcherLike,
     filename: string,
-    options?: ExportOptions
+    options?: ExportOptions,
 ) {
-    const exporter = createExporter(
-        format,
-        documentManager,
-        assetCache,
-        resourceFetcher
-    );
+    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher);
 
     const result = await exporter.export(options);
 
@@ -213,9 +189,7 @@ export async function exportAndDownload(
 
     // Get file extension from exporter
     const extension = exporter.getFileExtension();
-    const fullFilename = filename.endsWith(extension)
-        ? filename
-        : `${filename}${extension}`;
+    const fullFilename = filename.endsWith(extension) ? filename : `${filename}${extension}`;
 
     // Create download
     const blob = new Blob([result.data], { type: 'application/zip' });

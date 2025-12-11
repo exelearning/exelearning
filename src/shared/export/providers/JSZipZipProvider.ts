@@ -19,11 +19,7 @@ import type { ZipProvider } from '../interfaces';
 
 // JSZip type (loaded globally in browser via script tag)
 interface JSZipInstance {
-    file(
-        path: string,
-        data: string | Uint8Array | ArrayBuffer | Blob,
-        options?: { binary?: boolean }
-    ): JSZipInstance;
+    file(path: string, data: string | Uint8Array | ArrayBuffer | Blob, options?: { binary?: boolean }): JSZipInstance;
     generateAsync(options: {
         type: string;
         compression?: string;
@@ -36,7 +32,7 @@ interface JSZipConstructor {
 }
 
 // Get JSZip from global (browser) or require (Node.js for testing)
-declare const JSZip: JSZipConstructor;
+declare const JSZip: JSZipConstructor; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 /**
  * JSZipZipProvider class
@@ -49,14 +45,10 @@ export class JSZipZipProvider implements ZipProvider {
     constructor() {
         // Get JSZip from global or dynamic import
         const JSZipClass =
-            typeof window !== 'undefined'
-                ? (window as unknown as { JSZip: JSZipConstructor }).JSZip
-                : require('jszip');
+            typeof window !== 'undefined' ? (window as unknown as { JSZip: JSZipConstructor }).JSZip : require('jszip');
 
         if (!JSZipClass) {
-            throw new Error(
-                'JSZip not available. Ensure jszip.min.js is loaded.'
-            );
+            throw new Error('JSZip not available. Ensure jszip.min.js is loaded.');
         }
 
         this.zip = new JSZipClass();
@@ -111,9 +103,7 @@ export class JSZipZipProvider implements ZipProvider {
         this.files.clear();
         // Create new JSZip instance
         const JSZipClass =
-            typeof window !== 'undefined'
-                ? (window as unknown as { JSZip: JSZipConstructor }).JSZip
-                : require('jszip');
+            typeof window !== 'undefined' ? (window as unknown as { JSZip: JSZipConstructor }).JSZip : require('jszip');
         this.zip = new JSZipClass();
     }
 

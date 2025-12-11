@@ -75,9 +75,13 @@ describe('Create User Command', () => {
 
         it('should succeed with --no-fail when user exists', async () => {
             const deps = createMockDependencies();
-            const result = await execute(['existing@test.com', 'password', 'userid'], {
-                'no-fail': true,
-            }, deps);
+            const result = await execute(
+                ['existing@test.com', 'password', 'userid'],
+                {
+                    'no-fail': true,
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('--no-fail mode');
@@ -115,9 +119,13 @@ describe('Create User Command', () => {
 
         it('should accept custom roles', async () => {
             const deps = createMockDependencies();
-            await execute(['admin@new.com', 'pass', 'adminuser'], {
-                roles: 'ROLE_USER,ROLE_ADMIN',
-            }, deps);
+            await execute(
+                ['admin@new.com', 'pass', 'adminuser'],
+                {
+                    roles: 'ROLE_USER,ROLE_ADMIN',
+                },
+                deps,
+            );
 
             const call = createUserCalls[createUserCalls.length - 1];
             expect(call.roles).toContain('ROLE_USER');
@@ -126,9 +134,13 @@ describe('Create User Command', () => {
 
         it('should normalize role names to uppercase', async () => {
             const deps = createMockDependencies();
-            await execute(['lower@test.com', 'pass', 'loweruser'], {
-                roles: 'role_user,role_editor',
-            }, deps);
+            await execute(
+                ['lower@test.com', 'pass', 'loweruser'],
+                {
+                    roles: 'role_user,role_editor',
+                },
+                deps,
+            );
 
             const call = createUserCalls[createUserCalls.length - 1];
             expect(call.roles).toContain('ROLE_USER');
@@ -145,9 +157,13 @@ describe('Create User Command', () => {
 
         it('should accept custom quota', async () => {
             const deps = createMockDependencies();
-            await execute(['customquota@test.com', 'pass', 'customuser'], {
-                quota: '1024',
-            }, deps);
+            await execute(
+                ['customquota@test.com', 'pass', 'customuser'],
+                {
+                    quota: '1024',
+                },
+                deps,
+            );
 
             const call = createUserCalls[createUserCalls.length - 1];
             expect(call.quota_mb).toBe(1024);
@@ -190,11 +206,15 @@ describe('Create User Command', () => {
         // Flag-based argument tests (docker-compose format)
         it('should accept --email, --password, --username flags', async () => {
             const deps = createMockDependencies();
-            const result = await execute([], {
-                email: 'flag@test.com',
-                password: 'flagpass',
-                username: 'flaguser',
-            }, deps);
+            const result = await execute(
+                [],
+                {
+                    email: 'flag@test.com',
+                    password: 'flagpass',
+                    username: 'flaguser',
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('created successfully');
@@ -206,11 +226,15 @@ describe('Create User Command', () => {
 
         it('should accept --user-id as alias for --username', async () => {
             const deps = createMockDependencies();
-            const result = await execute([], {
-                email: 'alias@test.com',
-                password: 'aliaspass',
-                'user-id': 'aliasuser',
-            }, deps);
+            const result = await execute(
+                [],
+                {
+                    email: 'alias@test.com',
+                    password: 'aliaspass',
+                    'user-id': 'aliasuser',
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
 
@@ -220,12 +244,16 @@ describe('Create User Command', () => {
 
         it('should prefer --username over --user-id when both provided', async () => {
             const deps = createMockDependencies();
-            const result = await execute([], {
-                email: 'prefer@test.com',
-                password: 'preferpass',
-                username: 'preferred',
-                'user-id': 'notused',
-            }, deps);
+            const result = await execute(
+                [],
+                {
+                    email: 'prefer@test.com',
+                    password: 'preferpass',
+                    username: 'preferred',
+                    'user-id': 'notused',
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
 
@@ -235,11 +263,15 @@ describe('Create User Command', () => {
 
         it('should prefer flags over positional arguments', async () => {
             const deps = createMockDependencies();
-            const result = await execute(['positional@test.com', 'positionalpass', 'positionaluser'], {
-                email: 'flag@test.com',
-                password: 'flagpass',
-                username: 'flaguser',
-            }, deps);
+            const result = await execute(
+                ['positional@test.com', 'positionalpass', 'positionaluser'],
+                {
+                    email: 'flag@test.com',
+                    password: 'flagpass',
+                    username: 'flaguser',
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
 
@@ -251,9 +283,13 @@ describe('Create User Command', () => {
         it('should allow mixed flags and positional arguments', async () => {
             const deps = createMockDependencies();
             // --email flag, positional password and username
-            const result = await execute(['ignored', 'mixedpass', 'mixeduser'], {
-                email: 'mixed@test.com',
-            }, deps);
+            const result = await execute(
+                ['ignored', 'mixedpass', 'mixeduser'],
+                {
+                    email: 'mixed@test.com',
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
 
@@ -264,12 +300,16 @@ describe('Create User Command', () => {
 
         it('should work with --no-fail flag in flag-based format', async () => {
             const deps = createMockDependencies();
-            const result = await execute([], {
-                email: 'existing@test.com',
-                password: 'pass',
-                username: 'user',
-                'no-fail': true,
-            }, deps);
+            const result = await execute(
+                [],
+                {
+                    email: 'existing@test.com',
+                    password: 'pass',
+                    username: 'user',
+                    'no-fail': true,
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('--no-fail mode');
@@ -277,9 +317,13 @@ describe('Create User Command', () => {
 
         it('should handle multiple roles separated by comma', async () => {
             const deps = createMockDependencies();
-            await execute(['multi@test.com', 'pass', 'multiuser'], {
-                roles: 'ROLE_USER, ROLE_ADMIN, ROLE_EDITOR',
-            }, deps);
+            await execute(
+                ['multi@test.com', 'pass', 'multiuser'],
+                {
+                    roles: 'ROLE_USER, ROLE_ADMIN, ROLE_EDITOR',
+                },
+                deps,
+            );
 
             const call = createUserCalls[createUserCalls.length - 1];
             expect(call.roles).toContain('ROLE_USER');
@@ -289,9 +333,13 @@ describe('Create User Command', () => {
 
         it('should trim whitespace from roles', async () => {
             const deps = createMockDependencies();
-            await execute(['trim@test.com', 'pass', 'trimuser'], {
-                roles: '  ROLE_USER  ,  ROLE_ADMIN  ',
-            }, deps);
+            await execute(
+                ['trim@test.com', 'pass', 'trimuser'],
+                {
+                    roles: '  ROLE_USER  ,  ROLE_ADMIN  ',
+                },
+                deps,
+            );
 
             const call = createUserCalls[createUserCalls.length - 1];
             // Should be trimmed
@@ -328,7 +376,9 @@ describe('Create User Command', () => {
         it('should show help when --help flag is passed', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', '--help'], deps, mockExit);
 
@@ -338,7 +388,9 @@ describe('Create User Command', () => {
         it('should show help when -h flag is passed', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', '-h'], deps, mockExit);
 
@@ -348,7 +400,9 @@ describe('Create User Command', () => {
         it('should exit with error when missing required arguments', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'create-user'], deps, mockExit);
 
@@ -358,7 +412,9 @@ describe('Create User Command', () => {
         it('should exit with success when creating user', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'create-user', 'cli@test.com', 'pass123', 'cliuser'], deps, mockExit);
 
@@ -369,12 +425,16 @@ describe('Create User Command', () => {
             const errorDeps: CreateUserDependencies = {
                 db: {} as any,
                 queries: {
-                    findUserByEmail: async () => { throw new Error('DB error'); },
+                    findUserByEmail: async () => {
+                        throw new Error('DB error');
+                    },
                     createUser: async () => ({ id: 1, email: '', username: '', roles: '[]' }),
                 },
             };
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'create-user', 'error@test.com', 'pass', 'user'], errorDeps, mockExit);
 
@@ -385,12 +445,16 @@ describe('Create User Command', () => {
             const errorDeps: CreateUserDependencies = {
                 db: {} as any,
                 queries: {
-                    findUserByEmail: async () => { throw 'String error'; },
+                    findUserByEmail: async () => {
+                        throw 'String error';
+                    },
                     createUser: async () => ({ id: 1, email: '', username: '', roles: '[]' }),
                 },
             };
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'create-user', 'str@test.com', 'pass', 'user'], errorDeps, mockExit);
 

@@ -61,9 +61,7 @@ export class PageRenderer {
         // Build body class
         const bodyClassStr = bodyClass || 'exe-export exe-web-site';
         const onLoadAttr = onLoadScript ? ` onload="${onLoadScript}"` : '';
-        const onUnloadAttr = onUnloadScript
-            ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"`
-            : '';
+        const onUnloadAttr = onUnloadScript ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"` : '';
 
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
@@ -108,7 +106,7 @@ ${this.renderScripts(basePath, isScorm)}
             usedIdevices,
             customStyles,
             extraHeadScripts = '',
-            isScorm = false,
+            isScorm: _isScorm = false,
         } = options;
 
         let head = `<meta charset="utf-8">
@@ -326,7 +324,7 @@ ${this.renderScripts(basePath, isScorm)}
      * @param isScorm - Whether this is a SCORM export
      * @returns Scripts HTML
      */
-    renderScripts(basePath: string, isScorm: boolean = false): string {
+    renderScripts(basePath: string, _isScorm: boolean = false): string {
         return `<script type="text/javascript" src="${basePath}libs/jquery/jquery.min.js"></script>
 <script type="text/javascript" src="${basePath}libs/exe_export.js"></script>
 <script type="text/javascript" src="${basePath}libs/common_i18n.js"></script>
@@ -349,7 +347,7 @@ ${this.renderScripts(basePath, isScorm)}
             usedIdevices?: string[];
             author?: string;
             license?: string;
-        } = {}
+        } = {},
     ): string {
         const {
             projectTitle = 'eXeLearning',

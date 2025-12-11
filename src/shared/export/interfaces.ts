@@ -235,6 +235,9 @@ export interface ExportOptions {
 
     /** Base URL for absolute paths */
     baseUrl?: string;
+
+    /** Theme name to use for export */
+    theme?: string;
 }
 
 /**
@@ -345,7 +348,7 @@ export interface ComponentRenderOptions {
 /**
  * Block rendering options
  */
-export interface BlockRenderOptions extends ComponentRenderOptions {}
+export type BlockRenderOptions = ComponentRenderOptions;
 
 // =============================================================================
 // iDevice Configuration

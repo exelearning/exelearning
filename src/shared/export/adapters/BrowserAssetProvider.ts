@@ -31,9 +31,7 @@ interface AssetCacheManagerInterface {
             };
         }>
     >;
-    getAssetByPath(
-        path: string
-    ): Promise<{ blob: Blob; metadata: Record<string, unknown> } | null>;
+    getAssetByPath(path: string): Promise<{ blob: Blob; metadata: Record<string, unknown> } | null>;
     resolveAssetUrl(path: string): Promise<string | null>;
 }
 
@@ -58,10 +56,7 @@ export class BrowserAssetProvider implements AssetProvider {
      * @param assetCache - AssetCacheManager instance
      * @param assetManager - Optional AssetManager for additional operations
      */
-    constructor(
-        assetCache: AssetCacheManagerInterface,
-        assetManager: AssetManagerInterface | null = null
-    ) {
+    constructor(assetCache: AssetCacheManagerInterface, assetManager: AssetManagerInterface | null = null) {
         this.assetCache = assetCache;
         this.assetManager = assetManager;
     }
@@ -80,10 +75,7 @@ export class BrowserAssetProvider implements AssetProvider {
             }
             return null;
         } catch (error) {
-            console.warn(
-                `[BrowserAssetProvider] Failed to get asset: ${assetPath}`,
-                error
-            );
+            console.warn(`[BrowserAssetProvider] Failed to get asset: ${assetPath}`, error);
             return null;
         }
     }
@@ -109,14 +101,9 @@ export class BrowserAssetProvider implements AssetProvider {
     async listAssets(): Promise<string[]> {
         try {
             const assets = await this.assetCache.getAllAssets();
-            return assets
-                .filter((a) => a.metadata?.originalPath)
-                .map((a) => a.metadata.originalPath as string);
+            return assets.filter(a => a.metadata?.originalPath).map(a => a.metadata.originalPath as string);
         } catch (error) {
-            console.warn(
-                '[BrowserAssetProvider] Failed to list assets:',
-                error
-            );
+            console.warn('[BrowserAssetProvider] Failed to list assets:', error);
             return [];
         }
     }
@@ -134,17 +121,11 @@ export class BrowserAssetProvider implements AssetProvider {
             for (const asset of assets) {
                 if (asset.metadata?.originalPath && asset.blob) {
                     const arrayBuffer = await asset.blob.arrayBuffer();
-                    result.set(
-                        asset.metadata.originalPath,
-                        Buffer.from(arrayBuffer)
-                    );
+                    result.set(asset.metadata.originalPath, Buffer.from(arrayBuffer));
                 }
             }
         } catch (error) {
-            console.warn(
-                '[BrowserAssetProvider] Failed to get all assets:',
-                error
-            );
+            console.warn('[BrowserAssetProvider] Failed to get all assets:', error);
         }
 
         return result;

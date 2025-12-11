@@ -203,10 +203,7 @@ export async function execute(
         }
 
         // Create providers
-        const publicDir = path.resolve(
-            process.cwd(),
-            process.env.PUBLIC_DIR || 'public'
-        );
+        const publicDir = path.resolve(process.cwd(), process.env.PUBLIC_DIR || 'public');
         const resourceProvider = new FileSystemResourceProvider(publicDir);
 
         // Get the extracted ELP directory path from the adapter
@@ -216,12 +213,7 @@ export async function execute(
         const zipProvider = new ArchiverZipProvider();
 
         // Create ELPX exporter
-        const exporter = new ElpxExporter(
-            document,
-            resourceProvider,
-            assetProvider,
-            zipProvider
-        );
+        const exporter = new ElpxExporter(document, resourceProvider, assetProvider, zipProvider);
 
         // Run export
         if (debug) {
@@ -240,9 +232,8 @@ export async function execute(
         }
 
         // Determine output path (add .elpx extension if needed)
-        const outputPath = output.endsWith('.elpx') || output.endsWith('.zip')
-            ? output
-            : `${output}${exporter.getFileExtension()}`;
+        const outputPath =
+            output.endsWith('.elpx') || output.endsWith('.zip') ? output : `${output}${exporter.getFileExtension()}`;
 
         // Write the ZIP buffer
         if (result.data) {

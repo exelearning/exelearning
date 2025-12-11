@@ -5,13 +5,7 @@
 import { XMLBuilder } from 'fast-xml-parser';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import {
-    OdeXmlDocument,
-    OdeXmlMeta,
-    OdeXmlNavigation,
-    NormalizedPage,
-    ParsedOdeStructure,
-} from './interfaces';
+import { OdeXmlDocument, OdeXmlMeta, OdeXmlNavigation, NormalizedPage, ParsedOdeStructure } from './interfaces';
 
 export interface XmlBuildOptions {
     format?: boolean;
@@ -66,14 +60,14 @@ export function buildFromStructure(structure: ParsedOdeStructure): string {
  */
 function buildNavigationFromPages(pages: NormalizedPage[]): OdeXmlNavigation {
     // Find root pages (level 0 or no parent)
-    const rootPages = pages.filter((page) => page.level === 0 || page.parent_id === null);
+    const rootPages = pages.filter(page => page.level === 0 || page.parent_id === null);
 
     if (rootPages.length === 0) {
         throw new Error('No root pages found in structure');
     }
 
     // Build page tree
-    const pageTree = rootPages.map((rootPage) => buildPageTree(rootPage, pages));
+    const pageTree = rootPages.map(rootPage => buildPageTree(rootPage, pages));
 
     return {
         page: pageTree.length === 1 ? pageTree[0] : pageTree,
@@ -81,23 +75,31 @@ function buildNavigationFromPages(pages: NormalizedPage[]): OdeXmlNavigation {
 }
 
 /**
+ * XML page structure for builder output
+ */
+interface XmlPageElement {
+    '@_id': string;
+    '@_title': string;
+    component?: unknown;
+    page?: unknown;
+}
+
+/**
  * Recursively build page tree
  */
-function buildPageTree(page: NormalizedPage, allPages: NormalizedPage[]): any {
+function buildPageTree(page: NormalizedPage, allPages: NormalizedPage[]): XmlPageElement {
     // Find child pages
-    const children = allPages
-        .filter((p) => p.parent_id === page.id)
-        .sort((a, b) => a.position - b.position);
+    const children = allPages.filter(p => p.parent_id === page.id).sort((a, b) => a.position - b.position);
 
     // Build page structure with attributes using @_ prefix
-    const xmlPage: any = {
+    const xmlPage: XmlPageElement = {
         '@_id': page.id,
         '@_title': page.title,
     };
 
     // Add components if any
     if (page.components && page.components.length > 0) {
-        const components = page.components.map((comp) => ({
+        const components = page.components.map(comp => ({
             '@_type': comp.type,
             '@_id': comp.id,
             '@_position': comp.order || 0,
@@ -111,7 +113,7 @@ function buildPageTree(page: NormalizedPage, allPages: NormalizedPage[]): any {
 
     // Add child pages recursively
     if (children.length > 0) {
-        const childPages = children.map((child) => buildPageTree(child, allPages));
+        const childPages = children.map(child => buildPageTree(child, allPages));
         xmlPage.page = childPages.length === 1 ? childPages[0] : childPages;
     }
 
@@ -210,9 +212,7 @@ export function createSimpleStructure(title: string, content: string = ''): Pars
         raw: {
             ode: {
                 odeProperties: {
-                    odeProperty: [
-                        { propertyKey: 'pp_title', propertyValue: title },
-                    ],
+                    odeProperty: [{ propertyKey: 'pp_title', propertyValue: title }],
                 },
             },
         },
@@ -222,6 +222,6 @@ export function createSimpleStructure(title: string, content: string = ''): Pars
 /**
  * Build raw XML string from object
  */
-export function buildRaw(obj: any): string {
+export function buildRaw(obj: unknown): string {
     return builder.build(obj);
 }

@@ -1,9 +1,7 @@
 /**
  * Tests for Translation Service
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import * as fs from 'fs-extra';
-import * as path from 'path';
+import { describe, it, expect } from 'bun:test';
 import {
     LOCALES,
     PACKAGE_LOCALES,
@@ -156,10 +154,7 @@ describe('translation service', () => {
 
         it('should handle arrays', () => {
             const obj = {
-                items: [
-                    { name: `${TRANS_PREFIX}item1` },
-                    { name: `${TRANS_PREFIX}item2` },
-                ],
+                items: [{ name: `${TRANS_PREFIX}item1` }, { name: `${TRANS_PREFIX}item2` }],
             };
 
             const result = translateObject(obj);

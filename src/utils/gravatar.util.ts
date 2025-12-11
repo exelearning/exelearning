@@ -6,8 +6,8 @@ const DEFAULT_RATING = 'g';
 // Default Gravatar constants
 const DEFAULTS = {
     GRAVATAR_BASE_URL: 'https://www.gravatar.com/avatar/',
-    GRAVATAR_DEFAULT_IMAGE: 'initials',           // Regular users get initials
-    GRAVATAR_GUEST_DEFAULT_IMAGE: 'identicon',    // Guest accounts get identicon
+    GRAVATAR_DEFAULT_IMAGE: 'initials', // Regular users get initials
+    GRAVATAR_GUEST_DEFAULT_IMAGE: 'identicon', // Guest accounts get identicon
     GRAVATAR_GUEST_ACCOUNT_DOMAIN: '@guest.local', // Guest account domain
 };
 
@@ -16,10 +16,7 @@ const getConfigValue = (envKey: string, fallback: string): string => {
 };
 
 const GRAVATAR_BASE_URL = getConfigValue('GRAVATAR_BASE_URL', DEFAULTS.GRAVATAR_BASE_URL);
-const GRAVATAR_DEFAULT_IMAGE = getConfigValue(
-    'GRAVATAR_DEFAULT_IMAGE',
-    DEFAULTS.GRAVATAR_DEFAULT_IMAGE,
-);
+const GRAVATAR_DEFAULT_IMAGE = getConfigValue('GRAVATAR_DEFAULT_IMAGE', DEFAULTS.GRAVATAR_DEFAULT_IMAGE);
 const GRAVATAR_GUEST_DEFAULT_IMAGE = getConfigValue(
     'GRAVATAR_GUEST_DEFAULT_IMAGE',
     DEFAULTS.GRAVATAR_GUEST_DEFAULT_IMAGE,
@@ -64,16 +61,8 @@ const initialsFromIdentifier = (identifier: string): string => {
     return initialsFromText(localPart.replace(/[._-]/g, ' '));
 };
 
-const resolveInitials = (
-    identifier: string,
-    initials?: string | null,
-    displayName?: string | null,
-): string => {
-    return (
-        sanitizeInitials(initials) ||
-        initialsFromText(displayName || '') ||
-        initialsFromIdentifier(identifier)
-    );
+const resolveInitials = (identifier: string, initials?: string | null, displayName?: string | null): string => {
+    return sanitizeInitials(initials) || initialsFromText(displayName || '') || initialsFromIdentifier(identifier);
 };
 
 const isGuestAccount = (identifier: string): boolean => {

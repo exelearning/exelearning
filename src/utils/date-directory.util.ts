@@ -10,9 +10,7 @@
  */
 export function getDateDirStructureFromIdentifier(identifier: string): string {
     if (!identifier || identifier.length < 8) {
-        throw new Error(
-            `Invalid identifier format: ${identifier}. Expected at least 8 characters (YYYYMMDD).`,
-        );
+        throw new Error(`Invalid identifier format: ${identifier}. Expected at least 8 characters (YYYYMMDD).`);
     }
 
     // Extract date components from identifier

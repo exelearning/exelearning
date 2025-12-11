@@ -10,23 +10,10 @@ import type {
     ExportBlock,
     ExportComponent,
     ExportAsset,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ZipArchive,
-    ExportOptions,
     Html5ExportOptions,
     ScormExportOptions,
-    ImsExportOptions,
     Epub3ExportOptions,
-    ElpxExportOptions,
     ExportResult,
-    PageRenderOptions,
-    ComponentRenderOptions,
-    IdeviceConfig,
-    LibraryPattern,
-    LibraryDetectionResult,
-    Exporter,
 } from './interfaces';
 
 import {

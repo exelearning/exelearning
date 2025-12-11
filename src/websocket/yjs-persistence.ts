@@ -145,8 +145,9 @@ export async function saveFullState(projectId: number, state: Uint8Array, client
         if (DEBUG) {
             console.log(`[YjsPersistence] Saved full state for project ${projectId} (${buffer.length} bytes)`);
         }
-    } catch (error: any) {
-        console.error(`[YjsPersistence] Failed to save for project ${projectId}:`, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[YjsPersistence] Failed to save for project ${projectId}:`, errorMessage);
         throw error;
     }
 }
@@ -179,8 +180,9 @@ export async function loadDocument(projectId: number): Promise<Uint8Array | null
 
         if (DEBUG) console.log(`[YjsPersistence] Loaded project ${projectId}: ${state.length} bytes`);
         return state;
-    } catch (error: any) {
-        console.error(`[YjsPersistence] Failed to load project ${projectId}:`, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[YjsPersistence] Failed to load project ${projectId}:`, errorMessage);
         return null;
     }
 }
@@ -202,9 +204,10 @@ export async function loadUpdatesSince(projectId: number, sinceVersion: string =
             );
         }
 
-        return updates.map((update) => new Uint8Array(update.update_data));
-    } catch (error: any) {
-        console.error(`[YjsPersistence] Failed to load updates for project ${projectId}:`, error.message);
+        return updates.map(update => new Uint8Array(update.update_data));
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[YjsPersistence] Failed to load updates for project ${projectId}:`, errorMessage);
         throw error;
     }
 }
@@ -254,8 +257,9 @@ export async function deleteAllUpdates(projectId: number): Promise<number> {
         const deletedCount = 1; // Kysely doesn't return changes count easily
         if (DEBUG) console.log(`[YjsPersistence] Deleted updates for project ${projectId}`);
         return deletedCount;
-    } catch (error: any) {
-        console.error(`[YjsPersistence] Failed to delete for project ${projectId}:`, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[YjsPersistence] Failed to delete for project ${projectId}:`, errorMessage);
         throw error;
     }
 }
@@ -279,14 +283,13 @@ export async function pruneUpdatesBefore(projectId: number, beforeVersion: strin
         await deps.queries.deleteUpdatesBefore(deps.db, projectId, beforeVersion);
 
         if (DEBUG) {
-            console.log(
-                `[YjsPersistence] Pruned updates for project ${projectId} before v${beforeVersion}`,
-            );
+            console.log(`[YjsPersistence] Pruned updates for project ${projectId} before v${beforeVersion}`);
         }
 
         return 1; // Kysely doesn't return changes count easily
-    } catch (error: any) {
-        console.error(`[YjsPersistence] Failed to prune for project ${projectId}:`, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[YjsPersistence] Failed to prune for project ${projectId}:`, errorMessage);
         throw error;
     }
 }
@@ -295,11 +298,7 @@ export async function pruneUpdatesBefore(projectId: number, beforeVersion: strin
  * Save document state by project UUID
  * Also marks project as savedOnce=true so it appears in project list
  */
-export async function saveFullStateByUuid(
-    projectUuid: string,
-    state: Uint8Array,
-    clientId?: string,
-): Promise<boolean> {
+export async function saveFullStateByUuid(projectUuid: string, state: Uint8Array, clientId?: string): Promise<boolean> {
     const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
 
     if (!project) {
@@ -386,7 +385,7 @@ export async function saveIncrementalUpdate(
         if (DEBUG) {
             console.log(
                 `[YjsPersistence] Saved incremental update for project ${projectId} ` +
-                `(${update.length} bytes, ${result.stats.count} total updates)`,
+                    `(${update.length} bytes, ${result.stats.count} total updates)`,
             );
         }
 
@@ -403,8 +402,9 @@ export async function saveIncrementalUpdate(
             compacted: result.compacted,
             bytesStored: update.length,
         };
-    } catch (error: any) {
-        console.error(`[YjsPersistence] Failed to save incremental update for project ${projectId}:`, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[YjsPersistence] Failed to save incremental update for project ${projectId}:`, errorMessage);
         throw error;
     }
 }
@@ -485,11 +485,12 @@ export async function compactToSnapshot(projectId: number): Promise<void> {
         if (DEBUG) {
             console.log(
                 `[YjsPersistence] Compacted ${updates.length} updates into snapshot ` +
-                `for project ${projectId} (${fullState.length} bytes)`,
+                    `for project ${projectId} (${fullState.length} bytes)`,
             );
         }
-    } catch (error: any) {
-        console.error(`[YjsPersistence] Failed to compact project ${projectId}:`, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[YjsPersistence] Failed to compact project ${projectId}:`, errorMessage);
         throw error;
     }
 }
@@ -516,7 +517,7 @@ export async function loadDocumentEfficient(projectId: number): Promise<Uint8Arr
             if (DEBUG) {
                 console.log(
                     `[YjsPersistence] Loaded project ${projectId} from snapshot ` +
-                    `(${snapshot.snapshot_data.length} bytes)`,
+                        `(${snapshot.snapshot_data.length} bytes)`,
                 );
             }
             return new Uint8Array(snapshot.snapshot_data);
@@ -539,13 +540,14 @@ export async function loadDocumentEfficient(projectId: number): Promise<Uint8Arr
         if (DEBUG) {
             console.log(
                 `[YjsPersistence] Loaded project ${projectId}: merged snapshot + ${updates.length} updates ` +
-                `(${state.length} bytes)`,
+                    `(${state.length} bytes)`,
             );
         }
 
         return state;
-    } catch (error: any) {
-        console.error(`[YjsPersistence] Failed to load project ${projectId}:`, error.message);
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[YjsPersistence] Failed to load project ${projectId}:`, errorMessage);
         return null;
     }
 }

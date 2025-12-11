@@ -2,7 +2,7 @@
  * YjsDocumentAdapter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect } from 'bun:test';
 import { YjsDocumentAdapter } from './YjsDocumentAdapter';
 
 // Mock Y.Map
@@ -56,7 +56,7 @@ class MockYjsDocumentManager {
     constructor(
         metadata: Record<string, unknown> = {},
         pages: unknown[] = [],
-        projectId: string | number = 'test-project-123'
+        projectId: string | number = 'test-project-123',
     ) {
         this.metadata = new MockYMap(metadata);
         this.navigation = new MockYArray(pages);
@@ -73,12 +73,7 @@ class MockYjsDocumentManager {
 }
 
 // Sample page structures
-const createMockPage = (
-    id: string,
-    title: string,
-    blocks: unknown[] = [],
-    children: unknown[] = []
-) => {
+const createMockPage = (id: string, title: string, blocks: unknown[] = [], children: unknown[] = []) => {
     return new MockYMap({
         id,
         pageId: id,
@@ -101,12 +96,7 @@ const createMockBlock = (id: string, name: string, components: unknown[] = []) =
     });
 };
 
-const createMockComponent = (
-    id: string,
-    type: string,
-    content: string,
-    properties: Record<string, unknown> = {}
-) => {
+const createMockComponent = (id: string, type: string, content: string, properties: Record<string, unknown> = {}) => {
     return new MockYMap({
         id,
         type,
@@ -223,11 +213,7 @@ describe('YjsDocumentAdapter', () => {
         });
 
         it('should convert blocks correctly', () => {
-            const component = createMockComponent(
-                'c1',
-                'FreeTextIdevice',
-                '<p>Content</p>'
-            );
+            const component = createMockComponent('c1', 'FreeTextIdevice', '<p>Content</p>');
             const block = createMockBlock('b1', 'Block 1', [component]);
             const page = createMockPage('p1', 'Page 1', [block]);
 
@@ -242,12 +228,9 @@ describe('YjsDocumentAdapter', () => {
         });
 
         it('should convert components correctly', () => {
-            const component = createMockComponent(
-                'c1',
-                'FreeTextIdevice',
-                '<p>Test content</p>',
-                { setting1: 'value1' }
-            );
+            const component = createMockComponent('c1', 'FreeTextIdevice', '<p>Test content</p>', {
+                setting1: 'value1',
+            });
             const block = createMockBlock('b1', 'Block', [component]);
             const page = createMockPage('p1', 'Page', [block]);
 

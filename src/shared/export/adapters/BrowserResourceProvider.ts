@@ -59,9 +59,7 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @param ideviceType - iDevice type name
      * @returns Map of path -> content
      */
-    async fetchIdeviceResources(
-        ideviceType: string
-    ): Promise<Map<string, Buffer>> {
+    async fetchIdeviceResources(ideviceType: string): Promise<Map<string, Buffer>> {
         const blobMap = await this.fetcher.fetchIdevice(ideviceType);
         return this.convertBlobMapToBufferMap(blobMap);
     }
@@ -99,9 +97,7 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @param libraryName - Library name (e.g., 'exe_effects')
      * @returns Map of path -> content
      */
-    async fetchLibraryDirectory(
-        libraryName: string
-    ): Promise<Map<string, Buffer>> {
+    async fetchLibraryDirectory(libraryName: string): Promise<Map<string, Buffer>> {
         const blobMap = await this.fetcher.fetchLibraryDirectory(libraryName);
         return this.convertBlobMapToBufferMap(blobMap);
     }
@@ -129,12 +125,7 @@ export class BrowserResourceProvider implements ResourceProvider {
             freetext: 'text',
         };
         const normalized = ideviceType.toLowerCase().replace(/idevice$/i, '');
-        return (
-            typeMap[normalized] ||
-            typeMap[ideviceType.toLowerCase()] ||
-            normalized ||
-            'text'
-        );
+        return typeMap[normalized] || typeMap[ideviceType.toLowerCase()] || normalized || 'text';
     }
 
     /**
@@ -143,9 +134,7 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @param blobMap - Map of path -> Blob
      * @returns Map of path -> Buffer
      */
-    private async convertBlobMapToBufferMap(
-        blobMap: Map<string, Blob>
-    ): Promise<Map<string, Buffer>> {
+    private async convertBlobMapToBufferMap(blobMap: Map<string, Blob>): Promise<Map<string, Buffer>> {
         const result = new Map<string, Buffer>();
 
         const entries = Array.from(blobMap.entries());

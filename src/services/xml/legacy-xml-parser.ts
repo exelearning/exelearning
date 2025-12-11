@@ -15,10 +15,10 @@ import { generateId } from '../../utils/id-generator.util';
 const DEBUG = process.env.APP_DEBUG === '1';
 
 // State for current parsing session
-let xmlContent = '';
+let _xmlContent = '';
 let parentRefMap = new Map<string, string | null>();
 let srcRoutes: string[] = [];
-let sessionId = '';
+let _sessionId = '';
 
 /**
  * Parse legacy instance format (contentv3.xml)
@@ -30,8 +30,8 @@ export function parse(
 ): ParsedOdeStructure {
     if (DEBUG) console.log('[LegacyParser] Parsing legacy instance format');
 
-    xmlContent = rawXmlContent || '';
-    sessionId = currentSessionId || '';
+    _xmlContent = rawXmlContent || '';
+    _sessionId = currentSessionId || '';
     srcRoutes = [];
     parentRefMap = new Map();
 
@@ -78,15 +78,16 @@ export function parse(
     };
 }
 
-function buildParentReferenceMap(instance: any): void {
+function buildParentReferenceMap(instance: unknown): void {
     parentRefMap = new Map();
 
-    function traverse(obj: any, parentRef: string | null): void {
+    function traverse(obj: unknown, parentRef: string | null): void {
         if (!obj || typeof obj !== 'object') return;
+        const record = obj as Record<string, unknown>;
 
         // If this is a Node, record its parent
-        if (obj['@_class'] === 'exe.engine.node.Node') {
-            const ref = obj['@_reference'];
+        if (record['@_class'] === 'exe.engine.node.Node') {
+            const ref = record['@_reference'] as string | undefined;
             if (ref) {
                 parentRefMap.set(ref, parentRef);
             }
@@ -96,30 +97,31 @@ function buildParentReferenceMap(instance: any): void {
 
         // Recurse into arrays and objects
         if (Array.isArray(obj)) {
-            obj.forEach((item) => traverse(item, parentRef));
+            obj.forEach(item => traverse(item, parentRef));
         } else {
-            Object.values(obj).forEach((val) => traverse(val, parentRef));
+            Object.values(record).forEach(val => traverse(val, parentRef));
         }
     }
 
     traverse(instance, null);
 }
 
-function findAllNodes(instance: any): LegacyInstanceNode[] {
+function findAllNodes(instance: unknown): LegacyInstanceNode[] {
     const nodes: LegacyInstanceNode[] = [];
 
-    function traverse(obj: any): void {
+    function traverse(obj: unknown): void {
         if (!obj || typeof obj !== 'object') return;
+        const record = obj as Record<string, unknown>;
 
-        if (obj['@_class'] === 'exe.engine.node.Node') {
-            nodes.push(obj);
+        if (record['@_class'] === 'exe.engine.node.Node') {
+            nodes.push(obj as LegacyInstanceNode);
         }
 
         // Recurse into arrays
         if (Array.isArray(obj)) {
             obj.forEach(traverse);
         } else {
-            Object.values(obj).forEach(traverse);
+            Object.values(record).forEach(traverse);
         }
     }
 
@@ -127,8 +129,21 @@ function findAllNodes(instance: any): LegacyInstanceNode[] {
     return nodes;
 }
 
-function extractMetadata(instance: any): Record<string, any> {
-    const meta: Record<string, any> = {
+/**
+ * Metadata structure
+ */
+interface LegacyMetadata {
+    title: string;
+    author: string;
+    description: string;
+    license: string;
+    locale: string;
+    theme: string;
+    version: string;
+}
+
+function extractMetadata(instance: unknown): LegacyMetadata {
+    const meta: LegacyMetadata = {
         title: 'Untitled',
         author: '',
         description: '',
@@ -138,12 +153,13 @@ function extractMetadata(instance: any): Record<string, any> {
         version: '1.0',
     };
 
-    function findValue(obj: any, key: string): string | undefined {
+    function findValue(obj: unknown, key: string): string | undefined {
         if (!obj || typeof obj !== 'object') return undefined;
+        const record = obj as Record<string, unknown>;
 
-        if (obj.string && obj.unicode) {
-            const strings = Array.isArray(obj.string) ? obj.string : [obj.string];
-            const unicodes = Array.isArray(obj.unicode) ? obj.unicode : [obj.unicode];
+        if (record.string && record.unicode) {
+            const strings = Array.isArray(record.string) ? record.string : [record.string];
+            const unicodes = Array.isArray(record.unicode) ? record.unicode : [record.unicode];
 
             for (let i = 0; i < strings.length; i++) {
                 if (strings[i] === key && unicodes[i]) {
@@ -215,21 +231,17 @@ function buildPageHierarchy(nodes: LegacyInstanceNode[]): NormalizedPage[] {
     return pages;
 }
 
-function extractComponents(node: LegacyInstanceNode, pageId: string): NormalizedComponent[] {
+function extractComponents(node: LegacyInstanceNode, _pageId: string): NormalizedComponent[] {
     const components: NormalizedComponent[] = [];
 
     if (!node.dictionary?.list) return components;
 
-    const lists = Array.isArray(node.dictionary.list)
-        ? node.dictionary.list
-        : [node.dictionary.list];
+    const lists = Array.isArray(node.dictionary.list) ? node.dictionary.list : [node.dictionary.list];
 
     for (const list of lists) {
         if (!list.instance) continue;
 
-        const instances = Array.isArray(list.instance)
-            ? list.instance
-            : [list.instance];
+        const instances = Array.isArray(list.instance) ? list.instance : [list.instance];
 
         for (let idx = 0; idx < instances.length; idx++) {
             const inst = instances[idx];
@@ -252,27 +264,29 @@ function extractComponents(node: LegacyInstanceNode, pageId: string): Normalized
     return components;
 }
 
-function extractIdeviceContent(inst: any): string {
+function extractIdeviceContent(inst: unknown): string {
     let content = '';
 
-    function findContent(obj: any): void {
+    function findContent(obj: unknown): void {
         if (!obj || typeof obj !== 'object') return;
+        const record = obj as Record<string, unknown>;
 
         // Look for content_w_resourcePaths or similar fields
-        if (obj.unicode?.['@_value']) {
-            const val = obj.unicode['@_value'];
+        const unicode = record.unicode as Record<string, unknown> | undefined;
+        if (unicode?.['@_value']) {
+            const val = unicode['@_value'];
             if (typeof val === 'string' && val.includes('<') && val.includes('>')) {
                 content = val;
                 return;
             }
         }
 
-        if (obj.__cdata) {
-            content = obj.__cdata;
+        if (typeof record.__cdata === 'string') {
+            content = record.__cdata;
             return;
         }
 
-        for (const v of Object.values(obj)) {
+        for (const v of Object.values(record)) {
             findContent(v);
             if (content) return;
         }
@@ -282,22 +296,23 @@ function extractIdeviceContent(inst: any): string {
     return content;
 }
 
-function extractResourcePaths(inst: any): string[] {
+function extractResourcePaths(inst: unknown): string[] {
     const paths: string[] = [];
 
-    function findPaths(obj: any): void {
-        if (!obj || typeof obj !== 'object') return;
-
+    function findPaths(obj: unknown): void {
         if (typeof obj === 'string') {
             // Look for resource paths
             const matches = obj.match(/resources\/[^\s"'<>]+/g);
             if (matches) paths.push(...matches);
+            return;
         }
+
+        if (!obj || typeof obj !== 'object') return;
 
         if (Array.isArray(obj)) {
             obj.forEach(findPaths);
         } else {
-            Object.values(obj).forEach(findPaths);
+            Object.values(obj as Record<string, unknown>).forEach(findPaths);
         }
     }
 
@@ -327,29 +342,34 @@ function mapIdeviceType(className: string): string {
 }
 
 function convertPagesToRealOdeNavStructures(pages: NormalizedPage[]): RealOdeNavStructure[] {
-    return pages.map((page) => ({
+    return pages.map(page => ({
         odePageId: page.id,
         odeParentPageId: page.parent_id || undefined,
         pageName: page.title,
         odeNavStructureOrder: page.position,
         odePagStructures: {
-            odePagStructure: [{
-                odePageId: page.id,
-                odeBlockId: generateId(),
-                blockName: page.title,
-                odePagStructureOrder: 0,
-                odeComponents: page.components.length > 0 ? {
-                    odeComponent: page.components.map((comp) => ({
-                        odePageId: page.id,
-                        odeBlockId: generateId(),
-                        odeIdeviceId: comp.id,
-                        odeIdeviceTypeName: comp.type,
-                        htmlView: comp.content,
-                        jsonProperties: comp.data ? JSON.stringify(comp.data) : undefined,
-                        odeComponentsOrder: comp.order,
-                    })),
-                } : undefined,
-            }],
+            odePagStructure: [
+                {
+                    odePageId: page.id,
+                    odeBlockId: generateId(),
+                    blockName: page.title,
+                    odePagStructureOrder: 0,
+                    odeComponents:
+                        page.components.length > 0
+                            ? {
+                                  odeComponent: page.components.map(comp => ({
+                                      odePageId: page.id,
+                                      odeBlockId: generateId(),
+                                      odeIdeviceId: comp.id,
+                                      odeIdeviceTypeName: comp.type,
+                                      htmlView: comp.content,
+                                      jsonProperties: comp.data ? JSON.stringify(comp.data) : undefined,
+                                      odeComponentsOrder: comp.order,
+                                  })),
+                              }
+                            : undefined,
+                },
+            ],
         },
     }));
 }

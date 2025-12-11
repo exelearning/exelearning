@@ -110,7 +110,9 @@ describe('Redirect Validator Utilities', () => {
 
             it('should not double-prefix if returnUrl already has BASE_PATH', () => {
                 expect(getSafeRedirectUrl('/exelearning/workarea')).toBe('/exelearning/workarea');
-                expect(getSafeRedirectUrl('/exelearning/workarea?project=abc')).toBe('/exelearning/workarea?project=abc');
+                expect(getSafeRedirectUrl('/exelearning/workarea?project=abc')).toBe(
+                    '/exelearning/workarea?project=abc',
+                );
             });
 
             it('should return prefixed default path for invalid returnUrl', () => {
@@ -131,7 +133,9 @@ describe('Redirect Validator Utilities', () => {
 
             it('should prefix valid returnUrl with nested BASE_PATH', () => {
                 expect(getSafeRedirectUrl('/workarea')).toBe('/web/exelearning/workarea');
-                expect(getSafeRedirectUrl('/workarea?project=abc&new=1')).toBe('/web/exelearning/workarea?project=abc&new=1');
+                expect(getSafeRedirectUrl('/workarea?project=abc&new=1')).toBe(
+                    '/web/exelearning/workarea?project=abc&new=1',
+                );
             });
 
             it('should not double-prefix if returnUrl already has nested BASE_PATH', () => {

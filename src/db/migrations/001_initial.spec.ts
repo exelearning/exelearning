@@ -5,7 +5,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Kysely, sql } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import * as fs from 'fs-extra';
-import * as path from 'path';
 import { up, down } from './001_initial';
 
 // Test database path
@@ -70,7 +69,7 @@ describe('001_initial Migration', () => {
 
             it('should have required columns', async () => {
                 const columns = await getTableInfo('users');
-                const columnNames = columns.map((c) => c.name);
+                const columnNames = columns.map(c => c.name);
 
                 expect(columnNames).toContain('id');
                 expect(columnNames).toContain('email');
@@ -88,38 +87,48 @@ describe('001_initial Migration', () => {
 
             it('should have id as primary key', async () => {
                 const columns = await getTableInfo('users');
-                const idColumn = columns.find((c) => c.name === 'id');
+                const idColumn = columns.find(c => c.name === 'id');
 
                 expect(idColumn.pk).toBe(1);
             });
 
             it('should have email as unique', async () => {
                 // Try to insert duplicate email
-                await db.insertInto('users').values({
-                    email: 'test@test.com',
-                    user_id: 'user-1',
-                    password: 'hash',
-                    roles: '[]',
-                }).execute();
+                await db
+                    .insertInto('users')
+                    .values({
+                        email: 'test@test.com',
+                        user_id: 'user-1',
+                        password: 'hash',
+                        roles: '[]',
+                    })
+                    .execute();
 
                 await expect(
-                    db.insertInto('users').values({
-                        email: 'test@test.com',
-                        user_id: 'user-2',
-                        password: 'hash2',
-                        roles: '[]',
-                    }).execute()
+                    db
+                        .insertInto('users')
+                        .values({
+                            email: 'test@test.com',
+                            user_id: 'user-2',
+                            password: 'hash2',
+                            roles: '[]',
+                        })
+                        .execute(),
                 ).rejects.toThrow();
             });
 
             it('should have default values', async () => {
-                await db.insertInto('users').values({
-                    email: 'default@test.com',
-                    user_id: 'user-default',
-                    password: 'hash',
-                }).execute();
+                await db
+                    .insertInto('users')
+                    .values({
+                        email: 'default@test.com',
+                        user_id: 'user-default',
+                        password: 'hash',
+                    })
+                    .execute();
 
-                const user = await db.selectFrom('users')
+                const user = await db
+                    .selectFrom('users')
                     .selectAll()
                     .where('email', '=', 'default@test.com')
                     .executeTakeFirst();
@@ -137,7 +146,7 @@ describe('001_initial Migration', () => {
 
             it('should have required columns', async () => {
                 const columns = await getTableInfo('users_preferences');
-                const columnNames = columns.map((c) => c.name);
+                const columnNames = columns.map(c => c.name);
 
                 expect(columnNames).toContain('id');
                 expect(columnNames).toContain('user_id');
@@ -149,7 +158,7 @@ describe('001_initial Migration', () => {
 
             it('should have index on user_id', async () => {
                 const indexes = await getIndexes('users_preferences');
-                const indexNames = indexes.map((i) => i.name);
+                const indexNames = indexes.map(i => i.name);
 
                 expect(indexNames).toContain('idx_users_preferences_user_id');
             });
@@ -162,7 +171,7 @@ describe('001_initial Migration', () => {
 
             it('should have required columns', async () => {
                 const columns = await getTableInfo('projects');
-                const columnNames = columns.map((c) => c.name);
+                const columnNames = columns.map(c => c.name);
 
                 expect(columnNames).toContain('id');
                 expect(columnNames).toContain('uuid');
@@ -181,43 +190,59 @@ describe('001_initial Migration', () => {
 
             it('should have uuid as unique', async () => {
                 // Create user first
-                await db.insertInto('users').values({
-                    email: 'owner@test.com',
-                    user_id: 'owner',
-                    password: 'hash',
-                }).execute();
+                await db
+                    .insertInto('users')
+                    .values({
+                        email: 'owner@test.com',
+                        user_id: 'owner',
+                        password: 'hash',
+                    })
+                    .execute();
 
                 // Insert project
-                await db.insertInto('projects').values({
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    owner_id: 1,
-                }).execute();
+                await db
+                    .insertInto('projects')
+                    .values({
+                        uuid: 'test-uuid',
+                        title: 'Test Project',
+                        owner_id: 1,
+                    })
+                    .execute();
 
                 // Try duplicate uuid
                 await expect(
-                    db.insertInto('projects').values({
-                        uuid: 'test-uuid',
-                        title: 'Another Project',
-                        owner_id: 1,
-                    }).execute()
+                    db
+                        .insertInto('projects')
+                        .values({
+                            uuid: 'test-uuid',
+                            title: 'Another Project',
+                            owner_id: 1,
+                        })
+                        .execute(),
                 ).rejects.toThrow();
             });
 
             it('should have default values', async () => {
-                await db.insertInto('users').values({
-                    email: 'owner@test.com',
-                    user_id: 'owner',
-                    password: 'hash',
-                }).execute();
+                await db
+                    .insertInto('users')
+                    .values({
+                        email: 'owner@test.com',
+                        user_id: 'owner',
+                        password: 'hash',
+                    })
+                    .execute();
 
-                await db.insertInto('projects').values({
-                    uuid: 'defaults-test',
-                    title: 'Defaults Test',
-                    owner_id: 1,
-                }).execute();
+                await db
+                    .insertInto('projects')
+                    .values({
+                        uuid: 'defaults-test',
+                        title: 'Defaults Test',
+                        owner_id: 1,
+                    })
+                    .execute();
 
-                const project = await db.selectFrom('projects')
+                const project = await db
+                    .selectFrom('projects')
                     .selectAll()
                     .where('uuid', '=', 'defaults-test')
                     .executeTakeFirst();
@@ -234,11 +259,14 @@ describe('001_initial Migration', () => {
 
                 // Try to insert project with non-existent owner
                 await expect(
-                    db.insertInto('projects').values({
-                        uuid: 'orphan-project',
-                        title: 'Orphan',
-                        owner_id: 999,
-                    }).execute()
+                    db
+                        .insertInto('projects')
+                        .values({
+                            uuid: 'orphan-project',
+                            title: 'Orphan',
+                            owner_id: 999,
+                        })
+                        .execute(),
                 ).rejects.toThrow();
             });
         });
@@ -250,7 +278,7 @@ describe('001_initial Migration', () => {
 
             it('should have required columns', async () => {
                 const columns = await getTableInfo('project_collaborators');
-                const columnNames = columns.map((c) => c.name);
+                const columnNames = columns.map(c => c.name);
 
                 expect(columnNames).toContain('project_id');
                 expect(columnNames).toContain('user_id');
@@ -258,7 +286,7 @@ describe('001_initial Migration', () => {
 
             it('should have unique composite index', async () => {
                 const indexes = await getIndexes('project_collaborators');
-                const pkIndex = indexes.find((i) => i.name === 'idx_project_collaborators_pk');
+                const pkIndex = indexes.find(i => i.name === 'idx_project_collaborators_pk');
 
                 expect(pkIndex).toBeDefined();
                 expect(pkIndex.unique).toBe(1);
@@ -269,10 +297,13 @@ describe('001_initial Migration', () => {
                 await sql`PRAGMA foreign_keys = ON`.execute(db);
 
                 await expect(
-                    db.insertInto('project_collaborators').values({
-                        project_id: 999,
-                        user_id: 999,
-                    }).execute()
+                    db
+                        .insertInto('project_collaborators')
+                        .values({
+                            project_id: 999,
+                            user_id: 999,
+                        })
+                        .execute(),
                 ).rejects.toThrow();
             });
         });
@@ -284,7 +315,7 @@ describe('001_initial Migration', () => {
 
             it('should have required columns', async () => {
                 const columns = await getTableInfo('assets');
-                const columnNames = columns.map((c) => c.name);
+                const columnNames = columns.map(c => c.name);
 
                 expect(columnNames).toContain('id');
                 expect(columnNames).toContain('project_id');
@@ -299,7 +330,7 @@ describe('001_initial Migration', () => {
 
             it('should have unique index on client_id and project_id', async () => {
                 const indexes = await getIndexes('assets');
-                const clientIndex = indexes.find((i) => i.name === 'idx_asset_client_project');
+                const clientIndex = indexes.find(i => i.name === 'idx_asset_client_project');
 
                 expect(clientIndex).toBeDefined();
                 expect(clientIndex.unique).toBe(1);
@@ -313,7 +344,7 @@ describe('001_initial Migration', () => {
 
             it('should have required columns', async () => {
                 const columns = await getTableInfo('yjs_documents');
-                const columnNames = columns.map((c) => c.name);
+                const columnNames = columns.map(c => c.name);
 
                 expect(columnNames).toContain('id');
                 expect(columnNames).toContain('project_id');
@@ -326,30 +357,42 @@ describe('001_initial Migration', () => {
                 await sql`PRAGMA foreign_keys = ON`.execute(db);
 
                 // Create user and project first
-                await db.insertInto('users').values({
-                    email: 'yjs@test.com',
-                    user_id: 'yjs-user',
-                    password: 'hash',
-                }).execute();
+                await db
+                    .insertInto('users')
+                    .values({
+                        email: 'yjs@test.com',
+                        user_id: 'yjs-user',
+                        password: 'hash',
+                    })
+                    .execute();
 
-                await db.insertInto('projects').values({
-                    uuid: 'yjs-project',
-                    title: 'Yjs Project',
-                    owner_id: 1,
-                }).execute();
+                await db
+                    .insertInto('projects')
+                    .values({
+                        uuid: 'yjs-project',
+                        title: 'Yjs Project',
+                        owner_id: 1,
+                    })
+                    .execute();
 
                 // Insert first document
-                await db.insertInto('yjs_documents').values({
-                    project_id: 1,
-                    snapshot_data: Buffer.from([1, 2, 3]),
-                }).execute();
+                await db
+                    .insertInto('yjs_documents')
+                    .values({
+                        project_id: 1,
+                        snapshot_data: Buffer.from([1, 2, 3]),
+                    })
+                    .execute();
 
                 // Try duplicate project_id
                 await expect(
-                    db.insertInto('yjs_documents').values({
-                        project_id: 1,
-                        snapshot_data: Buffer.from([4, 5, 6]),
-                    }).execute()
+                    db
+                        .insertInto('yjs_documents')
+                        .values({
+                            project_id: 1,
+                            snapshot_data: Buffer.from([4, 5, 6]),
+                        })
+                        .execute(),
                 ).rejects.toThrow();
             });
         });
@@ -361,7 +404,7 @@ describe('001_initial Migration', () => {
 
             it('should have required columns', async () => {
                 const columns = await getTableInfo('yjs_updates');
-                const columnNames = columns.map((c) => c.name);
+                const columnNames = columns.map(c => c.name);
 
                 expect(columnNames).toContain('id');
                 expect(columnNames).toContain('project_id');
@@ -372,7 +415,7 @@ describe('001_initial Migration', () => {
 
             it('should have index on project_id and version', async () => {
                 const indexes = await getIndexes('yjs_updates');
-                const versionIndex = indexes.find((i) => i.name === 'idx_yjs_updates_project_version');
+                const versionIndex = indexes.find(i => i.name === 'idx_yjs_updates_project_version');
 
                 expect(versionIndex).toBeDefined();
             });
@@ -382,35 +425,44 @@ describe('001_initial Migration', () => {
                 await sql`PRAGMA foreign_keys = ON`.execute(db);
 
                 // Create user and project
-                await db.insertInto('users').values({
-                    email: 'updates@test.com',
-                    user_id: 'updates-user',
-                    password: 'hash',
-                }).execute();
+                await db
+                    .insertInto('users')
+                    .values({
+                        email: 'updates@test.com',
+                        user_id: 'updates-user',
+                        password: 'hash',
+                    })
+                    .execute();
 
-                await db.insertInto('projects').values({
-                    uuid: 'updates-project',
-                    title: 'Updates Project',
-                    owner_id: 1,
-                }).execute();
+                await db
+                    .insertInto('projects')
+                    .values({
+                        uuid: 'updates-project',
+                        title: 'Updates Project',
+                        owner_id: 1,
+                    })
+                    .execute();
 
                 // Insert multiple updates
-                await db.insertInto('yjs_updates').values({
-                    project_id: 1,
-                    update_data: Buffer.from([1]),
-                    version: '1',
-                }).execute();
-
-                await db.insertInto('yjs_updates').values({
-                    project_id: 1,
-                    update_data: Buffer.from([2]),
-                    version: '2',
-                }).execute();
-
-                const updates = await db.selectFrom('yjs_updates')
-                    .selectAll()
-                    .where('project_id', '=', 1)
+                await db
+                    .insertInto('yjs_updates')
+                    .values({
+                        project_id: 1,
+                        update_data: Buffer.from([1]),
+                        version: '1',
+                    })
                     .execute();
+
+                await db
+                    .insertInto('yjs_updates')
+                    .values({
+                        project_id: 1,
+                        update_data: Buffer.from([2]),
+                        version: '2',
+                    })
+                    .execute();
+
+                const updates = await db.selectFrom('yjs_updates').selectAll().where('project_id', '=', 1).execute();
 
                 expect(updates.length).toBe(2);
             });
@@ -459,30 +511,40 @@ describe('001_initial Migration', () => {
             await up(db);
 
             // Create user
-            const insertedUser = await db.insertInto('users').values({
-                email: 'crud@test.com',
-                user_id: 'crud-user',
-                password: 'hash',
-            }).returning(['id']).executeTakeFirst();
+            const insertedUser = await db
+                .insertInto('users')
+                .values({
+                    email: 'crud@test.com',
+                    user_id: 'crud-user',
+                    password: 'hash',
+                })
+                .returning(['id'])
+                .executeTakeFirst();
 
             expect(insertedUser!.id).toBeDefined();
 
             // Create project
-            const insertedProject = await db.insertInto('projects').values({
-                uuid: 'crud-project',
-                title: 'CRUD Test',
-                owner_id: insertedUser!.id,
-            }).returning(['id']).executeTakeFirst();
+            const insertedProject = await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'crud-project',
+                    title: 'CRUD Test',
+                    owner_id: insertedUser!.id,
+                })
+                .returning(['id'])
+                .executeTakeFirst();
 
             expect(insertedProject!.id).toBeDefined();
 
             // Update project
-            await db.updateTable('projects')
+            await db
+                .updateTable('projects')
                 .set({ title: 'Updated CRUD Test' })
                 .where('id', '=', insertedProject!.id)
                 .execute();
 
-            const updated = await db.selectFrom('projects')
+            const updated = await db
+                .selectFrom('projects')
                 .select('title')
                 .where('id', '=', insertedProject!.id)
                 .executeTakeFirst();
@@ -490,11 +552,10 @@ describe('001_initial Migration', () => {
             expect(updated!.title).toBe('Updated CRUD Test');
 
             // Delete project (will cascade to yjs_documents, etc)
-            await db.deleteFrom('projects')
-                .where('id', '=', insertedProject!.id)
-                .execute();
+            await db.deleteFrom('projects').where('id', '=', insertedProject!.id).execute();
 
-            const deleted = await db.selectFrom('projects')
+            const deleted = await db
+                .selectFrom('projects')
                 .selectAll()
                 .where('id', '=', insertedProject!.id)
                 .executeTakeFirst();
@@ -507,33 +568,39 @@ describe('001_initial Migration', () => {
             await sql`PRAGMA foreign_keys = ON`.execute(db);
 
             // Create user
-            await db.insertInto('users').values({
-                email: 'ref@test.com',
-                user_id: 'ref-user',
-                password: 'hash',
-            }).execute();
+            await db
+                .insertInto('users')
+                .values({
+                    email: 'ref@test.com',
+                    user_id: 'ref-user',
+                    password: 'hash',
+                })
+                .execute();
 
             // Create project
-            await db.insertInto('projects').values({
-                uuid: 'ref-project',
-                title: 'Ref Test',
-                owner_id: 1,
-            }).execute();
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'ref-project',
+                    title: 'Ref Test',
+                    owner_id: 1,
+                })
+                .execute();
 
             // Create asset
-            await db.insertInto('assets').values({
-                project_id: 1,
-                filename: 'test.jpg',
-                storage_path: '/path/to/test.jpg',
-            }).execute();
+            await db
+                .insertInto('assets')
+                .values({
+                    project_id: 1,
+                    filename: 'test.jpg',
+                    storage_path: '/path/to/test.jpg',
+                })
+                .execute();
 
             // Delete project should cascade to assets
             await db.deleteFrom('projects').where('id', '=', 1).execute();
 
-            const assets = await db.selectFrom('assets')
-                .selectAll()
-                .where('project_id', '=', 1)
-                .execute();
+            const assets = await db.selectFrom('assets').selectAll().where('project_id', '=', 1).execute();
 
             expect(assets.length).toBe(0);
         });

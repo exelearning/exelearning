@@ -3,12 +3,7 @@
  * Tests the REAL implementation - no mock.module()
  */
 import { describe, it, expect } from 'bun:test';
-import {
-    parseMessage,
-    isAssetMessageType,
-    serializeAssetMessage,
-    createAssetMessage,
-} from './message-parser';
+import { parseMessage, isAssetMessageType, serializeAssetMessage, createAssetMessage } from './message-parser';
 
 describe('WebSocket message-parser', () => {
     describe('isAssetMessageType', () => {
@@ -150,7 +145,12 @@ describe('WebSocket message-parser', () => {
 
     describe('serializeAssetMessage', () => {
         it('should serialize asset message to JSON string', () => {
-            const message = { type: 'request-asset' as const, projectId: 'p1', clientId: 'c1', data: { assetId: 'a1' } };
+            const message = {
+                type: 'request-asset' as const,
+                projectId: 'p1',
+                clientId: 'c1',
+                data: { assetId: 'a1' },
+            };
             const result = serializeAssetMessage(message);
             expect(typeof result).toBe('string');
             const parsed = JSON.parse(result);

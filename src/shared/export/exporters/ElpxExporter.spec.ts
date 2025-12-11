@@ -331,7 +331,7 @@ describe('ElpxExporter', () => {
                     title: 'Test & Project <Special>',
                     author: 'Author "Quote"',
                 },
-                samplePages
+                samplePages,
             );
             exporter = new ElpxExporter(document, resources, assets, zip);
 
@@ -584,9 +584,7 @@ describe('ElpxExporter', () => {
 
             const contentXml = zip.files.get('content.xml') as string;
             // Version ID format: YYYYMMDDHHmmss + 6 alphanumeric
-            const versionIdMatch = contentXml.match(
-                /<key>odeVersionId<\/key>\s*<value>(\d{14}[A-Z0-9]{6})<\/value>/
-            );
+            const versionIdMatch = contentXml.match(/<key>odeVersionId<\/key>\s*<value>(\d{14}[A-Z0-9]{6})<\/value>/);
             expect(versionIdMatch).toBeTruthy();
         });
     });

@@ -107,12 +107,7 @@ export class Epub3Exporter extends BaseExporter {
     private spineItems: SpineItem[] = [];
     private usedIds: Set<string> = new Set();
 
-    constructor(
-        document: ExportDocument,
-        resources: ResourceProvider,
-        assets: AssetProvider,
-        zip: ZipProvider
-    ) {
+    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         super(document, resources, assets, zip);
     }
 
@@ -236,7 +231,7 @@ export class Epub3Exporter extends BaseExporter {
                         this.addManifestItem(
                             this.generateUniqueId(`idevice-${idevice}-${path}`),
                             `idevices/${idevice}/${path}`,
-                            mimeType
+                            mimeType,
                         );
                     }
                 } catch {
@@ -245,7 +240,7 @@ export class Epub3Exporter extends BaseExporter {
             }
 
             // 9. Add project assets
-            const assetsAdded = await this.addEpubAssets();
+            const _assetsAdded = await this.addEpubAssets();
 
             // 10. Generate package.opf (OPF manifest)
             const packageOpf = this.generatePackageOpf(meta, bookId);
@@ -412,9 +407,8 @@ export class Epub3Exporter extends BaseExporter {
      * Build navigation list recursively
      */
     private buildNavList(pages: ExportPage[], allPages: ExportPage[], parentId: string | null = null): string {
-        const children = parentId === null
-            ? pages.filter(p => !p.parentId)
-            : pages.filter(p => p.parentId === parentId);
+        const children =
+            parentId === null ? pages.filter(p => !p.parentId) : pages.filter(p => p.parentId === parentId);
 
         if (children.length === 0) return '';
 
@@ -456,7 +450,7 @@ export class Epub3Exporter extends BaseExporter {
         page: ExportPage,
         allPages: ExportPage[],
         meta: ExportMetadata,
-        isIndex: boolean
+        isIndex: boolean,
     ): string {
         const lang = meta.language || 'en';
         const basePath = isIndex ? '' : '../';
@@ -496,14 +490,14 @@ export class Epub3Exporter extends BaseExporter {
         if (!xhtml.includes('<!DOCTYPE')) {
             xhtml = xhtml.replace(
                 '<?xml version="1.0" encoding="UTF-8"?>',
-                '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>'
+                '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>',
             );
         }
 
         // Add XHTML namespace to html element
         xhtml = xhtml.replace(
             /<html([^>]*)>/i,
-            `<html xmlns="${EPUB3_NAMESPACES.XHTML}" xml:lang="${lang}" lang="${lang}"$1>`
+            `<html xmlns="${EPUB3_NAMESPACES.XHTML}" xml:lang="${lang}" lang="${lang}"$1>`,
         );
 
         // Self-close void elements

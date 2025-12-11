@@ -517,7 +517,7 @@ describe('Epub3Exporter', () => {
                     title: 'Test & Project <Special>',
                     author: 'Author "Quote"',
                 },
-                samplePages
+                samplePages,
             );
             exporter = new Epub3Exporter(document, resources, assets, zip);
 

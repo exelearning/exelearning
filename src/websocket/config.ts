@@ -48,11 +48,7 @@ const SERVER_CONFIG: WsConfig = {
  * Detect if running in desktop mode
  */
 function isDesktopMode(): boolean {
-    return (
-        process.env.ELECTRON === '1' ||
-        process.env.DESKTOP_MODE === '1' ||
-        process.env.TAURI === '1'
-    );
+    return process.env.ELECTRON === '1' || process.env.DESKTOP_MODE === '1' || process.env.TAURI === '1';
 }
 
 /**

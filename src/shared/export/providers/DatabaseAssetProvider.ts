@@ -92,7 +92,7 @@ export class DatabaseAssetProvider implements AssetProvider {
         db: Kysely<Database>,
         projectId: number,
         sessionPath?: string,
-        queries?: Partial<DatabaseAssetProviderQueries>
+        queries?: Partial<DatabaseAssetProviderQueries>,
     ) {
         this.db = db;
         this.projectId = projectId;
@@ -231,9 +231,7 @@ export class DatabaseAssetProvider implements AssetProvider {
                     const asset: ExportAsset = {
                         id: dbAsset.client_id || String(dbAsset.id),
                         filename: dbAsset.filename,
-                        originalPath: dbAsset.client_id
-                            ? `${dbAsset.client_id}/${dbAsset.filename}`
-                            : dbAsset.filename,
+                        originalPath: dbAsset.client_id ? `${dbAsset.client_id}/${dbAsset.filename}` : dbAsset.filename,
                         mime: dbAsset.mime_type || 'application/octet-stream',
                         data: content,
                     };

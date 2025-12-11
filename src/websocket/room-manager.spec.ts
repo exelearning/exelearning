@@ -252,7 +252,7 @@ describe('Room Manager', () => {
             expect(getRoom('timeout-test')).toBeDefined();
 
             // Wait for cleanup timeout to fire
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             // Room should be deleted
             expect(getRoom('timeout-test')).toBeUndefined();
@@ -275,11 +275,11 @@ describe('Room Manager', () => {
             removeConnection('reconnect-test', ws1); // Schedules cleanup
 
             // Reconnect before timeout fires
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            await new Promise(resolve => setTimeout(resolve, 10));
             addConnection('reconnect-test', ws2);
 
             // Wait longer than original timeout
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             // Room should still exist (cleanup was cancelled)
             const room = getRoom('reconnect-test');
@@ -303,11 +303,11 @@ describe('Room Manager', () => {
 
             // Add connection during cleanup delay
             const ws2 = createMockWebSocket('client-2');
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            await new Promise(resolve => setTimeout(resolve, 10));
             addConnection('race-test', ws2);
 
             // Wait for timeout to fire
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             // Room should still exist with 1 connection
             const room = getRoom('race-test');
@@ -332,7 +332,7 @@ describe('Room Manager', () => {
             removeConnection('no-uuid-room', ws);
 
             // Wait for cleanup
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 50));
 
             // Room should be deleted without error
             expect(getRoom('no-uuid-room')).toBeUndefined();
@@ -480,10 +480,10 @@ describe('Room Manager', () => {
             expect(stats.totalConnections).toBe(3);
             expect(stats.rooms.length).toBe(2);
 
-            const roomA = stats.rooms.find((r) => r.name === 'room-a');
+            const roomA = stats.rooms.find(r => r.name === 'room-a');
             expect(roomA!.connections).toBe(2);
 
-            const roomB = stats.rooms.find((r) => r.name === 'room-b');
+            const roomB = stats.rooms.find(r => r.name === 'room-b');
             expect(roomB!.connections).toBe(1);
         });
     });

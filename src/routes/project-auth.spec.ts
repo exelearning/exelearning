@@ -20,168 +20,176 @@ let testProject: { id: number; uuid: string; owner_id: number };
 
 // Helper to create test app with project routes
 function createTestProjectApp(db: Kysely<Database>) {
-    return new Elysia()
-        .use(cookie())
-        .use(jwt({
-            name: 'jwt',
-            secret: 'test-secret-key-for-testing-only',
-            exp: '7d',
-        }))
-        .derive(async ({ jwt: jwtPlugin, cookie, request }) => {
-            const authHeader = request.headers.get('Authorization');
-            let token: string | undefined;
+    return (
+        new Elysia()
+            .use(cookie())
+            .use(
+                jwt({
+                    name: 'jwt',
+                    secret: 'test-secret-key-for-testing-only',
+                    exp: '7d',
+                }),
+            )
+            .derive(async ({ jwt: jwtPlugin, cookie, request }) => {
+                const authHeader = request.headers.get('Authorization');
+                let token: string | undefined;
 
-            if (authHeader?.startsWith('Bearer ')) {
-                token = authHeader.slice(7);
-            } else if (cookie.auth?.value) {
-                token = cookie.auth.value;
-            }
+                if (authHeader?.startsWith('Bearer ')) {
+                    token = authHeader.slice(7);
+                } else if (cookie.auth?.value) {
+                    token = cookie.auth.value;
+                }
 
-            if (!token) {
-                return { currentUser: null };
-            }
-
-            try {
-                const payload = await jwtPlugin.verify(token) as { sub: number } | false;
-                if (!payload || !payload.sub) {
+                if (!token) {
                     return { currentUser: null };
                 }
-                const user = await db.selectFrom('users')
+
+                try {
+                    const payload = (await jwtPlugin.verify(token)) as { sub: number } | false;
+                    if (!payload || !payload.sub) {
+                        return { currentUser: null };
+                    }
+                    const user = await db
+                        .selectFrom('users')
+                        .selectAll()
+                        .where('id', '=', payload.sub)
+                        .executeTakeFirst();
+                    return { currentUser: user || null };
+                } catch {
+                    return { currentUser: null };
+                }
+            })
+            // Create project endpoint
+            .post('/api/project/create-quick', async ({ body, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
+
+                const data = body as any;
+                const title = data.title || 'New Project';
+                const projectUuid = uuidv4();
+                const timestamp = now();
+
+                const project = await db
+                    .insertInto('projects')
+                    .values({
+                        uuid: projectUuid,
+                        title,
+                        owner_id: currentUser.id,
+                        saved_once: 0,
+                        status: 'active',
+                        visibility: 'private',
+                        is_active: 1,
+                        created_at: timestamp,
+                        updated_at: timestamp,
+                    })
+                    .returningAll()
+                    .executeTakeFirstOrThrow();
+
+                return { success: true, projectId: project.id, projectUuid: project.uuid };
+            })
+            // Get project sharing info
+            .get('/api/projects/:projectId/sharing', async ({ params, set, currentUser }) => {
+                const projectId = parseInt(params.projectId);
+                const project = await db
+                    .selectFrom('projects')
                     .selectAll()
-                    .where('id', '=', payload.sub)
+                    .where('id', '=', projectId)
                     .executeTakeFirst();
-                return { currentUser: user || null };
-            } catch {
-                return { currentUser: null };
-            }
-        })
-        // Create project endpoint
-        .post('/api/project/create-quick', async ({ body, set, currentUser }) => {
-            if (!currentUser) {
-                set.status = 401;
-                return { error: 'Unauthorized', message: 'Authentication required' };
-            }
 
-            const data = body as any;
-            const title = data.title || 'New Project';
-            const projectUuid = uuidv4();
-            const timestamp = now();
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND' };
+                }
 
-            const project = await db.insertInto('projects')
-                .values({
-                    uuid: projectUuid,
-                    title,
-                    owner_id: currentUser.id,
-                    saved_once: 0,
-                    status: 'active',
-                    visibility: 'private',
-                    is_active: 1,
-                    created_at: timestamp,
-                    updated_at: timestamp,
-                })
-                .returningAll()
-                .executeTakeFirstOrThrow();
+                return {
+                    responseMessage: 'OK',
+                    project: {
+                        id: project.id,
+                        isOwner: currentUser ? project.owner_id === currentUser.id : false,
+                    },
+                };
+            })
+            // Add collaborator
+            .post('/api/projects/:projectId/collaborators', async ({ params, body, set, currentUser }) => {
+                const projectId = parseInt(params.projectId);
+                const { email } = body as { email: string };
 
-            return { success: true, projectId: project.id, projectUuid: project.uuid };
-        })
-        // Get project sharing info
-        .get('/api/projects/:projectId/sharing', async ({ params, set, currentUser }) => {
-            const projectId = parseInt(params.projectId);
-            const project = await db.selectFrom('projects')
-                .selectAll()
-                .where('id', '=', projectId)
-                .executeTakeFirst();
+                const project = await db
+                    .selectFrom('projects')
+                    .selectAll()
+                    .where('id', '=', projectId)
+                    .executeTakeFirst();
 
-            if (!project) {
-                set.status = 404;
-                return { responseMessage: 'NOT_FOUND' };
-            }
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND' };
+                }
 
-            return {
-                responseMessage: 'OK',
-                project: {
-                    id: project.id,
-                    isOwner: currentUser ? project.owner_id === currentUser.id : false,
-                },
-            };
-        })
-        // Add collaborator
-        .post('/api/projects/:projectId/collaborators', async ({ params, body, set, currentUser }) => {
-            const projectId = parseInt(params.projectId);
-            const { email } = body as { email: string };
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED' };
+                }
 
-            const project = await db.selectFrom('projects')
-                .selectAll()
-                .where('id', '=', projectId)
-                .executeTakeFirst();
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN' };
+                }
 
-            if (!project) {
-                set.status = 404;
-                return { responseMessage: 'NOT_FOUND' };
-            }
+                const user = await db.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
 
-            if (!currentUser) {
-                set.status = 401;
-                return { responseMessage: 'UNAUTHORIZED' };
-            }
+                if (!user) {
+                    return { responseMessage: 'USER_NOT_FOUND' };
+                }
 
-            if (project.owner_id !== currentUser.id) {
-                set.status = 403;
-                return { responseMessage: 'FORBIDDEN' };
-            }
+                if (project.owner_id === user.id) {
+                    return { responseMessage: 'IS_OWNER' };
+                }
 
-            const user = await db.selectFrom('users')
-                .selectAll()
-                .where('email', '=', email)
-                .executeTakeFirst();
+                await db
+                    .insertInto('project_collaborators')
+                    .values({ project_id: projectId, user_id: user.id })
+                    .onConflict(oc => oc.doNothing())
+                    .execute();
 
-            if (!user) {
-                return { responseMessage: 'USER_NOT_FOUND' };
-            }
+                return { responseMessage: 'OK' };
+            })
+            // Update visibility
+            .patch('/api/projects/:projectId/visibility', async ({ params, body, set, currentUser }) => {
+                const projectId = parseInt(params.projectId);
+                const { visibility } = body as { visibility: 'public' | 'private' };
 
-            if (project.owner_id === user.id) {
-                return { responseMessage: 'IS_OWNER' };
-            }
+                const project = await db
+                    .selectFrom('projects')
+                    .selectAll()
+                    .where('id', '=', projectId)
+                    .executeTakeFirst();
 
-            await db.insertInto('project_collaborators')
-                .values({ project_id: projectId, user_id: user.id })
-                .onConflict((oc) => oc.doNothing())
-                .execute();
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND' };
+                }
 
-            return { responseMessage: 'OK' };
-        })
-        // Update visibility
-        .patch('/api/projects/:projectId/visibility', async ({ params, body, set, currentUser }) => {
-            const projectId = parseInt(params.projectId);
-            const { visibility } = body as { visibility: 'public' | 'private' };
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED' };
+                }
 
-            const project = await db.selectFrom('projects')
-                .selectAll()
-                .where('id', '=', projectId)
-                .executeTakeFirst();
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN' };
+                }
 
-            if (!project) {
-                set.status = 404;
-                return { responseMessage: 'NOT_FOUND' };
-            }
+                await db
+                    .updateTable('projects')
+                    .set({ visibility, updated_at: now() })
+                    .where('id', '=', projectId)
+                    .execute();
 
-            if (!currentUser) {
-                set.status = 401;
-                return { responseMessage: 'UNAUTHORIZED' };
-            }
-
-            if (project.owner_id !== currentUser.id) {
-                set.status = 403;
-                return { responseMessage: 'FORBIDDEN' };
-            }
-
-            await db.updateTable('projects')
-                .set({ visibility, updated_at: now() })
-                .where('id', '=', projectId)
-                .execute();
-
-            return { responseMessage: 'OK' };
-        });
+                return { responseMessage: 'OK' };
+            })
+    );
 }
 
 describe('Project Owner Assignment', () => {
@@ -200,7 +208,8 @@ describe('Project Owner Assignment', () => {
         const timestamp = now();
         const hashedPassword = await Bun.password.hash('test123', 'bcrypt');
 
-        user1 = await testDb.insertInto('users')
+        user1 = await testDb
+            .insertInto('users')
             .values({
                 email: 'owner@test.com',
                 user_id: 'user-owner-001',
@@ -213,7 +222,8 @@ describe('Project Owner Assignment', () => {
             .returningAll()
             .executeTakeFirstOrThrow();
 
-        user2 = await testDb.insertInto('users')
+        user2 = await testDb
+            .insertInto('users')
             .values({
                 email: 'other@test.com',
                 user_id: 'user-other-002',
@@ -270,7 +280,8 @@ describe('Project Owner Assignment', () => {
         expect(data.success).toBe(true);
 
         // Verify owner in database
-        const project = await testDb.selectFrom('projects')
+        const project = await testDb
+            .selectFrom('projects')
             .selectAll()
             .where('id', '=', data.projectId)
             .executeTakeFirst();
@@ -309,7 +320,8 @@ describe('Project Owner Assignment', () => {
         const data = await res.json();
 
         // Verify owner is user2, NOT user1 (which would be id=1 in many setups)
-        const project = await testDb.selectFrom('projects')
+        const project = await testDb
+            .selectFrom('projects')
             .selectAll()
             .where('id', '=', data.projectId)
             .executeTakeFirst();
@@ -332,7 +344,8 @@ describe('Project Sharing Authorization', () => {
         const timestamp = now();
         const hashedPassword = await Bun.password.hash('test123', 'bcrypt');
 
-        user1 = await testDb.insertInto('users')
+        user1 = await testDb
+            .insertInto('users')
             .values({
                 email: 'owner2@test.com',
                 user_id: 'user-owner2-001',
@@ -345,7 +358,8 @@ describe('Project Sharing Authorization', () => {
             .returningAll()
             .executeTakeFirstOrThrow();
 
-        user2 = await testDb.insertInto('users')
+        user2 = await testDb
+            .insertInto('users')
             .values({
                 email: 'collaborator@test.com',
                 user_id: 'user-collab-002',
@@ -371,7 +385,8 @@ describe('Project Sharing Authorization', () => {
 
         // Create a test project owned by user1
         const timestamp = now();
-        testProject = await testDb.insertInto('projects')
+        testProject = await testDb
+            .insertInto('projects')
             .values({
                 uuid: uuidv4(),
                 title: 'Test Project',
@@ -465,9 +480,7 @@ describe('Project Sharing Authorization', () => {
     });
 
     it('should return isOwner=false for unauthenticated users', async () => {
-        const res = await app.handle(
-            new Request(`http://localhost/api/projects/${testProject.id}/sharing`),
-        );
+        const res = await app.handle(new Request(`http://localhost/api/projects/${testProject.id}/sharing`));
 
         expect(res.status).toBe(200);
         const data = await res.json();

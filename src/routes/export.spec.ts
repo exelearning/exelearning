@@ -75,7 +75,7 @@ function createMockExporter() {
     return class MockExporter {
         export = async () => ({
             success: true,
-            data: new Uint8Array([0x50, 0x4B, 0x03, 0x04]), // PK header (valid ZIP)
+            data: new Uint8Array([0x50, 0x4b, 0x03, 0x04]), // PK header (valid ZIP)
             filename: 'test-export.zip',
         });
     };
@@ -108,7 +108,7 @@ function createMockExportSystem(): ExportSystemDeps {
             createZip = () => ({
                 addFile: () => {},
                 addFiles: () => {},
-                generate: async () => new Uint8Array([0x50, 0x4B, 0x03, 0x04]),
+                generate: async () => new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
             });
         } as any,
         Html5Exporter: MockExporter as any,
@@ -158,10 +158,7 @@ describe('Export Routes', () => {
         });
 
         // Create test content
-        await fs.writeFile(
-            path.join(testDir, 'tmp', testSessionId, 'content.xml'),
-            '<?xml version="1.0"?><ode></ode>',
-        );
+        await fs.writeFile(path.join(testDir, 'tmp', testSessionId, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
     });
 
     afterEach(async () => {
@@ -172,9 +169,7 @@ describe('Export Routes', () => {
 
     describe('GET /api/export/formats', () => {
         it('should return list of export formats', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/formats'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/formats'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -184,9 +179,7 @@ describe('Export Routes', () => {
         });
 
         it('should include HTML5 format', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/formats'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const html5 = body.formats.find((f: any) => f.id === 'html5');
@@ -196,9 +189,7 @@ describe('Export Routes', () => {
         });
 
         it('should include SCORM formats', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/formats'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const scorm12 = body.formats.find((f: any) => f.id === 'scorm12');
@@ -211,9 +202,7 @@ describe('Export Routes', () => {
         });
 
         it('should include EPUB3 format', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/formats'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const epub3 = body.formats.find((f: any) => f.id === 'epub3');
@@ -224,9 +213,7 @@ describe('Export Routes', () => {
         });
 
         it('should include IMS Content Package format', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/formats'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const ims = body.formats.find((f: any) => f.id === 'ims');
@@ -236,9 +223,7 @@ describe('Export Routes', () => {
         });
 
         it('should include ELP format', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/formats'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             const elp = body.formats.find((f: any) => f.id === 'elp');
@@ -248,9 +233,7 @@ describe('Export Routes', () => {
         });
 
         it('should include required properties for each format', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/formats'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/formats'));
 
             const body = await res.json();
             for (const format of body.formats) {
@@ -264,9 +247,7 @@ describe('Export Routes', () => {
 
     describe('GET /api/export/:odeSessionId/preview', () => {
         it('should return 404 for non-existent session', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/export/non-existent-session/preview'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/non-existent-session/preview'));
 
             expect(res.status).toBe(404);
             const body = await res.json();
@@ -275,9 +256,7 @@ describe('Export Routes', () => {
         });
 
         it('should return preview info when content exists', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/preview`),
-            );
+            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/preview`));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -292,9 +271,7 @@ describe('Export Routes', () => {
                 '<html><body>Test Content</body></html>',
             );
 
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/preview`),
-            );
+            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/preview`));
 
             expect(res.status).toBe(200);
             expect(res.headers.get('content-type')).toContain('text/html');
@@ -307,9 +284,7 @@ describe('Export Routes', () => {
             mockSessions.set('empty-session', { id: 'empty-session' });
             await fs.ensureDir(path.join(testDir, 'tmp', 'empty-session'));
 
-            const res = await app.handle(
-                new Request('http://localhost/api/export/empty-session/preview'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/export/empty-session/preview'));
 
             expect(res.status).toBe(404);
         });
@@ -336,9 +311,7 @@ describe('Export Routes', () => {
         });
 
         it('should return ZIP file for HTML5 export', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
-            );
+            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
             expect(res.headers.get('content-type')).toBe('application/zip');
@@ -347,18 +320,14 @@ describe('Export Routes', () => {
         });
 
         it('should include project name in filename', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
-            );
+            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
             const disposition = res.headers.get('content-disposition');
             expect(disposition).toContain('test-project');
         });
 
         it('should include content-length header', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
-            );
+            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
             expect(res.headers.get('content-length')).toBeDefined();
         });
@@ -434,9 +403,7 @@ describe('Export Routes', () => {
         }
 
         it('should reject unknown export types', async () => {
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/pdf/download`),
-            );
+            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/pdf/download`));
 
             expect(res.status).toBe(400);
         });
@@ -445,16 +412,14 @@ describe('Export Routes', () => {
     describe('unified export system integration', () => {
         it('should use ElpDocumentAdapter from shared export system', async () => {
             // This test verifies that the route uses the injected export system
-            const res = await app.handle(
-                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
-            );
+            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
             // The mock exporter returns a valid ZIP header
             const buffer = await res.arrayBuffer();
             const bytes = new Uint8Array(buffer);
             expect(bytes[0]).toBe(0x50); // 'P'
-            expect(bytes[1]).toBe(0x4B); // 'K'
+            expect(bytes[1]).toBe(0x4b); // 'K'
         });
 
         it('should pass session structure to ElpDocumentAdapter', async () => {
@@ -469,10 +434,7 @@ describe('Export Routes', () => {
             // Create temp dir and content.xml for fallback path
             const noStructureTempDir = path.join(testDir, 'tmp', noStructureSessionId);
             await fs.ensureDir(noStructureTempDir);
-            await fs.writeFile(
-                path.join(noStructureTempDir, 'content.xml'),
-                '<?xml version="1.0"?><ode></ode>',
-            );
+            await fs.writeFile(path.join(noStructureTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
             await fs.ensureDir(path.join(testDir, 'dist', noStructureSessionId));
 
             const res = await app.handle(

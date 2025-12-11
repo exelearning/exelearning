@@ -12,6 +12,7 @@ import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
 import { getSession as getSessionDefault } from '../services/session-manager';
+import type { ExportOptionsRequest } from './types/request-payloads';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -165,8 +166,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
     const fs = deps.fs ?? fsExtra;
     const path = deps.path ?? pathModule;
     const { getSession } = deps.sessionManager ?? defaultSessionManager;
-    const { getOdeSessionTempDir, getOdeSessionDistDir, fileExists, readFile } =
-        deps.fileHelper ?? defaultFileHelper;
+    const { getOdeSessionTempDir, getOdeSessionDistDir, fileExists, readFile } = deps.fileHelper ?? defaultFileHelper;
     const exportSystem = deps.exportSystem ?? defaultExportSystem;
     const { db, findProjectByUuid } = deps.database ?? defaultDatabase;
     const publicDir = deps.publicDir ?? defaultPublicDir;
@@ -199,7 +199,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
     async function prepareExport(
         sessionId: string,
         exportType: string,
-        options: any = {}
+        options: ExportOptionsRequest = {},
     ): Promise<ExportResult & { zipPath?: string }> {
         const session = getSession(sessionId);
         if (!session) {
@@ -251,9 +251,8 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 }
             }
 
-            const assets: AssetProvider = assetProviders.length > 1
-                ? new CombinedAssetProvider(assetProviders)
-                : fsAssets;
+            const assets: AssetProvider =
+                assetProviders.length > 1 ? new CombinedAssetProvider(assetProviders) : fsAssets;
 
             // Select exporter based on format
             let exporter;
@@ -298,9 +297,10 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             }
 
             return { ...result, zipPath };
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[Export] Error during ${exportType} export:`, error);
-            return { success: false, error: error.message };
+            return { success: false, error: errorMessage };
         }
     }
 
@@ -308,160 +308,164 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
     // Routes
     // ========================================================================
 
-    return new Elysia({ prefix: '/api/export' })
+    return (
+        new Elysia({ prefix: '/api/export' })
 
-    // =====================================================
-    // Get Available Formats
-    // =====================================================
+            // =====================================================
+            // Get Available Formats
+            // =====================================================
 
-    // GET /api/export/formats - List available export formats
-    .get('/formats', () => {
-        return {
-            success: true,
-            formats: EXPORT_FORMATS,
-        };
-    })
+            // GET /api/export/formats - List available export formats
+            .get('/formats', () => {
+                return {
+                    success: true,
+                    formats: EXPORT_FORMATS,
+                };
+            })
 
-    // =====================================================
-    // Preview Export
-    // =====================================================
+            // =====================================================
+            // Preview Export
+            // =====================================================
 
-    // GET /api/export/:odeSessionId/preview - Preview exported content
-    .get('/:odeSessionId/preview', async ({ params, set }) => {
-        const { odeSessionId } = params;
+            // GET /api/export/:odeSessionId/preview - Preview exported content
+            .get('/:odeSessionId/preview', async ({ params, set }) => {
+                const { odeSessionId } = params;
 
-        const session = getSession(odeSessionId);
-        if (!session) {
-            set.status = 404;
-            return { success: false, error: 'Session not found' };
-        }
+                const session = getSession(odeSessionId);
+                if (!session) {
+                    set.status = 404;
+                    return { success: false, error: 'Session not found' };
+                }
 
-        // Get temp directory
-        const tempDir = getOdeSessionTempDir(odeSessionId);
+                // Get temp directory
+                const tempDir = getOdeSessionTempDir(odeSessionId);
 
-        // Check for index.html
-        const indexPath = path.join(tempDir, 'index.html');
-        if (await fileExists(indexPath)) {
-            const content = await readFile(indexPath);
-            set.headers['content-type'] = 'text/html; charset=utf-8';
-            return content.toString('utf-8');
-        }
+                // Check for index.html
+                const indexPath = path.join(tempDir, 'index.html');
+                if (await fileExists(indexPath)) {
+                    const content = await readFile(indexPath);
+                    set.headers['content-type'] = 'text/html; charset=utf-8';
+                    return content.toString('utf-8');
+                }
 
-        // Generate basic preview
-        const contentXmlPath = path.join(tempDir, 'content.xml');
-        if (await fileExists(contentXmlPath)) {
-            return {
-                success: true,
-                message: 'Project loaded, preview not yet generated',
-                sessionId: odeSessionId,
-                hasContent: true,
-            };
-        }
+                // Generate basic preview
+                const contentXmlPath = path.join(tempDir, 'content.xml');
+                if (await fileExists(contentXmlPath)) {
+                    return {
+                        success: true,
+                        message: 'Project loaded, preview not yet generated',
+                        sessionId: odeSessionId,
+                        hasContent: true,
+                    };
+                }
 
-        set.status = 404;
-        return { success: false, error: 'No content found for preview' };
-    })
+                set.status = 404;
+                return { success: false, error: 'No content found for preview' };
+            })
 
-    // =====================================================
-    // Download Export (GET)
-    // =====================================================
+            // =====================================================
+            // Download Export (GET)
+            // =====================================================
 
-    // GET /api/export/:odeSessionId/:exportType/download - Download export
-    .get('/:odeSessionId/:exportType/download', async ({ params, set }) => {
-        const { odeSessionId, exportType } = params;
+            // GET /api/export/:odeSessionId/:exportType/download - Download export
+            .get('/:odeSessionId/:exportType/download', async ({ params, set }) => {
+                const { odeSessionId, exportType } = params;
 
-        const session = getSession(odeSessionId);
-        if (!session) {
-            set.status = 404;
-            return { success: false, error: 'Session not found' };
-        }
+                const session = getSession(odeSessionId);
+                if (!session) {
+                    set.status = 404;
+                    return { success: false, error: 'Session not found' };
+                }
 
-        // Validate export type
-        const format = EXPORT_FORMATS.find(f => f.id === exportType);
-        if (!format) {
-            set.status = 400;
-            return {
-                success: false,
-                error: `Invalid export type: ${exportType}`,
-                validTypes: EXPORT_FORMATS.map(f => f.id),
-            };
-        }
+                // Validate export type
+                const format = EXPORT_FORMATS.find(f => f.id === exportType);
+                if (!format) {
+                    set.status = 400;
+                    return {
+                        success: false,
+                        error: `Invalid export type: ${exportType}`,
+                        validTypes: EXPORT_FORMATS.map(f => f.id),
+                    };
+                }
 
-        try {
-            // Prepare export
-            const exportResult = await prepareExport(odeSessionId, exportType);
+                try {
+                    // Prepare export
+                    const exportResult = await prepareExport(odeSessionId, exportType);
 
-            if (!exportResult.success) {
-                set.status = 500;
-                return { success: false, error: exportResult.error };
-            }
+                    if (!exportResult.success) {
+                        set.status = 500;
+                        return { success: false, error: exportResult.error };
+                    }
 
-            // Read the zip file
-            const zipBuffer = await readFile(exportResult.zipPath!);
+                    // Read the zip file
+                    const zipBuffer = await readFile(exportResult.zipPath!);
 
-            // Set headers for download
-            const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
-            set.headers['content-type'] = format.mimeType;
-            set.headers['content-disposition'] = `attachment; filename="${filename}"`;
-            set.headers['content-length'] = zipBuffer.length.toString();
+                    // Set headers for download
+                    const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    set.headers['content-type'] = format.mimeType;
+                    set.headers['content-disposition'] = `attachment; filename="${filename}"`;
+                    set.headers['content-length'] = zipBuffer.length.toString();
 
-            return zipBuffer;
-        } catch (error: any) {
-            set.status = 500;
-            return { success: false, error: error.message };
-        }
-    })
+                    return zipBuffer;
+                } catch (error: unknown) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    set.status = 500;
+                    return { success: false, error: errorMessage };
+                }
+            })
 
-    // =====================================================
-    // Download Export (POST)
-    // =====================================================
+            // =====================================================
+            // Download Export (POST)
+            // =====================================================
 
-    // POST /api/export/:odeSessionId/:exportType/download - Download export with options
-    .post('/:odeSessionId/:exportType/download', async ({ params, body, set }) => {
-        const { odeSessionId, exportType } = params;
-        const options = body as any;
+            // POST /api/export/:odeSessionId/:exportType/download - Download export with options
+            .post('/:odeSessionId/:exportType/download', async ({ params, body, set }) => {
+                const { odeSessionId, exportType } = params;
+                const options = body as ExportOptionsRequest;
 
-        const session = getSession(odeSessionId);
-        if (!session) {
-            set.status = 404;
-            return { success: false, error: 'Session not found' };
-        }
+                const session = getSession(odeSessionId);
+                if (!session) {
+                    set.status = 404;
+                    return { success: false, error: 'Session not found' };
+                }
 
-        // Validate export type
-        const format = EXPORT_FORMATS.find(f => f.id === exportType);
-        if (!format) {
-            set.status = 400;
-            return {
-                success: false,
-                error: `Invalid export type: ${exportType}`,
-                validTypes: EXPORT_FORMATS.map(f => f.id),
-            };
-        }
+                // Validate export type
+                const format = EXPORT_FORMATS.find(f => f.id === exportType);
+                if (!format) {
+                    set.status = 400;
+                    return {
+                        success: false,
+                        error: `Invalid export type: ${exportType}`,
+                        validTypes: EXPORT_FORMATS.map(f => f.id),
+                    };
+                }
 
-        try {
-            // Prepare export with options
-            const exportResult = await prepareExport(odeSessionId, exportType, options);
+                try {
+                    // Prepare export with options
+                    const exportResult = await prepareExport(odeSessionId, exportType, options);
 
-            if (!exportResult.success) {
-                set.status = 500;
-                return { success: false, error: exportResult.error };
-            }
+                    if (!exportResult.success) {
+                        set.status = 500;
+                        return { success: false, error: exportResult.error };
+                    }
 
-            // Read the zip file
-            const zipBuffer = await readFile(exportResult.zipPath!);
+                    // Read the zip file
+                    const zipBuffer = await readFile(exportResult.zipPath!);
 
-            // Set headers for download
-            const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
-            set.headers['content-type'] = format.mimeType;
-            set.headers['content-disposition'] = `attachment; filename="${filename}"`;
-            set.headers['content-length'] = zipBuffer.length.toString();
+                    // Set headers for download
+                    const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    set.headers['content-type'] = format.mimeType;
+                    set.headers['content-disposition'] = `attachment; filename="${filename}"`;
+                    set.headers['content-length'] = zipBuffer.length.toString();
 
-            return zipBuffer;
-        } catch (error: any) {
-            set.status = 500;
-            return { success: false, error: error.message };
-        }
-    });
+                    return zipBuffer;
+                } catch (error: unknown) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    set.status = 500;
+                    return { success: false, error: errorMessage };
+                }
+            })
+    );
 }
 
 // ============================================================================

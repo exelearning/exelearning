@@ -244,11 +244,7 @@ export function cancelCleanup(docName: string): void {
 /**
  * Relay message to all other clients in the room
  */
-export function relayMessage(
-    sender: ServerWebSocket<WsData>,
-    docName: string,
-    message: Buffer | string,
-): void {
+export function relayMessage(sender: ServerWebSocket<WsData>, docName: string, message: Buffer | string): void {
     const room = rooms.get(docName);
     if (!room) return;
 

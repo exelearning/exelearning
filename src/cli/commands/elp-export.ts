@@ -41,15 +41,7 @@ import {
     ImsExporter,
 } from '../../shared/export';
 
-export const VALID_FORMATS = [
-    'html5',
-    'html5-sp',
-    'scorm12',
-    'scorm2004',
-    'ims',
-    'epub3',
-    'elpx',
-] as const;
+export const VALID_FORMATS = ['html5', 'html5-sp', 'scorm12', 'scorm2004', 'ims', 'epub3', 'elpx'] as const;
 export type ExportFormat = (typeof VALID_FORMATS)[number];
 
 export interface ElpExportResult {
@@ -59,7 +51,7 @@ export interface ElpExportResult {
 
 export async function execute(
     positional: string[],
-    flags: Record<string, string | boolean | string[]>
+    flags: Record<string, string | boolean | string[]>,
 ): Promise<ElpExportResult> {
     if (hasHelp(flags)) {
         printHelp();
@@ -68,10 +60,7 @@ export async function execute(
 
     const input = positional[0] || getString(flags, 'input');
     const output = positional[1] || getString(flags, 'output');
-    const format = (positional[2] ||
-        getString(flags, 'format') ||
-        getString(flags, 'f') ||
-        'html5') as string;
+    const format = (positional[2] || getString(flags, 'format') || getString(flags, 'f') || 'html5') as string;
     const baseUrl = getString(flags, 'base-url') || getString(flags, 'b');
     const theme = getString(flags, 'theme') || getString(flags, 't');
     const debug = getBoolean(flags, 'debug') || getBoolean(flags, 'd');
@@ -80,16 +69,14 @@ export async function execute(
     if (!input) {
         return {
             success: false,
-            message:
-                'INPUT is required. Use: elp:export <input> <output> [format]',
+            message: 'INPUT is required. Use: elp:export <input> <output> [format]',
         };
     }
 
     if (!output) {
         return {
             success: false,
-            message:
-                'OUTPUT is required. Use: elp:export <input> <output> [format]',
+            message: 'OUTPUT is required. Use: elp:export <input> <output> [format]',
         };
     }
 
@@ -153,10 +140,7 @@ export async function execute(
         }
 
         // Create providers
-        const publicDir = path.resolve(
-            process.cwd(),
-            process.env.PUBLIC_DIR || 'public'
-        );
+        const publicDir = path.resolve(process.cwd(), process.env.PUBLIC_DIR || 'public');
         const resourceProvider = new FileSystemResourceProvider(publicDir);
 
         // Get the extracted ELP directory path from the adapter
@@ -169,44 +153,19 @@ export async function execute(
         let exporter;
         switch (format) {
             case 'html5':
-                exporter = new Html5Exporter(
-                    document,
-                    resourceProvider,
-                    assetProvider,
-                    zipProvider
-                );
+                exporter = new Html5Exporter(document, resourceProvider, assetProvider, zipProvider);
                 break;
             case 'html5-sp':
-                exporter = new PageExporter(
-                    document,
-                    resourceProvider,
-                    assetProvider,
-                    zipProvider
-                );
+                exporter = new PageExporter(document, resourceProvider, assetProvider, zipProvider);
                 break;
             case 'scorm12':
-                exporter = new Scorm12Exporter(
-                    document,
-                    resourceProvider,
-                    assetProvider,
-                    zipProvider
-                );
+                exporter = new Scorm12Exporter(document, resourceProvider, assetProvider, zipProvider);
                 break;
             case 'scorm2004':
-                exporter = new Scorm2004Exporter(
-                    document,
-                    resourceProvider,
-                    assetProvider,
-                    zipProvider
-                );
+                exporter = new Scorm2004Exporter(document, resourceProvider, assetProvider, zipProvider);
                 break;
             case 'ims':
-                exporter = new ImsExporter(
-                    document,
-                    resourceProvider,
-                    assetProvider,
-                    zipProvider
-                );
+                exporter = new ImsExporter(document, resourceProvider, assetProvider, zipProvider);
                 break;
             case 'epub3':
                 return {
@@ -218,11 +177,7 @@ export async function execute(
                     success: false,
                     message: 'ELPX re-export not yet implemented',
                 };
-            default:
-                return {
-                    success: false,
-                    message: `Unsupported format: ${format}`,
-                };
+            // No default needed - invalid formats are caught by VALID_FORMATS check above
         }
 
         // Run export
@@ -244,9 +199,7 @@ export async function execute(
         }
 
         // Write output
-        const outputPath = output.endsWith('.zip')
-            ? output
-            : `${output}${exporter.getFileExtension()}`;
+        const outputPath = output.endsWith('.zip') ? output : `${output}${exporter.getFileExtension()}`;
 
         // Ensure output directory exists
         const outputDir = path.dirname(outputPath);
@@ -271,8 +224,7 @@ export async function execute(
             message: `Export completed: ${outputPath} (format: ${format})`,
         };
     } catch (error) {
-        const errorMessage =
-            error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return {
             success: false,
             message: `Export failed: ${errorMessage}`,

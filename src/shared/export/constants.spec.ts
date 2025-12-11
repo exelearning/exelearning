@@ -108,7 +108,7 @@ describe('Constants', () => {
         });
 
         it('all configs should have required properties', () => {
-            for (const [key, config] of Object.entries(IDEVICE_CONFIGS)) {
+            for (const [_key, config] of Object.entries(IDEVICE_CONFIGS)) {
                 expect(config.cssClass).toBeDefined();
                 expect(config.componentType).toBeDefined();
                 expect(config.template).toBeDefined();
@@ -144,7 +144,7 @@ describe('Constants', () => {
 
     describe('LIBRARY_PATTERNS', () => {
         it('should have patterns for common libraries', () => {
-            const patternNames = LIBRARY_PATTERNS.map((p) => p.name);
+            const patternNames = LIBRARY_PATTERNS.map(p => p.name);
             expect(patternNames).toContain('exe_effects');
             expect(patternNames).toContain('exe_games');
             expect(patternNames).toContain('exe_lightbox');
@@ -164,27 +164,27 @@ describe('Constants', () => {
         });
 
         it('should have class type patterns', () => {
-            const classPatterns = LIBRARY_PATTERNS.filter((p) => p.type === 'class');
+            const classPatterns = LIBRARY_PATTERNS.filter(p => p.type === 'class');
             expect(classPatterns.length).toBeGreaterThan(0);
         });
 
         it('should have regex type patterns', () => {
-            const regexPatterns = LIBRARY_PATTERNS.filter((p) => p.type === 'regex');
+            const regexPatterns = LIBRARY_PATTERNS.filter(p => p.type === 'regex');
             expect(regexPatterns.length).toBeGreaterThan(0);
         });
 
         it('should have rel type patterns', () => {
-            const relPatterns = LIBRARY_PATTERNS.filter((p) => p.type === 'rel');
+            const relPatterns = LIBRARY_PATTERNS.filter(p => p.type === 'rel');
             expect(relPatterns.length).toBeGreaterThan(0);
         });
 
         it('exe_effects pattern should match exe-fx class', () => {
-            const effectsPattern = LIBRARY_PATTERNS.find((p) => p.name === 'exe_effects');
+            const effectsPattern = LIBRARY_PATTERNS.find(p => p.name === 'exe_effects');
             expect(effectsPattern?.pattern).toBe('exe-fx');
         });
 
         it('exe_math pattern should match LaTeX expressions', () => {
-            const mathPattern = LIBRARY_PATTERNS.find((p) => p.name === 'exe_math');
+            const mathPattern = LIBRARY_PATTERNS.find(p => p.name === 'exe_math');
             expect(mathPattern?.type).toBe('regex');
             expect(mathPattern?.pattern).toBeInstanceOf(RegExp);
         });
@@ -200,14 +200,12 @@ describe('Constants', () => {
         });
 
         it('should include Bootstrap', () => {
-            expect(BASE_LIBRARIES.some((lib) => lib.includes('bootstrap'))).toBe(true);
+            expect(BASE_LIBRARIES.some(lib => lib.includes('bootstrap'))).toBe(true);
         });
 
         it('should have correct order (jQuery before Bootstrap)', () => {
             const jqueryIndex = BASE_LIBRARIES.indexOf('jquery/jquery.min.js');
-            const bootstrapIndex = BASE_LIBRARIES.findIndex((lib) =>
-                lib.includes('bootstrap.bundle')
-            );
+            const bootstrapIndex = BASE_LIBRARIES.findIndex(lib => lib.includes('bootstrap.bundle'));
             expect(jqueryIndex).toBeLessThan(bootstrapIndex);
         });
     });

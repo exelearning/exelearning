@@ -212,7 +212,7 @@ describe('Template Service', () => {
 
     describe('filter chaining', () => {
         it('should allow chaining filters', () => {
-            const result = env.renderString("{{ data | json | safe }}", { data: { test: true } });
+            const result = env.renderString('{{ data | json | safe }}', { data: { test: true } });
             expect(result).toBe('{"test":true}');
         });
     });

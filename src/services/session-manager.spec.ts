@@ -6,11 +6,7 @@
  * No mock.module() needed - tests are fully isolated
  */
 import { describe, it, expect, beforeEach } from 'bun:test';
-import {
-    createSessionManager,
-    type SessionManager,
-    type ProjectSession,
-} from './session-manager';
+import { createSessionManager, type SessionManager } from './session-manager';
 
 describe('Session Manager', () => {
     let manager: SessionManager;

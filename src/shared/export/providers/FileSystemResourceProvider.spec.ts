@@ -33,11 +33,23 @@ describe('FileSystemResourceProvider', () => {
 
         // Create test files
         // Theme files
-        await fs.writeFile(path.join(testDir, 'files', 'perm', 'themes', 'base', 'base', 'content.css'), '.base { color: red; }');
-        await fs.writeFile(path.join(testDir, 'files', 'perm', 'themes', 'base', 'base', 'default.js'), 'console.log("base");');
+        await fs.writeFile(
+            path.join(testDir, 'files', 'perm', 'themes', 'base', 'base', 'content.css'),
+            '.base { color: red; }',
+        );
+        await fs.writeFile(
+            path.join(testDir, 'files', 'perm', 'themes', 'base', 'base', 'default.js'),
+            'console.log("base");',
+        );
         // iDevice files
-        await fs.writeFile(path.join(testDir, 'files', 'perm', 'idevices', 'base', 'text', 'export', 'text.css'), '.text {}');
-        await fs.writeFile(path.join(testDir, 'files', 'perm', 'idevices', 'base', 'text', 'export', 'text.js'), '/* text */');
+        await fs.writeFile(
+            path.join(testDir, 'files', 'perm', 'idevices', 'base', 'text', 'export', 'text.css'),
+            '.text {}',
+        );
+        await fs.writeFile(
+            path.join(testDir, 'files', 'perm', 'idevices', 'base', 'text', 'export', 'text.js'),
+            '/* text */',
+        );
         // Library files
         await fs.writeFile(path.join(testDir, 'libs', 'jquery', 'jquery.min.js'), '/* jQuery */');
         await fs.writeFile(path.join(testDir, 'libs', 'bootstrap', 'bootstrap.bundle.min.js'), '/* Bootstrap JS */');
@@ -214,9 +226,18 @@ describe('FileSystemResourceProvider', () => {
         it('should recursively read nested directories', async () => {
             // Create nested structure in the correct theme path
             await fs.ensureDir(path.join(testDir, 'files', 'perm', 'themes', 'base', 'nested', 'level1', 'level2'));
-            await fs.writeFile(path.join(testDir, 'files', 'perm', 'themes', 'base', 'nested', 'file1.css'), '.file1 {}');
-            await fs.writeFile(path.join(testDir, 'files', 'perm', 'themes', 'base', 'nested', 'level1', 'file2.css'), '.file2 {}');
-            await fs.writeFile(path.join(testDir, 'files', 'perm', 'themes', 'base', 'nested', 'level1', 'level2', 'file3.css'), '.file3 {}');
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'themes', 'base', 'nested', 'file1.css'),
+                '.file1 {}',
+            );
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'themes', 'base', 'nested', 'level1', 'file2.css'),
+                '.file2 {}',
+            );
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'themes', 'base', 'nested', 'level1', 'level2', 'file3.css'),
+                '.file3 {}',
+            );
 
             const files = await provider.fetchTheme('nested');
 

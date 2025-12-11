@@ -1361,44 +1361,51 @@ export default class IdeviceNode {
     */
 
     /**
+     * Download/export an iDevice or block as .idevice.elp or .block.elp
+     * Uses the ComponentExporter to generate the file from Yjs document in memory.
      *
-     * @param {*} odeBlockId
-     * @param {*} odeIdeviceId
+     * @param {string} odeBlockId - Block ID to export
+     * @param {string} odeIdeviceId - iDevice ID (or 'null' to export entire block)
      */
     async downloadIdeviceSelected(odeBlockId, odeIdeviceId) {
-        let odeSessionId = eXeLearning.app.project.odeSession;
+        try {
+            // Get the Yjs document manager and asset manager from eXeLearning app
+            const documentManager = eXeLearning.app.project._yjsBridge?.getDocumentManager();
+            const assetManager = eXeLearning.app.project._yjsBridge?.assetManager;
 
-        let response = await eXeLearning.app.api.getOdeIdevicesDownload(
-            odeSessionId,
-            odeBlockId,
-            odeIdeviceId
-        );
-        const responseBody = response['response'];
-        if (
-            typeof responseBody === 'string' &&
-            responseBody.includes('responseMessage')
-        ) {
-            // Response to show always on 3
-            let bodyResponse = responseBody.split('"');
-            eXeLearning.app.modals.alert.show({
-                title: _('Download error'),
-                body: bodyResponse[3],
-                contentId: 'error',
-            });
-        } else {
-            const downloadUrl = response['url'];
-            if (downloadUrl) {
-                const fileName = buildComponentFileName(
-                    odeIdeviceId,
-                    '.idevice'
-                );
-                await downloadComponentFile(downloadUrl, fileName, {
-                    absoluteKey: buildComponentStorageKey(
-                        odeIdeviceId,
-                        'idevice'
-                    ),
+            if (!documentManager) {
+                console.error('[ideviceNode] DocumentManager not available');
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: _('Document manager not available'),
+                    contentId: 'error',
+                });
+                return;
+            }
+
+            // Create ComponentExporter and configure it
+            const exporter = new ComponentExporter(documentManager, null);
+            if (assetManager) {
+                exporter.setAssetManager(assetManager);
+            }
+
+            // Export the component
+            const result = await exporter.exportComponent(odeBlockId, odeIdeviceId);
+
+            if (!result.success) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: _(result.error || 'Export failed'),
+                    contentId: 'error',
                 });
             }
+        } catch (error) {
+            console.error('[ideviceNode] Export error:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Download error'),
+                body: error.message || _('An unexpected error occurred'),
+                contentId: 'error',
+            });
         }
     }
 

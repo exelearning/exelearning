@@ -8,7 +8,7 @@
  *   --dry-run            Show what would be deleted without deleting
  */
 import { parseArgs, getNumber, getBoolean, hasHelp } from '../utils/args';
-import { success, error, warning, info, colors, table, EXIT_CODES } from '../utils/output';
+import { success, error, warning, info, colors, EXIT_CODES } from '../utils/output';
 import { getTempPath } from '../../services/file-helper';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -36,11 +36,7 @@ interface CleanupStats {
 /**
  * Recursively clean a directory, removing old files and empty directories
  */
-async function cleanupDirectory(
-    dirPath: string,
-    thresholdMs: number,
-    dryRun: boolean,
-): Promise<CleanupStats> {
+async function cleanupDirectory(dirPath: string, thresholdMs: number, dryRun: boolean): Promise<CleanupStats> {
     const stats: CleanupStats = {
         filesRemoved: 0,
         dirsRemoved: 0,
@@ -196,7 +192,7 @@ ${colors.cyan('Examples:')}
 export async function runCli(
     argv: string[],
     deps: TmpCleanupDependencies = defaultDependencies,
-    exitFn: (code: number) => void = (code) => process.exit(code),
+    exitFn: (code: number) => void = code => process.exit(code),
 ): Promise<void> {
     const { positional, flags } = parseArgs(argv);
 

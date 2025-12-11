@@ -32,9 +32,7 @@ describe('Games Routes', () => {
 
     describe('GET /api/games/:odeSessionId/idevices', () => {
         it('should return empty array for non-existent session', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/games/non-existent-session/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/non-existent-session/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -47,9 +45,7 @@ describe('Games Routes', () => {
                 sessionId: 'test-session-1',
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-session-1/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-session-1/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -102,9 +98,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-session-2/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-session-2/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -150,9 +144,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-session-3/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-session-3/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -181,9 +173,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-session-4/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-session-4/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -223,9 +213,7 @@ describe('Games Routes', () => {
                                 {
                                     id: 'block-2',
                                     name: 'Block 2',
-                                    components: [
-                                        { id: 'comp-3', type: 'crossword' },
-                                    ],
+                                    components: [{ id: 'comp-3', type: 'crossword' }],
                                 },
                             ],
                         },
@@ -233,9 +221,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-session-5/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-session-5/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -271,9 +257,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/my-session-id/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/my-session-id/idevices'));
 
             const data = await response.json();
             expect(data.data[0].ode_session_id).toBe('my-session-id');
@@ -299,9 +283,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-session-single/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-session-single/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -343,7 +325,7 @@ describe('Games Routes', () => {
             });
 
             const response = await app.handle(
-                new Request('http://localhost/api/games/test-blocks-no-components/idevices')
+                new Request('http://localhost/api/games/test-blocks-no-components/idevices'),
             );
 
             expect(response.status).toBe(200);
@@ -381,7 +363,7 @@ describe('Games Routes', () => {
             });
 
             const response = await app.handle(
-                new Request('http://localhost/api/games/test-simplified-blocks-no-components/idevices')
+                new Request('http://localhost/api/games/test-simplified-blocks-no-components/idevices'),
             );
 
             expect(response.status).toBe(200);
@@ -424,9 +406,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-parent-id/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-parent-id/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -477,7 +457,7 @@ describe('Games Routes', () => {
             });
 
             const response = await app.handle(
-                new Request('http://localhost/api/games/test-isactive-undefined/idevices')
+                new Request('http://localhost/api/games/test-isactive-undefined/idevices'),
             );
 
             expect(response.status).toBe(200);
@@ -525,9 +505,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-json-object/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-json-object/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -573,9 +551,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-html-object/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-html-object/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();

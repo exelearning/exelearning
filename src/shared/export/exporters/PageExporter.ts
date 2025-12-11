@@ -26,12 +26,7 @@ import type {
 import { Html5Exporter } from './Html5Exporter';
 
 export class PageExporter extends Html5Exporter {
-    constructor(
-        document: ExportDocument,
-        resources: ResourceProvider,
-        assets: AssetProvider,
-        zip: ZipProvider
-    ) {
+    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         super(document, resources, assets, zip);
     }
 
@@ -52,7 +47,7 @@ export class PageExporter extends Html5Exporter {
             let pages = this.buildPageList();
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
-            const themeName = (options as any)?.theme || meta.theme || 'base';
+            const themeName = options?.theme || meta.theme || 'base';
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
@@ -96,8 +91,7 @@ export class PageExporter extends Html5Exporter {
             // 6. Fetch and add iDevice assets
             for (const idevice of usedIdevices) {
                 try {
-                    const ideviceFiles =
-                        await this.resources.fetchIdeviceResources(idevice);
+                    const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [path, content] of ideviceFiles) {
                         this.zip.addFile(`idevices/${idevice}/${path}`, content);
                     }
@@ -128,11 +122,7 @@ export class PageExporter extends Html5Exporter {
     /**
      * Generate single-page HTML with all pages
      */
-    generateSinglePageHtml(
-        pages: ExportPage[],
-        meta: ExportMetadata,
-        usedIdevices: string[]
-    ): string {
+    generateSinglePageHtml(pages: ExportPage[], meta: ExportMetadata, usedIdevices: string[]): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
             language: meta.language || 'en',

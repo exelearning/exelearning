@@ -71,13 +71,9 @@ describe('Database Migrations', () => {
             await migrateToLatest(db);
 
             // Verify tables exist by querying them
-            const tables = await db
-                .selectFrom('sqlite_master')
-                .select('name')
-                .where('type', '=', 'table')
-                .execute();
+            const tables = await db.selectFrom('sqlite_master').select('name').where('type', '=', 'table').execute();
 
-            const tableNames = tables.map((t) => t.name);
+            const tableNames = tables.map(t => t.name);
             expect(tableNames).toContain('users');
             expect(tableNames).toContain('projects');
             expect(tableNames).toContain('assets');
@@ -86,14 +82,15 @@ describe('Database Migrations', () => {
         it('should handle migration errors', async () => {
             // Create mock dependencies that return an error
             const mockDeps: MigrationDependencies = {
-                createMigrator: () => ({
-                    migrateToLatest: async () => ({
-                        error: new Error('Migration failed: test error'),
-                        results: [],
-                    }),
-                    migrateDown: async () => ({ results: [] }),
-                    getMigrations: async () => [],
-                } as unknown as Migrator),
+                createMigrator: () =>
+                    ({
+                        migrateToLatest: async () => ({
+                            error: new Error('Migration failed: test error'),
+                            results: [],
+                        }),
+                        migrateDown: async () => ({ results: [] }),
+                        getMigrations: async () => [],
+                    }) as unknown as Migrator,
             };
 
             const result = await migrateToLatest(db, mockDeps);
@@ -144,14 +141,15 @@ describe('Database Migrations', () => {
         it('should handle rollback errors', async () => {
             // Create mock dependencies that return an error
             const mockDeps: MigrationDependencies = {
-                createMigrator: () => ({
-                    migrateToLatest: async () => ({ results: [] }),
-                    migrateDown: async () => ({
-                        error: new Error('Rollback failed: test error'),
-                        results: [],
-                    }),
-                    getMigrations: async () => [],
-                } as unknown as Migrator),
+                createMigrator: () =>
+                    ({
+                        migrateToLatest: async () => ({ results: [] }),
+                        migrateDown: async () => ({
+                            error: new Error('Rollback failed: test error'),
+                            results: [],
+                        }),
+                        getMigrations: async () => [],
+                    }) as unknown as Migrator,
             };
 
             const result = await migrateDown(db, mockDeps);
@@ -288,7 +286,9 @@ describe('Database Migrations', () => {
             const cliDeps: CliDependencies = {
                 db: testDb,
                 argv: ['bun', 'migrations/index.ts', 'invalid'],
-                exit: (code) => { exitCode = code; },
+                exit: code => {
+                    exitCode = code;
+                },
             };
 
             await runCli(cliDeps);
@@ -372,8 +372,12 @@ describe('Database Migrations', () => {
             await sql`CREATE TABLE users (id INTEGER PRIMARY KEY)`.execute(db);
 
             // Create kysely tables manually without the migration record
-            await sql`CREATE TABLE kysely_migration (name VARCHAR(255) PRIMARY KEY, timestamp VARCHAR(255))`.execute(db);
-            await sql`CREATE TABLE kysely_migration_lock (id VARCHAR(255) PRIMARY KEY, is_locked INTEGER DEFAULT 0)`.execute(db);
+            await sql`CREATE TABLE kysely_migration (name VARCHAR(255) PRIMARY KEY, timestamp VARCHAR(255))`.execute(
+                db,
+            );
+            await sql`CREATE TABLE kysely_migration_lock (id VARCHAR(255) PRIMARY KEY, is_locked INTEGER DEFAULT 0)`.execute(
+                db,
+            );
             await sql`INSERT INTO kysely_migration_lock VALUES ('migration_lock', 0)`.execute(db);
             // Note: NOT inserting 001_initial into kysely_migration
 
@@ -468,7 +472,7 @@ describe('Database Migrations', () => {
             const migrations = await migrator.getMigrations();
 
             expect(migrations.length).toBeGreaterThan(0);
-            expect(migrations.some((m) => m.name === '001_initial')).toBe(true);
+            expect(migrations.some(m => m.name === '001_initial')).toBe(true);
         });
     });
 
@@ -476,18 +480,19 @@ describe('Database Migrations', () => {
         it('should only include successful migrations in executedMigrations', async () => {
             // Create mock that returns mixed results
             const mockDeps: MigrationDependencies = {
-                createMigrator: () => ({
-                    migrateToLatest: async () => ({
-                        results: [
-                            { migrationName: 'success_1', status: 'Success' },
-                            { migrationName: 'error_1', status: 'Error' },
-                            { migrationName: 'success_2', status: 'Success' },
-                            { migrationName: 'not_executed', status: 'NotExecuted' },
-                        ],
-                    }),
-                    migrateDown: async () => ({ results: [] }),
-                    getMigrations: async () => [],
-                } as unknown as Migrator),
+                createMigrator: () =>
+                    ({
+                        migrateToLatest: async () => ({
+                            results: [
+                                { migrationName: 'success_1', status: 'Success' },
+                                { migrationName: 'error_1', status: 'Error' },
+                                { migrationName: 'success_2', status: 'Success' },
+                                { migrationName: 'not_executed', status: 'NotExecuted' },
+                            ],
+                        }),
+                        migrateDown: async () => ({ results: [] }),
+                        getMigrations: async () => [],
+                    }) as unknown as Migrator,
             };
 
             const result = await migrateToLatest(db, mockDeps);
@@ -501,13 +506,14 @@ describe('Database Migrations', () => {
 
         it('should handle undefined results', async () => {
             const mockDeps: MigrationDependencies = {
-                createMigrator: () => ({
-                    migrateToLatest: async () => ({
-                        results: undefined,
-                    }),
-                    migrateDown: async () => ({ results: [] }),
-                    getMigrations: async () => [],
-                } as unknown as Migrator),
+                createMigrator: () =>
+                    ({
+                        migrateToLatest: async () => ({
+                            results: undefined,
+                        }),
+                        migrateDown: async () => ({ results: [] }),
+                        getMigrations: async () => [],
+                    }) as unknown as Migrator,
             };
 
             const result = await migrateToLatest(db, mockDeps);
@@ -520,15 +526,14 @@ describe('Database Migrations', () => {
     describe('migrateDown result filtering', () => {
         it('should find successful rollback migration', async () => {
             const mockDeps: MigrationDependencies = {
-                createMigrator: () => ({
-                    migrateToLatest: async () => ({ results: [] }),
-                    migrateDown: async () => ({
-                        results: [
-                            { migrationName: '001_initial', status: 'Success' },
-                        ],
-                    }),
-                    getMigrations: async () => [],
-                } as unknown as Migrator),
+                createMigrator: () =>
+                    ({
+                        migrateToLatest: async () => ({ results: [] }),
+                        migrateDown: async () => ({
+                            results: [{ migrationName: '001_initial', status: 'Success' }],
+                        }),
+                        getMigrations: async () => [],
+                    }) as unknown as Migrator,
             };
 
             const result = await migrateDown(db, mockDeps);
@@ -539,15 +544,14 @@ describe('Database Migrations', () => {
 
         it('should return undefined when no successful rollback', async () => {
             const mockDeps: MigrationDependencies = {
-                createMigrator: () => ({
-                    migrateToLatest: async () => ({ results: [] }),
-                    migrateDown: async () => ({
-                        results: [
-                            { migrationName: '001_initial', status: 'Error' },
-                        ],
-                    }),
-                    getMigrations: async () => [],
-                } as unknown as Migrator),
+                createMigrator: () =>
+                    ({
+                        migrateToLatest: async () => ({ results: [] }),
+                        migrateDown: async () => ({
+                            results: [{ migrationName: '001_initial', status: 'Error' }],
+                        }),
+                        getMigrations: async () => [],
+                    }) as unknown as Migrator,
             };
 
             const result = await migrateDown(db, mockDeps);

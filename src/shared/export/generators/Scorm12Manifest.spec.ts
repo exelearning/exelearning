@@ -215,7 +215,7 @@ describe('Scorm12ManifestGenerator', () => {
     describe('generateId', () => {
         it('should generate unique IDs', () => {
             const gen1 = new Scorm12ManifestGenerator('', [], {});
-            const gen2 = new Scorm12ManifestGenerator('', [], {});
+            const _gen2 = new Scorm12ManifestGenerator('', [], {});
 
             // The IDs should be different (though in a fast test they could be the same due to timing)
             // We just verify the format

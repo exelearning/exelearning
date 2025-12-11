@@ -3,7 +3,7 @@
  * Uses real in-memory SQLite database with dependency injection (no mocks)
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
-import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser } from '../../../test/helpers/test-db';
+import { createTestDb, cleanTestDb, destroyTestDb } from '../../../test/helpers/test-db';
 import type { Kysely } from 'kysely';
 import type { Database, Project, User } from '../types';
 import {
@@ -120,9 +120,7 @@ describe('Project Queries', () => {
             const uuid = 'duplicate-uuid';
             await createProjectWithUuid(db, uuid, { title: 'First', owner_id: testUser.id });
 
-            await expect(
-                createProjectWithUuid(db, uuid, { title: 'Second', owner_id: testUser.id })
-            ).rejects.toThrow();
+            await expect(createProjectWithUuid(db, uuid, { title: 'Second', owner_id: testUser.id })).rejects.toThrow();
         });
     });
 
@@ -387,9 +385,9 @@ describe('Project Queries', () => {
             });
 
             // Do NOT add newOwner as collaborator
-            await expect(
-                transferOwnership(db, project.id, newOwner.id)
-            ).rejects.toThrow('New owner must be a current collaborator');
+            await expect(transferOwnership(db, project.id, newOwner.id)).rejects.toThrow(
+                'New owner must be a current collaborator',
+            );
         });
 
         it('should throw error if transferring to self', async () => {
@@ -398,15 +396,13 @@ describe('Project Queries', () => {
                 owner_id: testUser.id,
             });
 
-            await expect(
-                transferOwnership(db, project.id, testUser.id)
-            ).rejects.toThrow('Cannot transfer ownership to current owner');
+            await expect(transferOwnership(db, project.id, testUser.id)).rejects.toThrow(
+                'Cannot transfer ownership to current owner',
+            );
         });
 
         it('should throw error if project not found', async () => {
-            await expect(
-                transferOwnership(db, 99999, 1)
-            ).rejects.toThrow('Project not found');
+            await expect(transferOwnership(db, 99999, 1)).rejects.toThrow('Project not found');
         });
 
         it('should preserve other collaborators after transfer', async () => {
@@ -891,9 +887,7 @@ describe('Project Queries', () => {
         });
 
         it('should throw error if project UUID not found', async () => {
-            await expect(
-                transferOwnershipByUuid(db, 'nonexistent-uuid', 1)
-            ).rejects.toThrow('Project not found');
+            await expect(transferOwnershipByUuid(db, 'nonexistent-uuid', 1)).rejects.toThrow('Project not found');
         });
 
         it('should add previous owner as collaborator after transfer by UUID', async () => {

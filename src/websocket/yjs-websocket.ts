@@ -23,11 +23,15 @@
  * ws://localhost:3002/yjs/project-<uuid>?token=<jwt>
  */
 import type { ServerWebSocket } from 'bun';
+import type { WebSocket as WsWebSocket } from 'ws';
 import { Elysia } from 'elysia';
 import { ClientMeta, WebSocketServerInfo } from './types';
 import * as assetCoordinatorDefault from './asset-coordinator';
 import { verifyToken as verifyTokenDefault } from '../routes/auth';
-import { findProjectByUuid as findProjectByUuidDefault, checkProjectAccess as checkProjectAccessDefault } from '../db/queries';
+import {
+    findProjectByUuid as findProjectByUuidDefault,
+    checkProjectAccess as checkProjectAccessDefault,
+} from '../db/queries';
 import { db as defaultDb } from '../db/client';
 import { getSession as getSessionDefault } from '../services/session-manager';
 import type { Kysely } from 'kysely';
@@ -172,6 +176,14 @@ export interface WsData {
 }
 
 /**
+ * Elysia WebSocket raw data structure (before we populate WsData)
+ */
+interface ElysiaWsRawData {
+    params?: { docName?: string };
+    query?: { token?: string };
+}
+
+/**
  * Check if user has access to project via WebSocket
  * Uses the centralized checkProjectAccess from db/queries
  * but first checks for in-memory sessions (unsaved projects)
@@ -195,7 +207,8 @@ export async function checkWebSocketProjectAccess(
 
     if (!project) {
         // Neither in session nor in database - deny access
-        if (DEBUG) console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
+        if (DEBUG)
+            console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
         return { hasAccess: false, reason: 'Project not found' };
     }
 
@@ -216,7 +229,10 @@ export async function handleWebSocketOpen(
     const projectUuid = roomManager.extractProjectUuid(docName);
     if (!projectUuid) {
         console.error(`[YjsWebSocket] Invalid document name format: ${docName}`);
-        return { success: false, error: { code: 4000, reason: 'Invalid document name format. Expected: project-<uuid>' } };
+        return {
+            success: false,
+            error: { code: 4000, reason: 'Invalid document name format. Expected: project-<uuid>' },
+        };
     }
 
     // Validate JWT token
@@ -263,7 +279,7 @@ export async function handleWebSocketOpen(
     startHeartbeat(clientId, ws);
 
     // Register with asset coordinator
-    deps.assetCoordinator.registerClient(projectUuid, clientId, ws as any);
+    deps.assetCoordinator.registerClient(projectUuid, clientId, ws as unknown as WsWebSocket);
 
     const clientCount = room.conns.size;
     console.log(`[YjsWebSocket] Client ${clientId} (user ${userId}) connected to ${docName} (${clientCount} total)`);
@@ -271,7 +287,7 @@ export async function handleWebSocketOpen(
     // Detect collaboration and trigger asset prefetch
     if (clientCount > 1) {
         console.log(`[YjsWebSocket] Collaboration detected in ${projectUuid}`);
-        deps.assetCoordinator.onCollaborationDetected(projectUuid).catch((err) => {
+        deps.assetCoordinator.onCollaborationDetected(projectUuid).catch(err => {
             console.error('[YjsWebSocket] Error in collaboration detection:', err);
         });
     }
@@ -293,11 +309,7 @@ export function handleWebSocketPong(data: WsData | undefined): void {
  * Handle WebSocket message
  * Extracted for testability
  */
-export function handleWebSocketMessage(
-    ws: ServerWebSocket<WsData>,
-    data: WsData,
-    message: Buffer | string,
-): void {
+export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData, message: Buffer | string): void {
     const room = roomManager.getRoom(data.docName);
     if (!room) return;
 
@@ -307,7 +319,7 @@ export function handleWebSocketMessage(
     switch (parsed.kind) {
         case 'asset':
             // Handle asset coordination message
-            deps.assetCoordinator.handleMessage(data.projectUuid, data.clientId, parsed.message).catch((err) => {
+            deps.assetCoordinator.handleMessage(data.projectUuid, data.clientId, parsed.message).catch(err => {
                 console.error('[YjsWebSocket] Error handling asset message:', err);
             });
             break;
@@ -330,10 +342,7 @@ export function handleWebSocketMessage(
  * Handle WebSocket connection close
  * Extracted for testability
  */
-export function handleWebSocketClose(
-    ws: ServerWebSocket<WsData>,
-    data: WsData | undefined,
-): void {
+export function handleWebSocketClose(ws: ServerWebSocket<WsData>, data: WsData | undefined): void {
     // Use safe values for logging (data may be undefined if connection was rejected early)
     const clientId = data?.clientId || 'unknown';
     const docName = data?.docName || 'unknown';
@@ -352,8 +361,7 @@ export function handleWebSocketClose(
     if (DEBUG) {
         const room = docName !== 'unknown' ? roomManager.getRoom(docName) : null;
         console.log(
-            `[YjsWebSocket] Client ${clientId} disconnected from ${docName} ` +
-            `(${room?.conns.size ?? 0} remaining)`,
+            `[YjsWebSocket] Client ${clientId} disconnected from ${docName} ` + `(${room?.conns.size ?? 0} remaining)`,
         );
     }
 
@@ -368,41 +376,40 @@ export function handleWebSocketClose(
  * Create Elysia WebSocket routes for Yjs
  */
 export function createWebSocketRoutes() {
-    return new Elysia({ name: 'yjs-websocket' })
-        .ws('/yjs/:docName', {
-            // Connection opened - validate token here since beforeHandle doesn't pass data to open
-            async open(ws) {
-                const rawData = ws.data as any;
-                const docName = rawData.params?.docName;
-                const token = rawData.query?.token as string;
+    return new Elysia({ name: 'yjs-websocket' }).ws('/yjs/:docName', {
+        // Connection opened - validate token here since beforeHandle doesn't pass data to open
+        async open(ws) {
+            const rawData = ws.data as ElysiaWsRawData;
+            const docName = rawData.params?.docName;
+            const token = rawData.query?.token as string;
 
-                const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
-                if (!result.success && result.error) {
-                    ws.close(result.error.code, result.error.reason);
-                }
-            },
+            const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
+            if (!result.success && result.error) {
+                ws.close(result.error.code, result.error.reason);
+            }
+        },
 
-            // Handle pong response (Bun WebSocket native support)
-            pong(ws) {
-                handleWebSocketPong(ws.data as WsData);
-            },
+        // Handle pong response (Bun WebSocket native support)
+        pong(ws) {
+            handleWebSocketPong(ws.data as WsData);
+        },
 
-            // Message received
-            message(ws, message) {
-                handleWebSocketMessage(ws as ServerWebSocket<WsData>, ws.data as WsData, message as Buffer | string);
-            },
+        // Message received
+        message(ws, message) {
+            handleWebSocketMessage(ws as ServerWebSocket<WsData>, ws.data as WsData, message as Buffer | string);
+        },
 
-            // Connection closed
-            close(ws) {
-                handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
-            },
-        });
+        // Connection closed
+        close(ws) {
+            handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
+        },
+    });
 }
 
 /**
  * Initialize the WebSocket server (called for compatibility)
  */
-export function initialize(_httpServer?: any): void {
+export function initialize(_httpServer?: unknown): void {
     if (initialized) {
         console.warn('[YjsWebSocket] Already initialized');
         return;
@@ -439,7 +446,7 @@ export function stop(): void {
  */
 export function getServerInfo(): WebSocketServerInfo {
     const roomStats = roomManager.getRoomStats();
-    const heartbeatStats = getHeartbeatStats();
+    const _heartbeatStats = getHeartbeatStats();
 
     const port = parseInt(process.env.ELYSIA_PORT || process.env.PORT || '3002', 10);
     return {

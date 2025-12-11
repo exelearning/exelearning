@@ -18,9 +18,7 @@ interface MockAssetCacheManagerInterface {
             };
         }>
     >;
-    getAssetByPath(
-        path: string
-    ): Promise<{ blob: Blob; metadata: Record<string, unknown> } | null>;
+    getAssetByPath(path: string): Promise<{ blob: Blob; metadata: Record<string, unknown> } | null>;
     resolveAssetUrl(path: string): Promise<string | null>;
 }
 
@@ -34,10 +32,7 @@ function createMockBlob(content: string | Uint8Array): Blob {
 
 // Mock AssetCacheManager
 class MockAssetCacheManager implements MockAssetCacheManagerInterface {
-    private assets: Map<
-        string,
-        { blob: Blob; metadata: Record<string, unknown> }
-    > = new Map();
+    private assets: Map<string, { blob: Blob; metadata: Record<string, unknown> }> = new Map();
     private assetList: Array<{
         assetId: number | string;
         blob: Blob;
@@ -49,11 +44,7 @@ class MockAssetCacheManager implements MockAssetCacheManagerInterface {
     }> = [];
 
     // Setup methods
-    addAsset(
-        path: string,
-        content: string | Uint8Array,
-        metadata: Record<string, unknown> = {}
-    ): void {
+    addAsset(path: string, content: string | Uint8Array, metadata: Record<string, unknown> = {}): void {
         const blob = createMockBlob(content);
         this.assets.set(path, { blob, metadata: { originalPath: path, ...metadata } });
         this.assetList.push({
@@ -85,9 +76,7 @@ class MockAssetCacheManager implements MockAssetCacheManagerInterface {
         return this.assetList;
     }
 
-    async getAssetByPath(
-        path: string
-    ): Promise<{ blob: Blob; metadata: Record<string, unknown> } | null> {
+    async getAssetByPath(path: string): Promise<{ blob: Blob; metadata: Record<string, unknown> } | null> {
         return this.assets.get(path) || null;
     }
 

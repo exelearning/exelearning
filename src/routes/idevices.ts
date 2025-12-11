@@ -7,6 +7,27 @@ import * as fs from 'fs';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import { getFilesDir } from '../services/file-helper';
+import type { IdeviceFileUploadRequest } from './types/request-payloads';
+
+/**
+ * Response data for file upload
+ */
+interface UploadResponseData {
+    odeSessionId: string;
+    odeIdeviceId: string;
+    originalFilename: string;
+    savedPath: string;
+    savedFilename: string;
+    savedFileSize: string;
+    savedThumbnailName?: string;
+}
+
+/**
+ * File with optional name property (for Blob/File uploads)
+ */
+interface FileWithName extends Blob {
+    name?: string;
+}
 
 // Base path for iDevices
 const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
@@ -327,19 +348,31 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
         // Debug: log what we're receiving
         console.log('[idevices/upload] Content-Type:', request.headers.get('content-type'));
         console.log('[idevices/upload] Body type:', typeof body);
-        console.log('[idevices/upload] Body keys:', body ? Object.keys(body as any) : 'null');
+        const bodyObj = body as Record<string, unknown> | null;
+        console.log('[idevices/upload] Body keys:', bodyObj ? Object.keys(bodyObj) : 'null');
 
-        const data = body as any;
+        const data = body as IdeviceFileUploadRequest;
         const odeIdeviceId = data?.odeIdeviceId;
-        const base64String = data?.file;
+        // Support both 'file' (legacy) and 'base64String' fields for base64 data
+        const dataRecord = data as Record<string, unknown>;
+        const fileFieldValue = dataRecord?.file;
+        const fileAsString = typeof fileFieldValue === 'string' ? fileFieldValue : undefined;
+        const base64String = data?.base64String || fileAsString;
         const filename = data?.filename;
-        const createThumbnail = data?.createThumbnail === 'true' || data?.createThumbnail === true;
+        const createThumbnail = data?.createThumbnail === true;
 
         // Validate required parameters
         if (!odeIdeviceId || !base64String || !filename) {
             set.status = 400;
-            console.log('[idevices/upload] Missing params:', { odeIdeviceId: !!odeIdeviceId, file: !!base64String, filename: !!filename });
-            return { code: 'error: invalid data', details: { odeIdeviceId: !!odeIdeviceId, file: !!base64String, filename: !!filename } };
+            console.log('[idevices/upload] Missing params:', {
+                odeIdeviceId: !!odeIdeviceId,
+                file: !!base64String,
+                filename: !!filename,
+            });
+            return {
+                code: 'error: invalid data',
+                details: { odeIdeviceId: !!odeIdeviceId, file: !!base64String, filename: !!filename },
+            };
         }
 
         // Get session ID from cookie or body
@@ -355,7 +388,7 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Clean filename
         let cleanFilename = filename.replace(/ /g, '_');
-        cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-\.]/g, '');
+        cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
 
         // Ensure we have a valid filename
         if (!cleanFilename) {
@@ -394,7 +427,7 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
         const fileSizeFormatted = formatFileSize(fileSize);
 
         // Build response
-        const responseData: any = {
+        const responseData: UploadResponseData = {
             odeSessionId,
             odeIdeviceId,
             originalFilename: filename,
@@ -422,10 +455,10 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
     // POST /api/idevices/upload/large/file/resources - Upload large file resource (FormData)
     .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set }) => {
-        const data = body as any;
+        const data = body as IdeviceFileUploadRequest;
         const odeIdeviceId = data.odeIdeviceId;
         const file = data.file;
-        const filename = data.filename || (file as any)?.name;
+        const filename = data.filename || (file as FileWithName)?.name;
 
         // Validate required parameters
         if (!odeIdeviceId || !file || !filename) {
@@ -444,7 +477,7 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Clean filename
         let cleanFilename = filename.replace(/ /g, '_');
-        cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-\.]/g, '');
+        cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
 
         // Ensure we have a valid filename
         if (!cleanFilename) {

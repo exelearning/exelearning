@@ -121,9 +121,13 @@ describe('User Role Command', () => {
 
         it('should handle multiple role operations', async () => {
             const deps = createMockDependencies();
-            const result = await execute(['existing@test.com'], {
-                add: ['ROLE_ADMIN', 'ROLE_EDITOR'],
-            }, deps);
+            const result = await execute(
+                ['existing@test.com'],
+                {
+                    add: ['ROLE_ADMIN', 'ROLE_EDITOR'],
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
             expect(result.roles).toContain('ROLE_ADMIN');
@@ -143,7 +147,11 @@ describe('User Role Command', () => {
         it('should skip removing non-existent roles', async () => {
             const deps = createMockDependencies();
             // Using dry-run to see the change details
-            const result = await execute(['existing@test.com'], { remove: ['ROLE_NONEXISTENT'], 'dry-run': true }, deps);
+            const result = await execute(
+                ['existing@test.com'],
+                { remove: ['ROLE_NONEXISTENT'], 'dry-run': true },
+                deps,
+            );
 
             expect(result.success).toBe(true);
             expect(result.message).toContain('not present');
@@ -151,10 +159,14 @@ describe('User Role Command', () => {
 
         it('should handle combined add and remove', async () => {
             const deps = createMockDependencies();
-            const result = await execute(['admin@test.com'], {
-                add: ['ROLE_EDITOR'],
-                remove: ['ROLE_ADMIN'],
-            }, deps);
+            const result = await execute(
+                ['admin@test.com'],
+                {
+                    add: ['ROLE_EDITOR'],
+                    remove: ['ROLE_ADMIN'],
+                },
+                deps,
+            );
 
             expect(result.success).toBe(true);
             expect(result.roles).toContain('ROLE_EDITOR');
@@ -167,7 +179,7 @@ describe('User Role Command', () => {
 
             expect(result.success).toBe(true);
             // Should normalize to ROLE_ROLETEST
-            expect(result.roles?.some((r) => r.startsWith('ROLE_'))).toBe(true);
+            expect(result.roles?.some(r => r.startsWith('ROLE_'))).toBe(true);
         });
 
         it('should always ensure ROLE_USER is present', async () => {
@@ -223,7 +235,9 @@ describe('User Role Command', () => {
         it('should show help when --help flag is passed', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', '--help'], deps, mockExit);
 
@@ -233,7 +247,9 @@ describe('User Role Command', () => {
         it('should show help when -h flag is passed', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', '-h'], deps, mockExit);
 
@@ -243,7 +259,9 @@ describe('User Role Command', () => {
         it('should exit with error when email is missing', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'user:role', '--list'], deps, mockExit);
 
@@ -253,7 +271,9 @@ describe('User Role Command', () => {
         it('should exit with error when user not found', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'user:role', 'notfound@test.com', '--list'], deps, mockExit);
 
@@ -263,7 +283,9 @@ describe('User Role Command', () => {
         it('should exit with success when listing roles', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'user:role', 'existing@test.com', '--list'], deps, mockExit);
 
@@ -273,7 +295,9 @@ describe('User Role Command', () => {
         it('should exit with success when adding role', async () => {
             const deps = createMockDependencies();
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'user:role', 'existing@test.com', '--add=ROLE_ADMIN'], deps, mockExit);
 
@@ -293,7 +317,9 @@ describe('User Role Command', () => {
             };
 
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'user:role', 'test@test.com', '--list'], errorDeps, mockExit);
 
@@ -313,7 +339,9 @@ describe('User Role Command', () => {
             };
 
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'user:role', 'test@test.com', '--list'], errorDeps, mockExit);
 

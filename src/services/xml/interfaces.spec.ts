@@ -15,10 +15,8 @@ import type {
     LegacyXmlFormat,
     RealOdeXmlDocument,
     RealOdeNavStructure,
-    RealOdePagStructure,
     RealOdeComponent,
     LegacyInstanceXmlDocument,
-    LegacyInstanceNode,
     LegacyValueNode,
     LegacyListNode,
 } from './interfaces';
@@ -206,9 +204,7 @@ describe('XML Interfaces', () => {
                 level: 0,
                 parent_id: null,
                 position: 0,
-                components: [
-                    { id: 'c1', type: 'Text', content: 'Hello' },
-                ],
+                components: [{ id: 'c1', type: 'Text', content: 'Hello' }],
             };
 
             expect(page.components.length).toBe(1);
@@ -344,9 +340,7 @@ describe('XML Interfaces', () => {
                 pageName: 'Chapter 1',
                 odeNavStructureOrder: 1,
                 odeNavStructureProperties: {
-                    odeNavStructureProperty: [
-                        { key: 'visible', value: 'true' },
-                    ],
+                    odeNavStructureProperty: [{ key: 'visible', value: 'true' }],
                 },
                 odePagStructures: {
                     odePagStructure: {
@@ -420,10 +414,7 @@ describe('XML Interfaces', () => {
     describe('LegacyListNode', () => {
         it('should accept list of instances', () => {
             const list: LegacyListNode = {
-                instance: [
-                    { '@_class': 'Item1' },
-                    { '@_class': 'Item2' },
-                ],
+                instance: [{ '@_class': 'Item1' }, { '@_class': 'Item2' }],
             };
 
             expect(Array.isArray(list.instance)).toBe(true);

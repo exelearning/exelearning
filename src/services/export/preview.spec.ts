@@ -72,7 +72,15 @@ describe('Preview Service Helper', () => {
 
     describe('buildFallbackFilePath', () => {
         it('should build fallback path with tmp subdirectory', () => {
-            const result = buildFallbackFilePath('/data/files', '2025', '01', '16', 'random123', 'export', 'index.html');
+            const result = buildFallbackFilePath(
+                '/data/files',
+                '2025',
+                '01',
+                '16',
+                'random123',
+                'export',
+                'index.html',
+            );
             expect(result).toBe('/data/files/tmp/2025/01/16/random123/export/index.html');
         });
     });

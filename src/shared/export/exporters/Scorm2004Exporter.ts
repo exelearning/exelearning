@@ -33,12 +33,7 @@ export class Scorm2004Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm2004ManifestGenerator | null = null;
     protected lomGenerator: LomMetadataGenerator | null = null;
 
-    constructor(
-        document: ExportDocument,
-        resources: ResourceProvider,
-        assets: AssetProvider,
-        zip: ZipProvider
-    ) {
+    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         super(document, resources, assets, zip);
     }
 
@@ -59,24 +54,20 @@ export class Scorm2004Exporter extends Html5Exporter {
             let pages = this.buildPageList();
             const meta = this.getMetadata();
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
-            const themeName = (options as any)?.theme || meta.theme || 'base';
+            const themeName = options?.theme || meta.theme || 'base';
             const projectId = this.generateProjectId();
 
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
             // Initialize generators
-            this.manifestGenerator = new Scorm2004ManifestGenerator(
-                projectId,
-                pages,
-                {
-                    title: meta.title || 'eXeLearning',
-                    language: meta.language || 'en',
-                    author: meta.author || '',
-                    description: meta.description || '',
-                    license: meta.license || '',
-                }
-            );
+            this.manifestGenerator = new Scorm2004ManifestGenerator(projectId, pages, {
+                title: meta.title || 'eXeLearning',
+                language: meta.language || 'en',
+                author: meta.author || '',
+                description: meta.description || '',
+                license: meta.license || '',
+            });
 
             this.lomGenerator = new LomMetadataGenerator(projectId, {
                 title: meta.title || 'eXeLearning',
@@ -88,24 +79,14 @@ export class Scorm2004Exporter extends Html5Exporter {
 
             // Track files for manifest
             const commonFiles: string[] = [];
-            const pageFiles: Record<
-                string,
-                { fileUrl: string; files: string[] }
-            > = {};
+            const pageFiles: Record<string, { fileUrl: string; files: string[] }> = {};
 
             // 1. Generate HTML pages (with SCORM 2004 support)
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                const html = this.generateScorm2004PageHtml(
-                    page,
-                    pages,
-                    meta,
-                    isIndex
-                );
-                const pageFilename = isIndex
-                    ? 'index.html'
-                    : `html/${this.sanitizePageFilename(page.title)}.html`;
+                const html = this.generateScorm2004PageHtml(page, pages, meta, isIndex);
+                const pageFilename = isIndex ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 this.zip.addFile(pageFilename, html);
 
                 pageFiles[page.id] = {
@@ -151,23 +132,16 @@ export class Scorm2004Exporter extends Html5Exporter {
                 }
             } catch {
                 // Add fallback SCORM files
-                this.zip.addFile(
-                    'libs/SCORM_API_wrapper.js',
-                    this.getScorm2004ApiWrapper()
-                );
+                this.zip.addFile('libs/SCORM_API_wrapper.js', this.getScorm2004ApiWrapper());
                 this.zip.addFile('libs/SCOFunctions.js', this.getSco2004Functions());
-                commonFiles.push(
-                    'libs/SCORM_API_wrapper.js',
-                    'libs/SCOFunctions.js'
-                );
+                commonFiles.push('libs/SCORM_API_wrapper.js', 'libs/SCOFunctions.js');
             }
 
             // 6. Fetch and add iDevice assets
             const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
-                    const ideviceFiles =
-                        await this.resources.fetchIdeviceResources(idevice);
+                    const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [path, content] of ideviceFiles) {
                         this.zip.addFile(`idevices/${idevice}/${path}`, content);
                         commonFiles.push(`idevices/${idevice}/${path}`);
@@ -211,9 +185,7 @@ export class Scorm2004Exporter extends Html5Exporter {
      * Generate project ID for SCORM package
      */
     generateProjectId(): string {
-        return (
-            Date.now().toString(36) + Math.random().toString(36).substring(2, 7)
-        );
+        return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
     }
 
     /**
@@ -223,7 +195,7 @@ export class Scorm2004Exporter extends Html5Exporter {
         page: ExportPage,
         allPages: ExportPage[],
         meta: ExportMetadata,
-        isIndex: boolean
+        isIndex: boolean,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);

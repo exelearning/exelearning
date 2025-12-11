@@ -8,7 +8,6 @@ import {
     LOCALES,
     PACKAGE_LOCALES,
     DEFAULT_LOCALE,
-    getCatalogue,
     getCatalogueWithFallback,
     getAvailableLocales,
     getAvailablePackageLocales,
@@ -565,9 +564,15 @@ const API_ROUTES = {
         api_idevices_installed_download: { path: '/api/idevices/{ideviceId}/download', methods: ['GET'] },
         api_idevices_download_ode_components: { path: '/api/idevices/download-ode-components', methods: ['GET'] },
         api_idevices_download_file_resources: { path: '/api/idevices/download-file-resources', methods: ['GET'] },
-        api_idevices_force_download_file_resources: { path: '/api/idevices/force-download-file-resources', methods: ['GET'] },
+        api_idevices_force_download_file_resources: {
+            path: '/api/idevices/force-download-file-resources',
+            methods: ['GET'],
+        },
         api_idevices_upload_file_resources: { path: '/api/idevices/upload/file/resources', methods: ['POST'] },
-        api_idevices_upload_large_file_resources: { path: '/api/idevices/upload/large/file/resources', methods: ['POST'] },
+        api_idevices_upload_large_file_resources: {
+            path: '/api/idevices/upload/large/file/resources',
+            methods: ['POST'],
+        },
 
         // Themes
         api_themes_installed: { path: '/api/themes/installed', methods: ['GET'] },
@@ -586,7 +591,10 @@ const API_ROUTES = {
         api_odes_ode_local_xml_properties_open: { path: '/api/odes/local/xml-properties/open', methods: ['POST'] },
         api_odes_ode_local_idevices_open: { path: '/api/odes/local/idevices/open', methods: ['POST'] },
         api_odes_ode_local_elp_import_root: { path: '/api/odes/local/elp/import-root', methods: ['POST'] },
-        api_odes_ode_local_elp_import_root_from_local: { path: '/api/odes/local/elp/import-root-from-local', methods: ['POST'] },
+        api_odes_ode_local_elp_import_root_from_local: {
+            path: '/api/odes/local/elp/import-root-from-local',
+            methods: ['POST'],
+        },
         api_odes_ode_multiple_local_elp_open: { path: '/api/odes/multiple-local/elp/open', methods: ['POST'] },
         api_nav_structures_import_elp_child: { path: '/api/nav-structures/import-elp-child', methods: ['POST'] },
         api_odes_remove_ode_file: { path: '/api/odes/remove-ode-file', methods: ['POST'] },
@@ -604,8 +612,14 @@ const API_ROUTES = {
         api_odes_session_get_used_files: { path: '/api/ode-management/odes/session/usedfiles', methods: ['POST'] },
         api_odes_session_get_broken_links: { path: '/api/ode-management/odes/session/brokenlinks', methods: ['POST'] },
         api_odes_pag_get_broken_links: { path: '/api/odes/{sessionId}/pag/{pagId}/broken-links', methods: ['GET'] },
-        api_odes_block_get_broken_links: { path: '/api/odes/{sessionId}/block/{blockId}/broken-links', methods: ['GET'] },
-        api_odes_idevice_get_broken_links: { path: '/api/odes/{sessionId}/idevice/{ideviceId}/broken-links', methods: ['GET'] },
+        api_odes_block_get_broken_links: {
+            path: '/api/odes/{sessionId}/block/{blockId}/broken-links',
+            methods: ['GET'],
+        },
+        api_odes_idevice_get_broken_links: {
+            path: '/api/odes/{sessionId}/idevice/{ideviceId}/broken-links',
+            methods: ['GET'],
+        },
         check_current_users_ode_session_id: { path: '/api/odes/{sessionId}/check-current-users', methods: ['GET'] },
         get_current_block_update: { path: '/api/odes/current-block-update', methods: ['GET'] },
 
@@ -682,13 +696,32 @@ const DEFAULT_PARAMETERS = {
     // File settings
     maxFileSize: DEFAULT_UPLOAD_LIMITS.maxFileSize,
     allowedExtensions: [
-        'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp',
-        'mp3', 'ogg', 'wav', 'm4a',
-        'mp4', 'webm', 'ogv',
-        'pdf', 'zip',
-        'txt', 'html', 'htm', 'css', 'js',
-        'json', 'xml',
-        'ttf', 'woff', 'woff2', 'eot',
+        'jpg',
+        'jpeg',
+        'png',
+        'gif',
+        'svg',
+        'webp',
+        'mp3',
+        'ogg',
+        'wav',
+        'm4a',
+        'mp4',
+        'webm',
+        'ogv',
+        'pdf',
+        'zip',
+        'txt',
+        'html',
+        'htm',
+        'css',
+        'js',
+        'json',
+        'xml',
+        'ttf',
+        'woff',
+        'woff2',
+        'eot',
     ],
 };
 
@@ -746,7 +779,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
     })
 
     // GET /api/translations/:locale - Get translations for a locale
-    .get('/api/translations/:locale', ({ params, request }) => {
+    .get('/api/translations/:locale', ({ params }) => {
         const locale = params.locale;
         const translations = getCatalogueWithFallback(locale);
         const count = getTranslationCount(locale);

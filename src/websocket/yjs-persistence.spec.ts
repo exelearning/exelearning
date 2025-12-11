@@ -57,7 +57,7 @@ function createMockQueries(): YjsPersistenceQueries {
         },
         findUpdatesSince: async (_db: any, projectId: number, sinceVersion: string) => {
             const updates = mockUpdates.get(projectId) || [];
-            return updates.filter((u) => u.version > sinceVersion);
+            return updates.filter(u => u.version > sinceVersion);
         },
         deleteAllUpdates: async (_db: any, projectId: number) => {
             mockUpdates.delete(projectId);
@@ -67,7 +67,7 @@ function createMockQueries(): YjsPersistenceQueries {
             const updates = mockUpdates.get(projectId) || [];
             mockUpdates.set(
                 projectId,
-                updates.filter((u) => u.version >= beforeVersion),
+                updates.filter(u => u.version >= beforeVersion),
             );
         },
         countUpdates: async (_db: any, projectId: number) => {
@@ -88,17 +88,12 @@ function createMockQueries(): YjsPersistenceQueries {
         },
         getAllUpdateBuffers: async (_db: any, projectId: number) => {
             const updates = mockUpdates.get(projectId) || [];
-            return updates.map((u) => u.update_data);
+            return updates.map(u => u.update_data);
         },
         documentExists: async (_db: any, projectId: number) => {
             return mockSnapshots.has(projectId) || mockUpdates.has(projectId);
         },
-        saveIncrementalUpdate: async (
-            _db: any,
-            projectId: number,
-            update: Uint8Array,
-            _clientId?: string,
-        ) => {
+        saveIncrementalUpdate: async (_db: any, projectId: number, update: Uint8Array, _clientId?: string) => {
             if (!mockUpdates.has(projectId)) {
                 mockUpdates.set(projectId, []);
             }
@@ -520,6 +515,207 @@ describe('Yjs Persistence Service', () => {
                 const loaded = await loadDocumentEfficientByUuid('non-existent');
                 expect(loaded).toBeNull();
             });
+        });
+    });
+
+    describe('Error Handling', () => {
+        it('saveFullState should throw on query error', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    saveFullState: async () => {
+                        throw new Error('Database error');
+                    },
+                },
+            });
+
+            const doc = new Y.Doc();
+            const state = Y.encodeStateAsUpdate(doc);
+
+            await expect(saveFullState(1, state)).rejects.toThrow('Database error');
+            doc.destroy();
+        });
+
+        it('loadDocument should return null on query error', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    loadDocumentState: async () => {
+                        throw new Error('Load error');
+                    },
+                },
+            });
+
+            const result = await loadDocument(1);
+            expect(result).toBeNull();
+        });
+
+        it('loadUpdatesSince should throw on query error', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    findUpdatesSince: async () => {
+                        throw new Error('Query error');
+                    },
+                },
+            });
+
+            await expect(loadUpdatesSince(1, '0')).rejects.toThrow('Query error');
+        });
+
+        it('deleteAllUpdates should throw on query error', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    deleteAllUpdates: async () => {
+                        throw new Error('Delete error');
+                    },
+                },
+            });
+
+            await expect(deleteAllUpdates(1)).rejects.toThrow('Delete error');
+        });
+
+        it('pruneUpdatesBefore should throw on query error', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    deleteUpdatesBefore: async () => {
+                        throw new Error('Prune error');
+                    },
+                },
+            });
+
+            await expect(pruneUpdatesBefore(1, '100')).rejects.toThrow('Prune error');
+        });
+
+        it('saveIncrementalUpdate should throw on query error', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    saveIncrementalUpdate: async () => {
+                        throw new Error('Incremental save error');
+                    },
+                },
+            });
+
+            const doc = new Y.Doc();
+            const update = Y.encodeStateAsUpdate(doc);
+
+            await expect(saveIncrementalUpdate(1, update)).rejects.toThrow('Incremental save error');
+            doc.destroy();
+        });
+
+        it('saveIncrementalUpdate should compact when threshold reached', async () => {
+            // Configure to trigger compaction
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    saveIncrementalUpdate: async () => ({
+                        compacted: true, // Signal compaction needed
+                        stats: { count: 10, totalBytes: 1000 },
+                    }),
+                    loadDocumentWithUpdates: async () => ({
+                        snapshot: null,
+                        updates: [],
+                    }),
+                    upsertSnapshot: async () => {},
+                    deleteUpdatesUpToVersion: async () => {},
+                },
+            });
+
+            const doc = new Y.Doc();
+            const update = Y.encodeStateAsUpdate(doc);
+
+            const result = await saveIncrementalUpdate(1, update);
+            expect(result.success).toBe(true);
+            expect(result.compacted).toBe(true);
+            doc.destroy();
+        });
+
+        it('compactToSnapshot should throw on query error', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    loadDocumentWithUpdates: async () => {
+                        throw new Error('Compact error');
+                    },
+                },
+            });
+
+            await expect(compactToSnapshot(1)).rejects.toThrow('Compact error');
+        });
+
+        it('compactToSnapshot should apply existing snapshot', async () => {
+            const snapshotDoc = new Y.Doc();
+            snapshotDoc.getText('content').insert(0, 'Existing');
+            const snapshotState = Y.encodeStateAsUpdate(snapshotDoc);
+
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    loadDocumentWithUpdates: async () => ({
+                        snapshot: {
+                            project_id: 1,
+                            snapshot_data: Buffer.from(snapshotState),
+                            version: '100',
+                        },
+                        updates: [
+                            {
+                                project_id: 1,
+                                update_data: Y.encodeStateAsUpdate(new Y.Doc()),
+                                version: '200',
+                            },
+                        ],
+                    }),
+                    upsertSnapshot: async () => {},
+                    deleteUpdatesUpToVersion: async () => {},
+                },
+            });
+
+            await compactToSnapshot(1);
+            // Should complete without error
+            snapshotDoc.destroy();
+        });
+
+        it('loadDocumentEfficient should return null on query error', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    loadDocumentWithUpdates: async () => {
+                        throw new Error('Efficient load error');
+                    },
+                },
+            });
+
+            const result = await loadDocumentEfficient(1);
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('Deprecated Functions', () => {
+        it('storeUpdate should call saveFullState', async () => {
+            // Import the deprecated function
+            const { storeUpdate } = await import('./yjs-persistence');
+
+            const doc = new Y.Doc();
+            doc.getText('content').insert(0, 'Via storeUpdate');
+            const state = Y.encodeStateAsUpdate(doc);
+
+            await storeUpdate(1, state, 'client-abc');
+
+            expect(mockSnapshots.has(1)).toBe(true);
+            doc.destroy();
         });
     });
 });

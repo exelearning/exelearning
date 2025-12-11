@@ -16,6 +16,7 @@
  */
 import { WebSocket as WsWebSocket } from 'ws';
 import { randomUUID } from 'crypto';
+import type { Kysely } from 'kysely';
 import {
     AssetMessage,
     AssetMessageType,
@@ -29,9 +30,20 @@ import {
     PriorityUpdateData,
     NavigationHintData,
 } from './types';
-import { findProjectByUuid as defaultFindProjectByUuid, findAssetByClientId as defaultFindAssetByClientId } from '../db/queries';
+import type { Database, Project, Asset } from '../db/types';
+import {
+    findProjectByUuid as defaultFindProjectByUuid,
+    findAssetByClientId as defaultFindAssetByClientId,
+} from '../db/queries';
 import { db } from '../db/client';
-import { serverPriorityQueue as defaultPriorityQueue, PRIORITY } from '../services/asset-priority-queue';
+import {
+    serverPriorityQueue as defaultPriorityQueue,
+    PRIORITY,
+    type PriorityQueueRequest,
+    type ActiveSlot,
+    type PreemptResult,
+    type QueueStats,
+} from '../services/asset-priority-queue';
 
 const DEBUG = process.env.APP_DEBUG === '1';
 
@@ -58,16 +70,16 @@ const ASSET_MESSAGE_TYPES: AssetMessageType[] = [
  * Dependencies for AssetCoordinator
  */
 export interface AssetCoordinatorDeps {
-    findProjectByUuid?: (db: any, uuid: string) => Promise<any>;
-    findAssetByClientId?: (db: any, clientId: string, projectId: number) => Promise<any>;
+    findProjectByUuid?: (db: Kysely<Database>, uuid: string) => Promise<Project | undefined>;
+    findAssetByClientId?: (db: Kysely<Database>, clientId: string, projectId: number) => Promise<Asset | undefined>;
     priorityQueue?: {
-        registerRequest: (request: any) => void;
-        registerActiveSlot: (slot: any) => void;
+        registerRequest: (request: PriorityQueueRequest) => void;
+        registerActiveSlot: (slot: ActiveSlot) => void;
         releaseSlot: (projectId: string, assetId: string) => void;
         clearProject: (projectId: string) => void;
-        shouldPreempt: (projectId: string) => { shouldPreempt: boolean; targetSlot: any; preemptingItem: any };
-        getStats: (projectId: string) => { queueLength: number; activeSlots: number; maxSlots: number };
-        peekNextUpload: (projectId: string) => any;
+        shouldPreempt: (projectId: string) => PreemptResult;
+        getStats: (projectId: string) => QueueStats;
+        peekNextUpload: (projectId: string) => PriorityQueueRequest | null;
     };
     generateId?: () => string;
 }
@@ -141,8 +153,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         try {
             const binaryMessage = encodeAssetMessage(message);
             socket.send(binaryMessage);
-        } catch (err: any) {
-            console.error(`[AssetCoordinator] Failed to send to ${clientId}:`, err.message);
+        } catch (err: unknown) {
+            const errMessage = err instanceof Error ? err.message : String(err);
+            console.error(`[AssetCoordinator] Failed to send to ${clientId}:`, errMessage);
         }
     }
 
@@ -157,8 +170,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         projectSocketsMap.forEach((socket, cId) => {
             try {
                 socket.send(binaryMessage);
-            } catch (err: any) {
-                console.error(`[AssetCoordinator] Failed to broadcast to ${cId}:`, err.message);
+            } catch (err: unknown) {
+                const errMessage = err instanceof Error ? err.message : String(err);
+                console.error(`[AssetCoordinator] Failed to broadcast to ${cId}:`, errMessage);
             }
         });
     }
@@ -166,12 +180,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     /**
      * Send asset not found message
      */
-    function sendAssetNotFound(
-        projectUuid: string,
-        clientId: string,
-        assetId: string,
-        error: string,
-    ): void {
+    function sendAssetNotFound(projectUuid: string, clientId: string, assetId: string, error: string): void {
         sendToClient(projectUuid, clientId, {
             type: 'asset-not-found',
             projectId: projectUuid,
@@ -190,11 +199,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     /**
      * Request a peer to upload an asset
      */
-    async function requestUploadFromPeer(
-        projectUuid: string,
-        assetId: string,
-        requestedBy: string,
-    ): Promise<void> {
+    async function requestUploadFromPeer(projectUuid: string, assetId: string, requestedBy: string): Promise<void> {
         const projectAssets = assetAvailability.get(projectUuid);
         const peersWithAsset = projectAssets?.get(assetId);
 
@@ -239,10 +244,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     /**
      * Check if newly available assets can fulfill pending requests
      */
-    async function checkPendingRequests(
-        projectUuid: string,
-        newlyAvailableAssets: string[],
-    ): Promise<void> {
+    async function checkPendingRequests(projectUuid: string, newlyAvailableAssets: string[]): Promise<void> {
         for (const assetId of newlyAvailableAssets) {
             const key = `${projectUuid}:${assetId}`;
             const pending = pendingRequests.get(key);
@@ -253,9 +255,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             }
 
             // Get highest priority request
-            const highestPriority = pending.reduce((prev, curr) =>
-                curr.priority === 'high' ? curr : prev,
-            );
+            const highestPriority = pending.reduce((prev, curr) => (curr.priority === 'high' ? curr : prev));
 
             await requestUploadFromPeer(projectUuid, assetId, highestPriority.clientId);
 
@@ -278,7 +278,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
 
         if (!peersWithAsset || peersWithAsset.size === 0) {
             if (DEBUG) {
-                console.log(`[AssetCoordinator] No peer has asset ${assetId.substring(0, 8)}... (priority=${priority})`);
+                console.log(
+                    `[AssetCoordinator] No peer has asset ${assetId.substring(0, 8)}... (priority=${priority})`,
+                );
             }
 
             // Add to pending requests
@@ -378,7 +380,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         const projectAssets = assetAvailability.get(projectUuid)!;
 
         // Update availability map
-        availableAssets.forEach((assetId) => {
+        availableAssets.forEach(assetId => {
             if (!projectAssets.has(assetId)) {
                 projectAssets.set(assetId, new Set());
             }
@@ -438,8 +440,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 });
                 return;
             }
-        } catch (error: any) {
-            console.error(`[AssetCoordinator] Error checking database for asset ${assetId}:`, error.message);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[AssetCoordinator] Error checking database for asset ${assetId}:`, errorMessage);
         }
 
         // 2. Check if any peer has it
@@ -461,12 +464,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 priority,
             });
 
-            sendAssetNotFound(
-                projectUuid,
-                clientId,
-                assetId,
-                'Asset not available. Original creator must save first.',
-            );
+            sendAssetNotFound(projectUuid, clientId, assetId, 'Asset not available. Original creator must save first.');
             return;
         }
 
@@ -564,7 +562,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
 
             if (failedAssets && failedAssets.length > 0) {
                 console.warn(
-                    `[AssetCoordinator] Failed: ${failedAssets.map((a) => a.assetId.substring(0, 8)).join(', ')}`,
+                    `[AssetCoordinator] Failed: ${failedAssets.map(a => a.assetId.substring(0, 8)).join(', ')}`,
                 );
             }
 
@@ -586,8 +584,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                     if (otherClientId !== clientId) {
                         try {
                             socket.send(binaryMessage);
-                        } catch (err: any) {
-                            console.error(`[AssetCoordinator] Failed to notify ${otherClientId}:`, err.message);
+                        } catch (err: unknown) {
+                            const errMessage = err instanceof Error ? err.message : String(err);
+                            console.error(`[AssetCoordinator] Failed to notify ${otherClientId}:`, errMessage);
                         }
                     }
                 });
@@ -622,7 +621,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             assetId,
             clientId,
             priority,
-            reason: reason as any,
+            reason: reason as PriorityQueueRequest['reason'],
             requestedAt: data.timestamp || Date.now(),
             pageId,
             projectId: projectUuid,
@@ -649,8 +648,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                     return;
                 }
             }
-        } catch (error: any) {
-            console.error(`[AssetCoordinator] Error checking asset ${assetId}:`, error.message);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[AssetCoordinator] Error checking asset ${assetId}:`, errorMessage);
         }
 
         // Check if we should preempt any current uploads
@@ -744,8 +744,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                     }
                 }
             }
-        } catch (error: any) {
-            console.error(`[AssetCoordinator] Error checking navigation assets:`, error.message);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[AssetCoordinator] Error checking navigation assets:`, errorMessage);
         }
 
         if (missingAssets.length === 0) {
@@ -795,7 +796,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         // Remove from availability tracking
         const projectAssets = assetAvailability.get(projectUuid);
         if (projectAssets) {
-            projectAssets.forEach((clients) => {
+            projectAssets.forEach(clients => {
                 clients.delete(clientId);
             });
         }
@@ -819,7 +820,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 keysToDelete.push(key);
             }
         });
-        keysToDelete.forEach((key) => pendingRequests.delete(key));
+        keysToDelete.forEach(key => pendingRequests.delete(key));
 
         // Clean up priority queue for this project
         priorityQueue.clearProject(projectUuid);
@@ -832,11 +833,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     /**
      * Handle asset-related message from client
      */
-    async function handleMessage(
-        projectUuid: string,
-        clientId: string,
-        message: AssetMessage,
-    ): Promise<void> {
+    async function handleMessage(projectUuid: string, clientId: string, message: AssetMessage): Promise<void> {
         const { type, data } = message;
 
         try {
@@ -872,8 +869,9 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 default:
                     console.warn(`[AssetCoordinator] Unknown message type: ${type}`);
             }
-        } catch (error: any) {
-            console.error(`[AssetCoordinator] Error handling message type ${type}:`, error.message);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[AssetCoordinator] Error handling message type ${type}:`, errorMessage);
         }
     }
 
@@ -895,7 +893,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         const clientAssetMap = new Map<string, Set<string>>();
 
         projectAssets.forEach((clients, assetId) => {
-            clients.forEach((cId) => {
+            clients.forEach(cId => {
                 if (!clientAssetMap.has(cId)) {
                     clientAssetMap.set(cId, new Set());
                 }
@@ -943,9 +941,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         clientAssetMap.forEach((assetsSet, cId) => {
             if (cId === referenceClientId) return;
 
-            const missingAssets = Array.from(referenceAssets).filter(
-                (assetId) => !assetsSet.has(assetId),
-            );
+            const missingAssets = Array.from(referenceAssets).filter(assetId => !assetsSet.has(assetId));
 
             if (missingAssets.length === 0) {
                 if (DEBUG) console.log(`[AssetCoordinator] Client ${cId} has all assets`);
@@ -977,11 +973,11 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         let totalClients = 0;
         let totalAssets = 0;
 
-        clientSockets.forEach((clients) => {
+        clientSockets.forEach(clients => {
             totalClients += clients.size;
         });
 
-        assetAvailability.forEach((assetsMap) => {
+        assetAvailability.forEach(assetsMap => {
             totalAssets += assetsMap.size;
         });
 

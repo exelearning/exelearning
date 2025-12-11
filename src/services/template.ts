@@ -4,7 +4,7 @@
  */
 import * as nunjucks from 'nunjucks';
 import * as path from 'path';
-import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { getBasePath } from '../utils/basepath.util';
 import { trans as translateFn } from './translation';
 
 // Stores the locale for current rendering (thread-safe in single-threaded Bun)
@@ -30,7 +30,7 @@ const env = nunjucks.configure(viewsDir, {
 // Add custom filters
 
 // JSON filter - serialize to JSON
-env.addFilter('json', (value: any) => JSON.stringify(value));
+env.addFilter('json', (value: unknown) => JSON.stringify(value));
 
 // Asset filter - prefix paths with base path for static assets
 env.addFilter('asset', (assetPath: string) => {
@@ -41,12 +41,12 @@ env.addFilter('asset', (assetPath: string) => {
 });
 
 // Trans filter - uses translation service with current render locale
-env.addFilter('trans', (key: string, params?: Record<string, any>) => {
+env.addFilter('trans', (key: string, params?: Record<string, string | number>) => {
     return translateFn(key, params, currentRenderLocale);
 });
 
 // Path filter - prefix paths for routing
-env.addFilter('path', (routeName: string, params?: Record<string, any>) => {
+env.addFilter('path', (routeName: string, _params?: Record<string, unknown>) => {
     // Simple route name to path mapping
     const routes: Record<string, string> = {
         'app_login': '/login',
@@ -61,7 +61,7 @@ env.addFilter('path', (routeName: string, params?: Record<string, any>) => {
 /**
  * Render a template with data
  */
-export const renderTemplate = (templatePath: string, data: Record<string, any> = {}): string => {
+export const renderTemplate = (templatePath: string, data: Record<string, unknown> = {}): string => {
     // Add .njk extension if not present
     const fullPath = templatePath.endsWith('.njk') ? templatePath : `${templatePath}.njk`;
     return env.render(fullPath, data);

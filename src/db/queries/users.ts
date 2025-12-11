@@ -12,43 +12,30 @@ import { now, stringifyRoles } from '../types';
 // ============================================================================
 
 export async function findUserById(db: Kysely<Database>, id: number): Promise<User | undefined> {
-    return db.selectFrom('users')
-        .selectAll()
-        .where('id', '=', id)
-        .executeTakeFirst();
+    return db.selectFrom('users').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 export async function findUserByEmail(db: Kysely<Database>, email: string): Promise<User | undefined> {
-    return db.selectFrom('users')
-        .selectAll()
-        .where('email', '=', email)
-        .executeTakeFirst();
+    return db.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
 }
 
-export async function findUserByExternalId(db: Kysely<Database>, externalIdentifier: string): Promise<User | undefined> {
-    return db.selectFrom('users')
-        .selectAll()
-        .where('external_identifier', '=', externalIdentifier)
-        .executeTakeFirst();
+export async function findUserByExternalId(
+    db: Kysely<Database>,
+    externalIdentifier: string,
+): Promise<User | undefined> {
+    return db.selectFrom('users').selectAll().where('external_identifier', '=', externalIdentifier).executeTakeFirst();
 }
 
 export async function findUserByApiToken(db: Kysely<Database>, apiToken: string): Promise<User | undefined> {
-    return db.selectFrom('users')
-        .selectAll()
-        .where('api_token', '=', apiToken)
-        .executeTakeFirst();
+    return db.selectFrom('users').selectAll().where('api_token', '=', apiToken).executeTakeFirst();
 }
 
 export async function getAllUsers(db: Kysely<Database>): Promise<User[]> {
-    return db.selectFrom('users')
-        .selectAll()
-        .execute();
+    return db.selectFrom('users').selectAll().execute();
 }
 
 export async function countUsers(db: Kysely<Database>): Promise<number> {
-    const result = await db.selectFrom('users')
-        .select(db.fn.count<number>('id').as('count'))
-        .executeTakeFirst();
+    const result = await db.selectFrom('users').select(db.fn.count<number>('id').as('count')).executeTakeFirst();
     return result?.count ?? 0;
 }
 
@@ -58,10 +45,11 @@ export async function countUsers(db: Kysely<Database>): Promise<number> {
 
 export async function createUser(db: Kysely<Database>, data: NewUser): Promise<User> {
     const timestamp = now();
-    return db.insertInto('users')
+    return db
+        .insertInto('users')
         .values({
             ...data,
-            roles: typeof data.roles === 'string' ? data.roles : stringifyRoles(data.roles as string[] || []),
+            roles: typeof data.roles === 'string' ? data.roles : stringifyRoles((data.roles as string[]) || []),
             is_lopd_accepted: data.is_lopd_accepted ?? 0,
             is_active: data.is_active ?? 1,
             created_at: timestamp,
@@ -72,7 +60,8 @@ export async function createUser(db: Kysely<Database>, data: NewUser): Promise<U
 }
 
 export async function updateUser(db: Kysely<Database>, id: number, data: UserUpdate): Promise<User | undefined> {
-    return db.updateTable('users')
+    return db
+        .updateTable('users')
         .set({
             ...data,
             updated_at: now(),
@@ -83,9 +72,7 @@ export async function updateUser(db: Kysely<Database>, id: number, data: UserUpd
 }
 
 export async function deleteUser(db: Kysely<Database>, id: number): Promise<void> {
-    await db.deleteFrom('users')
-        .where('id', '=', id)
-        .execute();
+    await db.deleteFrom('users').where('id', '=', id).execute();
 }
 
 // ============================================================================
@@ -120,7 +107,8 @@ export async function findOrCreateExternalUser(
 }
 
 export async function updateApiToken(db: Kysely<Database>, userId: number, apiToken: string | null): Promise<void> {
-    await db.updateTable('users')
+    await db
+        .updateTable('users')
         .set({
             api_token: apiToken,
             updated_at: now(),
@@ -130,14 +118,12 @@ export async function updateApiToken(db: Kysely<Database>, userId: number, apiTo
 }
 
 export async function findFirstUser(db: Kysely<Database>): Promise<User | undefined> {
-    return db.selectFrom('users')
-        .selectAll()
-        .limit(1)
-        .executeTakeFirst();
+    return db.selectFrom('users').selectAll().limit(1).executeTakeFirst();
 }
 
 export async function updateUserRoles(db: Kysely<Database>, id: number, roles: string[]): Promise<User | undefined> {
-    return db.updateTable('users')
+    return db
+        .updateTable('users')
         .set({
             roles: stringifyRoles(roles),
             updated_at: now(),

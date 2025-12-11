@@ -15,10 +15,10 @@ export interface ProjectSession {
     userId?: number;
     filePath?: string;
     fileName?: string;
-    structure?: any;
+    structure?: unknown;
     createdAt: Date;
     updatedAt: Date;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 export interface SessionManagerDeps {

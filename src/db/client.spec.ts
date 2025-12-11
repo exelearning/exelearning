@@ -1,14 +1,12 @@
 /**
  * Tests for Kysely ORM Client
  */
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect } from 'bun:test';
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import type { Database } from './types';
 import { up } from './migrations/001_initial';
-import { db, dialect, closeDb, isConnected, getDbInfo, getDbConfig, getDialectFromEnv } from './client';
-import * as fs from 'fs';
-import * as path from 'path';
+import { db, closeDb, isConnected, getDbInfo, getDbConfig, getDialectFromEnv } from './client';
 
 describe('Kysely ORM Client', () => {
     describe('db instance', () => {

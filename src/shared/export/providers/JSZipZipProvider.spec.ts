@@ -295,12 +295,10 @@ describe('JSZipZipProvider', () => {
                 download: '',
                 click: () => {},
             };
-            const mockCreateObjectURL = (blob: Blob) =>
-                'blob:mock-url-' + blob.size;
+            const mockCreateObjectURL = (blob: Blob) => 'blob:mock-url-' + blob.size;
             const mockRevokeObjectURL = (_url: string) => {};
 
-            const originalDocument =
-                globalThis.document as unknown as Document;
+            const originalDocument = globalThis.document as unknown as Document;
             const originalURL = globalThis.URL;
 
             // Create mock document
@@ -316,8 +314,7 @@ describe('JSZipZipProvider', () => {
             };
 
             // Install mocks
-            (globalThis as unknown as Record<string, unknown>).document =
-                mockDocument;
+            (globalThis as unknown as Record<string, unknown>).document = mockDocument;
             (globalThis.URL as unknown as Record<string, unknown>) = {
                 ...originalURL,
                 createObjectURL: mockCreateObjectURL,
@@ -330,8 +327,7 @@ describe('JSZipZipProvider', () => {
             expect(mockLink.href).toContain('blob:mock-url-');
 
             // Restore
-            (globalThis as unknown as Record<string, unknown>).document =
-                originalDocument;
+            (globalThis as unknown as Record<string, unknown>).document = originalDocument;
             globalThis.URL = originalURL;
         });
 
@@ -352,8 +348,7 @@ describe('JSZipZipProvider', () => {
                 },
             };
 
-            const originalDocument =
-                globalThis.document as unknown as Document;
+            const originalDocument = globalThis.document as unknown as Document;
             const originalURL = globalThis.URL;
 
             const mockDocument = {
@@ -368,8 +363,7 @@ describe('JSZipZipProvider', () => {
                 },
             };
 
-            (globalThis as unknown as Record<string, unknown>).document =
-                mockDocument;
+            (globalThis as unknown as Record<string, unknown>).document = mockDocument;
             (globalThis.URL as unknown as Record<string, unknown>) = {
                 ...originalURL,
                 createObjectURL: (blob: Blob) => {
@@ -391,8 +385,7 @@ describe('JSZipZipProvider', () => {
             expect(revokeUrlCalled).toBe(true);
 
             // Restore
-            (globalThis as unknown as Record<string, unknown>).document =
-                originalDocument;
+            (globalThis as unknown as Record<string, unknown>).document = originalDocument;
             globalThis.URL = originalURL;
         });
     });

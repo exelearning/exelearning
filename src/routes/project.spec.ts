@@ -147,9 +147,7 @@ function createMockQueries(): QueriesDeps {
             }
         },
         findSavedProjectsByOwner: async (_db: any, ownerId: number) => {
-            return Array.from(mockProjects.values()).filter(
-                p => p.owner_id === ownerId && p.saved_once === 1,
-            );
+            return Array.from(mockProjects.values()).filter(p => p.owner_id === ownerId && p.saved_once === 1);
         },
         findProjectsAsCollaborator: async (_db: any, userId: number) => {
             // Return projects where user is a collaborator (not owner)
@@ -172,7 +170,9 @@ function createMockQueries(): QueriesDeps {
         },
         getProjectCollaborators: async (_db: any, projectId: number) => {
             const collabIds = mockCollaborators.get(projectId) || new Set();
-            return Array.from(collabIds).map(id => mockUsers.get(id)).filter(Boolean);
+            return Array.from(collabIds)
+                .map(id => mockUsers.get(id))
+                .filter(Boolean);
         },
         addCollaborator: async (_db: any, projectId: number, userId: number) => {
             if (!mockCollaborators.has(projectId)) {
@@ -337,9 +337,7 @@ describe('Project Routes', () => {
         mockDeps = createMockDependencies();
 
         // Create app with injected dependencies
-        app = new Elysia()
-            .use(createProjectRoutes(mockDeps))
-            .use(createSymfonyCompatProjectRoutes(mockDeps));
+        app = new Elysia().use(createProjectRoutes(mockDeps)).use(createSymfonyCompatProjectRoutes(mockDeps));
 
         // Create test directories
         await fs.ensureDir(testDir);
@@ -353,9 +351,7 @@ describe('Project Routes', () => {
 
     describe('GET /api/project/sessions', () => {
         it('should return empty list when no sessions', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/project/sessions'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/project/sessions'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -371,9 +367,7 @@ describe('Project Routes', () => {
                 updatedAt: new Date().toISOString(),
             });
 
-            const res = await app.handle(
-                new Request('http://localhost/api/project/sessions'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/project/sessions'));
 
             const body = await res.json();
             expect(body.count).toBe(1);
@@ -391,9 +385,7 @@ describe('Project Routes', () => {
                 structure: { title: 'Test' },
             });
 
-            const res = await app.handle(
-                new Request('http://localhost/api/project/sessions/session-1'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/project/sessions/session-1'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -403,9 +395,7 @@ describe('Project Routes', () => {
         });
 
         it('should return 404 for non-existent session', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/project/sessions/non-existent'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/project/sessions/non-existent'));
 
             expect(res.status).toBe(404);
         });
@@ -444,9 +434,7 @@ describe('Project Routes', () => {
     describe('Symfony Compat Routes', () => {
         describe('GET /api/nav-structures/:sessionId', () => {
             it('should return default structure for new session', async () => {
-                const res = await app.handle(
-                    new Request('http://localhost/api/nav-structures/new-session'),
-                );
+                const res = await app.handle(new Request('http://localhost/api/nav-structures/new-session'));
 
                 expect(res.status).toBe(200);
                 const body = await res.json();
@@ -463,9 +451,7 @@ describe('Project Routes', () => {
                     },
                 });
 
-                const res = await app.handle(
-                    new Request('http://localhost/api/nav-structures/session-with-structure'),
-                );
+                const res = await app.handle(new Request('http://localhost/api/nav-structures/session-with-structure'));
 
                 expect(res.status).toBe(200);
                 const body = await res.json();
@@ -475,9 +461,7 @@ describe('Project Routes', () => {
 
         describe('GET /api/odes/last-updated', () => {
             it('should return last updated timestamp', async () => {
-                const res = await app.handle(
-                    new Request('http://localhost/api/odes/last-updated'),
-                );
+                const res = await app.handle(new Request('http://localhost/api/odes/last-updated'));
 
                 expect(res.status).toBe(200);
                 const body = await res.json();
@@ -502,9 +486,7 @@ describe('Project Routes', () => {
             mockProjects.set(1, project);
             mockProjectsByUuid.set('test-project-uuid', project);
 
-            const res = await app.handle(
-                new Request('http://localhost/api/projects/1/sharing'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/projects/1/sharing'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -527,9 +509,7 @@ describe('Project Routes', () => {
             mockProjects.set(1, project);
             mockProjectsByUuid.set('test-project-uuid', project);
 
-            const res = await app.handle(
-                new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/projects/uuid/test-project-uuid/sharing'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -1518,7 +1498,7 @@ describe('Project Routes', () => {
         });
 
         it('should duplicate project with Yjs snapshot', async () => {
-            const project = createTestProject(901, 'uuid-901-with-snapshot', 1);
+            const _project = createTestProject(901, 'uuid-901-with-snapshot', 1);
 
             // Create a valid Yjs document state for the test
             const Y = await import('yjs');
@@ -1603,7 +1583,7 @@ describe('Project Routes', () => {
     });
 
     describe('ODE Properties', () => {
-        async function createAuthToken(userId: number = 1) {
+        async function _createAuthToken(userId: number = 1) {
             const jwt = await import('@elysiajs/jwt');
             const jwtInstance = jwt.jwt({
                 name: 'jwt',
@@ -1624,9 +1604,7 @@ describe('Project Routes', () => {
                 fileName: 'Test.elp',
             });
 
-            const res = await app.handle(
-                new Request('http://localhost/api/odes/ode-props-session/properties'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/odes/ode-props-session/properties'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -2086,9 +2064,7 @@ describe('Project Routes', () => {
         });
 
         it('should return empty list when not authenticated', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/projects/user/list'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/projects/user/list'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -2330,9 +2306,7 @@ describe('Project Routes', () => {
         it('should allow access to public project', async () => {
             createTestProject(1100, 'public-project', 1, 'public');
 
-            const res = await app.handle(
-                new Request('http://localhost/api/nav-structures/public-project'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/nav-structures/public-project'));
 
             expect(res.status).toBe(200);
         });
@@ -2340,9 +2314,7 @@ describe('Project Routes', () => {
         it('should deny access to private project without auth', async () => {
             createTestProject(1101, 'private-project', 1, 'private');
 
-            const res = await app.handle(
-                new Request('http://localhost/api/nav-structures/private-project'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/nav-structures/private-project'));
 
             expect(res.status).toBe(403);
         });
@@ -2441,9 +2413,7 @@ describe('Project Routes', () => {
         }
 
         it('should return empty list when not authenticated', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/project/get/user/ode/list'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/project/get/user/ode/list'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -2605,9 +2575,7 @@ describe('Project Routes', () => {
             mockCollaborators.set(1501, new Set([2]));
             mockUsers.set(2, { id: 2, email: 'collab@test.com', roles: 'ROLE_USER' });
 
-            const res = await app.handle(
-                new Request('http://localhost/api/projects/uuid/uuid-sharing-test/sharing'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/projects/uuid/uuid-sharing-test/sharing'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -2776,9 +2744,7 @@ describe('Project Routes', () => {
                 fileName: 'file2.elp',
             });
 
-            const res = await app.handle(
-                new Request('http://localhost/api/project/sessions'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/project/sessions'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -2792,9 +2758,7 @@ describe('Project Routes', () => {
                 fileName: 'detail.elp',
             });
 
-            const res = await app.handle(
-                new Request('http://localhost/api/project/sessions/detail-session'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/project/sessions/detail-session'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -3561,6 +3525,247 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
+        });
+    });
+
+    describe('Upload Chunk with Buffer conversion', () => {
+        async function createAuthToken(userId: number = 1) {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: mockUsers.get(userId)?.email || 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        it('should handle string-like chunk data conversion', async () => {
+            const sessionId = `buffer-conv-${Date.now()}`;
+            mockSessions.set(sessionId, {
+                sessionId,
+                fileName: 'test.elp',
+            });
+
+            await fs.ensureDir(path.join(testDir, 'tmp', sessionId));
+
+            const token = await createAuthToken(1);
+            const formData = new FormData();
+            // Send as Blob which will trigger arrayBuffer() path
+            formData.append('odeFilePart', new Blob(['string chunk'], { type: 'application/octet-stream' }));
+            formData.append('odeFileName', 'test.elp');
+            formData.append('odeSessionId', sessionId);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/project/upload-chunk', {
+                    method: 'POST',
+                    headers: { 'Cookie': `auth=${token}` },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+        });
+    });
+
+    describe('Link Validation Extended Coverage', () => {
+        it('should return null (valid) for existing internal files/', async () => {
+            // Create test file that exists
+            const filesDir = path.join(testDir, 'files');
+            await fs.ensureDir(filesDir);
+            await fs.writeFile(path.join(filesDir, 'exists.jpg'), 'test');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="files/exists.jpg">Existing File</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.brokenLinks[0].brokenLinks).toBe('No broken links found');
+        });
+
+        it('should detect 404 for missing internal files/', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="files/missing-404.jpg">Missing File</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.brokenLinks.length).toBeGreaterThan(0);
+        });
+
+        it('should skip relative URLs that are not files/', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="page2.html">Relative page link</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            // Relative non-files/ URLs should be skipped (valid)
+            expect(body.brokenLinks[0].brokenLinks).toBe('No broken links found');
+        });
+
+        it('should handle protocol-relative URLs', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="//example.invalid-domain-xyz.com/path">Protocol Relative</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            // Should try to validate and likely fail (network error)
+        });
+
+        it('should handle absolute URLs to unreachable hosts', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="https://unreachable-host-xyz-abc.invalid/page">Unreachable</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            // Should report network error
+        });
+
+        it('should skip mailto and tel links', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="mailto:test@example.com">Email</a><a href="tel:+1234567890">Phone</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.brokenLinks[0].brokenLinks).toBe('No broken links found');
+        });
+
+        it('should skip anchor-only links', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="#section1">Anchor</a><a href="#">Top</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.brokenLinks[0].brokenLinks).toBe('No broken links found');
+        });
+    });
+
+    describe('Import Cleanup Error Handling', () => {
+        it('should return success false for path outside allowed directory', async () => {
+            // Test with a path outside the allowed tmp directory
+            const res = await app.handle(
+                new Request('http://localhost/api/project/cleanup-import?path=/outside/path/file.elp', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.message).toBe('Invalid path');
+        });
+
+        it('should return success true for non-existent file in tmp', async () => {
+            // Test with a path in tmp that doesn't exist - should succeed (nothing to delete)
+            const res = await app.handle(
+                new Request('http://localhost/api/project/cleanup-import?path=tmp/nonexistent-file.elp', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+        });
+
+        it('should return success false when no path provided', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/project/cleanup-import', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.message).toBe('No path provided');
         });
     });
 });

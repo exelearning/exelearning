@@ -232,7 +232,9 @@ describe('Tmp Cleanup Command', () => {
 
         it('should show help when --help flag is passed', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', '--help'], defaultDeps, mockExit);
 
@@ -241,7 +243,9 @@ describe('Tmp Cleanup Command', () => {
 
         it('should show help when -h flag is passed', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', '-h'], defaultDeps, mockExit);
 
@@ -250,7 +254,9 @@ describe('Tmp Cleanup Command', () => {
 
         it('should exit with success when cleaning', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'tmp:cleanup'], defaultDeps, mockExit);
 
@@ -259,7 +265,9 @@ describe('Tmp Cleanup Command', () => {
 
         it('should exit with success on dry run', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'tmp:cleanup', '--dry-run'], defaultDeps, mockExit);
 
@@ -268,7 +276,9 @@ describe('Tmp Cleanup Command', () => {
 
         it('should exit with error when max-age is invalid', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             // Invalid max-age (0) should fail
             await runCli(['bun', 'cli', 'tmp:cleanup', '--max-age=0'], defaultDeps, mockExit);
@@ -278,7 +288,9 @@ describe('Tmp Cleanup Command', () => {
 
         it('should exit with success with valid max-age', async () => {
             let exitCode = -1;
-            const mockExit = (code: number) => { exitCode = code; };
+            const mockExit = (code: number) => {
+                exitCode = code;
+            };
 
             await runCli(['bun', 'cli', 'tmp:cleanup', '--max-age=3600'], defaultDeps, mockExit);
 

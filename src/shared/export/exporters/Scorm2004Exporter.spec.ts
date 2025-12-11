@@ -243,46 +243,26 @@ describe('Scorm2004Exporter', () => {
 
     describe('SCORM 2004 Page HTML', () => {
         it('should generate SCORM 2004-enabled HTML', () => {
-            const html = exporter.generateScorm2004PageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('SCORM_API_wrapper');
             expect(html).toContain('SCOFunctions');
         });
 
         it('should include loadPage handler', () => {
-            const html = exporter.generateScorm2004PageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('loadPage');
         });
 
         it('should include unloadPage handler', () => {
-            const html = exporter.generateScorm2004PageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('unloadPage');
         });
 
         it('should have exe-scorm2004 class', () => {
-            const html = exporter.generateScorm2004PageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true
-            );
+            const html = exporter.generateScorm2004PageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
             expect(html).toContain('exe-scorm');
             expect(html).toContain('exe-scorm2004');

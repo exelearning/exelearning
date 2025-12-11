@@ -42,18 +42,14 @@ describe('Disk Filename Utilities', () => {
             const fullPath = '';
             const filesDir = '/Users/ernesto/files';
 
-            expect(() => prepareDiskFilenameForSave(fullPath, filesDir)).toThrow(
-                'fullPath is required',
-            );
+            expect(() => prepareDiskFilenameForSave(fullPath, filesDir)).toThrow('fullPath is required');
         });
 
         it('should throw error for missing filesDir', () => {
             const fullPath = '/Users/ernesto/files/file.elpx';
             const filesDir = '';
 
-            expect(() => prepareDiskFilenameForSave(fullPath, filesDir)).toThrow(
-                'filesDir is required',
-            );
+            expect(() => prepareDiskFilenameForSave(fullPath, filesDir)).toThrow('filesDir is required');
         });
     });
 
@@ -80,18 +76,14 @@ describe('Disk Filename Utilities', () => {
             const diskFilename = '';
             const filesDir = '/Users/ernesto/files';
 
-            expect(() => resolveDiskFilename(diskFilename, filesDir)).toThrow(
-                'diskFilename is required',
-            );
+            expect(() => resolveDiskFilename(diskFilename, filesDir)).toThrow('diskFilename is required');
         });
 
         it('should throw error for missing filesDir', () => {
             const diskFilename = '{{files_dir}}/perm/odes/file.elpx';
             const filesDir = '';
 
-            expect(() => resolveDiskFilename(diskFilename, filesDir)).toThrow(
-                'filesDir is required',
-            );
+            expect(() => resolveDiskFilename(diskFilename, filesDir)).toThrow('filesDir is required');
         });
     });
 

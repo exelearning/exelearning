@@ -3,11 +3,7 @@
  * Tests the REAL implementation - no mock.module()
  */
 import { describe, it, expect, beforeEach } from 'bun:test';
-import {
-    ServerPriorityQueue,
-    PRIORITY,
-    type PriorityQueueItem,
-} from './asset-priority-queue';
+import { ServerPriorityQueue, PRIORITY, type PriorityQueueItem } from './asset-priority-queue';
 
 describe('ServerPriorityQueue', () => {
     let queue: ServerPriorityQueue;
@@ -615,7 +611,7 @@ describe('ServerPriorityQueue', () => {
             });
 
             const projects = queue.getActiveProjects();
-            const projectCount = projects.filter((p) => p === projectId).length;
+            const projectCount = projects.filter(p => p === projectId).length;
             expect(projectCount).toBe(1);
         });
     });

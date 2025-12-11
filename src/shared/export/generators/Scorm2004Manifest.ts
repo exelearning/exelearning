@@ -246,8 +246,7 @@ ${indentStr}</imsss:sequencing>
     generatePageResource(page: ExportPage, pageFile: PageFileInfo): string {
         const pageId = page.id;
         const isIndex = this.pages.indexOf(page) === 0;
-        const fileUrl =
-            pageFile.fileUrl || (isIndex ? 'index.html' : `html/${this.sanitizeFilename(page.title)}.html`);
+        const fileUrl = pageFile.fileUrl || (isIndex ? 'index.html' : `html/${this.sanitizeFilename(page.title)}.html`);
 
         // SCORM 2004 uses adlcp:scormType (capital T) instead of adlcp:scormtype
         let xml = `    <resource identifier="RES-${this.escapeXml(pageId)}" type="webcontent" adlcp:scormType="sco" href="${this.escapeXml(fileUrl)}">\n`;

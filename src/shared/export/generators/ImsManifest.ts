@@ -240,8 +240,7 @@ export class ImsManifestGenerator {
     generatePageResource(page: ExportPage, pageFile: PageFileInfo): string {
         const pageId = page.id;
         const isIndex = this.pages.indexOf(page) === 0;
-        const fileUrl =
-            pageFile.fileUrl || (isIndex ? 'index.html' : `html/${this.sanitizeFilename(page.title)}.html`);
+        const fileUrl = pageFile.fileUrl || (isIndex ? 'index.html' : `html/${this.sanitizeFilename(page.title)}.html`);
 
         let xml = `    <resource identifier="RES-${this.escapeXml(pageId)}" type="webcontent" href="${this.escapeXml(fileUrl)}">\n`;
 

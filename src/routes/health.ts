@@ -12,7 +12,8 @@ export const healthRoutes = new Elysia({ prefix: '/health' })
     .get('/db', async () => {
         try {
             // Test database connection by counting users
-            const result = await db.selectFrom('users')
+            const result = await db
+                .selectFrom('users')
                 .select(({ fn }) => fn.countAll().as('count'))
                 .executeTakeFirst();
             return {
@@ -32,8 +33,7 @@ export const healthRoutes = new Elysia({ prefix: '/health' })
     });
 
 // Alias for /healthcheck (backwards compatibility with Electron main.js)
-export const healthCheckAlias = new Elysia()
-    .get('/healthcheck', () => ({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-    }));
+export const healthCheckAlias = new Elysia().get('/healthcheck', () => ({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+}));

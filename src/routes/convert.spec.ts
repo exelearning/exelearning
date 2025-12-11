@@ -91,7 +91,7 @@ async function createTestElpBuffer(): Promise<Buffer> {
       </odePagStructures>
     </odeNavStructure>
   </odeNavStructures>
-</ode>`
+</ode>`,
     );
     return await zip.generateAsync({ type: 'nodebuffer' });
 }
@@ -138,10 +138,7 @@ describe('Convert Routes', () => {
         await fs.ensureDir(path.join(testDir, 'public', 'libs'));
 
         // Create minimal theme file
-        await fs.writeFile(
-            path.join(testDir, 'public', 'style', 'base', 'content.css'),
-            '/* base theme */'
-        );
+        await fs.writeFile(path.join(testDir, 'public', 'style', 'base', 'content.css'), '/* base theme */');
 
         // Create mock dependencies
         mockDeps = createMockDependencies();
@@ -215,7 +212,7 @@ describe('Convert Routes', () => {
                 new Request('http://localhost/api/convert/elp', {
                     method: 'POST',
                     body: formData,
-                })
+                }),
             );
 
             expect(res.status).toBe(401);
@@ -231,7 +228,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             expect(res.status).toBe(400);
@@ -251,7 +248,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             // Should succeed (even if conversion has issues, it should try)
@@ -270,7 +267,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             // Should succeed and return file
@@ -292,7 +289,7 @@ describe('Convert Routes', () => {
                 new Request('http://localhost/api/convert/export/html5', {
                     method: 'POST',
                     body: formData,
-                })
+                }),
             );
 
             expect(res.status).toBe(401);
@@ -310,7 +307,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             expect(res.status).toBe(400);
@@ -329,7 +326,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             expect(res.status).toBe(400);
@@ -349,7 +346,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             // Should attempt export (might fail due to missing resources but shouldn't 400)
@@ -368,7 +365,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             expect([200, 201, 500]).toContain(res.status);
@@ -386,7 +383,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             expect([200, 201, 500]).toContain(res.status);
@@ -404,7 +401,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             expect([200, 201, 500]).toContain(res.status);
@@ -422,7 +419,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             // Should succeed and return file or error
@@ -456,7 +453,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             // Restore original env
@@ -472,11 +469,7 @@ describe('Convert Routes', () => {
 
         it('should reject invalid file extensions', async () => {
             const formData = new FormData();
-            formData.append(
-                'file',
-                new Blob(['invalid'], { type: 'text/plain' }),
-                'test.txt'
-            );
+            formData.append('file', new Blob(['invalid'], { type: 'text/plain' }), 'test.txt');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -485,7 +478,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             expect(res.status).toBe(400);
@@ -514,7 +507,7 @@ describe('Convert Routes', () => {
                         Authorization: `Bearer ${authToken}`,
                     },
                     body: formData,
-                })
+                }),
             );
 
             // Restore original env

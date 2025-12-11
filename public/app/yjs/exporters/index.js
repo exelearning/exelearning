@@ -23,6 +23,7 @@
  *   - Scorm2004Exporter: SCORM 2004 package
  *   - ImsExporter: IMS Content Package
  *   - Epub3Exporter: EPUB3 ebook
+ *   - ComponentExporter: Single iDevice/block (.idevice.elp / .block.elp)
  *
  * Available Renderers:
  *   - IdeviceHtmlRenderer: Renders iDevice components to HTML
@@ -62,6 +63,7 @@ if (typeof window !== 'undefined') {
     Epub3Exporter: window.Epub3Exporter,
     PreviewExporter: window.PreviewExporter,
     WebsitePreviewExporter: window.WebsitePreviewExporter,
+    ComponentExporter: window.ComponentExporter,
   };
 
   /**
@@ -121,6 +123,12 @@ if (typeof window !== 'undefined') {
         exporter = new window.WebsitePreviewExporter(documentManager, assetCache, resourceFetcher, assetManager);
         break;
 
+      case 'COMPONENT':
+      case 'IDEVICE':
+      case 'BLOCK':
+        exporter = new window.ComponentExporter(documentManager, assetCache);
+        break;
+
       default:
         throw new Error(`Unknown export format: ${format}`);
     }
@@ -157,5 +165,6 @@ if (typeof module !== 'undefined' && module.exports) {
     PageExporter: require('./PageExporter'),
     Scorm12Exporter: require('./Scorm12Exporter'),
     PreviewExporter: require('./PreviewExporter'),
+    ComponentExporter: require('./ComponentExporter'),
   };
 }

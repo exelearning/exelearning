@@ -88,6 +88,8 @@
       'exporters/Scorm2004Exporter.js',
       'exporters/ImsExporter.js',
       'exporters/Epub3Exporter.js',
+      'exporters/ComponentExporter.js',
+      'exporters/ComponentImporter.js',
     ],
     // Group 5: Preview exporters + index (depend on Html5Exporter)
     [

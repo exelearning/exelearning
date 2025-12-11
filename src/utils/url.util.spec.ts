@@ -215,19 +215,13 @@ describe('URL Utilities', () => {
 
         it('should handle multiple iDevice IDs for same session', () => {
             const sessionId = '20250116143027ABCDEF';
-            const ideviceIds = [
-                '20250116143100AAABBB',
-                '20250116143200CCCDDD',
-                '20250116143300EEEFFF',
-            ];
+            const ideviceIds = ['20250116143100AAABBB', '20250116143200CCCDDD', '20250116143300EEEFFF'];
 
-            ideviceIds.forEach((ideviceId) => {
+            ideviceIds.forEach(ideviceId => {
                 const url = getOdeComponentsSyncUrl(sessionId, ideviceId);
                 expect(url).toContain(sessionId);
                 expect(url).toContain(ideviceId);
-                expect(url).toMatch(
-                    /^files\/tmp\/\d{4}\/\d{2}\/\d{2}\/\d{14}[A-Z]{6}\/\d{14}[A-Z]{6}\/$/,
-                );
+                expect(url).toMatch(/^files\/tmp\/\d{4}\/\d{2}\/\d{2}\/\d{14}[A-Z]{6}\/\d{14}[A-Z]{6}\/$/);
             });
         });
     });
@@ -247,9 +241,7 @@ describe('URL Utilities', () => {
             const customBase = '/custom/storage';
             const path = getOdeComponentsSyncPath(sessionId, ideviceId, customBase);
 
-            expect(path).toBe(
-                '/custom/storage/tmp/2025/01/16/20250116143027ABCDEF/20250116143100XYZABC/',
-            );
+            expect(path).toBe('/custom/storage/tmp/2025/01/16/20250116143027ABCDEF/20250116143100XYZABC/');
         });
 
         it('should return false for invalid session ID', () => {
@@ -394,8 +386,7 @@ describe('URL Utilities', () => {
         });
 
         it('should replace multiple occurrences of context path', () => {
-            const content =
-                '<img src="{{context_path}}/img1.jpg"/><img src="{{context_path}}/img2.jpg"/>';
+            const content = '<img src="{{context_path}}/img1.jpg"/><img src="{{context_path}}/img2.jpg"/>';
             const expected = `<img src="${sessionUrl}img1.jpg"/><img src="${sessionUrl}img2.jpg"/>`;
 
             const result = replaceContextPath(content, sessionId);
@@ -456,8 +447,7 @@ describe('URL Utilities', () => {
         });
 
         it('should handle JSON properties with context paths', () => {
-            const jsonContent =
-                '{"imagePath":"{{context_path}}/image.jpg","videoPath":"{{context_path}}/video.mp4"}';
+            const jsonContent = '{"imagePath":"{{context_path}}/image.jpg","videoPath":"{{context_path}}/video.mp4"}';
 
             const result = replaceContextPath(jsonContent, sessionId);
             expect(result).toContain(`${sessionUrl}image.jpg`);
@@ -479,8 +469,7 @@ describe('URL Utilities', () => {
 
         it('should replace multiple occurrences of session URL', () => {
             const content = `<img src="${sessionUrl}img1.jpg"/><img src="${sessionUrl}img2.jpg"/>`;
-            const expected =
-                '<img src="{{context_path}}/img1.jpg"/><img src="{{context_path}}/img2.jpg"/>';
+            const expected = '<img src="{{context_path}}/img1.jpg"/><img src="{{context_path}}/img2.jpg"/>';
 
             const result = unreplaceContextPath(content, sessionId);
             expect(result).toBe(expected);
@@ -553,8 +542,7 @@ describe('URL Utilities', () => {
         });
 
         it('should handle multiple round-trips', () => {
-            const original =
-                '<img src="{{context_path}}/img1.jpg"/><img src="{{context_path}}/img2.jpg"/>';
+            const original = '<img src="{{context_path}}/img1.jpg"/><img src="{{context_path}}/img2.jpg"/>';
 
             // Replace -> Unreplace -> Replace -> Unreplace
             let content = replaceContextPath(original, sessionId);

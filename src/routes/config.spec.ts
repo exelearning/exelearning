@@ -10,9 +10,7 @@ describe('Config Routes', () => {
 
     describe('GET /api/config/upload-limits', () => {
         it('should return upload limits configuration', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/config/upload-limits'),
-            );
+            const response = await app.handle(new Request('http://localhost/api/config/upload-limits'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -22,9 +20,7 @@ describe('Config Routes', () => {
         });
 
         it('should return formatted max file size', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/config/upload-limits'),
-            );
+            const response = await app.handle(new Request('http://localhost/api/config/upload-limits'));
 
             const data = await response.json();
             expect(data.maxFileSizeFormatted).toBeDefined();
@@ -34,9 +30,7 @@ describe('Config Routes', () => {
         });
 
         it('should return allowed MIME types', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/config/upload-limits'),
-            );
+            const response = await app.handle(new Request('http://localhost/api/config/upload-limits'));
 
             const data = await response.json();
             expect(data.allowedMimeTypes).toBeDefined();
@@ -47,9 +41,7 @@ describe('Config Routes', () => {
         });
 
         it('should return max upload size', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/config/upload-limits'),
-            );
+            const response = await app.handle(new Request('http://localhost/api/config/upload-limits'));
 
             const data = await response.json();
             expect(data.maxUploadSize).toBeDefined();
@@ -178,9 +170,7 @@ describe('Config Routes', () => {
 
     describe('GET /api/config/parameters', () => {
         it('should return parameters', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/config/parameters')
-            );
+            const response = await app.handle(new Request('http://localhost/api/config/parameters'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -191,9 +181,7 @@ describe('Config Routes', () => {
 
     describe('GET /api/config', () => {
         it('should return configuration with upload limits and parameters', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/config')
-            );
+            const response = await app.handle(new Request('http://localhost/api/config'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -202,9 +190,7 @@ describe('Config Routes', () => {
         });
 
         it('should include upload limits with size and formats', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/config')
-            );
+            const response = await app.handle(new Request('http://localhost/api/config'));
 
             const data = await response.json();
             expect(data.uploadLimits).toBeDefined();
@@ -213,9 +199,7 @@ describe('Config Routes', () => {
 
     describe('GET /api/translations/:locale', () => {
         it('should return translations for a valid locale', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/en')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/en'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -226,9 +210,7 @@ describe('Config Routes', () => {
         });
 
         it('should return translations for Spanish locale', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/es')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/es'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -237,9 +219,7 @@ describe('Config Routes', () => {
         });
 
         it('should handle non-existent locale with fallback message', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/xyz')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/xyz'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -250,9 +230,7 @@ describe('Config Routes', () => {
 
     describe('GET /api/translations/lists', () => {
         it('should return available locales', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/lists')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/lists'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -263,9 +241,7 @@ describe('Config Routes', () => {
         });
 
         it('should return package locales', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/lists')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/lists'));
 
             const data = await response.json();
             expect(data.packageLocales).toBeDefined();
@@ -274,18 +250,14 @@ describe('Config Routes', () => {
         });
 
         it('should return default locale', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/lists')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/lists'));
 
             const data = await response.json();
             expect(data.defaultLocale).toBe('en');
         });
 
         it('should return locale labels', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/lists')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/lists'));
 
             const data = await response.json();
             expect(data.localesLabels).toBeDefined();
@@ -302,7 +274,7 @@ describe('Config Routes', () => {
                     headers: {
                         'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
                     },
-                })
+                }),
             );
 
             expect(response.status).toBe(200);
@@ -318,7 +290,7 @@ describe('Config Routes', () => {
                     headers: {
                         'Accept-Language': 'en-US,en;q=0.9',
                     },
-                })
+                }),
             );
 
             const data = await response.json();
@@ -326,9 +298,7 @@ describe('Config Routes', () => {
         });
 
         it('should handle missing Accept-Language header', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/detect')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/detect'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -339,9 +309,7 @@ describe('Config Routes', () => {
 
     describe('GET /api/translations/translated-params/:locale', () => {
         it('should return translated parameters for English locale', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/translated-params/en')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/translated-params/en'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -351,9 +319,7 @@ describe('Config Routes', () => {
         });
 
         it('should return translated parameters for Spanish locale', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/translated-params/es')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/translated-params/es'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -366,9 +332,7 @@ describe('Config Routes', () => {
         });
 
         it('should return all configuration objects', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/translations/translated-params/en')
-            );
+            const response = await app.handle(new Request('http://localhost/api/translations/translated-params/en'));
 
             const data = await response.json();
             const expectedKeys = [
