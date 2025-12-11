@@ -817,20 +817,35 @@ var $eXeHiddenImage = {
             return false;
         }
 
-        $image
-            .off('load error')
-            .on('load', onImageLoad)
-            .on('error', onImageError);
+        const loadImage = (resolvedUrl) => {
+            $image
+                .off('load error')
+                .on('load', onImageLoad)
+                .on('error', onImageError);
 
-        $image.attr('src', '');
-        $image.attr('src', url);
+            $image.attr('src', '');
+            $image.attr('src', resolvedUrl);
 
-        if (imgEl.complete) {
-            if (imgEl.naturalWidth === 0) {
-                onImageError.call(imgEl);
-            } else {
-                onImageLoad.call(imgEl);
+            if (imgEl.complete) {
+                if (imgEl.naturalWidth === 0) {
+                    onImageError.call(imgEl);
+                } else {
+                    onImageLoad.call(imgEl);
+                }
             }
+        };
+
+        // Resolve asset:// URLs to blob URLs
+        if (url && url.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(url).then((blobUrl) => {
+                    loadImage(blobUrl || '');
+                });
+            }
+        } else {
+            loadImage(url);
         }
     },
 
@@ -842,33 +857,48 @@ var $eXeHiddenImage = {
         $image.attr('alt', 'No image');
         $image.hide();
 
-        $image
-            .attr('src', '')
-            .attr('src', url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth === 'undefined' ||
-                    this.naturalWidth === 0
-                ) {
+        const loadImage = (resolvedUrl) => {
+            $image
+                .attr('src', '')
+                .attr('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth === 'undefined' ||
+                        this.naturalWidth === 0
+                    ) {
+                        $image.hide();
+                        $eXeHiddenImage.showAuthor('', instance);
+                    } else {
+                        $eXeHiddenImage.showAuthor(mQuestion.author, instance);
+                        $image.attr('alt', mQuestion.alt);
+                        $image.css('opacity', 0);
+                        $image.show();
+                        setTimeout(function () {
+                            $eXeHiddenImage.createSquares(instance);
+                            $image.css('opacity', 1);
+                        }, 500);
+                    }
+                })
+                .on('error', function () {
                     $image.hide();
                     $eXeHiddenImage.showAuthor('', instance);
-                } else {
-                    $eXeHiddenImage.showAuthor(mQuestion.author, instance);
-                    $image.attr('alt', mQuestion.alt);
-                    $image.css('opacity', 0);
-                    $image.show();
-                    setTimeout(function () {
-                        $eXeHiddenImage.createSquares(instance);
-                        $image.css('opacity', 1);
-                    }, 500);
-                }
-            })
-            .on('error', function () {
-                $image.hide();
-                $eXeHiddenImage.showAuthor('', instance);
-                return false;
-            });
+                    return false;
+                });
+        };
+
+        // Resolve asset:// URLs to blob URLs
+        if (url && url.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(url).then((blobUrl) => {
+                    loadImage(blobUrl || '');
+                });
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     createSquares: function (instance) {

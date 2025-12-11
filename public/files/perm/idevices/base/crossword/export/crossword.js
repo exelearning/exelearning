@@ -170,14 +170,14 @@ var $eXeCrucigrama = {
                     const hasVertical =
                         cellData.vi !== undefined && cellData.vi !== -1;
 
-                    // Para determinar el wordindex principal (usado en data-wordindex)
+                    // To determine the main wordindex (used in data-wordindex)
                     const wordindex = hasHorizontal ? cellData.hi : cellData.vi,
                         indexLetter = hasHorizontal
                             ? cellData.lhi
                             : cellData.lvi,
                         word = mOptions.wordsGame[wordindex].word;
 
-                    // Verificar si la letra debe mostrarse en cualquiera de las palabras
+                    // Check if the letter should be shown in any of the words
                     let shouldShowLetter = false;
                     if (hasHorizontal && lettersShow[cellData.hi]) {
                         shouldShowLetter = lettersShow[cellData.hi].includes(
@@ -1457,39 +1457,55 @@ var $eXeCrucigrama = {
             $Author = $('#ccgmAuthorPoint-' + instance);
 
         $Author.html(author || '');
-        $Image
-            .prop('src', url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth == 'undefined' ||
-                    this.naturalWidth == 0
-                ) {
+
+        const loadImage = (resolvedUrl) => {
+            $Image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth == 0
+                    ) {
+                        $Image.hide();
+                        $Image.attr(
+                            'alt',
+                            $eXeCrucigrama.options[instance].msgs.msgNoImage
+                        );
+                        $noImage.show();
+                        $eXeCrucigrama.showCubiertaOptions(instance, 2);
+                        return false;
+                    } else {
+                        $Image.show();
+                        $Image.attr('alt', alt || '');
+                        $eXeCrucigrama.showCubiertaOptions(instance, 2);
+                        $eXeCrucigrama.positionPointerCard($cursor, x, y);
+                        return true;
+                    }
+                })
+                .on('error', function () {
                     $Image.hide();
                     $Image.attr(
                         'alt',
                         $eXeCrucigrama.options[instance].msgs.msgNoImage
                     );
-                    $noImage.show();
                     $eXeCrucigrama.showCubiertaOptions(instance, 2);
                     return false;
-                } else {
-                    $Image.show();
-                    $Image.attr('alt', alt || '');
-                    $eXeCrucigrama.showCubiertaOptions(instance, 2);
-                    $eXeCrucigrama.positionPointerCard($cursor, x, y);
-                    return true;
-                }
-            })
-            .on('error', function () {
-                $Image.hide();
-                $Image.attr(
-                    'alt',
-                    $eXeCrucigrama.options[instance].msgs.msgNoImage
-                );
-                $eXeCrucigrama.showCubiertaOptions(instance, 2);
-                return false;
-            });
+                });
+        };
+
+        // Resolve asset:// URLs to blob URLs
+        if (url && url.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(url).then((blobUrl) => {
+                    loadImage(blobUrl || '');
+                });
+            }
+        } else {
+            loadImage(url);
+        }
 
         $('#ccgmMultimediaPoint-' + instance).show();
     },
@@ -1812,8 +1828,12 @@ var $eXeCrucigrama = {
                     imagesLink,
                     audioLink,
                     version
-                ),
-                msg = mOption.msgs.msgPlayStart;
+                );
+
+            // Skip if no valid data found
+            if (!mOption) return;
+
+            const msg = mOption.msgs.msgPlayStart;
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXeCrucigrama.idevicePath;
@@ -1877,6 +1897,11 @@ var $eXeCrucigrama = {
 
         const mOptions =
             $exeDevices.iDevice.gamification.helpers.isJsonString(json);
+
+        // Validate data exists before using
+        if (!mOptions || !mOptions.wordsGame || !Array.isArray(mOptions.wordsGame)) {
+            return null;
+        }
 
         mOptions.boardSize = 16;
         mOptions.mappedWords = [];
@@ -2640,8 +2665,8 @@ var $eXeCrucigrama = {
                             `input[data-row=${row}][data-col=${col}]`
                         );
                         if ($cellInput.length) {
-                            // Si preserveExisting es true, solo rellenar celdas vacías
-                            // Si es false, sobrescribir siempre (comportamiento original para verificación)
+                            // If preserveExisting is true, only fill empty cells
+                            // If false, always overwrite (original behavior for verification)
                             if (!preserveExisting || !$cellInput.val()) {
                                 $cellInput.val(letter);
                             }

@@ -1030,7 +1030,7 @@ var $eXeRelaciona = {
                     top: e.clientY - mOptions.canvasRect.top,
                     left: e.clientX - mOptions.canvasRect.left,
                 });
-                // Guardar coords absolutas para el repintado
+                // Save absolute coords for redrawing
                 mOptions._tempX = e.clientX;
                 mOptions._tempY = e.clientY;
 

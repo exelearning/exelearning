@@ -14,5 +14,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openElp: () => ipcRenderer.invoke('app:openElp'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
   onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (_e, data) => cb && cb(data)),
-  onDownloadDone: (cb) => ipcRenderer.on('download-done', (_e, data) => cb && cb(data))
+  onDownloadDone: (cb) => ipcRenderer.on('download-done', (_e, data) => cb && cb(data)),
+  onOpenFile: (cb) => ipcRenderer.on('app:open-file', (_e, filePath) => cb && cb(filePath))
 });

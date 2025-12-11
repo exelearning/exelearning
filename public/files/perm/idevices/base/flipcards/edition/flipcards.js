@@ -225,7 +225,7 @@ var $exeDevice = {
                             <div id="flipcardBackDiv" style="display:none">
                                 <p class="FLCRDS-EInputImageBack">
                                     <label for="flipcardsEURLImgCard">${_('Image back')}: </label>
-                                    <input type="text" class="exe-file-picker FLCRDS-EURLImage form-control me-0" id="flipcardsEURLImgCard"/>
+                                    <input type="text" class="exe-image-picker FLCRDS-EURLImage form-control me-0" id="flipcardsEURLImgCard"/>
                                     <a href="#" id="flipcardEPlayCard" class="flipcard-ENavigationButton flipcardEEPlayVideo" title="${_('Show')}">
                                          <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
                                     </a>
@@ -285,7 +285,7 @@ var $exeDevice = {
                                     <span>${_('Image')}</span>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEInputImage">
                                         <label for="flipcardsEURLImage" class="sr-av">URL</label>
-                                        <input type="text" id="flipcardsEURLImage" class="exe-file-picker FLCRDS-EURLImage form-control me-0"/>
+                                        <input type="text" id="flipcardsEURLImage" class="exe-image-picker FLCRDS-EURLImage form-control me-0"/>
                                         <a href="#" id="flipcardsEPlayImage" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
                                         </a>
@@ -341,7 +341,7 @@ var $exeDevice = {
                                     <span> ${_('Image')}</span>
                                     <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="flipcardsEInputImageBack">
                                         <label for="flipcardsEURLImageBack" class="sr-av">URL</label>
-                                        <input type="text" id="flipcardsEURLImageBack" class="exe-file-picker form-control me-0"/>
+                                        <input type="text" id="flipcardsEURLImageBack" class="exe-image-picker form-control me-0"/>
                                         <a href="#" id="flipcardsEPlayImageBack" class="FLCRDS-EPlayVideo" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
                                         </a>
@@ -681,6 +681,11 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.addEventCard();
+        $exeDevice.addPickerButton();
+    },
+
+    addPickerButton: function () {
+        // Manejado globalmente por $exeDevicesEdition.iDevice.filePicker.init()
     },
 
     updateCardsNumber: function () {
@@ -814,7 +819,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>');
@@ -1078,6 +1088,10 @@ var $exeDevice = {
                 type == 0
                     ? $('#flipcardsENoImage')
                     : $('#flipcardsENoImageBack'),
+            $input =
+                type == 0
+                    ? $('#flipcardsEURLImage')
+                    : $('#flipcardsEURLImageBack'),
             x =
                 type == 0
                     ? $('#flipcardsEX').val()
@@ -1090,75 +1104,133 @@ var $exeDevice = {
                 type == 0
                     ? $('#flipcardsEAlt').val()
                     : $('#flipcardsEAltBack').val(),
-            url =
-                type == 0
-                    ? $('#flipcardsEURLImage').val()
-                    : $('#flipcardsEURLImageBack').val();
+            url = $input.val();
 
         $image.hide();
         $cursor.hide();
         $image.attr('alt', alt);
         $nimage.show();
-        $image
-            .prop('src', url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth == 'undefined' ||
-                    this.naturalWidth == 0
-                ) {
+
+        const loadImage = (resolvedUrl) => {
+            $image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth == 0
+                    ) {
+                        return false;
+                    } else {
+                        const mData = $exeDevice.placeImageWindows(
+                            this,
+                            this.naturalWidth,
+                            this.naturalHeight
+                        );
+                        $exeDevice.drawImage(this, mData);
+                        $image.show();
+                        $nimage.hide();
+                        $exeDevice.paintMouse(this, $cursor, x, y);
+                        return true;
+                    }
+                })
+                .on('error', function () {
                     return false;
-                } else {
-                    const mData = $exeDevice.placeImageWindows(
-                        this,
-                        this.naturalWidth,
-                        this.naturalHeight
-                    );
-                    $exeDevice.drawImage(this, mData);
-                    $image.show();
-                    $nimage.hide();
-                    $exeDevice.paintMouse(this, $cursor, x, y);
-                    return true;
+                });
+        };
+
+        // Handle asset:// URLs
+        if (url && url.startsWith('asset://')) {
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                loadImage(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
+                        loadImage(resolvedUrl || '');
+                    });
                 }
-            })
-            .on('error', function () {
-                return false;
-            });
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     showImageCard: function (url) {
-        $image = $('#flipcardECard');
-        $nimage = $('#flipcardENoCard');
+        const $image = $('#flipcardECard');
+        const $nimage = $('#flipcardENoCard');
+        const $input = $('#flipcardsEURLImageCard');
         $image.hide();
         $nimage.show();
-        if (!url.length) return;
-        $image
-            .prop('src', url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth == 'undefined' ||
-                    this.naturalWidth == 0
-                ) {
+        if (!url || !url.length) return;
+
+        const loadImage = (resolvedUrl) => {
+            $image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth == 0
+                    ) {
+                        return false;
+                    } else {
+                        $image.show();
+                        $nimage.hide();
+                        return true;
+                    }
+                })
+                .on('error', function () {
                     return false;
-                } else {
-                    $image.show();
-                    $nimage.hide();
-                    return true;
+                });
+        };
+
+        // Handle asset:// URLs
+        if (url.startsWith('asset://')) {
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                loadImage(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
+                        loadImage(resolvedUrl || '');
+                    });
                 }
-            })
-            .on('error', function () {
-                return false;
-            });
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
-        });
+        const playAudio = (url) => {
+            const selectFile =
+                $exeDevices.iDevice.gamification.media.extractURLGD(url);
+            $exeDevice.playerAudio = new Audio(selectFile);
+            $exeDevice.playerAudio.addEventListener(
+                'canplaythrough',
+                function () {
+                    $exeDevice.playerAudio.play();
+                }
+            );
+        };
+
+        // Handle asset:// URLs
+        if (selectedFile && selectedFile.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(selectedFile).then((resolvedUrl) => {
+                    playAudio(resolvedUrl || '');
+                });
+            }
+        } else {
+            playAudio(selectedFile);
+        }
     },
 
     stopSound() {
@@ -1223,7 +1295,7 @@ var $exeDevice = {
 
     addEvents: function () {
         $('#flipcardsEPasteC').hide();
-        // Inicialización accesible de toggles
+        // Accessible toggle initialization
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
             const $item = $input.closest('.toggle-item[role="switch"]');

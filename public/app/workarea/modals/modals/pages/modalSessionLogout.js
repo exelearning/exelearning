@@ -20,12 +20,12 @@ export default class ModalSessionLogout extends Modal {
             this.modalElement.querySelector('.modal-footer');
         this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
 
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey
-            );
-        }
+        // if (!this.offlineInstallation) {
+        //     this.realTimeEventNotifier = new RealTimeEventNotifier(
+        //         eXeLearning.mercure.url,
+        //         eXeLearning.mercure.jwtSecretKey
+        //     );
+        // }
     }
 
     /**
@@ -116,6 +116,14 @@ export default class ModalSessionLogout extends Modal {
      */
     notSaveSessionEventListener(notSaveSessionButton, data) {
         notSaveSessionButton.addEventListener('click', () => {
+            // Handle Yjs project navigation (from Recent Projects menu)
+            if (data.openYjsProject && data.projectUuid) {
+                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
+                this.close();
+                return;
+            }
+
             let odeParams = [];
             odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
 
@@ -157,6 +165,29 @@ export default class ModalSessionLogout extends Modal {
      * @param {*} odeParams
      */
     async saveSession(odeParams, data) {
+        // Handle Yjs project: save with Yjs then navigate
+        if (data.openYjsProject && data.projectUuid) {
+            try {
+                // Save current project using Yjs SaveManager
+                const saveManager =
+                    eXeLearning?.app?.project?._yjsBridge?.saveManager;
+                if (saveManager) {
+                    await saveManager.save();
+                }
+                // Navigate to the new project
+                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
+            } catch (error) {
+                console.error('[SessionLogout] Error saving Yjs project:', error);
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error saving'),
+                    body: _('An error occurred while saving the project'),
+                    contentId: 'error',
+                });
+            }
+            return;
+        }
+
         let params = {
             odeSessionId: odeParams['odeSessionId'],
             odeVersion: odeParams['odeVersion'],

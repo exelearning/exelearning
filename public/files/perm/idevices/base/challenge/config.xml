@@ -3,6 +3,8 @@
     <title>Challenge</title>
     <css-class>challenge</css-class>
     <category>Games</category>
+    <component-type>json</component-type>
+    <export-object>$eXeDesafio</export-object>
     <icon>
         <name>challenge-icon</name>
         <url>challenge-icon.svg</url>

@@ -34,16 +34,6 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get current project
-     *
-     * @returns
-     */
-    async getCurrentProject() {
-        let url = this.endpoints.api_current_ode_users_for_user_get.path;
-        return await this.func.get(url);
-    }
-
-    /**
      * Get app changelog text
      *
      * @returns
@@ -73,8 +63,10 @@ export default class ApiCallManager {
      * @returns
      */
     async getThirdPartyCodeText() {
-        let url = this.app.eXeLearning.symfony.baseURL + '/libs/README';
-        url += '?version=' + eXeLearning.app.common.getVersionTimeStamp();
+        // Use basePath + version for proper cache busting
+        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/README)
+        const version = eXeLearning?.version || 'v1.0.0';
+        let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/README';
         return await this.func.getText(url);
     }
 
@@ -84,8 +76,10 @@ export default class ApiCallManager {
      * @returns
      */
     async getLicensesList() {
-        let url = this.app.eXeLearning.symfony.baseURL + '/libs/LICENSES';
-        url += '?version=' + eXeLearning.app.common.getVersionTimeStamp();
+        // Use basePath + version for proper cache busting
+        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/LICENSES)
+        const version = eXeLearning?.version || 'v1.0.0';
+        let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/LICENSES';
         return await this.func.getText(url);
     }
 
@@ -110,33 +104,100 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get user odefiles
+     * Get user odefiles (projects)
+     * Uses NestJS endpoint for Yjs-based projects
      *
-     * @returns
+     * @returns {Promise<Object>} Response with odeFiles containing odeFilesSync array
      */
     async getUserOdeFiles() {
-        let url = this.endpoints.api_odes_user_get_ode_list.path;
-        return await this.func.get(url);
+        // Use NestJS endpoint for Yjs projects
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/user/list`;
+
+        // Get auth token from available sources
+        const authToken = eXeLearning?.app?.project?._yjsBridge?.authToken ||
+                          eXeLearning?.app?.auth?.getToken?.() ||
+                          eXeLearning?.symfony?.token ||
+                          localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                console.error('[API] getUserOdeFiles failed:', response.status);
+                return { odeFiles: { odeFilesSync: [] } };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] getUserOdeFiles error:', error);
+            return { odeFiles: { odeFilesSync: [] } };
+        }
     }
 
     /**
-     * Get recent user odefiles
+     * Get recent user odefiles (projects)
+     * Uses NestJS endpoint for Yjs-based projects
+     * Returns the 3 most recently updated projects
      *
-     * @returns
+     * @returns {Promise<Array>} Array of recent project objects
      */
     async getRecentUserOdeFiles() {
-        let url = this.endpoints.api_odes_get_user_recent_ode_list.path;
-        return await this.func.get(url);
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/user/recent`;
+
+        // Get auth token from available sources
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            eXeLearning?.symfony?.token ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                console.error('[API] getRecentUserOdeFiles failed:', response.status);
+                return [];
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] getRecentUserOdeFiles error:', error);
+            return [];
+        }
     }
 
     /**
      * Get currentUser odeSessionId
      *
-     * @returns
+     * @deprecated With Yjs, session ID comes from URL or Yjs document
+     * @returns {Object} Stub response with session ID from URL
      */
     async getCurrentUserOdeSessionId() {
-        let url = this.endpoints.get_ode_session_id_current_ode_user.path;
-        return await this.func.get(url);
+        // NOTE: CurrentOdeUsers API has been removed.
+        // Session ID is now obtained from URL parameter or Yjs document.
+        console.warn('[apiCallManager] getCurrentUserOdeSessionId() is deprecated - use URL param or YjsProjectBridge');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('project') || 'default';
+
+        return {
+            responseMessage: 'OK',
+            odeSessionId: projectId,
+        };
     }
 
     /**
@@ -146,7 +207,7 @@ export default class ApiCallManager {
      * @returns {Promise<Array>} - Array of template objects
      */
     async getTemplates(locale) {
-        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/v2/templates?locale=${locale}`;
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/templates?locale=${locale}`;
         return await this.func.get(url);
     }
 
@@ -254,13 +315,24 @@ export default class ApiCallManager {
     /**
      *
      * @param {String} navId
-     * @param {FormData} data
+     * @param {Object} payload
      * @returns
      */
-    async postImportElpAsChild(navId, data) {
-        let url = this.endpoints.api_nav_structures_import_elp_as_children.path;
+    async postImportElpAsChildFromLocal(navId, payload = {}) {
+        let url = this.endpoints.api_nav_structures_import_elp_child?.path;
+        if (!url) {
+            url =
+                this.apiUrlBase +
+                this.apiUrlBasePath +
+                '/api/nav-structure-management/nav-structures/{odeNavStructureSyncId}/import-elp';
+        }
         url = url.replace('{odeNavStructureSyncId}', navId);
-        return await this.func.fileSendPost(url, data);
+        return await this.func.post(url, payload);
+    }
+
+    // Backwards compatibility wrapper
+    async postImportElpAsChild(navId, payload = {}) {
+        return await this.postImportElpAsChildFromLocal(navId, payload);
     }
 
     /**
@@ -506,7 +578,7 @@ export default class ApiCallManager {
      */
     async getOdeSessionBrokenLinks(params) {
         let url = this.endpoints.api_odes_session_get_broken_links.path;
-        return await this.func.post(url, params);
+        return await this.func.postJson(url, params);
     }
 
     /**
@@ -574,7 +646,7 @@ export default class ApiCallManager {
      */
     async getOdeSessionUsedFiles(params) {
         let url = this.endpoints.api_odes_session_get_used_files.path;
-        return await this.func.post(url, params);
+        return await this.func.postJson(url, params);
     }
 
     /**
@@ -597,12 +669,127 @@ export default class ApiCallManager {
      * @returns
      */
     async getOdeExportDownload(odeSessionId, exportType) {
-        let downloadResponse = [];
         let url = this.endpoints.api_ode_export_download.path;
         url = url.replace('{odeSessionId}', odeSessionId);
         url = url.replace('{exportType}', exportType);
 
+        // Check if this is a Yjs session - send structure via POST
+        if (odeSessionId && odeSessionId.startsWith('yjs-')) {
+            const structure = this.buildStructureFromYjs();
+            if (structure) {
+                return await this.func.post(url, { structure });
+            }
+        }
+
         return await this.func.get(url);
+    }
+
+    /**
+     * Build ParsedOdeStructure from Yjs document for export
+     * @returns {Object|null} Structure object or null if Yjs not available
+     */
+    buildStructureFromYjs() {
+        try {
+            const project = this.app?.project;
+            const bridge = project?._yjsBridge;
+            const manager = bridge?.getDocumentManager?.();
+
+            if (!manager) {
+                console.warn('[ApiCallManager] Yjs document manager not available');
+                return null;
+            }
+
+            const metadata = manager.getMetadata();
+            const navigation = manager.getNavigation();
+
+            // Build structure matching ParsedOdeStructure format
+            const structure = {
+                meta: {
+                    title: metadata?.get('title') || 'Untitled',
+                    author: metadata?.get('author') || '',
+                    language: metadata?.get('language') || 'en',
+                    description: metadata?.get('description') || '',
+                    license: metadata?.get('license') || '',
+                    theme: metadata?.get('theme') || 'base',
+                },
+                pages: [],
+                navigation: [],
+            };
+
+            // Build pages and navigation from Yjs navigation array
+            for (let i = 0; i < navigation.length; i++) {
+                const pageMap = navigation.get(i);
+                if (!pageMap) continue;
+
+                const pageId = pageMap.get('id') || pageMap.get('pageId');
+                const pageName = pageMap.get('pageName') || 'Page';
+                const parentId = pageMap.get('parentId') || null;
+
+                // Navigation entry
+                structure.navigation.push({
+                    id: pageId,
+                    navText: pageName,
+                    parentId: parentId,
+                });
+
+                // Page entry with blocks
+                const page = {
+                    id: pageId,
+                    pageName: pageName,
+                    parentId: parentId,
+                    blocks: [],
+                };
+
+                // Get blocks for this page
+                const blocks = pageMap.get('blocks');
+                if (blocks) {
+                    for (let j = 0; j < blocks.length; j++) {
+                        const blockMap = blocks.get(j);
+                        if (!blockMap) continue;
+
+                        const block = {
+                            id: blockMap.get('id') || blockMap.get('blockId'),
+                            blockName: blockMap.get('blockName') || '',
+                            iconName: blockMap.get('iconName') || '',
+                            components: [],
+                        };
+
+                        // Get components (iDevices)
+                        const components = blockMap.get('components');
+                        if (components) {
+                            for (let k = 0; k < components.length; k++) {
+                                const compMap = components.get(k);
+                                if (!compMap) continue;
+
+                                const component = {
+                                    id: compMap.get('id'),
+                                    ideviceType: compMap.get('ideviceType'),
+                                    htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+                                };
+
+                                // Get properties if available
+                                const propsMap = compMap.get('properties');
+                                if (propsMap && typeof propsMap.toJSON === 'function') {
+                                    component.properties = propsMap.toJSON();
+                                }
+
+                                block.components.push(component);
+                            }
+                        }
+
+                        page.blocks.push(block);
+                    }
+                }
+
+                structure.pages.push(page);
+            }
+
+            console.log('[ApiCallManager] Built structure from Yjs:', structure);
+            return structure;
+        } catch (error) {
+            console.error('[ApiCallManager] Failed to build structure from Yjs:', error);
+            return null;
+        }
     }
 
     /**
@@ -715,43 +902,49 @@ export default class ApiCallManager {
     }
 
     /**
-     *
+     * @deprecated - Removed: Yjs handles real-time sync automatically
      * @param {*} params
-     * @returns
+     * @returns {Object} Stub response for backward compatibility
      */
     async postCheckUserOdeUpdates(params) {
-        let url = this.endpoints.current_ode_user_sync.path;
-        return await this.func.post(url, params, false);
+        // NOTE: CurrentOdeUsers sync API has been removed.
+        // Yjs provides real-time synchronization automatically.
+        return {
+            responseMessage: 'OK',
+            hasUpdates: false,
+            syncNavStructureFlag: false,
+            syncPagStructureFlag: false,
+            syncComponentsFlag: false,
+        };
     }
 
     /**
-     *
+     * @deprecated - Removed: Yjs awareness handles user presence on pages
      * @param {*} params
-     * @returns
+     * @returns {Object} Stub response for backward compatibility
      */
     async postCheckUsersOdePage(params) {
-        let url = this.endpoints.current_ode_users_on_page_id.path;
-        return await this.func.post(url, params);
+        // NOTE: CurrentOdeUsers API has been removed.
+        // Use Yjs awareness for user presence tracking.
+        console.warn('[apiCallManager] postCheckUsersOdePage() is deprecated - use Yjs awareness instead');
+        return {
+            responseMessage: 'OK',
+            usersOnPage: [],
+        };
     }
 
     /**
-     *
-     * @param {*} params
-     * @returns
+     * @deprecated - Removed: Yjs handles synchronization
      */
     async postActivateCurrentOdeUsersUpdateFlag(params) {
-        let url = this.endpoints.current_ode_users_update_flag.path;
-        return await this.func.post(url, params);
+        return { responseMessage: 'OK' };
     }
 
     /**
-     *
-     *
+     * @deprecated - Removed: Yjs handles synchronization
      */
     async checkCurrentOdeUsersComponentFlag(params) {
-        let url =
-            this.endpoints.check_ode_component_flag_current_ode_users.path;
-        return await this.func.post(url, params);
+        return { responseMessage: 'OK', isAvailable: true };
     }
 
     /**
@@ -762,39 +955,6 @@ export default class ApiCallManager {
     async postObtainOdeBlockSync(params) {
         let url = this.endpoints.get_current_block_update.path;
         return await this.func.post(url, params);
-    }
-
-    /**
-     *
-     * @param {*} params
-     * @returns
-     */
-    async postOdeOperation(params) {
-        let url = this.endpoints.api_ode_operations_ode_operation_log_get.path;
-        return await this.func.post(url, params);
-    }
-
-    /**
-     *
-     * @returns
-     *
-     */
-    async getActionFromLastOdeOperation() {
-        let url =
-            this.endpoints.api_ode_operations_send_action_ode_operation.path;
-        return await this.func.get(url);
-    }
-
-    /**
-     *
-     * @returns
-     *
-     */
-    async getConfirmLastOperationLogDone() {
-        let url =
-            this.endpoints.api_ode_operations_set_active_flag_ode_operation
-                .path;
-        return await this.func.get(url);
     }
 
     /**
@@ -906,9 +1066,129 @@ export default class ApiCallManager {
         }
         // Collaborative End
 
+        // Check if Yjs mode is active and we should load from Yjs
+        const projectManager = eXeLearning?.app?.project;
+        if (projectManager?._yjsEnabled && projectManager._yjsBridge?.structureBinding) {
+            console.log('[apiCallManager] getComponentsByPage: Loading from Yjs for page', odeNavStructureSyncId);
+            return this._getComponentsByPageFromYjs(odeNavStructureSyncId);
+        }
+
         let url = this.endpoints.api_idevices_list_by_page.path;
         url = url.replace('{odeNavStructureSyncId}', odeNavStructureSyncId);
         return await this.func.get(url);
+    }
+
+    /**
+     * Get page components from Yjs document (when Yjs mode is active)
+     * Returns data in Symfony-compatible format expected by idevicesEngine.js
+     *
+     * @param {string} pageId - Page ID (Yjs UUID or "root")
+     * @returns {Object} Page structure with blocks and components
+     */
+    _getComponentsByPageFromYjs(pageId) {
+        const projectManager = eXeLearning?.app?.project;
+        const bridge = projectManager?._yjsBridge;
+        const structureBinding = bridge?.structureBinding;
+
+        if (!structureBinding) {
+            console.warn('[apiCallManager] _getComponentsByPageFromYjs: No structureBinding available');
+            return { responseMessage: 'ERROR', error: 'Yjs not initialized' };
+        }
+
+        // Handle "root" as special case - get the first page
+        let actualPageId = pageId;
+        if (pageId === 'root') {
+            const pages = structureBinding.getPages();
+            if (pages && pages.length > 0) {
+                actualPageId = pages[0].id;
+                console.log('[apiCallManager] _getComponentsByPageFromYjs: "root" resolved to first page:', actualPageId);
+            } else {
+                // No pages exist yet, return empty structure
+                return {
+                    id: 'root',
+                    odePageId: 'root',
+                    pageName: 'Root',
+                    odePagStructureSyncs: []
+                };
+            }
+        }
+
+        // Get page from Yjs
+        const pageMap = structureBinding.getPageMap(actualPageId);
+        if (!pageMap) {
+            // Page not found, return empty structure
+            console.warn('[apiCallManager] _getComponentsByPageFromYjs: Page not found:', pageId);
+            return {
+                id: pageId,
+                odePageId: pageId,
+                pageName: 'Page',
+                odePagStructureSyncs: []
+            };
+        }
+
+        // Build Symfony-compatible response structure
+        const blocks = structureBinding.getBlocks(actualPageId);
+        const odePagStructureSyncs = blocks.map(block => {
+            const components = structureBinding.getComponents(actualPageId, block.id);
+
+            // Convert properties Y.Map to plain object, or use defaults
+            let blockProperties = block.properties;
+            if (blockProperties && typeof blockProperties.toJSON === 'function') {
+                blockProperties = blockProperties.toJSON();
+            } else if (!blockProperties || typeof blockProperties !== 'object') {
+                blockProperties = {};
+            }
+
+            // Build odePagStructureSyncProperties object with {value} structure (expected by setProperties)
+            // Convert booleans to strings since YjsStructureBinding stores checkboxes as booleans
+            // but modalProperties.js compares with string 'true'/'false'
+            const odePagStructureSyncProperties = {};
+            Object.entries(blockProperties).forEach(([key, value]) => {
+                const stringValue = typeof value === 'boolean' ? (value ? 'true' : 'false') : value;
+                odePagStructureSyncProperties[key] = { value: stringValue };
+            });
+
+            return {
+                id: block.id,
+                blockId: block.id,  // Pass blockId for blockNode constructor
+                odePagId: block.blockId,
+                blockName: block.blockName || '',
+                iconName: block.iconName || '',
+                order: block.order,
+                odeNavStructureSyncId: pageId,
+                odeComponentsSyncs: components.map(comp => {
+                    const htmlView = comp.htmlContent || '';
+                    console.debug(`[apiCallManager] _getComponentsByPageFromYjs: Component ${comp.id} htmlView length: ${htmlView.length}`);
+                    return {
+                        id: comp.id,
+                        odeId: comp.id,
+                        odeIdeviceId: comp.id,
+                        ideviceType: comp.ideviceType,
+                        // Use the idevice type as the odeIdeviceTypeName for proper lookup
+                        odeIdeviceTypeName: comp.ideviceType,
+                        ideviceName: comp.ideviceType?.replace('Idevice', '') || 'FreeText',
+                        order: comp.order,
+                        htmlView: htmlView,
+                        htmlViewName: htmlView,
+                        jsonProperties: comp.jsonProperties || '{}',
+                        odePagStructureSyncId: block.id,
+                        odeComponentsSyncProperties: [],
+                        // Mark as coming from Yjs to prevent re-sync
+                        fromYjs: true,
+                        yjsComponentId: comp.id
+                    };
+                }),
+                odePagStructureSyncProperties: odePagStructureSyncProperties
+            };
+        });
+
+        return {
+            id: pageId,
+            odePageId: pageMap.get('id') || pageId,
+            pageName: pageMap.get('pageName') || 'Page',
+            order: pageMap.get('order') || 0,
+            odePagStructureSyncs
+        };
     }
 
     /**
@@ -942,6 +1222,24 @@ export default class ApiCallManager {
      * @returns
      */
     async putSaveHtmlView(params) {
+        // Check if Yjs mode is active - save to Yjs instead of API
+        const projectManager = eXeLearning?.app?.project;
+        if (projectManager?._yjsEnabled && projectManager._yjsBridge?.structureBinding) {
+            console.log('[apiCallManager] putSaveHtmlView: Saving to Yjs', params);
+            const componentId = params.odeComponentsSyncId || params.id;
+            if (componentId && params.htmlView !== undefined) {
+                try {
+                    projectManager._yjsBridge.structureBinding.updateComponent(componentId, {
+                        htmlContent: params.htmlView
+                    });
+                    console.log('[apiCallManager] Saved htmlView to Yjs:', componentId);
+                } catch (e) {
+                    console.error('[apiCallManager] Error saving htmlView to Yjs:', e);
+                }
+            }
+            return { responseMessage: 'OK' };
+        }
+
         let url = this.endpoints.api_idevices_html_view_save.path;
         return await this.func.put(url, params);
     }
@@ -953,8 +1251,108 @@ export default class ApiCallManager {
      * @returns
      */
     async putSaveIdevice(params) {
+        // Check if Yjs mode is active - save to Yjs instead of API
+        const projectManager = eXeLearning?.app?.project;
+        if (projectManager?._yjsEnabled && projectManager._yjsBridge?.structureBinding) {
+            return this._saveIdeviceToYjs(params);
+        }
+
         let url = this.endpoints.api_idevices_idevice_data_save.path;
         return await this.func.put(url, params);
+    }
+
+    /**
+     * Save iDevice data to Yjs document (when Yjs mode is active)
+     *
+     * @param {Object} params - iDevice parameters
+     * @returns {Object} Response with OK status
+     */
+    _saveIdeviceToYjs(params) {
+        const projectManager = eXeLearning?.app?.project;
+        const bridge = projectManager?._yjsBridge;
+        const structureBinding = bridge?.structureBinding;
+
+        if (!structureBinding) {
+            console.warn('[apiCallManager] _saveIdeviceToYjs: No structureBinding available');
+            return { responseMessage: 'ERROR', error: 'Yjs not initialized' };
+        }
+
+        const pageId = params.odeNavStructureSyncId || params.odePageId;
+        const blockId = params.odePagStructureSyncId || params.odeBlockId;
+        const componentId = params.odeComponentsSyncId || params.odeIdeviceId || params.id;
+
+        console.log('[apiCallManager] _saveIdeviceToYjs:', { pageId, blockId, componentId, params });
+
+        // Helper to build Symfony-compatible response
+        const buildResponse = (compId, isNew = false) => ({
+            responseMessage: 'OK',
+            odeComponentsSyncId: compId,
+            id: compId,
+            odeComponentsSync: {
+                id: compId,
+                odeId: compId,
+                ideviceType: params.odeIdeviceTypeName,
+                odeComponentsSyncProperties: []  // Empty array - Yjs doesn't use DB properties
+            },
+            newOdePagStructureSync: isNew,
+            odePagStructureSync: {
+                id: blockId,
+                odePagId: blockId,
+                odePagStructureSyncProperties: []
+            }
+        });
+
+        // Check if component already exists in Yjs
+        const existingComponent = componentId ? structureBinding.getComponentMap(componentId) : null;
+
+        // If component doesn't exist and we have the required info, create it
+        if (!existingComponent && pageId && blockId && (params.odeIdeviceTypeName || componentId)) {
+            // Ensure block exists - create if "new"
+            let actualBlockId = blockId;
+            if (blockId === 'new' || !structureBinding.getBlockMap(pageId, blockId)) {
+                actualBlockId = structureBinding.createBlock(pageId, params.blockName || 'Block');
+                console.log('[apiCallManager] Created new block in Yjs:', actualBlockId);
+            }
+
+            const newComponentId = structureBinding.createComponent(
+                pageId,
+                actualBlockId,
+                params.odeIdeviceTypeName || 'FreeTextIdevice',
+                {
+                    id: componentId, // Preserve the original ID if provided
+                    htmlContent: params.htmlView || '',
+                    iconName: params.iconName,
+                }
+            );
+            console.log('[apiCallManager] Created new iDevice in Yjs:', newComponentId);
+            return buildResponse(newComponentId || componentId, true);
+        }
+
+        // Update existing component
+        if (existingComponent && componentId) {
+            const updateData = {};
+            if (params.htmlView !== undefined) {
+                updateData.htmlContent = params.htmlView;
+            }
+            if (params.jsonProperties !== undefined) {
+                updateData.jsonProperties = params.jsonProperties;
+            }
+            if (params.order !== undefined) {
+                updateData.order = params.order;
+            }
+
+            try {
+                structureBinding.updateComponent(componentId, updateData);
+                console.log('[apiCallManager] Updated iDevice in Yjs:', componentId);
+            } catch (e) {
+                console.error('[apiCallManager] Error updating iDevice in Yjs:', e);
+            }
+
+            return buildResponse(componentId, false);
+        }
+
+        console.warn('[apiCallManager] _saveIdeviceToYjs: Missing required IDs or component not found');
+        return buildResponse(componentId, false);
     }
 
     /**
@@ -964,6 +1362,33 @@ export default class ApiCallManager {
      * @returns
      */
     async putSavePropertiesIdevice(params) {
+        // Check if Yjs mode is active - save to Yjs instead of API
+        const projectManager = eXeLearning?.app?.project;
+        if (projectManager?._yjsEnabled && projectManager._yjsBridge?.structureBinding) {
+            console.log('[apiCallManager] putSavePropertiesIdevice: Saving to Yjs', params);
+            const componentId = params.odeComponentsSyncId;
+            if (componentId) {
+                try {
+                    // Extract property fields from params (exclude odeComponentsSyncId)
+                    // These are the known iDevice property keys
+                    const propertyKeys = ['visibility', 'teacherOnly', 'identifier', 'cssClass'];
+                    const properties = {};
+                    for (const key of propertyKeys) {
+                        if (params[key] !== undefined) {
+                            properties[key] = params[key];
+                        }
+                    }
+                    projectManager._yjsBridge.structureBinding.updateComponent(componentId, {
+                        properties: properties
+                    });
+                    console.log('[apiCallManager] Saved properties to Yjs:', componentId, properties);
+                } catch (e) {
+                    console.error('[apiCallManager] Error saving properties to Yjs:', e);
+                }
+            }
+            return { responseMessage: 'OK' };
+        }
+
         let url = this.endpoints.api_idevices_idevice_properties_save.path;
         return await this.func.put(url, params);
     }
@@ -976,8 +1401,9 @@ export default class ApiCallManager {
      *
      */
     async postEditIdevice(params) {
-        let url = this.endpoints.update_api_current_ode_user_flag.path;
-        return await this.func.post(url, params);
+        // NOTE: CurrentOdeUsers flags API has been removed.
+        // Yjs awareness handles editing state.
+        return { responseMessage: 'OK' };
     }
 
     /**
@@ -1009,6 +1435,20 @@ export default class ApiCallManager {
      * @returns
      */
     async deleteIdevice(ideviceId) {
+        // Check if Yjs mode is active - delete from Yjs instead of API
+        const projectManager = eXeLearning?.app?.project;
+        if (projectManager?._yjsEnabled && projectManager._yjsBridge?.structureBinding) {
+            console.log('[apiCallManager] deleteIdevice: Deleting from Yjs', ideviceId);
+            try {
+                projectManager._yjsBridge.structureBinding.deleteComponent(ideviceId);
+                console.log('[apiCallManager] Deleted iDevice from Yjs:', ideviceId);
+                return { responseMessage: 'OK' };
+            } catch (e) {
+                console.error('[apiCallManager] Error deleting iDevice from Yjs:', e);
+                return { responseMessage: 'ERROR', error: e.message };
+            }
+        }
+
         let url = this.endpoints.api_idevices_idevice_delete.path;
         url = url.replace('{odeComponentsSyncId}', ideviceId);
         return await this.func.delete(url);
@@ -1021,6 +1461,36 @@ export default class ApiCallManager {
      * @returns
      */
     async putSaveBlock(params) {
+        // Check if Yjs mode is active
+        const projectManager = eXeLearning?.app?.project;
+        if (projectManager?._yjsEnabled && projectManager._yjsBridge?.structureBinding) {
+            console.log('[apiCallManager] putSaveBlock: Saving block in Yjs', params);
+            try {
+                const blockId = params.odePagStructureSyncId;
+                const updates = {};
+                if (params.blockName !== undefined) updates.blockName = params.blockName;
+                if (params.iconName !== undefined) updates.iconName = params.iconName;
+                if (params.order !== undefined) updates.order = params.order;
+
+                if (Object.keys(updates).length > 0) {
+                    projectManager._yjsBridge.structureBinding.updateBlock(blockId, updates);
+                }
+                return {
+                    responseMessage: 'OK',
+                    odePagStructureSyncs: [],
+                    odePagStructureSync: {
+                        id: blockId,
+                        odePagId: blockId,
+                        blockName: params.blockName,
+                        iconName: params.iconName,
+                        order: params.order
+                    }
+                };
+            } catch (e) {
+                console.error('[apiCallManager] Error saving block in Yjs:', e);
+                return { responseMessage: 'OK', odePagStructureSyncs: [] };
+            }
+        }
         let url =
             this.endpoints.api_pag_structures_pag_structure_data_save.path;
         return await this.func.put(url, params);
@@ -1033,6 +1503,44 @@ export default class ApiCallManager {
      * @returns
      */
     async putSavePropertiesBlock(params) {
+        // Check if Yjs mode is active
+        const projectManager = eXeLearning?.app?.project;
+        if (projectManager?._yjsEnabled && projectManager._yjsBridge?.structureBinding) {
+            try {
+                console.log('[apiCallManager] putSavePropertiesBlock: Saving block properties in Yjs', params);
+                const blockId = params.odePagStructureSyncId;
+
+                // Build properties object from params
+                const properties = {};
+                const propertyKeys = ['visibility', 'teacherOnly', 'allowToggle', 'minimized', 'identifier', 'cssClass'];
+                propertyKeys.forEach(key => {
+                    if (params[key] !== undefined) {
+                        properties[key] = params[key];
+                    }
+                });
+
+                // Update block properties in Yjs
+                if (Object.keys(properties).length > 0) {
+                    projectManager._yjsBridge.structureBinding.updateBlock(blockId, { properties });
+                }
+
+                // Also sync top-level block attributes if present
+                if (params.blockName !== undefined) {
+                    projectManager._yjsBridge.structureBinding.updateBlock(blockId, { blockName: params.blockName });
+                }
+                if (params.iconName !== undefined) {
+                    projectManager._yjsBridge.structureBinding.updateBlock(blockId, { iconName: params.iconName });
+                }
+
+                return {
+                    responseMessage: 'OK',
+                    odePagStructureSyncs: []
+                };
+            } catch (e) {
+                console.error('[apiCallManager] Error saving block properties in Yjs:', e);
+                return { responseMessage: 'OK', odePagStructureSyncs: [] };
+            }
+        }
         let url =
             this.endpoints.api_pag_structures_pag_structure_properties_save
                 .path;
@@ -1046,6 +1554,8 @@ export default class ApiCallManager {
      * @returns
      */
     async putReorderBlock(params) {
+        // Note: Yjs reordering is handled by blockNode.reorderViaYjs() before this is called
+        // This method is only used for legacy API mode
         let url = this.endpoints.api_pag_structures_pag_structure_reorder.path;
         return await this.func.put(url, params);
     }
@@ -1093,6 +1603,45 @@ export default class ApiCallManager {
      * @returns
      */
     async putSavePropertiesPage(params) {
+        // Check if Yjs mode is active
+        const projectManager = eXeLearning?.app?.project;
+        if (projectManager?._yjsEnabled && projectManager._yjsBridge?.structureBinding) {
+            console.log('[apiCallManager] putSavePropertiesPage: Saving page properties in Yjs', params);
+            try {
+                const pageId = params.odeNavStructureSyncId;
+                const updates = {};
+                // Map API property names to Yjs property names
+                if (params.titleNode !== undefined) updates.pageName = params.titleNode;
+                if (params.order !== undefined) updates.order = params.order;
+
+                // Store page properties in a properties map
+                const propsToStore = {};
+                for (const [key, value] of Object.entries(params)) {
+                    if (key !== 'odeNavStructureSyncId' && key !== 'updateChildsProperties') {
+                        propsToStore[key] = value;
+                    }
+                }
+                if (Object.keys(propsToStore).length > 0) {
+                    updates.properties = propsToStore;
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    projectManager._yjsBridge.structureBinding.updatePage(pageId, updates);
+                }
+                return {
+                    responseMessage: 'OK',
+                    odeNavStructureSync: {
+                        id: pageId,
+                        odePageId: pageId,
+                        pageName: params.titleNode,
+                        odeNavStructureSyncProperties: propsToStore
+                    }
+                };
+            } catch (e) {
+                console.error('[apiCallManager] Error saving page properties in Yjs:', e);
+                return { responseMessage: 'OK' };
+            }
+        }
         let url =
             this.endpoints.api_nav_structures_nav_structure_properties_save
                 .path;
@@ -1186,7 +1735,241 @@ export default class ApiCallManager {
      * @returns
      */
     async getResourceLockTimeout() {
-        let url = this.endpoints.api_resource_lock_timeout.path;
-        return await this.func.get(url);
+        // Return 15 minutes (900000ms) as default lock timeout
+        // This was a legacy Symfony endpoint, now handled client-side
+        return 900000;
+    }
+
+    /*******************************************************************************
+     * PROJECT SHARING API METHODS
+     *******************************************************************************/
+
+    /**
+     * Helper to build project URL with UUID or numeric ID support
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {string} suffix - The URL suffix (e.g., '/sharing', '/visibility')
+     * @returns {string} The full URL
+     */
+    _buildProjectUrl(projectId, suffix = '') {
+        const isUuid = String(projectId).includes('-');
+        const basePath = isUuid
+            ? `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/uuid/${projectId}`
+            : `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}`;
+        return basePath + suffix;
+    }
+
+    /**
+     * Get project sharing information (owner, collaborators, visibility)
+     * Accepts both numeric ID and UUID
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @returns {Promise<Object>} Response with project sharing info
+     */
+    async getProject(projectId) {
+        const url = this._buildProjectUrl(projectId, '/sharing');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] getProject error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
+     * Update project visibility
+     * Accepts both numeric ID and UUID
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {string} visibility - 'public' or 'private'
+     * @returns {Promise<Object>} Response with updated project
+     */
+    async updateProjectVisibility(projectId, visibility) {
+        const url = this._buildProjectUrl(projectId, '/visibility');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ visibility }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] updateProjectVisibility error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
+     * Add a collaborator to a project
+     * Accepts both numeric ID and UUID
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {string} email - The collaborator's email
+     * @param {string} role - The role (optional, default 'editor')
+     * @returns {Promise<Object>} Response
+     */
+    async addProjectCollaborator(projectId, email, role = 'editor') {
+        const url = this._buildProjectUrl(projectId, '/collaborators');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email, role }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                // Map common error codes
+                if (response.status === 404) {
+                    return { responseMessage: 'USER_NOT_FOUND', detail: errorData.message };
+                }
+                if (response.status === 400 && errorData.message?.includes('already')) {
+                    return { responseMessage: 'ALREADY_COLLABORATOR', detail: errorData.message };
+                }
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] addProjectCollaborator error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
+     * Remove a collaborator from a project
+     * Accepts both numeric ID and UUID
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {number} userId - The collaborator's user ID
+     * @returns {Promise<Object>} Response
+     */
+    async removeProjectCollaborator(projectId, userId) {
+        const url = this._buildProjectUrl(projectId, `/collaborators/${userId}`);
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] removeProjectCollaborator error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
+     * Transfer project ownership to another user
+     * Accepts both numeric ID and UUID
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {number} newOwnerId - The new owner's user ID
+     * @returns {Promise<Object>} Response with updated project
+     */
+    async transferProjectOwnership(projectId, newOwnerId) {
+        const url = this._buildProjectUrl(projectId, '/owner');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ newOwnerId }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] transferProjectOwnership error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
     }
 }

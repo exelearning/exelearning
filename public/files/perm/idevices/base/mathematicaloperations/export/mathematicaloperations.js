@@ -803,22 +803,22 @@ var $eXeMathOperations = {
 
     reduceDecimals: function (value) {
         if (typeof value === 'string' || value instanceof String) {
-            // Convierte la cadena en un número de coma flotante
+            // Convert the string to a floating point number
             value = parseFloat(value);
         } else if (typeof value !== 'number' || isNaN(value)) {
-            // Devuelve NaN si value no es una cadena ni un número válido
+            // Return NaN if value is not a valid string or number
             return NaN;
         }
 
-        // Redondea el número a 2 decimales y elimina los ceros finales
+        // Round the number to 2 decimals and remove trailing zeros
         let result = value.toFixed(2).replace(/\.?0+$/, '');
 
-        // Si el resultado es un número entero, elimina el punto y los ceros finales adicionales
+        // If the result is an integer, remove the decimal point and trailing zeros
         if (result.indexOf('.') === result.length - 1) {
             result = result.slice(0, result.indexOf('.'));
         }
 
-        // Devuelve el resultado como una cadena
+        // Return the result as a string
         return String(result);
     },
 
@@ -1986,7 +1986,7 @@ var $eXeMathOperations = {
     },
 
     getLMC: function (a, b) {
-        // Utilizar el algoritmo de Euclides para calcular el MCD
+        // Use Euclid's algorithm to calculate GCD
         a = Math.abs(a);
         b = Math.abs(b);
         while (b !== 0) {

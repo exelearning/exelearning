@@ -1,3 +1,6 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class OdeTitleMenu {
     constructor() {
         this.odeTitleMenuHeadElement = document.querySelector(
@@ -5,6 +8,15 @@ export default class OdeTitleMenu {
         );
         this.titleButton = document.querySelector('.title-menu-button');
         this.titleContainer = document.querySelector('#exe-title');
+
+        // Yjs binding for real-time sync
+        this.yjsBinding = null;
+        this.metadataObserver = null;
+
+        // Debounce timer for real-time title sync
+        this.titleDebounceTimer = null;
+        this.titleDebounceDelay = 300; // ms
+
         const observer = new MutationObserver(this.onTitleChanged.bind(this));
         observer.observe(this.titleContainer, {
             childList: true,
@@ -21,6 +33,7 @@ export default class OdeTitleMenu {
         this.setTitle();
         this.setChangeTitle();
         this.checkTitleLineCount();
+        this.initYjsBinding();
 
         const resizeObserver = new ResizeObserver(() => {
             this.checkTitleLineCount();
@@ -29,25 +42,91 @@ export default class OdeTitleMenu {
     }
 
     /**
+     * Initialize Yjs binding for real-time title sync
+     */
+    initYjsBinding() {
+        const project = eXeLearning.app.project;
+        if (project._yjsBridge) {
+            const documentManager = project._yjsBridge.getDocumentManager();
+            if (documentManager) {
+                const metadata = documentManager.getMetadata();
+
+                // Load initial title from Yjs
+                const initialTitle = metadata.get('title');
+                if (initialTitle) {
+                    this.odeTitleMenuHeadElement.textContent = initialTitle;
+                    this.checkTitleLineCount();
+                    Logger.log('[OdeTitleMenu] Loaded initial title from Yjs:', initialTitle);
+                }
+
+                // Observe metadata changes for remote title updates
+                this.metadataObserver = (event) => {
+                    // Only react to remote changes (not our own)
+                    if (event.transaction.origin === 'user') return;
+
+                    event.changes.keys.forEach((change, key) => {
+                        if (key === 'title' && (change.action === 'add' || change.action === 'update')) {
+                            this.onRemoteTitleChange(metadata.get('title'));
+                        }
+                    });
+                };
+
+                metadata.observe(this.metadataObserver);
+                Logger.log('[OdeTitleMenu] Yjs title binding initialized');
+            }
+        }
+    }
+
+    /**
+     * Handle remote title change from Yjs
+     * @param {string} newTitle - The new title
+     */
+    onRemoteTitleChange(newTitle) {
+        const title = newTitle || _('Untitled document');
+
+        // Only update if we're not currently editing
+        if (!this.titleContainer.classList.contains('title-editing')) {
+            if (this.odeTitleMenuHeadElement.textContent !== title) {
+                this.odeTitleMenuHeadElement.textContent = title;
+                this.checkTitleLineCount();
+                Logger.log('[OdeTitleMenu] Remote title update:', title);
+            }
+        }
+
+        // Also update the properties form if open
+        this.updatePropertiesInput(title);
+    }
+
+    /**
      * Set title text to menu element
-     *
+     * Reads from Yjs metadata directly
      */
     setTitle() {
-        let odeTitleProperty =
-            eXeLearning.app.project.properties.properties.pp_title;
-        let odeTitleText = odeTitleProperty.value
-            ? odeTitleProperty.value
-            : _('Untitled document');
+        let odeTitleText = _('Untitled document');
+
+        // Read title from Yjs metadata
+        const project = eXeLearning.app.project;
+        if (project?._yjsBridge) {
+            const documentManager = project._yjsBridge.getDocumentManager();
+            if (documentManager) {
+                const metadata = documentManager.getMetadata();
+                const title = metadata.get('title');
+                if (title) {
+                    odeTitleText = title;
+                }
+            }
+        }
+
         this.odeTitleMenuHeadElement.textContent = odeTitleText;
-        //this.odeTitleMenuHeadElement.setAttribute('title', odeTitleText);
+        this.checkTitleLineCount();
     }
 
     setChangeTitle() {
         const title = this.odeTitleMenuHeadElement;
         let currentFinishEditing = null;
         let currentOnKeydown = null;
+        let currentOnInput = null;
         let isEditing = false;
-        let isSaving = false;
 
         this.titleButton.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -65,6 +144,9 @@ export default class OdeTitleMenu {
             }
             if (currentOnKeydown) {
                 title.removeEventListener('keydown', currentOnKeydown);
+            }
+            if (currentOnInput) {
+                title.removeEventListener('input', currentOnInput);
             }
 
             title.setAttribute('contenteditable', 'true');
@@ -84,47 +166,44 @@ export default class OdeTitleMenu {
 
             let finished = false;
 
+            // Real-time sync on each keystroke with debouncing
+            currentOnInput = () => {
+                if (this.titleDebounceTimer) {
+                    clearTimeout(this.titleDebounceTimer);
+                }
+                this.titleDebounceTimer = setTimeout(() => {
+                    this.saveTitleToYjs(title.textContent);
+                    this.titleDebounceTimer = null;
+                }, this.titleDebounceDelay);
+            };
+
             currentFinishEditing = () => {
-                if (finished || isSaving) return;
+                if (finished) return;
                 finished = true;
-                isSaving = true;
+
+                // Clear debounce timer and save immediately
+                if (this.titleDebounceTimer) {
+                    clearTimeout(this.titleDebounceTimer);
+                    this.titleDebounceTimer = null;
+                }
 
                 title.removeEventListener('blur', currentFinishEditing);
                 title.removeEventListener('keydown', currentOnKeydown);
+                title.removeEventListener('input', currentOnInput);
 
                 title.removeAttribute('contenteditable');
                 title.scrollTop = 0;
                 this.titleContainer.classList.remove('title-editing');
                 this.titleContainer.classList.add('title-not-editing');
 
-                this.saveTitle(title.textContent)
-                    .then((response) => {
-                        this.checkTitleLineCount();
-                        if (response.responseMessage === 'OK') {
-                            let toastData = {
-                                title: _('Project properties'),
-                                body: _('Project properties saved.'),
-                                icon: 'downloading',
-                            };
-                            let toast =
-                                window.eXeLearning.app.toasts.createToast(
-                                    toastData
-                                );
-                            setTimeout(() => {
-                                toast.remove();
-                            }, 1000);
-                        }
+                // Final save to ensure latest value is persisted
+                this.saveTitleToYjs(title.textContent);
+                this.checkTitleLineCount();
 
-                        isEditing = false;
-                        isSaving = false;
-                        currentFinishEditing = null;
-                        currentOnKeydown = null;
-                    })
-                    .catch((error) => {
-                        isEditing = false;
-                        isSaving = false;
-                        console.error('Error saving title:', error);
-                    });
+                isEditing = false;
+                currentFinishEditing = null;
+                currentOnKeydown = null;
+                currentOnInput = null;
 
                 if (title._onPastePlain) {
                     title.removeEventListener('paste', title._onPastePlain);
@@ -141,37 +220,66 @@ export default class OdeTitleMenu {
                 }
             };
 
+            title.addEventListener('input', currentOnInput);
             title.addEventListener('blur', currentFinishEditing);
             title.addEventListener('keydown', currentOnKeydown);
         });
         eXeLearning.app.common.initTooltips(this.titleContainer);
     }
 
+    /**
+     * Save title to Yjs immediately (used for real-time sync)
+     * @param {string} titleText - The title text
+     */
+    saveTitleToYjs(titleText) {
+        const project = eXeLearning.app.project;
+        if (project._yjsBridge) {
+            const documentManager = project._yjsBridge.getDocumentManager();
+            if (documentManager) {
+                const metadata = documentManager.getMetadata();
+                const ydoc = documentManager.getDoc();
+
+                ydoc.transact(() => {
+                    metadata.set('title', titleText);
+                    metadata.set('modifiedAt', Date.now());
+                }, ydoc.clientID);
+
+                // Update form input if open (without events to avoid loops)
+                this.updatePropertiesInput(titleText);
+            }
+        }
+    }
+
+    /**
+     * Save title to Yjs metadata
+     * @param {string} title - The new title
+     * @returns {Promise<{responseMessage: string}>}
+     */
     async saveTitle(title) {
-        let params = {
-            odeSessionId: eXeLearning.app.project.odeSession,
-            pp_title: title,
-        };
         try {
-            const response =
-                await eXeLearning.app.api.putSaveOdeProperties(params);
+            const project = eXeLearning.app.project;
+            if (project._yjsBridge) {
+                const documentManager = project._yjsBridge.getDocumentManager();
+                if (documentManager) {
+                    const metadata = documentManager.getMetadata();
+                    const ydoc = documentManager.getDoc();
 
-            if (response.responseMessage === 'OK') {
-                await eXeLearning.app.project.properties.apiLoadProperties();
-                eXeLearning.app.project.properties.updateTitlePropertiesMenuTop();
+                    // Update Yjs in a transaction with clientID origin for undo support
+                    ydoc.transact(() => {
+                        metadata.set('title', title);
+                        metadata.set('modifiedAt', Date.now());
+                    }, ydoc.clientID);
 
-                this.updatePropertiesInput(title);
+                    Logger.log('[OdeTitleMenu] Saved title to Yjs:', title);
 
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    'root',
-                    null,
-                    null,
-                    'EDIT'
-                );
+                    // Update the properties form if open
+                    this.updatePropertiesInput(title);
+
+                    return { responseMessage: 'OK' };
+                }
             }
 
-            return response;
+            return { responseMessage: 'ERROR', error: 'Yjs not available' };
         } catch (error) {
             console.error('Error in saveTitle:', error);
             throw error;
@@ -284,6 +392,11 @@ export default class OdeTitleMenu {
         sel.addRange(range);
     }
 
+    /**
+     * Update the properties form input visually (without triggering events)
+     * This avoids feedback loops since Yjs already has the updated value
+     * @param {string} title - The title to set
+     */
     updatePropertiesInput(title) {
         const propertiesForm = document.querySelector(
             '#node-content #properties-node-content-form'
@@ -297,9 +410,9 @@ export default class OdeTitleMenu {
         );
 
         if (titleInput) {
+            // Only update the visual value, don't dispatch events
+            // Events would cause a feedback loop with Yjs binding
             titleInput.value = title;
-            titleInput.dispatchEvent(new Event('change', { bubbles: true }));
-            titleInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
     }
 }

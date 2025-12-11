@@ -1,3 +1,6 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
 export default class NavbarFile {
@@ -404,6 +407,13 @@ export default class NavbarFile {
     }
 
     async openPrintPreview() {
+        // Try client-side preview first (Yjs mode)
+        const handledClientSide = await this.openClientPreview();
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side preview
         const project = eXeLearning?.app?.project;
         const sessionId = project?.odeSession;
 
@@ -486,6 +496,96 @@ export default class NavbarFile {
                 setTimeout(() => toast.remove(), 1000);
             }
         }
+    }
+
+    /**
+     * Client-side preview using PreviewExporter (Yjs mode)
+     * Generates HTML entirely in the browser and opens in new window
+     * @returns {Promise<boolean>} - True if preview was handled client-side
+     */
+    async openClientPreview() {
+        // Check if Yjs mode is enabled
+        if (!eXeLearning.app.project?._yjsEnabled) {
+            return false; // Fall back to server-side
+        }
+
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        if (!yjsBridge?.documentManager) {
+            console.warn('[NavbarFile] Yjs document manager not available for preview');
+            return false;
+        }
+
+        // Check if PreviewExporter is loaded
+        if (typeof window.PreviewExporter !== 'function') {
+            console.warn('[NavbarFile] PreviewExporter not loaded');
+            return false;
+        }
+
+        const toastData = {
+            title: _('Preview'),
+            body: _('Generating preview...'),
+            icon: 'preview',
+        };
+        const toast = eXeLearning?.app?.toasts?.createToast
+            ? eXeLearning.app.toasts.createToast(toastData)
+            : null;
+
+        try {
+            // Get the document manager and asset manager
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project?._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
+
+            // Create resource fetcher for server resources (themes, libs, iDevices)
+            let resourceFetcher = null;
+            if (typeof window.ResourceFetcher !== 'undefined') {
+                resourceFetcher = new window.ResourceFetcher();
+            }
+
+            // Create PreviewExporter
+            const exporter = new window.PreviewExporter(
+                documentManager,
+                assetCache,
+                resourceFetcher,
+                assetManager
+            );
+
+            // Generate preview
+            Logger.log('[NavbarFile] Starting client-side preview...');
+            const result = await exporter.preview();
+
+            if (result.success) {
+                if (toast) {
+                    toast.toastBody.innerHTML = _('Preview opened in new window.');
+                }
+                Logger.log('[NavbarFile] Client-side preview opened successfully');
+            } else {
+                throw new Error(result.error || 'Preview failed');
+            }
+
+        } catch (error) {
+            console.error('[NavbarFile] Client-side preview error:', error);
+            if (toast) {
+                toast.toastBody.innerHTML = _(
+                    'An error occurred while generating the preview.'
+                );
+                toast.toastBody.classList.add('error');
+                setTimeout(() => toast.remove(), 1500);
+            }
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: error.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+            return true; // Error shown to user, no server fallback in Yjs mode
+        }
+
+        // Remove toast after delay
+        if (toast) {
+            setTimeout(() => toast.remove(), 1500);
+        }
+
+        return true; // Handled client-side
     }
 
     /**
@@ -637,29 +737,15 @@ export default class NavbarFile {
                             fileSize: file.size,
                         });
 
-                        const refreshStructure = (targetId = false) => {
-                            const structure =
-                                eXeLearning?.app?.project?.structure;
-                            if (
-                                structure &&
-                                typeof structure.resetDataAndStructureData ===
-                                    'function'
-                            ) {
-                                structure.resetDataAndStructureData(targetId);
-                            } else {
-                                eXeLearning.app.project.openLoad();
-                            }
-                        };
-
+                        // Clean up orphaned modal backdrops
                         const ensureModalBackdropCleared = (delay = 0) => {
                             const removeBackdrops = () => {
-                                if (document.querySelector('.modal.show')) {
-                                    return;
-                                }
                                 document
                                     .querySelectorAll('.modal-backdrop')
                                     .forEach((backdrop) => backdrop.remove());
-                                document.body.classList.remove('modal-open');
+                                if (!document.querySelector('.modal.show')) {
+                                    document.body.classList.remove('modal-open');
+                                }
                             };
 
                             if (delay > 0) {
@@ -670,117 +756,151 @@ export default class NavbarFile {
                         };
 
                         try {
-                            // Upload file in chunks (15 MB)
-                            const chunkSize = 1024 * 1024 * 15;
-                            const totalSize = file.size;
-                            let start = 0;
-                            let uploadedBytes = 0;
-                            let response;
-
-                            while (start < totalSize) {
-                                const end = Math.min(
-                                    start + chunkSize,
-                                    totalSize
-                                );
-                                const blob = file.slice(start, end);
-                                const fd = new FormData();
-                                fd.append('odeFilePart', blob);
-                                fd.append('odeFileName', [file.name]);
-                                fd.append('odeSessionId', [
-                                    eXeLearning.app.project.odeSession,
-                                ]);
-
-                                response =
-                                    await eXeLearning.app.api.postLocalLargeOdeFile(
-                                        fd
-                                    );
-
-                                if (response['responseMessage'] !== 'OK') {
-                                    break;
-                                }
-
-                                // Update progress
-                                uploadedBytes += blob.size;
-                                const percentage =
-                                    (uploadedBytes / totalSize) * 100;
-                                progressModal.updateUploadProgress(
-                                    percentage,
-                                    uploadedBytes,
-                                    totalSize
-                                );
-
-                                start = end;
-                            }
-
-                            if (response['responseMessage'] !== 'OK') {
-                                progressModal.showError(
-                                    response['responseMessage'] ||
-                                        _('Error while uploading the file.')
-                                );
-                                setTimeout(() => {
-                                    progressModal.hide();
-                                    eXeLearning.app.modals.alert.show({
-                                        title: _('Error'),
-                                        body:
-                                            response['responseMessage'] ||
-                                            _(
-                                                'Unexpected error importing file.'
-                                            ),
-                                    });
-                                }, 2000);
-                                input.remove();
-                                return;
-                            }
-
-                            // Set extracting phase
-                            progressModal.setProcessingPhase('extracting');
-
-                            // Call JSON-based import API
-                            const payload = {
-                                odeSessionId:
-                                    eXeLearning.app.project.odeSession,
-                                odeFileName: response['odeFileName'],
-                                odeFilePath: response['odeFilePath'],
-                            };
-
-                            const importResponse =
-                                await eXeLearning.app.api.postImportElpToRootFromLocal(
-                                    payload
-                                );
-
+                            // Check if Yjs mode is enabled - import directly in browser
                             if (
-                                importResponse &&
-                                importResponse.responseMessage === 'OK'
+                                eXeLearning.app.project?._yjsEnabled &&
+                                eXeLearning.app.project?.importFromElpxViaYjs
                             ) {
+                                // Import via Yjs (handles both standard .elpx and legacy contentv3.xml)
+                                progressModal.setProcessingPhase('extracting');
+                                Logger.log('[NavbarFile] Importing via Yjs (client-side):', file.name);
+
+                                const stats = await eXeLearning.app.project.importFromElpxViaYjs(
+                                    file,
+                                    { clearExisting: false }
+                                );
+
+                                Logger.log('[NavbarFile] Yjs import complete:', stats);
                                 progressModal.setComplete(
                                     true,
-                                    _('Completed successfully')
+                                    _('Completed successfully') +
+                                        ` (${stats?.pages || 0} ${_('pages')})`
                                 );
-                                const structure =
-                                    eXeLearning?.app?.project?.structure;
-                                const selectedNodeId =
-                                    structure &&
-                                    typeof structure.getSelectNodeNavId ===
-                                        'function'
-                                        ? structure.getSelectNodeNavId()
-                                        : null;
-                                refreshStructure(selectedNodeId || false);
+
                                 setTimeout(() => {
                                     progressModal.hide();
                                     ensureModalBackdropCleared(350);
                                 }, 600);
                             } else {
-                                const message =
-                                    importResponse?.responseMessage ||
-                                    _('Unexpected error importing file.');
-                                progressModal.showError(message);
-                                setTimeout(() => {
-                                    progressModal.hide();
-                                    eXeLearning.app.modals.alert.show({
-                                        title: _('Error'),
-                                        body: message,
-                                    });
-                                }, 2000);
+                                // Legacy: Upload file to server and use API
+                                const chunkSize = 1024 * 1024 * 15;
+                                const totalSize = file.size;
+                                let start = 0;
+                                let uploadedBytes = 0;
+                                let response;
+
+                                while (start < totalSize) {
+                                    const end = Math.min(
+                                        start + chunkSize,
+                                        totalSize
+                                    );
+                                    const blob = file.slice(start, end);
+                                    const fd = new FormData();
+                                    fd.append('odeFilePart', blob);
+                                    fd.append('odeFileName', [file.name]);
+                                    fd.append('odeSessionId', [
+                                        eXeLearning.app.project.odeSession,
+                                    ]);
+
+                                    response =
+                                        await eXeLearning.app.api.postLocalLargeOdeFile(
+                                            fd
+                                        );
+
+                                    if (response['responseMessage'] !== 'OK') {
+                                        break;
+                                    }
+
+                                    uploadedBytes += blob.size;
+                                    const percentage =
+                                        (uploadedBytes / totalSize) * 100;
+                                    progressModal.updateUploadProgress(
+                                        percentage,
+                                        uploadedBytes,
+                                        totalSize
+                                    );
+
+                                    start = end;
+                                }
+
+                                if (response['responseMessage'] !== 'OK') {
+                                    progressModal.showError(
+                                        response['responseMessage'] ||
+                                            _('Error while uploading the file.')
+                                    );
+                                    setTimeout(() => {
+                                        progressModal.hide();
+                                        eXeLearning.app.modals.alert.show({
+                                            title: _('Error'),
+                                            body:
+                                                response['responseMessage'] ||
+                                                _(
+                                                    'Unexpected error importing file.'
+                                                ),
+                                        });
+                                    }, 2000);
+                                    input.remove();
+                                    return;
+                                }
+
+                                progressModal.setProcessingPhase('extracting');
+
+                                const payload = {
+                                    odeSessionId:
+                                        eXeLearning.app.project.odeSession,
+                                    odeFileName: response['odeFileName'],
+                                    odeFilePath: response['odeFilePath'],
+                                };
+
+                                const importResponse =
+                                    await eXeLearning.app.api.postImportElpToRootFromLocal(
+                                        payload
+                                    );
+
+                                if (
+                                    importResponse &&
+                                    importResponse.responseMessage === 'OK'
+                                ) {
+                                    progressModal.setComplete(
+                                        true,
+                                        _('Completed successfully')
+                                    );
+                                    const structure =
+                                        eXeLearning?.app?.project?.structure;
+                                    const selectedNodeId =
+                                        structure &&
+                                        typeof structure.getSelectNodeNavId ===
+                                            'function'
+                                            ? structure.getSelectNodeNavId()
+                                            : null;
+                                    if (
+                                        structure &&
+                                        typeof structure.resetDataAndStructureData ===
+                                            'function'
+                                    ) {
+                                        structure.resetDataAndStructureData(
+                                            selectedNodeId || false
+                                        );
+                                    } else {
+                                        eXeLearning.app.project.openLoad();
+                                    }
+                                    setTimeout(() => {
+                                        progressModal.hide();
+                                        ensureModalBackdropCleared(350);
+                                    }, 600);
+                                } else {
+                                    const message =
+                                        importResponse?.responseMessage ||
+                                        _('Unexpected error importing file.');
+                                    progressModal.showError(message);
+                                    setTimeout(() => {
+                                        progressModal.hide();
+                                        eXeLearning.app.modals.alert.show({
+                                            title: _('Error'),
+                                            body: message,
+                                        });
+                                    }, 2000);
+                                }
                             }
                         } catch (err) {
                             console.error('Import error:', err);
@@ -815,6 +935,9 @@ export default class NavbarFile {
      *
      */
     setLeftPanelsTogglerEvents() {
+        // Auto-collapse sidebar on mobile devices (< 768px)
+        this.initMobileLayout();
+
         // See eXeLearning.app.common.initTooltips
         $(this.leftPanelsTogglerButton)
             .attr('data-bs-placement', 'bottom')
@@ -823,6 +946,36 @@ export default class NavbarFile {
                 $(this).tooltip('hide');
                 $('body').toggleClass('left-column-hidden');
             });
+
+        // Handle resize: collapse sidebar when transitioning to mobile
+        window.addEventListener('resize', () => {
+            this.handleResponsiveLayout();
+        });
+    }
+
+    /**
+     * Initialize mobile layout - collapse sidebar on mobile devices
+     */
+    initMobileLayout() {
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            document.body.classList.add('left-column-hidden');
+        }
+    }
+
+    /**
+     * Handle responsive layout changes on window resize
+     */
+    handleResponsiveLayout() {
+        const isMobile = window.innerWidth < 768;
+        // Only auto-collapse when transitioning TO mobile, don't force it
+        // This allows users to manually expand on mobile if they want
+        if (isMobile && !this._wasResizedToMobile) {
+            document.body.classList.add('left-column-hidden');
+            this._wasResizedToMobile = true;
+        } else if (!isMobile) {
+            this._wasResizedToMobile = false;
+        }
     }
 
     /**************************************************************************************
@@ -872,14 +1025,58 @@ export default class NavbarFile {
 
     /**
      * createSession
-     *
+     * Creates a new project/session. In Yjs mode, this is done without page reload.
      */
     async createSession(params) {
+        // In Yjs mode: create project without page reload
+        if (eXeLearning.app.project?._yjsEnabled &&
+            eXeLearning.app.project?.reinitializeWithProject) {
+            Logger.log('[NavbarFile] Creating new project in Yjs mode');
+            try {
+                // Create new project on backend
+                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                const response = await fetch(`${basePath}/api/project/create-quick`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ title: _('Untitled') })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to create project: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const projectUuid = data.uuid;
+
+                if (!projectUuid) {
+                    throw new Error('Server did not return a project UUID');
+                }
+
+                Logger.log('[NavbarFile] New project created:', projectUuid);
+
+                // Clear beforeunload handler
+                window.onbeforeunload = null;
+
+                // Redirect to workarea with new project (clean page load)
+                // This ensures all state is properly initialized
+                window.location.href = `${basePath}/workarea?project=${projectUuid}&new=1`;
+                return;
+            } catch (error) {
+                console.error('[NavbarFile] Failed to create new project in Yjs mode:', error);
+                // Fall through to legacy behavior
+            }
+        }
+
+        // Legacy mode: use postCloseSession and full page reload
         await eXeLearning.app.api.postCloseSession(params).then((response) => {
             if (response.responseMessage == 'OK') {
-                // Reload project
-                eXeLearning.app.project.loadCurrentProject();
-                eXeLearning.app.project.openLoad();
+                // Clear beforeunload handler to prevent browser "Leave site?" dialog
+                window.onbeforeunload = null;
+                // Redirect to /workarea without project parameter
+                // Backend will create a new project and redirect back with new UUID
+                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                window.location.href = `${basePath}/workarea`;
             }
         });
     }
@@ -1163,7 +1360,7 @@ export default class NavbarFile {
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
         // Allow both .elpx and .zip for offline picker fallback
-        inputUpload.setAttribute('accept', '.elpx,.elp,.zip,.epub');
+        inputUpload.setAttribute('accept', '.elpx,.zip');
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             // Use e.target instead of querySelector to get the actual input that triggered the event
@@ -1293,35 +1490,29 @@ export default class NavbarFile {
                 recentProjectLink.classList.add('dropdown-item');
                 recentProjectLink.setAttribute('href', '#');
 
-                recentProjectLink.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    let odeSessionId = eXeLearning.app.project.odeSession;
-                    let odeVersionId = eXeLearning.app.project.odeVersion;
-                    let odeId = eXeLearning.app.project.odeId;
+                recentProjectLink.addEventListener('click', () => {
+                    const projectUuid = odeFile.odeId;
 
-                    let params = {
-                        odeSessionId: odeSessionId,
-                        odeVersionId: odeVersionId,
-                        odeId: odeId,
-                    };
+                    // Check for unsaved changes in Yjs architecture
+                    const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+                    const hasUnsaved =
+                        yjsBridge?.documentManager?.hasUnsavedChanges?.() ||
+                        false;
 
-                    eXeLearning.app.api
-                        .postCheckCurrentOdeUsers(params)
-                        .then((response) => {
-                            if (response['leaveEmptySession']) {
-                                eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                                    odeFile.fileName
-                                );
-                            } else {
-                                let data = {
-                                    title: _('Open project'),
-                                    forceOpen: _('Open without saving'),
-                                    openOdeFile: true,
-                                    id: odeFile.fileName,
-                                };
-                                eXeLearning.app.modals.sessionlogout.show(data);
-                            }
-                        });
+                    if (hasUnsaved) {
+                        // Show confirmation modal with Yjs support
+                        const data = {
+                            title: _('Open project'),
+                            forceOpen: _('Open without saving'),
+                            openYjsProject: true,
+                            projectUuid: projectUuid,
+                        };
+                        eXeLearning.app.modals.sessionlogout.show(data);
+                    } else {
+                        // No unsaved changes, navigate directly
+                        const basePath = window.eXeLearning?.symfony?.basePath || '';
+                        window.location.href = `${basePath}/workarea?project=${projectUuid}`;
+                    }
                 });
 
                 recentProjectLink.innerHTML = odeFile.title;
@@ -1342,6 +1533,13 @@ export default class NavbarFile {
      *
      */
     async downloadProjectEvent() {
+        // Check if Yjs mode is enabled - use Yjs export
+        if (eXeLearning.app.project?._yjsEnabled &&
+            eXeLearning.app.project?.exportToElpxViaYjs) {
+            return await this.downloadProjectViaYjs();
+        }
+
+        // Legacy: Download via REST API
         let toastData = {
             title: _('Download'),
             body: _('File generation in progress.'),
@@ -1381,6 +1579,161 @@ export default class NavbarFile {
 
         // Reload last edition text in interface
         eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Download project via Yjs collaborative system
+     * Exports the Y.Doc to .elpx format directly in browser
+     */
+    async downloadProjectViaYjs() {
+        let toastData = {
+            title: _('Download'),
+            body: _('Generating file from collaborative document...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+
+        try {
+            // Get project title for filename - try Yjs metadata first, then legacy properties
+            let projectTitle = 'project';
+
+            // Try Yjs metadata (primary source in Yjs mode)
+            if (eXeLearning.app.project?._yjsBridge?.documentManager) {
+                const metadata = eXeLearning.app.project._yjsBridge.documentManager.getMetadata();
+                if (metadata && metadata.get('title')) {
+                    projectTitle = metadata.get('title');
+                }
+            }
+
+            // Fallback to legacy properties if Yjs title not found
+            if (projectTitle === 'project' && eXeLearning.app.project?.properties?.properties?.pp_title?.value) {
+                projectTitle = eXeLearning.app.project.properties.properties.pp_title.value;
+            }
+
+            const filename = `${projectTitle}.elpx`;
+
+            // Export via Yjs
+            await eXeLearning.app.project.exportToElpxViaYjs(filename);
+
+            toast.toastBody.innerHTML = _('File generated and downloaded.');
+            Logger.log('[NavbarFile] Project exported via Yjs:', filename);
+
+        } catch (error) {
+            console.error('[NavbarFile] Yjs export error:', error);
+            toast.toastBody.innerHTML = _(
+                'An error occurred while generating the file.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: error.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+
+        // Remove message
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
+
+        // Reload last edition text in interface
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Client-side export via Yjs exporters
+     * Runs entirely in the browser using the Yjs document and assets
+     * @param {string} format - Export format: 'HTML5', 'PAGE', 'SCORM12', 'SCORM2004', 'IMS', 'EPUB3'
+     * @param {string} fallbackApiFormat - API format string for server-side fallback
+     * @returns {Promise<boolean>} - True if export was handled client-side
+     */
+    async exportViaYjs(format, fallbackApiFormat) {
+        // Check if Yjs mode is enabled and required components are available
+        if (!eXeLearning.app.project?._yjsEnabled) {
+            return false; // Fall back to server-side
+        }
+
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        if (!yjsBridge?.documentManager) {
+            console.warn('[NavbarFile] Yjs document manager not available');
+            return false;
+        }
+
+        // Check if client-side exporters are loaded
+        if (typeof window.createExporter !== 'function') {
+            console.warn('[NavbarFile] Client-side exporters not loaded');
+            return false;
+        }
+
+        // For formats not yet implemented client-side, fall back to server
+        const supportedFormats = ['HTML5', 'ELPX', 'ELP', 'SCORM12', 'SCORM2004', 'PAGE', 'HTML5SP', 'IMS', 'EPUB3', 'EPUB'];
+        const normalizedFormat = format.toUpperCase().replace('-', '');
+        if (!supportedFormats.includes(normalizedFormat)) {
+            Logger.log(`[NavbarFile] Format ${format} not yet supported client-side, using server`);
+            return false;
+        }
+
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+
+        try {
+            // Get the document manager, asset cache, and asset manager
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project?._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
+
+            // Create resource fetcher for server resources (themes, libs, iDevices)
+            let resourceFetcher = null;
+            if (typeof window.ResourceFetcher !== 'undefined') {
+                resourceFetcher = new window.ResourceFetcher();
+            }
+
+            // Create the appropriate exporter (with AssetManager for IndexedDB assets)
+            const exporter = window.createExporter(
+                format,
+                documentManager,
+                assetCache,
+                resourceFetcher,
+                assetManager
+            );
+
+            // Export
+            Logger.log(`[NavbarFile] Starting client-side ${format} export...`);
+            const result = await exporter.export();
+
+            if (result.success) {
+                toast.toastBody.innerHTML = _('The project has been exported.');
+                Logger.log(`[NavbarFile] Client-side export complete: ${result.filename}`);
+            } else {
+                throw new Error(result.error || 'Export failed');
+            }
+
+        } catch (error) {
+            console.error(`[NavbarFile] Client-side ${format} export error:`, error);
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: error.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+
+        // Remove message
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
+
+        // Reload last edition text in interface
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+
+        return true; // Handled client-side
     }
 
     /**
@@ -1448,6 +1801,13 @@ export default class NavbarFile {
      *
      */
     async exportHTML5Event() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('HTML5', 'html5');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -1554,7 +1914,6 @@ export default class NavbarFile {
     }
 
     /**
-<<<<<<< HEAD
      * Export Website to folder (unzipped) — offline Electron only
      */
     async exportHTML5FolderAsEvent() {
@@ -1632,12 +1991,17 @@ export default class NavbarFile {
     }
 
     /**
-=======
->>>>>>> c0ba7aea408904076081df962baf800d79424a91
-     * Export the ode as HTML5 and download it
+     * Export the ode as HTML5 Single Page and download it
      *
      */
     async exportHTML5SPEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('PAGE', 'html5-sp');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -1693,6 +2057,13 @@ export default class NavbarFile {
      * Export HTML5 Single Page (Save As...)
      */
     async exportHTML5SPAsEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('PAGE', 'html5-sp');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -1748,6 +2119,13 @@ export default class NavbarFile {
      *
      */
     async exportSCORM12Event() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('SCORM12', 'scorm12');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -1803,6 +2181,13 @@ export default class NavbarFile {
      * Export SCORM 1.2 (Save As...)
      */
     async exportSCORM12AsEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('SCORM12', 'scorm12');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -1858,6 +2243,13 @@ export default class NavbarFile {
      *
      */
     async exportSCORM2004Event() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('SCORM2004', 'scorm2004');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -1913,6 +2305,13 @@ export default class NavbarFile {
      * Export SCORM 2004 (Save As...)
      */
     async exportSCORM2004AsEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('SCORM2004', 'scorm2004');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -1968,6 +2367,13 @@ export default class NavbarFile {
      *
      */
     async exportIMSEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('IMS', 'ims');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -2023,6 +2429,13 @@ export default class NavbarFile {
      * Export IMS (Save As...)
      */
     async exportIMSAsEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('IMS', 'ims');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -2078,6 +2491,13 @@ export default class NavbarFile {
      *
      */
     async exportEPUB3Event() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('EPUB3', 'epub3');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -2133,6 +2553,13 @@ export default class NavbarFile {
      * Export ePub3 (Save As...)
      */
     async exportEPUB3AsEvent() {
+        // Try client-side export first (Yjs mode)
+        const handledClientSide = await this.exportViaYjs('EPUB3', 'epub3');
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -2502,6 +2929,98 @@ export default class NavbarFile {
         } else {
             let response = { responseMessage: _('Other users are connected.') };
             eXeLearning.app.project.showModalSaveError(response);
+        }
+    }
+
+    /**
+     * Check if the file is a legacy .elp with contentv3.xml (Python pickle format)
+     * These files cannot be parsed in the browser and need backend conversion.
+     *
+     * @param {File} file - The .elp or .elpx file
+     * @returns {Promise<boolean>} - True if it's a legacy format
+     */
+    async checkIfLegacyElpFormat(file) {
+        try {
+            const JSZip = window.JSZip;
+            if (!JSZip) {
+                console.warn('[NavbarFile] JSZip not available for format detection');
+                return false;
+            }
+
+            const zip = await JSZip.loadAsync(file);
+
+            // Check if contentv3.xml exists (legacy marker)
+            const contentV3 = zip.file('contentv3.xml');
+            if (!contentV3) {
+                // Has content.xml (standard format) - not legacy
+                return false;
+            }
+
+            // Read first bytes of contentv3.xml to check if it's Python pickle XML
+            const xmlContent = await contentV3.async('text');
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
+
+            // Python pickle format has <instance> or <dictionary> as root element
+            const rootTag = xmlDoc.documentElement?.tagName;
+            if (rootTag === 'instance' || rootTag === 'dictionary') {
+                Logger.log('[NavbarFile] Detected Python pickle format (legacy)');
+                return true;
+            }
+
+            // contentv3.xml exists but has standard XML format (rare case)
+            return false;
+        } catch (error) {
+            console.error('[NavbarFile] Error detecting file format:', error);
+            // On error, assume not legacy and try direct import (which will fail gracefully)
+            return false;
+        }
+    }
+
+    /**
+     * Convert legacy .elp file via backend API
+     * The backend uses LegacyXmlParserService to convert Python pickle XML to standard format.
+     *
+     * @param {File} file - The legacy .elp file
+     * @param {Object} progressModal - Progress modal for UI updates
+     * @returns {Promise<{success: boolean, structure?: Object, assets?: Array, error?: string}>}
+     */
+    async convertLegacyElpViaBackend(file, progressModal) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('sessionId', eXeLearning.app.project.odeSession);
+
+            const basePath = window.eXeLearning?.symfony?.basePath || '';
+            const response = await fetch(`${basePath}/api/project/convert-legacy`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Authorization': `Bearer ${eXeLearning.app.auth?.token || ''}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    success: false,
+                    error: errorData.message || `Server error: ${response.status}`
+                };
+            }
+
+            const data = await response.json();
+
+            return {
+                success: true,
+                structure: data.structure,
+                assets: data.assets || []
+            };
+        } catch (error) {
+            console.error('[NavbarFile] Legacy conversion failed:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to convert legacy file'
+            };
         }
     }
 }

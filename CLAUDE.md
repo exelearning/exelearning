@@ -1,0 +1,386 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+eXeLearning is an open-source educational content authoring tool (AGPL-3.0) that allows educators to create and export interactive learning materials in multiple formats (SCORM 1.2/2004, HTML5, EPUB3, IMS Content Package).
+
+**Current State**: New backend built with **Elysia + Bun + Kysely**. Legacy code available in `symfony_legacy/` and `nestjs_legacy/` for reference only.
+
+### General Rules
+- Early development, no users. No backwards compatibility concerns. Do things RIGHT: clean, organized, zero tech debt. Never create compatibility shims.
+- WE NEVER WANT WORKAROUNDS, we always want FULL implementations that are long term sustainable for many >1000 users. so dont come up with half baked solutions
+- Important: Do not remove, hide, or rename any existing features or UI options (even temporarily) unless I explicitly ask for it. If something isn't fully wired yet, keep the UX surface intact and stub/annotate it instead of deleting it.
+
+## Architecture
+
+### Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| **Runtime** | Bun |
+| **Framework** | Elysia |
+| **ORM** | Kysely |
+| **Database** | SQLite (bun:sqlite), PostgreSQL, MariaDB/MySQL |
+| **Real-time** | WebSocket (Yjs for collaborative editing) |
+| **Frontend** | Vanilla JavaScript in `/public/app/` |
+
+### Backend Structure
+
+```
+src/
+├── index.ts              # Elysia entry point
+├── routes/               # API routes (Elysia plugins)
+│   ├── auth.ts           # JWT authentication
+│   ├── project.ts        # Project CRUD, session management
+│   ├── export.ts         # HTML5/SCORM/EPUB3 export
+│   ├── filemanager.ts    # File browser operations
+│   ├── pages.ts          # Page rendering
+│   ├── assets.ts         # Asset management
+│   ├── yjs.ts            # Yjs REST endpoints
+│   └── ...
+├── services/             # Business logic
+│   ├── file-helper.ts    # File operations
+│   ├── zip.ts            # ZIP operations
+│   ├── session-manager.ts # In-memory sessions
+│   ├── template.ts       # Nunjucks rendering
+│   └── export/           # Export services
+├── db/
+│   ├── client.ts         # Kysely instance
+│   ├── dialect.ts        # Database dialect (SQLite/PostgreSQL/MySQL)
+│   ├── migrations/       # Database migrations
+│   └── queries/          # Query functions (DI pattern)
+├── websocket/            # WebSocket handlers
+│   ├── yjs-websocket.ts  # Yjs collaboration
+│   ├── room-manager.ts   # Connection management
+│   └── asset-coordinator.ts # Asset sync
+├── cli/                  # CLI commands
+│   └── commands/
+└── utils/                # Utility functions
+```
+
+### Session-Based Architecture
+
+Every opened project receives a UUID session ID. The file system structure mirrors this:
+
+```
+FILES_DIR/
+├── tmp/{sessionId}/      # ELP extraction directory
+├── dist/{sessionId}/     # Export output
+└── perm/odes/{odeId}/    # Permanent storage
+```
+
+Sessions are stored in-memory (`Map<sessionId, ProjectSession>`) and include:
+- Parsed XML structure
+- File paths (sessionPath, contentPath)
+- Created/modified timestamps
+
+### ELP File Format
+
+ELP files are ZIP archives containing:
+- `content.xml` (ODE format) or `contentv3.xml` (legacy)
+- Static assets (images, media, themes)
+- Hierarchical structure: Navigation → Pages → Blocks → iDevices
+
+## Development Commands
+
+### Package Manager
+
+This project uses **Bun** as the package manager and runtime.
+
+```bash
+# Install dependencies
+bun install
+```
+
+### Development
+
+```bash
+# Development server with hot reload
+bun run start:dev
+
+# Run tests (ALWAYS use this)
+make test-unit
+
+# Run with coverage
+make test-coverage
+
+# Build
+bun run build
+```
+
+### Legacy Code (Reference Only)
+
+```bash
+# Symfony legacy (reference only)
+symfony_legacy/
+
+# NestJS legacy (reference only)
+nestjs_legacy/
+```
+
+## Testing
+
+### Running Tests
+
+**Always use `make test-unit` to run tests** - this ensures proper environment variables and configuration.
+
+```bash
+# Run all unit tests (RECOMMENDED)
+make test-unit
+
+# Run specific test file
+DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test bun test src/path/to/file.spec.ts
+
+# Run with coverage
+make test-coverage
+```
+
+### Coverage Requirements
+
+- **Minimum Coverage: 90%** for all new code
+- Check coverage with `make test-coverage`
+- Files below 90% coverage should be prioritized for improvement
+
+### Test Patterns - Dependency Injection
+
+**NEVER use `mock.module()`** - it causes test pollution in Bun.
+
+Use Dependency Injection pattern instead:
+
+```typescript
+// In source file (e.g., my-service.ts)
+export interface MyServiceDependencies {
+    db: Kysely<Database>;
+    queries: { findById: typeof findByIdDefault };
+}
+
+const defaultDeps: MyServiceDependencies = {
+    db: defaultDb,
+    queries: { findById: findByIdDefault },
+};
+
+let deps = defaultDeps;
+
+export function configure(newDeps: Partial<MyServiceDependencies>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+export function resetDependencies(): void {
+    deps = defaultDeps;
+}
+```
+
+```typescript
+// In spec file (e.g., my-service.spec.ts)
+import { configure, resetDependencies } from './my-service';
+
+describe('MyService', () => {
+    beforeEach(() => {
+        configure({
+            queries: { findById: mockFindById },
+        });
+    });
+
+    afterEach(() => {
+        resetDependencies();
+    });
+});
+```
+
+### Test Structure
+
+```
+src/
+├── **/*.spec.ts       # Unit tests next to source files
+test/
+├── integration/       # Multi-service integration tests
+├── fixtures/xml/      # Sample content.xml files
+├── helpers/           # Test utilities and mock providers
+└── temp/             # Test artifacts (cleaned automatically)
+```
+
+### Framework Configuration
+
+- **Test Runner**: Bun test (native)
+- **Coverage Target**: 90% minimum
+- **Test Timeout**: 30 seconds
+- **Max Workers**: 1 (sequential for SQLite)
+
+## Database
+
+### Multi-Database Support
+
+Uses **Kysely** ORM with support for multiple databases:
+
+| Database | Driver | Use Case |
+|----------|--------|----------|
+| SQLite | `bun:sqlite` (via kysely-bun-worker) | Development, desktop app |
+| PostgreSQL | `pg` | Production (cloud) |
+| MariaDB/MySQL | `mysql2` | Production (on-premise) |
+
+### Configuration
+
+Database is configured via environment variables (see `.env.dist`):
+
+```bash
+# SQLite (default)
+DB_DRIVER=pdo_sqlite
+DB_PATH=/mnt/data/exelearning.db
+
+# PostgreSQL
+DB_DRIVER=pdo_pgsql
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=exelearning
+DB_USER=myuser
+DB_PASSWORD=mypassword
+
+# MySQL/MariaDB
+DB_DRIVER=pdo_mysql
+DB_HOST=db
+DB_PORT=3306
+DB_NAME=exelearning
+DB_USER=root
+DB_PASSWORD=secret
+```
+
+### Migrations
+
+```typescript
+// src/db/migrations/
+import { Kysely } from 'kysely';
+
+export async function up(db: Kysely<any>): Promise<void> {
+    await db.schema
+        .createTable('my_table')
+        .addColumn('id', 'integer', (col) => col.primaryKey().autoIncrement())
+        .execute();
+}
+
+export async function down(db: Kysely<any>): Promise<void> {
+    await db.schema.dropTable('my_table').execute();
+}
+```
+
+### Query Pattern
+
+All database queries use **Dependency Injection** for testability:
+
+```typescript
+// src/db/queries/users.ts
+export async function findUserById(db: Kysely<Database>, id: number) {
+    return db.selectFrom('users').where('id', '=', id).selectAll().executeTakeFirst();
+}
+```
+
+## Environment Configuration
+
+Configuration is managed via `.env` file. Use `.env.dist` as template:
+
+```bash
+# Copy template
+cp .env.dist .env
+```
+
+### Critical Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `APP_PORT` | Server port | `8080` |
+| `DB_PATH` | SQLite database path | `/mnt/data/exelearning.db` |
+| `DB_DRIVER` | Database driver | `pdo_sqlite` |
+| `FILES_DIR` | Session/temp file storage | `/mnt/data/` |
+| `APP_SECRET` | JWT secret | (required) |
+| `BASE_PATH` | URL prefix for subdirectory install | (empty) |
+| `APP_AUTH_METHODS` | Auth methods (password,cas,openid,guest) | `password` |
+
+See `.env.dist` for complete list with documentation.
+
+## Key File Locations
+
+### Source Code
+- `src/index.ts` - Elysia entry point
+- `src/routes/` - API routes
+- `src/services/` - Business logic
+- `src/db/` - Database (Kysely)
+- `src/websocket/` - WebSocket handlers
+
+### Configuration
+- `.env` - Environment configuration (not versioned)
+- `.env.dist` - Environment template
+- `tsconfig.json` - TypeScript config
+- `bunfig.toml` - Bun configuration
+- `Makefile` - Build commands
+
+### Frontend
+- `public/app/` - Vanilla JavaScript frontend
+- `public/libs/` - jQuery, TinyMCE, Bootstrap
+- `views/` - Nunjucks templates
+
+### Legacy Code (Reference Only)
+- `symfony_legacy/` - Old Symfony application
+- `nestjs_legacy/` - Old NestJS application
+
+## Important Patterns
+
+### File Upload Flow
+
+1. Upload ELP → temp storage
+2. Generate session ID (`crypto.randomUUID()`)
+3. Create session directories via `createSessionDirectories()`
+4. Extract ZIP via `extractZip()`
+5. Parse XML via `parseOdeXml()`
+6. Store session in `SessionManager.sessions` Map
+7. Return session ID to frontend
+
+### Export Flow
+
+1. Get session structure
+2. Create export directory
+3. Generate format-specific files (HTML, manifest, etc.)
+4. Copy theme files and assets
+5. Create ZIP archive
+6. Return download path
+
+### Adding New Routes
+
+```typescript
+// src/routes/my-feature.ts
+import { Elysia } from 'elysia';
+
+export const myFeatureRoutes = new Elysia({ prefix: '/api/my-feature' })
+    .get('/', () => ({ message: 'Hello' }))
+    .post('/', ({ body }) => ({ received: body }));
+
+// Register in src/index.ts
+app.use(myFeatureRoutes);
+```
+
+## Known Issues & Best Practices
+
+### Database
+- Use `DB_PATH=:memory:` for tests (fast, isolated)
+- Always pass `db` parameter to query functions
+- Use migrations for schema changes
+
+### File Paths
+- Always use `isPathSafe()` to prevent path traversal
+- Use `path.join()` for cross-platform compatibility
+
+### ZIP Operations
+- Use JSZip for extraction
+- Use Archiver for ZIP creation
+- Always check `zipEntry.dir` before reading file content
+
+### WebSocket
+- Yjs documents are client-side only (stateless relay)
+- Server forwards messages between clients
+- Asset coordination via JSON protocol
+
+## External Resources
+
+- GitHub: https://github.com/exelearning/exelearning
+- Documentation: https://exelearning.net/
+- Branch: `epic/migrate-to-elysia`

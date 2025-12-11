@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
       - name: Update APP_VERSION in Constants.php
         if: github.ref_type == 'tag'
@@ -58,8 +58,13 @@ jobs:
         with:
           install: true
 
-      - name: Install Yarn Dependencies
-        run: yarn install
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
 
       - name: Set TEST_SCREENSHOTS_DIR for screenshots in GitHub Actions
         run: echo "TEST_SCREENSHOTS_DIR=./e2e_screenshots" >> $GITHUB_ENV
@@ -75,8 +80,8 @@ jobs:
       - name: Build Docker Image
         run: make build
 
-      - name: PHP Lint
-        run: make lint-php
+      - name: TS Lint
+        run: make lint-ts
 
       - name: JS Lint
         run: make lint-js

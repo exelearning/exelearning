@@ -54,7 +54,6 @@ var $eXeCompleta = {
 
         $eXeCompleta.activities.each(function (i) {
             const dl = $('.completa-DataGame', this),
-                $imageBack = $('.completa-LinkBack', this),
                 mOption = $eXeCompleta.loadDataGame(dl),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -62,14 +61,6 @@ var $eXeCompleta = {
             mOption.idevicePath = $eXeCompleta.idevicePath;
             mOption.main = 'cmptMainContainer-' + i;
             mOption.idevice = 'completa-IDevice';
-
-            if ($imageBack.length == 1) {
-                mOption.urlBack = $imageBack.attr('href') || '';
-            }
-            mOption.urlBack =
-                mOption.urlBack.length < 4
-                    ? `${mOption.idevicePath}cmptbackground.png`
-                    : mOption.urlBack;
 
             $eXeCompleta.options.push(mOption);
             const completa = $eXeCompleta.createInterfaceCompleta(i);
@@ -129,16 +120,6 @@ var $eXeCompleta = {
                 ? ''
                 : mOptions.evaluationID;
         mOptions.id = typeof mOptions.id === 'undefined' ? false : mOptions.id;
-        mOptions.hasBack =
-            typeof mOptions.hasBack === 'undefined' ? false : mOptions.hasBack;
-        mOptions.urlBack =
-            typeof mOptions.urlBack === 'undefined' ? '' : mOptions.urlBack;
-        mOptions.authorBackImage =
-            typeof mOptions.authorBackImage === 'undefined'
-                ? ''
-                : mOptions.authorBackImage;
-        mOptions.fontColor =
-            typeof mOptions.fontColor === 'undefined' ? '' : mOptions.fontColor;
 
         return mOptions;
     },
@@ -200,8 +181,7 @@ var $eXeCompleta = {
                 <div class="CMPT-Hide" id="cmptSolutionDiv-${instance}">
                     <p>${msgs.msgSolution}:</p>
                     <div id="cmptSolution-${instance}"></div>
-                </div>
-                <div id="cmptAuthorBackImage-${instance}" class="CMPT-AuthorBackImage"></div>
+                </div>                
             </div>
             <div class="CMPT-Cubierta" id="cmptCubierta-${instance}">
                 <div class="CMPT-CodeAccessDiv" id="cmptCodeAccessDiv${instance}">
@@ -480,37 +460,6 @@ var $eXeCompleta = {
             .addEventListener('touchend', () => {
                 $eXeCompleta.isDragging = false;
             });
-
-        if (mOptions.hasBack) {
-            const backgroundUrl =
-                mOptions.urlBack.length < 4
-                    ? `${mOptions.idevicePath}cmptbackground.png`
-                    : mOptions.urlBack;
-
-            const $container = $(`#cmptGameContainer-${instance}`);
-            $container.addClass('has-background');
-
-            const style = document.createElement('style');
-            style.textContent = `
-                #cmptGameContainer-${instance}.has-background::before {
-                    background-image: url(${backgroundUrl});
-                }
-            `;
-            document.head.appendChild(style);
-
-            if (mOptions.fontColor && mOptions.fontColor.length > 0) {
-                $(`#cmptMultimedia-${instance} p`).css(
-                    'color',
-                    mOptions.fontColor
-                );
-            }
-
-            if (mOptions.authorBackImage.length > 0) {
-                $(`#cmptAuthorBackImage-${instance}`)
-                    .text(mOptions.authorBackImage)
-                    .show();
-            }
-        }
     },
 
     enterCodeAccess: function (instance) {

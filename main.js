@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, session, ipcMain }  = require('electron');
+const { app, BrowserWindow, dialog, session, ipcMain, Menu, systemPreferences }  = require('electron');
 const { autoUpdater }                 = require('electron-updater');
 
 const log                             = require('electron-log');
@@ -6,7 +6,7 @@ const path                            = require('path');
 const i18n                            = require('i18n');
 const { spawn, execFileSync }         = require('child_process');
 const fs                              = require('fs');
-const AdmZip                          = require('adm-zip');
+const JSZip                           = require('jszip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
 
@@ -58,7 +58,6 @@ i18n.configure({
 
 i18n.setLocale(defaultLocale);
 
-let phpBinaryPath;
 let appDataPath;
 let databasePath;
 
@@ -66,7 +65,6 @@ let databaseUrl;
 
 let mainWindow;
 let loadingWindow;
-let phpServer;
 let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let updaterInited = false; // guard
 
@@ -271,11 +269,9 @@ function ensureAllDirectoriesWritable(env) {
 }
 
 function initializePaths() {
-  phpBinaryPath = getPhpBinaryPath(); 
   appDataPath = app.getPath('userData');
   databasePath = path.join(appDataPath, 'exelearning.db')
 
-  console.log(`PHP binary path: ${phpBinaryPath}`);
   console.log(`APP data path: ${appDataPath}`);
   console.log('Database path:', databasePath);
 }
@@ -284,6 +280,9 @@ function initializeEnv() {
 
   const isDev = determineDevMode();
   const appEnv  = isDev ? 'dev' : 'prod';
+  // For Electron mode, use port 3001 for local development
+  // NEST_PORT is the only port variable used by the app (APP_PORT is for Docker only)
+  const nestPort = '3001';
 
   // Get the appropriate app data path based on platform
 customEnv = {
@@ -291,12 +290,12 @@ customEnv = {
   APP_DEBUG: process.env.APP_DEBUG ?? (isDev ? 1 : 0),
   EXELEARNING_DEBUG_MODE: (process.env.EXELEARNING_DEBUG_MODE ?? (isDev ? '1' : '0')).toString(),
   APP_SECRET: process.env.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
-  APP_PORT: process.env.APP_PORT || '41309',
-  APP_ONLINE_MODE: process.env.APP_ONLINE_MODE ?? 0,
+  NEST_PORT: nestPort,
+  APP_ONLINE_MODE: process.env.APP_ONLINE_MODE ?? '0',
   APP_AUTH_METHODS: process.env.APP_AUTH_METHODS || 'none',
-  TEST_USER_EMAIL: process.env.TEST_USER_EMAIL || 'localuser@exelearning.net',
-  TEST_USER_USERNAME: process.env.TEST_USER_USERNAME || 'localuser',
-  TEST_USER_PASSWORD: process.env.TEST_USER_PASSWORD || 'RANDOMUNUSEDPASSWORD',
+  TEST_USER_EMAIL: process.env.TEST_USER_EMAIL || 'user@exelearning.net',
+  TEST_USER_USERNAME: process.env.TEST_USER_USERNAME || 'user',
+  TEST_USER_PASSWORD: process.env.TEST_USER_PASSWORD || '1234',
   TRUSTED_PROXIES: process.env.TRUSTED_PROXIES || '',
   MAILER_DSN: process.env.MAILER_DSN || 'smtp://localhost',
   CAS_URL: process.env.CAS_URL || '',
@@ -304,30 +303,40 @@ customEnv = {
   DB_CHARSET: process.env.DB_CHARSET || 'utf8',
   DB_PATH: process.env.DB_PATH || databasePath,
   DB_SERVER_VERSION: process.env.DB_SERVER_VERSION || '3.32',
-  FILES_DIR: process.env.FILES_DIR || path.join(appDataPath, 'data'),
-  CACHE_DIR: process.env.CACHE_DIR || path.join(appDataPath, 'cache'),
-  LOG_DIR: process.env.LOG_DIR || path.join(appDataPath, 'log'),
+  FILES_DIR: (process.env.FILES_DIR && process.env.FILES_DIR.trim()) || path.join(appDataPath, 'data'),
+  CACHE_DIR: (process.env.CACHE_DIR && process.env.CACHE_DIR.trim()) || path.join(appDataPath, 'cache'),
+  LOG_DIR: (process.env.LOG_DIR && process.env.LOG_DIR.trim()) || path.join(appDataPath, 'log'),
   MERCURE_URL: process.env.MERCURE_URL || '',
   API_JWT_SECRET: process.env.API_JWT_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
   ONLINE_THEMES_INSTALL: 1,
   ONLINE_IDEVICES_INSTALL: 0, // To do (see #381)
+  BASE_PATH: process.env.BASE_PATH || '/',
 };
 }
 /**
  * Determine if dev mode is enabled.
- * 
- * Supports CLI flag --dev=1/true/True and env var EXELEARNING_DEV_MODE=1/true/True.
+ *
+ * Priority:
+ * 1. CLI flag --dev=1/true
+ * 2. APP_ENV=dev environment variable
+ * 3. EXELEARNING_DEBUG_MODE (legacy fallback)
+ *
  * @returns {boolean}
  */
 function determineDevMode() {
-  // Check CLI argument first
+  // Check CLI argument first: --dev=1 or --dev=true
   const cliArg = process.argv.find(arg => arg.startsWith('--dev='));
   if (cliArg) {
     const value = cliArg.split('=')[1].toLowerCase();
     return value === 'true' || value === '1';
   }
 
-  // Fallback to environment variable
+  // Check APP_ENV (primary method)
+  if (process.env.APP_ENV) {
+    return process.env.APP_ENV === 'dev';
+  }
+
+  // Legacy fallback: EXELEARNING_DEBUG_MODE
   const envVal = process.env.EXELEARNING_DEBUG_MODE;
   if (envVal) {
     const value = envVal.toLowerCase();
@@ -338,7 +347,23 @@ function determineDevMode() {
 }
 
 function combineEnv() {
-  env = Object.assign({}, customEnv, process.env);
+  // Merge process.env first, then customEnv, so customEnv takes priority
+  // This ensures our corrected directory paths (with empty string handling) override system env vars
+  env = Object.assign({}, process.env, customEnv);
+}
+
+function applyCombinedEnvToProcess() {
+  // Ensure the spawned backend (Nest) sees the combined env variables.
+  Object.assign(process.env, env || {});
+}
+
+function getServerPort() {
+  // NEST_PORT is the only port variable used by the app (APP_PORT is for Docker external mapping only)
+  try {
+    return Number(customEnv?.NEST_PORT || process.env.NEST_PORT || 3001);
+  } catch (_e) {
+    return 3001;
+  }
 }
 
 // Handler factory: creates an identical handler for any window
@@ -348,6 +373,21 @@ function attachOpenHandler(win) {
   let [mainX, mainY] = win.getPosition();
 
   win.webContents.setWindowOpenHandler(({ url }) => {
+    // For blob URLs and about:blank (used by preview), let Electron handle it automatically
+    // Blob URLs are renderer-specific and cannot be loaded manually from main process
+    // about:blank is used by preview to then document.write() the HTML content
+    if (url && (url.startsWith('blob:') || url === 'about:blank')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          x: mainX + 10,
+          y: mainY + 10,
+          width,
+          height,
+          tabbingIdentifier: 'mainGroup',
+        },
+      };
+    }
 
     // Create a completely independent child
     let childWindow = new BrowserWindow({
@@ -387,6 +427,7 @@ function createWindow() {
   initializePaths(); // Initialize paths before using them
   initializeEnv();   // Initialize environment variables afterward
   combineEnv();      // Combine the environment
+  applyCombinedEnvToProcess();
 
   // Run-once per version maintenance (cache/logs cleanup, etc.)
   ensurePerVersionSetup();
@@ -397,18 +438,15 @@ function createWindow() {
   // Create the loading window
   createLoadingWindow();
 
-  // Check if the database exists and run Symfony commands
-  checkAndCreateDatabase();
+  // Start the NestJS server only in production (in dev, assume it's already running)
+  const isDev = determineDevMode();
+  if (!isDev) {
+    startNestServer();
+  } else {
+    console.log('Development mode: skipping NestJS in-process loading (assuming external server running)');
+  }
 
-  // Check if the php binary is runable exists and run Symfony commands
-  assertWindowsPhpUsableOrGuide();
-
-  runSymfonyCommands();
-
-  // Start the embedded PHP server
-  startPhpServer();
-
-  // Wait for the PHP server to be available before loading the main window
+  // Wait for the server to be available before loading the main window
   waitForServer(() => {
     // Close the loading window
     if (loadingWindow) {
@@ -434,10 +472,22 @@ function createWindow() {
     
     // Show the menu bar in development mode, hide it in production
     mainWindow.setMenuBarVisibility(isDev);
-    
+
     // Maximize the window and open it
     mainWindow.maximize();
     mainWindow.show();
+
+    // macOS: Show tab bar after window is visible
+    if (process.platform === 'darwin' && typeof mainWindow.toggleTabBar === 'function') {
+      // Small delay to ensure window is fully rendered
+      setTimeout(() => {
+        try {
+          mainWindow.toggleTabBar();
+        } catch (e) {
+          console.warn('Could not toggle tab bar:', e.message);
+        }
+      }, 100);
+    }
 
     if (process.env.CI === '1' || process.env.CI === 'true') {
       mainWindow.setAlwaysOnTop(true, 'screen-saver');
@@ -466,10 +516,34 @@ function createWindow() {
       });
     });
 
-    mainWindow.loadURL(`http://localhost:${customEnv.APP_PORT}`);
+    mainWindow.loadURL(`http://localhost:${getServerPort()}`);
 
-    // Check for updates
+    // Check for updates and flush pending files
     mainWindow.webContents.on('did-finish-load', () => {
+      // Flush pending files (opened via double-click or command line)
+      // Delay to allow frontend JS to initialize and register IPC handlers
+      if (pendingOpenFiles.length > 0) {
+        const filesToOpen = [...pendingOpenFiles];
+        pendingOpenFiles = [];
+        console.log(`Flushing ${filesToOpen.length} pending file(s) to open:`, filesToOpen);
+
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            // Open first file in main window
+            const firstFile = filesToOpen.shift();
+            if (firstFile) {
+              console.log('[main] Sending file to main window:', firstFile);
+              mainWindow.webContents.send('app:open-file', firstFile);
+            }
+            // Open remaining files in new windows/tabs
+            for (const filePath of filesToOpen) {
+              console.log('[main] Creating new window for file:', filePath);
+              createNewProjectWindow(filePath);
+            }
+          }
+        }, 1500); // Wait for frontend to fully initialize
+      }
+
       if (!updaterInited) {
         try {
           const updater = initAutoUpdater({ mainWindow, autoUpdater, logger: log, streamToFile });
@@ -628,16 +702,21 @@ function createLoadingWindow() {
 }
 
 function waitForServer(callback) {
+  // Use the BASE_PATH to check the correct healthcheck endpoint
+  // Handle both '/' and '/web/exelearning' style paths
+  const rawBasePath = customEnv?.BASE_PATH || '/';
+  const urlBasePath = rawBasePath === '/' ? '' : rawBasePath;
   const options = {
     host: 'localhost',
-    port: customEnv.APP_PORT,
+    port: getServerPort(),
+    path: `${urlBasePath}/healthcheck`,
     timeout: 1000, // 1-second timeout
   };
 
   const checkServer = () => {
     const req = http.request(options, (res) => {
       if (res.statusCode >= 200 && res.statusCode <= 400) {
-        console.log('PHP server available.');
+        console.log('Application server available.');
         callback();  // Call the callback to continue opening the window
       } else {
         console.log(`Server status: ${res.statusCode}. Retrying...`);
@@ -646,7 +725,7 @@ function waitForServer(callback) {
     });
 
     req.on('error', () => {
-      console.log('PHP server not available, retrying...');
+      console.log('Server not available, retrying...');
       setTimeout(checkServer, 1000);  // Try again in 1 second
     });
 
@@ -670,7 +749,7 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
   return new Promise(async (resolve) => {
     try {
       // Resolve absolute URL (support relative paths from renderer)
-      let baseOrigin = `http://localhost:${(customEnv && customEnv.APP_PORT) ? customEnv.APP_PORT : 80}/`;
+      let baseOrigin = `http://localhost:${getServerPort() || 80}/`;
       try {
         if (wc && !wc.isDestroyed?.()) {
           const current = wc.getURL && wc.getURL();
@@ -773,10 +852,21 @@ ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, sugges
       return { ok: false, error: 'download-failed' };
     }
 
-    // Extract ZIP into chosen folder (overwrite)
+    // Extract ZIP into chosen folder (overwrite) using JSZip
     try {
-      const zip = new AdmZip(tmpZip);
-      zip.extractAllTo(destDir, true);
+      const zipData = fs.readFileSync(tmpZip);
+      const zip = await JSZip.loadAsync(zipData);
+
+      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+        const fullPath = path.join(destDir, relativePath);
+        if (zipEntry.dir) {
+          fs.mkdirSync(fullPath, { recursive: true });
+        } else {
+          const content = await zipEntry.async('nodebuffer');
+          fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+          fs.writeFileSync(fullPath, content);
+        }
+      }
     } finally {
       try { fs.unlinkSync(tmpZip); } catch (_e) {}
     }
@@ -796,59 +886,139 @@ app.on('browser-window-created', (_event, window) => {
   attachOpenHandler(window);
 });
 
-// Prevent running two instances at the same time (e.g., old install + new install).
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-  app.quit();
-  process.exit(0);
-} else {
-  app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
-    // Focus existing window if user tries to start a second instance
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
-}
-
 bootstrapFileOpenHandlers();
 
-app.whenReady().then(() => {
-  createWindow();
+/**
+ * Creates macOS application menu with native tabs support.
+ * The 'windowMenu' role automatically includes tab management options.
+ */
+function createMacOSMenu() {
+  if (process.platform !== 'darwin') return;
 
-  // Flush queued files after UI is ready
-  if (pendingOpenFiles.length && mainWindow && !mainWindow.isDestroyed()) {
-    for (const f of pendingOpenFiles) {
-      mainWindow.webContents.send('app:open-file', f);
+  const template = [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: i18n.__('menu.edit') || 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'delete' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: i18n.__('menu.view') || 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      // windowMenu role automatically includes:
+      // - Minimize, Zoom, Close
+      // - Show Tab Bar, Show All Tabs (macOS 10.12+)
+      // - Merge All Windows, Move Tab to New Window
+      // - Bring All to Front
+      role: 'windowMenu'
     }
-    pendingOpenFiles = [];
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
+// macOS: Handle new tab button click ('+' in tab bar)
+app.on('new-window-for-tab', () => {
+  if (process.platform !== 'darwin') return;
+
+  const isDev = determineDevMode();
+
+  // Get position from focused window or main window
+  let x, y, width, height;
+  const focusedWindow = BrowserWindow.getFocusedWindow() || mainWindow;
+  if (focusedWindow && !focusedWindow.isDestroyed()) {
+    const bounds = focusedWindow.getBounds();
+    x = bounds.x;
+    y = bounds.y;
+    width = bounds.width;
+    height = bounds.height;
+  } else {
+    width = 1250;
+    height = 800;
   }
+
+  const newWindow = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
+    autoHideMenuBar: !isDev,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+    tabbingIdentifier: 'mainGroup',
+    show: true,
+  });
+
+  newWindow.setMenuBarVisibility(isDev);
+  newWindow.loadURL(`http://localhost:${getServerPort()}`);
+
+  attachOpenHandler(newWindow);
+
+  console.log('New tab window created');
+});
+
+app.whenReady().then(() => {
+  // macOS: Always show tab bar (even with single window)
+  if (process.platform === 'darwin') {
+    systemPreferences.setUserDefault('AppleWindowTabbingMode', 'string', 'always');
+  }
+
+  createMacOSMenu();
+  createWindow();
 });
 
 
 app.on('window-all-closed', function () {
-  if (phpServer) {
-    phpServer.kill('SIGTERM');
-    console.log('Closed PHP server.');
-  }
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 /**
- * Function to handle app exit, including killing the PHP server.
+ * Function to handle app exit.
  */
 function handleAppExit() {
   const cleanup = () => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-
-    // Terminate PHP server if running
-    if (phpServer) {
-      phpServer.kill('SIGTERM');
-      phpServer = null;
-    }
 
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.destroy();
@@ -983,379 +1153,147 @@ function checkAndCreateDatabase() {
 }
 
 /**
- * Runs Symfony commands using the integrated PHP binary.
+ * Starts the NestJS backend (built output must exist at dist/main.js).
+ * We require it in-process to keep packaging simpler (asar-friendly).
  */
-function runSymfonyCommands() {
+function startNestServer() {
   try {
-    // We already created FILES_DIR in ensureAllDirectoriesWritable().
-    // Also check other required directories if needed.
+    const candidates = [
+      // Prefer asar-packed build (has node_modules alongside)
+      path.join(app.getAppPath(), 'dist', 'main.js'),
+      path.join(app.getAppPath(), 'dist', 'src', 'main.js'),
+      // Prefer unpacked path in packaged apps (read/write friendly) if present
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'main.js'),
+      path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'src', 'main.js'),
+      // ExtraResources path (outside asar)
+      path.join(process.resourcesPath, 'dist', 'main.js'),
+      // Build output keeps "src" directory (tsconfig has no rootDir)
+      path.join(process.resourcesPath, 'dist', 'src', 'main.js'),
+      // Dev path
+      path.join(__dirname, 'dist', 'main.js'),
+      path.join(__dirname, 'dist', 'src', 'main.js'),
+    ];
 
-    const iniArgs = phpIniArgs();
-
-    const publicDir = path.join(basePath, 'public');
-    if (!fs.existsSync(publicDir)) {
-      showErrorDialog(`The public directory was not found at the path: ${publicDir}`);
+    const nestMain = candidates.find((p) => fs.existsSync(p));
+    if (!nestMain) {
+      showErrorDialog('NestJS backend build not found. Run "npm run build" before packaging.');
       app.quit();
+      return;
     }
 
-    const consolePath = path.join(basePath, 'bin', 'console');
-    if (!fs.existsSync(consolePath)) {
-      showErrorDialog(`The bin/console file was not found at the path: ${consolePath}`);
-      app.quit();
+    console.log(`Starting Nest backend from ${nestMain} on port ${getServerPort()}`);
+    applyCombinedEnvToProcess();
+
+    // Set process.resourcesPath to the project root in development mode
+    // This helps NestJS find views/ and other resources correctly
+    if (!app.isPackaged && !process.resourcesPath) {
+      process.resourcesPath = app.getAppPath();
+      console.log(`Development mode: Set process.resourcesPath to ${process.resourcesPath}`);
     }
+
+    const prevCwd = process.cwd();
+    const targetCwd = path.dirname(nestMain);
+    const canChdir = !targetCwd.includes('.asar') && fs.existsSync(targetCwd) && fs.statSync(targetCwd).isDirectory();
     try {
-      console.log('Clearing Symfony cache...');
-      execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'cache:clear'], {
-        env: env,
-        cwd: basePath,
-        windowsHide: true,
-        stdio: 'inherit',
-      });
-    } catch (cacheError) {
-      console.error('Error clearing cache (non-critical):', cacheError.message);
+      if (canChdir) process.chdir(targetCwd);
+      require(nestMain);
+    } finally {
+      if (canChdir) process.chdir(prevCwd);
     }
-
-    console.log('Creating database tables in SQLite...');
-    execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'doctrine:schema:update', '--force'], {
-      env: env,
-      cwd: basePath,
-      windowsHide: true,
-      stdio: 'inherit',
-    });
-
-    // Do NOT run assets:install when packaged: the directory is read-only
-    if (!app.isPackaged) {
-      try {
-        console.log('Installing assets in public (dev/local only)...');
-        execFileSync(
-          phpBinaryPath,
-          [...iniArgs, 'bin/console', 'assets:install', 'public', '--no-debug', '--env=prod'],
-          {
-            env, cwd: basePath, windowsHide: true, stdio: 'inherit',
-          },
-        );
-      } catch (e) {
-        console.warn('Skipping assets:install:', e.message);
-      }
-    } else {
-      console.log('Skipping assets:install (packaged app is read-only).');
-    }
-
-    console.log('Creating test user...');
-    execFileSync(
-      phpBinaryPath,
-      [
-        ...iniArgs,
-        'bin/console',
-        'app:create-user',
-        customEnv.TEST_USER_EMAIL,
-        customEnv.TEST_USER_PASSWORD,
-        customEnv.TEST_USER_USERNAME,
-        '--no-fail',
-      ],
-      {
-        env, cwd: basePath, windowsHide: true, stdio: 'inherit',
-      },
-    );
-
-    console.log('Symfony commands executed successfully.');
   } catch (err) {
-    showErrorDialog(`Error executing Symfony commands: ${err.message}`);
+    console.error('Error starting Nest backend:', err);
+    showErrorDialog(`Error starting Nest backend: ${err.message}`);
     app.quit();
   }
-}
-
-function phpIniArgs() {
-  const maxExecutionTime = String(process.env.PHP_MAX_EXECUTION_TIME ?? '600');
-  const maxInputTime = String(process.env.PHP_MAX_INPUT_TIME ?? maxExecutionTime);
-  const memoryLimit = String(process.env.PHP_MEMORY_LIMIT ?? '512M');
-  const uploadMaxFilesize = String(process.env.PHP_UPLOAD_MAX_FILESIZE ?? '512M');
-  let postMaxSize = String(process.env.PHP_POST_MAX_SIZE ?? uploadMaxFilesize);
-
-  // Ensure POST payload limit is never lower than the upload limit.
-  const parseSize = (value) => {
-    if (!value) return 0;
-    const match = String(value).trim().match(/^(\d+)([KMG]?)/i);
-    if (!match) return Number(value) || 0;
-    const quantity = Number(match[1]);
-    const unit = match[2]?.toUpperCase();
-    switch (unit) {
-      case 'G': return quantity * 1024 * 1024 * 1024;
-      case 'M': return quantity * 1024 * 1024;
-      case 'K': return quantity * 1024;
-      default: return quantity;
-    }
-  };
-
-  if (parseSize(postMaxSize) < parseSize(uploadMaxFilesize)) {
-    postMaxSize = uploadMaxFilesize;
-  }
-
-  return [
-    '-dopcache.enable=1',
-    '-dopcache.enable_cli=1',
-    '-dopcache.memory_consumption=128',
-    '-dopcache.interned_strings_buffer=16',
-    '-dopcache.max_accelerated_files=20000',
-    '-dopcache.validate_timestamps=0',
-    '-drealpath_cache_size=4096k',
-    '-drealpath_cache_ttl=600',
-    `-dmax_execution_time=${maxExecutionTime}`,
-    `-dmax_input_time=${maxInputTime}`,
-    `-dmemory_limit=${memoryLimit}`,
-    `-dupload_max_filesize=${uploadMaxFilesize}`,
-    `-dpost_max_size=${postMaxSize}`,
-  ];
 }
 
 /**
- * Starts the embedded PHP server.
+ * Create a new window for a project file
+ * @param {string} filePath - Path to the .elpx file to open
  */
-function startPhpServer() {
-  try {
-    phpServer = spawn(
-      phpBinaryPath,
-      [...phpIniArgs(), '-S', `localhost:${customEnv.APP_PORT}`, '-t', 'public', 'public/router.php'],
-      {
-        // env: Object.assign({}, process.env, customEnv),
-        env, // usa el env ya combinado por combineEnv()
-        cwd: basePath,
-        windowsHide: true,
-      }
-    );
+function createNewProjectWindow(filePath) {
+  const isDev = determineDevMode();
 
-    phpServer.on('error', (err) => {
-      console.error('Error starting PHP server:', err.message);
-      if (err.message.includes('EADDRINUSE')) {
-        showErrorDialog(`Port ${customEnv.APP_PORT} is already in use. Close the process using it and try again.`);
-      } else {
-        showErrorDialog(`Error starting PHP server: ${err.message}`);
-      }
-      app.quit();
-    });
-
-    phpServer.stdout.on('data', (data) => {
-      console.log(`PHP: ${data}`);
-    });
-
-    phpServer.stderr.on('data', (data) => {
-      // Normalize to string
-      const text = data instanceof Buffer ? data.toString() : String(data);
-
-      // Process line by line (chunks can arrive concatenated)
-      for (const raw of text.split(/\r?\n/)) {
-        const line = raw.trim();
-        if (!line) continue;
-
-        // Silence php -S noise: "[::1]:64324 Accepted" / "[::1]:64324 Closing"
-        if (/\[(?:::1|127\.0\.0\.1)\]:\d+\s+(?:Accepted|Closing)\s*$/i.test(line)) {
-          continue;
-        }
-
-        // Hide simple succesful access logs like [200] or [301]
-        // Example: "[::1]:64331 [200]: GET /path" | "[::1]:64335 [301]: POST /path"
-        if (/\[\s*(?:200|301)\s*\]:\s+(GET|POST|PUT|DELETE|HEAD|OPTIONS)\s+/i.test(line)) {
-          continue;
-        }
-
-        // Detect "Address already in use" and stop the app
-        if (line.includes('Address already in use')) {
-          showErrorDialog(`Port ${customEnv.APP_PORT} is already in use. Close the process using it and try again.`);
-          app.quit();
-          return;
-        }
-
-        // Keep useful stderr
-        console.warn(`${line}`);
-      }
-    });
-
-    phpServer.on('close', (code) => {
-      console.log(`The PHP server closed with code ${code}`);
-      if (code !== 0) {
-        app.quit();
-      }
-    });
-  } catch (err) {
-    showErrorDialog(`Error starting PHP server: ${err.message}`);
-    app.quit();
+  // Offset from main window
+  let x, y, width, height;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const bounds = mainWindow.getBounds();
+    x = bounds.x + 30;
+    y = bounds.y + 30;
+    width = bounds.width;
+    height = bounds.height;
+  } else {
+    width = 1250;
+    height = 800;
   }
+
+  const newWindow = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
+    autoHideMenuBar: !isDev,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+    tabbingIdentifier: 'mainGroup', // macOS native tabs support
+    show: true,
+  });
+
+  newWindow.setMenuBarVisibility(isDev);
+  newWindow.loadURL(`http://localhost:${getServerPort()}`);
+
+  // macOS: Show tab bar after window is visible
+  if (process.platform === 'darwin' && typeof newWindow.toggleTabBar === 'function') {
+    setTimeout(() => {
+      try {
+        newWindow.toggleTabBar();
+      } catch (e) {
+        console.warn('Could not toggle tab bar:', e.message);
+      }
+    }, 100);
+  }
+
+  // Send file path once window is ready
+  newWindow.webContents.on('did-finish-load', () => {
+    newWindow.webContents.send('app:open-file', filePath);
+  });
+
+  attachOpenHandler(newWindow);
+
+  return newWindow;
+}
+
+/**
+ * Handle opening an .elpx file
+ * @param {string} filePath - Path to the file
+ * @param {boolean} isAppStartup - True if app is just starting
+ */
+function handleFileOpen(filePath, isAppStartup = false) {
+  if (isAppStartup) {
+    // Queue for main window when ready
+    pendingOpenFiles.push(filePath);
+    return;
+  }
+
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    pendingOpenFiles.push(filePath);
+    return;
+  }
+
+  // App running - always create new window
+  createNewProjectWindow(filePath);
 }
 
 /**
  * Shows an error dialog.
- * 
+ *
  * @param {string} message - The message to display.
  */
 function showErrorDialog(message) {
   dialog.showErrorBox('Error', message);
-}
-
-// Helper: resolve platform and arch folders used in extraResources
-function resolvePhpRuntimeRoot() {
-  const plat = process.platform === 'win32' ? 'win' : (process.platform === 'darwin' ? 'mac' : 'linux');
-  // En mac "universal" de Electron puede ejecutarse como arm64 o x64 (Rosetta).
-  const arch = (process.platform === 'darwin')
-    ? (process.arch === 'arm64' ? 'arm64' : 'x64')
-    : 'x64';
-
-  // Todo lo que copies con extraResources vive fuera del asar, bajo resourcesPath.
-  // Estructura final esperada: <resources>/php/<plat>/<arch>/(php.exe|php)
-  return path.join(process.resourcesPath, 'php', plat, arch);
-}
-
-/**
- * Pick the first existing file from candidates.
- * @param {string[]} candidates
- */
-function pickExisting(candidates) {
-  for (const p of candidates) {
-    try {
-      if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
-    } catch (_) {}
-  }
-  return null;
-}
-
-/**
- * Ensure exec bit on POSIX.
- * @param {string} p
- */
-function ensureExecIfNeeded(p) {
-  if (process.platform !== 'win32') {
-    try { fs.chmodSync(p, 0o755); } catch (_) {}
-  }
-}
-
-/**
- * Try to resolve system PHP for dev.
- */
-function findSystemPhp() {
-  try {
-    const which = process.platform === 'win32' ? 'where' : 'which';
-    const out = execFileSync(which, ['php'], { windowsHide: true, stdio: 'pipe' })
-      .toString().split(/\r?\n/)[0].trim();
-    return out || null;
-  } catch (_) { return null; }
-}
-
-/**
- * Resolve the embedded PHP binary path across mac (universal), Linux, and Windows.
- * - macOS packaged: <Resources>/php/mac/php  (fat binary)
- * - Linux packaged: <Resources>/php/linux/<arch>/php
- * - Windows packaged: <Resources>/php/win/x64/php.exe
- * - dev: ./runtime/php/... or fallback to system "php"
- */
-function getPhpBinaryPath() {
-  const isPackaged = app.isPackaged;
-  const binWin = 'php.exe';
-  const binNix = 'php';
-
-  if (process.platform === 'darwin') {
-    // Universal: single FAT binary path in packaged app
-    const prod = path.join(process.resourcesPath, 'php', 'mac', binNix);
-    // In dev, keep arch layout from runtime/php/mac/<arch>/*
-    const devArch = (process.arch === 'arm64') ? 'arm64' : 'x64';
-    const dev = [
-      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, binNix),
-      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, 'php-8.4', 'bin', binNix),
-      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, 'php-8.4', binNix)
-    ];
-    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
-    if (chosen) { ensureExecIfNeeded(chosen); return chosen; }
-    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
-    throw new Error('php-runtime-missing (mac): ' + [prod, ...dev].join(' | '));
-  }
-
-  if (process.platform === 'linux') {
-    // Keep per-arch layout; default to x64. If someday arm64 is present, it will just work.
-    const arch = (process.arch === 'arm64') ? 'arm64' : 'x64';
-    const prod = path.join(process.resourcesPath, 'php', 'linux', arch, binNix);
-    const dev = [
-      path.join(app.getAppPath(), 'runtime', 'php', 'linux', arch, binNix),
-      path.join(app.getAppPath(), 'runtime', 'php', 'linux', arch, 'php-8.4', 'bin', binNix),
-      // Fallback to x64 in dev if you’re on arm64 but only prepared x64 runtime
-      ...(arch === 'arm64' ? [
-        path.join(app.getAppPath(), 'runtime', 'php', 'linux', 'x64', binNix),
-        path.join(app.getAppPath(), 'runtime', 'php', 'linux', 'x64', 'php-8.4', 'bin', binNix),
-      ] : []),
-    ];
-    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
-    if (chosen) { ensureExecIfNeeded(chosen); return chosen; }
-    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
-    throw new Error('php-runtime-missing (linux): ' + [prod, ...dev].join(' | '));
-  }
-
-  if (process.platform === 'win32') {
-    // We ship x64 on Windows
-    const prod = path.join(process.resourcesPath, 'php', 'win', 'x64', binWin);
-    const dev = [
-      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', binWin),
-      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', 'php-8.4', 'php.exe'),
-      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', 'php-8.4', 'bin', 'php.exe'),
-    ];
-    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
-    if (chosen) return chosen;
-    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
-    throw new Error('php-runtime-missing (win): ' + [prod, ...dev].join(' | '));
-  }
-
-  throw new Error(`unsupported platform: ${process.platform}`);
-}
-
-// --- Windows-only VC++ runtime check for embedded PHP ---
-function assertWindowsPhpUsableOrGuide() {
-  // Run only on Windows
-  if (process.platform !== 'win32') return;
-
-  const VC_REDIST_URL = 'https://aka.ms/vs/17/release/vc_redist.x64.exe';
-
-  try {
-    // Quick probe: if PHP starts, dependencies are fine.
-    execFileSync(phpBinaryPath, ['-v'], { windowsHide: true, stdio: 'pipe' });
-    return;
-  } catch (err) {
-    // Optional: check registry to see if the VC++ 2015–2022 (x64) runtime is installed
-    let vcredistInstalled = false;
-    try {
-      const out = execFileSync('reg', [
-        'query',
-        'HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64',
-        '/v',
-        'Installed'
-      ], { windowsHide: true, stdio: 'pipe' }).toString();
-      vcredistInstalled = /\bInstalled\s+REG_DWORD\s+0x1\b/i.test(out);
-    } catch (_) {
-      // If the key is missing or unreadable, assume it's not installed.
-      vcredistInstalled = false;
-    }
-
-    // Build a user-friendly message
-    const message = vcredistInstalled
-      ? 'PHP could not be started. The embedded PHP binary may be corrupted or incompatible.'
-      : 'Microsoft Visual C++ 2015–2022 (x64) is required to run the embedded PHP on Windows.';
-
-    const detail = vcredistInstalled
-      ? 'Please reinstall eXeLearning or replace the embedded PHP runtime.'
-      : 'Click “Install VC++ now” to download it from Microsoft. After installing, reopen eXeLearning.';
-
-    // Offer to open the official installer link
-    const { shell } = require('electron');
-    const buttons = vcredistInstalled ? ['Exit'] : ['Install VC++ now', 'Exit'];
-    const choice = dialog.showMessageBoxSync({
-      type: 'error',
-      buttons,
-      defaultId: 0,
-      cancelId: buttons.length - 1,
-      message,
-      detail
-    });
-
-    if (!vcredistInstalled && choice === 0) {
-      shell.openExternal(VC_REDIST_URL);
-    }
-    app.quit();
-  }
 }
 
 /**
@@ -1367,7 +1305,7 @@ function bootstrapFileOpenHandlers() {
   if (process.platform !== 'darwin') {
     const args = process.argv.slice(1);
     for (const a of args) {
-      if (a && /\.elpx$/i.test(a) && !a.startsWith('-')) {
+      if (a && /\.elp(x)?$/i.test(a) && !a.startsWith('-')) {
         pendingOpenFiles.push(a);
       }
     }
@@ -1376,13 +1314,7 @@ function bootstrapFileOpenHandlers() {
   // macOS: 'open-file' is emitted for each file, before or after 'ready'
   app.on('open-file', (event, filePath) => {
     event.preventDefault(); // prevent default OS handling
-    if (app.isReady() && mainWindow) {
-      // Send immediately if UI is ready
-      mainWindow.webContents.send('app:open-file', filePath);
-    } else {
-      // Queue until UI is ready
-      pendingOpenFiles.push(filePath);
-    }
+    handleFileOpen(filePath, !app.isReady());
   });
 
   // Single instance lock: collect files from second invocations (Win/Linux)
@@ -1393,20 +1325,17 @@ function bootstrapFileOpenHandlers() {
   }
 
   app.on('second-instance', (_event, argv) => {
-    // Bring to front
+    // Bring main window to front
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
 
-    // On Windows, file path is usually the last arg
-    const files = argv.filter(a => /\.elpx$/i.test(a));
+    // On Windows/Linux, file paths come in argv
+    const files = argv.filter(a => /\.elp(x)?$/i.test(a) && !a.startsWith('-'));
     for (const f of files) {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('app:open-file', f);
-      } else {
-        pendingOpenFiles.push(f);
-      }
+      // App is running - create new window for each file
+      handleFileOpen(f, false);
     }
   });
 }

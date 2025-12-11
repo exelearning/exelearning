@@ -1,5 +1,11 @@
 /**
+ * SessionMonitor
  * Periodically checks the backend session status and reacts when it expires.
+ *
+ * With Yjs architecture:
+ * - Session check validates HTTP session (needed for REST API calls like save/export)
+ * - When session expires, disconnects Yjs WebSocket to prevent orphaned connections
+ * - User is redirected to login page
  */
 export default class SessionMonitor {
     /**
@@ -7,7 +13,7 @@ export default class SessionMonitor {
      * @param {string} options.checkUrl - Endpoint to verify the session state.
      * @param {string} options.loginUrl - URL where the user should be redirected when the session is invalid.
      * @param {number} [options.interval=60000] - Interval in milliseconds between checks.
-     * @param {Function} [options.closeMercureConnections] - Callback to close Mercure/EventSource connections.
+     * @param {Function} [options.closeYjsConnections] - Callback to close Yjs WebSocket connections.
      * @param {Function} [options.onSessionInvalid] - Callback executed before redirecting the user.
      * @param {Function} [options.onNetworkError] - Callback executed when the fetch fails (optional).
      * @param {Function} [options.onRedirect] - Custom redirect handler.
@@ -18,8 +24,7 @@ export default class SessionMonitor {
         this.loginUrl = options.loginUrl || '/login';
         const interval = Number(options.interval) || 60000;
         this.interval = Math.max(10000, interval);
-        this.closeMercureConnections =
-            options.closeMercureConnections || (() => {});
+        this.closeYjsConnections = options.closeYjsConnections || (() => {});
         this.onSessionInvalid = options.onSessionInvalid || (() => {});
         this.onNetworkError = options.onNetworkError || null;
         this.onRedirect = options.onRedirect || ((url) => {
@@ -68,31 +73,17 @@ export default class SessionMonitor {
     }
 
     /**
-     * Handles Mercure/EventSource errors.
+     * Handle Yjs WebSocket disconnection or error.
+     * Triggers an immediate session check to verify if the session is still valid.
      * @param {Event|Error} error
      */
-    handleMercureError(error) {
+    handleYjsConnectionError(error) {
         if (this.invalidated) {
             return;
         }
 
-        const status = error?.status || error?.detail?.status;
-        if (status === 401 || status === 403) {
-            this.handleInvalidSession('mercure-unauthorized');
-            return;
-        }
-
-        const target = error?.currentTarget || error?.target;
-        if (target && typeof target.readyState === 'number') {
-            // EventSource.CLOSED === 2. This typically happens on auth errors.
-            if (target.readyState === 2) {
-                this.triggerImmediateCheck('mercure-closed');
-                return;
-            }
-        }
-
-        // Fallback: perform a manual re-check to confirm the session is still valid.
-        this.triggerImmediateCheck('mercure-error');
+        console.debug('SessionMonitor: Yjs connection issue, checking session...', error);
+        this.triggerImmediateCheck('yjs-connection-error');
     }
 
     /**
@@ -172,6 +163,7 @@ export default class SessionMonitor {
 
     /**
      * Called when the session is no longer valid.
+     * Closes Yjs connections and redirects to login.
      * @param {string} reason
      */
     handleInvalidSession(reason) {
@@ -181,15 +173,17 @@ export default class SessionMonitor {
         this.invalidated = true;
         this.stop();
 
+        // Close Yjs WebSocket connections
         try {
-            this.closeMercureConnections?.(reason);
+            this.closeYjsConnections?.(reason);
         } catch (error) {
             console.debug(
-                'SessionMonitor: error while closing Mercure connections',
+                'SessionMonitor: error while closing Yjs connections',
                 error
             );
         }
 
+        // Execute custom callback
         try {
             this.onSessionInvalid?.(reason);
         } catch (error) {
@@ -199,12 +193,14 @@ export default class SessionMonitor {
             );
         }
 
+        // Clear beforeunload handler to allow redirect
         try {
             window.onbeforeunload = null;
         } catch (_error) {
             // Ignore failures restoring beforeunload handler.
         }
 
+        // Redirect to login
         try {
             this.onRedirect?.(this.loginUrl, reason);
         } catch (error) {

@@ -1,5 +1,8 @@
 import FormProperties from './formProperties.js';
 
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class ProjectProperties {
     categoryPropertiesId = 'properties';
     categoryCataloguingId = 'cataloguing';
@@ -11,10 +14,9 @@ export default class ProjectProperties {
 
     /**
      * Load project properties
-     *
      */
     async load() {
-        //  Properties - Package [base]
+        // Properties - Package [base]
         this.propertiesConfig = JSON.parse(
             JSON.stringify(
                 eXeLearning.app.api.parameters.odeProjectSyncPropertiesConfig
@@ -42,64 +44,11 @@ export default class ProjectProperties {
                 this.cataloguing[key] = property;
             }
         }
-        await this.apiLoadProperties();
-    }
-
-    /**
-     * Set values of api package properties
-     *
-     * @param {Array} properties
-     */
-    setProperties(properties) {
-        for (let [key, value] of Object.entries(properties)) {
-            if (value.category == this.categoryPropertiesId) {
-                let newValue = properties[key].value
-                    ? properties[key].value
-                    : '';
-                if (this.properties[key]) {
-                    this.properties[key].value = newValue;
-                }
-            }
-        }
-    }
-
-    /**
-     * Set values of api cataloguing properties
-     *
-     * @param {Array} properties
-     */
-    setCataloguing(properties) {
-        for (let [key, value] of Object.entries(properties)) {
-            if (value.category == this.categoryCataloguingId) {
-                let newValue = properties[key].value
-                    ? properties[key].value
-                    : '';
-                if (this.cataloguing[key]) {
-                    this.cataloguing[key].value = newValue;
-                } else if (
-                    properties[key].multipleId &&
-                    this.cataloguing[properties[key].multipleId]
-                ) {
-                    // Multiple properties
-                    this.cataloguing[key] = JSON.parse(
-                        JSON.stringify(
-                            this.cataloguing[properties[key].multipleId]
-                        )
-                    );
-                    this.cataloguing[key].value = newValue;
-                    this.cataloguing[key].multipleId =
-                        properties[key].multipleId;
-                    this.cataloguing[key].multipleIndex =
-                        properties[key].multipleIndex;
-                    this.cataloguing[key].prefix = properties[key].groups.pop();
-                }
-            }
-        }
+        this.loadPropertiesFromYjs();
     }
 
     /**
      * Show modal properties
-     *
      */
     showModalProperties() {
         eXeLearning.app.modals.properties.show({
@@ -112,60 +61,52 @@ export default class ProjectProperties {
     }
 
     /**
-     * Get ode properties
-     *
+     * Load properties from Yjs metadata map
      */
-    async apiLoadProperties() {
-        let odeSession = this.project.odeSession;
-        let properties = await eXeLearning.app.api.getOdeProperties(odeSession);
+    loadPropertiesFromYjs() {
+        try {
+            const documentManager = this.project._yjsBridge?.getDocumentManager();
+            if (!documentManager) {
+                console.warn('[ProjectProperties] Yjs document manager not available');
+                return;
+            }
 
-        if (properties) {
-            this.setProperties(properties.odeProperties);
-            this.setCataloguing(properties.odeProperties);
-            this.project.versionName = properties.odeVersionName;
-        } else {
-            eXeLearning.app.modals.alert.show({
-                title: _('Properties error'),
-                body: _('An error occurred while saving properties'),
-            });
+            const metadata = documentManager.getMetadata();
+            if (!metadata) {
+                console.warn('[ProjectProperties] Yjs metadata map not available');
+                return;
+            }
+
+            // Load properties from metadata map
+            for (let [key, property] of Object.entries(this.properties)) {
+                const metadataKey = this.mapPropertyToMetadataKey(key);
+                const value = metadata.get(metadataKey);
+                if (value !== undefined) {
+                    this.properties[key].value = value;
+                }
+            }
+
+            Logger.log('[ProjectProperties] Loaded properties from Yjs metadata');
+        } catch (error) {
+            console.error('[ProjectProperties] Failed to load from Yjs:', error);
         }
     }
 
     /**
-     * Save ode properties
-     *
+     * Map property key to metadata key
+     * @param {string} propertyKey - e.g., 'pp_title'
+     * @returns {string} - e.g., 'title'
      */
-    async apiSaveProperties(properties) {
-        // Generate params array
-        let params = {};
-        // - Session Id
-        params.odeSessionId = this.project.odeSession;
-        // - Properties dict
-        for (let [key, value] of Object.entries(properties)) {
-            params[key] = value;
+    mapPropertyToMetadataKey(propertyKey) {
+        // Remove pp_ prefix if present
+        if (propertyKey.startsWith('pp_')) {
+            return propertyKey.substring(3);
         }
-        // Save in database
-        let response = await eXeLearning.app.api.putSaveOdeProperties(params);
-        await this.apiLoadProperties();
-        this.formProperties.reloadValues();
-        // Update interface
-        //this.updateTitlePropertiesStructureNode();
-        this.updateTitlePropertiesMenuTop();
-        // Send update sync change to the BBDD
-        eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-            false,
-            'root',
-            null,
-            null,
-            'EDIT'
-        );
-
-        return response;
+        return propertyKey;
     }
 
     /**
      * Update title in menu structure node root
-     *
      */
     updateTitlePropertiesStructureNode() {
         this.project.structure.setTitleToNodeRoot();
@@ -173,7 +114,6 @@ export default class ProjectProperties {
 
     /**
      * Update title in menu top
-     *
      */
     updateTitlePropertiesMenuTop() {
         this.project.app.interface.odeTitleElement.setTitle();

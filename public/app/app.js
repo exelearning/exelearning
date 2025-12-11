@@ -79,6 +79,9 @@ class App {
 
         // Electron: show toast with final saved path
         this.bindElectronDownloadToasts();
+
+        // Electron: handle files opened via file association
+        this.bindElectronFileOpenHandler();
     }
 
     /**
@@ -94,9 +97,9 @@ class App {
         window.eXeLearning.symfony = JSON.parse(
             window.eXeLearning.symfony.replace(/&quot;/g, '"')
         );
-        window.eXeLearning.mercure = JSON.parse(
-            window.eXeLearning.mercure.replace(/&quot;/g, '"')
-        );
+        // window.eXeLearning.mercure = JSON.parse(
+        //     window.eXeLearning.mercure.replace(/&quot;/g, '"')
+        // );
 
         const urlRequest = new URL(window.location.href);
         const protocol = urlRequest.protocol; // "https:"
@@ -121,16 +124,16 @@ class App {
                 }
             });
 
-            if (
-                window.eXeLearning.mercure.url &&
-                window.eXeLearning.mercure.url.startsWith('http://')
-            ) {
-                window.eXeLearning.mercure.url =
-                    window.eXeLearning.mercure.url.replace(
-                        'http://',
-                        'https://'
-                    );
-            }
+            // if (
+            //     window.eXeLearning.mercure.url &&
+            //     window.eXeLearning.mercure.url.startsWith('http://')
+            // ) {
+            //     window.eXeLearning.mercure.url =
+            //         window.eXeLearning.mercure.url.replace(
+            //             'http://',
+            //             'https://'
+            //         );
+            // }
         }
 
         // Test-env override: when running E2E with Panther, the page origin
@@ -177,8 +180,8 @@ class App {
             checkUrl,
             loginUrl,
             interval,
-            closeMercureConnections: (reason) =>
-                this.closeMercureConnections(reason),
+            closeYjsConnections: (reason) =>
+                this.closeYjsConnections(reason),
             onSessionInvalid: (reason) => this.handleSessionExpiration(reason),
             onNetworkError: (error, reason) => {
                 console.debug(
@@ -213,33 +216,40 @@ class App {
         return `${basePath}${normalizedPath}`;
     }
 
-    closeMercureConnections() {
-        if (this.project?.eventSource) {
+    /**
+     * Close Yjs WebSocket connections when session expires.
+     * This prevents orphaned WebSocket connections and ensures clean logout.
+     * @param {string} reason - The reason for closing (e.g., 'unauthorized', 'session-check')
+     */
+    closeYjsConnections(reason) {
+        console.debug('Closing Yjs connections due to:', reason);
+
+        // Close YjsDocumentManager WebSocket connection
+        const bridge = this.project?._yjsBridge;
+        if (bridge?.manager) {
             try {
-                this.project.eventSource.close();
+                // Disconnect WebSocket without saving (session is invalid)
+                if (bridge.manager.wsProvider) {
+                    bridge.manager.wsProvider.disconnect();
+                    console.debug('Yjs WebSocket disconnected');
+                }
             } catch (error) {
                 console.debug(
-                    'SessionMonitor: error while closing the project EventSource',
+                    'SessionMonitor: error while closing Yjs WebSocket',
                     error
                 );
             }
-            this.project.eventSource = null;
         }
 
-        const notifier = this.project?.realTimeEventNotifier;
-        if (notifier) {
-            if (typeof notifier.closeConnection === 'function') {
-                notifier.closeConnection();
-            } else if (notifier.eventSource) {
-                try {
-                    notifier.eventSource.close();
-                } catch (error) {
-                    console.debug(
-                        'SessionMonitor: error while closing the notifier EventSource',
-                        error
-                    );
-                }
-                notifier.eventSource = null;
+        // Also try to close via YjsDocumentManager if available globally
+        if (window.yjsDocumentManager?.wsProvider) {
+            try {
+                window.yjsDocumentManager.wsProvider.disconnect();
+            } catch (error) {
+                console.debug(
+                    'SessionMonitor: error while closing global Yjs WebSocket',
+                    error
+                );
             }
         }
     }
@@ -251,11 +261,25 @@ class App {
 
         this.sessionExpirationHandled = true;
 
+        // Cleanup iDevice timers
         try {
             this.project?.cleanupCurrentIdeviceTimer?.();
         } catch (error) {
             console.debug(
                 'SessionMonitor: error while cleaning up timers during logout',
+                error
+            );
+        }
+
+        // Cleanup Yjs observers and bindings
+        try {
+            const bridge = this.project?._yjsBridge;
+            if (bridge) {
+                bridge.destroy?.();
+            }
+        } catch (error) {
+            console.debug(
+                'SessionMonitor: error while cleaning up Yjs bridge during logout',
                 error
             );
         }
@@ -500,6 +524,64 @@ class App {
     }
 
     /**
+     * Bind handler for files opened via Electron file association
+     */
+    bindElectronFileOpenHandler() {
+        if (
+            !window.electronAPI ||
+            typeof window.electronAPI.onOpenFile !== 'function'
+        )
+            return;
+
+        window.electronAPI.onOpenFile(async (filePath) => {
+            console.log('[App] Received file to open:', filePath);
+            await this.openFileFromPath(filePath);
+        });
+    }
+
+    /**
+     * Open a file from a filesystem path (used by Electron file association)
+     * @param {string} filePath - Full path to the .elpx file
+     */
+    async openFileFromPath(filePath) {
+        try {
+            // Read file via Electron API
+            const res = await window.electronAPI.readFile(filePath);
+
+            if (!res || !res.ok) {
+                console.error('[App] Error reading file:', res?.error);
+                return;
+            }
+
+            // Convert base64 to File object
+            const binStr = atob(res.base64);
+            const bytes = new Uint8Array(binStr.length);
+            for (let i = 0; i < binStr.length; i++) {
+                bytes[i] = binStr.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'application/octet-stream' });
+
+            // Extract filename from path
+            const filename = filePath.split(/[\\\/]/).pop() || 'project.elpx';
+            const file = new File([blob], filename, {
+                type: 'application/octet-stream',
+                lastModified: res.mtimeMs || Date.now(),
+            });
+
+            // Store original path for save functionality
+            if (window.electronAPI && window.electronAPI.setSavedPath) {
+                const projectKey = this.project?.odeSession || 'default';
+                await window.electronAPI.setSavedPath(projectKey, filePath);
+            }
+
+            // Use existing upload function
+            this.modals.openuserodefiles.largeFilesUpload(file);
+        } catch (error) {
+            console.error('[App] Error opening file:', error);
+        }
+    }
+
+    /**
      * "Not for production use" warning (alpha, beta, rc... versions)
      *
      */
@@ -665,10 +747,8 @@ function __exeInstallBeforeUnloadOnce() {
     __exeBeforeUnloadInstalled = true;
 
     window.onbeforeunload = function (event) {
-        event.preventDefault();
-        // Modern browsers ignore custom text; a non-empty value is still
-        // required to trigger the confirmation dialog.
-        event.returnValue = '';
+        // Auto-save with Yjs handles data persistence - no confirmation dialog needed
+        return undefined;
     };
 }
 
@@ -680,21 +760,6 @@ function __exeInstallBeforeUnloadOnce() {
         capture: true,
     });
 });
-
-/**
- * Catch ctrl+z action
- *
- */
-/* To review (no Ctrl+Z for the moment
-window.addEventListener('keydown', function (event) {
-    if (
-        (event.key == 'z' || event.key == 'Z') &&
-        (event.ctrlKey || event.metaKey)
-    ) {
-        eXeLearning.app.project.undoLastAction();
-    }
-});
-*/
 
 /**
  * Run eXe client on load

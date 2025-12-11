@@ -32,11 +32,11 @@
 }
 
 .imageGallery-IDevice .imageContainer .imageLink .imageElement img {
-  max-height: 128px;
-  max-width: 128px;
-  position: relative;
-  top: 50%;
-  transform: translateY(-50%);
+  width: 128px;
+  height: 128px;
+  object-fit: cover;
+  object-position: center;
+  border-radius: var(--radius);
 }
 
 .imageGallery-IDevice .imageContainer .imageLink .title {

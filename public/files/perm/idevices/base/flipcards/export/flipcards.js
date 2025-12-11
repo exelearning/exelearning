@@ -729,57 +729,85 @@ var $eXeFlipCards = {
         } else if (type == 0 && url.length > 3) {
             $image.attr('alt', alt);
             $image.show();
-            $image
-                .prop('src', url)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
+            const loadImageType0 = (resolvedUrl) => {
+                $image
+                    .prop('src', resolvedUrl)
+                    .on('load', function () {
+                        if (
+                            !this.complete ||
+                            typeof this.naturalWidth == 'undefined' ||
+                            this.naturalWidth == 0
+                        ) {
+                            $cursor.hide();
+                        } else {
+                            $image.show();
+                            $cursor.hide();
+                            $eXeFlipCards.positionPointerCard(
+                                $cursor,
+                                x,
+                                y,
+                                1,
+                                instance
+                            );
+                        }
+                    })
+                    .on('error', function () {
                         $cursor.hide();
-                    } else {
-                        $image.show();
-                        $cursor.hide();
-                        $eXeFlipCards.positionPointerCard(
-                            $cursor,
-                            x,
-                            y,
-                            1,
-                            instance
-                        );
-                    }
-                })
-                .on('error', function () {
-                    $cursor.hide();
-                });
+                    });
+            };
+            // Resolve asset:// URLs
+            if (url && url.startsWith('asset://')) {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((blobUrl) => {
+                        loadImageType0(blobUrl || '');
+                    });
+                }
+            } else {
+                loadImageType0(url);
+            }
         } else if (type == 2 && url.length > 3) {
             $image.attr('alt', alt);
             $image.show();
-            $image
-                .prop('src', url)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
+            const loadImageType2 = (resolvedUrl) => {
+                $image
+                    .prop('src', resolvedUrl)
+                    .on('load', function () {
+                        if (
+                            !this.complete ||
+                            typeof this.naturalWidth == 'undefined' ||
+                            this.naturalWidth == 0
+                        ) {
+                            $cursor.hide();
+                        } else {
+                            $image.show();
+                            $cursor.hide();
+                            $eXeFlipCards.positionPointerCard(
+                                $cursor,
+                                x,
+                                y,
+                                1,
+                                instance
+                            );
+                        }
+                    })
+                    .on('error', function () {
                         $cursor.hide();
-                    } else {
-                        $image.show();
-                        $cursor.hide();
-                        $eXeFlipCards.positionPointerCard(
-                            $cursor,
-                            x,
-                            y,
-                            1,
-                            instance
-                        );
-                    }
-                })
-                .on('error', function () {
-                    $cursor.hide();
-                });
+                    });
+            };
+            // Resolve asset:// URLs
+            if (url && url.startsWith('asset://')) {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((blobUrl) => {
+                        loadImageType2(blobUrl || '');
+                    });
+                }
+            } else {
+                loadImageType2(url);
+            }
             $text.show();
             $text.css({
                 color: '#000',
@@ -2003,30 +2031,44 @@ var $eXeFlipCards = {
         if (url.length > 3) {
             $image.attr('alt', alt);
             $image.show();
-            $image
-                .prop('src', url)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
+            const loadFrontImage = (resolvedUrl) => {
+                $image
+                    .prop('src', resolvedUrl)
+                    .on('load', function () {
+                        if (
+                            !this.complete ||
+                            typeof this.naturalWidth == 'undefined' ||
+                            this.naturalWidth == 0
+                        ) {
+                            $cursor.hide();
+                        } else {
+                            $image.show();
+                            $cursor.hide();
+                            $eXeFlipCards.positionPointerCard(
+                                $cursor,
+                                x,
+                                y,
+                                0,
+                                instance
+                            );
+                        }
+                    })
+                    .on('error', function () {
                         $cursor.hide();
-                    } else {
-                        $image.show();
-                        $cursor.hide();
-                        $eXeFlipCards.positionPointerCard(
-                            $cursor,
-                            x,
-                            y,
-                            0,
-                            instance
-                        );
-                    }
-                })
-                .on('error', function () {
-                    $cursor.hide();
-                });
+                    });
+            };
+            // Resolve asset:// URLs
+            if (url && url.startsWith('asset://')) {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((blobUrl) => {
+                        loadFrontImage(blobUrl || '');
+                    });
+                }
+            } else {
+                loadFrontImage(url);
+            }
             if (text.length > 0) {
                 $text.show();
                 $text.css({
@@ -2088,30 +2130,44 @@ var $eXeFlipCards = {
         if (url.length > 3) {
             $image.attr('alt', alt);
             $image.show();
-            $image
-                .prop('src', url)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
+            const loadBackImage = (resolvedUrl) => {
+                $image
+                    .prop('src', resolvedUrl)
+                    .on('load', function () {
+                        if (
+                            !this.complete ||
+                            typeof this.naturalWidth == 'undefined' ||
+                            this.naturalWidth == 0
+                        ) {
+                            $cursor.hide();
+                        } else {
+                            $image.show();
+                            $cursor.hide();
+                            $eXeFlipCards.positionPointerCard(
+                                $cursor,
+                                x,
+                                y,
+                                0,
+                                instance
+                            );
+                        }
+                    })
+                    .on('error', function () {
                         $cursor.hide();
-                    } else {
-                        $image.show();
-                        $cursor.hide();
-                        $eXeFlipCards.positionPointerCard(
-                            $cursor,
-                            x,
-                            y,
-                            0,
-                            instance
-                        );
-                    }
-                })
-                .on('error', function () {
-                    $cursor.hide();
-                });
+                    });
+            };
+            // Resolve asset:// URLs
+            if (url && url.startsWith('asset://')) {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((blobUrl) => {
+                        loadBackImage(blobUrl || '');
+                    });
+                }
+            } else {
+                loadBackImage(url);
+            }
 
             if (text.length > 0) {
                 $text.show();

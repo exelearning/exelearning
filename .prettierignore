@@ -1,7 +1,25 @@
-# .prettierignore
-/public/app/common/**
-/public/libs/**
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
-vendor/
+coverage/
+release/
+
+# Legacy code
+symfony_legacy/
+
+# Public assets (don't format, just lint for errors)
+public/app/
+public/libs/
+public/files/
+
+# Config files that shouldn't be reformatted
+*.json
+!package.json
+!tsconfig.json
+!.prettierrc
+
+# Other
 tmp/
+*.md

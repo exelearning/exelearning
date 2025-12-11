@@ -3,6 +3,8 @@
     <title>Select media files</title>
     <css-class>select-media-files</css-class>
     <category>Assessment and tracking</category>
+    <component-type>json</component-type>
+    <export-object>$eXeSeleccionaMedias</export-object>
     <icon>
         <name>select-media-files-icon</name>
         <url>select-media-files-icon.svg</url>

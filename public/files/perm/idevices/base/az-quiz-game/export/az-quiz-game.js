@@ -1055,35 +1055,50 @@ var $azquizgame = {
             return false;
         }
 
-        $Image
-            .attr('src', '')
-            .attr('src', url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth === 'undefined' ||
-                    this.naturalWidth === 0
-                ) {
+        const loadImage = (resolvedUrl) => {
+            $Image
+                .attr('src', '')
+                .attr('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth === 'undefined' ||
+                        this.naturalWidth === 0
+                    ) {
+                        $cursor.hide();
+                        $Image.hide();
+                        $noImage.show();
+                        $Author.text('');
+                    } else {
+                        $Image.show();
+                        $cursor.show();
+                        $noImage.hide();
+                        $Author.text(mWord.author);
+                        $Image.attr('alt', mWord.alt);
+                        $FullImage.show();
+                        $azquizgame.positionPointer(instance);
+                    }
+                })
+                .on('error', function () {
                     $cursor.hide();
                     $Image.hide();
                     $noImage.show();
                     $Author.text('');
-                } else {
-                    $Image.show();
-                    $cursor.show();
-                    $noImage.hide();
-                    $Author.text(mWord.author);
-                    $Image.attr('alt', mWord.alt);
-                    $FullImage.show();
-                    $azquizgame.positionPointer(instance);
-                }
-            })
-            .on('error', function () {
-                $cursor.hide();
-                $Image.hide();
-                $noImage.show();
-                $Author.text('');
-            });
+                });
+        };
+
+        // Resolve asset:// URLs to blob URLs
+        if (url && url.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(url).then((blobUrl) => {
+                    loadImage(blobUrl || '');
+                });
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     positionPointer: function (instance) {

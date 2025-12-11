@@ -1,60 +1,127 @@
-.git
-node_modules
-tmp
-log
-# .env
-
-# Ignore VCS configuration directories
-.git
-.gitignore
-# Ignore development and documentation files
-README.md
-doc/
-
-# Ignore development environment configurations
-docker-compose.yml
-# .env
-.env.local
-.env.*.local
-
-# Ignore local dependency directories
+# Dependencies
 node_modules/
-vendor/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# package-lock.json is needed for npm ci in Docker build
+
+# Build outputs (will be generated during Docker build)
 dist/
-src/var/
+build/
+*.tsbuildinfo
 
-package.json
+# Development files
+# NOTE: src/ and tsconfig.json are needed for building inside Docker
+test/
+tests/
+*.test.ts
+*.spec.ts
+*.test.js
+*.spec.js
+.vscode/
+.idea/
+.settings/
+*.swp
+*.swo
+*~
 
-# Ignore lock files
-package-lock.json
-symfony.lock
-yarn.lock
+# Version control
+.git/
+.gitignore
+.gitattributes
 
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
 
-# Ignore cache and log files
-var/cache/
-var/log/
+# Environment files (use build args instead)
+.env
+.env.*
+!.env.dist
 
-# Ignore PHPUnit configuration files
-# phpunit.xml.dist
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+doc/
+docs/
 
-# Ignore local Symfony configuration files
-config/bootstrap.php
-config/packages/test/
-#config/packages/dev/
-config/packages/local/
-config/routes/test/
-#config/routes/dev/
-config/routes/local/
+# Docker files (not needed inside the image)
+Dockerfile*
+.dockerignore
+docker-compose*.yml
 
-# Ignore deployment-specific files
-deploy/
+# Testing and coverage
+coverage/
+.nyc_output/
+e2e_screenshots/
+playwright-report/
+test-results/
 
-# Ignore Aider files
+# Frontend test configuration
+public/jest.config.js
+public/jest.setup.js
+public/coverage/
+public/app/**/__tests__/
+
+# Logs
+logs/
+*.log
+nest-server.log
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# Electron and desktop app files (not needed for server)
+packaging/
+main.js
+preload.js
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.AppImage
+
+# Symfony legacy (if running NestJS only)
+symfony_legacy/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+.cache/
+
+# Database files (use external volumes)
+*.db
+*.sqlite
+*.sqlite3
+data/
+data_database/
+data_persistent/
+
+# IDE and editor configs
+.editorconfig
+.eslintrc*
+.prettierrc*
+# NOTE: tsconfig.json is needed for TypeScript compilation in Docker
+jest.config.js
+nest-cli.json
+
+# Aider AI files
 .aider*
 
-# Ignore SQLite database
-exelearning.db
-symfony.lock
+# Proxy server (development only)
+proxy-server.js
 
-runtime/
+# Scripts that are not needed in production
+start-migration-dev.sh
+*.sh
+!docker-entrypoint.sh
+Makefile
+release/
+release/

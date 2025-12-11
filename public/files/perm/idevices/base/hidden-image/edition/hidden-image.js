@@ -38,6 +38,11 @@ var $exeDevice = {
         $exeDevice.initQuestions();
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
+        $exeDevice.addPickerButton();
+    },
+
+    addPickerButton: function () {
+        // Handled globally by $exeDevicesEdition.iDevice.filePicker.init()
     },
     refreshTranslations: function () {
         this.ci18n = {
@@ -140,12 +145,38 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
-        });
+        const playAudio = (url) => {
+            const selectFile =
+                $exeDevices.iDevice.gamification.media.extractURLGD(url);
+            $exeDevice.playerAudio = new Audio(selectFile);
+            $exeDevice.playerAudio.addEventListener(
+                'canplaythrough',
+                function () {
+                    $exeDevice.playerAudio.play();
+                }
+            );
+        };
+
+        // Handle asset:// URLs
+        if (selectedFile && selectedFile.startsWith('asset://')) {
+            const $input = $('#hiEURLAudio');
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                playAudio(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager
+                        .resolveAssetURL(selectedFile)
+                        .then((resolvedUrl) => {
+                            playAudio(resolvedUrl || '');
+                        });
+                }
+            }
+        } else {
+            playAudio(selectedFile);
+        }
     },
 
     stopSound: function () {
@@ -340,15 +371,40 @@ var $exeDevice = {
     showImage: function (url, alt) {
         const $image = $('#hiEImage');
         const $nimage = $('#hiENoImage');
+        const $input = $('#hiEURLImage');
         $image.hide();
         $image.attr('alt', alt);
         $nimage.show();
-        url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
-        $image.prop('src', url).on('load', function () {
-            $image.show();
-            $nimage.hide();
-            return true;
-        });
+
+        const loadImage = (resolvedUrl) => {
+            resolvedUrl =
+                $exeDevices.iDevice.gamification.media.extractURLGD(
+                    resolvedUrl
+                );
+            $image.prop('src', resolvedUrl).on('load', function () {
+                $image.show();
+                $nimage.hide();
+                return true;
+            });
+        };
+
+        // Handle asset:// URLs
+        if (url && url.startsWith('asset://')) {
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                loadImage(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
+                        loadImage(resolvedUrl || '');
+                    });
+                }
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     clearQuestion: function () {
@@ -501,7 +557,7 @@ var $exeDevice = {
                                     <span class="HIE-TitleImage" id="hiETitleImage">${_('Image URL')}</span>
                                     <div class="justify-content-start d-flex flex-nowrap align-items-center gap-2 mb-3" id="hiEInputImage">
                                         <label class="sr-av" for="hiEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker form-control me-0" id="hiEURLImage" />
+                                        <input type="text" class="exe-image-picker form-control me-0" id="hiEURLImage" />
                                         <a href="#" id="hiEPlayImage" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="HIE-ButtonImage " /></a>
                                     </div>
                                     <div class="HIE-AuthorAlt mb-3 d-flex flex-nowrap align-items-center gap-2" id="hiEAuthorAlt">
@@ -642,7 +698,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             $exeDevice.active = 0;
@@ -1157,14 +1218,21 @@ var $exeDevice = {
             });
 
         $('#hiEURLImage').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-                selectedFile = $(this).val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
-                );
-                return false;
+            const selectedFile = $(this).val();
+
+            // Skip extension validation for asset:// URLs (already validated by filemanager)
+            if (!selectedFile.startsWith('asset://')) {
+                const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
+                    ext = selectedFile.split('.').pop().toLowerCase();
+                if (
+                    selectedFile.startsWith('files') &&
+                    !validExt.includes(ext)
+                ) {
+                    $exeDevice.showMessage(
+                        `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
+                    );
+                    return false;
+                }
             }
             const url = selectedFile,
                 alt = $('#hiEAlt').val();

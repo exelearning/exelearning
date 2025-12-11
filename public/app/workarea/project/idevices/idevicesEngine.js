@@ -5,6 +5,10 @@
 
 import IdeviceNode from './content/ideviceNode.js';
 import IdeviceBlockNode from './content/blockNode.js';
+import { getInitials, generateGravatarUrl } from '../../../utils/avatarUtils.js';
+
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
 
 export default class IdevicesEngine {
     constructor(project) {
@@ -63,6 +67,8 @@ export default class IdevicesEngine {
         this.addEventDragStartToMenuIdevices();
         this.addEventClickIdevice();
         eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+        // Initialize iDevice presence tracking for collaborative editing
+        this.initIdevicePresence();
     }
 
     /**
@@ -460,30 +466,7 @@ export default class IdevicesEngine {
             this.resetDragElement(true);
             this.resetDragOverClasses();
             // Update page in database
-            ideviceNode.apiUpdatePage(pageId).then((response) => {
-                this.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    null,
-                    null,
-                    ideviceNode.odeIdeviceId,
-                    'MOVE_TO_PAGE',
-                    destinationOdePageId
-                );
-                // Send operation log action to bbdd
-                let additionalData = {
-                    previousPageId: ideviceNodePreviousPageId,
-                    newPageId: pageId,
-                    blockId: ideviceNodeBlockId,
-                    odeIdeviceId: ideviceNode.odeIdeviceId,
-                    previousOrder: ideviceNodePreviousOrder,
-                };
-                eXeLearning.app.project.sendOdeOperationLog(
-                    blockNodePreviousOdePageId,
-                    destinationOdePageId,
-                    'MOVE_IDEVICE_TO',
-                    additionalData
-                );
-            });
+            ideviceNode.apiUpdatePage(pageId);
         }
         // The idevice page has not been updated
         else {
@@ -568,22 +551,6 @@ export default class IdevicesEngine {
                     setTimeout(() => {
                         ideviceNode.ideviceContent.classList.remove('moving');
                     }, this.movingClassDuration);
-                    // Send operation log action to bbdd
-                    let additionalData = {
-                        blockId: ideviceNodePreviousBlockId,
-                        odeIdeviceId: ideviceNode.odeIdeviceId,
-                        previousOrder: idevicePreviousOrder,
-                    };
-                    let ideviceNodePageId =
-                        this.project.app.project.structure.nodeSelected.getAttribute(
-                            'page-id'
-                        );
-                    eXeLearning.app.project.sendOdeOperationLog(
-                        ideviceNodePageId,
-                        ideviceNodePageId,
-                        'MOVE_IDEVICE_ON',
-                        additionalData
-                    );
                 });
             }
         }
@@ -708,29 +675,7 @@ export default class IdevicesEngine {
             this.resetDragElement(true);
             this.resetDragOverClasses();
             // Update page in database
-            blockNode.apiUpdatePage(pageId).then((response) => {
-                this.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    null,
-                    blockNode.blockId,
-                    null,
-                    'MOVE_TO_PAGE',
-                    destinationOdePageId
-                );
-                // Send operation log action to bbdd
-                let additionalData = {
-                    previousPageId: blockNodePreviousPageId,
-                    newPageId: pageId,
-                    blockId: blockNode.blockId,
-                    previousOrder: blockNodePreviousOder,
-                };
-                eXeLearning.app.project.sendOdeOperationLog(
-                    blockNodePreviousOdePageId,
-                    destinationOdePageId,
-                    'MOVE_BLOCK_TO',
-                    additionalData
-                );
-            });
+            blockNode.apiUpdatePage(pageId);
         }
         // The block page has not been updated
         else {
@@ -821,17 +766,6 @@ export default class IdevicesEngine {
                     setTimeout(() => {
                         blockNode.blockContent.classList.remove('moving');
                     }, this.movingClassDuration);
-                    // Send operation log action to bbdd
-                    let additionalData = {
-                        blockId: blockNode.blockId,
-                        previousOrder: previousOrder,
-                    };
-                    eXeLearning.app.project.sendOdeOperationLog(
-                        blockNodePageId,
-                        blockNodePageId,
-                        'MOVE_BLOCK_ON',
-                        additionalData
-                    );
                 });
             }
         }
@@ -942,14 +876,6 @@ export default class IdevicesEngine {
                     let ideviceNode = await this.createIdeviceInContent(
                         ideviceData,
                         this.nodeContentElement
-                    );
-                    // Send operation log action to db: source = new iDevice id, destination = its block
-                    let additionalData = {};
-                    eXeLearning.app.project.sendOdeOperationLog(
-                        ideviceNode.odeIdeviceId,
-                        ideviceNode.blockId,
-                        'ADD_IDEVICE',
-                        additionalData
                     );
                     this.clickIdeviceMenuEnabled = false;
                     setTimeout(() => {
@@ -1134,6 +1060,296 @@ export default class IdevicesEngine {
             );
             ideviceNode.goWindowToIdevice();
         }
+
+        // Sync the new iDevice to Yjs for real-time collaboration
+        this.syncNewIdeviceToYjs(ideviceNode);
+    }
+
+    /**
+     * Sync a newly created iDevice to Yjs
+     * This enables real-time collaboration - other clients will see the new iDevice
+     *
+     * @param {IdeviceNode} ideviceNode
+     */
+    syncNewIdeviceToYjs(ideviceNode) {
+        const bridge = this.project._yjsBridge;
+        if (!bridge) {
+            console.debug('[IdevicesEngine] No YjsBridge available, skipping Yjs sync');
+            return;
+        }
+
+        const pageId = this.project.app.project.structure.nodeSelected?.getAttribute('nav-id');
+        if (!pageId) {
+            console.warn('[IdevicesEngine] No pageId available for Yjs sync');
+            return;
+        }
+
+        // ROBUST CHECK: Verify if this component ALREADY EXISTS in Yjs by searching ALL blocks
+        // This prevents duplicates regardless of flags or block ID mismatches
+        const allBlocks = bridge.structureBinding.getBlocks(pageId);
+        for (const block of allBlocks) {
+            const components = bridge.structureBinding.getComponents(pageId, block.id);
+            if (components && components.some(c => c.id === ideviceNode.odeIdeviceId)) {
+                console.debug(`[IdevicesEngine] Component ${ideviceNode.odeIdeviceId} already exists in Yjs (block: ${block.id}), skipping sync`);
+                // Update the ideviceNode with the correct Yjs references
+                ideviceNode.yjsComponentId = ideviceNode.odeIdeviceId;
+                ideviceNode.fromYjs = true;
+                return;
+            }
+        }
+
+        // Also check via flags as a secondary measure
+        if (ideviceNode.fromYjs || ideviceNode.yjsComponentId) {
+            console.debug(`[IdevicesEngine] Skipping Yjs sync for ${ideviceNode.odeIdeviceId} (fromYjs flag set)`);
+            return;
+        }
+
+        // Get or create block in Yjs
+        let blockId = ideviceNode.blockId;
+
+        // Check if this block already exists in Yjs, if not create it
+        const pageData = bridge.structureBinding.getPage(pageId);
+        if (pageData) {
+            const existingBlock = allBlocks.find(b => b.id === blockId || b.blockId === blockId);
+
+            if (!existingBlock) {
+                // Create the block in Yjs with the SAME ID as the frontend
+                // This ensures frontend block ID matches Yjs block ID for future updates
+                const blockNode = this.getBlockById(blockId);
+                const blockName = blockNode?.blockName || '';
+                const frontendBlockId = blockId; // Save original blockId before addBlock might change it
+                blockId = bridge.addBlock(pageId, blockName, frontendBlockId);
+                // Update the ideviceNode with the Yjs blockId
+                if (blockId && blockNode) {
+                    blockNode.yjsBlockId = blockId;
+                }
+            } else {
+                // Use the existing block's ID
+                blockId = existingBlock.id;
+            }
+        }
+
+        // Use the correct iDevice type name (e.g., "text" not "FreeTextIdevice")
+        // idevice.id contains the actual type name used in the iDevices menu
+        const ideviceTypeName = ideviceNode.idevice?.id || ideviceNode.odeIdeviceTypeName || 'text';
+
+        // Create component in Yjs (this will also request the lock for the creator)
+        // Include jsonProperties so remote clients can render JSON-type iDevices
+        const componentId = bridge.addComponent(
+            pageId,
+            blockId,
+            ideviceTypeName,
+            {
+                id: ideviceNode.odeIdeviceId,
+                htmlContent: ideviceNode.htmlView || '',
+                title: ideviceNode.idevice?.title || '',
+                jsonProperties: JSON.stringify(ideviceNode.jsonProperties || {}),
+                order: ideviceNode.order || 0,
+            }
+        );
+
+        if (componentId) {
+            ideviceNode.yjsComponentId = componentId;
+            Logger.log(`[IdevicesEngine] Synced iDevice to Yjs: ${componentId} (type: ${ideviceTypeName})`);
+        }
+    }
+
+    /**
+     * Render an iDevice that comes from a remote Yjs client
+     * Called when the Yjs observer detects a new component from another user
+     *
+     * @param {Object} componentData - Component data from Yjs
+     * @param {string} pageId - Page ID where the component should be rendered
+     * @param {string} blockId - Block ID where the component should be rendered
+     */
+    async renderRemoteIdevice(componentData, pageId, blockId) {
+        // Only render if we're on the same page
+        const currentPageId = this.project.app.project.structure.nodeSelected?.getAttribute('nav-id');
+        if (currentPageId !== pageId) {
+            console.debug('[IdevicesEngine] Remote iDevice is on different page, skipping render');
+            return;
+        }
+
+        // Check if this iDevice already exists in the DOM
+        const existingIdevice = document.getElementById(componentData.id);
+        if (existingIdevice) {
+            console.debug('[IdevicesEngine] Remote iDevice already exists in DOM, skipping');
+            return;
+        }
+
+        // Check if this iDevice already exists in our components list
+        const existingInComponents = this.components.idevices.find(
+            i => i.odeIdeviceId === componentData.id || i.yjsComponentId === componentData.id
+        );
+        if (existingInComponents) {
+            console.debug('[IdevicesEngine] Remote iDevice already exists in components list, skipping');
+            return;
+        }
+
+        Logger.log(`[IdevicesEngine] Rendering remote iDevice: ${componentData.id}`, componentData);
+
+        // Validate iDevice type is installed before rendering
+        let ideviceTypeName = componentData.ideviceType;
+        if (!ideviceTypeName) {
+            console.warn('[IdevicesEngine] Remote iDevice has no type, skipping render');
+            return;
+        }
+
+        // Map legacy/alternative names to actual iDevice IDs
+        const typeMapping = {
+            'FreeTextIdevice': 'text',
+            'FreeText': 'text',
+            'freetext': 'text',
+            'TextIdevice': 'text',
+        };
+        if (typeMapping[ideviceTypeName]) {
+            ideviceTypeName = typeMapping[ideviceTypeName];
+        }
+
+        let installedIdevice = eXeLearning.app.idevices.getIdeviceInstalled(ideviceTypeName);
+        // Try without suffix if not found
+        if (!installedIdevice) {
+            const nameWithoutSuffix = ideviceTypeName.replace(/Idevice$/i, '').toLowerCase();
+            installedIdevice = eXeLearning.app.idevices.getIdeviceInstalled(nameWithoutSuffix);
+            if (installedIdevice) ideviceTypeName = nameWithoutSuffix;
+        }
+
+        if (!installedIdevice) {
+            console.warn(`[IdevicesEngine] iDevice type not installed: ${componentData.ideviceType}, skipping render`);
+            return;
+        }
+
+        // Find or create the block container
+        let blockContainer = document.querySelector(`article[sym-id="${blockId}"]`);
+        if (!blockContainer) {
+            // Block doesn't exist yet, need to create it
+            console.debug('[IdevicesEngine] Block not found, creating new block for remote iDevice');
+            const nodeContent = document.getElementById('node-content');
+            if (!nodeContent) return;
+
+            // Pass the Yjs blockId to ensure consistency across clients
+            const blockNode = this.newBlockNode({ blockName: '', iconName: '', blockId: blockId }, true);
+            blockNode.yjsBlockId = blockId;
+            blockContainer = blockNode.blockContent;
+            nodeContent.appendChild(blockContainer);
+        }
+
+        // Process jsonProperties - ensure it's a string for IdeviceNode.setParams()
+        let jsonPropertiesStr = '{}';
+        if (componentData.jsonProperties) {
+            jsonPropertiesStr = typeof componentData.jsonProperties === 'string'
+                ? componentData.jsonProperties
+                : JSON.stringify(componentData.jsonProperties);
+        }
+
+        // Create iDevice data for rendering with all required properties
+        const ideviceData = {
+            odeIdeviceTypeName: ideviceTypeName,
+            odeIdeviceId: componentData.id,
+            htmlView: componentData.htmlContent || '',
+            jsonProperties: jsonPropertiesStr,
+            odeComponentsSyncProperties: componentData.odeComponentsSyncProperties || {},
+            order: componentData.order || 0,
+            mode: 'export', // Remote iDevices start in view mode
+            loading: false, // Don't show loading state for remote iDevices
+        };
+
+        // Create the iDevice node
+        const ideviceNode = new IdeviceNode(this, ideviceData);
+        ideviceNode.mode = 'export'; // Force view mode for remote iDevices
+        ideviceNode.yjsComponentId = componentData.id;
+
+        // Mark as locked by remote user
+        if (componentData.lockedBy || componentData.lockUserName) {
+            ideviceNode.lockedByRemote = true;
+            ideviceNode.lockUserName = componentData.lockUserName || 'Another user';
+            ideviceNode.lockUserColor = componentData.lockUserColor || '#999';
+        }
+
+        // Add to components list
+        this.components.idevices.push(ideviceNode);
+
+        // Generate content and add to DOM
+        const ideviceContent = ideviceNode.makeIdeviceContentNode(true);
+        const blockBody = blockContainer.querySelector('.box-body') || blockContainer;
+        blockBody.appendChild(ideviceContent);
+
+        // Set block reference
+        const blockNode = this.getBlockById(blockContainer.id);
+        if (blockNode) {
+            this.setBlockDataToIdeviceNode(ideviceNode, blockNode);
+        }
+
+        // Initialize the iDevice
+        await ideviceNode.loadInitScriptIdevice('export');
+
+        // Hide empty node message since we now have content
+        if (eXeLearning?.app?.menus?.menuStructure?.menuStructureBehaviour) {
+            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+        }
+
+        Logger.log(`[IdevicesEngine] Remote iDevice rendered: ${componentData.id}`);
+    }
+
+    /**
+     * Update an existing iDevice's content from remote Yjs changes
+     * Called when another client saves content for a component we already have rendered
+     *
+     * @param {Object} componentData - Updated component data from Yjs
+     */
+    async updateRemoteIdeviceContent(componentData) {
+        // Find the existing iDevice node
+        const ideviceNode = this.components.idevices.find(
+            i => i.odeIdeviceId === componentData.id || i.yjsComponentId === componentData.id
+        );
+
+        if (!ideviceNode) {
+            console.debug('[IdevicesEngine] Component not found for update:', componentData.id);
+            return;
+        }
+
+        Logger.log(`[IdevicesEngine] Updating remote iDevice content: ${componentData.id}`);
+
+        // Update the HTML content
+        ideviceNode.htmlView = componentData.htmlContent || '';
+
+        // Remove lock status since content was saved
+        ideviceNode.lockedByRemote = false;
+        ideviceNode.lockUserName = null;
+        ideviceNode.lockUserColor = null;
+
+        // Remove loading attribute from the iDevice container
+        if (ideviceNode.ideviceContent) {
+            ideviceNode.ideviceContent.setAttribute('loading', 'false');
+        }
+
+        // Re-render the iDevice body with new content
+        if (ideviceNode.ideviceBody) {
+            // For simple HTML content, just update the body
+            if (ideviceNode.idevice?.componentType !== 'json' || componentData.htmlContent) {
+                // Remove placeholder if present
+                const placeholder = ideviceNode.ideviceBody.querySelector('.idevice-locked-placeholder');
+                if (placeholder) {
+                    placeholder.remove();
+                }
+
+                // Update content based on iDevice type
+                if (ideviceNode.mode === 'export') {
+                    // In view mode, update the displayed content
+                    // Resolve asset:// URLs to blob:// (with placeholders for missing assets)
+                    const resolvedHtml = window.resolveAssetUrls
+                        ? window.resolveAssetUrls(componentData.htmlContent || '', { fetchMissing: true })
+                        : (componentData.htmlContent || '');
+                    ideviceNode.ideviceBody.innerHTML = resolvedHtml;
+                    await ideviceNode.loadInitScriptIdevice('export');
+                }
+            }
+        }
+
+        // Update the lock indicator in the header
+        ideviceNode.updateLockIndicator();
+
+        Logger.log(`[IdevicesEngine] Remote iDevice content updated: ${componentData.id}`);
     }
 
     /**
@@ -1337,6 +1553,8 @@ export default class IdevicesEngine {
      */
     resetNodeTemplate() {
         let themeSelected = eXeLearning.app.themes.selected;
+        if (!themeSelected) return; // Check if theme is selected before accessing properties
+
         let templatePageContainerClass =
             themeSelected.templatePageContainerClass;
         if (
@@ -1434,7 +1652,10 @@ export default class IdevicesEngine {
      * @param {*} idPage
      */
     async getAndLoadComponentsRootNode(idPage) {
-        let data = await this.project.app.api.getComponentsByPage(idPage);
+        // Skip legacy API call for Yjs - components are loaded from Yjs document
+        if (!this.project?._yjsEnabled) {
+            let data = await this.project.app.api.getComponentsByPage(idPage);
+        }
         // Show ode properties form
         this.project.properties.formProperties.show();
         // Hide load screen
@@ -1474,10 +1695,14 @@ export default class IdevicesEngine {
                         this.enableInternalLinks();
                         // Set header
                         this.setNodeContentHeader();
-                        // Set page title
-                        this.setNodeContentPageTitle(
-                            data.odeNavStructureSyncProperties
-                        );
+                        // Set page title - use pageId for Yjs, or legacy properties
+                        if (this.project?._yjsEnabled) {
+                            this.setNodeContentPageTitle(idPage);
+                            // Initialize observer for remote property changes
+                            this.initPagePropertiesObserver(idPage);
+                        } else {
+                            this.setNodeContentPageTitle(data.odeNavStructureSyncProperties);
+                        }
                         // Resolve
                         resolve(true);
                     },
@@ -1500,19 +1725,19 @@ export default class IdevicesEngine {
         headerElement.innerHTML = '';
         if (headerElement) {
             let theme = eXeLearning.app.themes.selected;
-            if (theme.logoImg) {
+            if (theme && theme.logoImg) {
                 let logoImgContainer = document.createElement('div');
                 logoImgContainer.classList.add('logo-img-container');
                 logoImgContainer.style.backgroundImage = `url("${theme.getLogoImgUrl()}?v=${Date.now()}")`;
                 headerElement.append(logoImgContainer);
             }
-            if (theme.headerImg) {
+            if (theme && theme.headerImg) {
                 let headerImgContainer = document.createElement('div');
                 headerImgContainer.classList.add('header-img-container');
                 headerImgContainer.style.backgroundImage = `url("${theme.getHeaderImgUrl()}?v=${Date.now()}")`;
                 headerElement.append(headerImgContainer);
             }
-            if (theme.headerImg || theme.logoImg) {
+            if (theme && (theme.headerImg || theme.logoImg)) {
                 headerElement.classList.remove('hidden');
             } else {
                 headerElement.classList.add('hidden');
@@ -1522,39 +1747,154 @@ export default class IdevicesEngine {
 
     /**
      * Set page title in node content
-     *
+     * Reads properties from Yjs if available, otherwise uses legacy properties
+     * @param {string|Object} pageIdOrProperties - Page ID (for Yjs) or legacy properties object
      */
-    setNodeContentPageTitle(properties) {
-        let pageTitleElement = this.nodeContainerElement.querySelector(
+    setNodeContentPageTitle(pageIdOrProperties) {
+        const pageTitleElement = this.nodeContainerElement.querySelector(
             '#page-title-node-content'
         );
-        if (pageTitleElement) {
-            let hidePageTitle =
-                properties &&
-                properties.hidePageTitle &&
-                (properties.hidePageTitle.value === 'true' ||
-                    properties.hidePageTitle.value === true);
+        if (!pageTitleElement) return;
 
-            if (hidePageTitle) {
-                pageTitleElement.classList.add('hidden');
-            } else if (
-                properties &&
-                properties.titlePage &&
-                properties.titlePage.value != ''
-            ) {
-                pageTitleElement.innerText = properties.titlePage.value;
-                pageTitleElement.classList.remove('hidden');
+        // Get properties - from Yjs or legacy format
+        const props = this.getPageTitleProperties(pageIdOrProperties);
+
+        // Check hidePageTitle
+        const hidePageTitle = props.hidePageTitle === true || props.hidePageTitle === 'true';
+
+        Logger.log('[IdevicesEngine] setNodeContentPageTitle - props:', props);
+        Logger.log('[IdevicesEngine] setNodeContentPageTitle - hidePageTitle:', hidePageTitle, '(raw:', props.hidePageTitle, ')');
+
+        if (hidePageTitle) {
+            Logger.log('[IdevicesEngine] Hiding page title');
+            pageTitleElement.innerText = '';
+            pageTitleElement.classList.add('hidden');
+            return;
+        }
+
+        // Determine which title to use
+        const useEditableTitle = props.editableInPage === true || props.editableInPage === 'true';
+        const title = useEditableTitle ? (props.titlePage || '') : (props.titleNode || '');
+
+        // Set title and visibility
+        pageTitleElement.innerText = title;
+        pageTitleElement.classList.toggle('hidden', !title);
+    }
+
+    /**
+     * Get page title properties from Yjs or legacy format
+     * @param {string|Object} pageIdOrProperties
+     * @returns {Object} Properties object with hidePageTitle, editableInPage, titlePage, titleNode
+     */
+    getPageTitleProperties(pageIdOrProperties) {
+        // If it's a string, treat as pageId and get from Yjs
+        if (typeof pageIdOrProperties === 'string') {
+            const project = this.project;
+            if (project?._yjsBridge?.structureBinding) {
+                const yjsProps = project._yjsBridge.structureBinding.getPageProperties(pageIdOrProperties);
+                if (yjsProps) {
+                    return {
+                        hidePageTitle: yjsProps.hidePageTitle,
+                        editableInPage: yjsProps.editableInPage,
+                        titlePage: yjsProps.titlePage || '',
+                        titleNode: yjsProps.titleNode || '',
+                    };
+                }
             }
-            // Add case for empty value
-            else if (
-                properties &&
-                properties.titlePage &&
-                properties.titlePage.value == ''
-            ) {
-                pageTitleElement.innerText = properties.titlePage.value;
-                pageTitleElement.classList.add('hidden');
+            // Fallback: try to get from structure node
+            const node = project?.structure?.getNodeById(pageIdOrProperties);
+            if (node?.properties) {
+                return {
+                    hidePageTitle: node.properties.hidePageTitle?.value,
+                    editableInPage: node.properties.editableInPage?.value,
+                    titlePage: node.properties.titlePage?.value || '',
+                    titleNode: node.properties.titleNode?.value || '',
+                };
+            }
+            return {};
+        }
+
+        // Legacy format: properties object with .value structure
+        if (pageIdOrProperties && typeof pageIdOrProperties === 'object') {
+            return {
+                hidePageTitle: pageIdOrProperties.hidePageTitle?.value,
+                editableInPage: pageIdOrProperties.editableInPage?.value,
+                titlePage: pageIdOrProperties.titlePage?.value || '',
+                titleNode: pageIdOrProperties.titleNode?.value || '',
+            };
+        }
+
+        return {};
+    }
+
+    /**
+     * Initialize observer for remote page property changes
+     * Updates page title when properties change via Yjs
+     * @param {string} pageId
+     */
+    initPagePropertiesObserver(pageId) {
+        // Cleanup previous observer
+        this.cleanupPagePropertiesObserver();
+
+        if (!this.project?._yjsBridge?.structureBinding) return;
+
+        const structureBinding = this.project._yjsBridge.structureBinding;
+        const pageMap = structureBinding.getPageMap(pageId);
+        if (!pageMap) return;
+
+        // Store current page ID and pageMap for the observer
+        this._observedPageId = pageId;
+        this._observedPageMap = pageMap;
+
+        // Relevant property keys for title display
+        const relevantKeys = ['hidePageTitle', 'editableInPage', 'titlePage', 'titleNode'];
+
+        // Create deep observer for pageMap to catch all properties changes
+        // (including when properties Y.Map is created for the first time)
+        this._pagePropertiesObserver = (events, transaction) => {
+            // Only react to remote changes
+            if (transaction.origin === 'user') return;
+
+            // Check if any relevant property changed
+            let shouldUpdate = false;
+
+            for (const event of events) {
+                // Check if this is a change in the properties map
+                if (event.path.length > 0 && event.path[0] === 'properties') {
+                    event.changes.keys.forEach((change, key) => {
+                        if (relevantKeys.includes(key)) {
+                            shouldUpdate = true;
+                        }
+                    });
+                }
+            }
+
+            if (shouldUpdate) {
+                const currentProps = structureBinding.getPageProperties(this._observedPageId);
+                Logger.log('[IdevicesEngine] Remote page properties changed:', currentProps);
+                Logger.log('[IdevicesEngine] hidePageTitle:', currentProps?.hidePageTitle, typeof currentProps?.hidePageTitle);
+                this.setNodeContentPageTitle(this._observedPageId);
+            }
+        };
+
+        pageMap.observeDeep(this._pagePropertiesObserver);
+        Logger.log('[IdevicesEngine] Page properties observer initialized for:', pageId);
+    }
+
+    /**
+     * Cleanup page properties observer
+     */
+    cleanupPagePropertiesObserver() {
+        if (this._pagePropertiesObserver && this._observedPageMap) {
+            try {
+                this._observedPageMap.unobserveDeep(this._pagePropertiesObserver);
+            } catch (e) {
+                // Ignore if already unobserved
             }
         }
+        this._pagePropertiesObserver = null;
+        this._observedPageId = null;
+        this._observedPageMap = null;
     }
 
     /**
@@ -2063,6 +2403,19 @@ export default class IdevicesEngine {
         } else {
             script.src = path;
         }
+        // Debug logging for iDevice script loading
+        Logger.log('[iDevice] Loading script:', script.src);
+
+        // Add error handler to catch script load failures
+        script.onerror = (error) => {
+            console.error('[iDevice] Failed to load script:', script.src, error);
+        };
+
+        // Add load handler for debugging
+        script.onload = () => {
+            Logger.log('[iDevice] Script loaded successfully:', script.src);
+        };
+
         document.querySelector('head').append(script);
         this.onloadedScriptCallback(path, script, false);
         return script;
@@ -2198,6 +2551,138 @@ export default class IdevicesEngine {
                     eval(callback);
                 }
             };
+        }
+    }
+
+    /*******************************************************************************
+     * IDEVICE EDITOR PRESENCE
+     *******************************************************************************/
+
+    /**
+     * Initialize iDevice presence tracking
+     * Subscribes to user changes to show who is editing each iDevice
+     */
+    initIdevicePresence() {
+        const checkReady = () => {
+            if (this.project?._yjsEnabled && this.project?._yjsBridge?.getDocumentManager()) {
+                const documentManager = this.project._yjsBridge.getDocumentManager();
+                this._presenceUnsubscribe = documentManager.onUsersChange(({ users }) => {
+                    this._updateIdevicePresence(users);
+                });
+            } else {
+                // Retry in 500ms if not ready
+                setTimeout(checkReady, 500);
+            }
+        };
+        checkReady();
+    }
+
+    /**
+     * Update presence avatars on all iDevices
+     * @param {Array} users - Array of online users from awareness
+     */
+    _updateIdevicePresence(users) {
+        // Group users by editingComponentId
+        const usersByComponent = {};
+        users.forEach(user => {
+            if (user.editingComponentId && !user.isLocal) {
+                if (!usersByComponent[user.editingComponentId]) {
+                    usersByComponent[user.editingComponentId] = [];
+                }
+                usersByComponent[user.editingComponentId].push(user);
+            }
+        });
+
+        // Update all iDevice avatar containers and lock states
+        const containers = document.querySelectorAll('.idevice-editor-avatar');
+        containers.forEach(container => {
+            const componentId = container.getAttribute('data-component-id');
+            const editingUsers = usersByComponent[componentId] || [];
+            this._renderIdeviceEditorAvatar(container, editingUsers);
+
+            // Update lock state on the iDevice node
+            const ideviceNode = this.components.idevices.find(
+                i => i.odeIdeviceId === componentId || i.yjsComponentId === componentId
+            );
+            if (ideviceNode) {
+                const wasLocked = ideviceNode.lockedByRemote;
+                const isNowLocked = editingUsers.length > 0;
+
+                // Update lock state if changed
+                if (wasLocked !== isNowLocked) {
+                    if (isNowLocked) {
+                        ideviceNode.lockedByRemote = true;
+                        ideviceNode.lockUserName = editingUsers[0].name || 'Another user';
+                        ideviceNode.lockUserColor = editingUsers[0].color || '#999';
+                    } else {
+                        ideviceNode.lockedByRemote = false;
+                        ideviceNode.lockUserName = null;
+                        ideviceNode.lockUserColor = null;
+                    }
+                    // Re-render buttons to update disabled state
+                    ideviceNode.updateLockIndicator();
+                }
+            }
+        });
+    }
+
+    /**
+     * Render editor avatar(s) in an iDevice header
+     * @param {HTMLElement} container - The .idevice-editor-avatar container
+     * @param {Array} users - Array of users editing this iDevice
+     */
+    _renderIdeviceEditorAvatar(container, users) {
+        // Clear existing avatars
+        container.innerHTML = '';
+
+        if (users.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'flex';
+
+        // Show only first user (typically only one edits at a time)
+        const user = users[0];
+        const avatar = document.createElement('div');
+        avatar.classList.add('idevice-user-avatar');
+        // Tooltip with email
+        avatar.title = user.email || `${_('Editing by')} ${user.name || 'User'}`;
+
+        if (user.color) {
+            avatar.style.borderColor = user.color;
+            avatar.style.backgroundColor = user.color + '20'; // Add transparency
+        }
+
+        const fallbackInitials = user.initials || getInitials(user.name || user.email);
+
+        // Get or generate Gravatar URL
+        const gravatarUrl = user.gravatarUrl || generateGravatarUrl(user.email, 24);
+
+        if (gravatarUrl) {
+            const img = document.createElement('img');
+            img.src = gravatarUrl;
+            img.alt = user.name || '';
+
+            // Fallback to initials on error
+            img.onerror = function () {
+                this.style.display = 'none';
+                avatar.textContent = fallbackInitials;
+            };
+
+            avatar.appendChild(img);
+        } else {
+            avatar.textContent = fallbackInitials;
+        }
+
+        container.appendChild(avatar);
+
+        // Show +N if more users
+        if (users.length > 1) {
+            const more = document.createElement('div');
+            more.classList.add('idevice-user-avatar', 'idevice-user-more');
+            more.textContent = `+${users.length - 1}`;
+            container.appendChild(more);
         }
     }
 

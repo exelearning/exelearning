@@ -202,8 +202,9 @@ var $magnifier = {
                 <div class="image-thumbnail" id="image-thumbnail-${instance}">
                     <div style="position: relative; display: block; width:${data.width}; height: auto; margin-bottom: 50px;">
                         <img id="magnifier-${instance}"
-                             src="${data.image}"
+                             src="${data.image && data.image.startsWith('asset://') ? '' : data.image}"
                              data-magnifysrc="${data.image}"
+                             data-asset-url="${data.image}"
                              width="${data.width}"
                              data-size="${data.glassSize}"
                              data-zoom="${data.initialZSize}">
@@ -225,25 +226,52 @@ var $magnifier = {
             $img.attr({
                 src: defaultSrc,
             });
-            return;
+            return Promise.resolve();
         }
 
-        $img.off('error')
-            .on('error', function () {
-                $notImage.show();
-                $imageMagnifier.hide();
-            })
-            .attr({
-                'data-magnifysrc': data.image,
-                src: data.image,
-                alt: 'Image',
-            });
+        const setImageSrc = (resolvedUrl) => {
+            $img.off('error')
+                .on('error', function () {
+                    $notImage.show();
+                    $imageMagnifier.hide();
+                })
+                .attr({
+                    'data-magnifysrc': resolvedUrl,
+                    src: resolvedUrl,
+                    alt: 'Image',
+                });
+        };
+
+        // Resolve asset:// URLs to blob URLs
+        if (data.image && data.image.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                return assetManager.resolveAssetURL(data.image).then((blobUrl) => {
+                    setImageSrc(blobUrl || defaultSrc);
+                });
+            } else {
+                setImageSrc(defaultSrc);
+                return Promise.resolve();
+            }
+        } else {
+            setImageSrc(data.image);
+            return Promise.resolve();
+        }
     },
 
     addEvents: function (data) {
         const instance = data.ideviceId;
 
-        $magnifier.loadImageWithFallback(data);
+        // Wait for image to load/resolve before initializing MojoMagnify
+        $magnifier.loadImageWithFallback(data).then(() => {
+            setTimeout(function () {
+                MojoMagnify.init();
+                $exeDevices.iDevice.gamification.math.updateLatex(
+                    '.exe-magnifier-container'
+                );
+            }, 100);
+        });
 
         $('#mnfPMainContainer-' + instance)
             .off('click', '.MNF-FullLinkImage')
@@ -256,13 +284,6 @@ var $magnifier = {
                     );
                 }
             });
-
-        setTimeout(function () {
-            MojoMagnify.init();
-            $exeDevices.iDevice.gamification.math.updateLatex(
-                '.exe-magnifier-container'
-            );
-        }, 500);
     },
 
     init: function (data, accesibility) {},

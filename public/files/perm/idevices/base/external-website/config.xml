@@ -3,6 +3,7 @@
     <title>External website</title>
     <css-class>external-website</css-class>
     <category>Information and presentation</category>
+    <component-type>json</component-type>
      <icon>
         <name>external-website-icon</name>
         <url>external-website-icon.svg</url>

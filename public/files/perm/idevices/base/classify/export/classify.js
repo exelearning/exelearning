@@ -1258,31 +1258,39 @@ var $eXeClasifica = {
         $cursor.hide();
         $audio.hide();
 
+        const loadImage = (resolvedUrl) => {
+            $image
+                .attr('alt', alt)
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (this.complete && this.naturalWidth > 0) {
+                        $image.show();
+                        $eXeClasifica.positionPointerCard($cursor, x, y);
+                    }
+                })
+                .on('error', () => $cursor.hide());
+        };
+
+        const resolveAndLoadImage = () => {
+            if (url && url.startsWith('asset://')) {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((blobUrl) => {
+                        loadImage(blobUrl || '');
+                    });
+                }
+            } else {
+                loadImage(url);
+            }
+        };
+
         if (type === 1) {
             $text.show().css({ color: color, 'background-color': backcolor });
         } else if (type === 0 && url.length > 0) {
-            $image
-                .attr('alt', alt)
-                .prop('src', url)
-                .on('load', function () {
-                    if (this.complete && this.naturalWidth > 0) {
-                        $image.show();
-                        $eXeClasifica.positionPointerCard($cursor, x, y);
-                    }
-                })
-                .on('error', () => $cursor.hide());
+            resolveAndLoadImage();
         } else if (type === 2 && url.length > 0) {
-            $image
-                .attr('alt', alt)
-                .prop('src', url)
-                .on('load', function () {
-                    if (this.complete && this.naturalWidth > 0) {
-                        $image.show();
-                        $eXeClasifica.positionPointerCard($cursor, x, y);
-                    }
-                })
-                .on('error', () => $cursor.hide());
-
+            resolveAndLoadImage();
             $text.show().css({
                 color: color,
                 'background-color': $eXeClasifica.hexToRgba(backcolor, 0.7),

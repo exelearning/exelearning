@@ -117,16 +117,6 @@ export default class ModalStyleManager extends Modal {
                     .nodeSelected;
             let selectedPageId = nodeSelected.getAttribute('page-id');
             await this.themes.manager.selectTheme(this.themeSelectedId, true);
-            // Timeout to wait to the insert on the BBDD
-            setTimeout(() => {
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    selectedPageId,
-                    null,
-                    null,
-                    'RELOAD_NAV_MAP'
-                );
-            }, 250);
         }
     }
 

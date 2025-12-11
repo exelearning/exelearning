@@ -21,20 +21,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
-      # Install Node.js and npm
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      # Install Bun
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '24'  # Use the version you need
-          package-manager-cache: false 
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: sodium, fileinfo, zip, mbstring
+          bun-version: latest
 
       # TODO: Temporary disabled because we must have an account in snapcraft.io,
       #  when we release the app we should edit packages.json to add
@@ -115,11 +108,11 @@ jobs:
         with:
           name: installers-${{ matrix.os }}
           path: |
-            # dist/*.msi
-            dist/*.exe
-            dist/*.dmg
-            dist/*.deb
-            # dist/*.rpm
+            # release/*.msi
+            release/*.exe
+            release/*.dmg
+            release/*.deb
+            # release/*.rpm
 
   test-install:
     env:

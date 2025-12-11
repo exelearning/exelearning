@@ -70,7 +70,8 @@ $exeExport = {
             if ($("body").hasClass("exe-epub")) return;
             document.body.classList.add('exe-teacher-mode-toggler');
             var btn = '<div class="form-check form-switch" id="teacher-mode-toggler-wrapper"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
-            $(".package-header").prepend(btn);
+            if ($("body").hasClass("exe-single-page")) $("header.package-header").before(btn);
+            else $("header.page-header").prepend(btn);
             this.toggler = $("#teacher-mode-toggler");
             var enabled = this.isEnabled();
             if (enabled) {
@@ -137,20 +138,16 @@ $exeExport = {
                         case 'json':
                             let jsonDataText = ideviceNode.getAttribute('data-idevice-json-data');
                             let jsonData = null;
-
-                            // Parse JSON data (sanitized) or create empty object if not valid
+                            
+                            // Parse JSON data or create empty object if not valid
                             try {
                                 if (jsonDataText) {
-                                    const sanitized =
-                                        $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
-                                            jsonDataText
-                                        );
-                                    jsonData = JSON.parse(sanitized);
+                                    jsonData = JSON.parse(jsonDataText);
                                 }
                             } catch (e) {
                                 jsonData = null;
                             }
-
+                            
                             // Check for SCORM data if jsonData is valid
                             if (jsonData && jsonData.exportScorm && jsonData.exportScorm.saveScore) {
                                 isSCORM = true;
@@ -217,11 +214,7 @@ $exeExport = {
             // Parse JSON data or create empty object if not valid
             try {
                 if (jsonDataText) {
-                    const sanitized =
-                        $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
-                            jsonDataText
-                        );
-                    jsonData = JSON.parse(sanitized);
+                    jsonData = JSON.parse(jsonDataText);
                 }
             } catch (e) {
                 jsonData = null;

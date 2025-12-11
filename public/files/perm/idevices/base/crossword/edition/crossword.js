@@ -243,7 +243,7 @@ var $exeDevice = {
                             </span>                            
                             <div class="d-flex align-items-center gap-2 flex-nowrap" id="ccgmbackground1">
                                 <label for="ccgmEURLBack" class="mb-0">${_('URL')}: </label>
-                                <input type="text" class="exe-file-picker CCGM-EURLImage form-control me-0" id="ccgmEURLBack"/>
+                                <input type="text" class="exe-image-picker CCGM-EURLImage form-control me-0" id="ccgmEURLBack"/>
                                 <a href="#" id="ccgmEPlayBack" class="CCGM-ENavigationButton CCGMEEPlayVideo" title="${_('Show')}">
                                     <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
                                 </a>
@@ -302,7 +302,7 @@ var $exeDevice = {
                                 <span class="CCGM-ETitleImage" id="ccgmETitleImage">${_('Image URL')}</span>
                                 <div class="CCGM-EInputImage align-items-center gap-2 mb-3  flex-nowrap" id="ccgmEInputImage">
                                     <label class="sr-av" for="ccgmEURLImage">${_('Image URL')}</label>
-                                    <input type="text" class="exe-file-picker form-control me-0" id="ccgmEURLImage"/>
+                                    <input type="text" class="exe-image-picker form-control me-0" id="ccgmEURLImage"/>
                                     <a href="#" id="ccgmEPlayImage" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Show')}">
                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
                                     </a>
@@ -401,6 +401,11 @@ var $exeDevice = {
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
+        $exeDevice.addPickerButton();
+    },
+
+    addPickerButton: function () {
+        // Handled globally by $exeDevicesEdition.iDevice.filePicker.init()
     },
 
     updateQuestionsNumber: function () {
@@ -492,7 +497,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>').html(originalHTML),
@@ -821,63 +831,127 @@ var $exeDevice = {
 
     showImage: function (url, x, y, alt) {
         const $image = $('#ccgmEImage'),
-            $cursor = $('#ccgmECursor');
+            $cursor = $('#ccgmECursor'),
+            $input = $('#ccgmEURLImage');
         $image.hide();
         $cursor.hide();
         $image.attr('alt', alt);
-
         $('#ccgmENoImage').show();
-        url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
-        $image
-            .prop('src', url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth === 'undefined' ||
-                    this.naturalWidth === 0
-                ) {
+
+        const loadImage = (resolvedUrl) => {
+            resolvedUrl =
+                $exeDevices.iDevice.gamification.media.extractURLGD(
+                    resolvedUrl
+                );
+            $image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth === 'undefined' ||
+                        this.naturalWidth === 0
+                    ) {
+                        //
+                    } else {
+                        const mData = $exeDevice.placeImageWindows(
+                            this,
+                            this.naturalWidth,
+                            this.naturalHeight
+                        );
+                        $exeDevice.drawImage(this, mData);
+                        $image.show();
+                        $('#ccgmENoImage').hide();
+                        $exeDevice.paintMouse(this, $cursor, x, y);
+                    }
+                })
+                .on('error', function () {
                     //
-                } else {
-                    const mData = $exeDevice.placeImageWindows(
-                        this,
-                        this.naturalWidth,
-                        this.naturalHeight
-                    );
-                    $exeDevice.drawImage(this, mData);
-                    $image.show();
-                    $('#ccgmENoImage').hide();
-                    $exeDevice.paintMouse(this, $cursor, x, y);
+                });
+        };
+
+        // Handle asset:// URLs
+        if (url && url.startsWith('asset://')) {
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                loadImage(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
+                        loadImage(resolvedUrl || '');
+                    });
                 }
-            })
-            .on('error', function () {
-                //
-            });
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     showImageBack: function (hasback, url) {
         const $image = $('#ccgmEImageBack'),
-            $imageno = $('#ccgmEImageNoBack');
+            $imageno = $('#ccgmEImageNoBack'),
+            $input = $('#ccgmEURLImageBack');
         $image.hide();
         $imageno.show();
-        url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
-        if (hasback && url.length > 4) {
-            $image
-                .prop('src', url)
-                .on('load', function () {
-                    $image.show();
-                    $imageno.hide();
-                })
-                .on('error', function () {});
+
+        const loadImage = (resolvedUrl) => {
+            resolvedUrl =
+                $exeDevices.iDevice.gamification.media.extractURLGD(
+                    resolvedUrl
+                );
+            if (hasback && resolvedUrl && resolvedUrl.length > 4) {
+                $image
+                    .prop('src', resolvedUrl)
+                    .on('load', function () {
+                        $image.show();
+                        $imageno.hide();
+                    })
+                    .on('error', function () {});
+            }
+        };
+
+        // Handle asset:// URLs
+        if (url && url.startsWith('asset://')) {
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                loadImage(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
+                        loadImage(resolvedUrl || '');
+                    });
+                }
+            }
+        } else {
+            loadImage(url);
         }
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio
-            .play()
-            .catch((error) => console.error('Error playing audio:', error));
+        const playAudio = (url) => {
+            const selectFile =
+                $exeDevices.iDevice.gamification.media.extractURLGD(url);
+            $exeDevice.playerAudio = new Audio(selectFile);
+            $exeDevice.playerAudio
+                .play()
+                .catch((error) => console.error('Error playing audio:', error));
+        };
+
+        // Handle asset:// URLs
+        if (selectedFile && selectedFile.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(selectedFile).then((resolvedUrl) => {
+                    playAudio(resolvedUrl || '');
+                });
+            }
+        } else {
+            playAudio(selectedFile);
+        }
     },
 
     stopSound: function () {

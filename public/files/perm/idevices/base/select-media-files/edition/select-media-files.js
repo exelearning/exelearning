@@ -480,7 +480,18 @@ var $exeDevice = {
         $('#slcmEURLImageDefinition').val(phrase.url);
         $('#slcmEAltDefinition').val(phrase.alt);
         $('#slcmEAuthorDefinition').val(phrase.author);
-        $('#slcmEImageDefinition').attr('src', phrase.url);
+        // Resolve asset:// URLs to blob URLs
+        if (phrase.url && phrase.url.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(phrase.url).then((blobUrl) => {
+                    $('#slcmEImageDefinition').attr('src', blobUrl || '');
+                });
+            }
+        } else {
+            $('#slcmEImageDefinition').attr('src', phrase.url);
+        }
         $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
         if (phrase.url.trim().length > 4)
             $('#slcmEImageDefinitionDiv')
@@ -581,6 +592,8 @@ var $exeDevice = {
         const $container = $('#slcmEDatosCarta-' + cardId);
         if (!$container.length) return;
 
+        const filemanager = window.eXeLearning?.app?.modals?.filemanager;
+
         $container
             .find(
                 '.exe-file-picker:not(.initialized), .exe-image-picker:not(.initialized)'
@@ -589,23 +602,19 @@ var $exeDevice = {
                 const $input = $(this);
                 $input.addClass('initialized');
                 const id = $input.attr('id'),
-                    css = $input.hasClass('exe-image-picker')
-                        ? 'exe-pick-image'
-                        : 'exe-pick-any-file',
-                    type = css === 'exe-pick-image' ? 'image' : 'media';
+                    isImage = $input.hasClass('exe-image-picker'),
+                    css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
 
-                let $fileInput = $('#' + `_browseFor${id}`);
-                if (!$fileInput.length) {
-                    $fileInput = $('<input>', {
-                        id: `_browseFor${id}`,
-                        type: 'file',
-                        accept: type === 'image' ? 'image/*' : undefined,
-                        style: 'display:none;', // Se oculta
-                    }).on('change', function (event) {
-                        $exeDevice.processFile(event.target.files[0], id, type);
-                    });
-                    $container.append($fileInput);
+                // Determine accept filter
+                let accept = null;
+                if (isImage) {
+                    accept = 'image';
+                } else if (id.toLowerCase().includes('audio')) {
+                    accept = 'audio';
+                } else if (id.toLowerCase().includes('video')) {
+                    accept = 'video';
                 }
+
                 if (
                     !$container.find(
                         `input[type="button"][data-filepicker="${id}"]`
@@ -617,7 +626,16 @@ var $exeDevice = {
                         value: _('Select a file'),
                         'data-filepicker': id,
                     }).on('click', function () {
-                        $fileInput.trigger('click');
+                        if (filemanager) {
+                            filemanager.show({
+                                accept: accept,
+                                onSelect: async (result) => {
+                                    $input.val(result.assetUrl);
+                                    $input.data('blobUrl', result.blobUrl);
+                                    $input.trigger('change');
+                                },
+                            });
+                        }
                     });
                     $input.after($button);
                 }
@@ -859,7 +877,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>');
@@ -1267,45 +1290,82 @@ var $exeDevice = {
     showImage: function (id) {
         const $image = $('#slcmEImage-' + id),
             $nimage = $('#slcmENoImage-' + id),
+            $input = $('#slcmEURLImage-' + id),
             alt = $('#slcmEAlt-' + id).val(),
-            url = $('#slcmEURLImage-' + id).val();
+            url = $input.val();
 
         $exeDevice.hideFlex($image);
         $image.attr('alt', alt);
         $exeDevice.showFlex($nimage);
-        $image
-            .prop('src', url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth == 'undefined' ||
-                    this.naturalWidth == 0
-                ) {
+
+        const loadImage = (resolvedUrl) => {
+            $image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth == 0
+                    ) {
+                        return false;
+                    } else {
+                        const mData = $exeDevice.placeImageWindows(
+                            this,
+                            this.naturalWidth,
+                            this.naturalHeight
+                        );
+                        $exeDevice.drawImage(this, mData);
+                        $exeDevice.showFlex($image);
+                        $exeDevice.hideFlex($nimage);
+                        return true;
+                    }
+                })
+                .on('error', function () {
                     return false;
-                } else {
-                    const mData = $exeDevice.placeImageWindows(
-                        this,
-                        this.naturalWidth,
-                        this.naturalHeight
-                    );
-                    $exeDevice.drawImage(this, mData);
-                    $exeDevice.showFlex($image);
-                    $exeDevice.hideFlex($nimage);
-                    return true;
+                });
+        };
+
+        // Handle asset:// URLs
+        if (url && url.startsWith('asset://')) {
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                loadImage(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
+                        loadImage(resolvedUrl || '');
+                    });
                 }
-            })
-            .on('error', function () {
-                return false;
-            });
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio
-            .play()
-            .catch((error) => console.error('Error playing audio:', error));
+        const playAudio = (url) => {
+            const selectFile =
+                $exeDevices.iDevice.gamification.media.extractURLGD(url);
+            $exeDevice.playerAudio = new Audio(selectFile);
+            $exeDevice.playerAudio
+                .play()
+                .catch((error) => console.error('Error playing audio:', error));
+        };
+
+        // Handle asset:// URLs
+        if (selectedFile && selectedFile.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(selectedFile).then((resolvedUrl) => {
+                    playAudio(resolvedUrl || '');
+                });
+            }
+        } else {
+            playAudio(selectedFile);
+        }
     },
 
     stopSound() {
@@ -1620,7 +1680,23 @@ var $exeDevice = {
             return false;
         }
         $exeDevice.showFlex($('#slcmEImageDefinitionDiv'));
-        $('#slcmEImageDefinition').attr('src', url);
+        // Resolve asset:// URLs to blob URLs
+        if (url && url.startsWith('asset://')) {
+            const blobUrl = $('#slcmEURLImageDefinition').data('blobUrl');
+            if (blobUrl) {
+                $('#slcmEImageDefinition').attr('src', blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolved) => {
+                        $('#slcmEImageDefinition').attr('src', resolved || '');
+                    });
+                }
+            }
+        } else {
+            $('#slcmEImageDefinition').attr('src', url);
+        }
     },
 
     loadAudio: function (url) {

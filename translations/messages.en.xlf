@@ -4617,11 +4617,11 @@
         <source>File is too large</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="PlLb91P" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
+      <trans-unit id="FileSizeExceedsLimit" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
         <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="94Iy.Ws" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
+      <trans-unit id="InsufficientStorageSpace" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
         <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
         <target></target>
       </trans-unit>
@@ -9659,7 +9659,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target></target>
+        <target><![CDATA[__Action & Expression]]></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
@@ -13001,65 +13001,59 @@
         <source>Adds additional information to the main title.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="0W12xcN" resname="File too large">
-        <source>File too large</source>
-        <target></target>
+      <!-- Error page translations -->
+      <trans-unit id="error.page_not_found" resname="error.page_not_found">
+        <source>Page not found</source>
+        <target>Page not found</target>
       </trans-unit>
-      <trans-unit id="B0MzbU." resname="Invalid file content">
-        <source>Invalid file content</source>
-        <target></target>
+      <trans-unit id="error.page_cannot_be_displayed" resname="error.page_cannot_be_displayed">
+        <source>Sorry, but the page cannot be displayed.</source>
+        <target>Sorry, but the page cannot be displayed.</target>
       </trans-unit>
-      <trans-unit id="gvmO9Y9" resname="Answer type: Single">
-        <source>Answer type: Single</source>
-        <target></target>
+      <trans-unit id="error.server_error_try_again" resname="error.server_error_try_again">
+        <source>The server encountered an error and could not complete your request. Please try again later.</source>
+        <target>The server encountered an error and could not complete your request. Please try again later.</target>
       </trans-unit>
-      <trans-unit id="HTNyf33" resname="Answer type: Multiple">
-        <source>Answer type: Multiple</source>
-        <target></target>
+      <trans-unit id="error.return_to_workarea" resname="error.return_to_workarea">
+        <source>Return to work area</source>
+        <target>Return to work area</target>
       </trans-unit>
-      <trans-unit id="TNTKzfg" resname="Suggestion or hint (optional)">
-        <source>Suggestion or hint (optional)</source>
-        <target></target>
+      <trans-unit id="error.return_to_login" resname="error.return_to_login">
+        <source>Return to login</source>
+        <target>Return to login</target>
       </trans-unit>
-      <trans-unit id="BZ1S0r1" resname="Hint or suggestion for the student">
-        <source>Hint or suggestion for the student</source>
-        <target></target>
+      <trans-unit id="error.create_new_project" resname="error.create_new_project">
+        <source>Create New Project</source>
+        <target>Create New Project</target>
       </trans-unit>
-      <trans-unit id="hdE6_li" resname="Feedback for correct answer (optional)">
-        <source>Feedback for correct answer (optional)</source>
-        <target></target>
+      <trans-unit id="error.back_to_login" resname="error.back_to_login">
+        <source>Back to Login</source>
+        <target>Back to Login</target>
       </trans-unit>
-      <trans-unit id="m4TNsCc" resname="Message shown when answer is correct">
-        <source>Message shown when answer is correct</source>
-        <target></target>
+      <trans-unit id="error.access_denied" resname="error.access_denied">
+        <source>Access denied</source>
+        <target>Access denied</target>
       </trans-unit>
-      <trans-unit id="iWMpEte" resname="Feedback for wrong answer (optional)">
-        <source>Feedback for wrong answer (optional)</source>
-        <target></target>
+      <trans-unit id="error.server_error" resname="error.server_error">
+        <source>Server error</source>
+        <target>Server error</target>
       </trans-unit>
-      <trans-unit id="PY8dpAN" resname="Message shown when answer is wrong">
-        <source>Message shown when answer is wrong</source>
-        <target></target>
+      <!-- Logical exception translations -->
+      <trans-unit id="error.autosave_recent_save" resname="error.autosave_recent_save">
+        <source>Autosave not needed - recent save exists</source>
+        <target>Autosave not needed - recent save exists</target>
       </trans-unit>
-      <trans-unit id="HtCHM4W" resname="Hide page title">
-        <source>Hide page title</source>
-        <target></target>
+      <trans-unit id="error.insufficient_space" resname="error.insufficient_space">
+        <source>Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%</source>
+        <target>Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%</target>
       </trans-unit>
-      <trans-unit id="HGZVLdj" resname="Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?">
-        <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
-        <target></target>
+      <trans-unit id="error.session_already_open" resname="error.session_already_open">
+        <source>User already has an open session</source>
+        <target>User already has an open session</target>
       </trans-unit>
-      <trans-unit id="JO9aYD_" resname="Mermaid diagram">
-        <source>Mermaid diagram</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="cqg82Ug" resname="Mermaid code">
-        <source>Mermaid code</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="uk.Vvql" resname="Need help? Visit %s">
-        <source>Need help? Visit %s</source>
-        <target></target>
+      <trans-unit id="error.extension_not_installed" resname="error.extension_not_installed">
+        <source>Required extension %extension% is not installed</source>
+        <target>Required extension %extension% is not installed</target>
       </trans-unit>
     </body>
   </file>

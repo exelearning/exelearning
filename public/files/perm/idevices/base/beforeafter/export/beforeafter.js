@@ -244,10 +244,26 @@ var $eXeBeforeAfter = {
         const card = mOptions.cardsGame[number];
         $imgAfter.attr('alt', card.alt);
         $imgBefore.attr('alt', card.altBk);
-        $imgBefore.prop('src', card.urlBk);
-        $imgAfter
-            .attr('src', card.url)
-            .one('load', function () {
+
+        // Helper to resolve asset URLs
+        const resolveUrl = (url) => {
+            if (url && url.startsWith('asset://')) {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    return assetManager.resolveAssetURL(url);
+                }
+            }
+            return Promise.resolve(url);
+        };
+
+        // Resolve both URLs then load images
+        Promise.all([resolveUrl(card.url), resolveUrl(card.urlBk)]).then(
+            ([afterUrl, beforeUrl]) => {
+                $imgBefore.prop('src', beforeUrl || '');
+                $imgAfter
+                    .attr('src', afterUrl || '')
+                    .one('load', function () {
                 let naturalWidth = this.naturalWidth;
                 let naturalHeight = this.naturalHeight;
 
@@ -347,10 +363,12 @@ var $eXeBeforeAfter = {
                     $eXeBeforeAfter.initComparison(number, instance);
                     $containerBA.animate({ opacity: 1 }, 500);
                 }, 200);
-            })
-            .each(function () {
-                if (this.complete) $(this).trigger('load');
-            });
+                    })
+                    .each(function () {
+                        if (this.complete) $(this).trigger('load');
+                    });
+            }
+        );
     },
 
     initComparison: function (number, instance) {

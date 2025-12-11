@@ -19,8 +19,21 @@ export default class ModalUploadProgress {
     show(options = {}) {
         const { fileName = 'archivo', fileSize = 0 } = options;
 
-        // Remove existing modal if present
-        this.hide();
+        // Remove existing modal if present (synchronous cleanup)
+        if (this.modal) {
+            const bootstrapModal = bootstrap.Modal.getInstance(this.modal);
+            if (bootstrapModal) {
+                bootstrapModal.dispose();
+            }
+            if (this.modal.parentNode) {
+                this.modal.parentNode.removeChild(this.modal);
+            }
+            this.modal = null;
+            this.progressBar = null;
+            this.statusText = null;
+            this.percentageText = null;
+            this.phaseText = null;
+        }
 
         // Create modal HTML
         const modalHTML = `
@@ -118,7 +131,7 @@ export default class ModalUploadProgress {
 
     /**
      * Set processing phase (extraction, parsing, etc.)
-     * @param {string} phase - Phase name: 'extracting', 'parsing', 'finalizing'
+     * @param {string} phase - Phase name: 'extracting', 'parsing', 'finalizing', 'savingProject', 'uploadingAssets', 'savingComplete'
      */
     setProcessingPhase(phase) {
         if (!this.progressBar) return;
@@ -131,6 +144,7 @@ export default class ModalUploadProgress {
         this.percentageText.textContent = '';
 
         const phaseMessages = {
+            // Upload phases
             extracting: {
                 status: _('Extracting files...'),
                 info: _(
@@ -145,6 +159,19 @@ export default class ModalUploadProgress {
                 status: _('Finalizing...'),
                 info: _('Completing the process...'),
             },
+            // Save phases
+            savingProject: {
+                status: _('Saving project...'),
+                info: _('Saving document structure to server...'),
+            },
+            uploadingAssets: {
+                status: _('Uploading assets...'),
+                info: _('Uploading images and files to server...'),
+            },
+            savingComplete: {
+                status: _('Save complete!'),
+                info: _('All changes have been saved successfully.'),
+            },
         };
 
         const message = phaseMessages[phase] || {
@@ -154,6 +181,121 @@ export default class ModalUploadProgress {
 
         this.statusText.textContent = message.status;
         this.phaseText.textContent = message.info;
+    }
+
+    /**
+     * Update asset upload progress
+     * @param {number} current - Current asset index (1-based)
+     * @param {number} total - Total number of assets
+     * @param {number} uploadedBytes - Bytes uploaded so far
+     * @param {number} totalBytes - Total bytes to upload
+     */
+    setAssetUploadProgress(current, total, uploadedBytes = 0, totalBytes = 0) {
+        if (!this.progressBar) return;
+
+        this.currentPhase = 'uploadingAssets';
+
+        const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+
+        this.progressBar.classList.add('progress-bar-animated', 'progress-bar-striped');
+        this.progressBar.style.width = `${percentage}%`;
+        this.progressBar.setAttribute('aria-valuenow', percentage);
+        this.percentageText.textContent = `${percentage}%`;
+
+        // Status text with asset count
+        if (totalBytes > 0) {
+            this.statusText.textContent = `${_('Uploading asset')} ${current}/${total} (${this.formatFileSize(uploadedBytes)}/${this.formatFileSize(totalBytes)})`;
+        } else {
+            this.statusText.textContent = `${_('Uploading asset')} ${current}/${total}`;
+        }
+
+        this.phaseText.textContent = _('Uploading images and files to server...');
+    }
+
+    /**
+     * Show the modal in save mode
+     * @param {Object} options - Configuration options
+     * @param {string} options.projectTitle - Name of the project being saved
+     */
+    showSaveMode(options = {}) {
+        const { projectTitle = 'project' } = options;
+
+        // Remove existing modal if present
+        if (this.modal) {
+            const bootstrapModal = bootstrap.Modal.getInstance(this.modal);
+            if (bootstrapModal) {
+                bootstrapModal.dispose();
+            }
+            if (this.modal.parentNode) {
+                this.modal.parentNode.removeChild(this.modal);
+            }
+            this.modal = null;
+        }
+
+        // Create modal HTML for save mode
+        const modalHTML = `
+            <div class="modal fade" id="uploadProgressModal" tabindex="-1" role="dialog"
+                 aria-labelledby="uploadProgressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="uploadProgressModalLabel">
+                                ${_('Saving project')}
+                            </h5>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="upload-file-name text-truncate" style="max-width: 100%;" title="${projectTitle}">
+                                        <strong>${projectTitle}</strong>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="upload-status-text">${_('Preparing...')}</span>
+                                    <span class="upload-percentage"></span>
+                                </div>
+                                <div class="progress" style="height: 24px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar"
+                                         style="width: 100%;"
+                                         aria-valuenow="0"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="upload-phase-info mt-3 p-3 bg-light rounded">
+                                <small class="text-muted upload-phase-text">
+                                    ${_('Preparing to save your project...')}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Append modal to container
+        const div = document.createElement('div');
+        div.innerHTML = modalHTML.trim();
+        this.modal = div.firstChild;
+        this.modalsContainer.appendChild(this.modal);
+
+        // Get references to elements
+        this.progressBar = this.modal.querySelector('.progress-bar');
+        this.statusText = this.modal.querySelector('.upload-status-text');
+        this.percentageText = this.modal.querySelector('.upload-percentage');
+        this.phaseText = this.modal.querySelector('.upload-phase-text');
+
+        // Show modal
+        const bootstrapModal = new bootstrap.Modal(this.modal);
+        bootstrapModal.show();
+
+        return this;
     }
 
     /**
@@ -199,16 +341,12 @@ export default class ModalUploadProgress {
 
     /**
      * Hide and remove the modal
+     * Returns a Promise that resolves when Bootstrap has fully hidden the modal
+     * @returns {Promise<void>}
      */
     hide() {
-        if (this.modal) {
-            const bootstrapModal = bootstrap.Modal.getInstance(this.modal);
-            if (bootstrapModal) {
-                bootstrapModal.hide();
-            }
-
-            // Remove modal after animation
-            setTimeout(() => {
+        return new Promise((resolve) => {
+            const cleanup = () => {
                 if (this.modal && this.modal.parentNode) {
                     this.modal.parentNode.removeChild(this.modal);
                 }
@@ -217,8 +355,55 @@ export default class ModalUploadProgress {
                 this.statusText = null;
                 this.percentageText = null;
                 this.phaseText = null;
-            }, 300);
-        }
+            };
+
+            if (this.modal) {
+                const modalElement = this.modal;
+                const bootstrapModal = bootstrap.Modal.getInstance(modalElement);
+
+                if (bootstrapModal) {
+                    let resolved = false;
+
+                    // Safety timeout in case Bootstrap event never fires
+                    const timeoutId = setTimeout(() => {
+                        if (!resolved) {
+                            resolved = true;
+                            console.warn('[ModalUploadProgress] Bootstrap hidden event timeout, forcing cleanup');
+                            modalElement.removeEventListener('hidden.bs.modal', onHidden);
+                            // Force hide the modal manually
+                            modalElement.classList.remove('show');
+                            modalElement.style.display = 'none';
+                            modalElement.setAttribute('aria-hidden', 'true');
+                            // Clean up backdrop and body class
+                            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+                            if (!document.querySelector('.modal.show')) {
+                                document.body.classList.remove('modal-open');
+                            }
+                            cleanup();
+                            resolve();
+                        }
+                    }, 500); // 500ms should be enough for the animation
+
+                    const onHidden = () => {
+                        if (!resolved) {
+                            resolved = true;
+                            clearTimeout(timeoutId);
+                            cleanup();
+                            resolve();
+                        }
+                    };
+
+                    modalElement.addEventListener('hidden.bs.modal', onHidden, { once: true });
+                    bootstrapModal.hide();
+                } else {
+                    // No Bootstrap instance, clean up directly
+                    cleanup();
+                    resolve();
+                }
+            } else {
+                resolve();
+            }
+        });
     }
 
     /**

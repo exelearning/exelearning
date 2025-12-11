@@ -3,6 +3,7 @@
     <title>Classify</title>
     <css-class>classify</css-class>
     <category>Interactive activities</category>
+    <export-object>$eXeClasifica</export-object>
     <icon>
         <name>classify-icon</name>
         <url>classify-icon.svg</url>

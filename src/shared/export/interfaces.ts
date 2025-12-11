@@ -1,0 +1,477 @@
+/**
+ * Unified Export System - TypeScript Interfaces
+ *
+ * These interfaces provide a common abstraction layer for the export system,
+ * enabling the same export code to work in both:
+ * - Frontend (browser): Using Yjs documents and IndexedDB assets
+ * - Backend (CLI): Using ELP files and filesystem
+ */
+
+// =============================================================================
+// Document Structure Interfaces
+// =============================================================================
+
+/**
+ * Main document interface that abstracts document access
+ * Implemented by YjsDocumentAdapter (browser) and ElpDocumentAdapter (CLI)
+ */
+export interface ExportDocument {
+    getMetadata(): ExportMetadata;
+    getNavigation(): ExportPage[];
+}
+
+/**
+ * Project metadata
+ */
+export interface ExportMetadata {
+    title: string;
+    author: string;
+    language: string;
+    theme: string;
+    customStyles?: string;
+    license?: string;
+    description?: string;
+    keywords?: string;
+    category?: string;
+
+    // eXeLearning-specific metadata
+    exelearningVersion?: string;
+    odeIdentifier?: string;
+    createdAt?: string;
+    modifiedAt?: string;
+
+    // Accessibility options
+    addAccessibilityToolbar?: boolean;
+
+    // SCORM metadata
+    scormIdentifier?: string;
+    masteryScore?: number;
+}
+
+/**
+ * Page in the navigation structure
+ */
+export interface ExportPage {
+    id: string;
+    title: string;
+    parentId: string | null;
+    order: number;
+    blocks: ExportBlock[];
+
+    // Optional page-level properties
+    properties?: Record<string, unknown>;
+}
+
+/**
+ * Block containing iDevices/components
+ */
+export interface ExportBlock {
+    id: string;
+    name: string;
+    order: number;
+    components: ExportComponent[];
+
+    // Block-level properties
+    properties?: ExportBlockProperties;
+}
+
+/**
+ * Block properties
+ */
+export interface ExportBlockProperties {
+    visibility?: string;
+    minimized?: string;
+    teacherOnly?: string;
+    visibilityType?: string;
+    cssClass?: string;
+}
+
+/**
+ * iDevice/component data
+ */
+export interface ExportComponent {
+    id: string;
+    type: string; // ideviceType (e.g., 'FreeTextIdevice', 'QuizActivity')
+    order: number;
+    content: string; // HTML content
+    properties: Record<string, unknown>;
+}
+
+// =============================================================================
+// Provider Interfaces
+// =============================================================================
+
+/**
+ * Resource provider for loading themes, iDevice files, and libraries
+ * Implemented by BrowserResourceProvider (fetch API) and FileSystemResourceProvider
+ */
+export interface ResourceProvider {
+    /**
+     * Fetch theme files
+     * @param themeName - Name of the theme (e.g., 'base', 'cedec')
+     * @returns Map of relative path -> content buffer
+     */
+    fetchTheme(themeName: string): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Fetch iDevice resource files (CSS, JS, templates)
+     * @param ideviceType - Type of iDevice
+     * @returns Map of relative path -> content buffer
+     */
+    fetchIdeviceResources(ideviceType: string): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Fetch base libraries (jQuery, Bootstrap, common scripts)
+     * @returns Map of relative path -> content buffer
+     */
+    fetchBaseLibraries(): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Fetch specific library files
+     * @param files - Array of file paths to fetch
+     * @returns Map of relative path -> content buffer
+     */
+    fetchLibraryFiles(files: string[]): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Normalize iDevice type name to directory name
+     * @param ideviceType - Raw iDevice type name (e.g., 'FreeTextIdevice')
+     * @returns Normalized directory name (e.g., 'text')
+     */
+    normalizeIdeviceType(ideviceType: string): string;
+}
+
+/**
+ * Asset provider for loading project assets (images, media, etc.)
+ * Implemented by BrowserAssetProvider (IndexedDB) and FileSystemAssetProvider
+ */
+export interface AssetProvider {
+    /**
+     * Get all project assets
+     * @returns Array of asset info with blob/buffer
+     */
+    getProjectAssets(): Promise<ExportAsset[]>;
+
+    /**
+     * Get all project assets (alias for getProjectAssets)
+     * @returns Array of asset info with blob/buffer
+     */
+    getAllAssets(): Promise<ExportAsset[]>;
+
+    /**
+     * Get a single asset by ID
+     * @param assetId - Asset UUID
+     * @returns Asset info or null if not found
+     */
+    getAsset(assetId: string): Promise<ExportAsset | null>;
+}
+
+/**
+ * Asset information for export
+ */
+export interface ExportAsset {
+    id: string;
+    filename: string;
+    originalPath: string;
+    mime: string;
+    data: Uint8Array | Blob;
+}
+
+// =============================================================================
+// ZIP Provider Interface
+// =============================================================================
+
+/**
+ * ZIP provider for creating export archives
+ * Allows different implementations for browser (JSZip) and Node (Archiver)
+ */
+export interface ZipProvider {
+    /**
+     * Create a new ZIP archive
+     */
+    createZip(): ZipArchive;
+}
+
+/**
+ * ZIP archive abstraction
+ */
+export interface ZipArchive {
+    /**
+     * Add a file to the archive
+     * @param path - Path within the ZIP
+     * @param content - File content
+     */
+    addFile(path: string, content: string | Uint8Array | Blob): void;
+
+    /**
+     * Add multiple files from a Map
+     * @param files - Map of path -> content
+     */
+    addFiles(files: Map<string, string | Uint8Array | Blob>): void;
+
+    /**
+     * Generate the ZIP archive
+     * @returns ZIP content as buffer
+     */
+    generate(): Promise<Uint8Array>;
+}
+
+// =============================================================================
+// Export Options Interfaces
+// =============================================================================
+
+/**
+ * Common export options
+ */
+export interface ExportOptions {
+    /** Output filename (without extension) */
+    filename?: string;
+
+    /** Include data-* attributes for JS initialization */
+    includeDataAttributes?: boolean;
+
+    /** Include accessibility toolbar */
+    includeAccessibilityToolbar?: boolean;
+
+    /** Base URL for absolute paths */
+    baseUrl?: string;
+}
+
+/**
+ * HTML5 export options
+ */
+export interface Html5ExportOptions extends ExportOptions {
+    /** Export as single page (anchor navigation) */
+    singlePage?: boolean;
+}
+
+/**
+ * SCORM export options
+ */
+export interface ScormExportOptions extends ExportOptions {
+    /** SCORM version: '1.2' or '2004' */
+    version: '1.2' | '2004';
+
+    /** Mastery score (0-100) */
+    masteryScore?: number;
+
+    /** SCORM identifier */
+    scormIdentifier?: string;
+
+    /** Organization title */
+    organizationTitle?: string;
+}
+
+/**
+ * IMS Content Package export options
+ */
+export interface ImsExportOptions extends ExportOptions {
+    /** Include LOM metadata */
+    includeLomMetadata?: boolean;
+}
+
+/**
+ * EPUB3 export options
+ */
+export interface Epub3ExportOptions extends ExportOptions {
+    /** Cover image path */
+    coverImage?: string;
+
+    /** Publisher name */
+    publisher?: string;
+
+    /** Book UUID */
+    bookId?: string;
+}
+
+/**
+ * ELPX export options
+ */
+export interface ElpxExportOptions extends ExportOptions {
+    /** Include HTML preview pages */
+    includeHtmlContent?: boolean;
+}
+
+// =============================================================================
+// Export Result Interface
+// =============================================================================
+
+/**
+ * Result of an export operation
+ */
+export interface ExportResult {
+    success: boolean;
+    filename?: string;
+    data?: Uint8Array | Blob;
+    error?: string;
+}
+
+// =============================================================================
+// Renderer Interfaces
+// =============================================================================
+
+/**
+ * Page rendering options
+ */
+export interface PageRenderOptions {
+    projectTitle: string;
+    language: string;
+    theme: string;
+    customStyles?: string;
+    allPages: ExportPage[];
+    basePath: string;
+    isIndex: boolean;
+    usedIdevices: string[];
+    author: string;
+    license: string;
+
+    // SCORM-specific
+    isScorm?: boolean;
+    scormVersion?: string;
+    bodyClass?: string;
+    extraHeadScripts?: string;
+    onLoadScript?: string;
+    onUnloadScript?: string;
+}
+
+/**
+ * Component rendering options
+ */
+export interface ComponentRenderOptions {
+    basePath: string;
+    includeDataAttributes: boolean;
+}
+
+/**
+ * Block rendering options
+ */
+export interface BlockRenderOptions extends ComponentRenderOptions {}
+
+// =============================================================================
+// iDevice Configuration
+// =============================================================================
+
+/**
+ * iDevice type configuration
+ */
+export interface IdeviceConfig {
+    cssClass: string;
+    componentType: 'json' | 'html';
+    template: string;
+}
+
+// =============================================================================
+// Library Detection
+// =============================================================================
+
+/**
+ * Library pattern for detection
+ */
+export interface LibraryPattern {
+    name: string;
+    type: 'class' | 'rel' | 'regex';
+    pattern: string | RegExp;
+    files: string[];
+    requiresLatexCheck?: boolean;
+}
+
+/**
+ * Library detection result
+ */
+export interface LibraryDetectionResult {
+    libraries: Array<{ name: string; files: string[] }>;
+    files: string[];
+    count: number;
+}
+
+/**
+ * Library detection options
+ */
+export interface LibraryDetectionOptions {
+    includeScorm?: boolean;
+    includeAccessibilityToolbar?: boolean;
+}
+
+// =============================================================================
+// Manifest/Metadata Generation
+// =============================================================================
+
+/**
+ * SCORM manifest generation options
+ */
+export interface ScormManifestOptions {
+    identifier: string;
+    title: string;
+    language: string;
+    pages: ExportPage[];
+    masteryScore?: number;
+    organization?: string;
+    version: '1.2' | '2004';
+}
+
+/**
+ * IMS manifest generation options
+ */
+export interface ImsManifestOptions {
+    identifier: string;
+    title: string;
+    language: string;
+    pages: ExportPage[];
+}
+
+/**
+ * LOM metadata generation options
+ */
+export interface LomMetadataOptions {
+    title: string;
+    description?: string;
+    language: string;
+    author?: string;
+    keywords?: string;
+    category?: string;
+    license?: string;
+}
+
+/**
+ * EPUB3 package generation options
+ */
+export interface Epub3PackageOptions {
+    bookId: string;
+    title: string;
+    language: string;
+    author?: string;
+    publisher?: string;
+    chapters: Array<{ id: string; title: string; filename: string }>;
+}
+
+// =============================================================================
+// Exporter Base Interface
+// =============================================================================
+
+/**
+ * Base interface for all exporters
+ */
+export interface Exporter {
+    /**
+     * Export the project
+     * @param filename - Optional filename override
+     * @returns Export result
+     */
+    export(filename?: string): Promise<ExportResult>;
+
+    /**
+     * Export to a buffer (for programmatic use)
+     * @returns ZIP content as Uint8Array
+     */
+    exportToBuffer(): Promise<Uint8Array>;
+
+    /**
+     * Get the file extension for this format
+     */
+    getFileExtension(): string;
+
+    /**
+     * Get the file suffix for this format (e.g., '_web', '_scorm12')
+     */
+    getFileSuffix(): string;
+}

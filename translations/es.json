@@ -1,6 +1,8 @@
-// This strings are only used on the electron app
-// translations/es.json
 {
+  "menu": {
+    "edit": "Editar",
+    "view": "Ver"
+  },
   "updater": {
     "errorTitle": "Error de actualización",
     "updateAvailableTitle": "Actualización disponible",

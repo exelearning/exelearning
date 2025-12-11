@@ -161,7 +161,7 @@ var $exeDevice = {
                     componentPageId: row.componentPageId,
                     ode_block_id: row.ode_block_id,
                     blockName: row.blockName,
-                    blockOrder: Number(row.blockOrder) || 0, // ✅ CAMPO AGREGADO
+                    blockOrder: Number(row.blockOrder) || 0, // ✅ FIELD ADDED
                     ode_idevice_id: row.ode_idevice_id,
                     odeIdeviceTypeName: row.odeIdeviceTypeName,
                     ode_components_sync_order:
@@ -171,15 +171,15 @@ var $exeDevice = {
             }
         });
 
-        // ✅ ORDENAMIENTO CORREGIDO
+        // ✅ FIXED ORDERING
         Object.values(pageIndex).forEach((p) => {
             if (Array.isArray(p.components) && p.components.length > 1) {
                 p.components.sort((a, b) => {
-                    // Ordenar primero por blockOrder
+                    // Sort first by blockOrder
                     const orderDiff = (a.blockOrder || 0) - (b.blockOrder || 0);
                     if (orderDiff !== 0) return orderDiff;
 
-                    // Si tienen el mismo blockOrder, usar ode_components_sync_order
+                    // If they have the same blockOrder, use ode_components_sync_order
                     return (
                         (a.ode_components_sync_order || 0) -
                         (b.ode_components_sync_order || 0)

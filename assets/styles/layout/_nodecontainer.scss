@@ -6,9 +6,6 @@
     &:has(#node-content[node-selected='root']) {
         font-size: var(--bs-body-font-size);
         font-family: var(--bs-font-sans-serif);
-        .page-header {
-            display: none;
-        }
     }
     #eXeBetaWarning {
         z-index: 999;
@@ -69,6 +66,9 @@
     }
     #node-content {
         height: auto;
+        .page-title {
+            margin-top: 15px;
+        }
         &[mode="edition"] {
             #eXeAddContentBtnWrapper {
                 display: none;

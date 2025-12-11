@@ -1,3 +1,6 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class NavbarFile {
     constructor(menu) {
         this.menu = menu;
@@ -180,9 +183,7 @@ export default class NavbarFile {
         this.getOdeSessionBrokenLinksEvent().then((response) => {
             if (response.responseMessage == 'OK' && response.brokenLinks) {
                 // Show eXe OdeBrokenList modal
-                eXeLearning.app.modals.odebrokenlinks.show(
-                    response.brokenLinks
-                );
+                eXeLearning.app.modals.odebrokenlinks.show(response);
             } else {
                 // Open eXe alert modal
                 eXeLearning.app.modals.alert.show({
@@ -203,13 +204,99 @@ export default class NavbarFile {
      */
     async getOdeSessionBrokenLinksEvent() {
         let sessionId = eXeLearning.app.project.odeSession;
+
+        // Collect all idevices HTML content for validation
+        let idevices = this.collectAllIdevicesHtml();
+
         let params = {
             csv: false,
             odeSessionId: sessionId,
+            idevices: idevices,
         };
         let odeSessionBrokenLinks =
             await eXeLearning.app.api.getOdeSessionBrokenLinks(params);
         return odeSessionBrokenLinks;
+    }
+
+    /**
+     * Collect HTML content from all idevices in the project
+     * @returns {Array} Array of idevice data with HTML content
+     */
+    collectAllIdevicesHtml() {
+        const idevices = [];
+
+        // Check if Yjs project manager is available
+        if (!eXeLearning.app.project._yjsBridge?.structureBinding) {
+            console.warn('[NavbarUtilities] Yjs structure binding not available');
+            return idevices;
+        }
+
+        const structureBinding = eXeLearning.app.project._yjsBridge.structureBinding;
+        const navigation = structureBinding.manager?.getNavigation();
+
+        if (!navigation) {
+            console.warn('[NavbarUtilities] Navigation not available');
+            return idevices;
+        }
+
+        // Iterate through all pages
+        for (let i = 0; i < navigation.length; i++) {
+            const pageMap = navigation.get(i);
+            const pageName = pageMap.get('title') || pageMap.get('name') || '';
+            const blocks = pageMap.get('blocks');
+
+            if (!blocks) continue;
+
+            // Iterate through all blocks in the page
+            for (let j = 0; j < blocks.length; j++) {
+                const blockMap = blocks.get(j);
+                const blockName = blockMap.get('name') || blockMap.get('title') || '';
+                const components = blockMap.get('components');
+
+                if (!components) continue;
+
+                // Iterate through all components (idevices) in the block
+                for (let k = 0; k < components.length; k++) {
+                    const compMap = components.get(k);
+
+                    // Get HTML content (try htmlContent first, then htmlView)
+                    let htmlContent = '';
+                    const rawHtmlContent = compMap.get('htmlContent');
+                    const rawHtmlView = compMap.get('htmlView');
+
+                    if (rawHtmlContent) {
+                        // Y.Text or string
+                        htmlContent = typeof rawHtmlContent.toString === 'function'
+                            ? rawHtmlContent.toString()
+                            : String(rawHtmlContent);
+                    } else if (rawHtmlView) {
+                        htmlContent = String(rawHtmlView);
+                    }
+
+                    // Also check jsonProperties for links (some idevices store URLs there)
+                    const jsonProperties = compMap.get('jsonProperties');
+                    if (jsonProperties) {
+                        // Append JSON properties to HTML for link extraction
+                        htmlContent += ' ' + (typeof jsonProperties === 'string'
+                            ? jsonProperties
+                            : JSON.stringify(jsonProperties));
+                    }
+
+                    if (htmlContent) {
+                        idevices.push({
+                            html: htmlContent,
+                            pageName: pageName,
+                            blockName: blockName,
+                            ideviceType: compMap.get('ideviceType') || '',
+                            order: compMap.get('order') ?? k,
+                        });
+                    }
+                }
+            }
+        }
+
+        console.log(`[NavbarUtilities] Collected ${idevices.length} idevices for link validation`);
+        return idevices;
     }
 
     /**
@@ -228,7 +315,7 @@ export default class NavbarFile {
         this.getOdeSessionUsedFilesEvent().then((response) => {
             if (response.responseMessage == 'OK' && response.usedFiles) {
                 // Show eXe UsedFilesList modal
-                eXeLearning.app.modals.odeusedfiles.show(response.usedFiles);
+                eXeLearning.app.modals.odeusedfiles.show(response);
             } else {
                 // Open eXe alert modal
                 eXeLearning.app.modals.alert.show({
@@ -249,10 +336,15 @@ export default class NavbarFile {
      */
     async getOdeSessionUsedFilesEvent() {
         let sessionId = eXeLearning.app.project.odeSession;
+
+        // Collect all idevices HTML content
+        let idevices = this.collectAllIdevicesHtml();
+
         let params = {
             csv: false,
             odeSessionId: sessionId,
             resourceReport: true,
+            idevices: idevices,
         };
         let odeSessionUsedFiles =
             await eXeLearning.app.api.getOdeSessionUsedFiles(params);
@@ -350,6 +442,13 @@ export default class NavbarFile {
      *
      */
     async previewEvent() {
+        // Try client-side preview first (Yjs mode)
+        if (eXeLearning.app.project?._yjsEnabled) {
+            const handled = await this.openClientPreview();
+            if (handled) return;
+        }
+
+        // Fall back to server-side preview (legacy mode)
         let toastData = {
             title: _('Preview'),
             body: _('Generating preview...'),
@@ -381,5 +480,83 @@ export default class NavbarFile {
         setTimeout(() => {
             toast.remove();
         }, 1000);
+    }
+
+    /**
+     * Client-side website preview using WebsitePreviewExporter (Yjs mode)
+     * Generates multi-page SPA HTML entirely in the browser and opens in new window
+     * @returns {Promise<boolean>} - True if preview was handled client-side
+     */
+    async openClientPreview() {
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        if (!yjsBridge?.documentManager) {
+            console.warn('[NavbarUtilities] Yjs document manager not available for preview');
+            return false;
+        }
+
+        // Check if WebsitePreviewExporter is loaded
+        if (typeof window.WebsitePreviewExporter !== 'function') {
+            console.warn('[NavbarUtilities] WebsitePreviewExporter not loaded');
+            return false;
+        }
+
+        const toastData = {
+            title: _('Preview'),
+            body: _('Generating preview...'),
+            icon: 'preview',
+        };
+        const toast = eXeLearning.app.toasts.createToast(toastData);
+
+        try {
+            // Get the document manager and asset manager
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project?._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
+
+            // Create resource fetcher for server resources (themes, libs, iDevices)
+            let resourceFetcher = null;
+            if (typeof window.ResourceFetcher !== 'undefined') {
+                resourceFetcher = new window.ResourceFetcher();
+            }
+
+            // Create WebsitePreviewExporter (multi-page SPA preview)
+            const exporter = new window.WebsitePreviewExporter(
+                documentManager,
+                assetCache,
+                resourceFetcher,
+                assetManager
+            );
+
+            // Generate preview
+            Logger.log('[NavbarUtilities] Starting client-side website preview...');
+            const result = await exporter.preview();
+
+            if (result.success) {
+                toast.toastBody.innerHTML = _('The preview has been generated.');
+                Logger.log('[NavbarUtilities] Client-side website preview opened successfully');
+            } else {
+                throw new Error(result.error || 'Preview failed');
+            }
+
+        } catch (error) {
+            console.error('[NavbarUtilities] Client-side preview error:', error);
+            toast.toastBody.innerHTML = _(
+                'An error occurred while generating the preview.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: error.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+            return true; // Error shown to user, no server fallback in Yjs mode
+        }
+
+        // Remove toast after delay
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
+
+        return true; // Handled client-side
     }
 }

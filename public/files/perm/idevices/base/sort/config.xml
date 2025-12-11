@@ -3,6 +3,7 @@
     <title>Sort</title>
     <css-class>sort</css-class>
     <category>Interactive activities</category>
+    <export-object>$eXeOrdena</export-object>
     <icon>
         <name>sort-icon</name>
         <url>sort-icon.svg</url>

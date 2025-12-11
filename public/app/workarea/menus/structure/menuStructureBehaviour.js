@@ -4,6 +4,11 @@
  * Set the events in the nav menu
  */
 
+import ImportProgress from '../../interface/importProgress.js';
+
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class MenuStructureBehaviour {
     constructor(structureEngine) {
         this.structureEngine = structureEngine;
@@ -40,6 +45,7 @@ export default class MenuStructureBehaviour {
         this.addEventNavElementOnDbclick();
         this.addEventNavElementIconOnclick();
         this.addEventNavElementOnMenuIconClic();
+        this.addEventNavElementOnAddIconClick();
         this.addDragAndDropFunctionalityToNavElements();
     }
 
@@ -130,6 +136,26 @@ export default class MenuStructureBehaviour {
     }
 
     /**
+     * Add click event to "+" buttons on nodes for adding subpages
+     */
+    addEventNavElementOnAddIconClick() {
+        // Select ALL "+" buttons including the one on root
+        var navAddButtons = this.menuNav.querySelectorAll(
+            `.nav-element > .nav-element-text .node-add-button`
+        );
+        navAddButtons.forEach((element) => {
+            element.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                let parentNodeId = element.getAttribute('data-parentnavid');
+                // For root, parentNodeId='root' should become null (top-level page)
+                if (parentNodeId === 'root') parentNodeId = null;
+                this.showModalNewNode(parentNodeId);
+            });
+        });
+    }
+
+    /**
      *
      */
     addEventNavElementIconOnclick() {
@@ -172,12 +198,16 @@ export default class MenuStructureBehaviour {
     /**
      *
      */
+    /**
+     * Add click event for main "New page" button - always creates at root level
+     */
     addEventNavNewNodeOnclick() {
         this.menuNav
             .querySelector('.button_nav_action.action_add')
             .addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                this.showModalNewNode();
+                // Always create at root level (pass null explicitly)
+                this.showModalNewNode(null);
             });
     }
 
@@ -196,28 +226,16 @@ export default class MenuStructureBehaviour {
     }
 
     /**
-     *
+     * Add click event to delete node button
+     * Uses Yjs Awareness to check for other users on the page
      */
     addEventNavRemoveNodeOnclick() {
-        let params = { odeSessionId: eXeLearning.app.project.odeSession };
         this.menuNav
             .querySelector('.button_nav_action.action_delete')
             .addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
-                    eXeLearning.app.api
-                        .postCheckUsersOdePage(params)
-                        .then((response) => {
-                            if (response.isAvailable == true) {
-                                this.showModalRemoveNode();
-                            } else {
-                                eXeLearning.app.modals.alert.show({
-                                    title: _('multiple users on page'),
-                                    body: _(response.responseMessage),
-                                    contentId: 'error',
-                                });
-                            }
-                        });
+                    this.showModalRemoveNode();
                 }
             });
     }
@@ -248,17 +266,14 @@ export default class MenuStructureBehaviour {
         inputUpload.classList.add('local-ode-file-upload-input', 'd-none');
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
-        inputUpload.setAttribute(
-            'accept',
-            '.elpx,.block,.idevice,.elp,.zip,.epub'
-        );
+        inputUpload.setAttribute('accept', '.elpx,.block,.idevice,.elp,.zip');
         inputUpload.id = 'local-ode-file-upload';
         let label = document.createElement('label');
         label.setAttribute('for', inputUpload.id);
         label.classList.add('visually-hidden');
         label.textContent = _('Upload iDevice file');
 
-        inputUpload.addEventListener('change', (e) => {
+        inputUpload.addEventListener('change', async (e) => {
             let uploadOdeFile = document.querySelector(
                 '.local-ode-file-upload-input'
             );
@@ -274,74 +289,57 @@ export default class MenuStructureBehaviour {
             const isProjectFile =
                 fileName.endsWith('.elpx') ||
                 fileName.endsWith('.elp') ||
-                fileName.endsWith('.zip') ||
-                fileName.endsWith('.epub');
+                fileName.endsWith('.zip');
 
             if (isProjectFile) {
-                const refreshStructure = (targetId = false) => {
-                    if (
-                        this.structureEngine &&
-                        typeof this.structureEngine
-                            .resetDataAndStructureData === 'function'
-                    ) {
-                        this.structureEngine.resetDataAndStructureData(
-                            targetId
-                        );
-                    } else {
-                        eXeLearning.app.project.openLoad();
-                    }
-                };
-
+                // Get selected node to use as parent
                 const selectedNav =
                     this.nodeSelected &&
                     this.nodeSelected.getAttribute('nav-id');
-                const targetIsRoot = !selectedNav || selectedNav === 'root';
+                // If root or no selection, parentId is null (import at root level)
+                const parentId = (!selectedNav || selectedNav === 'root') ? null : selectedNav;
 
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append(
-                    'odeSessionId',
-                    eXeLearning.app.project.odeSession
-                );
+                Logger.log('[MenuStructure] Importing via Yjs, parentId:', parentId);
 
-                if (targetIsRoot) {
-                    eXeLearning.app.api
-                        .postImportElpToRoot(formData)
-                        .then((response) => {
-                            if (response.responseMessage === 'OK') {
-                                refreshStructure(false);
-                            } else if (response.responseMessage) {
-                                eXeLearning.app.modals.alert.show({
-                                    title: _('Error'),
-                                    body: response.responseMessage,
-                                });
-                            }
-                        })
-                        .catch(() => {
-                            eXeLearning.app.modals.alert.show({
-                                title: _('Error'),
-                                body: _('Unexpected error importing file.'),
-                            });
-                        });
-                } else {
-                    eXeLearning.app.api
-                        .postImportElpAsChild(selectedNav, formData)
-                        .then((response) => {
-                            if (response.responseMessage === 'OK') {
-                                refreshStructure(selectedNav);
-                            } else if (response.responseMessage) {
-                                eXeLearning.app.modals.alert.show({
-                                    title: _('Error'),
-                                    body: response.responseMessage,
-                                });
-                            }
-                        })
-                        .catch(() => {
-                            eXeLearning.app.modals.alert.show({
-                                title: _('Error'),
-                                body: _('Unexpected error importing file.'),
-                            });
-                        });
+                // Show inline progress
+                const importProgress = new ImportProgress();
+                importProgress.show();
+
+                try {
+                    // Get Yjs bridge
+                    const bridge = window.YjsModules?.getBridge();
+                    if (!bridge || !bridge.documentManager || !bridge.initialized) {
+                        throw new Error(_('Please wait for the project to fully load before importing.'));
+                    }
+
+                    // Use centralized import method with progress callback
+                    const stats = await bridge.importFromElpx(file, {
+                        clearExisting: false,  // Don't clear, we're adding to existing
+                        parentId: parentId,    // Import as child of selected node
+                        onProgress: (progress) => importProgress.update(progress)
+                    });
+
+                    Logger.log('[MenuStructure] Import complete:', stats);
+
+                    // Hide progress
+                    importProgress.hide();
+
+                    // Refresh structure
+                    if (this.structureEngine &&
+                        typeof this.structureEngine.resetDataAndStructureData === 'function') {
+                        this.structureEngine.resetDataAndStructureData(parentId || false);
+                    } else {
+                        eXeLearning.app.project.openLoad();
+                    }
+
+                } catch (err) {
+                    console.error('[MenuStructure] Import error:', err);
+                    // Ensure progress is hidden on error
+                    importProgress.hide();
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Error'),
+                        body: err?.message || _('Unexpected error importing file.'),
+                    });
                 }
 
                 return;
@@ -487,10 +485,16 @@ export default class MenuStructureBehaviour {
     /**
      *
      */
-    showModalNewNode() {
-        let parentNodeId = this.nodeSelected
-            ? this.nodeSelected.getAttribute('nav-id')
-            : null;
+    /**
+     * Show modal to create a new page/subpage
+     * @param {string|null} explicitParentId - If provided, use this as parent. If undefined, use selected node.
+     */
+    showModalNewNode(explicitParentId) {
+        // If explicitParentId is explicitly passed (including null), use it
+        // Otherwise fall back to selected node behavior
+        let parentNodeId = explicitParentId !== undefined
+            ? explicitParentId
+            : (this.nodeSelected ? this.nodeSelected.getAttribute('nav-id') : null);
         let bodyText = _('Name');
         let bodyInput = `<input id="input-new-node" class="exe-input" type='text' value='' >`;
         let body = `<p>${bodyText}:</p><p>${bodyInput}</p>`;
@@ -607,21 +611,87 @@ export default class MenuStructureBehaviour {
     }
 
     /**
-     *
+     * Show confirmation modal for removing a node
+     * Checks for other users via Yjs Awareness and shows appropriate warning
      */
     showModalRemoveNode() {
-        let modalConfirm = eXeLearning.app.modals.confirm;
-        modalConfirm.show({
-            title: _('Delete page'),
+        const nodeId = this.nodeSelected.getAttribute('nav-id');
+        const pageId = this.nodeSelected.getAttribute('page-id') || nodeId;
+        const nodeName = this.nodeSelected.querySelector('.node-text-span')?.textContent || _('this page');
+
+        // Check for other users on this page or descendants using Yjs
+        const affectedUsers = this._getAffectedUsersForDeletion(pageId);
+        const hasDescendants = this._nodeHasDescendants(nodeId);
+
+        let modalBody = '';
+        let modalTitle = _('Delete page');
+
+        if (affectedUsers.length > 0) {
+            // Build warning message with user names
+            const userNames = affectedUsers.map(u => u.name || _('Unknown user')).join(', ');
+            modalBody = `<p><strong>${_('Warning')}:</strong> ${affectedUsers.length === 1
+                ? _('Another user is viewing this page or its children')
+                : _('Other users are viewing this page or its children')}:</p>
+                <p class="text-primary fw-bold">${userNames}</p>
+                <p>${_('They will be automatically redirected to the parent page.')}</p>
+                <p>${_('Do you want to delete')} "<strong>${nodeName}</strong>"${hasDescendants ? ' ' + _('and all its children') : ''}?</p>`;
+        } else if (hasDescendants) {
+            modalBody = `<p>${_('Do you want to delete')} "<strong>${nodeName}</strong>" ${_('and all its children')}?</p>
+                <p class="text-muted small">${_('You can undo this action.')}</p>`;
+        } else {
+            modalBody = `<p>${_('Do you want to delete')} "<strong>${nodeName}</strong>"?</p>
+                <p class="text-muted small">${_('You can undo this action.')}</p>`;
+        }
+
+        eXeLearning.app.modals.confirm.show({
+            title: modalTitle,
             contentId: 'delete-node-modal',
-            body: _('Do you want to delete the page? This cannot be undone.'),
-            confirmButtonText: _('Yes'),
+            body: modalBody,
+            confirmButtonText: _('Delete'),
+            cancelButtonText: _('Cancel'),
+            focusCancelButton: affectedUsers.length > 0, // Focus cancel if users affected
             confirmExec: () => {
-                this.structureEngine.removeNodeCompleteAndReload(
-                    this.nodeSelected.getAttribute('nav-id')
-                );
+                this.structureEngine.removeNodeCompleteAndReload(nodeId);
             },
         });
+    }
+
+    /**
+     * Get other users affected by deleting a node (on page or descendants)
+     * @param {string} pageId - Page ID to check
+     * @returns {Array} Array of affected user objects
+     */
+    _getAffectedUsersForDeletion(pageId) {
+        try {
+            const project = eXeLearning?.app?.project;
+            if (!project?._yjsEnabled || !project?._yjsBridge) return [];
+
+            const documentManager = project._yjsBridge.getDocumentManager();
+            if (!documentManager) return [];
+
+            const structureData = this.structureEngine.data || {};
+            const result = documentManager.getOtherUsersOnPageAndDescendants(pageId, structureData);
+
+            return result.allAffectedUsers || [];
+        } catch (error) {
+            console.warn('[MenuStructureBehaviour] Failed to get affected users:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Check if a node has any descendants
+     * @param {string} nodeId - Node ID to check
+     * @returns {boolean}
+     */
+    _nodeHasDescendants(nodeId) {
+        const structureData = this.structureEngine.data || {};
+        for (const [id, node] of Object.entries(structureData)) {
+            if (node.parent === nodeId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -790,9 +860,12 @@ export default class MenuStructureBehaviour {
      */
     async selectFirst() {
         let navElements = this.menuNav.querySelectorAll('.nav-element');
-        if (navElements.length >= 1) {
+        if (navElements.length >= 1 && navElements[0]) {
             return await this.selectNode(navElements[0]);
         }
+        // No elements found - return null gracefully
+        console.warn('[MenuStructureBehaviour] No nav elements found to select');
+        return null;
     }
 
     /**
@@ -802,6 +875,11 @@ export default class MenuStructureBehaviour {
      * @returns {Promise<Element>}
      */
     async selectNode(element) {
+        // Guard against null/undefined element
+        if (!element) {
+            console.warn('[MenuStructureBehaviour] selectNode called with null element');
+            return Promise.resolve(null);
+        }
         eXeLearning.app.project.unlockIdevices();
         return new Promise(async (resolve, reject) => {
             let response = false;
@@ -821,11 +899,28 @@ export default class MenuStructureBehaviour {
                         true,
                         element
                     );
+
+                // Boost priority for assets on this page (P2P priority queue)
+                const pageId = element.getAttribute('nav-id');
+                if (pageId && eXeLearning.app.project.bridge) {
+                    eXeLearning.app.project.bridge.onPageNavigation(pageId);
+                }
+
+                // ALWAYS apply visual selection (even if idevices load fails for new Yjs nodes)
+                Logger.log('[MenuStructureBehaviour] About to setNodeSelected, element nav-id:', element?.getAttribute('nav-id'));
+                this.deselectNodes();
+                this.setNodeSelected(element);
+                Logger.log('[MenuStructureBehaviour] setNodeSelected completed, nodeSelected:', this.nodeSelected?.getAttribute('nav-id'));
+                response = element;
+
+                // Scroll to top when changing pages (instant, no animation)
+                const nodeContentContainer = document.getElementById('node-content-container');
+                if (nodeContentContainer) {
+                    nodeContentContainer.scrollTo({ top: 0, behavior: 'instant' });
+                }
+
                 if (loadPageProcessOk) {
-                    this.deselectNodes();
-                    this.setNodeSelected(element);
                     time = 100;
-                    response = element;
                 }
                 if (element?.getAttribute('page-id') === 'root') {
                     // Collaborative
@@ -998,20 +1093,60 @@ export default class MenuStructureBehaviour {
      * @param {Node} element
      */
     setNodeSelected(element) {
+        Logger.log('[MenuStructureBehaviour] setNodeSelected START, element:', element?.getAttribute('nav-id'));
         this.nodeSelected = element;
         this.nodeSelected?.classList.add('selected'); // Collaborative
+        Logger.log('[MenuStructureBehaviour] Added selected class, classList:', this.nodeSelected?.classList.toString());
         this.structureEngine.nodeSelected = this.nodeSelected;
         this.setNodeIdToNodeContentElement();
         this.createAddTextBtn();
         this.enabledActionButtons();
 
         // Testing: explicit selected state on nav nodes and ARIA sync
+        // Compare by nav-id instead of object reference (elements may be recreated by compose())
         const allNodes = this.menuNav.querySelectorAll('.nav-element[nav-id]');
+        const selNavId = this.nodeSelected?.getAttribute('nav-id');
+        Logger.log('[MenuStructureBehaviour] Found', allNodes.length, 'nodes to update data-selected, selNavId:', selNavId);
         allNodes.forEach((n) => {
-            const isSel = n === this.nodeSelected;
+            const isSel = n.getAttribute('nav-id') === selNavId;
             n.setAttribute('data-selected', isSel ? 'true' : 'false');
             n.setAttribute('aria-selected', isSel ? 'true' : 'false');
+            // Also update CSS class (elements may be recreated by compose())
+            if (isSel) {
+                n.classList.add('selected');
+            } else {
+                n.classList.remove('selected');
+            }
         });
+        Logger.log('[MenuStructureBehaviour] setNodeSelected END, nodeSelected data-selected:', this.nodeSelected?.getAttribute('data-selected'));
+
+        // Update Yjs Awareness with selected page for user presence
+        this._updateAwarenessSelectedPage();
+    }
+
+    /**
+     * Update Yjs Awareness with the currently selected page
+     * This allows other users to see which page we're viewing
+     */
+    _updateAwarenessSelectedPage() {
+        try {
+            const project = eXeLearning?.app?.project;
+            if (!project?._yjsEnabled || !project?._yjsBridge) return;
+
+            const documentManager = project._yjsBridge.getDocumentManager();
+            if (!documentManager) return;
+
+            // Get the pageId from the selected node
+            let pageId = null;
+            if (this.nodeSelected) {
+                pageId = this.nodeSelected.getAttribute('page-id') ||
+                         this.nodeSelected.getAttribute('nav-id');
+            }
+
+            documentManager.setSelectedPage(pageId);
+        } catch (error) {
+            console.warn('[MenuStructureBehaviour] Failed to update awareness:', error);
+        }
     }
 
     /**
@@ -1076,62 +1211,63 @@ export default class MenuStructureBehaviour {
 
     /**
      * Enable action buttons by node selected
-     *
+     * Movement buttons are enabled/disabled based on actual movement possibilities
      */
     enabledActionButtons() {
         this.disableActionButtons();
-        if (this.nodeSelected) {
-            let node = this.structureEngine.getNode(
-                this.nodeSelected.getAttribute('nav-id')
-            );
-            if (node) {
-                if (node.id == 'root') {
-                    // Enabled only "New node" button
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_add'
-                    ).disabled = false;
-                } else {
-                    // Enabled all buttons
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_add'
-                    ).disabled = false;
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_properties'
-                    ).disabled = false;
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_delete'
-                    ).disabled = false;
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_clone'
-                    ).disabled = false;
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_import_idevices'
-                    ).disabled = false;
-                    //this.menuNav.querySelector(".button_nav_action.action_check_broken_links").disabled = false;
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_move_prev'
-                    ).disabled = false;
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_move_next'
-                    ).disabled = false;
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_move_up'
-                    ).disabled = false;
-                    this.menuNav.querySelector(
-                        '.button_nav_action.action_move_down'
-                    ).disabled = false;
-                }
-            }
+        if (!this.nodeSelected) return;
+
+        const nodeId = this.nodeSelected.getAttribute('nav-id');
+        const node = this.structureEngine.getNode(nodeId);
+        if (!node) return;
+
+        // "Add" button is always enabled
+        this.menuNav.querySelector('.button_nav_action.action_add').disabled = false;
+
+        if (node.id === 'root') {
+            // Root node: only "Add" is enabled
+            return;
+        }
+
+        // Non-root nodes: enable standard buttons
+        this.menuNav.querySelector('.button_nav_action.action_properties').disabled = false;
+        this.menuNav.querySelector('.button_nav_action.action_delete').disabled = false;
+        this.menuNav.querySelector('.button_nav_action.action_clone').disabled = false;
+        this.menuNav.querySelector('.button_nav_action.action_import_idevices').disabled = false;
+
+        // Movement buttons: enable based on actual possibilities via Yjs
+        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
+        if (binding) {
+            // ↑ Move up: enabled if has previous sibling
+            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = !binding.canMoveUp(nodeId);
+            // ↓ Move down: enabled if has next sibling
+            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = !binding.canMoveDown(nodeId);
+            // ← Move left: enabled if has parent (not at root level)
+            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = !binding.canMoveLeft(nodeId);
+            // → Move right: enabled if has previous sibling to become child of
+            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = !binding.canMoveRight(nodeId);
+        } else {
+            // Fallback: enable all movement buttons
+            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = false;
+            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = false;
+            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = false;
+            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = false;
         }
     }
 
     /**
-     * Disable all action buttons
-     *
+     * Disable all action buttons (including movement buttons)
      */
     disableActionButtons() {
+        // Disable action buttons (delete, clone, import, etc.)
         this.menuNav
             .querySelectorAll('#nav_actions .button_nav_action')
+            .forEach((button) => {
+                button.disabled = true;
+            });
+        // Disable movement buttons (up, down, left, right)
+        this.menuNav
+            .querySelectorAll('.buttons_action_container_right .button_nav_action')
             .forEach((button) => {
                 button.disabled = true;
             });

@@ -120,7 +120,7 @@ export default class modalTemplateSelection extends Modal {
             const blob = await response.blob();
 
             // Use a generic filename to avoid confusion
-            const genericFilename = 'New Project.elpx';
+            const genericFilename = _('Untitled document') + '.elpx';
             const file = new File([blob], genericFilename, {
                 type: 'application/octet-stream',
             });

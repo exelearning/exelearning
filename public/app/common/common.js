@@ -621,33 +621,6 @@ var $exeDevices = {
                     }
                 },
 
-                // Nueva función: Obtener puntuación de una actividad específica desde suspend_data
-                getActivityScore: function (ideviceNumber) {
-                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
-                        return 0;
-                    }
-
-                    const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
-
-                    if (lmsData[ideviceNumber]) {
-                        // Score está guardado en escala 0-1000, convertir a 0-10
-                        return (lmsData[ideviceNumber].score / 10) || 0;
-                    }
-
-                    return 0;
-                },
-
-                // Nueva función: Obtener puntuación total del nodo desde cmi.core.score.raw
-                getTotalScore: function () {
-                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
-                        return 0;
-                    }
-
-                    const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
-                    return parseFloat(rawScore) || 0;
-                },
-
                 endScorm: function (scormgame) {
                     /*if (scormgame && typeof scormgame.quit == "function") scormgame.quit();*/
                 },
@@ -681,27 +654,13 @@ var $exeDevices = {
                 },
 
                 createScoreScormHtml: function (game) {
-                    let $exeScoreNode = $("#exeScoreNode");
-                    let initialScore = 0;
-                    
-                    if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
-                        const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
-                        if (rawScore && rawScore !== "" && rawScore !== "0") {
-                            initialScore = parseFloat(rawScore) || 0;
-                        } else {
-                            const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                            if (suspendData && suspendData.trim() !== "") {
-                                const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
-                                initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
-                            }
-                        }
-                    }
+                    const $exeScoreNode = $("#exeScoreNode");
 
                     if ($exeScoreNode.length === 0) {
                         const newScoreNodeHtml = `
                                     <div id="exeScoreNode" class="text-end p-2">
                                         <div id="eXeScoreNodeScore" class="bg-success text-white d-inline-block px-2 py-1">
-                                            ${game.msgs.msgYouScore}: ${initialScore}/100
+                                            ${game.msgs.msgYouScore}: 0/100
                                         </div>
                                     </div>
                                 `;
@@ -715,8 +674,6 @@ var $exeDevices = {
                         if ($page.length > 0) {
                             $page.prepend(newScoreNodeHtml);
                         }
-                    } else {
-                        $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${initialScore}/100`);
                     }
                 },
 
@@ -842,23 +799,14 @@ var $exeDevices = {
 
                         lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
 
-                        if (lmsData[game.ideviceNumber]) {
-                            game.previousScore = (lmsData[game.ideviceNumber].score / 10).toFixed(2);
-                            // Actualizar el score node con la puntuación recuperada
-                            const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
-                            if (totalScore > 0) {
-                                $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
-                            }
-                        } else {
-                            lmsData[game.ideviceNumber] = {
-                                title: game.title,
-                                score: 0,
-                                weighted: game.weighted
-                            };
+                        lmsData[game.ideviceNumber] = {
+                            title: game.title,
+                            score: lmsData[game.ideviceNumber]?.score || (game.scorerp * 10),
+                            weighted: game.weighted
+                        };
 
-                            const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
-                            pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
-                        }
+                        const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
+                        pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
                     }
 
                     $exeDevices.iDevice.gamification.scorm.updateScormNew(game, lmsData);
@@ -1018,7 +966,7 @@ var $exeDevices = {
                     if (newFinalScore >= 50) {
                         pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
                     } else {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
+                        pipwerks.SCORM.set("cmi.core.lesson_status", "incomplete");
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
@@ -1319,7 +1267,7 @@ var $exeDevices = {
                     }
 
                     if (options.defer) {
-                        // Espera a que termine la animación/visibilidad de la slide
+                        // Wait for slide animation/visibility to complete
                         requestAnimationFrame(function () { requestAnimationFrame(typesetNow); });
                     } else {
                         typesetNow();
@@ -1564,64 +1512,6 @@ var $exeDevices = {
             },
 
             helpers: {
-                sanitizeJSONString: function (jsonString) {
-                    if (typeof jsonString !== 'string' || jsonString === '') return jsonString;
-
-                    let inString = false;
-                    let result = '';
-
-                    for (let i = 0; i < jsonString.length; i++) {
-                        const ch = jsonString[i];
-
-                        if (!inString) {
-                            if (ch === '"') {
-                                inString = true;
-                            }
-                            result += ch;
-                            continue;
-                        }
-
-                        if (ch === '\\') {
-                            if (i + 1 < jsonString.length) {
-                                result += ch + jsonString[i + 1];
-                                i++;
-                            } else {
-                                result += ch;
-                            }
-                            continue;
-                        }
-
-                        if (ch === '"') {
-                            inString = false;
-                            result += ch;
-                            continue;
-                        }
-
-                        const code = ch.charCodeAt(0);
-
-                        if (code === 0x08) {
-                            result += '\\b';
-                        } else if (code === 0x09) {
-                            result += '\\t';
-                        } else if (code === 0x0a) {
-                            result += '\\n';
-                        } else if (code === 0x0c) {
-                            result += '\\f';
-                        } else if (code === 0x0d) {
-                            result += '\\r';
-                        } else if (code === 0x2028 || code === 0x2029) {
-                            const hex = code.toString(16).padStart(4, '0');
-                            result += `\\u${hex}`;
-                        } else if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) {
-                            const hex = code.toString(16).padStart(4, '0');
-                            result += `\\u${hex}`;
-                        } else {
-                            result += ch;
-                        }
-                    }
-
-                    return result;
-                },
                 isJsonString: function (str) {
                     if (typeof str !== 'string') return false;
                     str = str.trim();

@@ -3,6 +3,7 @@
 	<title>Math problems</title>
 	<css-class>mathproblems</css-class>
 	<category>Science</category>
+	<export-object>$eXeMathProblems</export-object>
 	<icon>
 	    <name>mathproblems-icon</name>
             <url>mathproblems-icon.svg</url>

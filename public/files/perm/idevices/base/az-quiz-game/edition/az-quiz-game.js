@@ -467,7 +467,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>');
@@ -1400,8 +1405,8 @@ var $exeDevice = {
             }
         });
 
-        // Uso de delegación para soportar elementos añadidos tras updateFieldGame
-        // Handler con namespace para poder desregistrar fácilmente y evitar duplicados.
+        // Use delegation to support elements added after updateFieldGame
+        // Handler with namespace to easily unregister and avoid duplicates.
         $(document)
             .off('click.roscoSelectImg')
             .on(
@@ -1415,7 +1420,7 @@ var $exeDevice = {
                     const $panel = $container.children('.roscoImageBarEdition');
                     if (!$panel.length) return;
 
-                    // Evita cola de animaciones si se hace clic repetidamente rápido.
+                    // Prevent animation queue if clicking repeatedly fast.
                     $panel.stop(true, true).slideToggle(180);
 
                     const img = $panel.find('.roscoHomeImageEdition');
@@ -1431,7 +1436,7 @@ var $exeDevice = {
                     $exeDevice.stopSound();
                     $exeDevice.showImage(img, url, x, y, alt, 0);
 
-                    // Sincroniza icono activo/inactivo también aquí
+                    // Sync active/inactive icon here too
                     const hasImage =
                         $.trim($panel.find('.roscoURLImageEdition').val() || '')
                             .length > 0;
@@ -1532,7 +1537,7 @@ var $exeDevice = {
             $exeDevice.modeBoard = $(this).is(':checked');
         });
 
-        // Delegación para soportar imágenes añadidas dinámicamente y evitar bindings duplicados
+        // Delegation to support dynamically added images and avoid duplicate bindings
         $(document)
             .off('click.roscoImg')
             .on(

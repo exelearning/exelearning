@@ -3,6 +3,9 @@ import IdevicesEngine from './idevices/idevicesEngine.js';
 import StructureEngine from './structure/structureEngine.js';
 import RealTimeEventNotifier from '../../RealTimeEventNotifier/RealTimeEventNotifier.js';
 
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class projectManager {
     constructor(app) {
         this.app = app;
@@ -12,23 +15,28 @@ export default class projectManager {
         this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
         this.clientIntervalUpdate = eXeLearning.config.clientIntervalUpdate;
         this.syncIntervalTime = 250;
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                this.app.eXeLearning.mercure.url,
-                this.app.eXeLearning.mercure.jwtSecretKey
-            );
-            this.eventSource;
-        }
+        // if (!this.offlineInstallation) {
+        //     this.realTimeEventNotifier = new RealTimeEventNotifier(
+        //         this.app.eXeLearning.mercure.url,
+        //         this.app.eXeLearning.mercure.jwtSecretKey
+        //     );
+        //     this.eventSource;
+        // }
 
         // Collaborative
         this.activeLocks = new Map(); // Map<pageId, { user, gravatar }>
+
+        // Yjs collaborative editing
+        this._yjsEnabled = false;
+        this._yjsBridge = null;
+        this._yjsBindings = new Map(); // TinyMCE bindings by componentId
     }
 
     /**
      *
      */
     async load() {
-        console.log('public/app/workarea/project/projectManager.js: load');
+        Logger.log('public/app/workarea/project/projectManager.js: load');
         // Api params
         await this.loadCurrentProject();
         // Load project properties
@@ -38,8 +46,24 @@ export default class projectManager {
         );
         // Compose and initialized interface
         await this.loadInterface();
-        // Load structure data
+
+        // Initialize Yjs collaborative editing BEFORE loading structure
+        // This ensures Yjs is the source of truth for document structure
+        await this.initializeYjs();
+
+        // Load project visibility for share button
+        if (this.app.interface?.shareButton) {
+            this.app.interface.shareButton.loadVisibilityFromProject();
+        }
+
+        // Load structure data (from Yjs if enabled, otherwise from API)
         await this.loadStructureData();
+
+        // Subscribe structure to Yjs changes if enabled
+        if (this._yjsEnabled && this.structure) {
+            this.structure.subscribeToYjsChanges();
+        }
+
         // Initialized menus
         await this.loadMenus();
         // Load modals content
@@ -48,7 +72,7 @@ export default class projectManager {
         this.ideviceEngineBehaviour();
         // Legacy idevice functions
         this.compatibilityLegacy();
-        // Inicialize
+        // Initialize
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
@@ -56,8 +80,10 @@ export default class projectManager {
         //this.sortBlocksById(true);
         // Set offline atributtes
         this.setInstallationTypeAttribute();
-        // Run autosave
-        this.generateIntervalAutosave();
+        // Run autosave (disabled when Yjs is enabled - it auto-saves)
+        if (!this._yjsEnabled) {
+            this.generateIntervalAutosave();
+        }
         // Run check ode updates
         //this.generateIntervalCheckOdeUpdates();
         //Remove previous autosaves
@@ -69,10 +95,437 @@ export default class projectManager {
     }
 
     /**
+     * Initialize Yjs collaborative editing system
+     * This enables real-time collaboration when Yjs modules are loaded
+     * Project ID comes from URL (?project=<id>) set by backend
+     */
+    async initializeYjs() {
+        // Check if Yjs modules are available
+        if (!window.YjsLoader && !window.YjsModules) {
+            Logger.log('[ProjectManager] Yjs not available, using legacy mode');
+            return;
+        }
+
+        try {
+            // Load Yjs modules if loader is available
+            if (window.YjsLoader && !window.YjsModules?.YjsProjectBridge) {
+                Logger.log('[ProjectManager] Loading Yjs modules...');
+                await window.YjsLoader.load();
+            }
+
+            // Apply mixin if not already applied
+            if (window.YjsProjectManagerMixin && !this.enableYjsMode) {
+                window.YjsProjectManagerMixin.applyMixin(this);
+            }
+
+            // Get auth token (optional - enables collaborative mode)
+            const authToken = this.app?.auth?.getToken?.() ||
+                              eXeLearning?.symfony?.token ||
+                              localStorage.getItem('authToken');
+
+            // Determine if we should use local-only mode (no WebSocket sync)
+            // Note: WebSocket works without auth in development - offline mode only for explicit offline installations
+            const localOnlyMode = this.offlineInstallation === true;
+
+            if (localOnlyMode) {
+                Logger.log('[ProjectManager] Yjs local-only mode (offline installation)');
+            } else {
+                Logger.log('[ProjectManager] Yjs collaborative mode (WebSocket + IndexedDB)');
+            }
+
+            // Get project ID - should already be set by loadCurrentProject()
+            // from URL parameter (?project=<id>)
+            const projectId = this.yjsProjectId || window.eXeLearning?.projectId;
+
+            if (!projectId) {
+                console.error('[ProjectManager] No project ID available - this should not happen');
+                console.error('[ProjectManager] Make sure to access workarea via /workarea?project=<id>');
+                return;
+            }
+
+            // Store project ID for reference
+            this.yjsProjectId = projectId;
+
+            // Detect if this is a newly created project (from URL parameter &new=1)
+            const urlParams = new URLSearchParams(window.location.search);
+            const isNewProject = urlParams.get('new') === '1';
+
+            // Enable Yjs mode
+            if (this.enableYjsMode) {
+                Logger.log('[ProjectManager] Enabling Yjs mode for project:', projectId, isNewProject ? '(new)' : '(existing)');
+                await this.enableYjsMode(projectId, authToken, {
+                    treeContainerId: 'structure-menu-nav',
+                    enableWebSocket: !localOnlyMode,  // Only enable WebSocket with auth
+                    enableIndexedDB: true,
+                    offline: localOnlyMode,
+                    isNewProject: isNewProject,  // Skip server load for new projects
+                });
+                Logger.log('[ProjectManager] Yjs collaborative editing enabled');
+
+                // Clean up URL parameter after use (cleaner URL)
+                if (isNewProject) {
+                    const cleanUrl = window.location.pathname + '?project=' + projectId;
+                    window.history.replaceState({}, '', cleanUrl);
+                }
+
+                // Check if we need to import an ELP file
+                await this.checkAndImportElp();
+            }
+        } catch (error) {
+            console.warn('[ProjectManager] Failed to initialize Yjs:', error);
+            // Continue with legacy mode
+        }
+    }
+
+    /**
+     * Reinitialize Yjs with a new project (without page reload)
+     * Used when opening a new ELP file to switch to a different project
+     * @param {string} projectUuid - The new project UUID
+     * @param {Object} options - Options
+     * @param {boolean} options.isNewProject - Skip server load for new projects
+     */
+    async reinitializeWithProject(projectUuid, options = {}) {
+        Logger.log('[ProjectManager] Reinitializing with new project:', projectUuid);
+
+        // Disconnect existing Yjs connection if present
+        if (this._yjsBridge) {
+            Logger.log('[ProjectManager] Disconnecting existing Yjs bridge...');
+            try {
+                await this._yjsBridge.disconnect();
+            } catch (err) {
+                console.warn('[ProjectManager] Error disconnecting Yjs:', err);
+            }
+            this._yjsBridge = null;
+        }
+
+        // Clear existing Yjs bindings
+        this._yjsBindings.clear();
+
+        // Update project ID FIRST (before resetProject which may trigger observers)
+        this.yjsProjectId = projectUuid;
+        window.eXeLearning.projectId = projectUuid;
+        this.odeId = projectUuid;
+
+        // Reinitialize Yjs BEFORE resetProject (so Yjs bindings work)
+        const YjsProjectBridge = window.YjsModules?.YjsProjectBridge;
+        if (!YjsProjectBridge) {
+            throw new Error('YjsProjectBridge not available');
+        }
+
+        // Get auth token
+        const authToken = this.app?.auth?.getToken?.() ||
+                          eXeLearning?.symfony?.token ||
+                          localStorage.getItem('authToken');
+
+        // Determine mode
+        const localOnlyMode = this.offlineInstallation === true;
+
+        // Create new bridge (constructor takes app, not projectId)
+        this._yjsBridge = new YjsProjectBridge(this.app);
+
+        // Initialize the bridge with projectUuid
+        await this._yjsBridge.initialize(projectUuid, authToken, {
+            enableWebSocket: !localOnlyMode,
+            enableIndexedDB: true,
+            offline: localOnlyMode,
+            isNewProject: options.isNewProject,
+        });
+
+        this._yjsEnabled = true;
+        Logger.log('[ProjectManager] Yjs reinitialized for project:', projectUuid);
+
+        // Reset project state AFTER Yjs is initialized (structure loading needs Yjs)
+        this.resetProject();
+    }
+
+    /**
+     * Import an ELP file directly (file already in memory)
+     * @param {File} file - The ELP file to import
+     * @param {Object} options - Import options
+     * @param {Function} options.onProgress - Progress callback function
+     * @returns {Promise<Object>} - Import statistics
+     */
+    async importElpDirectly(file, options = {}) {
+        Logger.log('[ProjectManager] Importing ELP directly from memory:', file.name);
+
+        if (!this._yjsBridge) {
+            throw new Error('Yjs bridge not initialized');
+        }
+
+        // Use centralized import method (handles asset announcement)
+        // Pass options through to allow onProgress callback
+        const stats = await this.importFromElpxViaYjs(file, options);
+
+        Logger.log('[ProjectManager] Direct import complete:', stats);
+
+        // Save to server
+        try {
+            await this._yjsBridge.documentManager.saveToServer();
+            Logger.log('[ProjectManager] Document saved to server after direct import');
+        } catch (saveError) {
+            console.warn('[ProjectManager] Failed to save to server:', saveError);
+        }
+
+        return stats;
+    }
+
+    /**
+     * Refresh UI after a direct ELP import or new project creation
+     * This is a lightweight refresh that doesn't clear Yjs data
+     * Used instead of openLoad() to preserve imported content
+     */
+    async refreshAfterDirectImport() {
+        Logger.log('[ProjectManager] Refreshing UI after direct import...');
+
+        // Close any open modals
+        eXeLearning.app.modals.openuserodefiles.close();
+
+        // Reload structure menu from Yjs (without API call)
+        // Structure is already in Yjs, just need to render it
+        if (this.structure) {
+            // Get fresh data from Yjs and reload the menu
+            if (this.structure.isYjsEnabled && this.structure.isYjsEnabled()) {
+                const structureData = this.structure.getStructureFromYjs();
+                Logger.log('[ProjectManager] Structure data from Yjs:', structureData?.length, 'pages');
+                this.structure.processStructureData(structureData);
+            }
+            await this.structure.reloadStructureMenu();
+        }
+
+        // Update title from properties in Yjs
+        if (this.app?.interface?.odeTitleElement) {
+            this.app.interface.odeTitleElement.setTitle();
+        }
+
+        // Reload properties form if open
+        if (this.properties) {
+            this.properties.loadPropertiesFromYjs();
+        }
+
+        // Select first page and load its content
+        await this.initialiceProject();
+
+        // Show workarea
+        this.showScreen();
+
+        Logger.log('[ProjectManager] UI refreshed after direct import');
+    }
+
+    /**
+     * Check URL for import parameter and import ELP file if present
+     * Uses ElpxImporter to import the ELP content into the Yjs document
      *
+     * Server-side mode: &import=/path/to/file.elp - fetches file from server
+     * (Client-side import now uses direct in-memory processing via reinitializeWithProject)
+     */
+    async checkAndImportElp() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const importPath = urlParams.get('import');
+
+        if (!importPath) {
+            Logger.log('[ProjectManager] No import parameter found');
+            return;
+        }
+
+        Logger.log('[ProjectManager] Import parameter detected:', importPath);
+
+        try {
+            // Show loading indicator
+            if (this.app?.modals?.loader) {
+                this.app.modals.loader.show({ message: _('Importing project...') });
+            }
+
+            // Add basePath to import path if it starts with / (relative server path)
+            const basePath = window.eXeLearning?.symfony?.basePath || '';
+            const fetchPath = importPath.startsWith('/') && basePath && !importPath.startsWith(basePath)
+                ? `${basePath}${importPath}`
+                : importPath;
+
+            // Fetch the ELP file from the server
+            const response = await fetch(fetchPath);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ELP file: ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            const fileName = importPath.split('/').pop() || 'imported.elp';
+            const file = new File([blob], fileName, { type: 'application/octet-stream' });
+
+            Logger.log('[ProjectManager] ELP file fetched, size:', file.size);
+
+            // Use centralized import method (handles asset announcement)
+            const stats = await this.importFromElpxViaYjs(file);
+
+            Logger.log('[ProjectManager] ELP import complete:', stats);
+
+            // Save to server so other users can access the document
+            try {
+                await this._yjsBridge.documentManager.saveToServer();
+                Logger.log('[ProjectManager] Document saved to server after import');
+            } catch (saveError) {
+                console.warn('[ProjectManager] Failed to save to server after import:', saveError);
+                // Continue anyway - data is at least saved locally
+            }
+
+            // Remove import parameter from URL (keep project parameter)
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.delete('import');
+            window.history.replaceState({}, '', newUrl);
+
+            // Cleanup: Request server to delete temp file
+            try {
+                await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
+                    method: 'DELETE'
+                });
+            } catch (cleanupError) {
+                console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);
+            }
+
+            // Hide loading indicator
+            if (this.app?.modals?.loader) {
+                this.app.modals.loader.hide();
+            }
+
+            // Show success message
+            if (stats.pages > 0) {
+                Logger.log(`[ProjectManager] Successfully imported ${stats.pages} pages, ${stats.blocks} blocks, ${stats.components} components`);
+            }
+        } catch (error) {
+            console.error('[ProjectManager] Failed to import ELP:', error);
+
+            // Hide loading indicator
+            if (this.app?.modals?.loader) {
+                this.app.modals.loader.hide();
+            }
+
+            // Show error message
+            if (this.app?.modals?.alert) {
+                this.app.modals.alert.show({
+                    title: _('Import Error'),
+                    body: _('Failed to import the project: ') + error.message,
+                    contentId: 'error',
+                });
+            }
+        }
+    }
+
+    /**
+     * Generate a new unique project ID
+     * @returns {string}
+     */
+    generateProjectId() {
+        // Generate a UUID-like ID
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    /**
+     * Update the URL with the project ID without reloading
+     * @param {string} projectId
+     */
+    updateUrlWithProjectId(projectId) {
+        const url = new URL(window.location);
+        url.searchParams.set('project', projectId);
+        window.history.replaceState({}, '', url);
+    }
+
+    /**
+     * Generate a numeric project ID from session string
+     * @returns {number|null}
+     */
+    getNumericProjectId() {
+        if (!this.odeSession) return null;
+        // Hash the session string to get a numeric ID
+        let hash = 0;
+        for (let i = 0; i < this.odeSession.length; i++) {
+            const char = this.odeSession.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash);
+    }
+
+    /**
+     * Reset project state and clear DOM before loading new content
+     * This ensures a clean slate when creating new projects or opening files
+     */
+    resetProject() {
+        Logger.log('[ProjectManager] Resetting project - clearing all previous state');
+
+        // IMPORTANT: Flag to force structure import from API on next load
+        // This ensures Yjs gets fresh data instead of stale cached data
+        this._forceStructureImport = true;
+
+        // Clear Yjs navigation if bridge exists (remove stale data)
+        if (this._yjsBridge?.clearNavigation) {
+            Logger.log('[ProjectManager] Clearing Yjs navigation...');
+            this._yjsBridge.clearNavigation();
+        }
+
+        // Reset project state (dirty flag, session IDs)
+        if (window.eXeLearning?.app?.projectState) {
+            window.eXeLearning.app.projectState.reset();
+        }
+
+        // CRITICAL: Clear navigation tree DOM first
+        // This ensures old nodes are removed even if the structure engine fails
+        const navTree = document.querySelector('#structure-menu-nav');
+        if (navTree) {
+            Logger.log('[ProjectManager] Clearing navigation tree DOM...');
+            navTree.innerHTML = '';
+        }
+
+        // Clear structure menu (navigation tree) via engine
+        if (this.app.menus?.menuStructure?.menuStructureCompose?.structureEngine) {
+            try {
+                this.app.menus.menuStructure.menuStructureCompose.structureEngine.resetDataAndStructureData(
+                    'reset'
+                );
+            } catch (error) {
+                console.warn('[ProjectManager] Error resetting structure menu:', error);
+            }
+        }
+
+        // Clear selected node
+        if (this.app.menus?.menuStructure?.menuStructureBehaviour) {
+            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = false;
+        }
+
+        // Clear content area iDevices
+        const contentArea = document.querySelector('#exe-content-area');
+        if (contentArea) {
+            Logger.log('[ProjectManager] Clearing content area...');
+            contentArea.innerHTML = '';
+        }
+
+        // Clear iDevice panels area
+        const idevicePanels = document.querySelector('#exe-idevice-panels');
+        if (idevicePanels) {
+            Logger.log('[ProjectManager] Clearing iDevice panels...');
+            idevicePanels.innerHTML = '';
+        }
+
+        // Clear project properties form if open
+        if (this.properties?.formProperties) {
+            this.properties.formProperties.remove();
+        }
+
+        Logger.log('[ProjectManager] ✓ Project reset complete - ready for new content');
+    }
+
+    /**
+     * Open and load project
+     * Now calls resetProject() first to ensure clean state
      */
     async openLoad() {
-        console.log('public/app/workarea/project/projectManager.js:openLoad');
+        Logger.log('public/app/workarea/project/projectManager.js:openLoad');
+
+        // IMPORTANT: Reset project first to clear all previous state
+        this.resetProject();
+
         // Close window open elp in case of new elp
         eXeLearning.app.modals.openuserodefiles.close();
         // Load user data
@@ -91,7 +544,7 @@ export default class projectManager {
         await this.structure.reloadStructureMenu();
         // Load modals content
         await this.loadModalsContent();
-        // Inicialize
+        // Initialize
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
@@ -508,7 +961,7 @@ export default class projectManager {
             isNotSameEmail &&
             pageId
         ) {
-            console.log(`
+            Logger.log(`
                 odeElementSave: ${odeElementSave}
                 disabledElements.length; ${disabledElements.length}
                 isOdeComponentFlag: ${isOdeComponentFlag}
@@ -518,16 +971,6 @@ export default class projectManager {
                 pageId: ${pageId}
             `);
 
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                null,
-                null,
-                blockId,
-                odeIdeviceId,
-                'SAVE_STOP',
-                null,
-                null,
-                pageId
-            );
             this.updateUserPage(pageId, true);
             return;
         }
@@ -656,72 +1099,75 @@ export default class projectManager {
             });
     }
 
+    // TODO MERCURE SESSION; TO MIGRATE TO ANOTHER SOLUTION
+
     async subscribeToSessionAndNotify() {
-        // It's very important to close if the connection is not longer needed.
-        // Opened connections have a continuous buffer that will drain your application resources.
-        if (this.eventSource != null) {
-            this.eventSource.close();
-        }
+    //     // It's very important to close if the connection is not longer needed.
+    //     // Opened connections have a continuous buffer that will drain your application resources.
+    //     if (this.eventSource != null) {
+    //         this.eventSource.close();
+    //     }
 
-        // Subscription to the session messages odeSession.
-        // Here it checks any message receive and send a local event in order to be
-        // managed by whatever file it need to respond to.
-        this.eventSource = this.realTimeEventNotifier.getSubscription(
-            this.odeSession
-        );
+    //     // Subscription to the session messages odeSession.
+    //     // Here it checks any message receive and send a local event in order to be
+    //     // managed by whatever file it need to respond to.
+    //     this.eventSource = this.realTimeEventNotifier.getSubscription(
+    //         this.odeSession
+    //     );
 
-        this.eventSource.onmessage = (event) => {
-            let message = JSON.parse(event.data);
+    //     this.eventSource.onmessage = (event) => {
+    //         let message = JSON.parse(event.data);
 
-            // // TO-DO: Here we can control messages passed
-            // switch (message.name) {
-            //     case 'test-message':
+    //         // // TO-DO: Here we can control messages passed
+    //         // switch (message.name) {
+    //         //     case 'test-message':
 
-            //         break;
-            // }
+    //         //         break;
+    //         // }
 
-            let localEvent;
-            console.log('Received message from mercure: ', message);
+    //         let localEvent;
+    //         Logger.log('Received message from mercure: ', message);
 
-            if (event.lastEventId !== undefined) {
-                this.realTimeEventNotifier.setLastEventID(event.lastEventId);
-            }
+    //         if (event.lastEventId !== undefined) {
+    //             this.realTimeEventNotifier.setLastEventID(event.lastEventId);
+    //         }
 
-            // Manage user editing
-            this.handleBlockEditingOverlay(message.name, this.app.user.name);
+    //         // Manage user editing
+    //         this.handleBlockEditingOverlay(message.name, this.app.user.name);
 
-            // Server-Sent Event is translated to a local event. This way the SSE subscription is
-            // made in one only place when app starts.
-            localEvent = new CustomEvent(message.name, {
-                detail: { user: message.payload },
-            });
+    //         // Server-Sent Event is translated to a local event. This way the SSE subscription is
+    //         // made in one only place when app starts.
+    //         localEvent = new CustomEvent(message.name, {
+    //             detail: { user: message.payload },
+    //         });
 
-            window.dispatchEvent(localEvent);
-        };
+    //         window.dispatchEvent(localEvent);
+    //     };
 
-        // A new `new-user-editing` message is sent to notify that there is a new user editing
-        this.realTimeEventNotifier.notify(this.odeSession, {
-            name: 'new-user-editing',
-            payload: this.app.user.name,
-        });
+    //     // A new `new-user-editing` message is sent to notify that there is a new user editing
+    //     this.realTimeEventNotifier.notify(this.odeSession, {
+    //         name: 'new-user-editing',
+    //         payload: this.app.user.name,
+    //     });
 
-        // Update resource
-        window.addEventListener('new-content-published', (e) => {
-            let pageId = this.structure.getSelectNodeNavId();
-            setTimeout(() => {
-                this.checkUserUpdateFlag(pageId);
-            }, 500);
-        });
+    //     // Update resource
+    //     window.addEventListener('new-content-published', (e) => {
+    //         let pageId = this.structure.getSelectNodeNavId();
+    //         setTimeout(() => {
+    //             this.checkUserUpdateFlag(pageId);
+    //         }, 500);
+    //     });
 
-        // Update structure.
-        window.addEventListener('structure-changed', (e) => {
-            this.reloadStructure();
-        });
+    //     // Update structure.
+    //     window.addEventListener('structure-changed', (e) => {
+    //         this.reloadStructure();
+    //     });
 
-        window.addEventListener('save-menu-head-button', (e) => {
-            this.saveMenuHeadButton(e.detail.user || false);
-        });
+    //     window.addEventListener('save-menu-head-button', (e) => {
+    //         this.saveMenuHeadButton(e.detail.user || false);
+    //     });
     }
+    // END TODO MERCURE SESSION; TO MIGRATE TO ANOTHER SOLUTION
 
     async saveMenuHeadButton(disableButton) {
         const saveMenuHeadButton = document.querySelector(
@@ -743,42 +1189,23 @@ export default class projectManager {
      *
      */
     async loadCurrentProject() {
-        // TODO: Projects are loaded multiple times depending on whether you are logged in,
-        // whether it comes from the Modole integration,.... This happens between this method
-        // and loadPlatformProject
-        console.log(
+        Logger.log(
             'public/app/workarea/project/projectManager.js:loadCurrentProject'
         );
-        let response = await this.app.api.getCurrentProject();
-        if (response && response.responseMessage == 'OK') {
-            this.odeId = response.currentOdeUsers.odeId;
-            this.odeVersion = response.currentOdeUsers.odeVersionId;
-            // Get odeSession for open elp platform
-            let odeSessionId = response.currentOdeUsers.odeSessionId;
 
-            // Case join the shared session
-            if (eXeLearning.symfony.odeSessionId) {
-                // Check odeSessionId and set on bbdd
-                let params = { odeSessionId: eXeLearning.symfony.odeSessionId };
-                let response =
-                    await this.app.api.postJoinCurrentOdeSessionId(params);
-                if (response.responseMessage == 'OK') {
-                    this.odeSession = eXeLearning.symfony.odeSessionId;
-                    window.location.replace('workarea');
-                }
-            } else if (eXeLearning.user.odePlatformId) {
-                this.loadPlatformProject(odeSessionId);
-            } else if (eXeLearning.user.newOde) {
-                this.newSession(odeSessionId);
-                const urlParams = new URLSearchParams(window.location.search);
-                let jwtToken = urlParams.get('jwt_token');
-                window.location.replace('workarea' + '?jwt_token=' + jwtToken);
-            }
-            this.odeSession = response.currentOdeUsers.odeSessionId;
-            if (response.isNewSession) {
-                this.isSaveAs = true;
-            }
+        // Yjs-based flow: project ID comes from URL via backend
+        const urlProjectId = window.eXeLearning?.projectId;
+
+        if (!urlProjectId) {
+            throw new Error('[ProjectManager] No project ID in URL. Backend should always provide a project ID.');
         }
+
+        Logger.log(`[ProjectManager] Using project ID from URL: ${urlProjectId}`);
+        this.yjsProjectId = urlProjectId;
+        // For backwards compatibility, generate a pseudo-session ID
+        this.odeSession = `yjs-${urlProjectId}`;
+        this.odeId = urlProjectId;
+        this.odeVersion = '1';
     }
 
     /**
@@ -971,28 +1398,11 @@ export default class projectManager {
     }
 
     /**
-     * Get last node selected
-     *
+     * Select first node in structure
+     * (Legacy lastNodeSelected - with Yjs we don't track server-side selection state)
      */
     async lastNodeSelected() {
-        // Select last node selected and load
-        let element = null;
-        let response = await this.app.api.getCurrentProject();
-        if (response && response.responseMessage == 'OK') {
-            let pageIdElement = response.currentOdeUsers.currentPageId;
-            element = this.app.menus.menuEngine.menuNav.querySelector(
-                `[page-id='${pageIdElement}']`
-            );
-            if (element) {
-                await this.app.menus.menuStructure.menuStructureBehaviour.selectNode(
-                    element
-                );
-            } else {
-                await this.app.selectFirstNodeStructure();
-            }
-        } else {
-            await this.app.selectFirstNodeStructure();
-        }
+        await this.app.selectFirstNodeStructure();
     }
 
     /**
@@ -1040,81 +1450,68 @@ export default class projectManager {
 
     /**
      * Save project
-     *
+     * When Yjs is enabled, saves the Yjs document to the server.
+     * Otherwise uses the legacy API.
      */
     async save() {
-        if (eXeLearning.config.isOfflineInstallation) {
-            // To do (offline version save action #432)
-            let data = {
-                odeSessionId: this.odeSession,
-                odeVersion: this.odeVersion,
-                odeId: this.odeId,
-            };
-            // Show message
-            let toastData = {
-                title: _('Save'),
-                body: _('Saving the project...'),
-                icon: 'downloading',
-            };
-            let toast = this.app.toasts.createToast(toastData);
-            // Save
-            let response = await this.app.api.postOdeSave(data);
-            if (response && response.responseMessage == 'OK') {
-                if (!this.offlineInstallation) {
-                    this.realTimeEventNotifier.notify(this.odeSession, {
-                        name: 'new-content-published',
-                    });
-                }
+        // Show message
+        let toastData = {
+            title: _('Save'),
+            body: _('Saving the project...'),
+            icon: 'downloading',
+        };
+        let toast = this.app.toasts.createToast(toastData);
 
-                this.app.interface.connectionTime.loadLasUpdatedInInterface();
-                toast.toastBody.innerHTML = _('Project saved.');
-            } else {
-                this.showModalSaveError(response);
-                toast.toastBody.innerHTML = _(
-                    'An error occurred while saving the project.'
-                );
-                toast.toastBody.classList.add('error');
-            }
-            // Remove message
-            setTimeout(() => {
-                toast.remove();
-            }, 1000);
-        } else {
-            let data = {
-                odeSessionId: this.odeSession,
-                odeVersion: this.odeVersion,
-                odeId: this.odeId,
-            };
-            // Show message
-            let toastData = {
-                title: _('Save'),
-                body: _('Saving the project...'),
-                icon: 'downloading',
-            };
-            let toast = this.app.toasts.createToast(toastData);
-            // Save
-            let response = await this.app.api.postOdeSave(data);
-            if (response && response.responseMessage == 'OK') {
-                if (!this.offlineInstallation) {
-                    this.realTimeEventNotifier.notify(this.odeSession, {
-                        name: 'new-content-published',
-                    });
+        try {
+            // Yjs mode: save Yjs document to server
+            if (this._yjsEnabled && this._yjsBridge) {
+                const documentManager = this._yjsBridge.getDocumentManager();
+                if (documentManager) {
+                    const result = await documentManager.save();
+                    if (result.success) {
+                        this.app.interface.connectionTime.loadLasUpdatedInInterface();
+                        toast.toastBody.innerHTML = _('Project saved.');
+                        Logger.log('[ProjectManager] Yjs document saved:', result.message);
+                    } else {
+                        toast.toastBody.innerHTML = _('An error occurred while saving the project.');
+                        toast.toastBody.classList.add('error');
+                        console.error('[ProjectManager] Yjs save failed:', result.message);
+                    }
+                } else {
+                    toast.toastBody.innerHTML = _('An error occurred while saving the project.');
+                    toast.toastBody.classList.add('error');
+                    console.error('[ProjectManager] Yjs document manager not available');
                 }
-
-                this.app.interface.connectionTime.loadLasUpdatedInInterface();
-                toast.toastBody.innerHTML = _('Project saved.');
-            } else {
-                this.showModalSaveError(response);
-                toast.toastBody.innerHTML = _(
-                    'An error occurred while saving the project.'
-                );
-                toast.toastBody.classList.add('error');
             }
-            // Remove message
-            setTimeout(() => {
-                toast.remove();
-            }, 1000);
+            // Legacy mode: use the old API
+            else {
+                let data = {
+                    odeSessionId: this.odeSession,
+                    odeVersion: this.odeVersion,
+                    odeId: this.odeId,
+                };
+                let response = await this.app.api.postOdeSave(data);
+                if (response && response.responseMessage == 'OK') {
+                    this.app.interface.connectionTime.loadLasUpdatedInInterface();
+                    toast.toastBody.innerHTML = _('Project saved.');
+                } else {
+                    this.showModalSaveError(response);
+                    toast.toastBody.innerHTML = _(
+                        'An error occurred while saving the project.'
+                    );
+                    toast.toastBody.classList.add('error');
+                }
+            }
+        } catch (error) {
+            console.error('[ProjectManager] Save error:', error);
+            toast.toastBody.innerHTML = _('An error occurred while saving the project.');
+            toast.toastBody.classList.add('error');
         }
+
+        // Remove message after delay
+        setTimeout(() => {
+            toast.remove();
+        }, 1500);
     }
 
     /**
@@ -1780,9 +2177,9 @@ export default class projectManager {
             }
         }
 
-        // Synchronize properties
-        await this.app.project.properties.apiLoadProperties();
-        await this.app.project.properties.formProperties.reloadValues();
+        // Synchronize properties from Yjs
+        this.app.project.properties.loadPropertiesFromYjs();
+        this.app.project.properties.formProperties.reloadValues();
 
         this.app.menus.menuStructure.menuStructureCompose.structureEngine.resetDataAndStructureData(
             navId
@@ -2036,41 +2433,6 @@ export default class projectManager {
     /**
      *
      * @param {*} odeComponentFlag
-     * @param {*} odePageId
-     * @param {*} blockId
-     * @param {*} odeIdeviceId
-     * @param {*} actionType
-     * @param {*} destPageId
-     */
-    async updateCurrentOdeUsersUpdateFlag(
-        odeComponentFlag,
-        odePageId,
-        blockId,
-        odeIdeviceId,
-        actionType,
-        destPageId,
-        timeIdeviceEditing = null,
-        pageId // Collaborative Init
-    ) {
-        let params = {
-            odeSessionId: this.odeSession,
-            odePageId: odePageId,
-            blockId: blockId,
-            odeIdeviceId: odeIdeviceId,
-            odeComponentFlag: odeComponentFlag,
-            actionType: actionType,
-            destinationPageId: destPageId,
-            timeIdeviceEditing: timeIdeviceEditing,
-            pageId: pageId, // Collaborative Init
-        };
-        let response =
-            await this.app.api.postActivateCurrentOdeUsersUpdateFlag(params);
-        return response;
-    }
-
-    /**
-     *
-     * @param {*} odeComponentFlag
      * @param {*} odeNavStructureSyncId
      * @param {*} blockId
      * @param {*} odeIdeviceId
@@ -2146,818 +2508,6 @@ export default class projectManager {
         let response =
             await this.app.api.checkCurrentOdeUsersComponentFlag(params);
         return response;
-    }
-
-    /*********************************************************************************************/
-    /* ODE OPERATIONS (UNDO HISTORY) ACTIONS
-  /*********************************************************************************************/
-
-    /**
-     * Send ode operation to bbdd
-     *
-     * @param {*} odeSourceId
-     * @param {*} odeDestinationId
-     * @param {*} actionType
-     * @param {*} additionalData
-     * @returns
-     */
-    async sendOdeOperationLog(
-        odeSourceId,
-        odeDestinationId,
-        actionType,
-        additionalData
-    ) {
-        // Normalize payload
-        if (additionalData !== null) {
-            try {
-                additionalData = JSON.stringify(additionalData);
-            } catch (_) {}
-        }
-        // Guard: skip in WebDriver/E2E runs and avoid server 500 if identifiers are not ready
-        if (
-            (typeof navigator !== 'undefined' && navigator.webdriver) ||
-            !this.odeSession ||
-            !actionType ||
-            !odeSourceId ||
-            !odeDestinationId
-        ) {
-            return { responseMessage: 'SKIP' };
-        }
-        const params = {
-            odeSessionId: this.odeSession,
-            odeSourceId: String(odeSourceId),
-            odeDestinationId: String(odeDestinationId),
-            actionType: actionType,
-            additionalData: additionalData,
-        };
-        try {
-            return await this.app.api.postOdeOperation(params);
-        } catch (e) {
-            // Swallow network errors to keep console clean for E2E when backend is not ready
-            return { responseMessage: 'SKIP' };
-        }
-    }
-
-    /**
-     * Get last action and do undo
-     *
-     */
-    async undoLastAction() {
-        let response = await this.app.api.getActionFromLastOdeOperation();
-        if (response.responseMessage == 'OK') {
-            this.app.modals.confirm.show({
-                title: _('Undo'),
-                body: _('Undo the last action?'),
-                confirmButtonText: _('Yes'),
-                confirmExec: () => {
-                    this.typeUndoByAction(response);
-                    this.app.api.getConfirmLastOperationLogDone();
-                },
-            });
-        } else {
-            // Show message
-            let text = response.responseMessageBody
-                ? response.responseMessageBody
-                : _('Unable to undo the last action.');
-            let toastData = {
-                title: _('Undo'),
-                body: _(text),
-                icon: 'restore',
-                remove: 1000,
-                error: true,
-            };
-            let toast = this.app.toasts.createToast(toastData);
-        }
-    }
-
-    /**
-     * Select the undo by the action on bbdd
-     *
-     * @param {*} response
-     */
-    async typeUndoByAction(response) {
-        if (response.isDelete && response.isDelete == true) {
-            this.undoAddIdevice(response.deleteBlockId);
-            this.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                response.deleteBlockId,
-                null,
-                'DELETE',
-                null
-            );
-        } else if (response.isMoveTo && response.isMoveTo == true) {
-            this.undoBlockLastMoveTo(
-                response.moveFrom,
-                response.moveTo,
-                response.previousOrder,
-                response.previousPageId,
-                response.blockDto
-            );
-            this.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                response.blockDto.blockId,
-                null,
-                'MOVE_TO_PAGE',
-                response.moveFrom
-            );
-        } else if (
-            response.isMoveIdeviceTo &&
-            response.isMoveIdeviceTo == true
-        ) {
-            this.undoIdeviceLastMoveTo(
-                response.moveFrom,
-                response.moveTo,
-                response.previousOrder,
-                response.previousPageId,
-                response.odeBlockDto,
-                response.odeIdeviceDto
-            );
-            this.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                null,
-                response.odeIdeviceDto.odeIdeviceId,
-                'MOVE_TO_PAGE',
-                response.moveFrom
-            );
-        } else if (response.isMoveBlockOn && response.isMoveBlockOn == true) {
-            this.undoLastMoveBlockOrder(
-                response.previousOrder,
-                response.odeBlockDto
-            );
-            this.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                response.odeBlockDto.blockId,
-                null,
-                'MOVE_ON_PAGE',
-                null
-            );
-        } else if (
-            response.isMoveIdeviceOn &&
-            response.isMoveIdeviceOn == true
-        ) {
-            this.undoLastMoveIdeviceOrder(
-                response.previousOrder,
-                response.odeBlockDto,
-                response.odeIdeviceDto
-            );
-            this.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                null,
-                response.odeIdeviceDto.odeIdeviceId,
-                'MOVE_ON_PAGE',
-                null
-            );
-        } else if (
-            response.isCloneIdeviceDelete &&
-            response.isCloneIdeviceDelete == true
-        ) {
-            this.undoCloneIdevice(response.odeIdeviceDto, response.moveFrom);
-        } else if (
-            response.isCloneBlockDelete &&
-            response.isCloneBlockDelete == true
-        ) {
-            this.undoCloneBlock(response.blockDto);
-        } else if (
-            response.isClonePageDelete &&
-            response.isClonePageDelete == true
-        ) {
-            this.undoClonePage(response.navId, response.pageId);
-        } else if (
-            response.isAddPageDelete &&
-            response.isAddPageDelete == true
-        ) {
-            this.undoAddPage(response.navId, response.pageId);
-        } else if (response.isMovePage && response.isMovePage == true) {
-            this.undoMovePage(
-                response.navId,
-                response.baseNavId,
-                response.previousMov,
-                response.isMovePageButton,
-                response.isUndoMove,
-                response.previousNodeBaseParent,
-                response.previousNodeMovParent,
-                response.previousNodeMovOrder
-            );
-        }
-    }
-
-    /**
-     * Remove from bbdd and interface idevice added previously
-     *
-     * @param {*} odeBlockId
-     */
-    async undoAddIdevice(odeBlockId) {
-        let odeBlock = document.getElementById(odeBlockId);
-        let id = odeBlock.getAttribute('sym-id');
-        this.idevices.getBlockById(odeBlockId).removeIdevices();
-        this.app.api.deleteBlock(id).then((response) => {
-            if (response.responseMessage && response.responseMessage == 'OK') {
-                // All blocks that have been modified
-                if (response.odePagStructureSyncs) {
-                    // Update the order of other blocks
-                    this.idevices.updateComponentsBlocks(
-                        response.odePagStructureSyncs,
-                        ['order']
-                    );
-                    odeBlock.remove();
-                    this.idevices.removeBlockOfComponentList(id);
-                    this.idevices.updateMode();
-                }
-            }
-        });
-    }
-
-    /**
-     * Remove from bbdd and interface the cloned idevice
-     *
-     * @param {*} odeIdeviceDto
-     */
-    async undoCloneIdevice(odeIdeviceDto, moveFrom) {
-        let ideviceNode = document.getElementById(odeIdeviceDto.odeIdeviceId);
-        let selectedPageId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'page-id'
-            );
-        this.app.api.deleteIdevice(odeIdeviceDto.id).then((response) => {
-            if (response.responseMessage && response.responseMessage == 'OK') {
-                // All idevices that have been modified
-                if (response.odeComponentsSyncs) {
-                    // update the order of other idevices
-                    this.idevices.updateComponentsIdevices(
-                        response.odeComponentsSyncs,
-                        ['order']
-                    );
-                    if (ideviceNode && selectedPageId == moveFrom) {
-                        ideviceNode.remove();
-                    }
-                }
-            }
-        });
-    }
-
-    /**
-     * Remove from bbdd and interface the cloned block
-     *
-     * @param {*} previousOdeBlockDto
-     */
-    async undoCloneBlock(previousOdeBlockDto) {
-        let blockNode = document.getElementById(previousOdeBlockDto.blockId);
-        let selectedPageId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'page-id'
-            );
-        this.app.api.deleteBlock(previousOdeBlockDto.id).then((response) => {
-            if (response.responseMessage && response.responseMessage == 'OK') {
-                // All blocks that have been modified
-                if (response.odePagStructureSyncs) {
-                    // Update the order of other blocks
-                    this.idevices.updateComponentsBlocks(
-                        response.odePagStructureSyncs,
-                        ['order']
-                    );
-                    if (
-                        blockNode &&
-                        previousOdeBlockDto.pageId == selectedPageId
-                    ) {
-                        blockNode.remove();
-                    }
-                }
-            }
-        });
-    }
-
-    /**
-     * Remove from bbdd and interface cloned page
-     *
-     * @param {*} navId
-     */
-    async undoClonePage(navId, pageId) {
-        // Delete page
-        let selectedNavId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'nav-id'
-            );
-        this.app.api.deletePage(navId).then((response) => {
-            if (response.responseMessage && response.responseMessage == 'OK') {
-                // Remove node in structure list
-                this.structure.data = this.structure.data.filter(
-                    (node, index, arr) => {
-                        return node.id != navId;
-                    }
-                );
-                if (navId == selectedNavId) {
-                    this.app.menus.menuStructure.menuStructureCompose.structureEngine.resetStructureData(
-                        false
-                    );
-                } else {
-                    this.app.menus.menuStructure.menuStructureCompose.structureEngine.resetStructureData(
-                        selectedNavId
-                    );
-                }
-                // update current ode users update flag
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    pageId,
-                    null,
-                    null,
-                    'DELETE'
-                );
-            }
-        });
-    }
-
-    /**
-     * Remove from bbdd and interface added page
-     *
-     * @param {*} navId
-     */
-    async undoAddPage(navId, pageId) {
-        // Delete page
-        let selectedNavId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'nav-id'
-            );
-        this.app.api.deletePage(navId).then((response) => {
-            if (response.responseMessage && response.responseMessage == 'OK') {
-                // Remove node in structure list
-                this.structure.data = this.structure.data.filter(
-                    (node, index, arr) => {
-                        return node.id != navId;
-                    }
-                );
-                if (navId == selectedNavId) {
-                    this.app.menus.menuStructure.menuStructureCompose.structureEngine.resetStructureData(
-                        false
-                    );
-                } else {
-                    this.app.menus.menuStructure.menuStructureCompose.structureEngine.resetStructureData(
-                        selectedNavId
-                    );
-                }
-
-                // update current ode users update flag
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    pageId,
-                    null,
-                    null,
-                    'DELETE'
-                );
-            }
-        });
-    }
-
-    /**
-     * Undo last page move
-     *
-     * @param {*} navId
-     * @param {*} baseNavId
-     * @param {*} previousMov
-     * @param {*} isMovePageButton
-     * @param {*} isUndoMove
-     * @param {*} previousNodeBaseParentId
-     * @param {*} previousNodeMovParentId
-     * @param {*} previousNodeMovOrder
-     */
-    async undoMovePage(
-        navId,
-        baseNavId,
-        previousMov,
-        isMovePageButton,
-        isUndoMove,
-        previousNodeBaseParentId,
-        previousNodeMovParentId,
-        previousNodeMovOrder
-    ) {
-        let actualmov;
-        let selectedNavId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'nav-id'
-            );
-        // Get the actual mov if the page was moved with buttons
-        if (isMovePageButton && isMovePageButton == true) {
-            correlationMov = {
-                next: 'prev',
-                prev: 'next',
-                down: 'up',
-                up: 'down',
-            };
-            actualMov = correlationMov[previousMov];
-            // Undo last move
-            await this.structure.moveNode(navId, actualmov, isUndoMove);
-            this.app.menus.menuStructure.menuStructureCompose.structureEngine.resetStructureData(
-                selectedNavId
-            );
-        } else {
-            // Get nodes
-            let nodeNav = this.structure.getNode(navId);
-            let nodeBaseNav = this.structure.getNode(baseNavId);
-            let previousNodeMovParent = this.structure.getNode(
-                previousNodeMovParentId
-            );
-            let previousNodeBaseParent = this.structure.getNode(
-                previousNodeBaseParentId
-            );
-
-            // Get the parent of the parent to obtain order
-            let previousNodeBaseSecondParent = this.structure.getNode(
-                previousNodeBaseParent.parent
-            );
-
-            // Check if previously was parent and do the update
-            if (previousNodeBaseParentId == previousNodeMovParentId) {
-                // Check if base was parent and the nodeNav was in the parent
-                if (
-                    previousNodeBaseParent.children.length > 0 &&
-                    nodeNav.parent == previousNodeBaseParent.id
-                ) {
-                    await nodeNav.apiUpdateOrder(previousNodeMovOrder);
-                } else {
-                    await nodeNav.apiUpdateParent(
-                        previousNodeBaseParent.parent,
-                        previousNodeBaseSecondParent.order + 1
-                    );
-                }
-            } else {
-                // Check if the base and node parents are the same
-                if (nodeNav.parent == nodeBaseNav.parent) {
-                    await nodeNav.apiUpdateParent(
-                        nodeBaseNav.id,
-                        nodeBaseNav.order + 1
-                    );
-                } else {
-                    await nodeNav.apiUpdateParent(
-                        previousNodeMovParentId,
-                        previousNodeMovParent.order + 1
-                    );
-                }
-            }
-
-            this.app.menus.menuStructure.menuStructureCompose.structureEngine.resetStructureData(
-                selectedNavId
-            );
-            this.updateUserPage(selectedNavId);
-        }
-    }
-
-    /**
-     * Undo last block move to page
-     *
-     * @param {*} moveFrom
-     * @param {*} moveTo
-     * @param {*} previousOrder
-     * @param {*} previousPageId
-     * @param {*} previousOdeBlockDto
-     */
-    async undoBlockLastMoveTo(
-        moveFrom,
-        moveTo,
-        previousOrder,
-        previousPageId,
-        previousOdeBlockDto
-    ) {
-        // Required parameters
-        let isUndoMoveTo = true;
-        let selectedPageId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'page-id'
-            );
-        // Update page in database
-        let data = this.generateBlockDataObject(
-            moveFrom,
-            previousOrder,
-            previousPageId,
-            previousOdeBlockDto
-        );
-        let response = await this.app.api['putSaveBlock'].call(
-            this.app.api,
-            data
-        );
-        if (response && response.responseMessage == 'OK') {
-            // All blocks that have been modified
-            if (response.odePagStructureSyncs) {
-                // Update the order of other components if necessary
-                this.idevices.updateComponentsBlocks(
-                    response.odePagStructureSyncs,
-                    ['order']
-                );
-                previousOdeBlockDto.order = previousOrder;
-                previousOdeBlockDto.odePageId = moveFrom;
-                previousOdeBlockDto.odeNavStructureSyncId = previousPageId;
-                if (selectedPageId == moveFrom || selectedPageId == moveTo) {
-                    this.updateUserPage(
-                        previousOdeBlockDto.odeNavStructureSyncId
-                    );
-                }
-            }
-        } else {
-            let defaultModalMessage = _(
-                'An error occurred while saving the component.'
-            );
-            this.showModalMessageErrorDatabase(response, defaultModalMessage);
-        }
-    }
-
-    /**
-     *
-     * Undo last idevice move to page
-     *
-     * @param {*} moveFrom
-     * @param {*} moveTo
-     * @param {*} previousOrder
-     * @param {*} previousPageId
-     * @param {*} previousOdeBlockDto
-     * @param {*} odeIdeviceDto
-     */
-    async undoIdeviceLastMoveTo(
-        moveFrom,
-        moveTo,
-        previousOrder,
-        previousPageId,
-        previousOdeBlockDto,
-        odeIdeviceDto
-    ) {
-        // Required parameters
-        let isUndoMoveTo = true;
-        let selectedPageId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'page-id'
-            );
-        // Update page in database
-        let data = this.generateIdeviceDataObject(
-            moveFrom,
-            moveTo,
-            previousOrder,
-            previousPageId,
-            previousOdeBlockDto,
-            odeIdeviceDto
-        );
-        let response = await this.app.api['putSaveIdevice'].call(
-            this.app.api,
-            data
-        );
-        if (response && response.responseMessage == 'OK') {
-            // All Idevices that have been modified
-            if (response.odeComponentsSyncs) {
-                // update the order of other idevices
-                this.idevices.updateComponentsIdevices(
-                    response.odeComponentsSyncs,
-                    ['order']
-                );
-            }
-            // All Blocks that have been modified
-            if (response.odePagStructureSyncs) {
-                // Update the order of other idevices
-                this.idevices.updateComponentsBlocks(
-                    response.odeComponentsSyncs,
-                    ['order']
-                );
-            }
-            // Delete block in destination page
-            this.app.api
-                .deleteBlock(odeIdeviceDto.odePagStructureSyncId)
-                .then((response) => {
-                    if (
-                        response.responseMessage &&
-                        response.responseMessage == 'OK'
-                    ) {
-                        // All blocks that have been modified
-                        if (response.odePagStructureSyncs) {
-                            // Update the order of other blocks
-                            this.idevices.updateComponentsBlocks(
-                                response.odePagStructureSyncs,
-                                ['order']
-                            );
-                        }
-                    }
-                });
-            odeIdeviceDto.order = previousOrder;
-            odeIdeviceDto.previousBlockId = odeIdeviceDto.blockId;
-            odeIdeviceDto.blockId = previousOdeBlockDto.blockId;
-
-            if (selectedPageId == moveFrom || selectedPageId == moveTo) {
-                //this.moveOdeComponent(odeIdeviceDto, isUndoMoveTo);
-                this.updateUserPage(previousOdeBlockDto.odeNavStructureSyncId);
-            }
-        } else {
-            let defaultModalMessage = _(
-                'An error occurred while saving the component.'
-            );
-            this.showModalMessageErrorDatabase(response, defaultModalMessage);
-        }
-    }
-
-    /**
-     * Undo block last move on page
-     *
-     * @param {*} previousOrder
-     * @param {*} previousOdeBlockDto
-     */
-    async undoLastMoveBlockOrder(previousOrder, previousOdeBlockDto) {
-        // Required parameters
-        let isUndoMoveTo = true;
-        let selectedPageId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'page-id'
-            );
-        // Update page in database
-        let data = this.generateBlockDataObject(
-            null,
-            previousOrder,
-            null,
-            previousOdeBlockDto
-        );
-        let response = await this.app.api['putSaveBlock'].call(
-            this.app.api,
-            data
-        );
-        if (response && response.responseMessage == 'OK') {
-            // All blocks that have been modified
-            if (response.odePagStructureSyncs) {
-                // Update the order of other components if necessary
-                this.idevices.updateComponentsBlocks(
-                    response.odePagStructureSyncs,
-                    ['order']
-                );
-                previousOdeBlockDto.order = previousOrder;
-                await this.app.api['putReorderBlock'].call(this.app.api, data);
-                if (selectedPageId == previousOdeBlockDto.pageId) {
-                    this.updateUserPage(
-                        previousOdeBlockDto.odeNavStructureSyncId
-                    );
-                }
-            }
-        } else {
-            let defaultModalMessage = _(
-                'An error occurred while saving the component.'
-            );
-            this.showModalMessageErrorDatabase(response, defaultModalMessage);
-        }
-    }
-
-    /**
-     * Undo idevice last move on page
-     *
-     * @param {*} previousOrder
-     * @param {*} previousOdeBlockDto
-     * @param {*} odeIdeviceDto
-     */
-    async undoLastMoveIdeviceOrder(
-        previousOrder,
-        previousOdeBlockDto,
-        odeIdeviceDto
-    ) {
-        // Required parameters
-        let selectedPageId =
-            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'page-id'
-            );
-        let odeBlockIdBeforeUndo = odeIdeviceDto.blockId;
-        let workareaElement = document.querySelector('#main #workarea');
-        let nodeContainerElement = workareaElement.querySelector(
-            '#node-content-container'
-        );
-        let nodeContentElement =
-            nodeContainerElement.querySelector('#node-content');
-        let elementBlockRemove = nodeContentElement.querySelector(
-            `[id="${odeBlockIdBeforeUndo}"]`
-        );
-        // Update page in database
-        let data = this.generateIdeviceDataObject(
-            null,
-            null,
-            previousOrder,
-            null,
-            previousOdeBlockDto,
-            odeIdeviceDto
-        );
-        let response = await this.app.api['putSaveIdevice'].call(
-            this.app.api,
-            data
-        );
-        if (response && response.responseMessage == 'OK') {
-            // All blocks that have been modified
-            if (response.odePagStructureSyncs) {
-                // Update the order of other components if necessary
-                this.idevices.updateComponentsBlocks(
-                    response.odePagStructureSyncs,
-                    ['order']
-                );
-                odeIdeviceDto.order = previousOrder;
-                odeIdeviceDto.blockId = previousOdeBlockDto.blockId;
-                await this.app.api['putReorderIdevice'].call(
-                    this.app.api,
-                    data
-                );
-                if (selectedPageId == previousOdeBlockDto.pageId) {
-                    this.updateUserPage(
-                        previousOdeBlockDto.odeNavStructureSyncId
-                    );
-                    // Delete block in destination page
-                    if (elementBlockRemove.childElementCount <= 1) {
-                        this.app.api
-                            .deleteBlock(odeIdeviceDto.odePagStructureSyncId)
-                            .then((response) => {
-                                if (
-                                    response.responseMessage &&
-                                    response.responseMessage == 'OK'
-                                ) {
-                                    // All blocks that have been modified
-                                    if (response.odePagStructureSyncs) {
-                                        // Update the order of other blocks
-                                        this.idevices.updateComponentsBlocks(
-                                            response.odePagStructureSyncs,
-                                            ['order']
-                                        );
-                                        elementBlockRemove.remove();
-                                    }
-                                }
-                            });
-                    }
-                }
-            }
-        } else {
-            let defaultModalMessage = _(
-                'An error occurred while saving the component.'
-            );
-            this.showModalMessageErrorDatabase(response, defaultModalMessage);
-        }
-    }
-
-    /**
-     * Generate block array data to send to api
-     *
-     * @param {*} moveFrom
-     * @param {*} previousOrder
-     * @param {*} previousPageId
-     * @param {*} previousOdeBlockDto
-     * @returns
-     */
-    generateBlockDataObject(
-        moveFrom,
-        previousOrder,
-        previousPageId,
-        previousOdeBlockDto
-    ) {
-        let defaultVersion = this.odeVersion;
-        let defaultSession = this.odeSession;
-        let defaultOdeNavStructureSyncId = this.structure.getSelectNodeNavId();
-        let defaultOdePageId = this.structure.getSelectNodePageId();
-        return {
-            odePagStructureSyncId: previousOdeBlockDto.id,
-            odeVersionId: defaultVersion,
-            odeSessionId: defaultSession,
-            odeNavStructureSyncId: previousPageId
-                ? previousPageId
-                : defaultOdeNavStructureSyncId,
-            odePageId: moveFrom ? moveFrom : defaultOdePageId,
-            iconName: previousOdeBlockDto.iconName,
-            blockName: previousOdeBlockDto.blockName,
-            order: previousOrder,
-            isUndoLastAction: true,
-        };
-    }
-
-    /**
-     * Generate idevice array data to send to api
-     *
-     * @param {*} moveFrom
-     * @param {*} moveTo
-     * @param {*} previousOrder
-     * @param {*} previousPageId
-     * @param {*} previousOdeBlockDto
-     * @param {*} odeIdeviceDto
-     * @returns
-     */
-    generateIdeviceDataObject(
-        moveFrom,
-        moveTo,
-        previousOrder,
-        previousPageId,
-        previousOdeBlockDto,
-        odeIdeviceDto
-    ) {
-        let defaultVersion = this.odeVersion;
-        let defaultSession = this.odeSession;
-        return {
-            odeComponentsSyncId: odeIdeviceDto.id,
-            odeVersionId: defaultVersion,
-            odeSessionId: defaultSession,
-            odeNavStructureSyncId: previousPageId,
-            odePageId: moveFrom,
-            odePagStructureSyncId: previousOdeBlockDto.id,
-            odePagStructureSyncOrder: previousOdeBlockDto.order,
-            odeBlockId: previousOdeBlockDto.blockId,
-            blockName: previousOdeBlockDto.blockName,
-            iconName: previousOdeBlockDto.iconName,
-            order: previousOrder,
-            isUndoLastAction: true,
-        };
     }
 
     /**
@@ -3039,7 +2589,7 @@ export default class projectManager {
                 content.length > 50 ? content.slice(0, 50) + '…' : content;
 
             // Log the ID and shortened content
-            console.log('id: ' + el.id + ' content: ' + shortened);
+            Logger.log('id: ' + el.id + ' content: ' + shortened);
 
             // Re-append the element to reorder it in the DOM
             nodeContentElement.appendChild(el);

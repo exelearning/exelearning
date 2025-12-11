@@ -16,7 +16,7 @@ var $exeDevice = {
     allowEmptyParagraphs: false,
 
     // Each block is stored in a JSON object
-    // This is de default content (an empty block)
+    // This is the default content (an empty block)
     defaultContent: [
         {
             btnTxt: '',
@@ -237,9 +237,11 @@ var $exeDevice = {
         });
         // Delete block
         e.unbind('click').click(function () {
+            if (typeof $exeDevice === 'undefined') return false;
             var msg = _("Delete block $? This can't be undone.");
             msg = msg.replace('$', i + 1);
             eXe.app.confirm(_('Attention'), msg, function () {
+                if (typeof $exeDevice === 'undefined') return;
                 // Update the data
                 var data = $exeDevice.formToJSON();
                 // Remove the element
@@ -262,6 +264,7 @@ var $exeDevice = {
         // Move up
         e = $('.udlContentFormBlockUp', block);
         e.unbind('click').click(function () {
+            if (typeof $exeDevice === 'undefined') return false;
             // Update the data
             var data = $exeDevice.formToJSON();
             // Move up the element
@@ -277,6 +280,7 @@ var $exeDevice = {
         // Move down
         e = $('.udlContentFormBlockDown', block);
         e.unbind('click').click(function () {
+            if (typeof $exeDevice === 'undefined') return false;
             // Update the data
             var data = $exeDevice.formToJSON();
             // Move down the element
@@ -294,9 +298,11 @@ var $exeDevice = {
         e.unbind('keyup')
             .unbind('blur')
             .keyup(function () {
+                if (typeof $exeDevice === 'undefined') return;
                 $exeDevice.toggleBtnOptions(this);
             })
             .on('blur', function () {
+                if (typeof $exeDevice === 'undefined') return;
                 $exeDevice.toggleBtnOptions(this);
             });
         // Enable TinyMCE
@@ -304,6 +310,7 @@ var $exeDevice = {
         // Enable the content type selector
         var tabs = $('.udlContentFormTabs a', block);
         tabs.unbind('click').click(function () {
+            if (typeof $exeDevice === 'undefined') return false;
             $exeDevice.saveToTextareas(block);
             tabs.removeClass('active');
             // Update the content of the editor with the right TEXTAREA
@@ -375,7 +382,8 @@ var $exeDevice = {
 
     // Load the saved values in the form fields
     loadPreviousValues: function () {
-        var originalHTML = this.idevicePreviousData;
+        var previousData = this.idevicePreviousData;
+
         // Change the content type when selecting a UDL icon from the Style
         $('#activeIdevice .js-show-icon-panel-button').click(function () {
             $('#iconiDevice').on('load', function () {
@@ -395,12 +403,33 @@ var $exeDevice = {
                 }
             });
         });
-        //var originalHTML = field.val();
-        var blocks; // JSON (we'll transform the original HTML into a JSON object)
-        if (originalHTML != '') {
+
+        var blocks;
+
+        // Check if previousData is the new JSON format or legacy HTML
+        if (previousData && typeof previousData === 'object' && previousData.blocks) {
+            // NEW FORMAT: JSON object { blocks, contentType, ci18n }
+            blocks = previousData.blocks;
+
+            // Set content type
+            var contentType = previousData.contentType || 'engagement';
+            $('#udlContentType-' + contentType).prop('checked', true);
+            this.setActiveType(contentType);
+
+            // Set i18n strings
+            if (previousData.ci18n) {
+                if (previousData.ci18n.simplified) $('#ci18n_simplified').val(previousData.ci18n.simplified);
+                if (previousData.ci18n.audio) $('#ci18n_audio').val(previousData.ci18n.audio);
+                if (previousData.ci18n.visual) $('#ci18n_visual').val(previousData.ci18n.visual);
+                if (previousData.ci18n.hide) $('#ci18n_hide').val(previousData.ci18n.hide);
+            }
+        } else if (previousData && typeof previousData === 'object' && previousData.textTextarea) {
+            // LEGACY ELP FORMAT: Object { ideviceId, textTextarea: "<html>", ... }
+            // This format is used when importing ELP files created with older versions
             var wrapper = $("<div id='udlContentTmpWrapper'></div>");
-            wrapper.html(originalHTML);
-            // Get the title of the alternative contents and the texto of the close button (the user can change them)
+            wrapper.html(previousData.textTextarea);
+
+            // Get the title of the alternative contents and the text of the close button
             var strs = this.ci18n;
             for (var i in strs) {
                 var block, blockTitle, closeBtn;
@@ -420,11 +449,13 @@ var $exeDevice = {
                     }
                 }
             }
+
             // Remove those elements (they are no longer required)
             $(
                 '.exe-udlContent-alt-content-title,button.exe-udlContent-alt-content-hide',
                 wrapper
             ).remove();
+
             // Get the right type
             var type = 'engagement';
             var div = $('.exe-udlContent', wrapper);
@@ -436,11 +467,59 @@ var $exeDevice = {
                 $('#udlContentType-' + type).prop('checked', true);
                 $exeDevice.setActiveType(type);
             }
+
+            blocks = this.htmlToJSON(wrapper);
+        } else if (previousData && typeof previousData === 'string' && previousData !== '') {
+            // VERY OLD LEGACY FORMAT: Direct HTML string
+            var wrapper = $("<div id='udlContentTmpWrapper'></div>");
+            wrapper.html(previousData);
+
+            // Get the title of the alternative contents and the text of the close button
+            var strs = this.ci18n;
+            for (var i in strs) {
+                var block, blockTitle, closeBtn;
+                block = $('.exe-udlContent-content-' + i, wrapper);
+                if (block.length > 0) {
+                    block = block.eq(0);
+                    blockTitle = $('.exe-udlContent-alt-content-title', block);
+                    if (blockTitle.length == 1) {
+                        blockTitle = blockTitle.text();
+                        if (blockTitle != '') $('#ci18n_' + i).val(blockTitle);
+                        closeBtn = $('.exe-udlContent-alt-content-hide', block);
+                        if (closeBtn.length > 0) {
+                            closeBtn = closeBtn.eq(0);
+                            closeBtn = closeBtn.text();
+                            if (closeBtn != '') $('#ci18n_hide').val(closeBtn);
+                        }
+                    }
+                }
+            }
+
+            // Remove those elements (they are no longer required)
+            $(
+                '.exe-udlContent-alt-content-title,button.exe-udlContent-alt-content-hide',
+                wrapper
+            ).remove();
+
+            // Get the right type
+            var type = 'engagement';
+            var div = $('.exe-udlContent', wrapper);
+            if (div.length == 1) {
+                if (div.hasClass('exe-udlContent-representation'))
+                    type = 'representation';
+                else if (div.hasClass('exe-udlContent-expression'))
+                    type = 'expression';
+                $('#udlContentType-' + type).prop('checked', true);
+                $exeDevice.setActiveType(type);
+            }
+
             blocks = this.htmlToJSON(wrapper);
         } else {
-            $("#activeIdevice input[type='text']").eq(0).val(''); // Default title (empty)
+            // No previous data - use defaults
+            $("#activeIdevice input[type='text']").eq(0).val('');
             blocks = this.defaultContent;
         }
+
         // Transform that JSON into a form
         this.jsonToForm(blocks);
     },
@@ -846,137 +925,44 @@ var $exeDevice = {
         return tmp.html();
     },
 
-    // Transform the form into a JSON object and that object into HTML to save
+    // Transform the form into a JSON object to save
+    // The export script's renderView() will generate HTML from this JSON
     save: function () {
-        var html = '';
-        var res;
         var data = this.formToJSON();
         var error = false;
 
+        // Validate that all blocks have main content
         for (var i = 0; i < data.length; i++) {
-            res = '';
-            var block = data[i];
-            if (block.contMain == '') error = true;
-            else {
-                var btnTxt = block.btnTxt;
-                btnTxt = $.trim(btnTxt);
-                // Check if the button text has accessible hidden content
-                if (btnTxt.indexOf('|') != -1) {
-                    var tmp = btnTxt.replace('|', '~~');
-                    var parts = tmp.split('~~');
-                    if (parts.length == 2) {
-                        if (parts[0] != '' && parts[1] != '') {
-                            btnTxt =
-                                '<span class="sr-av">' +
-                                $.trim(parts[0]) +
-                                ' </span>' +
-                                $.trim(parts[1]);
-                        }
-                    }
-                }
-                var css = '';
-                if (btnTxt != '') css = ' js-hidden';
-                // Alternative contents
-                var cont1 = block.contAlt1;
-                var cont2 = block.contAlt2;
-                var cont3 = block.contAlt3;
-                // Alternative contents titles
-                var cont1T = _('Easier to read');
-                var cont2T = _('Audio');
-                var cont3T = _('Visual aid');
-                var clsBtn = _('Hide');
-                var v;
-                v = $('#ci18n_simplified').val();
-                if (v != '') cont1T = v;
-                v = $('#ci18n_audio').val();
-                if (v != '') cont2T = v;
-                v = $('#ci18n_visual').val();
-                if (v != '') cont3T = v;
-                v = $('#ci18n_hide').val();
-                if (v != '') clsBtn = v;
-                // Close button
-                clsBtn =
-                    '<button class="exe-udlContent-alt-content-hide">' +
-                    clsBtn +
-                    '</button>';
-                res += '<section class="exe-udlContent-block' + css + '">';
-                if (btnTxt != '') {
-                    var extraCSS = '';
-                    var btnType = block.btnType;
-                    if (
-                        btnType == 1 ||
-                        btnType == 2 ||
-                        btnType == 3 ||
-                        btnType == 4
-                    )
-                        extraCSS = ' exe-udlContent-character-' + btnType;
-                    res +=
-                        '<header class="exe-udlContent-header' +
-                        extraCSS +
-                        '"><h2 style="display:none;">' +
-                        btnTxt +
-                        '</h2></header>';
-                }
-                res += '<div class="exe-udlContent-content">';
-                res +=
-                    '<div class="exe-udlContent-content-main">' +
-                    block.contMain +
-                    '</div>';
-                if (cont1 != '') {
-                    cont1 =
-                        "<header class='exe-udlContent-alt-content-title'><h2>" +
-                        cont1T +
-                        '</h2></header>' +
-                        cont1 +
-                        clsBtn;
-                    res +=
-                        '<article class="exe-udlContent-content-simplified js-hidden">' +
-                        cont1 +
-                        '</article>';
-                }
-                if (cont2 != '') {
-                    cont2 =
-                        "<header class='exe-udlContent-alt-content-title'><h2>" +
-                        cont2T +
-                        '</h2></header>' +
-                        cont2 +
-                        clsBtn;
-                    res +=
-                        '<article class="exe-udlContent-content-audio js-hidden">' +
-                        cont2 +
-                        '</article>';
-                }
-                if (cont3 != '') {
-                    cont3 =
-                        "<header class='exe-udlContent-alt-content-title'><h2>" +
-                        cont3T +
-                        '</h2></header>' +
-                        cont3 +
-                        clsBtn;
-                    res +=
-                        '<article class="exe-udlContent-content-visual js-hidden">' +
-                        cont3 +
-                        '</article>';
-                }
-                res += '</div>';
-                res += '</section>';
-                html += res;
+            if (data[i].contMain == '') {
+                error = true;
+                break;
             }
         }
 
-        if (error == true) {
+        if (error) {
             eXe.app.alert(
                 _('Please provide a main content for all the blocks.')
             );
-            return;
+            return false;
         }
 
-        var css =
-            'exe-udlContent-' + $("input[name='udlContentType']:checked").val();
-        html = '<div class="exe-udlContent ' + css + '">' + html + '</div>';
+        // Get content type (engagement, representation, expression)
+        var contentType = $("input[name='udlContentType']:checked").val() || 'engagement';
 
-        // Return the HTML to save
-        return html;
+        // Get i18n strings from form
+        var ci18n = {
+            simplified: $('#ci18n_simplified').val() || _('Easier to read'),
+            audio: $('#ci18n_audio').val() || _('Audio'),
+            visual: $('#ci18n_visual').val() || _('Visual aid'),
+            hide: $('#ci18n_hide').val() || _('Hide'),
+        };
+
+        // Return JSON data (export script's renderView will generate HTML)
+        return {
+            blocks: data,
+            contentType: contentType,
+            ci18n: ci18n,
+        };
     },
 };
 

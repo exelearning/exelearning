@@ -2,8 +2,7 @@ var $exeTinyMCE = {
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
     plugins:
-        'tooltips exeaudio edicuatex abcmusic exemindmap exemermaid rssfeed modalwindow exeimage exemedia toggletoolbars exeeffects easyattributes advlist lists autolink exelink charmap preview anchor searchreplace visualchars visualblocks code codemagic fullscreen insertdatetime table paste template hr clearfloat addcontent definitionlist blockquoteandcite pastecode abbr exegames_hangman directionality',
-    // exealign is disabled to avoid conflicts with exemedia alignment
+        'tooltips exeaudio edicuatex abcmusic exemindmap exemermaid rssfeed modalwindow exealign exeimage exemedia toggletoolbars exeeffects easyattributes advlist lists autolink exelink charmap preview anchor searchreplace visualchars visualblocks code codemagic fullscreen insertdatetime table paste template hr clearfloat addcontent definitionlist blockquoteandcite pastecode abbr exegames_hangman directionality',
     // These buttons will be visible when the others are hidden
     buttons0:
         'toggletoolbars | undo redo | bold italic | formatselect | alignleft aligncenter alignright alignjustify | exelink unlink | bullist numlist | exeimage exemedia | fullscreen',
@@ -13,7 +12,7 @@ var $exeTinyMCE = {
     buttons2:
         'alignleft aligncenter alignright alignjustify | template clearfloat addcontent | bullist numlist definitionlist | exelink unlink | outdent indent | blockquote blockquoteandcite | ltr rtl',
     buttons3:
-        'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap | exeaudio abcmusic | codemagic | fullscreen',
+        'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exemermaid | exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
 
     menubar: 'edit insert format table tools',
@@ -24,7 +23,7 @@ var $exeTinyMCE = {
         },
         insert: {
             title: 'Insert',
-            items: 'template | hr charmap anchor clearfloat addcontent exemermaid | abbr insertdatetime',
+            items: 'template | hr charmap anchor clearfloat addcontent | abbr insertdatetime',
         }, // ' | exegames_hangman' removed
         format: {
             title: 'Format',
@@ -112,12 +111,13 @@ var $exeTinyMCE = {
     },
 
     getAssetURL: function (url) {
-        let basePath =
+        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/...)
+        let assetUrl =
             eXeLearning.symfony.baseURL +
             eXeLearning.symfony.basePath +
-            '/assets/' +
+            '/' +
             eXeLearning.version;
-        return basePath + url;
+        return assetUrl + url;
     },
 
     // Get classes from base.css and style.css
@@ -250,48 +250,71 @@ var $exeTinyMCE = {
             image_advtab: true,
             image_title: this.image_title,
             file_browser_callback: function (field_name, url, type) {
-                exe_tinymce.chooseImage(field_name, url, type);
+                // Open Media Library modal
+                const filemanager = window.eXeLearning?.app?.modals?.filemanager;
+                if (filemanager) {
+                    filemanager.show({
+                        onSelect: function(result) {
+                            // result = { assetUrl, blobUrl, asset }
+                            const field = document.getElementById(field_name);
+                            if (field) {
+                                field.value = result.blobUrl;
+                                // Trigger change event for TinyMCE to pick up
+                                field.dispatchEvent(new Event('change'));
+                            }
+                        }
+                    });
+                }
             },
             image_title: true,
             /* enable automatic uploads of images represented by blob or data URIs*/
             automatic_uploads: true,
             file_picker_types: 'file image media',
-            /* and here's our custom image picker*/
+            /* and here's our custom image picker - opens Media Library modal */
             file_picker_callback: function (cb, value, meta) {
-                var input = document.createElement('input');
-                input.setAttribute('type', 'file');
-                // input.setAttribute('accept', 'image/*');
-                input.onchange = function () {
-                    var file = this.files[0];
-                    var fd = new FormData();
-                    fd.append('file', file);
-                    fd.append('filename', [file.name]);
-                    fd.append('odeSessionId', [
-                        eXeLearning.app.project.odeSession,
-                    ]);
+                // Open Media Library modal
+                const filemanager = window.eXeLearning?.app?.modals?.filemanager;
+                if (filemanager) {
+                    filemanager.show({
+                        onSelect: async function(result) {
+                            // result = { assetUrl, blobUrl, asset }
 
-                    $exeTinyMCE.lockScreen();
-                    let lockStartTime = new Date();
+                            // For PDFs, use asset:// URL directly (resolved by asset system)
+                            // This avoids TinyMCE converting to base64
+                            if (result.asset.mime === 'application/pdf') {
+                                cb(result.assetUrl, {
+                                    title: result.asset.filename || '',
+                                    'data-mce-pdf': 'true'
+                                });
+                                return;
+                            }
 
-                    eXe.app.uploadLargeFile(fd).then((response) => {
-                        let loadTime = new Date().getTime() - lockStartTime;
-                        if (
-                            response &&
-                            response.savedPath &&
-                            response.savedFilename
-                        ) {
-                            let fullPath = `${response.savedPath}${response.savedFilename}`;
-                            cb(fullPath, {
-                                title: response.savedFilename,
-                                size: response.savedFileSize,
-                            });
-                        } else {
-                            eXe.app.alert(_(response.code));
+                            // For other files, convert blob to data URL to avoid TinyMCE blob handling issues
+                            try {
+                                const response = await fetch(result.blobUrl);
+                                const blob = await response.blob();
+                                const reader = new FileReader();
+                                reader.onloadend = function() {
+                                    cb(reader.result, {
+                                        title: result.asset.filename || '',
+                                        alt: result.asset.filename || '',
+                                        'data-asset-url': result.assetUrl
+                                    });
+                                };
+                                reader.readAsDataURL(blob);
+                            } catch (err) {
+                                console.error('[TinyMCE] Failed to convert blob to data URL:', err);
+                                // Fallback to blob URL
+                                cb(result.blobUrl, {
+                                    title: result.asset.filename || '',
+                                    alt: result.asset.filename || ''
+                                });
+                            }
                         }
-                        $exeTinyMCE.unlockScreen(loadTime);
                     });
-                };
-                input.click();
+                } else {
+                    console.warn('[TinyMCE] Media Library not available');
+                }
             },
 
             // Drag and Drop
@@ -299,20 +322,47 @@ var $exeTinyMCE = {
             // Upload tab?
             image_uploadtab: false,
             images_upload_handler: async function (blobInfo, success, failure) {
-                // eXeLearning upload file
-                $exeTinyMCE.lockScreen();
-                let base64 = `data:${blobInfo.blob().type};base64,${blobInfo.base64()}`;
-                let response = await eXe.app.uploadFile(
-                    base64,
-                    blobInfo.filename()
-                );
-                if (response && response.savedPath && response.savedFilename) {
-                    let fullPath = `${response.savedPath}${response.savedFilename}`;
-                    success(fullPath);
-                } else {
-                    eXe.app.alert(_('Error uploading file'));
+                // Check if this is a blob URL from the AssetManager (already stored in IndexedDB)
+                const blobUri = blobInfo.blobUri();
+                const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+
+                if (assetManager && blobUri && blobUri.startsWith('blob:')) {
+                    // Check if this blob URL is in our cache (meaning it's from AssetManager)
+                    if (assetManager.reverseBlobCache.has(blobUri)) {
+                        // Already an asset, no upload needed - just return the blob URL
+                        success(blobUri);
+                        return;
+                    }
                 }
-                $exeTinyMCE.unlockScreen();
+
+                // Store pasted/dropped images in AssetManager (IndexedDB)
+                if (assetManager) {
+                    $exeTinyMCE.lockScreen();
+                    try {
+                        const blob = blobInfo.blob();
+                        const file = new File([blob], blobInfo.filename() || 'image.png', { type: blob.type });
+                        const assetId = await assetManager.insertImage(file);
+
+                        // Get or create blob URL for the asset
+                        let newBlobUrl = assetManager.blobURLCache.get(assetId);
+                        if (!newBlobUrl) {
+                            // Use the original blob directly (works for both new and deduplicated assets)
+                            // since we already have it in memory
+                            newBlobUrl = URL.createObjectURL(blob);
+                            assetManager.blobURLCache.set(assetId, newBlobUrl);
+                            assetManager.reverseBlobCache.set(newBlobUrl, assetId);
+                        }
+                        success(newBlobUrl);
+                    } catch (err) {
+                        console.error('[TinyMCE] Failed to store in AssetManager:', err);
+                        failure(_('Error storing image'));
+                    }
+                    $exeTinyMCE.unlockScreen();
+                } else {
+                    // AssetManager not available - cannot store image
+                    console.error('[TinyMCE] AssetManager not available');
+                    failure(_('Media library not available'));
+                }
             },
 
             // Media
@@ -423,6 +473,11 @@ var $exeTinyMCE = {
                     if (divExists) div.removeAttr('style'); // FR 303
                     $exeTinyMCEToggler.init(ed.id, hide);
                 }
+
+                // Hook for Yjs collaborative editing - bind editor if Yjs is enabled
+                if (typeof $exeTinyMCE.onEditorInit === 'function') {
+                    $exeTinyMCE.onEditorInit(ed);
+                }
             },
         }); //End tinymce
     },
@@ -433,8 +488,10 @@ var $exeTinyMCE = {
     },
 
     getContentCSS: function () {
+        // Fallback theme path if theme not yet selected (timing issue during iDevice loading)
+        var themePath = eXeLearning.app.themes.selected?.path || '/files/perm/themes/base/INTEF/';
         return (
-            eXeLearning.app.themes.selected.path +
+            themePath +
             'style.css,' +
             eXeLearning.app.api.apiUrlBase +
             '/app/editor/tinymce_5_extra.css,' +

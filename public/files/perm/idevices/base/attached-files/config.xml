@@ -3,6 +3,7 @@
 	<title>Attached files</title>
 	<css-class>attached</css-class>
 	<category>Information and presentation</category>
+	<component-type>json</component-type>
 	<icon>attachment</icon>
 	<downloadable>0</downloadable>
 </idevice>

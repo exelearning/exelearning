@@ -846,7 +846,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>').html(originalHTML),
@@ -1646,7 +1651,7 @@ var $exeDevice = {
                 definition = $this
                     .find('DEFINITION')
                     .text()
-                    .replace(/<[^>]*>/g, ''); // Elimina HTML
+                    .replace(/<[^>]*>/g, ''); // Remove HTML
             if (concept && definition) {
                 cardsJson.push({
                     eText: concept,

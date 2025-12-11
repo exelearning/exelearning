@@ -4,7 +4,6 @@ export default class LogoutButton {
             '#head-bottom-logout-button'
         );
     }
-
     /**
      * Init element
      *
@@ -12,19 +11,12 @@ export default class LogoutButton {
     init() {
         this.addEventClick();
     }
-
     /**
      * Add event click to button
      *
      */
     addEventClick() {
         this.logoutMenuHeadButton.addEventListener('click', (event) => {
-            if (eXeLearning.config.isOfflineInstallation) {
-                // Disable the beforeunload handler to prevent the confirmation dialog and close the main window
-                window.onbeforeunload = null;
-                window.close();
-                return;
-            }
             let odeSessionId = eXeLearning.app.project.odeSession;
             let odeVersionId = eXeLearning.app.project.odeVersion;
             let odeId = eXeLearning.app.project.odeId;
@@ -33,7 +25,6 @@ export default class LogoutButton {
                 odeVersionId: odeVersionId,
                 odeId: odeId,
             };
-
             eXeLearning.app.api
                 .postCheckCurrentOdeUsers(params)
                 .then((response) => {
@@ -60,7 +51,6 @@ export default class LogoutButton {
                 });
         });
     }
-
     /**
      *
      */

@@ -3,6 +3,7 @@
     <title>Math operations</title>
     <css-class>mathematicaloperations</css-class>
     <category>Science</category>
+    <export-object>$eXeMathOperations</export-object>
     <icon>
         <name>mathematicaloperations-icon</name>
         <url>mathematicaloperations-icon.svg</url>

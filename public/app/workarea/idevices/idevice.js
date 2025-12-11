@@ -1,3 +1,6 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 /**
  * eXeLearning
  *
@@ -12,9 +15,9 @@ export default class Idevice {
         this.path = `${manager.symfonyURL}${data.url}`;
         this.pathEdition = `${this.path}/edition/`;
         this.pathExport = `${this.path}/export/`;
-        this.exportObject = null;
+        // Use exportObject from config.xml if provided, otherwise calculate from idevice id
         if (this.exportJs.length > 0) {
-            this.exportObject = this.getIdeviceObjectKey();
+            this.exportObject = this.exportObject || this.getIdeviceObjectKey();
         }
     }
 
@@ -33,6 +36,7 @@ export default class Idevice {
         'editionJs',
         'exportCss',
         'exportJs',
+        'exportObject',
         'icon',
         'license',
         'licenseUrl',
@@ -210,6 +214,15 @@ export default class Idevice {
         let pathSplit = path.split('/files/');
         let pathParam = pathSplit.length == 2 ? pathSplit[1] : path;
         let pathServiceResourceContentCss = `${pathServiceResources}?resource=${pathParam}`;
+
+        // Debug logging for path construction
+        Logger.log('[iDevice] getResourceServicePath:', {
+            inputPath: path,
+            pathServiceResources,
+            pathSplit,
+            pathParam,
+            finalUrl: pathServiceResourceContentCss
+        });
 
         return pathServiceResourceContentCss;
     }

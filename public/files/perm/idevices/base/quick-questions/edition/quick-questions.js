@@ -394,7 +394,7 @@ var $exeDevice = {
     },
 
     onPlayerError: function () {
-        // $exeDevice.showMessage("El video no está disponible");
+        // $exeDevice.showMessage("Video is not available");
     },
 
     startVideo: function (id, start, end, type) {
@@ -1442,7 +1442,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             $exeDevice.active = 0;

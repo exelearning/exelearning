@@ -97,3 +97,14 @@ symfony.lock
 .idea/
 
 runtime/
+symfony_legacy
+test-results/
+coverage/
+test/temp/
+playwright-report/
+.env
+release/
+
+# Generated bundles
+public/app/app.bundle.js
+public/app/dist/

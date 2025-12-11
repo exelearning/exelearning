@@ -1,32 +1,14 @@
 # eXeLearning Deployment Configurations
 
-This directory contains deployment configurations for eXeLearning.
+This directory contains sample Docker Compose configurations for deploying eXeLearning with different database backends.
 
-## Deployment Methods
-
-### Ansible (Automated Deployment)
-
-For automated deployment to Ubuntu servers, see [ansible/README.md](ansible/README.md).
-
-The Ansible playbook deploys eXeLearning with MariaDB and Watchtower (automatic updates) using Docker Compose.
-
-```bash
-cd ansible
-make help               # Show available commands
-make deploy-remote      # Deploy to a remote server
-make up                 # Test with local VM
-```
-
-### Docker Compose (Manual Deployment)
-
-Sample Docker Compose configurations for different database backends:
+## Available Configurations
 
 - **PostgreSQL**: [docker-compose.postgres.yml](docker-compose.postgres.yml)
 - **MariaDB**: [docker-compose.mariadb.yml](docker-compose.mariadb.yml)
 - **SQLite**: [docker-compose.sqlite.yml](docker-compose.sqlite.yml) (simplest option)
-- **MariaDB + Keycloak (OIDC)**: [docker-compose.keycloak.yml](docker-compose.keycloak.yml) (adds a Keycloak IdP and OIDC login)
 
-## How to Use Docker Compose
+## How to Use
 
 1. Create a deployment directory and copy the desired configuration file:
    ```bash
@@ -43,9 +25,6 @@ Sample Docker Compose configurations for different database backends:
    
    # For SQLite
    curl -L https://raw.githubusercontent.com/exelearning/exelearning/main/doc/deploy/docker-compose.sqlite.yml -o docker-compose.yml
-
-   # For MariaDB + Keycloak (OIDC)
-   curl -L https://raw.githubusercontent.com/exelearning/exelearning/main/doc/deploy/docker-compose.keycloak.yml -o docker-compose.yml
    ```
 
 2. Start the application:
@@ -69,9 +48,8 @@ You can customize the deployment by setting these environment variables:
 
 ### Common Variables
 - `APP_PORT`: Port to access the application (default: 8080)
-- `APP_SECRET`: Secret key for Symfony (required for production)
+- `APP_SECRET`: Secret key for JWT authentication (required for production)
 - `TEST_USER_EMAIL`, `TEST_USER_USERNAME`, `TEST_USER_PASSWORD`: Credentials for the first test user
-- `MERCURE_JWT_SECRET_KEY`: Secret key for Mercure real-time updates
 - `ONLINE_THEMES_INSTALL`: Allow users to import/install styles
 - `ONLINE_IDEVICES_INSTALL`: Allow users to import/install iDevices
 
@@ -92,23 +70,6 @@ You can customize the deployment by setting these environment variables:
 - SQLite:
   - No specific variables required
 
-### Keycloak + OIDC Variables
-- `APP_AUTH_METHODS`: Must include `openid` to enable Keycloak login (already set in the compose file)
-- `AUTH_CREATE_USERS`: Allow auto-creation of local accounts for OIDC logins
-- `OIDC_ISSUER`, `OIDC_AUTHORIZATION_ENDPOINT`, `OIDC_TOKEN_ENDPOINT`, `OIDC_USERINFO_ENDPOINT`: URLs for the OIDC provider (default: the bundled Keycloak realm)
-- `OIDC_SCOPE`: Requested scopes (default: `openid email`)
-- `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`: Client credentials configured in Keycloak
-- `KEYCLOAK_PORT`: Host port for the Keycloak admin and OIDC endpoints (default: 8081)
-- `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`: Initial Keycloak admin credentials
-- `KEYCLOAK_DB_NAME`, `KEYCLOAK_DB_USER`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_DB_ROOT_PASSWORD`: Credentials for the dedicated Keycloak database
-- `KEYCLOAK_HOSTNAME`: Hostname Keycloak advertises in generated links (set to your public hostname when deploying remotely)
-
-## Keycloak Deployment Notes
-
-The `docker-compose.keycloak.yml` stack deploys eXeLearning, a MariaDB instance for the application, a separate MariaDB instance for Keycloak, and Keycloak itself. The realm definition located at [keycloak-realms/exelearning-realm.json](keycloak-realms/exelearning-realm.json) is automatically imported on startup and already includes a demo user (`user` / `1234`). You can edit this file to add new clients, realms, or users before running `docker compose up`.
-
-When exposing the stack outside of localhost, update `KEYCLOAK_HOSTNAME`, regenerate `OIDC_*` endpoint URLs to match your hostname, and set strong values for `APP_SECRET`, `OIDC_CLIENT_SECRET`, and every database password. Remember to back up both database volumes regularly, as Keycloak keeps user and client data in its dedicated database.
-
 ## Data Persistence
 
 All configurations use Docker volumes for data persistence:
@@ -116,7 +77,6 @@ All configurations use Docker volumes for data persistence:
 - PostgreSQL: `postgres-data` volume for database files
 - MariaDB: `mariadb-data` volume for database files
 - SQLite: `exelearning-data` volume for the SQLite database file and application files
-- Keycloak stack: adds `keycloak-db-data` for the Keycloak database and `keycloak-data` for the Keycloak runtime data
 
 ## Production Deployment Notes
 

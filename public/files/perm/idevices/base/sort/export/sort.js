@@ -1382,19 +1382,11 @@ var $eXeOrdena = {
         $audio.hide();
         $noImage.show();
 
-        if (type === 1) {
-            $text.show().css({
-                color: color,
-                'background-color': backcolor,
-            });
-            $textdinamic.css({
-                color: color,
-            });
-        } else if (type === 0 && url.length > 3) {
+        const loadImage = (resolvedUrl) => {
             $image
                 .attr('alt', alt)
                 .show()
-                .prop('src', url)
+                .prop('src', resolvedUrl)
                 .on('load', function () {
                     if (
                         !this.complete ||
@@ -1411,28 +1403,35 @@ var $eXeOrdena = {
                 .on('error', function () {
                     $cursor.hide();
                 });
+        };
+
+        const resolveAndLoadImage = () => {
+            if (url && url.startsWith('asset://')) {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((blobUrl) => {
+                        loadImage(blobUrl || '');
+                    });
+                }
+            } else {
+                loadImage(url);
+            }
+        };
+
+        if (type === 1) {
+            $text.show().css({
+                color: color,
+                'background-color': backcolor,
+            });
+            $textdinamic.css({
+                color: color,
+            });
+        } else if (type === 0 && url.length > 3) {
+            resolveAndLoadImage();
         } else if (type === 2) {
             if (url.length > 3) {
-                $image
-                    .attr('alt', alt)
-                    .show()
-                    .prop('src', url)
-                    .on('load', function () {
-                        if (
-                            !this.complete ||
-                            typeof this.naturalWidth === 'undefined' ||
-                            this.naturalWidth === 0
-                        ) {
-                            $cursor.hide();
-                        } else {
-                            $image.show();
-                            $cursor.hide();
-                            $eXeOrdena.positionPointerCard($cursor, x, y);
-                        }
-                    })
-                    .on('error', function () {
-                        $cursor.hide();
-                    });
+                resolveAndLoadImage();
                 $text.show().css({
                     color: '#000',
                     'background-color': 'rgba(255, 255, 255, 0.7)',

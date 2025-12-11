@@ -434,36 +434,52 @@ var $eXeSeleccionaMedias = {
         if (q.url.length < 4) return false;
         $imageDiv.show();
         $image.attr('alt', q.alt);
-        $image
-            .prop('src', q.url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth == 'undefined' ||
-                    this.naturalWidth == 0
-                ) {
+
+        const loadImage = (resolvedUrl) => {
+            $image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth == 0
+                    ) {
+                        return false;
+                    } else {
+                        const mData = $eXeSeleccionaMedias.placeImageWindows(
+                            this,
+                            this.naturalWidth,
+                            this.naturalHeight
+                        );
+                        $eXeSeleccionaMedias.drawImage(this, mData);
+                        $imageDiv.show();
+                        if (q.author.length > 0) {
+                            $author.show();
+                        }
+                        if (q.alt.length > 0) {
+                            $image.prop('alt', q.alt);
+                        }
+                        return true;
+                    }
+                })
+                .on('error', function () {
+                    $imageDiv.hide();
                     return false;
-                } else {
-                    const mData = $eXeSeleccionaMedias.placeImageWindows(
-                        this,
-                        this.naturalWidth,
-                        this.naturalHeight
-                    );
-                    $eXeSeleccionaMedias.drawImage(this, mData);
-                    $imageDiv.show();
-                    if (q.author.length > 0) {
-                        $author.show();
-                    }
-                    if (q.alt.length > 0) {
-                        $image.prop('alt', q.alt);
-                    }
-                    return true;
-                }
-            })
-            .on('error', function () {
-                $imageDiv.hide();
-                return false;
-            });
+                });
+        };
+
+        // Resolve asset:// URLs to blob URLs
+        if (q.url && q.url.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(q.url).then((blobUrl) => {
+                    loadImage(blobUrl || '');
+                });
+            }
+        } else {
+            loadImage(q.url);
+        }
     },
 
     drawImage: function (image, mData) {

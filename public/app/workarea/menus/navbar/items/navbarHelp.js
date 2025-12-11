@@ -160,7 +160,7 @@ export default class NavbarFile {
      * Open API Swagger docs in new tab
      */
     apiDocsEvent() {
-        let url = '/api/v2/docs'; // ruta de API Platform
+        let url = '/api/docs'; // ruta de API docs
         window.open(url, '_blank').focus();
     }
 

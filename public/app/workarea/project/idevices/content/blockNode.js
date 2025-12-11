@@ -4,6 +4,9 @@ import {
     buildComponentFileName,
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
+
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
 /**
  * eXeLearning
  *
@@ -16,7 +19,13 @@ export default class IdeviceBlockNode {
         this.id = data.id
             ? data.id
             : eXeLearning.app.api.parameters.generateNewItemKey;
-        this.blockId = data.blockId ? data.blockId : this.engine.generateId();
+        // Use Yjs-style IDs when Yjs is enabled for consistency with Yjs structure
+        const yjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
+        this.blockId = data.blockId
+            ? data.blockId
+            : yjsEnabled
+                ? `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+                : this.engine.generateId();
         // Set api params
         this.setParams(data);
         // Idevices
@@ -97,6 +106,43 @@ export default class IdeviceBlockNode {
     }
 
     /**
+     * Check if Yjs collaborative mode is enabled
+     * @returns {boolean}
+     */
+    isYjsEnabled() {
+        return eXeLearning.app?.project?._yjsEnabled === true;
+    }
+
+    /**
+     * Load properties from Yjs
+     * Updates local properties object with values from Yjs
+     * Should be called before showing the properties modal to get latest values
+     */
+    loadPropertiesFromYjs() {
+        if (!this.isYjsEnabled()) return;
+
+        const project = eXeLearning.app.project;
+        const bridge = project._yjsBridge;
+
+        if (!bridge || !bridge.structureBinding) return;
+
+        const yjsProperties = bridge.structureBinding.getBlockProperties(this.blockId);
+        if (yjsProperties) {
+            for (let [key, value] of Object.entries(yjsProperties)) {
+                if (this.properties[key]) {
+                    // Convert booleans back to strings for compatibility with modal
+                    if (typeof value === 'boolean') {
+                        this.properties[key].value = value ? 'true' : 'false';
+                    } else {
+                        this.properties[key].value = value;
+                    }
+                }
+            }
+            Logger.log('[BlockNode] Loaded properties from Yjs:', this.blockId, yjsProperties);
+        }
+    }
+
+    /**
      * Set values of api properties
      *
      * @param {Array} properties
@@ -104,6 +150,11 @@ export default class IdeviceBlockNode {
      */
     setProperties(properties, onlyHeritable) {
         for (let [key, value] of Object.entries(this.properties)) {
+            // Check if property exists in the data from backend
+            if (!properties || !properties[key]) {
+                continue;
+            }
+
             if (onlyHeritable) {
                 if (properties[key].heritable)
                     value.value = properties[key].value;
@@ -365,12 +416,25 @@ export default class IdeviceBlockNode {
                         selection.addRange(range);
                         btnEdit.style.display = 'none';
                         let finished = false;
+
+                        // Sync title in real-time while typing via Yjs
+                        const onInput = () => {
+                            const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
+                            if (binding) {
+                                binding.updateBlock(this.blockId, {
+                                    blockName: this.blockNameElementText.textContent.trim()
+                                });
+                            }
+                        };
+                        this.blockNameElementText.addEventListener('input', onInput);
+
                         const finishEditing = () => {
                             if (finished) return;
                             finished = true;
                             this.blockNameElementText.removeAttribute(
                                 'contenteditable'
                             );
+                            this.blockNameElementText.removeEventListener('input', onInput);
                             btnEdit.style.display = '';
                             this.apiUpdateTitle(
                                 this.blockNameElementText.textContent.trim()
@@ -409,7 +473,7 @@ export default class IdeviceBlockNode {
      *
      */
     test() {
-        console.log('click');
+        Logger.log('click');
     }
 
     /**
@@ -576,17 +640,6 @@ export default class IdeviceBlockNode {
                                                 this.blockContent,
                                                 previousBlock
                                             );
-                                            // Send operation log action to bbdd
-                                            let additionalData = {
-                                                blockId: this.blockId,
-                                                previousOrder: previousOrder,
-                                            };
-                                            eXeLearning.app.project.sendOdeOperationLog(
-                                                this.pageId,
-                                                this.pageId,
-                                                'MOVE_BLOCK_ON',
-                                                additionalData
-                                            );
                                         }
                                     });
                                 }
@@ -639,17 +692,6 @@ export default class IdeviceBlockNode {
                                                 this.blockContent,
                                                 nextBlock.nextSibling
                                             );
-                                            // Send operation log action to bbdd
-                                            let additionalData = {
-                                                blockId: this.blockId,
-                                                previousOrder: previousOrder,
-                                            };
-                                            eXeLearning.app.project.sendOdeOperationLog(
-                                                this.pageId,
-                                                this.pageId,
-                                                'MOVE_BLOCK_ON',
-                                                additionalData
-                                            );
                                         }
                                     });
                                 }
@@ -681,17 +723,8 @@ export default class IdeviceBlockNode {
                                 contentId: 'error',
                             });
                         } else {
-                            eXeLearning.app.modals.confirm.show({
-                                title: _('Delete box'),
-                                body: _(
-                                    'Delete the box and all its iDevices? This cannot be undone.'
-                                ),
-                                confirmButtonText: _('Yes'),
-                                confirmExec: () => {
-                                    this.remove(true);
-                                    eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
-                                },
-                            });
+                            this.remove(true);
+                            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
                         }
                     });
             });
@@ -717,6 +750,8 @@ export default class IdeviceBlockNode {
                                 contentId: 'error',
                             });
                         } else {
+                            // Load fresh properties from Yjs before showing modal
+                            this.loadPropertiesFromYjs();
                             eXeLearning.app.modals.properties.show({
                                 node: this,
                                 title: _('Box properties'),
@@ -791,40 +826,7 @@ export default class IdeviceBlockNode {
                                     let pageElement = menuNav.querySelector(
                                         `[nav-id="${newPageId}"]`
                                     );
-                                    let odePageId =
-                                        pageElement.getAttribute('page-id');
-                                    // Get page id before update
-                                    let previousPageId =
-                                        this.odeNavStructureSyncId;
-                                    let previousOdePageId =
-                                        eXeLearning.app.project.structure.getSelectNodePageId();
                                     this.apiUpdatePage(newPageId);
-                                    if (
-                                        parseInt(newPageId) !==
-                                        this.odeNavStructureSyncId
-                                    ) {
-                                        eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                                            false,
-                                            null,
-                                            this.blockId,
-                                            null,
-                                            'MOVE_TO_PAGE',
-                                            odePageId
-                                        );
-                                        // Send operation log action to bbdd
-                                        let additionalData = {
-                                            previousPageId: previousPageId,
-                                            newPageId: newPageId,
-                                            blockId: this.blockId,
-                                            previousOrder: this.order,
-                                        };
-                                        eXeLearning.app.project.sendOdeOperationLog(
-                                            previousOdePageId,
-                                            odePageId,
-                                            'MOVE_BLOCK_TO',
-                                            additionalData
-                                        );
-                                    }
                                 },
                             });
                         }
@@ -909,7 +911,7 @@ export default class IdeviceBlockNode {
             .querySelector("#dropdownBlockMore-button-checkLinks"+this.blockId)
             .addEventListener("click", element => {
                 let blockId = this.blockId;
-                console.log("check links");
+                Logger.log("check links");
                 this.getOdeBlockBrokenLinksEvent(blockId).then(response => {
                     if (!response.responseMessage) {
                         // Show eXe OdeBrokenList modal
@@ -1064,6 +1066,11 @@ export default class IdeviceBlockNode {
         if (iconValue == '0' || iconValue == this.emptyIcon) {
             iconValue = '';
         }
+        // Sync to Yjs for persistence across page changes and collaboration
+        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
+        if (binding) {
+            binding.updateBlock(this.blockId, { iconName: iconValue });
+        }
         this.apiUpdateIcon(iconValue);
     }
 
@@ -1133,12 +1140,21 @@ export default class IdeviceBlockNode {
             '#change-block-icon-modal-content .option-block-icon'
         );
         iconsElements.forEach((icon) => {
-            // One click to select
+            // One click to select and sync via Yjs
             icon.addEventListener('click', (event) => {
                 iconsElements.forEach((option) => {
                     option.setAttribute('selected', 'false');
                 });
                 icon.setAttribute('selected', true);
+
+                // Sync icon in real-time via Yjs
+                const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
+                if (binding) {
+                    let iconId = icon.getAttribute('icon-id');
+                    // Handle empty icon (id=0)
+                    const iconName = (iconId === '0' || iconId === this.emptyIcon) ? '' : iconId;
+                    binding.updateBlock(this.blockId, { iconName });
+                }
             });
             // Double click to select and save
             icon.addEventListener('dblclick', (event) => {
@@ -1233,14 +1249,6 @@ export default class IdeviceBlockNode {
             this.apiSendDataService('putSaveBlock', params).then((response) => {
                 // Generate icon from theme icons
                 this.makeIconNameElement();
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    null,
-                    response.odePagStructureSync.blockId,
-                    null,
-                    'EDIT',
-                    null
-                );
             });
         }
     }
@@ -1254,18 +1262,14 @@ export default class IdeviceBlockNode {
         // Save new title text
         this.blockName = title;
         this.blockNameElementText.innerHTML = title;
+        // Sync to Yjs for persistence across page changes and collaboration
+        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
+        if (binding) {
+            binding.updateBlock(this.blockId, { blockName: title });
+        }
         // If block exist save in bbdd
         if (this.id) {
-            this.apiSendDataService('putSaveBlock', params).then((response) => {
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    null,
-                    response.odePagStructureSync.blockId,
-                    null,
-                    'EDIT',
-                    null
-                );
-            });
+            this.apiSendDataService('putSaveBlock', params);
         }
     }
 
@@ -1309,15 +1313,6 @@ export default class IdeviceBlockNode {
                         }
                     );
                 }
-                // Synchronize current users
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    null,
-                    response.odePagStructureSync.blockId,
-                    null,
-                    'EDIT',
-                    null
-                );
             } else {
                 eXeLearning.app.modals.alert.show({
                     title: _('Block error'),
@@ -1337,6 +1332,12 @@ export default class IdeviceBlockNode {
     async apiUpdatePage(odeNavStructureSyncId) {
         // Can't move component to current page
         if (this.odeNavStructureSyncId == odeNavStructureSyncId) return false;
+
+        // Use Yjs for moving to different page when enabled
+        if (this.isYjsEnabled()) {
+            return await this.moveToPageViaYjs(odeNavStructureSyncId);
+        }
+
         // Required parameters
         let params = ['odePagStructureSyncId', 'odeNavStructureSyncId'];
         this.odeNavStructureSyncId = odeNavStructureSyncId;
@@ -1355,13 +1356,90 @@ export default class IdeviceBlockNode {
     }
 
     /**
+     * Move block to different page via Yjs
+     * @param {string} targetPageId - Target page ID
+     * @returns {Object} Mock response object
+     */
+    async moveToPageViaYjs(targetPageId) {
+        try {
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            const structureBinding = bridge?.structureBinding;
+
+            if (!structureBinding) {
+                console.warn('[BlockNode] Cannot move to page via Yjs: structureBinding not available');
+                return { responseMessage: 'ERROR' };
+            }
+
+            // Try with blockId first, then with id as fallback
+            let success = structureBinding.moveBlockToPage(this.blockId, targetPageId);
+            if (!success && this.id && this.id !== this.blockId) {
+                Logger.log('[BlockNode] Retrying with id:', this.id);
+                success = structureBinding.moveBlockToPage(this.id, targetPageId);
+            }
+
+            if (success) {
+                // Update internal reference
+                this.odeNavStructureSyncId = targetPageId;
+                this.pageId = targetPageId;
+                // Remove block view
+                this.remove();
+                // Check if the source page is now empty
+                eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                return { responseMessage: 'OK' };
+            }
+
+            return { responseMessage: 'ERROR' };
+        } catch (error) {
+            console.error('[BlockNode] Error moving to page via Yjs:', error);
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
+     * Delete block via Yjs
+     * @returns {Object} Mock response object
+     */
+    async deleteBlockViaYjs() {
+        try {
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            const structureBinding = bridge?.structureBinding;
+
+            if (!structureBinding) {
+                console.warn('[BlockNode] Cannot delete block via Yjs: structureBinding not available');
+                return { responseMessage: 'ERROR' };
+            }
+
+            // Try with blockId first, then with id as fallback
+            const idsToTry = [this.blockId, this.id].filter(Boolean);
+            let success = false;
+
+            for (const blockIdToTry of idsToTry) {
+                Logger.log('[BlockNode] Trying to delete block with id:', blockIdToTry);
+                success = structureBinding.deleteBlock(this.pageId, blockIdToTry);
+                if (success) {
+                    Logger.log('[BlockNode] Block deleted via Yjs with id:', blockIdToTry);
+                    break;
+                }
+            }
+
+            if (success) {
+                return { responseMessage: 'OK' };
+            }
+
+            console.warn('[BlockNode] Block not found in Yjs for deletion');
+            return { responseMessage: 'ERROR' };
+        } catch (error) {
+            console.error('[BlockNode] Error deleting block via Yjs:', error);
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
      * Update order of block in database
      *
      * @return {Array}
      */
     async apiUpdateOrder(getCurrentOrder) {
-        let params = ['odePagStructureSyncId', 'order'];
-
         // If indicated, obtains the new order of the neighboring blocks
         if (getCurrentOrder) {
             let currentOrder = this.getCurrentOrder();
@@ -1374,6 +1452,13 @@ export default class IdeviceBlockNode {
             }
         }
 
+        // Use Yjs for reordering when enabled
+        if (this.isYjsEnabled()) {
+            return await this.reorderViaYjs();
+        }
+
+        let params = ['odePagStructureSyncId', 'order'];
+
         // Update order in database
         let response = await this.apiSendDataService('putReorderBlock', params);
         if (response.responseMessage == 'OK') {
@@ -1381,14 +1466,6 @@ export default class IdeviceBlockNode {
             setTimeout(() => {
                 this.blockContent.classList.remove('moving');
             }, this.engine.movingClassDuration);
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                this.blockId,
-                null,
-                'MOVE_ON_PAGE',
-                null
-            );
         }
         // Error saving block in database
         else {
@@ -1399,6 +1476,42 @@ export default class IdeviceBlockNode {
         }
         // this.sendPublishedNotification();
         return response;
+    }
+
+    /**
+     * Reorder block via Yjs
+     * @returns {Object} Mock response object
+     */
+    async reorderViaYjs() {
+        try {
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            const structureBinding = bridge?.structureBinding;
+
+            if (!structureBinding) {
+                console.warn('[BlockNode] Cannot reorder via Yjs: structureBinding not available');
+                return { responseMessage: 'ERROR' };
+            }
+
+            // Try with blockId first, then with id as fallback
+            let success = structureBinding.updateBlockOrder(this.blockId, this.order);
+            if (!success && this.id && this.id !== this.blockId) {
+                Logger.log('[BlockNode] Retrying reorder with id:', this.id);
+                success = structureBinding.updateBlockOrder(this.id, this.order);
+            }
+
+            if (success) {
+                // Remove class moving of block
+                setTimeout(() => {
+                    this.blockContent?.classList.remove('moving');
+                }, this.engine.movingClassDuration);
+                return { responseMessage: 'OK' };
+            }
+
+            return { responseMessage: 'ERROR' };
+        } catch (error) {
+            console.error('[BlockNode] Error reordering via Yjs:', error);
+            return { responseMessage: 'ERROR' };
+        }
     }
 
     /**
@@ -1472,23 +1585,6 @@ export default class IdeviceBlockNode {
                 this,
                 response.odePagStructureSync
             );
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                response.odePagStructureSync.blockId,
-                null,
-                'ADD',
-                null
-            );
-            let additionalData = {
-                blockId: response.odePagStructureSync.blockId,
-            };
-            eXeLearning.app.project.sendOdeOperationLog(
-                response.odePagStructureSync.pageId,
-                response.odePagStructureSync.pageId,
-                'CLONE_BLOCK',
-                additionalData
-            );
             eXeLearning.app.modals.alert.show({
                 title: _('Information'),
                 body: _(
@@ -1510,6 +1606,11 @@ export default class IdeviceBlockNode {
      * @returns {Object}
      */
     async apiDeleteBlock() {
+        // Use Yjs if enabled - skip legacy API call
+        if (this.isYjsEnabled()) {
+            return await this.deleteBlockViaYjs();
+        }
+
         eXeLearning.app.api.deleteBlock(this.id).then((response) => {
             if (response.responseMessage && response.responseMessage == 'OK') {
                 // All blocks that have been modified
@@ -1643,23 +1744,6 @@ export default class IdeviceBlockNode {
         this.engine.updateMode();
         // Delete block in database
         if (bbdd) {
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                this.blockId,
-                null,
-                'DELETE',
-                null
-            );
-            let additionalData = {
-                blockId: this.blockId,
-            };
-            eXeLearning.app.project.sendOdeOperationLog(
-                this.pageId,
-                this.pageId,
-                'REMOVE_BLOCK',
-                additionalData
-            );
             this.apiDeleteBlock();
         }
     }

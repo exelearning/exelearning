@@ -1,0 +1,177 @@
+{% extends "base.njk" %}
+
+{% block title %}eXeLearning{% endblock %}
+
+{% block stylesheets %}
+    {# eXeLearning styles #}
+    <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/base.css' | asset }}">
+    {# Legacy/Common styles #}
+    <link class="exe" rel="stylesheet" href="{{ '/app/common/exe_effects/exe_effects.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/app/common/exe_games/exe_games.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/app/common/exe_highlighter/exe_highlighter.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/app/common/exe_lightbox/exe_lightbox.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/app/common/exe_media/exe_media.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/app/common/exe_wikipedia/exe_wikipedia.css' | asset }}">
+{% endblock %}
+
+{% block javascripts %}
+    {# External libs #}
+    <script class="exe" src="{{ '/libs/jquery-ui/jquery-ui.min.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/libs/multi-dropdown.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/libs/interact/interact.min.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/libs/showdown/showdown.min.js' | asset }}" defer></script>
+    {# eXeLearning common legacy objects #}
+    <script class="exe" type="module" src="{{ '/app/common/app_common.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/common_i18n.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/common_edition.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/common.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/exe_effects/exe_effects.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/exe_games/exe_games.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/exe_highlighter/exe_highlighter.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/exe_lightbox/exe_lightbox.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/exe_media/exe_media.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/common/exe_math/tex-mml-svg.js' | asset }}" defer></script>
+    {# To review: Scripts for plugins in development #}
+    <script class="exe" src="{{ '/app/common/fix_webm_duration/fix_webm_duration.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/libs/abcjs/exe_abc_music.js' | asset }}" defer></script>
+    {# Controller JS values #}
+    <script class="exe">
+        // Environment control variables for frontend
+        window.__APP_ENV__ = "{{ config.appEnv }}";
+        window.__APP_DEBUG__ = "{{ config.appDebug }}";
+        window.__APP_ONLINE_MODE__ = {{ config.onlineMode | default(true) }};
+
+        window.eXeLearning = {
+            version: "{{ version }}",
+            expires: "{{ expires }}",
+            extension: "{{ extension }}",
+            user: `{{ user | dump | safe }}`,
+            config: `{{ config | dump | safe }}`,
+            symfony: `{{ symfony | dump | safe }}`,
+            mercure: {% if mercure %}`{{ mercure | dump | safe }}`{% else %}null{% endif %},
+            projectId: {% if projectId %}"{{ projectId }}"{% else %}null{% endif %}
+        }
+    </script>
+    {# TinyMCE #}
+    <script class="exe" src="{{ '/libs/tinymce_5/js/tinymce/tinymce.min.js' | asset }}" defer></script>
+    <script class="exe" src="{{ '/app/editor/tinymce_5_settings.js' | asset }}" defer></script>
+    {# Yjs Collaborative Editing (loaded on-demand via yjs-loader.js) #}
+    <script class="exe" src="{{ '/app/yjs/yjs-loader.js' | asset }}" defer></script>
+    {# eXeLearning app: use individual modules (debugJs) or bundle #}
+    {% if config.debugJs %}
+    <script class="exe" type="module" src="{{ '/app/app.js' | asset }}" defer></script>
+    {% else %}
+    <script class="exe" src="{{ '/app/app.bundle.js' | asset }}" defer></script>
+    {% endif %}
+{% endblock %}
+
+{% block id %}main{% endblock %}
+{% block body %}
+    <div id="load-screen-main" class="load-screen loading" data-testid="loading-main" data-visible="true">
+        <span>eXeLearning {{ version }}</span>
+    </div>
+    <div id="workarea" class="container-fluid d-flex flex-nowrap">
+        <aside class="asideleft col-md-4 col-lg-3 bg-light vh-100">
+            <div class="content-info">
+                <div id="exe-title" class="title-not-editing">
+                    <h2 class="exe-title content" id="change_title">...</h2>
+                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ t.change_title or 'Change title' }}" aria-label="{{ t.change_title or 'Change title' }}">
+                        <span class="exe-icon small-icon edit-icon-green"></span>
+                    </button>
+                </div>
+            </div>
+            <div class="accordion" id="menus_content">
+                {% include 'workarea/menus/menuStructure.njk' %}
+                {% include 'workarea/menus/menuIdevices.njk' %}
+            </div>
+        </aside>
+        <main>
+            <header id="head">
+                <nav class="navbar bg-transparent">
+                    {% include 'workarea/menus/menuHeadTop.njk' %}
+                    {% include 'workarea/menus/menuHeadBottom.njk' %}
+                </nav>
+            </header>
+            <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
+                <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
+                <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
+                    <div>
+                        <div id="header-node-content" class="header"></div>
+                        <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
+                    </div>
+                </div>
+                {# Idevices bottom menu #}
+                <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar">
+                </div>
+            </section>
+        </main>
+    </div>
+    {# styles sidebar #}
+    <div id="stylessidenav-content" class="relative z-50 navbar-menu">
+        <div id="sidenav-overlay"  class="sidenav-overlay"></div>
+        <aside id="stylessidenav" class="sidenav" role="complementary">
+            <div class="content-styles-header">
+                <h1 class="styles-title">
+                    Styles
+                </h1>
+                <div id="stylessidenavclose" class="navbar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="content-tabs">
+                <ul class="nav nav-tabs{% if config.userStyles == false %} d-none{% endif %}" id="styleslist" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab" data-bs-target="#exestylescontent" type="button" role="tab" aria-controls="exestylescontent" aria-selected="true">
+                            System
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="importedstylescontent-tab" data-bs-toggle="tab" data-bs-target="#importedstylescontent" type="button" role="tab" aria-controls="importedstylescontent" aria-selected="false">
+                            Imported
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="tab-content mt-3" id="styleslistContent">
+                <div class="tab-pane fade show active" id="exestylescontent" role="tabpanel" aria-labelledby="exestylescontent-tab" tabindex="0">
+                </div>
+                <div class="tab-pane fade" id="importedstylescontent" role="tabpanel" aria-labelledby="importedstylescontent-tab">
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    {# Modals #}
+    <div class="modals-container">
+        {% include 'workarea/modals/generic/modalAlert.njk' %}
+        {% include 'workarea/modals/generic/modalInfo.njk' %}
+        {% include 'workarea/modals/generic/modalConfirm.njk' %}
+        {% include 'workarea/modals/generic/modalSessionLogout.njk' %}
+        {% include 'workarea/modals/pages/uploadtodrive.njk' %}
+        {% include 'workarea/modals/pages/uploadtodropbox.njk' %}
+        {% include 'workarea/modals/pages/filemanager.njk' %}
+        {% include 'workarea/modals/pages/stylemanager.njk' %}
+        {% include 'workarea/modals/pages/idevicemanager.njk' %}
+        {% include 'workarea/modals/pages/odebrokenlinks.njk' %}
+        {% include 'workarea/modals/pages/odeusedfiles.njk' %}
+        {% include 'workarea/modals/pages/lopd.njk' %}
+        {% include 'workarea/modals/pages/assistant.njk' %}
+        {% include 'workarea/modals/pages/releasenotes.njk' %}
+        {% include 'workarea/modals/pages/legalnotes.njk' %}
+        {% include 'workarea/modals/pages/about.njk' %}
+        {% include 'workarea/modals/pages/properties.njk' %}
+        {% include 'workarea/modals/pages/openuserodefiles.njk' %}
+        {% include 'workarea/modals/pages/templateselection.njk' %}
+        {% include 'workarea/modals/pages/modalShare.njk' %}
+    </div>
+
+    {# Toasts #}
+    <div class="toasts-container">
+        {% include 'workarea/toast/toastDefault.njk' %}
+    </div>
+{% endblock %}

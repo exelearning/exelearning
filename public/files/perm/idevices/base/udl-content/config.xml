@@ -3,10 +3,11 @@
 	<title>UDL Content</title>
 	<css-class>udl-content</css-class>
 	<category>Information and presentation</category>
-		<icon>
-        <name>udl-content-icon</name>
-        <url>udl-content-icon.svg</url>
-        <type>img</type>
-    </icon>
+	<component-type>json</component-type>
+	<icon>
+		<name>udl-content-icon</name>
+		<url>udl-content-icon.svg</url>
+		<type>img</type>
+	</icon>
 	<downloadable>0</downloadable>
 </idevice>

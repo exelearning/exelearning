@@ -1,145 +1,79 @@
-ARG ARCH=
+# syntax=docker/dockerfile:1
+ARG BUN_VERSION=1.3
 ARG VERSION=v0.0.0-alpha
 
-FROM ${ARCH}erseco/alpine-php-webserver:3.23
-
-LABEL maintainer="INTEF <cedec@educacion.gob.es>"
-LABEL org.opencontainers.image.title="eXeLearning"
-LABEL org.opencontainers.image.description="eXeLearning Docker Image"
-LABEL org.opencontainers.image.version="${VERSION}"
-LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
-
-# Use /bin/ash instead of /bin/sh to ensure compatibility with Alpine's BusyBox shell
-# Enable -e (exit immediately on error) and -o pipefail to fail properly when a piped command fails
-# This prevents silent build errors and satisfies Hadolint rule DL4006
-SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
-
-ENV VERSION=${VERSION} \
-    LANG=en_US.UTF-8 \
-    LANGUAGE=en_US:en \
-    nginx_root_directory=/app/public \
-    SITE_URL=http://localhost \
-    DEBUG=false \
-    APP_ENV=prod \
-    APP_PORT=8080 \
-    APP_ONLINE_MODE=1 \
-    APP_AUTH_METHODS=password,guest \
-    TEST_USER_EMAIL=user@exelearning.net \
-    TEST_USER_USERNAME=user \
-    TEST_USER_PASSWORD=1234 \
-    client_max_body_size=512M \
-    post_max_size=512M \
-    upload_max_filesize=512M \
-    memory_limit=512M \
-    max_execution_time=600 \
-    max_input_time=600 \
-    max_input_vars=5000 \
-    fastcgi_read_timeout=300s \
-    fastcgi_send_timeout=300s \
-    opcache_preload=/app/config/preload.php \
-    # Mercure configuration variables
-    SERVER_NAME=:80 \
-    MERCURE_PUBLISHER_JWT_KEY=!ChangeThisMercureHubJWTSecretKey! \
-    MERCURE_PUBLISHER_JWT_ALG=HS256 \
-    MERCURE_SUBSCRIBER_JWT_KEY=!ChangeThisMercureHubJWTSecretKey! \
-    MERCURE_SUBSCRIBER_JWT_ALG=HS256 \
-    USE_FORWARDED_HEADERS=1 \
-    XDG_CONFIG_HOME=/mnt/data/mercure/config \
-    XDG_DATA_HOME=/mnt/data/mercure/data
-
-# Set working directory
+################################################################################
+# Base image for reuse
+################################################################################
+FROM oven/bun:${BUN_VERSION}-alpine AS base
 WORKDIR /app
 
-USER root
+################################################################################
+# Dependencies stage - separated for cache efficiency
+################################################################################
+FROM base AS deps
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
-# Install Composer and required dependencies
-RUN apk add --no-cache \
-    php84-pdo_mysql \
-    php84-pdo_sqlite \
-    php84-pdo_pgsql \
-    php84-mbstring \
-    php84-exif \
-    php84-pcntl \
-    php84-bcmath \
-    php84-gd \
-    php84-zip \
-    php84-intl \
-    php84-xmlwriter \
-    php84-ctype \
-    php84-fileinfo \
-    php84-tokenizer \
-    php84-xml \
-    php84-simplexml \
-    php84-dom \
-    php84-session && \
-# Install Composer manually (latest version compatible with PHP 8.4)
-    curl -sS https://getcomposer.org/installer | php84 -d allow_url_fopen=1 && \
-    mv composer.phar /usr/local/bin/composer && \
-    chmod +x /usr/local/bin/composer && \
-# Install xdebug (TODO: consider removing in production environment)
-    apk add --no-cache php84-pecl-xdebug; \
-    sed -i 's/;zend_extension=xdebug.so/zend_extension=xdebug.so/' /etc/php84/conf.d/50_xdebug.ini && \
-    echo "xdebug.start_with_request=yes" >> /etc/php84/conf.d/50_xdebug.ini && \
-    echo "xdebug.discover_client_host=1" >> /etc/php84/conf.d/50_xdebug.ini && \
-    echo "xdebug.log=/dev/stdout" >> /etc/php84/conf.d/50_xdebug.ini && \
-# This directory is required if debugging with xdebug in Visual Studio Code
-# in an attached container (see development environment documentation)
-    mkdir /.vscode-server && chmod -R 777 /.vscode-server && \
-# Clean APK cache
-    rm -rf /var/cache/apk/* && \
-# Create /mnt/data directory and change ownership to nobody
-    mkdir -p /mnt/data && chown -R nobody:nobody /mnt/data && \
-# Create mercure service directory with proper ownership for user 'nobody'
-    mkdir -p /etc/service/mercure && chown nobody:nobody /etc/service/mercure && \
-# Create /app/vendor directory and change ownership to nobody
-    mkdir -p /app/vendor && chown -R nobody:nobody /app/vendor && \
-    mkdir -p /app/public && chown -R nobody:nobody /app/public && \
-    mkdir -p /app/var/cache /app/var/log && chown -R nobody:nobody /app/var/cache /app/var/log
+################################################################################
+# Build stage - Compile TypeScript and assets
+################################################################################
+FROM deps AS builder
+COPY tsconfig.json ./
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY views/ ./views/
+COPY assets/ ./assets/
+COPY public/ ./public/
 
-# nginx configuration for assets, files and iDevices
-COPY --chown=nobody assets.conf /etc/nginx/server-conf.d/assets.conf
-COPY --chown=nobody idevices.conf /etc/nginx/server-conf.d/idevices.conf
-COPY --chown=nobody subdir.conf.template /etc/nginx/server-conf.d/subdir.conf.template
-COPY --chown=nobody nginx-logging-map.conf /etc/nginx/conf.d/logging-map.conf
+RUN bun run build:all && \
+    ls -la public/style/workarea/main.css && \
+    ls -la dist/
 
-# Copy Mercure binary and configuration from the official container because Mercure is not yet available as an Alpine package
-COPY --from=dunglas/mercure:latest /usr/bin/caddy /usr/bin/mercure
-COPY --from=dunglas/mercure:latest /etc/caddy/Caddyfile /etc/caddy/Caddyfile
-COPY --from=dunglas/mercure:latest /etc/caddy/dev.Caddyfile /etc/caddy/dev.Caddyfile
+# Prune dev dependencies after build
+RUN rm -rf node_modules && \
+    bun install --production --frozen-lockfile && \
+    rm -rf ~/.bun/install/cache
 
-# Create symbolic link to the php84 binary
-RUN ln -sf /usr/bin/php84 /usr/local/bin/php
+################################################################################
+# Production stage
+################################################################################
+FROM base
 
-# Set up Mercure service
-COPY mercure.run /etc/service/mercure/run
-RUN chmod +x /etc/service/mercure/run && \
-    chown nobody:nobody /etc/service/mercure/run
-COPY --chown=nobody mercure.conf /etc/nginx/server-conf.d/mercure.conf
+ARG VERSION
+LABEL maintainer="INTEF <cedec@educacion.gob.es>" \
+      org.opencontainers.image.title="eXeLearning" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
-USER nobody
+RUN apk add --no-cache dumb-init
 
-# Copy composer.json and composer.lock before the source code to leverage cache
-COPY --chown=nobody composer.json composer.lock ./
+ENV NODE_ENV=production \
+    APP_ENV=prod \
+    APP_DEBUG=0
 
-# Copy Symfony configuration script (e.g., migrations and user setup)
-COPY --chown=nobody 02-configure-symfony.sh /docker-entrypoint-init.d/
+# Copy everything from builder (already has prod node_modules)
+COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=builder --chown=bun:bun /app/dist ./dist
+COPY --from=builder --chown=bun:bun /app/public ./public
+COPY --from=builder --chown=bun:bun /app/assets ./assets
 
-# Make sure it's executable
-RUN chmod +x /docker-entrypoint-init.d/02-configure-symfony.sh
+# Runtime files
+COPY --chown=bun:bun package.json ./
+COPY --chown=bun:bun views/ ./views/
+COPY --chown=bun:bun translations/ ./translations/
+COPY --chown=bun:bun docker-entrypoint.sh ./
 
-# Run composer (TODO: consider using --no-dev in production environment)
-RUN composer install --optimize-autoloader --no-interaction --no-progress && \
-    composer clear-cache
+RUN mkdir -p /app/data /mnt/data && \
+    chown -R bun:bun /app/data /mnt/data && \
+    chmod +x docker-entrypoint.sh
 
-# Copy the rest of the source code
-COPY --chown=nobody . .
+USER bun
 
-# Remove the script from /app to avoid duplication
-RUN rm /app/02-configure-symfony.sh
-
-HEALTHCHECK --interval=1m --timeout=15s --start-period=1m --retries=3 \
-  CMD curl --fail --silent --show-error http://localhost:8080/healthcheck || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget -qO- http://localhost:8080/healthcheck || exit 1
 
 EXPOSE 8080
-VOLUME ["/mnt/data"]
 
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "/app/docker-entrypoint.sh"]
+CMD ["bun", "run", "dist/index.js"]

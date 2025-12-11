@@ -42,6 +42,11 @@ var $exeDevice = {
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
+        $exeDevice.addPickerButton();
+    },
+
+    addPickerButton: function () {
+        // Manejado globalmente por $exeDevicesEdition.iDevice.filePicker.init()
     },
 
     refreshTranslations: function () {
@@ -146,12 +151,30 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
-        });
+        const playAudio = (url) => {
+            const selectFile =
+                $exeDevices.iDevice.gamification.media.extractURLGD(url);
+            $exeDevice.playerAudio = new Audio(selectFile);
+            $exeDevice.playerAudio.addEventListener(
+                'canplaythrough',
+                function () {
+                    $exeDevice.playerAudio.play();
+                }
+            );
+        };
+
+        // Handle asset:// URLs
+        if (selectedFile && selectedFile.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(selectedFile).then((resolvedUrl) => {
+                    playAudio(resolvedUrl || '');
+                });
+            }
+        } else {
+            playAudio(selectedFile);
+        }
     },
 
     stopSound() {
@@ -336,39 +359,63 @@ var $exeDevice = {
 
     showImage: function (url, x, y, alt) {
         const $image = $('#idfEImage'),
-            $cursor = $('#idfECursor');
+            $cursor = $('#idfECursor'),
+            $input = $('#idfEURLImage');
         $image.hide();
         $cursor.hide();
         $image.attr('alt', alt);
         $('#idfENoImage').show();
 
-        url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
+        const loadImage = (resolvedUrl) => {
+            resolvedUrl =
+                $exeDevices.iDevice.gamification.media.extractURLGD(
+                    resolvedUrl
+                );
 
-        $image
-            .prop('src', url)
-            .on('load', function () {
-                if (
-                    !this.complete ||
-                    typeof this.naturalWidth == 'undefined' ||
-                    this.naturalWidth == 0
-                ) {
+            $image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth == 0
+                    ) {
+                        return false;
+                    } else {
+                        const mData = $exeDevice.placeImageWindows(
+                            this,
+                            this.naturalWidth,
+                            this.naturalHeight
+                        );
+                        $exeDevice.drawImage(this, mData);
+                        $image.show();
+                        $('#idfENoImage').hide();
+                        $exeDevice.paintMouse(this, $cursor, x, y);
+                        return true;
+                    }
+                })
+                .on('error', function () {
                     return false;
-                } else {
-                    const mData = $exeDevice.placeImageWindows(
-                        this,
-                        this.naturalWidth,
-                        this.naturalHeight
-                    );
-                    $exeDevice.drawImage(this, mData);
-                    $image.show();
-                    $('#idfENoImage').hide();
-                    $exeDevice.paintMouse(this, $cursor, x, y);
-                    return true;
+                });
+        };
+
+        // Handle asset:// URLs
+        if (url && url.startsWith('asset://')) {
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                loadImage(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
+                        loadImage(resolvedUrl || '');
+                    });
                 }
-            })
-            .on('error', function () {
-                return false;
-            });
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     paintMouse: function (image, cursor, x, y) {
@@ -547,7 +594,7 @@ var $exeDevice = {
                                     <span id="idfETitleImage">${_('Image URL')}</span>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfEInputImage">
                                         <label class="sr-av" for="idfEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="idfEURLImage"/>
+                                        <input type="text" class="exe-image-picker w-100 form-control me-0" id="idfEURLImage"/>
                                         <a href="#" id="idfEPlayImage" class="IDFE-ENavigationButton IDFE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="IDFE-EButtonImage " /></a>
                                         <a href="#" id="idfEShowMore" class="IDFE-ENavigationButton IDFE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="IDFE-EButtonImage " /></a>
                                     </div>
@@ -714,7 +761,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             $exeDevice.active = 0;

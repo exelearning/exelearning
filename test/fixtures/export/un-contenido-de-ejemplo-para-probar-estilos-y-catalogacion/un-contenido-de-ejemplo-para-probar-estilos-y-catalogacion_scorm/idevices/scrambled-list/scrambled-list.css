@@ -1,0 +1,194 @@
+/* Scrambled List iDevice */
+.exe-sortableList-options {
+    margin: 1.5em 0;
+    padding: 0;
+    list-style: none;
+}
+
+.exe-sortableList-options li {
+    background: #fff;
+    color: #333;
+    padding: 0.5em 65px 0.5em 1em;
+    margin: 0 0 0.5em 0 !important;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    list-style-image: none !important;
+    box-shadow: 0 0 5px 0 rgba(204, 204, 204, 1);
+}
+
+.exe-sortableList-options li[draggable="true"]:hover {
+    cursor: grab;
+}
+
+.exe-sortableList .first .up,
+.exe-sortableList-options .last .down {
+    visibility: hidden;
+}
+
+.exe-sortableList li {
+    position: relative;
+}
+
+.exe-sortableList li a {
+    display: block;
+    width: 21px;
+    height: 21px;
+    background: url(scrambled-list.png) no-repeat 0 0;
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    margin-top: -10px;
+}
+
+.exe-sortableList li a:hover,
+.exe-sortableList li a:focus {
+    background-position: 0 -21px;
+}
+
+.exe-sortableList li .down {
+    background-position: -21px 0;
+    right: 13px;
+}
+
+.exe-sortableList li .down:hover,
+.exe-sortableList li .down:focus {
+    background-position: -21px -21px;
+}
+
+.feedback-scorm {
+    display: flex;
+}
+
+.feedback-scorm p {
+    margin: 10px auto;
+    padding: 5px 60px 5px;
+    font-size: 1.2em;
+}
+
+.Games-BottonContainer {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    margin: 0.1em auto;
+    padding: 0;
+    width: 100%;
+}
+
+.Games-GetScore input[type=button] {
+    padding: 0.3em 0.5em;
+    margin-right: .5em;
+    width: auto;
+}
+
+.Games-GetScore span {
+    display: block;
+}
+
+.Games-BottonContainer {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.Games-BottonContainer * {
+    margin: 0;
+    padding: 0;
+}
+
+
+.Games-GetScore {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 1em
+}
+
+
+.Games-GetScore span {
+    display: block;
+}
+
+.Games-ReportIconDiv {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.1em;
+    width: 100%;
+    margin-bottom: 6px;
+
+}
+
+.Games-ReportIconDiv img {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.Games-ReportIconDiv span {
+    font-size: 0.9em;
+}
+
+.SLP-MainContainer {
+    font-size: 1em;
+    width: 100%;
+}
+
+.SLP-MainContainer * {
+    box-sizing: border-box;
+}
+
+.SLP-GameContainer {
+    position: relative;
+    width: 100%;
+}
+
+.SLP-GameContainer {
+    position: relative;
+    width: 100%;
+}
+
+
+.SLP-GameScoreBoard {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    margin: 0.4em auto;
+    width: 98%;
+}
+
+
+.SLP-TimeNumber {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.SLP-PTime {
+    font-size: 1.6em;
+    min-width: 7em;
+    text-align: center;
+}
+
+.SLP-Multimedia {
+    margin: 0.3em auto;
+    overflow: hidden;
+}
+
+.SLP-instructions {
+    clear: both;
+    margin-bottom: 1em;
+}
+
+.SLP-StartGameDiv {
+    background-color: transparent;
+    display: flex;
+    justify-content: center;
+    margin: 0.3em auto;
+    width: 100%;
+}
+
+
+.SLP-EHidden {
+    display: none;
+}

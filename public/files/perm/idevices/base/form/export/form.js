@@ -16,6 +16,7 @@ var $form = {
     iconTrueFalse: 'rule',
     iconDropdown: 'expand_more',
     iconFill: 'horizontal_rule',
+
     msgs: {
         msgScoreScorm:
             'La puntuación no se puede guardar porque esta página no forma parte de un paquete SCORM.',
@@ -58,16 +59,28 @@ var $form = {
         msgPlayStart: 'Pulse aquí para comenzar',
         msgTrue: 'Verdadero',
         msgFalse: 'Falso',
-        msgOk: 'Correcto',
-        msgKO: 'Incorrecto',
-        msgSuggestion: 'Sugerencia',
     },
 
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
+
+    /**
+     * eXe idevice engine
+     * Json idevice api function
+     * Engine execution order: 1
+     *
+     * Get the base html of the idevice view
+     *
+     * @param {Object} data
+     * @param {Number} accesibility
+     * @param {String} template
+     * @returns {String}
+     */
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
+
         let display = $('body').hasClass('exe-export') ? 'none' : '';
+
         if ($('body').hasClass('exe-scorm') && ldata.isScorm > 0) {
             ldata.msgs.msgCheck = ldata.textButtonScorm;
         }
@@ -77,7 +90,9 @@ var $form = {
         const timedisplay = ldata.time > 0 ? 'flex' : 'none';
         const timebody = ldata.time > 0 ? 'none' : 'block';
         const time = this.formatTime(ldata.time * 60);
+
         const htmlContent = `<div class="game-evaluation-ids js-hidden" data-id="${ldata.id}" data-evaluationb="${ldata.evaluation}" data-evaluationid="${ldata.evaluationID}"></div>
+
             <div id="frmMainContainer-${ldata.id}" class="form-IDevice" data-id="${ldata.id}">
                 <div class="form-Data js-hidden">${json}</div>
                 <div class="form-instructions">${ldata.eXeFormInstructions}</div>
@@ -95,6 +110,7 @@ var $form = {
                         <div id="form-questions-${ldata.id}" > </div>
                         <div id="frmCover-${ldata.id}" class="FRMP-Cover"> </div>
                     </div>
+                    
                     <div id="resultsContainer-${ldata.id}" class="form-results-container inline">
                         <div id="form-score-${ldata.id}" class="score-text">${ldata.msgs.msgScore}.</div>
                         <div id="form-result-test-${ldata.id}" class="score-text phrase-score"></div>
@@ -110,7 +126,6 @@ var $form = {
                             data-id="${ldata.id}" style="display: ${display}" />`
                                 : ''
                         }
-
                     </div>
                 </div>
                 <div class="Games-BottonContainer">
@@ -121,7 +136,9 @@ var $form = {
                 <div class="form-instructions">${ldata.eXeIdeviceTextAfter}</div>
             </div>
             ${$form.extractMediaElements(data.questionsData)}
+            
             `;
+
         return template.replace('{content}', htmlContent);
     },
 
@@ -138,6 +155,7 @@ var $form = {
         this.idevicePath = this.isInExe
             ? eXe.app.getIdeviceInstalledExportPath('form')
             : $('.idevice_node.form').eq(0).attr('data-idevice-path');
+
         const data = JSON.parse(JSON.stringify(odata));
         data.msgs = $form.mergeFields(data.msgs, $form.msgs);
         data.id = ideviceId || data.ideviceId || data.id;
@@ -152,6 +170,7 @@ var $form = {
         let lscorm = data.scorm && data.scorm.saveScore ? 1 : 0;
         data.isScorm = lscorm || data.isScorm ? 1 : 0;
         data.weighted = data.weighted ?? 100;
+
         const title =
             $('#' + data.id)
                 .closest('article')
@@ -159,12 +178,14 @@ var $form = {
                 .text() || '';
         const $idevices = $('.idevice_node');
         const index = $idevices.index($('#' + data.id)) + 1;
+
         data.ideviceNumber = index;
         data.isInExe = this.isInExe;
         data.idevicePath = this.idevicePath;
         data.title = title;
         data.gameStarted = false;
-        data.idevice = 'form-IDevice';
+        data.idevice = 'exe-form-container';
+
         data.numberQuestions = data.questionsData
             ? data.questionsData.length
             : 0;
@@ -173,12 +194,15 @@ var $form = {
         data.rightQuestions = 0;
         data.wrongQuestions = 0;
         data.showSlider = data.showSlider ?? false;
+
         data.passRate = data.passRate ?? 5;
         data.addBtnAnswers = data.addBtnAnswers ?? true;
+
         data.scorerp = 0;
         data.main = 'frmMainContainer-' + data.id;
         data.percentageQuestions = data.percentageQuestions ?? 100;
         data.questionsRandom = data.questionsRandom ?? false;
+
         if (data.percentageQuestions < 100) {
             data.questionsData =
                 $exeDevices.iDevice.gamification.helpers.getQuestions(
@@ -206,13 +230,15 @@ var $form = {
      * @returns {Boolean}
      */
     renderBehaviour: function (data, accesibility, ideviceId) {
-        console.log(data);
         const ldata = this.updateConfig(data, ideviceId);
         const addBtnAnswers = ldata.addBtnAnswers;
+
         if (!ldata.questionsData) return;
         const questionsHtml = $form.getHtmlFormView(ldata.questionsData, ldata);
+
         $('#form-questions-' + ldata.id).empty();
         $('#form-questions-' + ldata.id).append(questionsHtml);
+
         const interval = setInterval(() => {
             const $ideviceElement = $(`[id="${ldata.id}"]`);
             if ($ideviceElement.length) {
@@ -228,15 +254,19 @@ var $form = {
                 }
             }
         }, 200);
+
         const $ideviceReference = $(`[id="${ldata.id}"]`);
         if (!$ideviceReference.length) return;
         const $showAnswersButton = $('#form-button-show-answers-' + ldata.id);
+
         if ($showAnswersButton.length) $showAnswersButton.hide();
+
         $('#frmMainContainer-' + ldata.id)
             .find('LI.FormView_question')
             .each((_, question) => {
                 const $question = $(question);
                 $question.removeAttr('draggable');
+
                 const questionType = $question.attr('activity-type');
                 const helpTexts = {
                     selection:
@@ -247,6 +277,7 @@ var $form = {
                     'true-false': ldata.msgs.msgTrueFalseHelp,
                     fill: ldata.msgs.msgFillHelp,
                 };
+
                 const helptext = helpTexts[questionType] || '';
                 if (helptext) {
                     $question.prepend(
@@ -254,46 +285,14 @@ var $form = {
                     );
                 }
             });
-        // Add event handler for suggestion toggle
-        $('#frmMainContainer-' + ldata.id).on(
-            'click',
-            '.FRMP-ShowSuggestion',
-            function (e) {
-                e.preventDefault();
-                const $link = $(this);
-                const $question = $link.closest('.FormView_question');
-                const $suggestion = $question.find('.FRMP-Suggestion');
-                const $icon = $link.find('.FRMP-SuggestionIcon');
-                $suggestion.slideToggle('fast', function () {
-                    if ($suggestion.is(':visible')) {
-                        $icon.attr(
-                            'src',
-                            $icon
-                                .attr('src')
-                                .replace('showsuggestion', 'hidesuggestion')
-                        );
-                        $icon.attr('alt', ldata.msgs.msgHide || 'Ocultar');
-                    } else {
-                        $icon.attr(
-                            'src',
-                            $icon
-                                .attr('src')
-                                .replace('hidesuggestion', 'showsuggestion')
-                        );
-                        $icon.attr('alt', ldata.msgs.msgSuggestion);
-                    }
 
-                    if (ldata.showSlider) {
-                        $form.resizeSlideShow(ldata);
-                    }
-                });
-            }
-        );
         const $buttonsContainer = $('#frmMainContainer-' + ldata.id).find(
             '.form-buttons-container'
         );
+
         if (!$('body').hasClass('exe-export'))
             $buttonsContainer.css('display', '');
+
         if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
             this.scormFunctions = '../libs/SCOFunctions.js';
@@ -327,119 +326,43 @@ var $form = {
         const dataString = JSON.stringify(ldata);
         const hasLatex =
             $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
         if (!hasLatex) return;
         const mathjaxLoaded = typeof window.MathJax !== 'undefined';
+
         if (!mathjaxLoaded) {
             $exeDevices.iDevice.gamification.math.loadMathJax();
         } else {
             $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
         }
     },
+
     extractMediaElements: function (items) {
         if (!Array.isArray(items)) return '';
+
         const tmp = document.createElement('div');
-        const mediaUrls = new Set();
-        const fullElements = new Set();
-        const extractFromHTML = (htmlContent) => {
-            if (!htmlContent || typeof htmlContent !== 'string') return;
-            tmp.innerHTML = htmlContent;
-            tmp.querySelectorAll('img').forEach((el) => {
-                fullElements.add(el.outerHTML);
-                const src = el.getAttribute('src');
-                if (
-                    src &&
-                    !src.startsWith('http://') &&
-                    !src.startsWith('https://') &&
-                    !src.startsWith('data:')
-                ) {
-                    mediaUrls.add(JSON.stringify({ type: 'img', url: src }));
-                }
-            });
-            tmp.querySelectorAll('audio, video').forEach((el) => {
-                fullElements.add(el.outerHTML);
-                const src = el.getAttribute('src');
-                if (
-                    src &&
-                    !src.startsWith('http://') &&
-                    !src.startsWith('https://')
-                ) {
-                    mediaUrls.add(
-                        JSON.stringify({
-                            type: el.tagName.toLowerCase(),
-                            url: src,
-                        })
-                    );
-                }
+        const set = new Set();
 
-                el.querySelectorAll('source').forEach((source) => {
-                    const srcSource = source.getAttribute('src');
-                    if (
-                        srcSource &&
-                        !srcSource.startsWith('http://') &&
-                        !srcSource.startsWith('https://')
-                    ) {
-                        mediaUrls.add(
-                            JSON.stringify({
-                                type: el.tagName.toLowerCase(),
-                                url: srcSource,
-                            })
-                        );
-                    }
-                });
-            });
-            tmp.querySelectorAll('a[href]').forEach((el) => {
-                const href = el.getAttribute('href');
-                if (
-                    href &&
-                    !href.startsWith('http://') &&
-                    !href.startsWith('https://') &&
-                    !href.startsWith('#') &&
-                    !href.startsWith('mailto:')
-                ) {
-                    if (/\.[a-zA-Z0-9]{2,4}$/.test(href)) {
-                        mediaUrls.add(
-                            JSON.stringify({ type: 'file', url: href })
-                        );
-                    }
-                }
-            });
+        for (const { baseText = '' } of items) {
+            tmp.innerHTML = baseText;
+
+            tmp.querySelectorAll('img').forEach((el) => set.add(el.outerHTML));
+            tmp.querySelectorAll('audio, video').forEach((el) =>
+                set.add(el.outerHTML)
+            );
+
             tmp.innerHTML = '';
-        };
-        for (const question of items) {
-            // Extract from baseText (all question types have this)
-            extractFromHTML(question.baseText);
-            // Extract from answers (for selection type questions)
-            // answers is array of [isCorrect:boolean, text:string]
-            if (question.answers && Array.isArray(question.answers)) {
-                question.answers.forEach((answer) => {
-                    if (Array.isArray(answer) && answer.length > 1) {
-                        // answer[1] is the text
-                        extractFromHTML(answer[1]);
-                    }
-                });
-            }
-
-            // Extract from feedbackRight and feedbackWrong (all question types can have these)
-            extractFromHTML(question.feedbackRight);
-            extractFromHTML(question.feedbackWrong);
-            // Note: Other fields like wrongAnswersValue (dropdown), answer (true-false),
-            // capitalization/strict (fill) don't contain HTML, so we don't need to process them
         }
 
-        let hiddenLinks = '';
-        const urlsArray = Array.from(mediaUrls).map((json) => JSON.parse(json));
-        urlsArray.forEach((media, index) => {
-            hiddenLinks += `<a href="${media.url}" class="js-hidden form-media-${media.type}">${index}</a>`;
-        });
-        // Combine full elements and hidden links
-        const mediaHtml = `<div class="questionsMedia" style="display:none">${[...fullElements].join('')}${hiddenLinks}</div>`;
-        return mediaHtml;
+        return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`;
     },
 
     replaceResourceDirectoryPaths(data, htmlString) {
         const $node = $('#' + data.ideviceId);
         const isInExe = eXe.app.isInExe();
+
         if (isInExe || $node.length == 0) return htmlString;
+
         let dir = $('html').is('#exe-index')
             ? 'content/resources/' + data.ideviceId + '/'
             : '../content/resources/' + data.ideviceId + '/';
@@ -452,8 +375,11 @@ var $form = {
         ).forEach((el) => {
             const attr = el.hasAttribute('src') ? 'src' : 'href';
             let val = el.getAttribute(attr).trim();
+
             val = val.replace(/\\/g, '/').replace(/\/+/g, '/');
+
             let pathname = val;
+
             try {
                 const baseURL =
                     window.location.origin === 'null' ||
@@ -467,6 +393,7 @@ var $form = {
             }
 
             pathname = pathname.replace(/\\/g, '/').replace(/\/+/g, '/');
+
             if (/^\/?files\//.test(pathname)) {
                 if (pathname.indexOf('file_manager') === -1) {
                     const filename = pathname.split('/').pop() || '';
@@ -494,13 +421,15 @@ var $form = {
         mOptions.current = 0;
         function clearPreviousMathInWrapper(wrapperEl) {
             if (!wrapperEl || typeof MathJax === 'undefined') return;
+
             try {
                 if (typeof MathJax.typesetClear === 'function') {
                     MathJax.typesetClear([wrapperEl]);
                     return;
                 }
-            } catch (e) {}
-
+            } catch (e) {
+                //
+            }
             try {
                 wrapperEl
                     .querySelectorAll('mjx-container')
@@ -512,8 +441,11 @@ var $form = {
                     .forEach(function (n) {
                         n.remove();
                     });
-            } catch (e) {}
+            } catch (e) {
+                //
+            }
         }
+
         if (mOptions.showSlider) {
             const $slideshow = $('#frmMainContainer-' + instance).find(
                 '.FRMP-SlideshowContainer'
@@ -521,8 +453,10 @@ var $form = {
             const $wrapper = $slideshow.find('.FRMP-SlideshowWrapper');
             const $slides = $wrapper.children();
             const total = $slides.length;
+
             if (total > 1) {
                 $wrapper.css({ position: 'relative', overflow: 'hidden' });
+
                 const firstHeight = $slides.eq(0).outerHeight(true);
                 $wrapper.css('height', firstHeight);
                 $slideshow.css(
@@ -542,10 +476,12 @@ var $form = {
                     .hide()
                     .eq(0)
                     .show();
+
                 function goTo(index, direction) {
                     const nextIndex = (index + total) % total;
                     const $currentSlide = $slides.eq(mOptions.current);
                     const $nextSlide = $slides.eq(nextIndex);
+
                     if (direction === 'next') {
                         $currentSlide.animate(
                             { left: '-100%' },
@@ -568,7 +504,6 @@ var $form = {
                                                 .find('.FRMP-SlideshowControls')
                                                 .outerHeight(true),
                                     },
-
                                     300
                                 );
                             });
@@ -594,7 +529,6 @@ var $form = {
                                                 .find('.FRMP-SlideshowControls')
                                                 .outerHeight(true),
                                     },
-
                                     300
                                 );
                             });
@@ -605,6 +539,7 @@ var $form = {
                         .find('#frmSlideNumber-' + instance)
                         .text(mOptions.current + 1 + '/' + total);
                     clearPreviousMathInWrapper($wrapper.get(0));
+
                     setTimeout(function () {
                         if (
                             $exeDevices?.iDevice?.gamification?.math
@@ -649,6 +584,7 @@ var $form = {
             $exeDevices.iDevice.gamification.scorm.getPreviousScore(
                 $form.mScorm
             );
+
         if (typeof $form.mScorm.SetScoreMax === 'function') {
             $form.mScorm.SetScoreMax(100);
         } else {
@@ -660,12 +596,22 @@ var $form = {
         } else {
             $form.mScorm.SetScoreMin(0);
         }
-
         $form.initialScore = $form.previousScore;
         $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
     },
 
-    init: function (data, accesibility) {},
+    /**
+     * Json idevice api function
+     * Engine execution order: 3
+     *
+     *
+     * @param {Object} data
+     * @param {Number} accesibility
+     * @returns {Boolean}
+     */
+    init: function (data, accesibility) {
+        //
+    },
 
     updateTime: function (time, ideviceid) {
         $('#frmPTime-' + ideviceid).text(this.formatTime(time));
@@ -674,22 +620,25 @@ var $form = {
     formatTime: function (timeInSeconds) {
         const totalMinutes = Math.floor(timeInSeconds / 60);
         const leftoverSeconds = timeInSeconds % 60;
+
         if (totalMinutes < 60) {
             const mm = String(totalMinutes).padStart(2, '0');
             const ss = String(leftoverSeconds).padStart(2, '0');
             return `${mm}:${ss}`;
         }
-
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
+
         const hh = String(hours).padStart(2, '0');
         const mm = String(minutes).padStart(2, '0');
         const ss = String(leftoverSeconds).padStart(2, '0');
+
         return `${hh}:${mm}:${ss}`;
     },
 
     startGame: function (data) {
         if (data.gameStarted) return;
+
         const checkButton = document.querySelector(
             `#form-button-check-${data.id}`
         );
@@ -703,13 +652,17 @@ var $form = {
         const startGameDiv = document.querySelector(
             `#frmStartGameDiv-${data.id}`
         );
+
         if (startGameDiv) startGameDiv.style.display = 'none';
         if (rebootButton) rebootButton.style.display = 'none';
         if (showAnswers) showAnswers.style.display = 'none';
+
         if (checkButton) checkButton.style.display = 'block';
         if (body) body.style.display = 'block';
+
         $form.resetScore(data);
         data.counter = data.time * 60;
+
         data.clock = setInterval(() => {
             if (data.gameStarted) {
                 let $node = $('#frmMainContainer-' + data.id);
@@ -721,7 +674,6 @@ var $form = {
                     clearInterval(data.clock);
                     return;
                 }
-
                 data.counter--;
                 $form.updateTime(data.counter, data.id);
                 gameStarted = false;
@@ -744,18 +696,21 @@ var $form = {
         const rebootButton = $(`#form-button-reset-${data.id}`);
         const showAnswers = $(`#form-button-show-answers-${data.id}`);
         const cover = $(`#frmCover-${data.id}`);
+
         if (cover.length) cover.show();
         if (checkButton.length) checkButton.hide();
         if (rebootButton.length) rebootButton.show();
         if (data.addBtnAnswers & showAnswers.length) showAnswers.show();
+
         data.gameOver = true;
+
         $form.checkAllQuestions(data);
         $form.showScore(50, data);
         if ($('body').hasClass('exe-scorm') && data.isScorm > 0) {
             $form.sendScore(data);
         }
-
         $form.saveEvaluation(data);
+
         if (data.time > 0) {
             $form.stopCounter(data);
             if (checkButton.length) checkButton.hide();
@@ -763,25 +718,31 @@ var $form = {
             data.gameOver = true;
         }
     },
+
     stopCounter: function (data) {
         if (data.clock) {
             clearInterval(data.clock);
         }
     },
+
     rebootGame(data) {
         this.resetScore(data);
+
         const $checkButton = $(`#form-button-check-${data.id}`);
         const $resetButton = $(`#form-button-reset-${data.id}`);
         const $showAnswers = $(`#form-button-show-answers-${data.id}`);
         const $cover = $(`#frmCover-${data.id}`);
         const $formPreview = $(`#form-questions-${data.id}`);
+
         const toggle = ($el, show) => {
             if ($el.length) show ? $el.show() : $el.hide();
         };
+
         if ($cover.length) $cover.hide();
         toggle($checkButton, true);
         toggle($resetButton, false);
         toggle($showAnswers, false);
+
         $formPreview.find('input.fillInput').css('border-color', '').val('');
         $formPreview
             .find(
@@ -790,32 +751,21 @@ var $form = {
             .prop('checked', false)
             .parent()
             .css('color', '');
+
         $formPreview.find('select').css('border-color', '').val('');
-        // Remove feedback messages
-        $formPreview.find('.form-feedback-message').remove();
-        // Hide all suggestions
-        $formPreview.find('.FRMP-Suggestion').hide();
-        // Reset suggestion icons to show state
-        $formPreview.find('.FRMP-SuggestionIcon').each(function () {
-            const $icon = $(this);
-            const src = $icon.attr('src');
-            if (src && src.includes('hidesuggestion')) {
-                $icon.attr(
-                    'src',
-                    src.replace('hidesuggestion', 'showsuggestion')
-                );
-                $icon.attr('alt', data.msgs.msgSuggestion);
-            }
-        });
+
         $form.hideScore(data.id);
+
         data.gameStarted = false;
         data.gameOver = false;
+
         if (data.time > 0) {
             toggle($resetButton, false);
             toggle($showAnswers, false);
             $form.startGame(data);
         }
     },
+
     saveEvaluation: function (data) {
         data.scorerp = (data.rightQuestions * 10) / data.totalQuestions;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
@@ -832,27 +782,37 @@ var $form = {
         $form.previousScore = data.previousScore;
     },
 
+    /**
+     * Transform json data in html questions for the form
+     *
+     * @param {Object|Object[]} questionsData
+     *
+     * @returns {String}
+     */
     generatePage(questionsData, data) {
         let form = `<ul id="formPreview-${data.id}" class="FRMP-PREVIEW">`;
-        questionsData.forEach((question, index) => {
+
+        questionsData.forEach((question) => {
             switch (question.activityType) {
                 case 'dropdown':
-                    form += this.createDropdownQuestion(question, data, index);
+                    form += this.createDropdownQuestion(question, data);
                     break;
                 case 'selection':
-                    form += this.createSelectionQuestion(question, data, index);
+                    form += this.createSelectionQuestion(question, data);
                     break;
                 case 'true-false':
-                    form += this.createTrueFalseQuestion(question, data, index);
+                    form += this.createTrueFalseQuestion(question, data);
                     break;
                 case 'fill':
-                    form += this.createFillQuestion(question, data, index);
+                    form += this.createFillQuestion(question, data);
                     break;
                 default:
                     break;
             }
         });
+
         form += '</ul>';
+
         return form;
     },
 
@@ -871,44 +831,36 @@ var $form = {
 
         const grouped = [];
         for (let i = 0; i < questionsData.length; i += itemsPerSlide) {
-            grouped.push({
-                questions: questionsData.slice(i, i + itemsPerSlide),
-                startIndex: i,
-            });
+            grouped.push(questionsData.slice(i, i + itemsPerSlide));
         }
 
         const slidesHtml = grouped
             .map((group, slideIdx) => {
                 let questionsHtml = `<ul class="FRMP-PREVIEW">`;
-                group.questions.forEach((question, relativeIndex) => {
-                    const absoluteIndex = group.startIndex + relativeIndex;
+                group.forEach((question) => {
                     switch (question.activityType) {
                         case 'dropdown':
                             questionsHtml += this.createDropdownQuestion(
                                 question,
-                                data,
-                                absoluteIndex
+                                data
                             );
                             break;
                         case 'selection':
                             questionsHtml += this.createSelectionQuestion(
                                 question,
-                                data,
-                                absoluteIndex
+                                data
                             );
                             break;
                         case 'true-false':
                             questionsHtml += this.createTrueFalseQuestion(
                                 question,
-                                data,
-                                absoluteIndex
+                                data
                             );
                             break;
                         case 'fill':
                             questionsHtml += this.createFillQuestion(
                                 question,
-                                data,
-                                absoluteIndex
+                                data
                             );
                             break;
                         default:
@@ -916,12 +868,14 @@ var $form = {
                     }
                 });
                 questionsHtml += `</ul>`;
+
                 return `
               <div class="FRMP-SlideshowSlide" data-slide="${slideIdx}">
                 ${questionsHtml}
               </div>`;
             })
             .join('');
+
         const totalSlides = grouped.length;
         return `
             <div class="FRMP-SlideshowContainer" id="frmSlideShow-${data.id}">
@@ -958,23 +912,6 @@ var $form = {
             $slideshow.css('height', maxHeight + controlsHeight);
         }
     },
-    getSuggestionHtml(suggestion, data) {
-        if (!suggestion || !suggestion.trim()) {
-            return '';
-        }
-
-        const suggestionHtml = $form.replaceResourceDirectoryPaths(
-            data,
-            suggestion
-        );
-        return `
-            <a href="#" class="FRMP-ShowSuggestion">
-                <img src="${data.idevicePath}frmshowsuggestion.png" alt="${data.msgs.msgSuggestion}" class="FRMP-SuggestionIcon">
-                <span>${data.msgs.msgSuggestion}</span>
-            </a>
-            <div class="FRMP-Suggestion FRMP-EHidden">${suggestionHtml}</div>
-        `;
-    },
 
     /**
      * Transform json data in html dropdown question
@@ -983,10 +920,11 @@ var $form = {
      *
      * @returns {String}
      */
-    createDropdownQuestion(question, data, questionIndex) {
+    createDropdownQuestion(question, data) {
         let newId = this.generateRandomId();
         let htmlQuestion = '';
-        htmlQuestion += `<li class="FormView_dropdown FormView_question" data-id="${newId}" data-question-index="${questionIndex}" activity-type="dropdown" draggable="true">
+
+        htmlQuestion += `<li class="FormView_dropdown FormView_question" data-id="${newId}" activity-type="dropdown" draggable="true">
         <div id="questionTopBar_${newId}">
           <label class="activity-title">Activity dropdown</label>
           <div class="inline QuestionLabel_ButtonsContainer">
@@ -1002,8 +940,8 @@ var $form = {
             question.wrongAnswersValue,
             data
         );
-        htmlQuestion += this.getSuggestionHtml(question.suggestion, data);
-        htmlQuestion += ` </div> <hr class="form-question-separator" /> </li> `;
+        htmlQuestion += ` </div> </li> `;
+
         return htmlQuestion;
     },
 
@@ -1014,10 +952,11 @@ var $form = {
      *
      * @returns {String}
      */
-    createFillQuestion(question, data, questionIndex) {
+    createFillQuestion(question, data) {
         let newId = this.generateRandomId();
         let htmlQuestion = '';
-        htmlQuestion += `<li class="FormView_fill FormView_question" data-id="${newId}" data-question-index="${questionIndex}" activity-type="fill" draggable="true">
+
+        htmlQuestion += `<li class="FormView_fill FormView_question" data-id="${newId}" activity-type="fill" draggable="true">
             <div id="questionTopBar_${newId}">
                 <label class="activity-title">Activity fill</label>
                 <div class="inline QuestionLabel_ButtonsContainer">
@@ -1034,8 +973,8 @@ var $form = {
             question.strict,
             data
         );
-        htmlQuestion += this.getSuggestionHtml(question.suggestion, data);
-        htmlQuestion += `</div> <hr class="form-question-separator" /> </li>`;
+        htmlQuestion += `</div> </li>`;
+
         return htmlQuestion;
     },
 
@@ -1046,10 +985,11 @@ var $form = {
      *
      * @returns {String}
      */
-    createTrueFalseQuestion(question, data, questionIndex) {
+    createTrueFalseQuestion(question, data) {
         const newId = this.generateRandomId();
         let htmlQuestion = '';
-        htmlQuestion += `<li class="FormView_true-false FormView_question" data-id="${newId}" data-question-index="${questionIndex}" activity-type="true-false" draggable="true">
+
+        htmlQuestion += `<li class="FormView_true-false FormView_question" data-id="${newId}" activity-type="true-false" draggable="true">
         <div id="questionTopBar_${newId}">
           <label class="activity-title">Activity true-false</label>
           <div class="inline QuestionLabel_ButtonsContainer">
@@ -1065,8 +1005,8 @@ var $form = {
             question.answer,
             data
         );
-        htmlQuestion += this.getSuggestionHtml(question.suggestion, data);
-        htmlQuestion += `</div> <hr class="form-question-separator" /> </li>`;
+        htmlQuestion += `</div></li>`;
+
         return htmlQuestion;
     },
 
@@ -1077,15 +1017,16 @@ var $form = {
      *
      * @returns {String}
      */
-    createSelectionQuestion(question, data, questionIndex) {
+    createSelectionQuestion(question, data) {
         const newId = this.generateRandomId();
         let htmlQuestion = '';
+
         let radioOrCheckbox = 'radio';
         if (question.selectionType === 'multiple') {
             radioOrCheckbox = 'checkbox';
         }
 
-        htmlQuestion += `<li class="FormView_selection FormView_question" data-id="${newId}" data-question-index="${questionIndex}" activity-type="selection" selection-type="${question.selectionType}" draggable="true">
+        htmlQuestion += `<li class="FormView_selection FormView_question" data-id="${newId}" activity-type="selection" selection-type="${question.selectionType}" draggable="true">
                 <div id="questionTopBar_${newId}">
                 <label class="activity-title">Activity ${question.selectionType} selection</label>
                 <div class="inline QuestionLabel_ButtonsContainer">
@@ -1102,34 +1043,40 @@ var $form = {
             question.answers,
             data
         );
-        htmlQuestion += this.getSuggestionHtml(question.suggestion, data);
-        htmlQuestion += `</div> <hr class="form-question-separator" /> </li>`;
+        htmlQuestion += `</div></li>`;
+
         return htmlQuestion;
     },
 
+    /**
+     *
+     * @param {*} baseText
+     * @param {*} otherWordsText
+     * @returns
+     */
     getProcessTextDropdownQuestion(baseText, otherWordsText, data) {
         baseText = $form.replaceResourceDirectoryPaths(data, baseText);
-        let regexReplace = /(<u>)((?:(?!<u>|<\/u>)[\s\S])*?)(<\/u>)/;
-        let regexElement = /(?<=<u>)((?:(?!<u>|<\/u>)[\s\S])*?)(?=<\/u>)/;
-        let regexElementsAll = /(?<=<u>)((?:(?!<u>|<\/u>)[\s\S])*?)(?=<\/u>)/g;
+        let regexReplace = /(<u>).*?(<\/u>)/;
+        let regexElement = /(?<=<u>).*?(?=<\/u>)/;
+        let regexElementsAll = /(?<=<u>).*?(?=<\/u>)/g;
         let otherWords = otherWordsText ? otherWordsText.split('|') : [];
         let allMatchs = [...baseText.matchAll(regexElementsAll)];
-        let allOptions = allMatchs.map((m) => m[0]).concat(otherWords);
+        let allOptions = allMatchs.concat(otherWords);
         let allOptionsShuffle = this.shuffle(allOptions);
         let selectId = this.generateRandomId();
+        // Replace underline strings
         let htmlDropdown = `<div title="${data.msgs.msgDropdownHelp}">`;
         htmlDropdown += baseText;
         htmlDropdown += `</div>`;
         while (htmlDropdown.search(regexReplace) >= 0) {
             selectId = this.generateRandomId();
             let answerString = htmlDropdown.match(regexElement);
-            let answer = answerString ? answerString[0] : '';
             htmlDropdown = htmlDropdown.replace(
                 regexReplace,
                 this.getSelectDropdownQuestion(
                     selectId,
                     allOptionsShuffle,
-                    answer
+                    answerString
                 )
             );
         }
@@ -1147,7 +1094,6 @@ var $form = {
                 newWrongAnswers
             );
         }
-
         if (!htmlDropdown.includes('dropdownBaseText')) {
             htmlDropdown += `<div id="dropdownBaseText_${selectId}" class="dropdownBaseText" style="display:none">${baseText}</div>`;
         } else {
@@ -1157,10 +1103,16 @@ var $form = {
             let newBaseText = `<div id="dropdownBaseText_${selectId}" class="dropdownBaseText" style="display:none">${baseText}</div>`;
             htmlDropdown = htmlDropdown.replace(oldBaseText, newBaseText);
         }
-
         return htmlDropdown;
     },
 
+    /* Generates a dropdown question HTML
+     *
+     * @param {*} id
+     * @param {*} options
+     * @param {*} answer
+     * @returns {String}
+     */
     getSelectDropdownQuestion(id, options, answer) {
         const optionsHtml = options
             .map((option) => `<option value="${option}">${option}</option>`)
@@ -1188,11 +1140,14 @@ var $form = {
         baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         const regexReplace = /(<u>).*?(<\/u>)/;
         const regexElement = /(?<=<u>).*?(?=<\/u>)/;
+
         let htmlFill = `<div title="${data.msgs.msgFillHelp}">${baseText}</div>`;
+
         while (htmlFill.search(regexReplace) >= 0) {
             const answerString =
                 htmlFill.match(regexElement)?.[0]?.trim() || '';
             const inputId = this.generateRandomId();
+
             htmlFill = htmlFill.replace(
                 regexReplace,
                 `<input id="fillInput_${inputId}" type="text" data-id="${inputId}" class="fillInput" />
@@ -1202,6 +1157,7 @@ var $form = {
 
         const fillIds = `<span id="fillCapitalization_${this.generateRandomId()}" style="display:none;">${checkCapitalization}</span>
       <span id="fillStrictQualification_${this.generateRandomId()}" style="display:none;">${strictQualification}</span>`;
+
         if (!htmlFill.includes('fillBaseText')) {
             htmlFill += `<div id="fillBaseText_${this.generateRandomId()}" class="fillBaseText" style="display:none">${baseText}</div>`;
         } else {
@@ -1223,6 +1179,7 @@ var $form = {
      * @param {*} answer
      * @returns {String}
      */
+
     getProcessTextSelectionQuestion(baseText, optionType, answer, data) {
         baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         let id = this.generateRandomId();
@@ -1234,11 +1191,12 @@ var $form = {
         htmlSelection += baseText.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');
         htmlSelection += `</div>`;
         let rightAnswer = [];
+
         htmlSelection += `<div id="SelectionQuestion_${id}" data-id="${id}" class="selection-buttons-container">`;
         answer.forEach((option, index) => {
             htmlSelection += `<div class="inline button-response-form">`;
-            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${option[1]}">`;
             htmlSelection += `<label for="${id}_option_${index + 1}">`;
+            htmlSelection += `<input type="${optionType}" name="${id}_SelectionQuestion" id="${id}_option_${index + 1}" value="${option[1]}">`;
             htmlSelection += option[1];
             htmlSelection += `</label>`;
             htmlSelection += `</div>`;
@@ -1248,6 +1206,7 @@ var $form = {
         });
         htmlSelection += `<span id="SelectionAnswer_${id}" class="selectionAnswer" style="display:none;">${rightAnswer}</span>`;
         htmlSelection += `</div>`;
+
         return htmlSelection;
     },
 
@@ -1266,15 +1225,14 @@ var $form = {
         htmlTrueFalse += baseText.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');
         htmlTrueFalse += `</div>`;
         htmlTrueFalse += `<div id="TrueFalseQuestion_${id}" data-id="${id}" class="true-false-radio-buttons-container inline" data-answer="${answer}" >`;
-        htmlTrueFalse += `<div class="inline">`;
-        htmlTrueFalse += `<input type="radio" name="${id}_TrueFalseQuestion" id="${id}_true" value="1">`;
+        htmlTrueFalse += `<div>`;
         htmlTrueFalse += `<label for="${id}_true">`;
+        htmlTrueFalse += `<input type="radio" name="${id}_TrueFalseQuestion" id="${id}_true" value="1">`;
         htmlTrueFalse += data.msgs.msgTrue;
         htmlTrueFalse += `</label>`;
         htmlTrueFalse += `</div>`;
-        htmlTrueFalse += `<div class="inline">`;
+        htmlTrueFalse += `<div><label for="${id}_false">`;
         htmlTrueFalse += `<input type="radio" name="${id}_TrueFalseQuestion" id="${id}_false" value="0">`;
-        htmlTrueFalse += `<label for="${id}_false">`;
         htmlTrueFalse += data.msgs.msgFalse;
         htmlTrueFalse += `</label>`;
         htmlTrueFalse += `</div>`;
@@ -1291,7 +1249,6 @@ var $form = {
             a[i] = a[j];
             a[j] = x;
         }
-
         return a;
     },
 
@@ -1307,6 +1264,7 @@ var $form = {
         const $resultTest = $('#form-result-test-' + ideviceId);
         const $scoreText = $('#form-score-' + ideviceId);
         const $resultsContainer = $('#resultsContainer-' + ideviceId);
+
         if ($resultTest.length) {
             $resultTest.hide();
         }
@@ -1319,19 +1277,23 @@ var $form = {
             $resultsContainer.hide();
         }
     },
+
     showScore: function (passRate, data) {
         const $resultTest = $('#form-result-test-' + data.id);
         const $scoreTest = $('#form-score-' + data.id);
         const $resultsContainer = $('#resultsContainer-' + data.id);
+
         if (passRate) {
             $resultTest.show();
             $scoreTest.show();
             $scoreTest
                 .removeClass('number-score-alone')
                 .addClass('number-score');
+
             const isPass =
                 (data.rightQuestions / data.totalQuestions) * 100 >=
                 parseInt(passRate, 10);
+
             $resultTest
                 .text(
                     isPass
@@ -1340,6 +1302,7 @@ var $form = {
                 )
                 .toggleClass('pass-test', isPass)
                 .toggleClass('fail-test', !isPass);
+
             $scoreTest
                 .toggleClass('pass-test', isPass)
                 .toggleClass('fail-test', !isPass);
@@ -1374,6 +1337,7 @@ var $form = {
     setBehaviourOptions: function (data) {
         const $formPreview = $('#formPreview-' + data.id);
         if (!$formPreview.length) return;
+
         $formPreview.find('input').on('click', function () {
             const $input = $(this);
             if ($input.hasClass('fillInput')) {
@@ -1393,9 +1357,9 @@ var $form = {
                         $(this).parent().css('backgroundColor', '');
                     });
             }
-
             $form.hideScore(data.id);
         });
+
         $formPreview.find('select').on('click', function () {
             $(this).css('backgroundColor', '');
             $form.hideScore(data.id);
@@ -1405,6 +1369,7 @@ var $form = {
     setBehaviourButtonResetQuestions: function (data) {
         const $resetButton = $('#form-button-reset-' + data.id);
         if (!$resetButton.length) return;
+
         $resetButton.on('click', function () {
             $resetButton.hide();
             $form.rebootGame(data);
@@ -1415,10 +1380,13 @@ var $form = {
     setBehaviourButtonShowAnswers(data) {
         const $btn = $(`#form-button-show-answers-${data.id}`);
         if (!$btn.length) return;
+
         const $formPreview = $(`#form-questions-${data.id}`);
+
         const showFillInput = ($input) => {
             $input.css('border-color', '').val($input.next().text());
         };
+
         const showTrueFalse = ($container) => {
             const answer = parseInt($container.data('answer'), 10);
             $container.find('input').each(function () {
@@ -1429,6 +1397,7 @@ var $form = {
                     .css('color', '');
             });
         };
+
         const showSelection = ($container) => {
             const answers = $container
                 .find('[id^=SelectionAnswer]')
@@ -1440,6 +1409,7 @@ var $form = {
                 $opt.prop('checked', checked).parent().css('color', '');
             });
         };
+
         $btn.on('click', () => {
             $formPreview.find('input').each(function () {
                 const $inp = $(this);
@@ -1451,16 +1421,13 @@ var $form = {
                     showSelection($inp.closest('[id^=SelectionQuestion]'));
                 }
             });
-            $formPreview.find('select.dropdownSelect').each(function () {
+
+            $formPreview.find('select').each(function () {
                 const $sel = $(this);
-                const selectId = $sel.data('id');
-                const correctAnswer = $(
-                    `#dropdownAnswer_${selectId}`,
-                    $formPreview
-                ).text();
-                $sel.css('backgroundColor', '').val(correctAnswer);
+                $sel.css('border-color', '').val($sel.next().text());
             });
-            // Ocultar puntuación si es necesario
+
+            // Hide score if necessary
             // this.hideScore(data.id);
         });
     },
@@ -1487,67 +1454,61 @@ var $form = {
 
     checkQuestion: function ($question, data) {
         const typeQuestion = $question.attr('activity-type');
-        const questionIndex = parseInt(
-            $question.attr('data-question-index'),
-            10
-        );
-        const questionData =
-            data.questionsData && data.questionsData[questionIndex];
+
         const checkFunctions = {
-            dropdown: () =>
-                $form.checkQuestionDropdown($question, data, questionData),
-            selection: () =>
-                $form.checkQuestionSelection($question, data, questionData),
-            'true-false': () =>
-                $form.checkQuestionTrueFalse($question, data, questionData),
-            fill: () => $form.checkQuestionFill($question, data, questionData),
+            dropdown: () => $form.checkQuestionDropdown($question, data),
+            selection: () => $form.checkQuestionSelection($question, data),
+            'true-false': () => $form.checkQuestionTrueFalse($question, data),
+            fill: () => $form.checkQuestionFill($question, data),
         };
+
         if (checkFunctions[typeQuestion]) {
             checkFunctions[typeQuestion]();
         }
     },
+
     /**
      *
      * @param {*} question
      */
-    checkQuestionDropdown: function ($question, data, questionData) {
+    checkQuestionDropdown: function ($question, data) {
         data.totalQuestions++;
         let correctWords = 0;
         $question.find('.dropdownSelect').each((_, select) => {
             const $select = $(select);
             const questionId = $select.data('id');
-            const answerValue = $(`#dropdownAnswer_${questionId}`, $question)
-                .text()
-                .trim();
-            const selectedValue = $select.val() ? $select.val().trim() : '';
-            if (selectedValue && selectedValue === answerValue) {
-                correctWords++;
+            const answerValue = $(
+                `#dropdownAnswer_${questionId}`,
+                $question
+            ).text();
+            if ($select.val()) {
+                if ($select.val() === answerValue) {
+                    $select.css({ 'border-color': 'green' });
+                    correctWords++;
+                } else {
+                    $select.css({ 'border-color': 'red' });
+                }
+            } else {
+                $select.css({ 'border-color': 'red' });
             }
         });
-        const isCorrect =
-            correctWords === $question.find('.dropdownSelect').length;
-        if (isCorrect) {
-            data.rightQuestions++;
-        } else {
-            data.wrongQuestions++;
-        }
-
-        // Show feedback
-        if (questionData) {
-            $form.showFeedback($question, isCorrect, questionData, data);
-        }
+        correctWords === $question.find('.dropdownSelect').length
+            ? data.rightQuestions++
+            : data.wrongQuestions++;
     },
+
     /**
      *
      * @param {*} question
      */
-    checkQuestionSelection: function ($question, data, questionData) {
+    checkQuestionSelection: function ($question, data) {
         data.totalQuestions++;
         const questionId = $question
             .find('[id^=SelectionQuestion_]')
             .data('id');
         const answersValues = [];
         let somethingChecked = false;
+
         $question
             .find(`input[name="${questionId}_SelectionQuestion"]`)
             .each((_, answer) => {
@@ -1559,29 +1520,35 @@ var $form = {
                     answersValues.push(false);
                 }
             });
+
         const answerElement = $(`#SelectionAnswer_${questionId}`, $question)
             .text()
             .split(',');
         const results = answersValues.map((value, index) =>
             answerElement.includes(index.toString()) ? value : !value
         );
-        const isCorrect = results.every((result) => result);
-        if (isCorrect) {
+        const $inputs = $question.find(
+            `input[name="${questionId}_SelectionQuestion"]`
+        );
+        if (results.every((result) => result)) {
             data.rightQuestions++;
+            $inputs.filter(':checked').each((index, input) => {
+                $(input).parent().css('color', 'green');
+            });
         } else {
             data.wrongQuestions++;
-        }
-
-        // Show feedback
-        if (questionData) {
-            $form.showFeedback($question, isCorrect, questionData, data);
+            $question.find('input').each((_, input, index) =>
+                $(input)
+                    .parent()
+                    .css('color', results[index] ? 'green' : 'red')
+            );
         }
     },
     /**
      *
      * @param {*} question
      */
-    checkQuestionTrueFalse: function ($question, data, questionData) {
+    checkQuestionTrueFalse: function ($question, data) {
         data.totalQuestions++;
         const questionId = $question
             .find('[id^=TrueFalseQuestion_]')
@@ -1595,39 +1562,45 @@ var $form = {
         const answerValueRaw = $question
             .find('[id^=TrueFalseQuestion_]')
             .data('answer');
-        let isCorrect = false;
+
         if ($answerChecked.length) {
             const selectedBool = Boolean(parseInt($answerChecked.val(), 10));
             const correctBool = Boolean(Number(answerValueRaw));
+
             if (selectedBool === correctBool) {
+                $answerChecked.parent().css('color', 'green');
                 data.rightQuestions++;
-                isCorrect = true;
             } else {
+                $answerChecked.parent().css('color', 'red');
                 data.wrongQuestions++;
             }
         } else {
+            if ($answers.length) $answers.parent().css('color', 'red');
             data.wrongQuestions++;
         }
-
-        if (questionData) {
-            $form.showFeedback($question, isCorrect, questionData, data);
-        }
     },
-    checkQuestionFill: function ($question, data, questionData) {
+
+    /**
+     *
+     * @param {*} question
+     */
+    checkQuestionFill: function ($question, data) {
         data.totalQuestions++;
+
         const checkCapitalization =
             $question.find('[id^="fillCapitalization"]').text() === 'true';
         const strictQualification =
             $question.find('[id^="fillStrictQualification"]').text() === 'true';
         let correctWords = 0;
+
         function levenshtein(a, b) {
             const m = a.length;
             const n = b.length;
             const dp = Array.from({ length: m + 1 }, () => new Array(n + 1));
+
             for (let i = 0; i <= m; i++) {
                 dp[i][0] = i;
             }
-
             for (let j = 0; j <= n; j++) {
                 dp[0][j] = j;
             }
@@ -1642,6 +1615,7 @@ var $form = {
                     );
                 }
             }
+
             return dp[m][n];
         }
 
@@ -1652,10 +1626,13 @@ var $form = {
                 .text()
                 .split('|');
             const userValueRaw = $input.val().trim();
+
             let isCorrect = false;
+
             for (let answerRaw of answerValues) {
                 let answer = answerRaw;
                 let userValue = userValueRaw;
+
                 if (!checkCapitalization) {
                     answer = answer.toLowerCase();
                     userValue = userValue.toLowerCase();
@@ -1675,54 +1652,32 @@ var $form = {
             }
 
             if (isCorrect) {
+                $input.css({ 'border-color': 'green' });
                 correctWords++;
+            } else {
+                $input.css({ 'border-color': 'red' });
             }
         });
-        const isAllCorrect =
-            correctWords === $question.find('.fillInput').length;
-        if (isAllCorrect) {
+
+        if (correctWords === $question.find('.fillInput').length) {
             data.rightQuestions++;
         } else {
             data.wrongQuestions++;
         }
-
-        if (questionData) {
-            $form.showFeedback($question, isAllCorrect, questionData, data);
-        }
     },
+
+    /**
+     *
+     * @param {*} word1
+     * @param {*} word2
+     * @returns
+     */
     compare2Words: function (word1, word2) {
         if (word1.length !== word2.length) return false;
         const differences = [...word1].filter(
             (letter, index) => letter !== word2[index]
         ).length;
         return differences <= 1;
-    },
-
-    showFeedback: function ($question, isCorrect, questionData, data) {
-        $question.find('.form-feedback-message').remove();
-        let feedbackText = isCorrect
-            ? questionData.feedbackRight
-            : questionData.feedbackWrong;
-        if (!feedbackText || feedbackText.trim() === '') {
-            feedbackText = isCorrect ? data.msgs.msgOk : data.msgs.msgKO;
-        }
-
-        // Create the feedback div with appropriate styling
-        const feedbackClass = isCorrect
-            ? 'form-feedback-correct'
-            : 'form-feedback-wrong';
-        const feedbackHtml = `
-            <div class="form-feedback-message ${feedbackClass}">
-                ${feedbackText}
-            </div>
-        `;
-        $question.find('.FormViewContainer').after(feedbackHtml);
-
-        if (data.showSlider) {
-            setTimeout(function () {
-                $form.resizeSlideShow(data);
-            }, 50);
-        }
     },
 
     loadSCORM_API_wrapper: function (data) {
@@ -1737,6 +1692,7 @@ var $form = {
             this.loadSCOFunctions(parsedData);
         }
     },
+
     escapeForCallback: function (obj) {
         let json = JSON.stringify(obj);
         json = json.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -1745,6 +1701,7 @@ var $form = {
 
     loadSCOFunctions: function (data) {
         let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+
         if (typeof scorm === 'undefined') {
             const escapedData = $form.escapeForCallback(parsedData);
             eXe.app.loadScript(
@@ -1755,6 +1712,7 @@ var $form = {
             this.initSCORM(parsedData);
         }
     },
+
     initSCORM: function (ldata) {
         let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
         $form.mScorm = scorm;
@@ -1762,8 +1720,10 @@ var $form = {
             $form.initScormData(parsedData);
         }
     },
+
     endScorm: function () {
         if ($form.mScorm && typeof $form.mScorm.quit == 'function') {
+            //$form.mScorm.quit();
         }
     },
 };

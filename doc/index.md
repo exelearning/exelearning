@@ -24,7 +24,7 @@ Use the sections below to jump to what you need.
 - Contributing: [How to contribute](development/contributing.md)
 - Testing: [Unit, E2E, and CI](development/testing.md)
 - Internationalization: [Add and update translations](development/internationalization.md)
-- Real Time: [Mercure/SSE setup and tips](development/real-time.md)
+- Real Time: [Yjs WebSocket collaboration](development/real-time.md)
 - Customization: [Applying safe CSS/JS](development/customization.md)
 - Customization: [Creating a Style](development/styles.md)
 - Version Control: [Branching and PRs](development/version-control.md)
@@ -32,6 +32,9 @@ Use the sections below to jump to what you need.
 
 - [REST API](development/rest-api.md)
 - [Authentication](development/authentication.md)
+
+## Technical Reference
+- [Architecture Overview](architecture.md)
 
 ## Project Overview
 - [Project Summary](overview.md)

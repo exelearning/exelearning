@@ -3,7 +3,7 @@ import UserPreferences from './preferences/userPreferences.js';
 export default class UserManager {
     constructor(app) {
         this.app = app;
-        this.name = eXeLearning.user.username;
+        this._userData = eXeLearning.user; // Reference to backend user data
         this.mode = this.modeValues.default;
         this.versionControl = null;
         this.preferences = new UserPreferences(this);
@@ -11,6 +11,18 @@ export default class UserManager {
 
     versionValues = { active: 'active', inactive: 'inactive' };
     modeValues = { default: 'default', advanced: 'advanced' };
+
+    // Getters for unified access to user data from backend
+    get id() { return this._userData?.id; }
+    get email() { return this._userData?.username; } // username IS the email
+    get username() { return this._userData?.username; }
+    get name() { return this._userData?.username; }
+    get gravatarUrl() { return this._userData?.gravatarUrl; }
+    get usernameFirsLetter() { return this._userData?.usernameFirsLetter; }
+    get acceptedLopd() { return this._userData?.acceptedLopd; }
+    get isGuest() {
+        return this._userData?.username?.toLowerCase().endsWith('@guest.local');
+    }
 
     /**
      *

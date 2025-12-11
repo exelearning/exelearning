@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
       # ---- Build MkDocs docs ----
       - name: Setup Python
@@ -420,8 +420,9 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Bump Homebrew cask PR
-        uses: eugenesvk/action-homebrew-bump-cask@master
+        uses: macauley/action-homebrew-bump-cask@v1
         with:
           token: ${{ secrets.WINGET_TOKEN }}
           tap: homebrew/cask
-          cask: exelearning
+          # TODO: Remove @beta on 3.0.0 release!
+          cask: exelearning@beta

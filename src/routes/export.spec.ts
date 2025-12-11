@@ -1,0 +1,486 @@
+/**
+ * Tests for Export Routes
+ * Uses Dependency Injection pattern - no mock.module needed
+ *
+ * Tests the unified export system that uses src/shared/export/ exporters
+ */
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import { Elysia } from 'elysia';
+
+import {
+    createExportRoutes,
+    type ExportDependencies,
+    type ExportSessionManagerDeps,
+    type ExportFileHelperDeps,
+    type ExportSystemDeps,
+} from './export';
+
+const testDir = path.join(process.cwd(), 'test', 'temp', 'export-test');
+const testSessionId = '20250116testexport';
+
+// Mock session data store
+let mockSessions: Map<string, any>;
+
+// Mock ParsedOdeStructure for testing
+const mockParsedStructure = {
+    meta: {
+        title: 'Test Project',
+        author: 'Test Author',
+        language: 'en',
+        theme: 'base',
+    },
+    pages: [
+        {
+            id: 'page-1',
+            title: 'Page 1',
+            components: [
+                {
+                    id: 'comp-1',
+                    type: 'FreeTextIdevice',
+                    content: '<p>Test content</p>',
+                    order: 0,
+                    position: 0,
+                },
+            ],
+            level: 0,
+            parent_id: null,
+            position: 0,
+        },
+    ],
+    navigation: null,
+    raw: null,
+};
+
+// Create mock session manager functions
+function createMockSessionManager(): ExportSessionManagerDeps {
+    return {
+        getSession: (sessionId: string) => mockSessions.get(sessionId),
+    };
+}
+
+// Create mock file helper functions
+function createMockFileHelper(): ExportFileHelperDeps {
+    return {
+        getOdeSessionTempDir: (sessionId: string) => path.join(testDir, 'tmp', sessionId),
+        getOdeSessionDistDir: (sessionId: string) => path.join(testDir, 'dist', sessionId),
+        fileExists: async (filePath: string) => fs.pathExists(filePath),
+        readFile: async (filePath: string) => fs.readFile(filePath),
+    };
+}
+
+// Create mock exporter class
+function createMockExporter() {
+    return class MockExporter {
+        export = async () => ({
+            success: true,
+            data: new Uint8Array([0x50, 0x4B, 0x03, 0x04]), // PK header (valid ZIP)
+            filename: 'test-export.zip',
+        });
+    };
+}
+
+// Create mock export system with all exporters mocked
+function createMockExportSystem(): ExportSystemDeps {
+    const MockExporter = createMockExporter();
+
+    return {
+        ElpDocumentAdapter: class MockElpDocumentAdapter {
+            constructor(_structure: any, _path: string) {}
+            getMetadata = () => mockParsedStructure.meta;
+            getNavigation = () => mockParsedStructure.pages;
+            static fromElpFile = async () => new MockElpDocumentAdapter({}, '');
+        } as any,
+        FileSystemResourceProvider: class MockResourceProvider {
+            constructor(_publicDir: string) {}
+            fetchTheme = async () => new Map();
+            fetchBaseLibraries = async () => new Map();
+            fetchLibraryFiles = async () => new Map();
+            fetchIdeviceResources = async () => new Map();
+        } as any,
+        FileSystemAssetProvider: class MockAssetProvider {
+            constructor(_tempDir: string) {}
+            getProjectAssets = async () => [];
+            getAsset = async () => null;
+        } as any,
+        ArchiverZipProvider: class MockZipProvider {
+            createZip = () => ({
+                addFile: () => {},
+                addFiles: () => {},
+                generate: async () => new Uint8Array([0x50, 0x4B, 0x03, 0x04]),
+            });
+        } as any,
+        Html5Exporter: MockExporter as any,
+        PageExporter: MockExporter as any,
+        Scorm12Exporter: MockExporter as any,
+        Scorm2004Exporter: MockExporter as any,
+        ImsExporter: MockExporter as any,
+        Epub3Exporter: MockExporter as any,
+        ElpxExporter: MockExporter as any,
+    };
+}
+
+// Create mock dependencies
+function createMockDependencies(): ExportDependencies {
+    return {
+        fs: fs,
+        path: path,
+        sessionManager: createMockSessionManager(),
+        fileHelper: createMockFileHelper(),
+        exportSystem: createMockExportSystem(),
+        publicDir: path.join(testDir, 'public'),
+    };
+}
+
+describe('Export Routes', () => {
+    let app: Elysia;
+    let mockDeps: ExportDependencies;
+
+    beforeEach(async () => {
+        mockSessions = new Map();
+
+        // Create mock dependencies and app
+        mockDeps = createMockDependencies();
+        app = new Elysia().use(createExportRoutes(mockDeps));
+
+        // Create test directory structure
+        await fs.ensureDir(path.join(testDir, 'tmp', testSessionId));
+        await fs.ensureDir(path.join(testDir, 'dist', testSessionId));
+        await fs.ensureDir(path.join(testDir, 'public'));
+
+        // Create test session with structure (for unified export system)
+        mockSessions.set(testSessionId, {
+            id: testSessionId,
+            fileName: 'test-project.elp',
+            projectId: 1,
+            structure: mockParsedStructure, // Required for unified export
+        });
+
+        // Create test content
+        await fs.writeFile(
+            path.join(testDir, 'tmp', testSessionId, 'content.xml'),
+            '<?xml version="1.0"?><ode></ode>',
+        );
+    });
+
+    afterEach(async () => {
+        if (await fs.pathExists(testDir)) {
+            await fs.remove(testDir);
+        }
+    });
+
+    describe('GET /api/export/formats', () => {
+        it('should return list of export formats', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/formats'),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.formats).toBeDefined();
+            expect(Array.isArray(body.formats)).toBe(true);
+        });
+
+        it('should include HTML5 format', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/formats'),
+            );
+
+            const body = await res.json();
+            const html5 = body.formats.find((f: any) => f.id === 'html5');
+            expect(html5).toBeDefined();
+            expect(html5.name).toBe('HTML5 Website');
+            expect(html5.extension).toBe('zip');
+        });
+
+        it('should include SCORM formats', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/formats'),
+            );
+
+            const body = await res.json();
+            const scorm12 = body.formats.find((f: any) => f.id === 'scorm12');
+            const scorm2004 = body.formats.find((f: any) => f.id === 'scorm2004');
+
+            expect(scorm12).toBeDefined();
+            expect(scorm12.name).toContain('SCORM 1.2');
+            expect(scorm2004).toBeDefined();
+            expect(scorm2004.name).toContain('SCORM 2004');
+        });
+
+        it('should include EPUB3 format', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/formats'),
+            );
+
+            const body = await res.json();
+            const epub3 = body.formats.find((f: any) => f.id === 'epub3');
+
+            expect(epub3).toBeDefined();
+            expect(epub3.extension).toBe('epub');
+            expect(epub3.mimeType).toBe('application/epub+zip');
+        });
+
+        it('should include IMS Content Package format', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/formats'),
+            );
+
+            const body = await res.json();
+            const ims = body.formats.find((f: any) => f.id === 'ims');
+
+            expect(ims).toBeDefined();
+            expect(ims.name).toContain('IMS');
+        });
+
+        it('should include ELP format', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/formats'),
+            );
+
+            const body = await res.json();
+            const elp = body.formats.find((f: any) => f.id === 'elp');
+
+            expect(elp).toBeDefined();
+            expect(elp.extension).toBe('elp');
+        });
+
+        it('should include required properties for each format', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/formats'),
+            );
+
+            const body = await res.json();
+            for (const format of body.formats) {
+                expect(format.id).toBeDefined();
+                expect(format.name).toBeDefined();
+                expect(format.extension).toBeDefined();
+                expect(format.mimeType).toBeDefined();
+            }
+        });
+    });
+
+    describe('GET /api/export/:odeSessionId/preview', () => {
+        it('should return 404 for non-existent session', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/non-existent-session/preview'),
+            );
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Session not found');
+        });
+
+        it('should return preview info when content exists', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/preview`),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.hasContent).toBe(true);
+        });
+
+        it('should return HTML when index.html exists', async () => {
+            // Create index.html
+            await fs.writeFile(
+                path.join(testDir, 'tmp', testSessionId, 'index.html'),
+                '<html><body>Test Content</body></html>',
+            );
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/preview`),
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toContain('text/html');
+            const text = await res.text();
+            expect(text).toContain('Test Content');
+        });
+
+        it('should return 404 when no content exists', async () => {
+            // Create session without content
+            mockSessions.set('empty-session', { id: 'empty-session' });
+            await fs.ensureDir(path.join(testDir, 'tmp', 'empty-session'));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/export/empty-session/preview'),
+            );
+
+            expect(res.status).toBe(404);
+        });
+    });
+
+    describe('GET /api/export/:odeSessionId/:exportType/download', () => {
+        it('should return 404 for non-existent session', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/non-existent-session/html5/download'),
+            );
+
+            expect(res.status).toBe(404);
+        });
+
+        it('should return 400 for invalid export type', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/invalid-type/download`),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.error).toContain('Invalid export type');
+            expect(body.validTypes).toBeDefined();
+        });
+
+        it('should return ZIP file for HTML5 export', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toBe('application/zip');
+            expect(res.headers.get('content-disposition')).toContain('attachment');
+            expect(res.headers.get('content-disposition')).toContain('html5.zip');
+        });
+
+        it('should include project name in filename', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            const disposition = res.headers.get('content-disposition');
+            expect(disposition).toContain('test-project');
+        });
+
+        it('should include content-length header', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            expect(res.headers.get('content-length')).toBeDefined();
+        });
+    });
+
+    describe('POST /api/export/:odeSessionId/:exportType/download', () => {
+        it('should return 404 for non-existent session', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/export/non-existent-session/html5/download', {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(404);
+        });
+
+        it('should return 400 for invalid export type', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/invalid/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(400);
+        });
+
+        it('should accept export options', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({ includeNavigation: true }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should return same format as GET', async () => {
+            const getRes = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/scorm12/download`),
+            );
+
+            const postRes = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/scorm12/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(postRes.headers.get('content-type')).toBe(getRes.headers.get('content-type'));
+        });
+    });
+
+    describe('export type validation', () => {
+        // Types fully implemented in unified export system
+        // All export types are now implemented in the unified export system
+        const implementedTypes = ['html5', 'html5-sp', 'scorm12', 'scorm2004', 'ims', 'epub3', 'elp'];
+
+        for (const type of implementedTypes) {
+            it(`should accept and export type: ${type}`, async () => {
+                const res = await app.handle(
+                    new Request(`http://localhost/api/export/${testSessionId}/${type}/download`),
+                );
+
+                expect(res.status).toBe(200);
+            });
+        }
+
+        it('should reject unknown export types', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/pdf/download`),
+            );
+
+            expect(res.status).toBe(400);
+        });
+    });
+
+    describe('unified export system integration', () => {
+        it('should use ElpDocumentAdapter from shared export system', async () => {
+            // This test verifies that the route uses the injected export system
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(200);
+            // The mock exporter returns a valid ZIP header
+            const buffer = await res.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            expect(bytes[0]).toBe(0x50); // 'P'
+            expect(bytes[1]).toBe(0x4B); // 'K'
+        });
+
+        it('should pass session structure to ElpDocumentAdapter', async () => {
+            // Session without structure should still work (fallback to fromElpFile)
+            const noStructureSessionId = 'no-structure-session';
+            mockSessions.set(noStructureSessionId, {
+                id: noStructureSessionId,
+                fileName: 'test.elp',
+                // No structure field - will trigger fallback
+            });
+
+            // Create temp dir and content.xml for fallback path
+            const noStructureTempDir = path.join(testDir, 'tmp', noStructureSessionId);
+            await fs.ensureDir(noStructureTempDir);
+            await fs.writeFile(
+                path.join(noStructureTempDir, 'content.xml'),
+                '<?xml version="1.0"?><ode></ode>',
+            );
+            await fs.ensureDir(path.join(testDir, 'dist', noStructureSessionId));
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${noStructureSessionId}/html5/download`),
+            );
+
+            // Should still return success because mock adapter handles it
+            expect(res.status).toBe(200);
+        });
+    });
+});

@@ -1,0 +1,340 @@
+/**
+ * XML Parser Service for Elysia
+ * Parses ODE XML files from ELP packages
+ */
+import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+import * as fs from 'fs-extra';
+import {
+    OdeXmlDocument,
+    OdeXmlMeta,
+    OdeXmlNavigation,
+    OdeXmlPage,
+    OdeXmlComponent,
+    NormalizedPage,
+    NormalizedComponent,
+    ParsedOdeStructure,
+    RealOdeXmlDocument,
+    RealOdeNavStructure,
+    RealOdePagStructure,
+    RealOdeComponent,
+    LegacyInstanceXmlDocument,
+    LegacyInstanceNode,
+} from './interfaces';
+import { generateId } from '../../utils/id-generator.util';
+import * as legacyParser from './legacy-xml-parser';
+
+export interface XmlParseOptions {
+    preserveOrder?: boolean;
+    ignoreAttributes?: boolean;
+    parseTagValue?: boolean;
+    trimValues?: boolean;
+}
+
+// Configure fast-xml-parser with appropriate options
+const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    textNodeName: '#text',
+    parseTagValue: true,
+    parseAttributeValue: true,
+    trimValues: true,
+    cdataPropName: '__cdata',
+    ignoreDeclaration: true,
+    ignorePiTags: true,
+    commentPropName: false,
+    allowBooleanAttributes: true,
+});
+
+const DEBUG = process.env.APP_DEBUG === '1';
+
+/**
+ * Parse ODE XML from file
+ */
+export async function parseFromFile(xmlPath: string, sessionId?: string): Promise<ParsedOdeStructure> {
+    if (DEBUG) console.log(`[XmlParser] Parsing XML file: ${xmlPath}`);
+
+    if (!(await fs.pathExists(xmlPath))) {
+        throw new Error(`XML file not found: ${xmlPath}`);
+    }
+
+    const xmlContent = await fs.readFile(xmlPath, 'utf-8');
+    return parseFromString(xmlContent, sessionId);
+}
+
+/**
+ * Parse ODE XML from string
+ */
+export function parseFromString(xmlContent: string, sessionId?: string): ParsedOdeStructure {
+    if (DEBUG) console.log('[XmlParser] Parsing XML from string');
+
+    const parsed = parser.parse(xmlContent);
+
+    if (DEBUG) {
+        console.log(`[XmlParser] Parsed object keys: ${JSON.stringify(Object.keys(parsed))}`);
+        console.log(`[XmlParser] Has ode: ${!!parsed.ode}, Has exe_document: ${!!parsed.exe_document}, Has instance: ${!!parsed.instance}`);
+    }
+
+    // Check format and parse accordingly
+    if (parsed.ode) {
+        if (DEBUG) console.log('[XmlParser] Detected real ODE XML format');
+        return parseRealOdeFormat(parsed as RealOdeXmlDocument);
+    }
+
+    if (parsed.exe_document) {
+        if (DEBUG) console.log('[XmlParser] Detected exe_document XML format');
+        return parseExeDocumentFormat(parsed as OdeXmlDocument);
+    }
+
+    if (parsed.instance) {
+        if (DEBUG) console.log('[XmlParser] Detected legacy instance XML format');
+        return legacyParser.parse(parsed as LegacyInstanceXmlDocument, xmlContent, sessionId);
+    }
+
+    throw new Error('Invalid ODE XML: Missing ode or exe_document root element');
+}
+
+/**
+ * Parse exe_document format
+ */
+function parseExeDocumentFormat(parsed: OdeXmlDocument): ParsedOdeStructure {
+    const meta = extractMetadata(parsed.exe_document.meta || {});
+    const pages = normalizePagesFromNavigation(parsed.exe_document.navigation);
+
+    console.log(`[XmlParser] Parsed ${pages.length} pages from exe_document XML`);
+
+    const raw: RealOdeXmlDocument = { ode: {} };
+
+    return {
+        meta,
+        pages,
+        navigation: parsed.exe_document.navigation,
+        raw,
+    };
+}
+
+/**
+ * Parse real ODE format (from actual ELP files)
+ */
+function parseRealOdeFormat(parsed: RealOdeXmlDocument): ParsedOdeStructure {
+    const meta = extractMetadataFromOdeProperties(parsed.ode.odeProperties?.odeProperty || []);
+
+    // Also check userPreferences for theme (overrides odeProperties if found)
+    const userPrefs = parsed.ode.userPreferences?.userPreference;
+    if (userPrefs) {
+        const prefsArray = Array.isArray(userPrefs) ? userPrefs : [userPrefs];
+        for (const pref of prefsArray) {
+            if (pref.key === 'theme' && pref.value) {
+                meta.theme = pref.value;
+            }
+        }
+    }
+
+    const pages = normalizePagesFromOdeNavStructures(parsed.ode.odeNavStructures?.odeNavStructure || []);
+
+    console.log(`[XmlParser] Parsed ${pages.length} pages from real ODE XML`);
+
+    const navigation: OdeXmlNavigation = { page: [] };
+
+    return {
+        meta,
+        pages,
+        navigation,
+        raw: parsed,
+    };
+}
+
+/**
+ * Extract metadata from exe_document format
+ */
+function extractMetadata(meta: OdeXmlMeta): Record<string, any> {
+    return {
+        title: meta.title || 'Untitled',
+        author: meta.author || '',
+        description: meta.description || '',
+        license: meta.license || '',
+        locale: meta.locale || 'en',
+        theme: meta.theme || 'base',
+        version: meta.version || '1.0',
+    };
+}
+
+/**
+ * Extract metadata from odeProperties
+ */
+function extractMetadataFromOdeProperties(properties: Array<{ propertyKey: string; propertyValue: string }>): Record<string, any> {
+    const meta: Record<string, any> = {
+        title: 'Untitled',
+        author: '',
+        description: '',
+        license: '',
+        locale: 'en',
+        theme: 'base',
+        version: '1.0',
+    };
+
+    const propArray = Array.isArray(properties) ? properties : [properties];
+
+    for (const prop of propArray) {
+        if (!prop || !prop.propertyKey) continue;
+
+        const key = prop.propertyKey.toLowerCase();
+        const value = prop.propertyValue || '';
+
+        if (key.includes('title') || key.includes('pp_title')) {
+            meta.title = value || meta.title;
+        } else if (key.includes('author')) {
+            meta.author = value;
+        } else if (key.includes('description')) {
+            meta.description = value;
+        } else if (key.includes('license')) {
+            meta.license = value;
+        } else if (key.includes('locale') || key.includes('language')) {
+            meta.locale = value || meta.locale;
+        } else if (key.includes('style') || key.includes('theme')) {
+            meta.theme = value || meta.theme;
+        }
+    }
+
+    return meta;
+}
+
+/**
+ * Normalize pages from navigation structure
+ */
+function normalizePagesFromNavigation(navigation: OdeXmlNavigation): NormalizedPage[] {
+    const pages: NormalizedPage[] = [];
+
+    if (!navigation?.page) return pages;
+
+    const pageList = Array.isArray(navigation.page) ? navigation.page : [navigation.page];
+
+    function processPage(page: OdeXmlPage, parentId: string | null, level: number, position: number): void {
+        const pageId = page['@_id'] || generateId();
+
+        const components: NormalizedComponent[] = [];
+        if (page.component) {
+            const compList = Array.isArray(page.component) ? page.component : [page.component];
+            compList.forEach((comp, idx) => {
+                components.push({
+                    id: comp['@_id'] || generateId(),
+                    type: comp['@_type'] || 'unknown',
+                    order: idx,
+                    content: comp.content || '',
+                    data: comp.data || {},
+                });
+            });
+        }
+
+        pages.push({
+            id: pageId,
+            title: page['@_title'] || page.title || 'Untitled',
+            level,
+            position,
+            parent_id: parentId,
+            components,
+        });
+
+        // Process children
+        if (page.page) {
+            const children = Array.isArray(page.page) ? page.page : [page.page];
+            children.forEach((child, idx) => {
+                processPage(child, pageId, level + 1, idx);
+            });
+        }
+    }
+
+    pageList.forEach((page, idx) => {
+        processPage(page, null, 0, idx);
+    });
+
+    return pages;
+}
+
+/**
+ * Normalize pages from OdeNavStructures
+ */
+function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]): NormalizedPage[] {
+    const pages: NormalizedPage[] = [];
+    const navArray = Array.isArray(navStructures) ? navStructures : [navStructures];
+
+    // Build parent map
+    const parentMap = new Map<string, string>();
+    for (const nav of navArray) {
+        if (nav.odeParentPageId) {
+            parentMap.set(nav.odePageId, nav.odeParentPageId);
+        }
+    }
+
+    // Calculate levels
+    function getLevel(pageId: string): number {
+        let level = 0;
+        let current = pageId;
+        while (parentMap.has(current)) {
+            level++;
+            current = parentMap.get(current)!;
+        }
+        return level;
+    }
+
+    for (const nav of navArray) {
+        const pageId = nav.odePageId;
+        const level = getLevel(pageId);
+
+        // Extract components
+        const components: NormalizedComponent[] = [];
+        const pagStructures = nav.odePagStructures?.odePagStructure;
+
+        if (pagStructures) {
+            const pagArray = Array.isArray(pagStructures) ? pagStructures : [pagStructures];
+
+            for (const pag of pagArray) {
+                const odeComponents = pag.odeComponents?.odeComponent;
+                if (odeComponents) {
+                    const compArray = Array.isArray(odeComponents) ? odeComponents : [odeComponents];
+
+                    for (const comp of compArray) {
+                        components.push({
+                            id: comp.odeIdeviceId || generateId(),
+                            type: comp.odeIdeviceTypeName || 'unknown',
+                            order: comp.odeComponentsOrder || 0,
+                            content: comp.htmlView || '',
+                            data: comp.jsonProperties ? JSON.parse(comp.jsonProperties) : {},
+                        });
+                    }
+                }
+            }
+        }
+
+        pages.push({
+            id: pageId,
+            title: nav.pageName || 'Untitled',
+            level,
+            position: nav.odeNavStructureOrder || 0,
+            parent_id: nav.odeParentPageId || null,
+            components,
+        });
+    }
+
+    return pages;
+}
+
+/**
+ * Parse raw XML string
+ */
+export function parseRawXml(xmlContent: string): any {
+    return parser.parse(xmlContent);
+}
+
+/**
+ * Build XML from object
+ */
+export function buildXml(obj: any): string {
+    const builder = new XMLBuilder({
+        ignoreAttributes: false,
+        attributeNamePrefix: '@_',
+        textNodeName: '#text',
+        format: true,
+        indentBy: '  ',
+    });
+    return builder.build(obj);
+}

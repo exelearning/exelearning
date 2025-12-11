@@ -490,7 +490,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>').html(originalHTML),
@@ -747,7 +752,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        // Inicializar toggles (ARIA y targets) y manejarlos en cambios
+        // Initialize toggles (ARIA and targets) and handle changes
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
             $input

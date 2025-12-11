@@ -3,6 +3,7 @@
     <title>Periodic table</title>
     <css-class>periodic-table</css-class>
     <category>Science</category>
+    <export-object>$periodicTable</export-object>
     <icon>
         <name>periodic-table-icon</name>
         <url>periodic-table-icon.svg</url>

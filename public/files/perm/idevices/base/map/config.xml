@@ -3,6 +3,8 @@
     <title>Map</title>
     <css-class>map</css-class>
     <category>Information and presentation</category>
+    <component-type>json</component-type>
+    <export-object>$eXeMapa</export-object>
     <icon>
         <name>map-icon</name>
         <url>map-icon.svg</url>

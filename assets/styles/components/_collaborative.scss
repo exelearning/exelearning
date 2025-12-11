@@ -34,3 +34,171 @@
         opacity: .7 !important;
     }
 }
+
+// Node presence avatars - shows users viewing each page in navigation tree
+.node-presence-avatars {
+    display: none; // Hidden by default, shown via JS
+    flex-direction: row;
+    align-items: center;
+    margin-left: auto;
+    padding-right: 4px;
+    gap: 0;
+
+    .node-user-avatar {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: var(--gray-200, #e5e7eb);
+        border: 2px solid var(--white, #fff);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--gray-700, #374151);
+        margin-left: -6px;
+        position: relative;
+        overflow: hidden;
+        cursor: default;
+        flex-shrink: 0;
+
+        &:first-child {
+            margin-left: 0;
+        }
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        &.node-user-more {
+            background-color: var(--gray-400, #9ca3af);
+            color: var(--white, #fff);
+            font-size: 9px;
+        }
+    }
+}
+
+// iDevice editor avatar - shows who is editing each iDevice
+.idevice-editor-avatar {
+    display: none; // Hidden by default, shown via JS
+    flex-direction: row;
+    align-items: center;
+    margin-right: 8px;
+    gap: 0;
+
+    .idevice-user-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: var(--gray-200, #e5e7eb);
+        border: 2px solid var(--white, #fff);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--gray-700, #374151);
+        margin-left: -6px;
+        position: relative;
+        overflow: hidden;
+        cursor: default;
+        flex-shrink: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+
+        &:first-child {
+            margin-left: 0;
+        }
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        &.idevice-user-more {
+            background-color: var(--gray-400, #9ca3af);
+            color: var(--white, #fff);
+            font-size: 10px;
+        }
+    }
+}
+
+// Concurrent users in header
+#exe-concurrent-users {
+    .user-current-letter-icon {
+        &.is-local-user {
+            opacity: 0.7;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            margin-top: 4px;
+            font-size: 12px;
+
+            .user-page-info {
+                color: var(--gray-500, #6b7280);
+            }
+        }
+    }
+}
+
+// Modal concurrent users list
+.exe-concurrent-users {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .user-current-letter-icon {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px;
+        border-radius: 8px;
+        background-color: var(--gray-50, #f9fafb);
+
+        &.is-local-user {
+            background-color: var(--brand-primary-50, #eff6ff);
+            border: 1px solid var(--brand-primary-200, #bfdbfe);
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            margin-left: auto;
+            font-size: 12px;
+
+            .user-page-info {
+                color: var(--gray-500, #6b7280);
+            }
+        }
+    }
+}
+
+// Guest user badge
+.guest-badge {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    background-color: var(--gray-200, #e5e7eb);
+    color: var(--gray-600, #4b5563);
+    border-radius: 3px;
+    margin-left: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+// Avatar initials fallback styling
+.avatar-initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-weight: 600;
+    text-transform: uppercase;
+}

@@ -3,6 +3,7 @@
     <title>Relate</title>
     <css-class>relate</css-class>
     <category>Interactive activities</category>
+    <export-object>$eXeRelaciona</export-object>
     <icon>
         <name>relate.icon</name>
         <url>relate-icon.svg</url>

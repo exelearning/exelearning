@@ -1,5 +1,5 @@
 #load-screen-main {
-    position: absolute;
+    position: fixed;
     left: 0;
     top: 0;
     height: 100vh;
@@ -10,8 +10,12 @@
     background-image: url('images/exe-text-logo.svg');
     background-size: 250px;
     background-repeat: no-repeat;
-    background-attachment: fixed;
     background-position: 50% 40%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
     &.expired {
         padding: 0 40px;
 
@@ -33,29 +37,60 @@
             display: block;
             text-align: center;
             opacity: .8;
-            text-align: center;
             margin-left: auto;
             margin-right: auto;
-            position: relative;
-            top: 92%;
+            position: absolute;
+            bottom: 5%;
         }
         &:after {
             content: "";
             display: block;
             width: 96px;
             height: 96px;
-            /*margin: 0 auto;*/
             background-image: url(images/spinner.svg);
             background-repeat: no-repeat;
             background-position: center;
             background-size: 96px;
             position: absolute;
-            left: calc(50vw - 50px);
-            top: calc(25vh + 200px);
+            left: calc(50% - 48px);
+            top: calc(50% + 60px);
         }
     }
     span {
         display: none;
         white-space: nowrap;
+    }
+}
+
+/* ========================================================================
+   Mobile Responsive Styles (< 768px)
+   ======================================================================== */
+@media (max-width: 767.98px) {
+    #load-screen-main {
+        background-position: 50% 35%;
+        background-size: 180px;
+
+        &.loading {
+            span {
+                bottom: 8%;
+                font-size: 12px;
+            }
+
+            &:after {
+                width: 64px;
+                height: 64px;
+                background-size: 64px;
+                left: calc(50% - 32px);
+                top: calc(50% + 40px);
+            }
+        }
+
+        &.expired {
+            padding: 0 20px;
+
+            .alert {
+                margin-top: calc(35vh + 100px);
+            }
+        }
     }
 }

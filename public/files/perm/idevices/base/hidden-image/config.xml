@@ -3,6 +3,7 @@
     <title>Hidden image</title>
     <css-class>hidden-image</css-class>
     <category>Games</category>
+    <export-object>$eXeHiddenImage</export-object>
     <icon>
         <name>hidden-image-icon</name>
         <url>hidden-image-icon.svg</url>

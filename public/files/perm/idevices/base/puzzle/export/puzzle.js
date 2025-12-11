@@ -123,6 +123,9 @@ var $eXePuzzle = {
             const dl = $('.puzzle-DataGame', this),
                 mOption = $eXePuzzle.loadDataGame(dl, this);
 
+            // Skip if no valid data found
+            if (!mOption) return;
+
             mOption.scorerp = 0;
             mOption.idevicePath = $eXePuzzle.idevicePath;
             mOption.main = 'pzlMainContainer-' + i;
@@ -183,6 +186,11 @@ var $eXePuzzle = {
             $audiosDef = $('.puzzle-LinkAudiosDef', sthis),
             $imagesDef = $('.puzzle-LinkImagesDef', sthis),
             $audiosClue = $('.puzzle-LinkAudiosClue', sthis);
+
+        // Validate data exists before using
+        if (!mOptions || !mOptions.puzzlesGame || !Array.isArray(mOptions.puzzlesGame)) {
+            return null;
+        }
 
         mOptions.playerAudio = '';
         mOptions.solutionShown = false;
@@ -450,16 +458,32 @@ var $eXePuzzle = {
         $image.attr('alt', q.alt);
         $image.off('load');
         $image.off('error');
-        $image
-            .prop('src', q.url)
-            .on('load', function () {
-                $eXePuzzle.handleImageLoad(this, instance, q);
-                if (q.showImage) $('#pzlShowImage-' + instance).show();
-                if (q.showNumber) $('#pzlShowNumber-' + instance).show();
-            })
-            .on('error', function () {
-                return false;
-            });
+
+        const loadImage = (resolvedUrl) => {
+            $image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    $eXePuzzle.handleImageLoad(this, instance, q);
+                    if (q.showImage) $('#pzlShowImage-' + instance).show();
+                    if (q.showNumber) $('#pzlShowNumber-' + instance).show();
+                })
+                .on('error', function () {
+                    return false;
+                });
+        };
+
+        // Resolve asset:// URLs to blob URLs
+        if (q.url && q.url.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(q.url).then((blobUrl) => {
+                    loadImage(blobUrl || '');
+                });
+            }
+        } else {
+            loadImage(q.url);
+        }
     },
 
     handleImageLoad: function (image, instance, q) {
@@ -501,7 +525,6 @@ var $eXePuzzle = {
         }
 
         $(image).hide();
-
         return true;
     },
 
@@ -640,8 +663,8 @@ var $eXePuzzle = {
                 <p>${ms}</p>
             </div>
             <div class="PZLP-CompletedButtons">
-                <button type="button" class="PZLP-RepeatPuzzle btn btn-primary">${mOptions.msgs.msgsRepeat}</button>
-                <button type="button" class="PZLP-NextPuzzle btn btn-primary">${mr}</button>
+                <a href="#" class="PZLP-RepeatPuzzle">${mOptions.msgs.msgsRepeat}</a>
+                <a href="#" class="PZLP-NextPuzzle">${mr}</a>
             </div>
         </div>
     </div>`;
@@ -724,28 +747,6 @@ var $eXePuzzle = {
                     height: newHeight + 'px',
                 });
             });
-    },
-
-    adjustImageDivHeight: function (instance) {
-        const $imageDiv = $('#pzlImageDiv-' + instance);
-        const $imagePuzzle = $('#pzlImagePuzzle-' + instance);
-        const $image = $('#pzlImage-' + instance);
-
-        if ($imagePuzzle.length && $image.length) {
-            const puzzleWidth = $imagePuzzle.width();
-            const puzzleHeight = $imagePuzzle.height();
-
-            if (puzzleWidth > 0 && puzzleHeight > 0) {
-                const containerWidth = $imageDiv.width();
-                const aspectRatio = puzzleHeight / puzzleWidth;
-                const calculatedHeight = containerWidth * aspectRatio;
-
-                $imageDiv.css({
-                    height: calculatedHeight + 'px',
-                    'padding-top': '0',
-                });
-            }
-        }
     },
 
     showSholution: function (instance) {
@@ -1414,23 +1415,11 @@ var $eXePuzzle = {
                 document.msFullscreenElement === container)
         );
 
-        const isMobile = $eXePuzzle.isMobile();
-        const parentWidth = $parent.width() || 900;
-
-        // En móviles, usar el ancho completo disponible
-        // En desktop, limitar a 900px
-        let baseWidth;
-        if (isFS) {
-            baseWidth =
-                $('#pzlMultimedia-' + instance).width() || parentWidth || 900;
-        } else if (isMobile) {
-            // En móviles, usar el ancho completo del contenedor, con un mínimo de 280px
-            baseWidth = Math.max(280, parentWidth);
-        } else {
-            // En desktop, limitar a 900px
-            baseWidth = parentWidth > 900 ? 900 : parentWidth;
-        }
-
+        let baseWidth = isFS
+            ? $('#pzlMultimedia-' + instance).width() || $parent.width() || 900
+            : $parent.width() > 900
+              ? 900
+              : $parent.width();
         if (!baseWidth || baseWidth <= 0) baseWidth = 900;
 
         const wDiv = baseWidth,

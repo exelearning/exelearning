@@ -1221,7 +1221,7 @@ var iAdmin = {
         // Put the slides in the right order
         iAdmin.orderSlides();
 
-        // Update the list ("Editar un fotograma")
+        // Update the list ("Edit a frame")
         iAdmin.updateFramesList(InteractiveVideo.slides);
 
         // Show the success message

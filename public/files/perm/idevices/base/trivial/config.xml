@@ -3,6 +3,8 @@
     <title>TriviExt</title>
     <css-class>trivial</css-class>
     <category>Games</category>
+    <component-type>json</component-type>
+    <export-object>$eXeTrivial</export-object>
     <icon>
         <name>trivial-icon</name>
         <url>trivial-icon.svg</url>

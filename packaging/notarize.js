@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { notarize } = require('electron-notarize');
+const { notarize } = require('@electron/notarize');
 
 let stapleApp = null;
 // Try to load stapleApp if available (optional).

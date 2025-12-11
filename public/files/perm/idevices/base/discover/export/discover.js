@@ -1453,27 +1453,43 @@ var $eXeDescubre = {
         if (url.length > 3) {
             $image.attr('alt', alt);
             $image.show();
-            $image
-                .prop('src', url)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
+
+            const loadImage = (resolvedUrl) => {
+                $image
+                    .prop('src', resolvedUrl)
+                    .on('load', function () {
+                        if (
+                            !this.complete ||
+                            typeof this.naturalWidth == 'undefined' ||
+                            this.naturalWidth == 0
+                        ) {
+                            $cursor.hide();
+                            $noImage.show();
+                        } else {
+                            $image.show();
+                            $cursor.hide();
+                            $eXeDescubre.positionPointerCard($cursor, x, y);
+                            return true;
+                        }
+                    })
+                    .on('error', function () {
                         $cursor.hide();
                         $noImage.show();
-                    } else {
-                        $image.show();
-                        $cursor.hide();
-                        $eXeDescubre.positionPointerCard($cursor, x, y);
-                        return true;
-                    }
-                })
-                .on('error', function () {
-                    $cursor.hide();
-                    $noImage.show();
-                });
+                    });
+            };
+
+            // Resolve asset:// URLs to blob URLs
+            if (url && url.startsWith('asset://')) {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((blobUrl) => {
+                        loadImage(blobUrl || '');
+                    });
+                }
+            } else {
+                loadImage(url);
+            }
         }
         if (stxt.length > 0) {
             $text.show();

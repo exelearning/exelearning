@@ -1,0 +1,121 @@
+/**
+ * Unified Export System
+ *
+ * Shared export code for both frontend (browser) and backend (CLI).
+ *
+ * Usage (Backend/CLI):
+ * ```typescript
+ * import { ElpDocumentAdapter, Html5Exporter } from './shared/export';
+ * const doc = await ElpDocumentAdapter.fromElpFile('project.elp');
+ * const exporter = new Html5Exporter(doc, resourceProvider, assetProvider);
+ * const result = await exporter.export();
+ * ```
+ *
+ * Usage (Frontend/Browser):
+ * ```typescript
+ * import { YjsDocumentAdapter, Html5Exporter } from './shared/export/browser';
+ * const doc = new YjsDocumentAdapter(documentManager);
+ * const exporter = new Html5Exporter(doc, resourceProvider, assetProvider);
+ * const result = await exporter.export();
+ * ```
+ */
+
+// Interfaces
+export type {
+    ExportDocument,
+    ExportMetadata,
+    ExportPage,
+    ExportBlock,
+    ExportComponent,
+    ExportBlockProperties,
+    ResourceProvider,
+    AssetProvider,
+    ExportAsset,
+    ZipProvider,
+    ZipArchive,
+    ExportOptions,
+    Html5ExportOptions,
+    ScormExportOptions,
+    ImsExportOptions,
+    Epub3ExportOptions,
+    ElpxExportOptions,
+    ExportResult,
+    PageRenderOptions,
+    ComponentRenderOptions,
+    BlockRenderOptions,
+    IdeviceConfig,
+    LibraryPattern,
+    LibraryDetectionResult,
+    LibraryDetectionOptions,
+    ScormManifestOptions,
+    ImsManifestOptions,
+    LomMetadataOptions,
+    Epub3PackageOptions,
+    Exporter,
+} from './interfaces';
+
+// Constants
+export {
+    ExportFormat,
+    EXPORT_FORMAT_INFO,
+    IDEVICE_CONFIGS,
+    getIdeviceConfig,
+    LIBRARY_PATTERNS,
+    BASE_LIBRARIES,
+    SCORM_LIBRARIES,
+    MIME_TO_EXTENSION,
+    getExtensionFromMime,
+    SCORM_12_NAMESPACES,
+    SCORM_2004_NAMESPACES,
+    IMS_NAMESPACES,
+    LOM_NAMESPACES,
+    EPUB3_NAMESPACES,
+    EPUB3_MIMETYPE,
+} from './constants';
+
+// Utils
+export { LibraryDetector } from './utils/LibraryDetector';
+
+// Renderers
+export { IdeviceRenderer } from './renderers/IdeviceRenderer';
+export type { IdeviceCssLink, IdeviceJsScript } from './renderers/IdeviceRenderer';
+export { PageRenderer } from './renderers/PageRenderer';
+
+// Generators
+export { Scorm12ManifestGenerator } from './generators/Scorm12Manifest';
+export type { PageFileInfo as Scorm12PageFileInfo, Scorm12GenerateOptions } from './generators/Scorm12Manifest';
+export { Scorm2004ManifestGenerator } from './generators/Scorm2004Manifest';
+export type { Scorm2004GenerateOptions } from './generators/Scorm2004Manifest';
+export { ImsManifestGenerator } from './generators/ImsManifest';
+export type { ImsGenerateOptions } from './generators/ImsManifest';
+export { LomMetadataGenerator } from './generators/LomMetadata';
+
+// Adapters
+export { ElpDocumentAdapter } from './adapters/ElpDocumentAdapter';
+export type {
+    ParsedOdeStructure,
+    OdeXmlMeta,
+    NormalizedPage,
+    NormalizedComponent,
+} from './adapters/ElpDocumentAdapter';
+export { YjsDocumentAdapter } from './adapters/YjsDocumentAdapter';
+export { BrowserResourceProvider } from './adapters/BrowserResourceProvider';
+export { BrowserAssetProvider } from './adapters/BrowserAssetProvider';
+
+// Providers
+export { FileSystemResourceProvider } from './providers/FileSystemResourceProvider';
+export { FileSystemAssetProvider } from './providers/FileSystemAssetProvider';
+export { DatabaseAssetProvider } from './providers/DatabaseAssetProvider';
+export { CombinedAssetProvider } from './providers/CombinedAssetProvider';
+export { ArchiverZipProvider } from './providers/ArchiverZipProvider';
+export { JSZipZipProvider } from './providers/JSZipZipProvider';
+
+// Exporters
+export { BaseExporter } from './exporters/BaseExporter';
+export { Html5Exporter } from './exporters/Html5Exporter';
+export { PageExporter } from './exporters/PageExporter';
+export { Scorm12Exporter } from './exporters/Scorm12Exporter';
+export { Scorm2004Exporter } from './exporters/Scorm2004Exporter';
+export { ImsExporter } from './exporters/ImsExporter';
+export { Epub3Exporter } from './exporters/Epub3Exporter';
+export { ElpxExporter } from './exporters/ElpxExporter';

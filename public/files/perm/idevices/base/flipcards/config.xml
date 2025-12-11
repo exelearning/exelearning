@@ -3,6 +3,8 @@
     <title>Memory cards</title>
     <css-class>flipcards</css-class>
     <category>Interactive activities</category>
+    <component-type>json</component-type>
+    <export-object>$eXeFlipCards</export-object>
     <icon>
         <name>flipcards-icon</name>
         <url>flipcards-icon.svg</url>

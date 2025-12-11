@@ -1,3 +1,6 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class NavbarFile {
     constructor(menu) {
         this.menu = menu;
@@ -39,6 +42,32 @@ export default class NavbarFile {
     }
 
     /**
+     * Update the selected theme in the UI (for remote Yjs changes)
+     * @param {string} themeId - The theme ID that was selected
+     */
+    updateSelectedTheme(themeId) {
+        // Update base themes selection
+        document.querySelectorAll('#exestylescontent .theme-card').forEach(card => {
+            if (card.dataset.themeId === themeId) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+
+        // Update user themes selection
+        document.querySelectorAll('#importedstylescontent .user-theme-item').forEach(item => {
+            if (item.dataset.themeId === themeId) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+
+        Logger.log('[NavbarStyles] Updated selected theme UI:', themeId);
+    }
+
+    /**
      * Style Manager
      * Styles
      *
@@ -76,7 +105,8 @@ export default class NavbarFile {
             const theme = this.baseThemes[key];
             const themeCard = document.createElement('div');
             themeCard.classList.add('theme-card');
-            if (theme.manager.selected.name === theme.name) {
+            themeCard.dataset.themeId = theme.id;
+            if (theme.manager.selected && theme.manager.selected.name === theme.name) {
                 themeCard.classList.add('selected');
             }
             const header = document.createElement('div');
@@ -211,7 +241,8 @@ export default class NavbarFile {
 
             const item = document.createElement('div');
             item.classList.add('user-theme-item');
-            if (theme.manager.selected.name === theme.name) {
+            item.dataset.themeId = theme.id;
+            if (theme.manager.selected && theme.manager.selected.name === theme.name) {
                 item.classList.add('selected');
             }
 

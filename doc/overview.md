@@ -2,51 +2,65 @@
 
 | Key                      | Value                                                                                    |
 | ------------------------ | -----------------------------------------------------------------------------------------|
-| Awarded Company          |                                                                                          |
 | Responsible Organisation | INTEF - CEDEC                                                                            |
 | Contact           	   | eXeLearning Team ([info@exelearning.net](mailto:info@exelearning.net)) 				  |
-| Company Contacts         |                                                                                          |
-| Project Title            | eXeLearning (versión PHP)                                                                |
-| Code                     | exeonline                                                                                |
-| Start Date               | 2024-03-26                                                                               |
+| Project Title            | eXeLearning                                                                              |
 | Official Repository URL  | [https://github.com/exelearning/exelearning](https://github.com/exelearning/exelearning) |
 
-This project was originally developed within the collaboration agreement between Spanish Ministry of Education, Vocational Training and Sports and the educational administrations of Junta de Andalucía and Junta de Extremadura, through a public bidding launched by Junta de Andalucía with the awarded company responsible for the development being:
+## Current Architecture
 
-* Sdweb Soluciones Digitales, S.L. C.I.F. B70151113, inscrita en el Registro Mercantil de Santiago de Compostela, Tomo 3285, Folio 112, Hoja 42964.
+eXeLearning is built with a modern TypeScript stack:
 
-The Spanish Ministry of Education, Vocational Training and Sports, through CEDEC-INTEF.
+| Component | Technology |
+|-----------|------------|
+| Runtime | [Bun](https://bun.sh/) |
+| Backend Framework | [Elysia](https://elysiajs.com/) |
+| ORM | [Kysely](https://kysely.dev/) |
+| Database | SQLite / PostgreSQL / MySQL |
+| Real-time | WebSocket + [Yjs](https://yjs.dev/) |
+| Frontend | Vanilla JavaScript |
+| Desktop | [Electron](https://www.electronjs.org/) |
 
-# History
+For detailed architecture information, see [Architecture Documentation](architecture.md).
 
-## 2024-04-15
+## History
 
-Based on the technical documentation delivered by SdWeb, we set up a Docker-based installation.
-To achieve this, we had to apply several fixes to the installation manual and the code itself.
+### 2024-03-26
 
-Although the delivered codebase was in an advanced state, the software did not work as expected in all areas.
-The repository ([https://git.intef.es/recursos/exelearning-web](https://git.intef.es/recursos/exelearning-web)) was created with the aim of continuing development, to eventually replace the current `exelearning-online` ([https://git.intef.es/recursos/exelearning-online](https://git.intef.es/recursos/exelearning-online)), which, while stable and complete, is built with outdated technology (Python 2.7) and has an old and inaccessible user interface.
+Project initiated within the collaboration agreement between Spanish Ministry of Education, Vocational Training and Sports and the educational administrations of Junta de Andalucía and Junta de Extremadura.
 
-## 2024-06-10
+The goal was to replace `exelearning-online` (Python 2.7) with a modern, accessible application.
 
-Migration from Symfony 5 to Symfony 6 is completed.
+### 2024-07-15
 
-## 2024-07-05
+Repository migrated to GitHub as the official development location:
+`https://github.com/exelearning/exelearning`
 
-The project reorganization process begins to adopt CI/CD practices:
+### 2024-11
 
-* The Docker image of the application is improved.
-* A Docker-based development environment is created with all installation steps automated, so developers do not need to handle setup manually.
-* Symfony’s recommended strategy is adopted for database generation based on entity classes.
-* Dependencies are installed during project setup, allowing the `vendor` folder to be excluded from the repository.
-* Developer tools are added via a `Makefile`.
-* The codebase is standardized following Symfony coding standards.
-* The deployment pipeline for staging (PRE) and production (PRO) is improved.
-* The `gitflow` branching model is adopted for development.
-* A `docker-compose-moodle` file is added to spin up a Moodle instance with the `exescorm` and `exeweb` plugins.
+Migration from Symfony/PHP to modern TypeScript stack begins:
+- Backend rewritten with Elysia + Bun
+- Database layer migrated to Kysely ORM
+- Real-time collaboration implemented with Yjs WebSocket
 
-## 2024-07-15
+### 2025
 
-The repository `https://git.intef.es/recursos/exelearning` is migrated to GitHub:
-`https://github.com/exelearning/exelearning`.
-From this point on, the GitHub repository becomes the **official** repository for developing `exelearning`.
+Current state:
+- **Backend**: Elysia framework running on Bun runtime
+- **Database**: Multi-database support via Kysely (SQLite, PostgreSQL, MySQL)
+- **Real-time**: Yjs-based collaborative editing with WebSocket
+- **Testing**: 90%+ coverage requirement with Bun test, Vitest, Playwright
+- **Legacy code**: Available in `symfony_legacy/` and `nestjs_legacy/` for reference
+
+## Development Practices
+
+- **Git workflow**: Feature branches merged via Pull Requests
+- **Testing**: Unit (Bun), Integration, Frontend (Vitest), E2E (Playwright)
+- **Coverage**: Minimum 90% for new code
+- **CI/CD**: GitHub Actions for testing and deployment
+
+## See Also
+
+- [Architecture Documentation](architecture.md)
+- [Development Environment](development/environment.md)
+- [Testing Guide](development/testing.md)

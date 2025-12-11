@@ -241,7 +241,7 @@ var $exeDevice = {
                                             <span class="DAD-DETitleImage" id="dadETitleImage">${_('Image URL')}</span>
                                             <div class="DAD-DEInputImage mb-3 gap-2" id="dadEInputImage">
                                                 <label class="sr-av" for="dadEURLImage">${_('Image URL')}</label>
-                                                <input type="text" class="exe-file-picker form-control me-0" id="dadEURLImage"/>
+                                                <input type="text" class="exe-image-picker form-control me-0" id="dadEURLImage"/>
                                                 <a href="#" id="dadEPlayImage" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Show')}">
                                                     <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="DAD-DEButtonImage " />
                                                 </a>
@@ -521,6 +521,11 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.addEventCard();
+        $exeDevice.addPickerButton();
+    },
+
+    addPickerButton: function () {
+        // Manejado globalmente por $exeDevicesEdition.iDevice.filePicker.init()
     },
 
     updateCardsNumber: function () {
@@ -638,7 +643,12 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        const originalHTML = this.idevicePreviousData;
+        let originalHTML = this.idevicePreviousData;
+
+        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
+        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
+            originalHTML = originalHTML.textTextarea;
+        }
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>').html(originalHTML),
@@ -885,44 +895,81 @@ var $exeDevice = {
     showImage: function () {
         const $image = $('#dadEImage'),
             $nimage = $('#dadENoImage'),
+            $input = $('#dadEURLImage'),
             alt = $('#dadEAlt').val(),
-            url = $('#dadEURLImage').val();
+            url = $input.val();
 
         $image.hide();
         $image.attr('alt', alt);
         $nimage.show();
-        $image
-            .prop('src', url)
-            .on('load', function () {
-                if (
-                    this.complete &&
-                    typeof this.naturalWidth !== 'undefined' &&
-                    this.naturalWidth !== 0
-                ) {
-                    const mData = $exeDevice.placeImageWindows(
-                        this,
-                        this.naturalWidth,
-                        this.naturalHeight
-                    );
-                    $exeDevice.drawImage(this, mData);
-                    $image.show();
-                    $nimage.hide();
-                    return true;
+
+        const loadImage = (resolvedUrl) => {
+            $image
+                .prop('src', resolvedUrl)
+                .on('load', function () {
+                    if (
+                        this.complete &&
+                        typeof this.naturalWidth !== 'undefined' &&
+                        this.naturalWidth !== 0
+                    ) {
+                        const mData = $exeDevice.placeImageWindows(
+                            this,
+                            this.naturalWidth,
+                            this.naturalHeight
+                        );
+                        $exeDevice.drawImage(this, mData);
+                        $image.show();
+                        $nimage.hide();
+                        return true;
+                    }
+                    return false;
+                })
+                .on('error', function () {
+                    return false;
+                });
+        };
+
+        // Handle asset:// URLs
+        if (url && url.startsWith('asset://')) {
+            const blobUrl = $input.data('blobUrl');
+            if (blobUrl) {
+                loadImage(blobUrl);
+            } else {
+                const assetManager =
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
+                        loadImage(resolvedUrl || '');
+                    });
                 }
-                return false;
-            })
-            .on('error', function () {
-                return false;
-            });
+            }
+        } else {
+            loadImage(url);
+        }
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', () => {
-            $exeDevice.playerAudio.play();
-        });
+        const playAudio = (url) => {
+            const selectFile =
+                $exeDevices.iDevice.gamification.media.extractURLGD(url);
+            $exeDevice.playerAudio = new Audio(selectFile);
+            $exeDevice.playerAudio.addEventListener('canplaythrough', () => {
+                $exeDevice.playerAudio.play();
+            });
+        };
+
+        // Handle asset:// URLs
+        if (selectedFile && selectedFile.startsWith('asset://')) {
+            const assetManager =
+                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                assetManager.resolveAssetURL(selectedFile).then((resolvedUrl) => {
+                    playAudio(resolvedUrl || '');
+                });
+            }
+        } else {
+            playAudio(selectedFile);
+        }
     },
 
     stopSound: function () {

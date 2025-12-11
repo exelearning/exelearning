@@ -3,6 +3,8 @@
     <title>Progress report</title>
     <css-class>progress-report</css-class>
     <category>Assessment and tracking</category>
+    <component-type>json</component-type>
+    <export-object>$eXeInforme</export-object>
     <icon>
         <name>progress-report-icon</name>
         <url>progress-report-icon.svg</url>

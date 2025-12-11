@@ -1,0 +1,593 @@
+/**
+ * BaseExporter tests
+ */
+
+import { describe, it, expect, beforeEach } from 'bun:test';
+import { BaseExporter } from './BaseExporter';
+import type {
+    ExportDocument,
+    ExportMetadata,
+    ExportPage,
+    ResourceProvider,
+    AssetProvider,
+    ZipProvider,
+    ExportResult,
+} from '../interfaces';
+
+// Mock document adapter
+class MockDocument implements ExportDocument {
+    private metadata: ExportMetadata;
+    private pages: ExportPage[];
+
+    constructor(metadata: Partial<ExportMetadata> = {}, pages: ExportPage[] = []) {
+        this.metadata = {
+            title: 'Test Project',
+            author: 'Test Author',
+            language: 'en',
+            description: 'A test project',
+            license: 'CC-BY-SA',
+            theme: 'base',
+            ...metadata,
+        };
+        this.pages = pages;
+    }
+
+    getMetadata(): ExportMetadata {
+        return this.metadata;
+    }
+
+    getNavigation(): ExportPage[] {
+        return this.pages;
+    }
+}
+
+// Mock resource provider
+class MockResourceProvider implements ResourceProvider {
+    private themeFiles = new Map<string, Buffer>();
+    private libraryFiles = new Map<string, Buffer>();
+    private scormFiles = new Map<string, Buffer>();
+
+    async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
+        return this.themeFiles;
+    }
+
+    async fetchIdeviceResources(_type: string): Promise<Map<string, Buffer>> {
+        return new Map();
+    }
+
+    async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
+        return this.libraryFiles;
+    }
+
+    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
+        return this.libraryFiles;
+    }
+
+    async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
+        return this.scormFiles;
+    }
+}
+
+// Mock asset provider
+class MockAssetProvider implements AssetProvider {
+    private assets: Array<{
+        id: string;
+        filename: string;
+        path: string;
+        mimeType: string;
+        data: Buffer;
+    }> = [];
+
+    addAsset(
+        id: string,
+        filename: string,
+        mimeType: string,
+        data: Buffer
+    ): void {
+        this.assets.push({
+            id,
+            filename,
+            path: `${id}/${filename}`,
+            mimeType,
+            data,
+        });
+    }
+
+    async getAsset(path: string): Promise<Buffer | null> {
+        const asset = this.assets.find((a) => a.path === path);
+        return asset ? asset.data : null;
+    }
+
+    async getAllAssets(): Promise<
+        Array<{
+            id: string;
+            filename: string;
+            path: string;
+            mimeType: string;
+            data: Buffer;
+        }>
+    > {
+        return this.assets;
+    }
+}
+
+// Mock zip provider
+class MockZipProvider implements ZipProvider {
+    files = new Map<string, string | Buffer>();
+
+    addFile(path: string, content: string | Buffer): void {
+        this.files.set(path, content);
+    }
+
+    async generateAsync(): Promise<Buffer> {
+        // Return a mock buffer
+        return Buffer.from('mock-zip-content');
+    }
+}
+
+// Concrete test implementation of BaseExporter
+class TestExporter extends BaseExporter {
+    getFileExtension(): string {
+        return '.zip';
+    }
+
+    getFileSuffix(): string {
+        return '_test';
+    }
+
+    async export(): Promise<ExportResult> {
+        return { success: true, filename: 'test.zip' };
+    }
+}
+
+describe('BaseExporter', () => {
+    let document: MockDocument;
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+    let exporter: TestExporter;
+
+    beforeEach(() => {
+        document = new MockDocument();
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+        exporter = new TestExporter(document, resources, assets, zip);
+    });
+
+    describe('Structure Access', () => {
+        it('should get metadata from document', () => {
+            const meta = exporter.getMetadata();
+            expect(meta.title).toBe('Test Project');
+            expect(meta.author).toBe('Test Author');
+        });
+
+        it('should get navigation from document', () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ];
+            document = new MockDocument({}, pages);
+            exporter = new TestExporter(document, resources, assets, zip);
+
+            const nav = exporter.getNavigation();
+            expect(nav.length).toBe(1);
+            expect(nav[0].title).toBe('Page 1');
+        });
+
+        it('should build page list', () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+                {
+                    id: 'p2',
+                    title: 'Page 2',
+                    parentId: null,
+                    order: 1,
+                    blocks: [],
+                },
+            ];
+            document = new MockDocument({}, pages);
+            exporter = new TestExporter(document, resources, assets, zip);
+
+            const list = exporter.buildPageList();
+            expect(list.length).toBe(2);
+        });
+
+        it('should get used iDevices from pages', () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Hello</p>',
+                                },
+                                {
+                                    id: 'c2',
+                                    type: 'MultipleChoiceIdevice',
+                                    order: 1,
+                                    content: '<div>Quiz</div>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pages);
+            exporter = new TestExporter(document, resources, assets, zip);
+
+            const usedIdevices = exporter.getUsedIdevices(pages);
+            expect(usedIdevices).toContain('FreeTextIdevice');
+            expect(usedIdevices).toContain('MultipleChoiceIdevice');
+            expect(usedIdevices.length).toBe(2);
+        });
+
+        it('should get root pages', () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Root 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+                {
+                    id: 'p2',
+                    title: 'Child 1',
+                    parentId: 'p1',
+                    order: 1,
+                    blocks: [],
+                },
+                {
+                    id: 'p3',
+                    title: 'Root 2',
+                    parentId: null,
+                    order: 2,
+                    blocks: [],
+                },
+            ];
+
+            const rootPages = exporter.getRootPages(pages);
+            expect(rootPages.length).toBe(2);
+            expect(rootPages[0].title).toBe('Root 1');
+            expect(rootPages[1].title).toBe('Root 2');
+        });
+
+        it('should get child pages', () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Root',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+                {
+                    id: 'p2',
+                    title: 'Child 1',
+                    parentId: 'p1',
+                    order: 1,
+                    blocks: [],
+                },
+                {
+                    id: 'p3',
+                    title: 'Child 2',
+                    parentId: 'p1',
+                    order: 2,
+                    blocks: [],
+                },
+            ];
+
+            const children = exporter.getChildPages('p1', pages);
+            expect(children.length).toBe(2);
+        });
+    });
+
+    describe('String Utilities', () => {
+        it('should escape XML special characters', () => {
+            expect(exporter.escapeXml('Hello & World')).toBe('Hello &amp; World');
+            expect(exporter.escapeXml('<script>')).toBe('&lt;script&gt;');
+            expect(exporter.escapeXml('"quoted"')).toBe('&quot;quoted&quot;');
+            expect(exporter.escapeXml("it's")).toBe("it&apos;s");
+            expect(exporter.escapeXml(null)).toBe('');
+            expect(exporter.escapeXml(undefined)).toBe('');
+        });
+
+        it('should escape HTML special characters', () => {
+            expect(exporter.escapeHtml('Hello & World')).toBe('Hello &amp; World');
+            expect(exporter.escapeHtml('<script>')).toBe('&lt;script&gt;');
+            expect(exporter.escapeHtml('"quoted"')).toBe('&quot;quoted&quot;');
+            expect(exporter.escapeHtml("it's")).toBe('it&#039;s');
+        });
+
+        it('should sanitize filenames', () => {
+            expect(exporter.sanitizeFilename('Hello World')).toBe('hello-world');
+            expect(exporter.sanitizeFilename('Test@#$%File!')).toBe('testfile');
+            expect(exporter.sanitizeFilename('  Spaces  ')).toBe('-spaces-');
+            expect(exporter.sanitizeFilename('Normal Title')).toBe('normal-title');
+            expect(exporter.sanitizeFilename(null)).toBe('export');
+            expect(exporter.sanitizeFilename('')).toBe('export');
+        });
+
+        it('should sanitize page filenames with accent removal', () => {
+            expect(exporter.sanitizePageFilename('Résumé')).toBe('resume');
+            expect(exporter.sanitizePageFilename('Niño')).toBe('nino');
+            expect(exporter.sanitizePageFilename('Über')).toBe('uber');
+            expect(exporter.sanitizePageFilename('')).toBe('page');
+        });
+
+        it('should generate unique IDs', () => {
+            const id1 = exporter.generateId('PRE_');
+            const id2 = exporter.generateId('PRE_');
+            expect(id1).not.toBe(id2);
+            expect(id1.startsWith('PRE_')).toBe(true);
+        });
+    });
+
+    describe('File Handling', () => {
+        it('should build filename from metadata', () => {
+            const filename = exporter.buildFilename();
+            expect(filename).toBe('test-project_test.zip');
+        });
+
+        it('should build filename with default when no title', () => {
+            document = new MockDocument({ title: '' });
+            exporter = new TestExporter(document, resources, assets, zip);
+            const filename = exporter.buildFilename();
+            expect(filename).toBe('export_test.zip');
+        });
+    });
+
+    describe('Navigation Helpers', () => {
+        const pages: ExportPage[] = [
+            { id: 'p1', title: 'Page 1', parentId: null, order: 0, blocks: [] },
+            { id: 'p2', title: 'Page 2', parentId: null, order: 1, blocks: [] },
+            { id: 'p3', title: 'Page 3', parentId: null, order: 2, blocks: [] },
+        ];
+
+        it('should get page link for first page', () => {
+            const link = exporter.getPageLink(pages[0], pages);
+            expect(link).toBe('index.html');
+        });
+
+        it('should get page link for other pages', () => {
+            const link = exporter.getPageLink(pages[1], pages);
+            expect(link).toBe('p2.html');
+        });
+
+        it('should get previous page', () => {
+            const prev = exporter.getPreviousPage(pages[1], pages);
+            expect(prev?.id).toBe('p1');
+        });
+
+        it('should return null for previous page of first page', () => {
+            const prev = exporter.getPreviousPage(pages[0], pages);
+            expect(prev).toBeNull();
+        });
+
+        it('should get next page', () => {
+            const next = exporter.getNextPage(pages[1], pages);
+            expect(next?.id).toBe('p3');
+        });
+
+        it('should return null for next page of last page', () => {
+            const next = exporter.getNextPage(pages[2], pages);
+            expect(next).toBeNull();
+        });
+
+        it('should check ancestor relationship', () => {
+            const hierarchicalPages: ExportPage[] = [
+                {
+                    id: 'root',
+                    title: 'Root',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+                {
+                    id: 'child',
+                    title: 'Child',
+                    parentId: 'root',
+                    order: 1,
+                    blocks: [],
+                },
+                {
+                    id: 'grandchild',
+                    title: 'Grandchild',
+                    parentId: 'child',
+                    order: 2,
+                    blocks: [],
+                },
+            ];
+
+            expect(
+                exporter.isAncestorOf(
+                    hierarchicalPages[0],
+                    'child',
+                    hierarchicalPages
+                )
+            ).toBe(true);
+            expect(
+                exporter.isAncestorOf(
+                    hierarchicalPages[0],
+                    'grandchild',
+                    hierarchicalPages
+                )
+            ).toBe(true);
+            expect(
+                exporter.isAncestorOf(
+                    hierarchicalPages[1],
+                    'root',
+                    hierarchicalPages
+                )
+            ).toBe(false);
+        });
+    });
+
+    describe('MIME Type Utilities', () => {
+        it('should get extension from MIME type', () => {
+            expect(exporter.getExtensionFromMime('image/jpeg')).toBe('.jpg');
+            expect(exporter.getExtensionFromMime('image/png')).toBe('.png');
+            expect(exporter.getExtensionFromMime('image/svg+xml')).toBe('.svg');
+            expect(exporter.getExtensionFromMime('application/pdf')).toBe('.pdf');
+            expect(exporter.getExtensionFromMime('video/mp4')).toBe('.mp4');
+            expect(exporter.getExtensionFromMime('audio/mpeg')).toBe('.mp3');
+            expect(exporter.getExtensionFromMime('unknown/type')).toBe('.bin');
+        });
+    });
+
+    describe('Content XML Generation', () => {
+        it('should generate valid content.xml structure', () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Test content</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pages);
+            exporter = new TestExporter(document, resources, assets, zip);
+
+            const xml = exporter.generateContentXml();
+
+            expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(xml).toContain('<ode xmlns="http://www.intef.es/xsd/ode"');
+            expect(xml).toContain('<odeProperties>');
+            expect(xml).toContain('<pp_title>Test Project</pp_title>');
+            expect(xml).toContain('<odeNavStructure');
+            expect(xml).toContain('odeNavStructureId="p1"');
+            expect(xml).toContain('<odePagStructure');
+            expect(xml).toContain('<odeComponent');
+            expect(xml).toContain('FreeTextIdevice');
+            expect(xml).toContain('<![CDATA[<p>Test content</p>]]>');
+        });
+
+        it('should escape special characters in XML', () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Page & Title',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ];
+            document = new MockDocument({ title: 'Project <Test>' }, pages);
+            exporter = new TestExporter(document, resources, assets, zip);
+
+            const xml = exporter.generateContentXml();
+            expect(xml).toContain('&lt;Test&gt;');
+            expect(xml).toContain('Page &amp; Title');
+        });
+    });
+
+    describe('HTML Content Collection', () => {
+        it('should collect all HTML content from pages', () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Content 1</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'p2',
+                    title: 'Page 2',
+                    parentId: null,
+                    order: 1,
+                    blocks: [
+                        {
+                            id: 'b2',
+                            name: 'Block 2',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c2',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Content 2</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const html = exporter.collectAllHtmlContent(pages);
+            expect(html).toContain('Content 1');
+            expect(html).toContain('Content 2');
+        });
+    });
+
+    describe('Fallback Styles', () => {
+        it('should provide base CSS', () => {
+            const css = exporter.getBaseCss();
+            expect(css).toContain('.exe-content');
+            expect(css).toContain('.iDevice_wrapper');
+            expect(css).toContain('#siteNav');
+        });
+
+        it('should provide fallback theme CSS', () => {
+            const css = exporter.getFallbackThemeCss();
+            expect(css).toContain('body');
+            expect(css).toContain('font-family');
+        });
+
+        it('should provide fallback theme JS', () => {
+            const js = exporter.getFallbackThemeJs();
+            expect(js).toContain('DOMContentLoaded');
+        });
+    });
+});

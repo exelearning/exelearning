@@ -3,6 +3,7 @@
     <title>Identify</title>
     <css-class>identify</css-class>
     <category>Interactive activities</category>
+    <export-object>$eXeIdentifica</export-object>
     <icon>
         <name>identify-icon</name>
         <url>identify-icon.svg</url>

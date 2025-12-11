@@ -1,4 +1,8 @@
 {
+	"menu": {
+		"edit": "Edit",
+		"view": "View"
+	},
 	"updater": {
 		"errorTitle": "Update error",
 		"updateAvailableTitle": "Update available",

@@ -90,12 +90,12 @@ Common knobs (all supported by the example files):
 * **Database:** `DB_DRIVER`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_CHARSET`, engine-specific version flags
 * **Files:** `FILES_DIR` (default: `/mnt/data/`)
 * **Auth:** `APP_AUTH_METHODS`, `AUTH_CREATE_USERS`, plus optional test user (`TEST_USER_*`)
-* **Real-time (Mercure):** `MERCURE_URL`, `MERCURE_*_JWT_*`
+* **Real-time (Yjs WebSocket):** Uses the main server port, no additional configuration needed
 * **Post-configure hooks:** `POST_CONFIGURE_COMMANDS` (e.g., auto-create a user)
 
 (See the embedded Compose files for the full set.)    
 
-> **Important:** Always set strong secrets (`APP_SECRET`, `MERCURE_JWT_SECRET_KEY`, DB passwords) via `.env` or environment overrides—never commit them. 
+> **Important:** Always set strong secrets (`APP_SECRET`, DB passwords) via `.env` or environment overrides—never commit them. 
 
 ---
 
@@ -123,7 +123,7 @@ What it does:
 
 - Prefixes all application routes with `BASE_PATH` (e.g., `/exelearning/workarea`).
 - Keeps `/healthcheck` working: requests to `/healthcheck` are redirected to `%BASE_PATH%/healthcheck` when `BASE_PATH` is set.
-- Inside the container, Nginx rewrites `^$BASE_PATH/(.*)$` to `/$1` so the app sees clean paths. The rewrite is generated automatically from `subdir.conf.template` by `02-configure-symfony.sh` when `BASE_PATH` is set.
+- Inside the container, Nginx rewrites `^$BASE_PATH/(.*)$` to `/$1` so the app sees clean paths. The rewrite is generated automatically from the container configuration when `BASE_PATH` is set.
 
 Verification:
 
@@ -158,16 +158,17 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Mercure (SSE) must disable buffering
-    location ^~ /.well-known/mercure {
+    # WebSocket for Yjs collaboration
+    location /yjs/ {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_buffering off; # critical for SSE
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400; # Keep WebSocket alive
     }
 }
 ```
@@ -234,7 +235,7 @@ The filename (without `.elpx` extension) is displayed as the template name in th
 
 * **Port already in use:** Change `APP_PORT` in your `.env` or Compose overrides.
 * **File permissions:** Ensure your volumes are writable by the container user.
-* **Real-time/SSE stalls:** In Nginx, set `proxy_buffering off` for `/.well-known/mercure`. See **Reverse proxy & TLS** above. 
+* **Real-time/WebSocket issues:** Ensure your reverse proxy supports WebSocket upgrade headers. See **Reverse proxy & TLS** above. 
 
 ---
 
@@ -251,10 +252,9 @@ The filename (without `.elpx` extension) is displayed as the template name in th
 eXeLearning stores intermediate/temporary files (exports, conversions, etc.) under the configured temporary directory. You can clean up old entries either via a console command (recommended for cron) or an HTTP endpoint (for environments where only HTTP access is available).
 
 - Command (recommended):
-  - `php bin/console app:tmp-files:cleanup [--max-age=SECONDS]`
-  - Composer shortcut: `composer tmp-cleanup`
+  - `bun cli tmp-cleanup [--max-age=SECONDS]`
   - Example cron (daily at 03:00, keeping 24h):
-    - `0 3 * * * cd /opt/exelearning && php bin/console app:tmp-files:cleanup --max-age=86400`
+    - `0 3 * * * cd /opt/exelearning && bun cli tmp-cleanup --max-age=86400`
 
 - HTTP endpoint (GET or POST):
   - Path: `/maintenance/tmp/cleanup`
