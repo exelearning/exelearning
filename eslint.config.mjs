@@ -4,7 +4,6 @@ import tseslint from 'typescript-eslint';
 import prettierPlugin from 'eslint-plugin-prettier';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import globals from 'globals';
-import jestPlugin from 'eslint-plugin-jest';
 
 export default tseslint.config(
     // ===========================================
@@ -17,15 +16,17 @@ export default tseslint.config(
             'coverage/**',
             'release/**',
             'symfony_legacy/**',
+            'nestjs_legacy/**',
             'public/libs/**',
             'public/app/common/**',
             'public/files/**',
             '**/*.d.ts',
+            '**/*.bundle.js',
         ],
     },
 
     // ===========================================
-    // NestJS TypeScript source files
+    // TypeScript source files (src/)
     // ===========================================
     eslint.configs.recommended,
     ...tseslint.configs.recommended,
@@ -33,7 +34,7 @@ export default tseslint.config(
         files: ['src/**/*.ts'],
         ignores: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
         languageOptions: {
-            ecmaVersion: 2021,
+            ecmaVersion: 2022,
             sourceType: 'module',
             parser: tseslint.parser,
             parserOptions: {
@@ -41,6 +42,7 @@ export default tseslint.config(
             },
             globals: {
                 ...globals.node,
+                Bun: 'readonly',
             },
         },
         plugins: {
@@ -50,7 +52,7 @@ export default tseslint.config(
             // Prettier integration
             'prettier/prettier': 'error',
 
-            // TypeScript specific rules (NestJS recommendations)
+            // TypeScript rules (Bun-style: pragmatic, not overly strict)
             '@typescript-eslint/interface-name-prefix': 'off',
             '@typescript-eslint/explicit-function-return-type': 'off',
             '@typescript-eslint/explicit-module-boundary-types': 'off',
@@ -62,11 +64,11 @@ export default tseslint.config(
                     varsIgnorePattern: '^_',
                 },
             ],
-            '@typescript-eslint/no-empty-function': 'warn',
+            '@typescript-eslint/no-empty-function': 'off',
             '@typescript-eslint/no-require-imports': 'off',
 
-            // General ESLint rules
-            'no-console': 'warn',
+            // General rules
+            'no-console': 'off',
             'no-debugger': 'error',
             eqeqeq: ['error', 'always'],
             curly: ['error', 'all'],
@@ -76,25 +78,33 @@ export default tseslint.config(
     },
 
     // ===========================================
-    // Jest test files
-    // No type-aware rules (parserOptions.project removed)
-    // since tsconfig.json excludes test files
+    // Test files (Bun test runner)
     // ===========================================
     {
         files: ['**/*.spec.ts', '**/*.e2e-spec.ts', 'test/**/*.ts'],
         languageOptions: {
-            ecmaVersion: 2021,
+            ecmaVersion: 2022,
             sourceType: 'module',
             parser: tseslint.parser,
             globals: {
                 ...globals.node,
-                ...globals.jest,
+                Bun: 'readonly',
+                // Bun test globals
+                describe: 'readonly',
+                it: 'readonly',
+                test: 'readonly',
+                expect: 'readonly',
+                beforeAll: 'readonly',
+                afterAll: 'readonly',
+                beforeEach: 'readonly',
+                afterEach: 'readonly',
+                mock: 'readonly',
+                spyOn: 'readonly',
             },
         },
         plugins: {
             '@typescript-eslint': tseslint.plugin,
             prettier: prettierPlugin,
-            jest: jestPlugin,
         },
         rules: {
             // Prettier integration
@@ -110,30 +120,23 @@ export default tseslint.config(
                 },
             ],
             '@typescript-eslint/no-require-imports': 'off',
+            '@typescript-eslint/no-empty-function': 'off',
             'no-console': 'off',
-
-            // Jest specific rules
-            'jest/no-disabled-tests': 'warn',
-            'jest/no-focused-tests': 'error',
-            'jest/no-identical-title': 'error',
-            'jest/valid-expect': 'error',
         },
     },
 
     // ===========================================
-    // Public app JavaScript (basic linting only)
-    // No code style enforcement, just error detection
+    // Public app JavaScript (basic error detection)
     // ===========================================
     {
         files: ['public/app/**/*.js'],
-        ignores: ['public/app/common/**', 'public/libs/**'],
+        ignores: ['public/app/common/**', 'public/libs/**', '**/*.bundle.js'],
         languageOptions: {
             ecmaVersion: 2021,
             sourceType: 'script',
             globals: {
                 ...globals.browser,
                 ...globals.jquery,
-                // Common globals used in the app
                 $: 'readonly',
                 jQuery: 'readonly',
                 eXe: 'readonly',
@@ -142,13 +145,13 @@ export default tseslint.config(
             },
         },
         rules: {
-            // Disable all TypeScript rules for JS files
+            // Disable TypeScript rules for JS files
             '@typescript-eslint/no-unused-vars': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-require-imports': 'off',
 
-            // Only basic error detection, no style enforcement
-            'no-undef': 'off', // Too many globals in legacy code
+            // Basic error detection only
+            'no-undef': 'off',
             'no-unused-vars': 'off',
             'no-case-declarations': 'off',
             'no-prototype-builtins': 'off',
@@ -163,7 +166,7 @@ export default tseslint.config(
             'no-sparse-arrays': 'warn',
             'use-isnan': 'error',
             'valid-typeof': 'error',
-            'no-redeclare': 'warn', // Common in legacy code
+            'no-redeclare': 'warn',
         },
     },
 
@@ -171,12 +174,13 @@ export default tseslint.config(
     // Config files (JS/MJS)
     // ===========================================
     {
-        files: ['*.js', '*.mjs', 'scripts/**/*.js'],
+        files: ['*.js', '*.mjs', 'scripts/**/*.js', 'scripts/**/*.ts'],
         languageOptions: {
-            ecmaVersion: 2021,
+            ecmaVersion: 2022,
             sourceType: 'module',
             globals: {
                 ...globals.node,
+                Bun: 'readonly',
             },
         },
         rules: {
@@ -185,6 +189,6 @@ export default tseslint.config(
         },
     },
 
-    // Prettier config must be last to override conflicting rules
-    eslintConfigPrettier
+    // Prettier must be last to override conflicting rules
+    eslintConfigPrettier,
 );

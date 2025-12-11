@@ -49,15 +49,6 @@ jobs:
         run: |
           git diff --name-only ${{ github.before }} ${{ github.sha }} | grep -Eq "^.github/workflows/(ci.yml|app.yml)$" && echo "Modifying or deleting ci.yml or app.yml is not allowed" && exit 1 || echo "Everything is fine"
 
-      - name: Remove local docker-compose.yml bind mounts for CI
-        run: |
-          sed -i '/##FORDELETEINCI-START/,/##FORDELETEINCI-END/d' docker-compose.yml
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          install: true
-
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -74,59 +65,49 @@ jobs:
           mkdir -p $TEST_SCREENSHOTS_DIR
           chmod 777 $TEST_SCREENSHOTS_DIR
 
-      - name: Build CSS (prod)
-        run: make css
-
-      - name: Build Docker Image
-        run: make build
-
       - name: TS Lint
         run: make lint-ts
 
       - name: JS Lint
         run: make lint-js
 
-      - name: PHPUnit Unit Tests
+      - name: Unit Tests + 90% Coverage
         run: make test-unit
 
-      - name: PHPUnit E2E Tests
+      # TODO: Enable this when released 3.1
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     files: ./coverage/lcov.info
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Integration Tests
+        run: make test-integration
+
+      - name: Frontend Tests
+        run: make test-frontend
+
+      - name: E2E Tests
         run: make test-e2e
 
-      - name: PHPUnit E2E RealTime Tests
-        run: make test-e2e-realtime
-
-      - name: PHPUnit E2E Offline Tests
-        run: make test-e2e-offline
-
-      - name: Generate HTML report
+      - name: Upload Playwright Report
         if: always()
-        run: |
-          REPO_NAME=$(basename "$GITHUB_REPOSITORY")
-          BRANCH_NAME=${GITHUB_REF_NAME//\//-}  # Replace '/' with '-'
-          COMMIT_SHA=${GITHUB_SHA::7}  # First 7 characters
-          REPORT_NAME="e2e-report_${REPO_NAME}_${BRANCH_NAME}_${COMMIT_SHA}.html"
-          
-          echo "<html><head><title>Test Report - $REPO_NAME ($BRANCH_NAME - $COMMIT_SHA)</title></head><body>" > "$REPORT_NAME"
-          echo "<h1 style='text-align:center;'>Test Report</h1>" >> "$REPORT_NAME"
-          echo "<h2 style='text-align:center;'>$REPO_NAME - $BRANCH_NAME - $COMMIT_SHA</h2><hr>" >> "$REPORT_NAME"
-
-          HAS_SCREENSHOTS=false
-          for file in ./e2e_screenshots/*.png; do
-            [ -f "$file" ] || continue
-            HAS_SCREENSHOTS=true
-            echo "<h3>$(basename "$file")</h3><img src='data:image/png;base64,$(base64 -w0 "$file")' style='max-width:100%;'/><hr>" >> "$REPORT_NAME"
-          done
-          
-          echo "</body></html>" >> "$REPORT_NAME"
-          echo "REPORT_NAME=$REPORT_NAME" >> $GITHUB_ENV
-          echo "HAS_SCREENSHOTS=$HAS_SCREENSHOTS" >> $GITHUB_ENV
-
-      - name: Upload HTML report
-        if: always() && env.HAS_SCREENSHOTS == 'true'
         uses: actions/upload-artifact@v5
         with:
-          name: e2e-report
-          path: ${{ env.REPORT_NAME }}
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Build CSS (prod)
+        run: make css
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Build Docker Image
+        run: make build
 
       - name: Login to DockerHub
         if: github.repository == 'exelearning/exelearning' && github.event_name != 'pull_request'

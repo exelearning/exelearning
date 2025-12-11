@@ -49,6 +49,7 @@
     "lint:test": "eslint --config eslint.config.mjs '**/*.spec.ts' 'test/**/*.ts'",
     "lint:test:fix": "eslint --config eslint.config.mjs '**/*.spec.ts' 'test/**/*.ts' --fix",
     "lint:public": "eslint --config eslint.config.mjs 'public/app/**/*.js'",
+    "lint:public:fix": "eslint --config eslint.config.mjs 'public/app/**/*.js' --fix",
     "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts'"
   },

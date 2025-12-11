@@ -344,9 +344,39 @@ endif
 lint: check-bun
 	bun run lint
 
-.PHONY: lint-fix
-lint-fix: check-bun
+.PHONY: fix
+fix: check-bun
 	bun run lint:fix
+
+# Lint TypeScript source files (src/)
+.PHONY: lint-ts
+lint-ts: check-bun
+	bun run lint:src
+
+# Fix TypeScript source linting issues
+.PHONY: fix-ts
+fix-ts: check-bun
+	bun run lint:src:fix
+
+# Lint JavaScript files (public/app/)
+.PHONY: lint-js
+lint-js: check-bun
+	bun run lint:public
+
+# Fix JavaScript linting issues
+.PHONY: fix-js
+fix-js: check-bun
+	bun run lint:public:fix
+
+# Lint test files
+.PHONY: lint-tests
+lint-tests: check-bun
+	bun run lint:test
+
+# Fix test file linting issues
+.PHONY: lint-tests-fix
+lint-tests-fix: check-bun
+	bun run lint:test:fix
 
 .PHONY: format
 format: check-bun
@@ -571,8 +601,14 @@ help:
 	@echo "  make test-e2e        Run Playwright E2E tests"
 	@echo ""
 	@echo "Linting:"
-	@echo "  make lint            Run ESLint"
-	@echo "  make lint-fix        Fix ESLint issues"
+	@echo "  make lint            Run ESLint on all files"
+	@echo "  make fix        Fix all ESLint issues"
+	@echo "  make lint-ts         Lint TypeScript source (src/)"
+	@echo "  make fix-ts     Fix TypeScript linting issues"
+	@echo "  make lint-js         Lint JavaScript (public/app/)"
+	@echo "  make fix-js     Fix JavaScript linting issues"
+	@echo "  make lint-tests      Lint test files"
+	@echo "  make lint-tests-fix  Fix test linting issues"
 	@echo "  make format          Format with Prettier"
 	@echo ""
 	@echo "Packaging:"
