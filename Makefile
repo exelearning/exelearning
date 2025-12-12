@@ -341,12 +341,10 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun
-	bun run lint
+lint: check-bun lint-ts lint-js lint-tests
 
 .PHONY: fix
-fix: check-bun
-	bun run lint:fix
+fix: check-bun fix-ts fix-js fix-tests
 
 # Lint TypeScript source files (src/)
 .PHONY: lint-ts
@@ -374,8 +372,8 @@ lint-tests: check-bun
 	bun run lint:test
 
 # Fix test file linting issues
-.PHONY: lint-tests-fix
-lint-tests-fix: check-bun
+.PHONY: fix-tests
+fix-tests: check-bun
 	bun run lint:test:fix
 
 .PHONY: format
@@ -608,7 +606,7 @@ help:
 	@echo "  make lint-js         Lint JavaScript (public/app/)"
 	@echo "  make fix-js     Fix JavaScript linting issues"
 	@echo "  make lint-tests      Lint test files"
-	@echo "  make lint-tests-fix  Fix test linting issues"
+	@echo "  make fix-tests  Fix test linting issues"
 	@echo "  make format          Format with Prettier"
 	@echo ""
 	@echo "Packaging:"

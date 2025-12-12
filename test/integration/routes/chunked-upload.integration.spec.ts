@@ -10,17 +10,20 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test'
 import { Elysia } from 'elysia';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as _uuidv4 } from 'uuid';
 
 // In-memory storage for chunked uploads (mirrors the real implementation)
-const chunkUploads = new Map<string, {
-    projectId: string;
-    filename: string;
-    totalChunks: number;
-    uploadedChunks: Set<number>;
-    chunkDir: string;
-    createdAt: Date;
-}>();
+const chunkUploads = new Map<
+    string,
+    {
+        projectId: string;
+        filename: string;
+        totalChunks: number;
+        uploadedChunks: Set<number>;
+        chunkDir: string;
+        createdAt: Date;
+    }
+>();
 
 // Test chunks directory
 const testChunksDir = path.join(process.cwd(), 'test', 'temp', 'chunks-test');
@@ -29,117 +32,119 @@ const testChunksDir = path.join(process.cwd(), 'test', 'temp', 'chunks-test');
  * Create a minimal test app with chunked upload routes
  */
 function createChunkedUploadTestApp(): Elysia {
-    return new Elysia({ name: 'chunked-upload-test', prefix: '/api/projects/:projectId/assets' })
-        // GET /upload-chunk - Check if chunk exists
-        .get('/upload-chunk', async ({ params, query, set }) => {
-            const { projectId } = params;
-            const identifier = query.resumableIdentifier as string;
-            const chunkNumber = parseInt(query.resumableChunkNumber as string, 10);
-
-            if (!identifier || !chunkNumber) {
-                set.status = 400;
-                return { success: false, error: 'Missing required parameters' };
-            }
-
-            const upload = chunkUploads.get(`${projectId}:${identifier}`);
-            if (upload && upload.uploadedChunks.has(chunkNumber)) {
-                // Chunk exists
-                set.status = 200;
-                return { exists: true };
-            }
-
-            // Chunk doesn't exist
-            set.status = 204;
-            return;
-        })
-
-        // POST /upload-chunk - Upload a chunk
-        .post('/upload-chunk', async ({ params, body, set }) => {
-            try {
+    return (
+        new Elysia({ name: 'chunked-upload-test', prefix: '/api/projects/:projectId/assets' })
+            // GET /upload-chunk - Check if chunk exists
+            .get('/upload-chunk', async ({ params, query, set }) => {
                 const { projectId } = params;
-                const data = body as any;
+                const identifier = query.resumableIdentifier as string;
+                const chunkNumber = parseInt(query.resumableChunkNumber as string, 10);
 
-                const identifier = data.resumableIdentifier;
-                const chunkNumber = parseInt(data.resumableChunkNumber, 10);
-                const totalChunks = parseInt(data.resumableTotalChunks, 10);
-                const filename = data.resumableFilename;
-                const chunk = data.file;
-
-                if (!identifier || !chunkNumber || !chunk) {
+                if (!identifier || !chunkNumber) {
                     set.status = 400;
                     return { success: false, error: 'Missing required parameters' };
                 }
 
+                const upload = chunkUploads.get(`${projectId}:${identifier}`);
+                if (upload && upload.uploadedChunks.has(chunkNumber)) {
+                    // Chunk exists
+                    set.status = 200;
+                    return { exists: true };
+                }
+
+                // Chunk doesn't exist
+                set.status = 204;
+                return;
+            })
+
+            // POST /upload-chunk - Upload a chunk
+            .post('/upload-chunk', async ({ params, body, set }) => {
+                try {
+                    const { projectId } = params;
+                    const data = body as any;
+
+                    const identifier = data.resumableIdentifier;
+                    const chunkNumber = parseInt(data.resumableChunkNumber, 10);
+                    const totalChunks = parseInt(data.resumableTotalChunks, 10);
+                    const filename = data.resumableFilename;
+                    const chunk = data.file;
+
+                    if (!identifier || !chunkNumber || !chunk) {
+                        set.status = 400;
+                        return { success: false, error: 'Missing required parameters' };
+                    }
+
+                    const uploadKey = `${projectId}:${identifier}`;
+                    const chunkDir = path.join(testChunksDir, projectId, identifier);
+
+                    // Initialize upload tracking SYNCHRONOUSLY to prevent race condition
+                    // Set the Map entry BEFORE any async operation
+                    if (!chunkUploads.has(uploadKey)) {
+                        // Set the entry FIRST (synchronously)
+                        chunkUploads.set(uploadKey, {
+                            projectId,
+                            filename,
+                            totalChunks,
+                            uploadedChunks: new Set<number>(),
+                            chunkDir,
+                            createdAt: new Date(),
+                        });
+                    }
+
+                    // Ensure the directory exists (multiple calls are safe with ensureDir)
+                    await fs.ensureDir(chunkDir);
+
+                    const upload = chunkUploads.get(uploadKey)!;
+
+                    // Save chunk to disk
+                    const chunkPath = path.join(chunkDir, `chunk_${chunkNumber}`);
+
+                    // Handle both Blob and Buffer
+                    let chunkBuffer: Buffer;
+                    if (chunk instanceof Blob) {
+                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
+                    } else if (Buffer.isBuffer(chunk)) {
+                        chunkBuffer = chunk;
+                    } else {
+                        chunkBuffer = Buffer.from(String(chunk));
+                    }
+
+                    await fs.writeFile(chunkPath, chunkBuffer);
+
+                    // Mark chunk as uploaded
+                    upload.uploadedChunks.add(chunkNumber);
+
+                    // Check if all chunks uploaded
+                    const allUploaded = upload.uploadedChunks.size === upload.totalChunks;
+
+                    return {
+                        success: true,
+                        chunkNumber,
+                        allUploaded,
+                        uploadedChunks: upload.uploadedChunks.size,
+                        totalChunks: upload.totalChunks,
+                    };
+                } catch (error: any) {
+                    set.status = 500;
+                    return { success: false, error: error.message };
+                }
+            })
+
+            // DELETE /upload-chunk/:identifier - Cancel chunked upload
+            .delete('/upload-chunk/:identifier', async ({ params, set: _set }) => {
+                const { projectId, identifier } = params;
                 const uploadKey = `${projectId}:${identifier}`;
-                const chunkDir = path.join(testChunksDir, projectId, identifier);
 
-                // Initialize upload tracking SYNCHRONOUSLY to prevent race condition
-                // Set the Map entry BEFORE any async operation
-                if (!chunkUploads.has(uploadKey)) {
-                    // Set the entry FIRST (synchronously)
-                    chunkUploads.set(uploadKey, {
-                        projectId,
-                        filename,
-                        totalChunks,
-                        uploadedChunks: new Set<number>(),
-                        chunkDir,
-                        createdAt: new Date(),
-                    });
+                const upload = chunkUploads.get(uploadKey);
+                if (upload) {
+                    // Clean up chunks directory
+                    await fs.remove(upload.chunkDir);
+                    chunkUploads.delete(uploadKey);
                 }
 
-                // Ensure the directory exists (multiple calls are safe with ensureDir)
-                await fs.ensureDir(chunkDir);
-
-                const upload = chunkUploads.get(uploadKey)!;
-
-                // Save chunk to disk
-                const chunkPath = path.join(chunkDir, `chunk_${chunkNumber}`);
-
-                // Handle both Blob and Buffer
-                let chunkBuffer: Buffer;
-                if (chunk instanceof Blob) {
-                    chunkBuffer = Buffer.from(await chunk.arrayBuffer());
-                } else if (Buffer.isBuffer(chunk)) {
-                    chunkBuffer = chunk;
-                } else {
-                    chunkBuffer = Buffer.from(String(chunk));
-                }
-
-                await fs.writeFile(chunkPath, chunkBuffer);
-
-                // Mark chunk as uploaded
-                upload.uploadedChunks.add(chunkNumber);
-
-                // Check if all chunks uploaded
-                const allUploaded = upload.uploadedChunks.size === upload.totalChunks;
-
-                return {
-                    success: true,
-                    chunkNumber,
-                    allUploaded,
-                    uploadedChunks: upload.uploadedChunks.size,
-                    totalChunks: upload.totalChunks,
-                };
-            } catch (error: any) {
-                set.status = 500;
-                return { success: false, error: error.message };
-            }
-        })
-
-        // DELETE /upload-chunk/:identifier - Cancel chunked upload
-        .delete('/upload-chunk/:identifier', async ({ params, set }) => {
-            const { projectId, identifier } = params;
-            const uploadKey = `${projectId}:${identifier}`;
-
-            const upload = chunkUploads.get(uploadKey);
-            if (upload) {
-                // Clean up chunks directory
-                await fs.remove(upload.chunkDir);
-                chunkUploads.delete(uploadKey);
-            }
-
-            return { success: true };
-        });
+                return { success: true };
+            })
+    );
 }
 
 describe('Chunked Upload Integration', () => {
@@ -184,8 +189,8 @@ describe('Chunked Upload Integration', () => {
                         new Request(`http://localhost${baseUrl}`, {
                             method: 'POST',
                             body: formData,
-                        })
-                    )
+                        }),
+                    ),
                 );
             }
 
@@ -204,27 +209,25 @@ describe('Chunked Upload Integration', () => {
 
             // Parse responses to check uploadedChunks count
             const jsonResults = await Promise.all(
-                results.map(async (r) => {
+                results.map(async r => {
                     try {
                         const text = await r.clone().text();
                         return JSON.parse(text);
                     } catch {
                         return null;
                     }
-                })
+                }),
             );
 
             // At least one should report allUploaded: true or all 10 chunks
             const finalResult = jsonResults.find(
-                (r) => r && (r.allUploaded === true || r.uploadedChunks === totalChunks)
+                r => r && (r.allUploaded === true || r.uploadedChunks === totalChunks),
             );
 
             // If not, check the last result to see total chunks received
             if (!finalResult) {
                 // All results should show progress toward 10 chunks
-                const maxUploaded = Math.max(
-                    ...jsonResults.filter((r) => r).map((r) => r.uploadedChunks || 0)
-                );
+                const maxUploaded = Math.max(...jsonResults.filter(r => r).map(r => r.uploadedChunks || 0));
                 expect(maxUploaded).toBe(totalChunks);
             }
         });
@@ -247,11 +250,11 @@ describe('Chunked Upload Integration', () => {
                     new Request(`http://localhost${baseUrl}`, {
                         method: 'POST',
                         body: formData,
-                    })
+                    }),
                 );
 
                 expect(res.status).toBe(200);
-                const json = await res.json() as any;
+                const json = (await res.json()) as any;
                 expect(json.success).toBe(true);
                 expect(json.uploadedChunks).toBe(i);
 
@@ -287,8 +290,8 @@ describe('Chunked Upload Integration', () => {
                             new Request(`http://localhost${baseUrl}`, {
                                 method: 'POST',
                                 body: formData,
-                            })
-                        )
+                            }),
+                        ),
                     );
                 }
 
@@ -297,7 +300,7 @@ describe('Chunked Upload Integration', () => {
                 // All should succeed
                 for (const res of batchResults) {
                     expect(res.status).toBe(200);
-                    const json = await res.json() as any;
+                    const json = (await res.json()) as any;
                     expect(json.success).toBe(true);
                 }
 
@@ -316,7 +319,7 @@ describe('Chunked Upload Integration', () => {
             const res = await app.handle(
                 new Request(`http://localhost${baseUrl}?resumableIdentifier=${identifier}&resumableChunkNumber=1`, {
                     method: 'GET',
-                })
+                }),
             );
 
             expect(res.status).toBe(204);
@@ -338,7 +341,7 @@ describe('Chunked Upload Integration', () => {
                 new Request(`http://localhost${baseUrl}`, {
                     method: 'POST',
                     body: formData,
-                })
+                }),
             );
             expect(uploadRes.status).toBe(200);
 
@@ -346,11 +349,11 @@ describe('Chunked Upload Integration', () => {
             const checkRes = await app.handle(
                 new Request(`http://localhost${baseUrl}?resumableIdentifier=${identifier}&resumableChunkNumber=1`, {
                     method: 'GET',
-                })
+                }),
             );
 
             expect(checkRes.status).toBe(200);
-            const json = await checkRes.json() as any;
+            const json = (await checkRes.json()) as any;
             expect(json.exists).toBe(true);
         });
     });
@@ -373,7 +376,7 @@ describe('Chunked Upload Integration', () => {
                     new Request(`http://localhost${baseUrl}`, {
                         method: 'POST',
                         body: formData,
-                    })
+                    }),
                 );
             }
 
@@ -381,18 +384,18 @@ describe('Chunked Upload Integration', () => {
             const cancelRes = await app.handle(
                 new Request(`http://localhost${baseUrl}/${identifier}`, {
                     method: 'DELETE',
-                })
+                }),
             );
 
             expect(cancelRes.status).toBe(200);
-            const json = await cancelRes.json() as any;
+            const json = (await cancelRes.json()) as any;
             expect(json.success).toBe(true);
 
             // Verify chunk 1 no longer exists
             const checkRes = await app.handle(
                 new Request(`http://localhost${baseUrl}?resumableIdentifier=${identifier}&resumableChunkNumber=1`, {
                     method: 'GET',
-                })
+                }),
             );
 
             expect(checkRes.status).toBe(204);

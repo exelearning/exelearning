@@ -28,9 +28,7 @@ test.describe('Open Project Modal - Tabs', () => {
         const fileMenu = page.locator('[data-menu="file"], .navbar-file, #navbarFile');
         if ((await fileMenu.count()) > 0) {
             await fileMenu.click();
-            const openOption = page.locator(
-                '[data-action="open-user-ode-files"], .open-user-ode-files',
-            );
+            const openOption = page.locator('[data-action="open-user-ode-files"], .open-user-ode-files');
             await openOption.click();
         } else {
             // Fallback: trigger via JS
@@ -43,9 +41,7 @@ test.describe('Open Project Modal - Tabs', () => {
     }
 
     test.describe('Tab Display', () => {
-        test('should display both tabs: My Projects and Shared with me', async ({
-            authenticatedPage,
-        }) => {
+        test('should display both tabs: My Projects and Shared with me', async ({ authenticatedPage }) => {
             await openModal(authenticatedPage);
 
             // Both tabs should be visible
@@ -87,9 +83,7 @@ test.describe('Open Project Modal - Tabs', () => {
             expect(await openProjectModal.isMyProjectsTabActive()).toBeFalsy();
         });
 
-        test('should switch back to My Projects tab when clicked', async ({
-            authenticatedPage,
-        }) => {
+        test('should switch back to My Projects tab when clicked', async ({ authenticatedPage }) => {
             await openModal(authenticatedPage);
 
             // Switch to Shared with me
@@ -108,7 +102,7 @@ test.describe('Open Project Modal - Tabs', () => {
 
             // Get initial list state
             const initialEmptyState = await openProjectModal.isEmptyMessageVisible();
-            const initialCount = await openProjectModal.getVisibleProjectCount();
+            const _initialCount = await openProjectModal.getVisibleProjectCount();
 
             // Switch to Shared with me
             await openProjectModal.clickSharedWithMeTab();
@@ -119,12 +113,12 @@ test.describe('Open Project Modal - Tabs', () => {
             // The list should have been re-rendered
             // (either showing different projects or empty message)
             const newEmptyState = await openProjectModal.isEmptyMessageVisible();
-            const newCount = await openProjectModal.getVisibleProjectCount();
+            const _newCount = await openProjectModal.getVisibleProjectCount();
 
             // At minimum, the component should have re-rendered
             // In empty states, message text should be different
             if (initialEmptyState && newEmptyState) {
-                const initialMessage = await openProjectModal.getEmptyMessageText();
+                const _initialMessage = await openProjectModal.getEmptyMessageText();
                 await openProjectModal.clickMyProjectsTab();
                 await authenticatedPage.waitForTimeout(100);
                 await openProjectModal.clickSharedWithMeTab();
@@ -138,9 +132,7 @@ test.describe('Open Project Modal - Tabs', () => {
     });
 
     test.describe('Empty States', () => {
-        test('should show appropriate message when no projects in My Projects', async ({
-            authenticatedPage,
-        }) => {
+        test('should show appropriate message when no projects in My Projects', async ({ authenticatedPage }) => {
             await openModal(authenticatedPage);
 
             // If empty, should show appropriate message
@@ -152,9 +144,7 @@ test.describe('Open Project Modal - Tabs', () => {
             }
         });
 
-        test('should show appropriate message when no shared projects', async ({
-            authenticatedPage,
-        }) => {
+        test('should show appropriate message when no shared projects', async ({ authenticatedPage }) => {
             await openModal(authenticatedPage);
 
             // Switch to Shared tab
@@ -171,10 +161,7 @@ test.describe('Open Project Modal - Tabs', () => {
     });
 
     test.describe('My Projects Tab', () => {
-        test('should show owned projects in My Projects tab', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should show owned projects in My Projects tab', async ({ authenticatedPage, createProject }) => {
             // Create a project
             const projectTitle = 'My Test Project for Tabs';
             await createProject(authenticatedPage, projectTitle);
@@ -183,9 +170,7 @@ test.describe('Open Project Modal - Tabs', () => {
 
             // My Projects should show the created project
             const projects = await openProjectModal.getVisibleProjects();
-            const found = projects.find(
-                (p) => p.title.includes(projectTitle) || p.title.includes('Test'),
-            );
+            const _found = projects.find(p => p.title.includes(projectTitle) || p.title.includes('Test'));
 
             // If projects exist, verify they don't show owner email (they're owned)
             if (projects.length > 0) {
@@ -196,10 +181,7 @@ test.describe('Open Project Modal - Tabs', () => {
             }
         });
 
-        test('should not show owner email for owned projects', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should not show owner email for owned projects', async ({ authenticatedPage, createProject }) => {
             await createProject(authenticatedPage, 'Owner Email Test Project');
 
             await openModal(authenticatedPage);
@@ -246,10 +228,7 @@ test.describe('Open Project Modal - Tabs', () => {
     });
 
     test.describe('Search Functionality', () => {
-        test('should filter projects by search query', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should filter projects by search query', async ({ authenticatedPage, createProject }) => {
             // Create projects with distinct names
             await createProject(authenticatedPage, 'Unique Alpha Project');
             await createProject(authenticatedPage, 'Unique Beta Project');
@@ -267,10 +246,7 @@ test.describe('Open Project Modal - Tabs', () => {
             }
         });
 
-        test('should clear search and show all projects', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should clear search and show all projects', async ({ authenticatedPage, createProject }) => {
             await createProject(authenticatedPage, 'Search Clear Test');
 
             await openModal(authenticatedPage);
@@ -305,10 +281,7 @@ test.describe('Open Project Modal - Tabs', () => {
     });
 
     test.describe('Project Counts', () => {
-        test('should match tab count with visible projects', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should match tab count with visible projects', async ({ authenticatedPage, createProject }) => {
             // Create a project to ensure there's at least one
             await createProject(authenticatedPage, 'Count Test Project');
 
@@ -323,7 +296,7 @@ test.describe('Open Project Modal - Tabs', () => {
         test('should update counts after switching tabs', async ({ authenticatedPage }) => {
             await openModal(authenticatedPage);
 
-            const myProjectsCount = await openProjectModal.getMyProjectsCount();
+            const _myProjectsCount = await openProjectModal.getMyProjectsCount();
 
             await openProjectModal.clickSharedWithMeTab();
 
@@ -335,9 +308,7 @@ test.describe('Open Project Modal - Tabs', () => {
     });
 
     test.describe('Modal Closing', () => {
-        test('should close modal and reset to default tab on reopen', async ({
-            authenticatedPage,
-        }) => {
+        test('should close modal and reset to default tab on reopen', async ({ authenticatedPage }) => {
             await openModal(authenticatedPage);
 
             // Switch to Shared tab

@@ -77,9 +77,7 @@ export function validateXmlStructure(xml: string): XmlValidationResult {
             if (tagStack.length === 0) {
                 errors.push(`Unexpected closing tag: </${tagName}>`);
             } else if (tagStack[tagStack.length - 1] !== tagName) {
-                errors.push(
-                    `Mismatched tags: expected </${tagStack[tagStack.length - 1]}>, found </${tagName}>`,
-                );
+                errors.push(`Mismatched tags: expected </${tagStack[tagStack.length - 1]}>, found </${tagName}>`);
             } else {
                 tagStack.pop();
             }
@@ -115,9 +113,7 @@ export function validateXmlStructure(xml: string): XmlValidationResult {
  * @param filePath Path to XML file
  * @returns Validation result
  */
-export async function validateXmlFile(
-    filePath: string,
-): Promise<XmlValidationResult> {
+export async function validateXmlFile(filePath: string): Promise<XmlValidationResult> {
     if (!(await fs.pathExists(filePath))) {
         return {
             valid: false,
@@ -136,10 +132,7 @@ export async function validateXmlFile(
  * @param options Normalization options
  * @returns Normalized XML string
  */
-export function normalizeXml(
-    xml: string,
-    options: XmlCompareOptions = {},
-): string {
+export function normalizeXml(xml: string, options: XmlCompareOptions = {}): string {
     let normalized = xml;
 
     // Remove XML declaration for comparison
@@ -193,11 +186,7 @@ export function normalizeXml(
  * @param options Comparison options
  * @returns Comparison result
  */
-export function compareXml(
-    actual: string,
-    expected: string,
-    options: XmlCompareOptions = {},
-): XmlCompareResult {
+export function compareXml(actual: string, expected: string, options: XmlCompareOptions = {}): XmlCompareResult {
     const normalizedActual = normalizeXml(actual, options);
     const normalizedExpected = normalizeXml(expected, options);
 
@@ -297,16 +286,9 @@ export function extractElements(xml: string, elementName: string): string[] {
  * @param attributeName Attribute name
  * @returns Array of attribute values
  */
-export function extractAttributeValues(
-    xml: string,
-    elementName: string,
-    attributeName: string,
-): string[] {
+export function extractAttributeValues(xml: string, elementName: string, attributeName: string): string[] {
     const values: string[] = [];
-    const regex = new RegExp(
-        `<${elementName}[^>]*\\s${attributeName}\\s*=\\s*["']([^"']*)["'][^>]*>`,
-        'g',
-    );
+    const regex = new RegExp(`<${elementName}[^>]*\\s${attributeName}\\s*=\\s*["']([^"']*)["'][^>]*>`, 'g');
 
     let match;
     while ((match = regex.exec(xml)) !== null) {
@@ -322,10 +304,7 @@ export function extractAttributeValues(
  * @param requiredElements Array of required element names
  * @returns Object with found and missing elements
  */
-export function checkRequiredElements(
-    xml: string,
-    requiredElements: string[],
-): { found: string[]; missing: string[] } {
+export function checkRequiredElements(xml: string, requiredElements: string[]): { found: string[]; missing: string[] } {
     const found: string[] = [];
     const missing: string[] = [];
 
@@ -357,13 +336,7 @@ export function validateScormManifest(xml: string): XmlValidationResult {
     }
 
     // Required SCORM elements
-    const requiredElements = [
-        'manifest',
-        'metadata',
-        'organizations',
-        'organization',
-        'resources',
-    ];
+    const requiredElements = ['manifest', 'metadata', 'organizations', 'organization', 'resources'];
 
     const { missing } = checkRequiredElements(xml, requiredElements);
     if (missing.length > 0) {
@@ -404,11 +377,7 @@ export function validateImsManifest(xml: string): XmlValidationResult {
     }
 
     // Required IMS elements (similar to SCORM but without SCORM-specific)
-    const requiredElements = [
-        'manifest',
-        'organizations',
-        'resources',
-    ];
+    const requiredElements = ['manifest', 'organizations', 'resources'];
 
     const { missing } = checkRequiredElements(xml, requiredElements);
     if (missing.length > 0) {

@@ -3,11 +3,11 @@
  * Tests asset upload, download, and management
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as _uuidv4 } from 'uuid';
 import {
     createTestDb,
     closeTestDb,
@@ -54,9 +54,13 @@ describe('Assets Routes Integration', () => {
                 if (!token) return { currentUser: null, testDb: db };
 
                 try {
-                    const payload = await jwt.verify(token) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: number } | false;
                     if (!payload || !payload.sub) return { currentUser: null, testDb: db };
-                    const user = await db.selectFrom('users').selectAll().where('id', '=', payload.sub).executeTakeFirst();
+                    const user = await db
+                        .selectFrom('users')
+                        .selectAll()
+                        .where('id', '=', payload.sub)
+                        .executeTakeFirst();
                     return { currentUser: user ? { ...user, roles: JSON.parse(user.roles) } : null, testDb: db };
                 } catch {
                     return { currentUser: null, testDb: db };
@@ -78,7 +82,7 @@ describe('Assets Routes Integration', () => {
                 };
             })
             // POST /api/projects/:id/assets - Upload asset (mock)
-            .post('/:id/assets', async ({ params, currentUser, set, body }) => {
+            .post('/:id/assets', async ({ params, currentUser, set, body: _body }) => {
                 if (!currentUser) {
                     set.status = 401;
                     return { error: 'Unauthorized' };

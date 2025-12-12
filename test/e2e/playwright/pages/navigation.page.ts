@@ -56,19 +56,14 @@ export class NavigationPage {
      * Tree structure: treeitem > button > generic (text)
      */
     async getNodeIdByTitle(title: string): Promise<string | null> {
-        return this.page.evaluate((t) => {
+        return this.page.evaluate(t => {
             const titleText = String(t).trim();
             // First try using [role="treeitem"] buttons (new structure)
             const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
             for (const item of treeItems) {
                 const button = item.querySelector('button');
                 if (button && button.textContent && button.textContent.trim() === titleText) {
-                    return (
-                        item.getAttribute('data-node-id') ||
-                        item.getAttribute('nav-id') ||
-                        item.id ||
-                        null
-                    );
+                    return item.getAttribute('data-node-id') || item.getAttribute('nav-id') || item.id || null;
                 }
             }
             // Fallback to legacy selectors
@@ -126,7 +121,7 @@ export class NavigationPage {
      */
     async waitForContentReady(expectedTitle?: string, timeout: number = 30000): Promise<void> {
         await this.page.waitForFunction(
-            (args) => {
+            args => {
                 const expected = (args.expectedTitle || '').trim();
                 const loadingOverlay = document.querySelector('[data-testid="loading-content"]');
                 if (loadingOverlay && loadingOverlay.getAttribute('data-visible') === 'true') {
@@ -134,8 +129,7 @@ export class NavigationPage {
                 }
 
                 const nodeContent =
-                    document.querySelector('[data-testid="node-content"]') ||
-                    document.querySelector('#node-content');
+                    document.querySelector('[data-testid="node-content"]') || document.querySelector('#node-content');
                 if (!nodeContent) return false;
 
                 const dataReady = nodeContent.getAttribute('data-ready');
@@ -239,12 +233,12 @@ export class NavigationPage {
      * Tree structure: treeitem > group > treeitem > button
      */
     async getChildrenTitles(parentTitle: string): Promise<string[]> {
-        return this.page.evaluate((title) => {
+        return this.page.evaluate(title => {
             const titleText = String(title).trim();
 
             // Find parent treeitem by button text
             const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
-            const parentItem = treeItems.find((item) => {
+            const parentItem = treeItems.find(item => {
                 const button = item.querySelector(':scope > button');
                 return button && button.textContent && button.textContent.trim() === titleText;
             });
@@ -265,11 +259,11 @@ export class NavigationPage {
             // Get direct child treeitems
             const childItems = Array.from(group.querySelectorAll(':scope > [role="treeitem"]'));
             return childItems
-                .map((item) => {
+                .map(item => {
                     const button = item.querySelector(':scope > button');
                     return button ? button.textContent?.trim() || '' : '';
                 })
-                .filter((text) => text !== '');
+                .filter(text => text !== '');
         }, parentTitle);
     }
 
@@ -277,21 +271,15 @@ export class NavigationPage {
      * Waits for children to be in specific order
      * Tree structure: treeitem > group > treeitem > button
      */
-    async waitForChildrenOrder(
-        parentTitle: string,
-        expectedOrder: string[],
-        timeout: number = 45000,
-    ): Promise<void> {
+    async waitForChildrenOrder(parentTitle: string, expectedOrder: string[], timeout: number = 45000): Promise<void> {
         await this.page.waitForFunction(
-            (args) => {
+            args => {
                 const title = String(args.parentTitle).trim();
                 const expected = args.expectedOrder;
 
                 // Find parent treeitem by button text
-                const treeItems = Array.from(
-                    document.querySelectorAll('[role="tree"] [role="treeitem"]'),
-                );
-                const parentItem = treeItems.find((item) => {
+                const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
+                const parentItem = treeItems.find(item => {
                     const button = item.querySelector(':scope > button');
                     return button && button.textContent && button.textContent.trim() === title;
                 });
@@ -313,15 +301,13 @@ export class NavigationPage {
                 // Get direct child treeitems
                 const childItems = Array.from(group.querySelectorAll(':scope > [role="treeitem"]'));
                 const labels = childItems
-                    .map((item) => {
+                    .map(item => {
                         const button = item.querySelector(':scope > button');
                         return button ? button.textContent?.trim() || '' : '';
                     })
-                    .filter((text) => text !== '');
+                    .filter(text => text !== '');
 
-                return (
-                    labels.length === expected.length && labels.every((v, i) => v === expected[i])
-                );
+                return labels.length === expected.length && labels.every((v, i) => v === expected[i]);
             },
             { parentTitle, expectedOrder },
             { timeout },

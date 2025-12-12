@@ -38,11 +38,13 @@ describe('Project Duplication - YJS Title Update', () => {
         // Create a test app with the duplicate endpoint that uses our test db
         app = new Elysia({ name: 'project-duplicate-test' })
             .use(cookie())
-            .use(jwt({
-                name: 'jwt',
-                secret: TEST_JWT_SECRET,
-                exp: '1h',
-            }))
+            .use(
+                jwt({
+                    name: 'jwt',
+                    secret: TEST_JWT_SECRET,
+                    exp: '1h',
+                }),
+            )
             .derive(async ({ jwt, cookie, request }) => {
                 let token: string | undefined;
 
@@ -58,7 +60,7 @@ describe('Project Duplication - YJS Title Update', () => {
                 }
 
                 try {
-                    const payload = await jwt.verify(token) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: number } | false;
                     if (!payload || !payload.sub) {
                         return { currentUser: null, testDb: db };
                     }
@@ -204,11 +206,7 @@ describe('Project Duplication - YJS Title Update', () => {
             });
 
             // Mark as saved so it can be duplicated
-            await db
-                .updateTable('projects')
-                .set({ saved_once: 1 })
-                .where('id', '=', project.id)
-                .execute();
+            await db.updateTable('projects').set({ saved_once: 1 }).where('id', '=', project.id).execute();
 
             // Create YJS document with the title in metadata
             const yjsState = createYjsDocumentWithTitle(originalTitle);
@@ -264,11 +262,7 @@ describe('Project Duplication - YJS Title Update', () => {
             });
 
             // Mark as saved
-            await db
-                .updateTable('projects')
-                .set({ saved_once: 1 })
-                .where('id', '=', project.id)
-                .execute();
+            await db.updateTable('projects').set({ saved_once: 1 }).where('id', '=', project.id).execute();
 
             // Duplicate the project
             const token = await generateTestToken(testUser);
@@ -281,7 +275,9 @@ describe('Project Duplication - YJS Title Update', () => {
 
             expect(response.status).toBe(200);
 
-            const body = await parseJsonResponse<{ success: boolean; project: { id: number; title: string } }>(response);
+            const body = await parseJsonResponse<{ success: boolean; project: { id: number; title: string } }>(
+                response,
+            );
             expect(body.success).toBe(true);
             expect(body.project.title).toBe('Project Without YJS (copy)');
 
@@ -303,11 +299,7 @@ describe('Project Duplication - YJS Title Update', () => {
                 title: originalTitle,
             });
 
-            await db
-                .updateTable('projects')
-                .set({ saved_once: 1 })
-                .where('id', '=', project.id)
-                .execute();
+            await db.updateTable('projects').set({ saved_once: 1 }).where('id', '=', project.id).execute();
 
             // Create YJS document with full metadata
             const ydoc = new Y.Doc();

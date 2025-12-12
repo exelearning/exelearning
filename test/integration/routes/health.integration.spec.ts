@@ -5,13 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { Kysely } from 'kysely';
-import {
-    createTestDb,
-    closeTestDb,
-    testRequest,
-    parseJsonResponse,
-    createTestUser,
-} from '../helpers/integration-app';
+import { createTestDb, closeTestDb, testRequest, parseJsonResponse, createTestUser } from '../helpers/integration-app';
 import type { Database } from '../../../src/db/types';
 
 describe('Health Routes Integration', () => {

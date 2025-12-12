@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { Page, Locator } from '@playwright/test';
 
 /**
  * Page Object for the Open Project Modal (modalOpenUserOdeFiles)
@@ -104,14 +104,14 @@ export class OpenProjectModalPage {
      * Check if "My Projects" tab is active
      */
     async isMyProjectsTabActive(): Promise<boolean> {
-        return await this.myProjectsTab.evaluate((el) => el.classList.contains('active'));
+        return await this.myProjectsTab.evaluate(el => el.classList.contains('active'));
     }
 
     /**
      * Check if "Shared with me" tab is active
      */
     async isSharedWithMeTabActive(): Promise<boolean> {
-        return await this.sharedWithMeTab.evaluate((el) => el.classList.contains('active'));
+        return await this.sharedWithMeTab.evaluate(el => el.classList.contains('active'));
     }
 
     /**

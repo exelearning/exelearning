@@ -62,10 +62,7 @@ export async function cleanupTestFilesDir(dir: string): Promise<void> {
 /**
  * Create a test user in the database
  */
-export async function createTestUser(
-    db: Kysely<Database>,
-    userData: Partial<NewUser> = {},
-): Promise<User> {
+export async function createTestUser(db: Kysely<Database>, userData: Partial<NewUser> = {}): Promise<User> {
     const email = userData.email || `test_${uuidv4().slice(0, 8)}@test.local`;
     const password = userData.password || 'test1234';
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -83,7 +80,20 @@ export async function createTestUser(
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         })
-        .returning(['id', 'email', 'user_id', 'password', 'roles', 'is_lopd_accepted', 'quota_mb', 'external_identifier', 'api_token', 'is_active', 'created_at', 'updated_at'])
+        .returning([
+            'id',
+            'email',
+            'user_id',
+            'password',
+            'roles',
+            'is_lopd_accepted',
+            'quota_mb',
+            'external_identifier',
+            'api_token',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ])
         .executeTakeFirstOrThrow();
 
     return {
@@ -95,15 +105,8 @@ export async function createTestUser(
 /**
  * Find user by email
  */
-export async function findTestUser(
-    db: Kysely<Database>,
-    email: string,
-): Promise<User | null> {
-    const user = await db
-        .selectFrom('users')
-        .selectAll()
-        .where('email', '=', email)
-        .executeTakeFirst();
+export async function findTestUser(db: Kysely<Database>, email: string): Promise<User | null> {
+    const user = await db.selectFrom('users').selectAll().where('email', '=', email).executeTakeFirst();
 
     if (!user) return null;
 
@@ -189,11 +192,13 @@ export interface TestAppContext {
 export function createMinimalTestApp(db: Kysely<Database>): Elysia {
     return new Elysia({ name: 'test-app' })
         .use(cookie())
-        .use(jwt({
-            name: 'jwt',
-            secret: TEST_JWT_SECRET,
-            exp: '1h',
-        }))
+        .use(
+            jwt({
+                name: 'jwt',
+                secret: TEST_JWT_SECRET,
+                exp: '1h',
+            }),
+        )
         .derive(async ({ jwt, cookie, request }) => {
             let token: string | undefined;
 
@@ -213,7 +218,7 @@ export function createMinimalTestApp(db: Kysely<Database>): Elysia {
             }
 
             try {
-                const payload = await jwt.verify(token) as TestJwtPayload | false;
+                const payload = (await jwt.verify(token)) as TestJwtPayload | false;
 
                 if (!payload || !payload.sub) {
                     return {
@@ -222,11 +227,7 @@ export function createMinimalTestApp(db: Kysely<Database>): Elysia {
                     };
                 }
 
-                const user = await db
-                    .selectFrom('users')
-                    .selectAll()
-                    .where('id', '=', payload.sub)
-                    .executeTakeFirst();
+                const user = await db.selectFrom('users').selectAll().where('id', '=', payload.sub).executeTakeFirst();
 
                 if (!user) {
                     return {
@@ -264,11 +265,7 @@ export function createMinimalTestApp(db: Kysely<Database>): Elysia {
 /**
  * Make a test request to the app
  */
-export async function testRequest(
-    app: Elysia,
-    path: string,
-    options: RequestInit = {},
-): Promise<Response> {
+export async function testRequest(app: Elysia, path: string, options: RequestInit = {}): Promise<Response> {
     return app.handle(new Request(`http://localhost${path}`, options));
 }
 

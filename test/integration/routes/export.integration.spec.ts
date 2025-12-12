@@ -2,13 +2,10 @@
  * Export Routes Integration Tests
  * Tests export format listing and basic export functionality
  */
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { Elysia } from 'elysia';
-import {
-    testRequest,
-    parseJsonResponse,
-} from '../helpers/integration-app';
-import { ExportFormatType, ExportFormat } from '../../../src/services/export/interfaces';
+import { testRequest, parseJsonResponse } from '../helpers/integration-app';
+import { ExportFormatType } from '../../../src/services/export/interfaces';
 
 describe('Export Routes Integration', () => {
     let app: Elysia;
@@ -85,9 +82,12 @@ describe('Export Routes Integration', () => {
                     return { error: 'Bad Request', message: `Invalid format: ${params.format}` };
                 }
 
-                const extension = params.format === 'epub3' ? 'epub' :
-                                 params.format === 'elp' || params.format === 'elpx' ? params.format :
-                                 'zip';
+                const extension =
+                    params.format === 'epub3'
+                        ? 'epub'
+                        : params.format === 'elp' || params.format === 'elpx'
+                          ? params.format
+                          : 'zip';
 
                 return {
                     responseMessage: 'OK',

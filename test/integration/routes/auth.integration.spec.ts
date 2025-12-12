@@ -14,7 +14,6 @@ import {
     testRequest,
     parseJsonResponse,
     jsonPost,
-    createTestUser,
     generateTestToken,
 } from '../helpers/integration-app';
 import type { Database, User } from '../../../src/db/types';
@@ -34,11 +33,13 @@ describe('Auth Routes Integration', () => {
         // Create auth routes that use test db
         app = new Elysia({ name: 'auth-test' })
             .use(cookie())
-            .use(jwt({
-                name: 'jwt',
-                secret: TEST_JWT_SECRET,
-                exp: '1h',
-            }))
+            .use(
+                jwt({
+                    name: 'jwt',
+                    secret: TEST_JWT_SECRET,
+                    exp: '1h',
+                }),
+            )
             .derive(async ({ jwt, cookie, request }) => {
                 let token: string | undefined;
 
@@ -57,7 +58,7 @@ describe('Auth Routes Integration', () => {
                 }
 
                 try {
-                    const payload = await jwt.verify(token) as { sub: number; isGuest?: boolean } | false;
+                    const payload = (await jwt.verify(token)) as { sub: number; isGuest?: boolean } | false;
 
                     if (!payload || !payload.sub) {
                         return {
@@ -95,58 +96,62 @@ describe('Auth Routes Integration', () => {
                 }
             })
             // POST /api/auth/login
-            .post('/api/auth/login', async ({ jwt, cookie, body, set, testDb }) => {
-                const { email, password } = body as { email: string; password: string };
+            .post(
+                '/api/auth/login',
+                async ({ jwt, cookie, body, set, testDb }) => {
+                    const { email, password } = body as { email: string; password: string };
 
-                const user = await testDb
-                    .selectFrom('users')
-                    .selectAll()
-                    .where('email', '=', email)
-                    .executeTakeFirst();
+                    const user = await testDb
+                        .selectFrom('users')
+                        .selectAll()
+                        .where('email', '=', email)
+                        .executeTakeFirst();
 
-                if (!user) {
-                    set.status = 401;
-                    return { error: 'Unauthorized', message: 'Invalid credentials' };
-                }
+                    if (!user) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'Invalid credentials' };
+                    }
 
-                const isValid = await bcrypt.compare(password, user.password);
-                if (!isValid) {
-                    set.status = 401;
-                    return { error: 'Unauthorized', message: 'Invalid credentials' };
-                }
+                    const isValid = await bcrypt.compare(password, user.password);
+                    if (!isValid) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'Invalid credentials' };
+                    }
 
-                const roles = JSON.parse(user.roles);
-                const payload = {
-                    sub: user.id,
-                    email: user.email,
-                    roles,
-                    isGuest: false,
-                };
-
-                const token = await jwt.sign(payload);
-
-                cookie.auth.set({
-                    value: token,
-                    httpOnly: true,
-                    sameSite: 'lax',
-                    maxAge: 7 * 24 * 60 * 60,
-                    path: '/',
-                });
-
-                return {
-                    access_token: token,
-                    user: {
-                        id: user.id,
+                    const roles = JSON.parse(user.roles);
+                    const payload = {
+                        sub: user.id,
                         email: user.email,
                         roles,
-                    },
-                };
-            }, {
-                body: t.Object({
-                    email: t.String(),
-                    password: t.String(),
-                }),
-            })
+                        isGuest: false,
+                    };
+
+                    const token = await jwt.sign(payload);
+
+                    cookie.auth.set({
+                        value: token,
+                        httpOnly: true,
+                        sameSite: 'lax',
+                        maxAge: 7 * 24 * 60 * 60,
+                        path: '/',
+                    });
+
+                    return {
+                        access_token: token,
+                        user: {
+                            id: user.id,
+                            email: user.email,
+                            roles,
+                        },
+                    };
+                },
+                {
+                    body: t.Object({
+                        email: t.String(),
+                        password: t.String(),
+                    }),
+                },
+            )
             // POST /api/auth/logout
             .post('/api/auth/logout', async ({ cookie, auth }) => {
                 cookie.auth.remove();
@@ -165,7 +170,7 @@ describe('Auth Routes Integration', () => {
                     set.status = 401;
                     return { error: 'Unauthorized', message: 'Not authenticated' };
                 }
-                const { password, ...safeUser } = auth.user as User;
+                const { password: _password, ...safeUser } = auth.user as User;
                 return {
                     user: safeUser,
                     isGuest: auth.isGuest,
@@ -177,10 +182,13 @@ describe('Auth Routes Integration', () => {
                 return {
                     authenticated,
                     active: authenticated,
-                    user: authenticated && auth?.user ? {
-                        id: (auth.user as User).id,
-                        email: (auth.user as User).email,
-                    } : null,
+                    user:
+                        authenticated && auth?.user
+                            ? {
+                                  id: (auth.user as User).id,
+                                  email: (auth.user as User).email,
+                              }
+                            : null,
                 };
             });
     });
@@ -201,7 +209,20 @@ describe('Auth Routes Integration', () => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             })
-            .returning(['id', 'email', 'user_id', 'password', 'roles', 'is_lopd_accepted', 'quota_mb', 'external_identifier', 'api_token', 'is_active', 'created_at', 'updated_at'])
+            .returning([
+                'id',
+                'email',
+                'user_id',
+                'password',
+                'roles',
+                'is_lopd_accepted',
+                'quota_mb',
+                'external_identifier',
+                'api_token',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ])
             .executeTakeFirstOrThrow();
 
         testUser = {

@@ -5,7 +5,7 @@
  * Migrated from NestJS to Elysia - uses direct function imports
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { extractZip, listZipContents } from '../../src/services/zip';
@@ -34,7 +34,7 @@ describe('Large ELP/ELPX Fixtures - Slow Tests', () => {
         const largeFixtures = getLargeFixtureNames();
 
         // Only run if fixtures exist
-        const existingFixtures = largeFixtures.filter((name) => {
+        const existingFixtures = largeFixtures.filter(name => {
             const fixturePath = getFixturePath(name);
             return fs.pathExistsSync(fixturePath);
         });
@@ -114,7 +114,7 @@ describe('Large ELP/ELPX Fixtures - Slow Tests', () => {
                         expect(contents.length).toBeGreaterThan(10);
 
                         // Should have various resource types
-                        const hasImages = contents.some((f) => /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f));
+                        const hasImages = contents.some(f => /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f));
                         expect(hasImages).toBe(true);
                     }, 60000);
 
@@ -130,7 +130,7 @@ describe('Large ELP/ELPX Fixtures - Slow Tests', () => {
                         const structure = await parseFromFile(contentPath, 'test-session');
 
                         // Find maximum page level
-                        const maxLevel = Math.max(...structure.pages.map((p) => p.level));
+                        const maxLevel = Math.max(...structure.pages.map(p => p.level));
 
                         // Large fixtures typically have nested hierarchy
                         expect(maxLevel).toBeGreaterThanOrEqual(1);
@@ -141,7 +141,7 @@ describe('Large ELP/ELPX Fixtures - Slow Tests', () => {
     });
 
     describe('Performance Benchmarks', () => {
-        const largeFixtures = getLargeFixtureNames().filter((name) => {
+        const largeFixtures = getLargeFixtureNames().filter(name => {
             const fixturePath = getFixturePath(name);
             return fs.pathExistsSync(fixturePath);
         });
@@ -187,10 +187,7 @@ describe('Large ELP/ELPX Fixtures - Slow Tests', () => {
                 for (const fixtureName of largeFixtures) {
                     const fixturePath = getFixturePath(fixtureName);
                     const fixtureInfo = FIXTURES[fixtureName];
-                    const extractDir = path.join(
-                        tempDir,
-                        `bench_parse_${fixtureName.replace(/\./g, '_')}`,
-                    );
+                    const extractDir = path.join(tempDir, `bench_parse_${fixtureName.replace(/\./g, '_')}`);
 
                     await extractZip(fixturePath, extractDir);
 
@@ -211,9 +208,7 @@ describe('Large ELP/ELPX Fixtures - Slow Tests', () => {
                 // Log benchmark results
                 console.log('\n=== Parse Benchmark Results ===');
                 for (const result of results) {
-                    console.log(
-                        `${result.name}: ${result.pageCount} pages parsed in ${result.parseTime}ms`,
-                    );
+                    console.log(`${result.name}: ${result.pageCount} pages parsed in ${result.parseTime}ms`);
                 }
 
                 // All parses should complete
@@ -223,7 +218,7 @@ describe('Large ELP/ELPX Fixtures - Slow Tests', () => {
     });
 
     describe('Memory Usage', () => {
-        const largeFixtures = getLargeFixtureNames().filter((name) => {
+        const largeFixtures = getLargeFixtureNames().filter(name => {
             const fixturePath = getFixturePath(name);
             return fs.pathExistsSync(fixturePath);
         });
@@ -262,7 +257,7 @@ describe('Large ELP/ELPX Fixtures - Slow Tests', () => {
 
     describe('Content Integrity', () => {
         it('should preserve all resources after extraction', async () => {
-            const largeFixtures = getLargeFixtureNames().filter((name) => {
+            const largeFixtures = getLargeFixtureNames().filter(name => {
                 const fixturePath = getFixturePath(name);
                 return fs.pathExistsSync(fixturePath);
             });

@@ -3187,7 +3187,9 @@ export default class IdeviceNode {
             // let buffer = await this.readFile(file);
             // await this.addUploadImage(buffer, file.name, id, type);
             await this.addUploadImage(file, file.name, id, type);
-        } catch (err) {}
+        } catch (_err) {
+            /* Silently ignore upload errors */
+        }
     }
 
     /**

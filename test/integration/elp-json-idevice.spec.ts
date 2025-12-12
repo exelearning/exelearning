@@ -86,9 +86,9 @@ describe('ELP JSON iDevice Import', () => {
             // Find JSON-based iDevices
             // Note: XML parser uses 'type' instead of 'ideviceType'
             const jsonIdeviceTypes = ['crossword', 'trueorfalse', 'form', 'flipcards', 'trivial'];
-            const jsonComponents = allComponents.filter((c) => {
+            const jsonComponents = allComponents.filter(c => {
                 const type = c.type || c.ideviceType || '';
-                return jsonIdeviceTypes.some((t) => type.toLowerCase().includes(t));
+                return jsonIdeviceTypes.some(t => type.toLowerCase().includes(t));
             });
 
             // If we have JSON iDevices, check their properties
@@ -140,7 +140,7 @@ describe('ELP JSON iDevice Import', () => {
 
             // Should have components with content
             // Note: XML parser uses 'content' instead of 'htmlView'
-            const componentsWithContent = allComponents.filter((c) => {
+            const componentsWithContent = allComponents.filter(c => {
                 const content = c.content || c.htmlView || '';
                 return content.trim().length > 0;
             });

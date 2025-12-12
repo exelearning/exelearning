@@ -3,12 +3,10 @@
  * Tests project session management and basic operations
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
-import * as fs from 'fs-extra';
-import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import {
     createTestDb,
@@ -19,20 +17,22 @@ import {
     generateTestToken,
     createTestFilesDir,
     cleanupTestFilesDir,
-    createTestProject,
 } from '../helpers/integration-app';
 import type { Database, User } from '../../../src/db/types';
 
 const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
 
 // In-memory session storage for tests
-const testSessions = new Map<string, {
-    sessionId: string;
-    fileName: string;
-    createdAt: Date;
-    updatedAt: Date;
-    projectId?: number;
-}>();
+const testSessions = new Map<
+    string,
+    {
+        sessionId: string;
+        fileName: string;
+        createdAt: Date;
+        updatedAt: Date;
+        projectId?: number;
+    }
+>();
 
 describe('Project Routes Integration', () => {
     let db: Kysely<Database>;
@@ -51,11 +51,13 @@ describe('Project Routes Integration', () => {
         // Create project routes that use test db
         app = new Elysia({ name: 'project-test', prefix: '/api/project' })
             .use(cookie())
-            .use(jwt({
-                name: 'jwt',
-                secret: TEST_JWT_SECRET,
-                exp: '1h',
-            }))
+            .use(
+                jwt({
+                    name: 'jwt',
+                    secret: TEST_JWT_SECRET,
+                    exp: '1h',
+                }),
+            )
             .derive(async ({ jwt, cookie, request }) => {
                 let token: string | undefined;
 
@@ -71,7 +73,7 @@ describe('Project Routes Integration', () => {
                 }
 
                 try {
-                    const payload = await jwt.verify(token) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: number } | false;
                     if (!payload || !payload.sub) {
                         return { currentUser: null, testDb: db };
                     }

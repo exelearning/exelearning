@@ -10,7 +10,7 @@ import type { Elysia } from 'elysia';
 export async function testRequest(
     app: Elysia<any, any, any, any, any, any, any, any>,
     path: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
 ): Promise<Response> {
     return app.handle(new Request(`http://localhost${path}`, options));
 }
@@ -21,7 +21,7 @@ export async function testRequest(
 export async function testGet(
     app: Elysia<any, any, any, any, any, any, any, any>,
     path: string,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
 ): Promise<Response> {
     return testRequest(app, path, {
         method: 'GET',
@@ -36,7 +36,7 @@ export async function testPost(
     app: Elysia<any, any, any, any, any, any, any, any>,
     path: string,
     body: unknown,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
 ): Promise<Response> {
     return testRequest(app, path, {
         method: 'POST',
@@ -54,7 +54,7 @@ export async function testPost(
 export async function testDelete(
     app: Elysia<any, any, any, any, any, any, any, any>,
     path: string,
-    headers?: Record<string, string>
+    headers?: Record<string, string>,
 ): Promise<Response> {
     return testRequest(app, path, {
         method: 'DELETE',
@@ -69,7 +69,7 @@ export async function testAuthRequest(
     app: Elysia<any, any, any, any, any, any, any, any>,
     path: string,
     token: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
 ): Promise<Response> {
     const headers = new Headers(options.headers);
     headers.set('Authorization', `Bearer ${token}`);
@@ -83,7 +83,7 @@ export async function testAuthPost(
     app: Elysia<any, any, any, any, any, any, any, any>,
     path: string,
     token: string,
-    body: unknown
+    body: unknown,
 ): Promise<Response> {
     return testAuthRequest(app, path, token, {
         method: 'POST',
@@ -104,15 +104,10 @@ export async function parseJson<T = unknown>(response: Response): Promise<T> {
 /**
  * Assert response status and return parsed JSON
  */
-export async function expectStatus<T = unknown>(
-    response: Response,
-    expectedStatus: number
-): Promise<T> {
+export async function expectStatus<T = unknown>(response: Response, expectedStatus: number): Promise<T> {
     if (response.status !== expectedStatus) {
         const body = await response.text();
-        throw new Error(
-            `Expected status ${expectedStatus}, got ${response.status}. Body: ${body}`
-        );
+        throw new Error(`Expected status ${expectedStatus}, got ${response.status}. Body: ${body}`);
     }
     return parseJson<T>(response);
 }

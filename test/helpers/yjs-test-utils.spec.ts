@@ -235,125 +235,151 @@ describe('yjs-test-utils', () => {
     describe('verifyPageHierarchy', () => {
         it('should return true when page hierarchy matches', () => {
             const doc = createTestYjsDocument({ pageCount: 1, blocksPerPage: 1 });
-            const pages: NormalizedPage[] = [{
-                id: 'page-0',
-                title: 'Page 1',
-                parent_id: null,
-                level: 0,
-                position: 0,
-                components: [{
-                    id: 'page-0-block-0',
-                    type: 'FreeTextIdevice',
-                    content: '<p>Test content</p>',
-                }],
-            }];
+            const pages: NormalizedPage[] = [
+                {
+                    id: 'page-0',
+                    title: 'Page 1',
+                    parent_id: null,
+                    level: 0,
+                    position: 0,
+                    components: [
+                        {
+                            id: 'page-0-block-0',
+                            type: 'FreeTextIdevice',
+                            content: '<p>Test content</p>',
+                        },
+                    ],
+                },
+            ];
 
             expect(verifyPageHierarchy(pages, doc)).toBe(true);
         });
 
         it('should return false when page count differs', () => {
             const doc = createTestYjsDocument({ pageCount: 2 });
-            const pages: NormalizedPage[] = [{
-                id: 'page-0',
-                title: 'Page 1',
-                parent_id: null,
-                level: 0,
-                position: 0,
-                components: [],
-            }];
+            const pages: NormalizedPage[] = [
+                {
+                    id: 'page-0',
+                    title: 'Page 1',
+                    parent_id: null,
+                    level: 0,
+                    position: 0,
+                    components: [],
+                },
+            ];
 
             expect(verifyPageHierarchy(pages, doc)).toBe(false);
         });
 
         it('should return false when page id differs', () => {
             const doc = createTestYjsDocument({ pageCount: 1 });
-            const pages: NormalizedPage[] = [{
-                id: 'different-id',
-                title: 'Page 1',
-                parent_id: null,
-                level: 0,
-                position: 0,
-                components: [{
-                    id: 'block-0',
-                    type: 'FreeTextIdevice',
-                    content: '',
-                }],
-            }];
+            const pages: NormalizedPage[] = [
+                {
+                    id: 'different-id',
+                    title: 'Page 1',
+                    parent_id: null,
+                    level: 0,
+                    position: 0,
+                    components: [
+                        {
+                            id: 'block-0',
+                            type: 'FreeTextIdevice',
+                            content: '',
+                        },
+                    ],
+                },
+            ];
 
             expect(verifyPageHierarchy(pages, doc)).toBe(false);
         });
 
         it('should verify nested children', () => {
             const doc = createTestYjsDocument({ pageCount: 1, nestedLevels: 1, blocksPerPage: 1 });
-            const pages: NormalizedPage[] = [{
-                id: 'page-0',
-                title: 'Page 1',
-                parent_id: null,
-                level: 0,
-                position: 0,
-                components: [{
-                    id: 'page-0-block-0',
-                    type: 'FreeTextIdevice',
-                    content: '',
-                }],
-                children: [{
-                    id: 'page-0-child',
-                    title: 'Page 1 Child',
-                    parent_id: 'page-0',
-                    level: 1,
+            const pages: NormalizedPage[] = [
+                {
+                    id: 'page-0',
+                    title: 'Page 1',
+                    parent_id: null,
+                    level: 0,
                     position: 0,
-                    components: [{
-                        id: 'page-0-child-block-0',
-                        type: 'FreeTextIdevice',
-                        content: '',
-                    }],
-                }],
-            }];
+                    components: [
+                        {
+                            id: 'page-0-block-0',
+                            type: 'FreeTextIdevice',
+                            content: '',
+                        },
+                    ],
+                    children: [
+                        {
+                            id: 'page-0-child',
+                            title: 'Page 1 Child',
+                            parent_id: 'page-0',
+                            level: 1,
+                            position: 0,
+                            components: [
+                                {
+                                    id: 'page-0-child-block-0',
+                                    type: 'FreeTextIdevice',
+                                    content: '',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
 
             expect(verifyPageHierarchy(pages, doc)).toBe(true);
         });
 
         it('should return false when children count differs', () => {
             const doc = createTestYjsDocument({ pageCount: 1, nestedLevels: 1, blocksPerPage: 1 });
-            const pages: NormalizedPage[] = [{
-                id: 'page-0',
-                title: 'Page 1',
-                parent_id: null,
-                level: 0,
-                position: 0,
-                components: [{
-                    id: 'page-0-block-0',
-                    type: 'FreeTextIdevice',
-                    content: '',
-                }],
-                // Has 2 children but doc only has 1 child
-                children: [
-                    {
-                        id: 'page-0-child',
-                        title: 'Page 1 Child',
-                        parent_id: 'page-0',
-                        level: 1,
-                        position: 0,
-                        components: [{
-                            id: 'page-0-child-block-0',
+            const pages: NormalizedPage[] = [
+                {
+                    id: 'page-0',
+                    title: 'Page 1',
+                    parent_id: null,
+                    level: 0,
+                    position: 0,
+                    components: [
+                        {
+                            id: 'page-0-block-0',
                             type: 'FreeTextIdevice',
                             content: '',
-                        }],
-                    },
-                    {
-                        id: 'page-0-child-2',
-                        title: 'Page 1 Child 2',
-                        parent_id: 'page-0',
-                        level: 1,
-                        position: 1,
-                        components: [{
-                            id: 'page-0-child-2-block-0',
-                            type: 'FreeTextIdevice',
-                            content: '',
-                        }],
-                    },
-                ],
-            }];
+                        },
+                    ],
+                    // Has 2 children but doc only has 1 child
+                    children: [
+                        {
+                            id: 'page-0-child',
+                            title: 'Page 1 Child',
+                            parent_id: 'page-0',
+                            level: 1,
+                            position: 0,
+                            components: [
+                                {
+                                    id: 'page-0-child-block-0',
+                                    type: 'FreeTextIdevice',
+                                    content: '',
+                                },
+                            ],
+                        },
+                        {
+                            id: 'page-0-child-2',
+                            title: 'Page 1 Child 2',
+                            parent_id: 'page-0',
+                            level: 1,
+                            position: 1,
+                            components: [
+                                {
+                                    id: 'page-0-child-2-block-0',
+                                    type: 'FreeTextIdevice',
+                                    content: '',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
 
             expect(verifyPageHierarchy(pages, doc)).toBe(false);
         });
@@ -376,18 +402,22 @@ describe('yjs-test-utils', () => {
                     odeIdentifier: '',
                     exportMediaFiles: 0,
                 },
-                pages: [{
-                    id: 'page-0',
-                    title: 'Page 1',
-                    parent_id: null,
-                    level: 0,
-                    position: 0,
-                    components: [{
-                        id: 'block-0',
-                        type: 'FreeTextIdevice',
-                        content: '',
-                    }],
-                }],
+                pages: [
+                    {
+                        id: 'page-0',
+                        title: 'Page 1',
+                        parent_id: null,
+                        level: 0,
+                        position: 0,
+                        components: [
+                            {
+                                id: 'block-0',
+                                type: 'FreeTextIdevice',
+                                content: '',
+                            },
+                        ],
+                    },
+                ],
                 raw: {} as any,
                 srcRoutes: new Set(),
             };
@@ -413,18 +443,22 @@ describe('yjs-test-utils', () => {
                     odeIdentifier: '',
                     exportMediaFiles: 0,
                 },
-                pages: [{
-                    id: 'page-0',
-                    title: 'Page 1',
-                    parent_id: null,
-                    level: 0,
-                    position: 0,
-                    components: [{
-                        id: 'block-0',
-                        type: 'FreeTextIdevice',
-                        content: '',
-                    }],
-                }],
+                pages: [
+                    {
+                        id: 'page-0',
+                        title: 'Page 1',
+                        parent_id: null,
+                        level: 0,
+                        position: 0,
+                        components: [
+                            {
+                                id: 'block-0',
+                                type: 'FreeTextIdevice',
+                                content: '',
+                            },
+                        ],
+                    },
+                ],
                 raw: {} as any,
                 srcRoutes: new Set(),
             };
@@ -450,14 +484,16 @@ describe('yjs-test-utils', () => {
                     odeIdentifier: '',
                     exportMediaFiles: 0,
                 },
-                pages: [{
-                    id: 'page-0',
-                    title: 'Page 1',
-                    parent_id: null,
-                    level: 0,
-                    position: 0,
-                    components: [],
-                }],
+                pages: [
+                    {
+                        id: 'page-0',
+                        title: 'Page 1',
+                        parent_id: null,
+                        level: 0,
+                        position: 0,
+                        components: [],
+                    },
+                ],
                 raw: {} as any,
                 srcRoutes: new Set(),
             };
@@ -483,18 +519,22 @@ describe('yjs-test-utils', () => {
                     odeIdentifier: '',
                     exportMediaFiles: 0,
                 },
-                pages: [{
-                    id: 'page-0',
-                    title: 'Page 1',
-                    parent_id: null,
-                    level: 0,
-                    position: 0,
-                    components: [{
-                        id: 'block-0',
-                        type: 'FreeTextIdevice',
-                        content: '',
-                    }],
-                }],
+                pages: [
+                    {
+                        id: 'page-0',
+                        title: 'Page 1',
+                        parent_id: null,
+                        level: 0,
+                        position: 0,
+                        components: [
+                            {
+                                id: 'block-0',
+                                type: 'FreeTextIdevice',
+                                content: '',
+                            },
+                        ],
+                    },
+                ],
                 raw: {} as any,
                 srcRoutes: new Set(),
             };

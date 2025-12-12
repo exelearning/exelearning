@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
-import * as path from 'path';
+import * as _path from 'path';
 import {
     getFixturesDir,
     getFixturePath,
@@ -40,7 +40,7 @@ describe('fixture-loader', () => {
         it('should return the fixtures directory path', () => {
             const dir = getFixturesDir();
             expect(dir).toContain('fixtures');
-            expect(dir).toMatch(/test[\/\\]fixtures$/);
+            expect(dir).toMatch(/test[/\\]fixtures$/);
         });
     });
 
@@ -83,7 +83,7 @@ describe('fixture-loader', () => {
 
         it('should return null for fixture not on disk', async () => {
             // Save original FIXTURES and restore after test
-            const originalFixtures = { ...FIXTURES };
+            const _originalFixtures = { ...FIXTURES };
             // @ts-expect-error - modifying for test
             FIXTURES['fake-fixture.elp'] = {
                 name: 'fake-fixture.elp',

@@ -7,12 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import JSZip from 'jszip';
-import {
-    extractZip,
-    listZipContents,
-    readFileFromZip,
-    fileExistsInZip,
-} from '../../../src/services/zip';
+import { extractZip, listZipContents, readFileFromZip, fileExistsInZip } from '../../../src/services/zip';
 import { parseFromFile } from '../../../src/services/xml/xml-parser';
 import {
     getFixturePath,
@@ -136,8 +131,7 @@ describe('ELP/ELPX Fixtures - Integration Tests', () => {
                     const hasPages = structure.pages && structure.pages.length >= 1;
                     const navStructures = (structure.raw as any)?.ode?.odeNavStructures?.odeNavStructure;
                     const hasNavigation =
-                        navStructures &&
-                        (Array.isArray(navStructures) ? navStructures.length > 0 : !!navStructures);
+                        navStructures && (Array.isArray(navStructures) ? navStructures.length > 0 : !!navStructures);
 
                     // At least one of pages or navigation should exist
                     expect(hasPages || hasNavigation || (structure.raw as any)?.ode).toBeTruthy();
@@ -206,7 +200,7 @@ describe('ELP/ELPX Fixtures - Integration Tests', () => {
 
                     // Or files might be in root directory
                     const allFiles = await listZipContents(fixturePath);
-                    const hasImages = allFiles.some((f) => /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f));
+                    const hasImages = allFiles.some(f => /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(f));
 
                     expect(hasResources || hasImages).toBe(true);
                 });
@@ -275,7 +269,7 @@ describe('ELP/ELPX Fixtures - Integration Tests', () => {
             const structure = await parseFromFile(contentPath, 'test-session');
 
             // Check that pages have proper level assignments
-            const rootPages = structure.pages.filter((p) => p.level === 0);
+            const rootPages = structure.pages.filter(p => p.level === 0);
             expect(rootPages.length).toBeGreaterThan(0);
 
             // Check parent_id relationships
@@ -304,9 +298,7 @@ describe('ELP/ELPX Fixtures - Integration Tests', () => {
             const structure = await parseFromFile(contentPath, 'test-session');
 
             // At least some pages should have components
-            const pagesWithComponents = structure.pages.filter(
-                (p) => p.components && p.components.length > 0,
-            );
+            const pagesWithComponents = structure.pages.filter(p => p.components && p.components.length > 0);
 
             // Check that components have required fields
             for (const page of pagesWithComponents) {
@@ -328,7 +320,7 @@ describe('ELP/ELPX Fixtures - Integration Tests', () => {
             expect(contents.length).toBeGreaterThan(0);
 
             // Should contain content.xml or contentv3.xml
-            const hasContent = contents.some((f) => f === 'content.xml' || f === 'contentv3.xml');
+            const hasContent = contents.some(f => f === 'content.xml' || f === 'contentv3.xml');
             expect(hasContent).toBe(true);
         });
 

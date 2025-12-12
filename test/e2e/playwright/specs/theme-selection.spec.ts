@@ -48,9 +48,7 @@ test.describe('Theme Selection on ELP Import', () => {
 
         // Use the import API or file input to load the fixture
         // First, try to find File > Import menu
-        const fileMenu = page.locator(
-            '#navbarFile, [data-menu="file"], .navbar-file',
-        );
+        const fileMenu = page.locator('#navbarFile, [data-menu="file"], .navbar-file');
 
         if ((await fileMenu.count()) > 0) {
             await fileMenu.click();
@@ -94,7 +92,7 @@ test.describe('Theme Selection on ELP Import', () => {
 
         // 6. Verify the 'base' theme is shown as selected
         // The theme card should have the 'selected' class
-        const baseThemeCard = page.locator(
+        const _baseThemeCard = page.locator(
             '#exestylescontent .theme-card[data-theme-id="base"], #exestylescontent .theme-card.selected',
         );
 
@@ -110,10 +108,7 @@ test.describe('Theme Selection on ELP Import', () => {
     /**
      * Test that ThemesManager.selected is correctly set after import
      */
-    test('should have correct theme in ThemesManager after import', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
+    test('should have correct theme in ThemesManager after import', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
         // Create a project
@@ -134,8 +129,10 @@ test.describe('Theme Selection on ELP Import', () => {
 
         // Get the currently selected theme from the app
         const selectedTheme = await page.evaluate(() => {
-            return (window as any).eXeLearning.app.themes.selected?.id ||
-                   (window as any).eXeLearning.app.themes.selected?.name;
+            return (
+                (window as any).eXeLearning.app.themes.selected?.id ||
+                (window as any).eXeLearning.app.themes.selected?.name
+            );
         });
 
         // The theme should be defined (either default or from fixture)

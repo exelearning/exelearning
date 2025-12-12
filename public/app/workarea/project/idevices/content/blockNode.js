@@ -1557,7 +1557,9 @@ export default class IdeviceBlockNode {
             if (orders.length) return Math.max(...orders) + 1;
 
             return 1;
-        } catch (_) {}
+        } catch (_) {
+            /* Silently fall back to default order */
+        }
 
         return 1;
     }

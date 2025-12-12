@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/collaboration.fixture';
 import { NavigationPage } from '../pages/navigation.page';
 import { WorkareaPage } from '../pages/workarea.page';
-import { waitForYjsSync, waitForNodeSyncBetweenClients } from '../helpers/sync-helpers';
+import { waitForYjsSync } from '../helpers/sync-helpers';
 
 /**
  * Real-Time Collaboration Tests

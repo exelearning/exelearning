@@ -15,10 +15,7 @@ describe('Component Export Integration', () => {
 
     beforeAll(() => {
         // Read expected XML format
-        expectedXml = fs.readFileSync(
-            path.join(fixturesDir, 'xml/component-export-expected.xml'),
-            'utf-8'
-        );
+        expectedXml = fs.readFileSync(path.join(fixturesDir, 'xml/component-export-expected.xml'), 'utf-8');
 
         parser = new XMLParser({
             ignoreAttributes: false,

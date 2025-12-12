@@ -44,8 +44,6 @@
     "electron:pack:dir": "electron-builder --dir",
     "package:prepare": "bun run build:all && bun run build:standalone",
     "package:app": "bun run package:prepare && bun run electron:pack",
-    "lint": "eslint --config eslint.config.mjs",
-    "lint:fix": "eslint --config eslint.config.mjs --fix",
     "lint:src": "eslint --config eslint.config.mjs 'src/**/*.ts'",
     "lint:src:fix": "eslint --config eslint.config.mjs 'src/**/*.ts' --fix",
     "lint:test": "eslint --config eslint.config.mjs '**/*.spec.ts' 'test/**/*.ts'",

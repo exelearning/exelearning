@@ -24,16 +24,10 @@ export class WorkareaPage {
         // Main workarea elements
         this.nodeContent = page.locator('#node-content, [data-testid="node-content"]');
         this.saveButton = page.locator('#head-top-save-button, [data-testid="save-button"]');
-        this.shareButton = page.locator(
-            '#head-top-share-button, .btn-share-pill, [data-action="share"]',
-        );
-        this.previewButton = page.locator(
-            '#head-top-preview-button, [data-testid="preview-button"]',
-        );
+        this.shareButton = page.locator('#head-top-share-button, .btn-share-pill, [data-action="share"]');
+        this.previewButton = page.locator('#head-top-preview-button, [data-testid="preview-button"]');
         this.stylesButton = page.locator('#head-top-styles-button, [data-testid="styles-button"]');
-        this.settingsButton = page.locator(
-            '#head-top-settings-button, [data-testid="settings-button"]',
-        );
+        this.settingsButton = page.locator('#head-top-settings-button, [data-testid="settings-button"]');
 
         // iDevice buttons
         this.quickTextIdeviceButton = page.locator('[data-testid="quick-idevice-text"]');
@@ -70,10 +64,8 @@ export class WorkareaPage {
         // If expected title provided, verify it
         if (expectedTitle) {
             await this.page.waitForFunction(
-                (title) => {
-                    const titleElement = document.querySelector(
-                        '#page-title-node-content, .node-title-header',
-                    );
+                title => {
+                    const titleElement = document.querySelector('#page-title-node-content, .node-title-header');
                     return titleElement && (titleElement.textContent || '').trim().includes(title);
                 },
                 expectedTitle,
@@ -110,10 +102,7 @@ export class WorkareaPage {
         }
 
         // Wait for iDevice to appear
-        await this.page
-            .locator('#node-content article .idevice_node.text')
-            .first()
-            .waitFor({ timeout: 10000 });
+        await this.page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 10000 });
     }
 
     /**
@@ -125,7 +114,7 @@ export class WorkareaPage {
         await block.waitFor({ timeout: 10000 });
 
         // Check if already in edition mode
-        const isEdition = await block.evaluate((el) => el.getAttribute('mode') === 'edition');
+        const isEdition = await block.evaluate(el => el.getAttribute('mode') === 'edition');
 
         if (!isEdition) {
             // Enter edit mode
@@ -136,9 +125,7 @@ export class WorkareaPage {
             // Wait for editor to load
             await Promise.race([
                 block.waitFor({ state: 'attached', timeout: 12000 }),
-                this.page
-                    .waitForSelector('iframe.tox-edit-area__iframe', { timeout: 12000 })
-                    .catch(() => {}),
+                this.page.waitForSelector('iframe.tox-edit-area__iframe', { timeout: 12000 }).catch(() => {}),
             ]);
         }
 
@@ -221,11 +208,9 @@ export class WorkareaPage {
         const blockEl = await block.elementHandle();
         if (blockEl) {
             await this.page
-                .waitForFunction(
-                    (el) => el && el.getAttribute && el.getAttribute('mode') !== 'edition',
-                    blockEl,
-                    { timeout },
-                )
+                .waitForFunction(el => el && el.getAttribute && el.getAttribute('mode') !== 'edition', blockEl, {
+                    timeout,
+                })
                 .catch(() => {});
         }
     }
@@ -235,7 +220,7 @@ export class WorkareaPage {
      */
     async waitForTextInContent(text: string, timeout: number = 15000): Promise<void> {
         await this.page.waitForFunction(
-            (searchText) => {
+            searchText => {
                 const content = document.querySelector('#node-content');
                 return content && (content.textContent || '').includes(searchText);
             },
@@ -248,7 +233,7 @@ export class WorkareaPage {
      * Checks if specific text exists in content area
      */
     async hasTextInContent(text: string): Promise<boolean> {
-        return this.page.evaluate((searchText) => {
+        return this.page.evaluate(searchText => {
             const content = document.querySelector('#node-content');
             return content ? (content.textContent || '').includes(searchText) : false;
         }, text);
@@ -285,9 +270,7 @@ export class WorkareaPage {
      * Gets the current page title from content area
      */
     async getPageTitle(): Promise<string> {
-        const titleElement = this.page
-            .locator('#page-title-node-content, .node-title-header')
-            .first();
+        const titleElement = this.page.locator('#page-title-node-content, .node-title-header').first();
         await titleElement.waitFor({ timeout: 10000 });
         return (await titleElement.textContent()) || '';
     }

@@ -23,13 +23,16 @@ const TEST_JWT_SECRET = 'test_secret_for_elp_import_tests';
 const TEST_ELP = 'test/fixtures/un-contenido-de-ejemplo-para-probar-estilos-y-catalogacion.elpx';
 
 // In-memory session storage for tests
-const testSessions = new Map<string, {
-    sessionId: string;
-    fileName: string;
-    filePath: string;
-    createdAt: Date;
-    updatedAt: Date;
-}>();
+const testSessions = new Map<
+    string,
+    {
+        sessionId: string;
+        fileName: string;
+        filePath: string;
+        createdAt: Date;
+        updatedAt: Date;
+    }
+>();
 
 describe('ELP Import Flow Integration', () => {
     let db: Kysely<Database>;
@@ -55,11 +58,13 @@ describe('ELP Import Flow Integration', () => {
         // Create test app with required routes
         app = new Elysia({ name: 'elp-import-test' })
             .use(cookie())
-            .use(jwt({
-                name: 'jwt',
-                secret: TEST_JWT_SECRET,
-                exp: '1h',
-            }))
+            .use(
+                jwt({
+                    name: 'jwt',
+                    secret: TEST_JWT_SECRET,
+                    exp: '1h',
+                }),
+            )
             .derive(async ({ jwt, cookie, request }) => {
                 let token: string | undefined;
 
@@ -75,7 +80,7 @@ describe('ELP Import Flow Integration', () => {
                 }
 
                 try {
-                    const payload = await jwt.verify(token) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: number } | false;
                     if (!payload || !payload.sub) {
                         return { currentUser: null, testDb: db, filesDir };
                     }
@@ -132,93 +137,96 @@ describe('ELP Import Flow Integration', () => {
                 };
             })
             // POST /api/ode-management/odes/ode/local/elp/open - Open ELP
-            .post('/api/ode-management/odes/ode/local/elp/open', async ({ body, currentUser, testDb, filesDir, set }) => {
-                if (!currentUser) {
-                    set.status = 401;
-                    return { responseMessage: 'error: Authentication required' };
-                }
-
-                const data = body as any;
-                const odeFilePath = Array.isArray(data.odeFilePath) ? data.odeFilePath[0] : data.odeFilePath;
-                const odeFileName = Array.isArray(data.odeFileName) ? data.odeFileName[0] : data.odeFileName;
-
-                if (!odeFilePath) {
-                    set.status = 400;
-                    return { responseMessage: 'error: odeFilePath is required' };
-                }
-
-                if (!(await fs.pathExists(odeFilePath))) {
-                    set.status = 400;
-                    return { responseMessage: `error: File not found: ${odeFilePath}` };
-                }
-
-                // Create project in database
-                const projectTitle = odeFileName?.replace('.elp', '').replace('.elpx', '') || 'Test Project';
-                const projectUuid = uuidv4();
-
-                const projectResult = await testDb
-                    .insertInto('projects')
-                    .values({
-                        uuid: projectUuid,
-                        title: projectTitle,
-                        owner_id: currentUser.id,
-                        saved_once: 0,
-                        visibility: 'private',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                    })
-                    .returning(['id', 'uuid'])
-                    .executeTakeFirstOrThrow();
-
-                // Create session directory
-                const sessionId = projectResult.uuid;
-                const tempDir = path.join(filesDir, 'tmp', sessionId);
-                await fs.ensureDir(tempDir);
-
-                // Extract ZIP to session temp dir (simplified for test)
-                const JSZip = (await import('jszip')).default;
-                const zipBuffer = await fs.readFile(odeFilePath);
-                const zip = await JSZip.loadAsync(zipBuffer);
-
-                // Extract all files
-                for (const [filePath, zipEntry] of Object.entries(zip.files)) {
-                    if (!zipEntry.dir) {
-                        const content = await zipEntry.async('nodebuffer');
-                        const outputPath = path.join(tempDir, filePath);
-                        await fs.ensureDir(path.dirname(outputPath));
-                        await fs.writeFile(outputPath, content);
+            .post(
+                '/api/ode-management/odes/ode/local/elp/open',
+                async ({ body, currentUser, testDb, filesDir, set }) => {
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { responseMessage: 'error: Authentication required' };
                     }
-                }
 
-                // Create session
-                testSessions.set(sessionId, {
-                    sessionId,
-                    fileName: odeFileName,
-                    filePath: tempDir,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                });
+                    const data = body as any;
+                    const odeFilePath = Array.isArray(data.odeFilePath) ? data.odeFilePath[0] : data.odeFilePath;
+                    const odeFileName = Array.isArray(data.odeFileName) ? data.odeFileName[0] : data.odeFileName;
 
-                // Copy ELP file to temp directory for frontend to fetch
-                const importFileName = `${sessionId}.elp`;
-                const importFilePath = path.join(tempDir, importFileName);
-                await fs.copy(odeFilePath, importFilePath);
+                    if (!odeFilePath) {
+                        set.status = 400;
+                        return { responseMessage: 'error: odeFilePath is required' };
+                    }
 
-                // Clean up original uploaded file
-                await fs.remove(odeFilePath).catch(() => {});
+                    if (!(await fs.pathExists(odeFilePath))) {
+                        set.status = 400;
+                        return { responseMessage: `error: File not found: ${odeFilePath}` };
+                    }
 
-                // Return the import path for frontend to fetch ELP
-                const elpImportPath = `/files/tmp/${sessionId}/${importFileName}`;
+                    // Create project in database
+                    const projectTitle = odeFileName?.replace('.elp', '').replace('.elpx', '') || 'Test Project';
+                    const projectUuid = uuidv4();
 
-                return {
-                    responseMessage: 'OK',
-                    odeSessionId: sessionId,
-                    odeName: odeFileName,
-                    projectId: projectResult.id,
-                    projectUuid: projectResult.uuid,
-                    elpImportPath, // This is the critical field being tested
-                };
-            })
+                    const projectResult = await testDb
+                        .insertInto('projects')
+                        .values({
+                            uuid: projectUuid,
+                            title: projectTitle,
+                            owner_id: currentUser.id,
+                            saved_once: 0,
+                            visibility: 'private',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                        })
+                        .returning(['id', 'uuid'])
+                        .executeTakeFirstOrThrow();
+
+                    // Create session directory
+                    const sessionId = projectResult.uuid;
+                    const tempDir = path.join(filesDir, 'tmp', sessionId);
+                    await fs.ensureDir(tempDir);
+
+                    // Extract ZIP to session temp dir (simplified for test)
+                    const JSZip = (await import('jszip')).default;
+                    const zipBuffer = await fs.readFile(odeFilePath);
+                    const zip = await JSZip.loadAsync(zipBuffer);
+
+                    // Extract all files
+                    for (const [filePath, zipEntry] of Object.entries(zip.files)) {
+                        if (!zipEntry.dir) {
+                            const content = await zipEntry.async('nodebuffer');
+                            const outputPath = path.join(tempDir, filePath);
+                            await fs.ensureDir(path.dirname(outputPath));
+                            await fs.writeFile(outputPath, content);
+                        }
+                    }
+
+                    // Create session
+                    testSessions.set(sessionId, {
+                        sessionId,
+                        fileName: odeFileName,
+                        filePath: tempDir,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    });
+
+                    // Copy ELP file to temp directory for frontend to fetch
+                    const importFileName = `${sessionId}.elp`;
+                    const importFilePath = path.join(tempDir, importFileName);
+                    await fs.copy(odeFilePath, importFilePath);
+
+                    // Clean up original uploaded file
+                    await fs.remove(odeFilePath).catch(() => {});
+
+                    // Return the import path for frontend to fetch ELP
+                    const elpImportPath = `/files/tmp/${sessionId}/${importFileName}`;
+
+                    return {
+                        responseMessage: 'OK',
+                        odeSessionId: sessionId,
+                        odeName: odeFileName,
+                        projectId: projectResult.id,
+                        projectUuid: projectResult.uuid,
+                        elpImportPath, // This is the critical field being tested
+                    };
+                },
+            )
             // DELETE /api/project/cleanup-import - Cleanup temp import file
             .delete('/api/project/cleanup-import', async ({ query, filesDir }) => {
                 const importPath = query.path as string;
@@ -269,7 +277,7 @@ describe('ELP Import Flow Integration', () => {
             });
 
         // Generate auth token
-        const jwtInstance = jwt({
+        const _jwtInstance = jwt({
             name: 'jwt',
             secret: TEST_JWT_SECRET,
             exp: '1h',
@@ -313,14 +321,15 @@ describe('ELP Import Flow Integration', () => {
         chunkForm.append('odeFileName', fileName);
         chunkForm.append('odeSessionId', tempSessionId);
 
-        const chunkRes = await app
-            .handle(new Request('http://localhost/api/ode-management/odes/ode/local/large/elp/open', {
+        const chunkRes = await app.handle(
+            new Request('http://localhost/api/ode-management/odes/ode/local/large/elp/open', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
                 },
                 body: chunkForm,
-            }));
+            }),
+        );
 
         const chunkData = await chunkRes.json();
         expect(chunkData.responseMessage).toBe('OK');
@@ -331,14 +340,15 @@ describe('ELP Import Flow Integration', () => {
         openForm.append('odeFilePath', chunkData.odeFilePath);
         openForm.append('odeFileName', fileName);
 
-        const openRes = await app
-            .handle(new Request('http://localhost/api/ode-management/odes/ode/local/elp/open', {
+        const openRes = await app.handle(
+            new Request('http://localhost/api/ode-management/odes/ode/local/elp/open', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${authToken}`,
                 },
                 body: openForm,
-            }));
+            }),
+        );
 
         const openData = await openRes.json();
 
@@ -365,10 +375,11 @@ describe('ELP Import Flow Integration', () => {
 
         const elpPath = `/files/tmp/${session.sessionId}/${session.sessionId}.elp`;
 
-        const fetchRes = await app
-            .handle(new Request(`http://localhost${elpPath}`, {
+        const fetchRes = await app.handle(
+            new Request(`http://localhost${elpPath}`, {
                 method: 'GET',
-            }));
+            }),
+        );
 
         expect(fetchRes.status).toBe(200);
         expect(fetchRes.headers.get('content-type')).toContain('octet-stream');
@@ -389,10 +400,11 @@ describe('ELP Import Flow Integration', () => {
 
         const elpPath = `/files/tmp/${session.sessionId}/${session.sessionId}.elp`;
 
-        const cleanupRes = await app
-            .handle(new Request(`http://localhost/api/project/cleanup-import?path=${encodeURIComponent(elpPath)}`, {
+        const cleanupRes = await app.handle(
+            new Request(`http://localhost/api/project/cleanup-import?path=${encodeURIComponent(elpPath)}`, {
                 method: 'DELETE',
-            }));
+            }),
+        );
 
         const cleanupData = await cleanupRes.json();
         expect(cleanupData.success).toBe(true);
@@ -405,10 +417,11 @@ describe('ELP Import Flow Integration', () => {
 
         const badPath = '/files/perm/secret.txt';
 
-        const cleanupRes = await app
-            .handle(new Request(`http://localhost/api/project/cleanup-import?path=${encodeURIComponent(badPath)}`, {
+        const cleanupRes = await app.handle(
+            new Request(`http://localhost/api/project/cleanup-import?path=${encodeURIComponent(badPath)}`, {
                 method: 'DELETE',
-            }));
+            }),
+        );
 
         const cleanupData = await cleanupRes.json();
         expect(cleanupData.success).toBe(false);
@@ -427,10 +440,11 @@ describe('ELP Import Flow Integration', () => {
 
         const badPath = `/files/tmp/${session.sessionId}/content.xml`;
 
-        const cleanupRes = await app
-            .handle(new Request(`http://localhost/api/project/cleanup-import?path=${encodeURIComponent(badPath)}`, {
+        const cleanupRes = await app.handle(
+            new Request(`http://localhost/api/project/cleanup-import?path=${encodeURIComponent(badPath)}`, {
                 method: 'DELETE',
-            }));
+            }),
+        );
 
         const cleanupData = await cleanupRes.json();
         expect(cleanupData.success).toBe(false);

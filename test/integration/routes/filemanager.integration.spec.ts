@@ -47,9 +47,13 @@ describe('Filemanager Routes Integration', () => {
                 if (!token) return { currentUser: null };
 
                 try {
-                    const payload = await jwt.verify(token) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: number } | false;
                     if (!payload || !payload.sub) return { currentUser: null };
-                    const user = await db.selectFrom('users').selectAll().where('id', '=', payload.sub).executeTakeFirst();
+                    const user = await db
+                        .selectFrom('users')
+                        .selectAll()
+                        .where('id', '=', payload.sub)
+                        .executeTakeFirst();
                     return { currentUser: user ? { ...user, roles: JSON.parse(user.roles) } : null };
                 } catch {
                     return { currentUser: null };
@@ -66,9 +70,7 @@ describe('Filemanager Routes Integration', () => {
 
                 return {
                     path: dirPath,
-                    items: Array.from(mockFileTree.values()).filter(f =>
-                        f.type === 'file' || f.type === 'directory'
-                    ),
+                    items: Array.from(mockFileTree.values()).filter(f => f.type === 'file' || f.type === 'directory'),
                 };
             })
             // POST /filemanager/api/files/create-directory - Create directory

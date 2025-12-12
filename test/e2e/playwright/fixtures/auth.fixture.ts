@@ -46,8 +46,7 @@ export const test = base.extend<AuthFixtures>({
         await page.waitForFunction(
             () => {
                 return (
-                    typeof (window as any).eXeLearning !== 'undefined' &&
-                    (window as any).eXeLearning.app !== undefined
+                    typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined
                 );
             },
             { timeout: 30000 },
@@ -83,11 +82,9 @@ export const test = base.extend<AuthFixtures>({
     /**
      * Helper to create a new project and return its UUID
      */
+    // eslint-disable-next-line no-empty-pattern
     createProject: async ({}, use) => {
-        const createProjectFn = async (
-            page: Page,
-            title: string = 'Test Project',
-        ): Promise<string> => {
+        const createProjectFn = async (page: Page, title: string = 'Test Project'): Promise<string> => {
             // Create project via API
             const response = await page.request.post('/api/project/create-quick', {
                 data: { title },
@@ -124,9 +121,7 @@ export async function waitForModal(page: Page, modalId: string): Promise<void> {
  * Helper function to close modal
  */
 export async function closeModal(page: Page, modalId: string): Promise<void> {
-    const closeButton = page.locator(
-        `#${modalId} .btn-close, #${modalId} [data-bs-dismiss="modal"]`,
-    );
+    const closeButton = page.locator(`#${modalId} .btn-close, #${modalId} [data-bs-dismiss="modal"]`);
     if ((await closeButton.count()) > 0) {
         await closeButton.first().click();
     }

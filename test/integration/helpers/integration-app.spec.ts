@@ -171,11 +171,10 @@ describe('integration-app helpers', () => {
 
         it('should handle unauthenticated requests', async () => {
             testDb = await createTestDb();
-            const app = createMinimalTestApp(testDb)
-                .get('/test', ({ auth }) => ({
-                    authenticated: auth.isAuthenticated,
-                    user: auth.user?.email || null,
-                }));
+            const app = createMinimalTestApp(testDb).get('/test', ({ auth }) => ({
+                authenticated: auth.isAuthenticated,
+                user: auth.user?.email || null,
+            }));
 
             const response = await testRequest(app, '/test');
             const data = await parseJsonResponse<{ authenticated: boolean; user: string | null }>(response);
@@ -189,11 +188,10 @@ describe('integration-app helpers', () => {
             const user = await createTestUser(testDb, { email: 'auth@test.com' });
             const token = await generateTestToken(user);
 
-            const app = createMinimalTestApp(testDb)
-                .get('/test', ({ auth }) => ({
-                    authenticated: auth.isAuthenticated,
-                    user: auth.user?.email || null,
-                }));
+            const app = createMinimalTestApp(testDb).get('/test', ({ auth }) => ({
+                authenticated: auth.isAuthenticated,
+                user: auth.user?.email || null,
+            }));
 
             const response = await authenticatedRequest(app, '/test', token);
             const data = await parseJsonResponse<{ authenticated: boolean; user: string | null }>(response);
@@ -204,10 +202,9 @@ describe('integration-app helpers', () => {
 
         it('should handle invalid token', async () => {
             testDb = await createTestDb();
-            const app = createMinimalTestApp(testDb)
-                .get('/test', ({ auth }) => ({
-                    authenticated: auth.isAuthenticated,
-                }));
+            const app = createMinimalTestApp(testDb).get('/test', ({ auth }) => ({
+                authenticated: auth.isAuthenticated,
+            }));
 
             const response = await authenticatedRequest(app, '/test', 'invalid-token');
             const data = await parseJsonResponse<{ authenticated: boolean }>(response);
@@ -223,10 +220,9 @@ describe('integration-app helpers', () => {
             // Delete the user
             await testDb.deleteFrom('users').where('id', '=', user.id).execute();
 
-            const app = createMinimalTestApp(testDb)
-                .get('/test', ({ auth }) => ({
-                    authenticated: auth.isAuthenticated,
-                }));
+            const app = createMinimalTestApp(testDb).get('/test', ({ auth }) => ({
+                authenticated: auth.isAuthenticated,
+            }));
 
             const response = await authenticatedRequest(app, '/test', token);
             const data = await parseJsonResponse<{ authenticated: boolean }>(response);
@@ -239,11 +235,10 @@ describe('integration-app helpers', () => {
             const user = await createTestUser(testDb, { email: 'cookie@test.com' });
             const token = await generateTestToken(user);
 
-            const app = createMinimalTestApp(testDb)
-                .get('/test', ({ auth }) => ({
-                    authenticated: auth.isAuthenticated,
-                    user: auth.user?.email || null,
-                }));
+            const app = createMinimalTestApp(testDb).get('/test', ({ auth }) => ({
+                authenticated: auth.isAuthenticated,
+                user: auth.user?.email || null,
+            }));
 
             const response = await testRequest(app, '/test', {
                 headers: {
@@ -260,8 +255,7 @@ describe('integration-app helpers', () => {
     describe('jsonPost', () => {
         it('should make POST request with JSON body', async () => {
             testDb = await createTestDb();
-            const app = createMinimalTestApp(testDb)
-                .post('/echo', ({ body }) => body);
+            const app = createMinimalTestApp(testDb).post('/echo', ({ body }) => body);
 
             const response = await jsonPost(app, '/echo', { message: 'hello' });
             const data = await parseJsonResponse<{ message: string }>(response);
@@ -274,10 +268,9 @@ describe('integration-app helpers', () => {
             const user = await createTestUser(testDb);
             const token = await generateTestToken(user);
 
-            const app = createMinimalTestApp(testDb)
-                .post('/test', ({ auth }) => ({
-                    authenticated: auth.isAuthenticated,
-                }));
+            const app = createMinimalTestApp(testDb).post('/test', ({ auth }) => ({
+                authenticated: auth.isAuthenticated,
+            }));
 
             const response = await jsonPost(app, '/test', {}, { token });
             const data = await parseJsonResponse<{ authenticated: boolean }>(response);

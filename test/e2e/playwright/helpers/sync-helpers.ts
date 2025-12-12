@@ -46,33 +46,25 @@ export async function waitForYjsSync(page: Page, timeout: number = 30000): Promi
  * Navigation tree structure:
  * - treeitem[aria-label="NodeTitle"] > button > generic
  */
-export async function waitForNodeInNav(
-    page: Page,
-    nodeTitle: string,
-    timeout: number = 60000,
-): Promise<void> {
+export async function waitForNodeInNav(page: Page, nodeTitle: string, timeout: number = 60000): Promise<void> {
     // The tree uses role="treeitem" with buttons containing the node title
     // Use polling to catch rapid UI updates
-    await page.waitForSelector(
-        `[role="tree"] [role="treeitem"] button:has-text("${nodeTitle}")`,
-        { state: 'visible', timeout },
-    );
+    await page.waitForSelector(`[role="tree"] [role="treeitem"] button:has-text("${nodeTitle}")`, {
+        state: 'visible',
+        timeout,
+    });
 }
 
 /**
  * Waits for a node with specific title to disappear from navigation
  * Used to verify deletion sync between clients
  */
-export async function waitForNodeNotInNav(
-    page: Page,
-    nodeTitle: string,
-    timeout: number = 60000,
-): Promise<void> {
+export async function waitForNodeNotInNav(page: Page, nodeTitle: string, timeout: number = 60000): Promise<void> {
     // The tree uses role="treeitem" with buttons containing the node title
-    await page.waitForSelector(
-        `[role="tree"] [role="treeitem"] button:has-text("${nodeTitle}")`,
-        { state: 'hidden', timeout },
-    );
+    await page.waitForSelector(`[role="tree"] [role="treeitem"] button:has-text("${nodeTitle}")`, {
+        state: 'hidden',
+        timeout,
+    });
 }
 
 /**
@@ -85,28 +77,21 @@ export async function waitForNodeSyncBetweenClients(
     nodeTitle: string,
     timeout: number = 15000,
 ): Promise<void> {
-    await Promise.all([
-        waitForNodeInNav(clientA, nodeTitle, timeout),
-        waitForNodeInNav(clientB, nodeTitle, timeout),
-    ]);
+    await Promise.all([waitForNodeInNav(clientA, nodeTitle, timeout), waitForNodeInNav(clientB, nodeTitle, timeout)]);
 }
 
 /**
  * Waits for content area to be ready and showing expected node
  * Checks for data-ready attribute and optional title match
  */
-export async function waitForContentReady(
-    page: Page,
-    expectedTitle?: string,
-    timeout: number = 10000,
-): Promise<void> {
+export async function waitForContentReady(page: Page, expectedTitle?: string, timeout: number = 10000): Promise<void> {
     // Wait for node-content to be ready
     await page.waitForSelector('#node-content[data-ready="true"]', { timeout });
 
     // If expected title provided, verify it
     if (expectedTitle) {
         await page.waitForFunction(
-            (title) => {
+            title => {
                 const titleElement = document.querySelector('#node-content h1, .node-title-header');
                 return titleElement?.textContent?.includes(title) ?? false;
             },
@@ -120,13 +105,9 @@ export async function waitForContentReady(
  * Waits for text to appear in content area
  * Used to verify content sync between clients
  */
-export async function waitForTextInContent(
-    page: Page,
-    text: string,
-    timeout: number = 15000,
-): Promise<void> {
+export async function waitForTextInContent(page: Page, text: string, timeout: number = 15000): Promise<void> {
     await page.waitForFunction(
-        (searchText) => {
+        searchText => {
             const content = document.querySelector('#node-content');
             return content?.textContent?.includes(searchText) ?? false;
         },
@@ -139,5 +120,5 @@ export async function waitForTextInContent(
  * Small delay for UI updates (use sparingly, prefer deterministic waits)
  */
 export async function shortDelay(ms: number = 300): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, ms));
+    await new Promise(resolve => setTimeout(resolve, ms));
 }

@@ -4,12 +4,7 @@
  */
 
 import * as Y from 'yjs';
-import {
-    OdeXmlMeta,
-    NormalizedPage,
-    NormalizedComponent,
-    ParsedOdeStructure,
-} from '../../src/services/xml/interfaces';
+import { OdeXmlMeta, NormalizedPage, ParsedOdeStructure } from '../../src/services/xml/interfaces';
 
 // ============================================================================
 // Type Definitions for Yjs Extracted Data
@@ -79,17 +74,17 @@ export function extractMetadataFromYjs(ydoc: Y.Doc): YjsMetadataData | null {
     }
 
     return {
-        title: metadata.get('title') as string || '',
-        author: metadata.get('author') as string || '',
-        description: metadata.get('description') as string || '',
-        language: metadata.get('language') as string || 'en',
-        license: metadata.get('license') as string || '',
-        keywords: metadata.get('keywords') as string || '',
-        theme: metadata.get('theme') as string || 'base',
-        version: metadata.get('version') as string || '',
-        exelearningVersion: metadata.get('exelearningVersion') as string || '',
-        createdAt: metadata.get('createdAt') as number || 0,
-        modifiedAt: metadata.get('modifiedAt') as number || 0,
+        title: (metadata.get('title') as string) || '',
+        author: (metadata.get('author') as string) || '',
+        description: (metadata.get('description') as string) || '',
+        language: (metadata.get('language') as string) || 'en',
+        license: (metadata.get('license') as string) || '',
+        keywords: (metadata.get('keywords') as string) || '',
+        theme: (metadata.get('theme') as string) || 'base',
+        version: (metadata.get('version') as string) || '',
+        exelearningVersion: (metadata.get('exelearningVersion') as string) || '',
+        createdAt: (metadata.get('createdAt') as number) || 0,
+        modifiedAt: (metadata.get('modifiedAt') as number) || 0,
     };
 }
 
@@ -139,7 +134,7 @@ function extractPageData(yPage: Y.Map<any>): YjsPageData {
         title: yPage.get('title') as string,
         pageName: yPage.get('pageName') as string,
         parentId: yPage.get('parentId') as string | null,
-        order: yPage.get('order') as number || 0,
+        order: (yPage.get('order') as number) || 0,
         level: yPage.get('level') as number,
         blocks,
         children,
@@ -165,7 +160,7 @@ function extractBlocksFromYArray(yBlocks: Y.Array<any>): YjsBlockData[] {
  */
 function extractBlockData(yBlock: Y.Map<any>): YjsBlockData {
     const content = yBlock.get('content');
-    const contentStr = content instanceof Y.Text ? content.toString() : (content as string || '');
+    const contentStr = content instanceof Y.Text ? content.toString() : (content as string) || '';
 
     const propertiesMap = yBlock.get('properties') as Y.Map<any>;
     const properties: Record<string, any> = {};
@@ -190,8 +185,8 @@ function extractBlockData(yBlock: Y.Map<any>): YjsBlockData {
         blockId: yBlock.get('blockId') as string,
         pageId: yBlock.get('pageId') as string,
         type: yBlock.get('type') as string,
-        blockName: yBlock.get('blockName') as string || '',
-        order: yBlock.get('order') as number || 0,
+        blockName: (yBlock.get('blockName') as string) || '',
+        order: (yBlock.get('order') as number) || 0,
         title: yBlock.get('title') as string,
         content: contentStr,
         properties,
@@ -340,11 +335,7 @@ function comparePageDeep(page1: YjsPageData, page2: YjsPageData): boolean {
  * Compare two blocks
  */
 function compareBlock(block1: YjsBlockData, block2: YjsBlockData): boolean {
-    return (
-        block1.id === block2.id &&
-        block1.type === block2.type &&
-        block1.content === block2.content
-    );
+    return block1.id === block2.id && block1.type === block2.type && block1.content === block2.content;
 }
 
 // ============================================================================
@@ -411,7 +402,10 @@ function verifyPageMatch(normalizedPage: NormalizedPage, yjsPage: YjsPageData): 
 /**
  * Verify complete parsed structure matches Yjs document
  */
-export function verifyParsedStructureMatchesYjs(parsed: ParsedOdeStructure, ydoc: Y.Doc): {
+export function verifyParsedStructureMatchesYjs(
+    parsed: ParsedOdeStructure,
+    ydoc: Y.Doc,
+): {
     isEqual: boolean;
     differences: string[];
 } {
@@ -518,14 +512,7 @@ function createTestPage(
     // Create children if nested levels requested
     const children = new Y.Array();
     if (nestedLevels > 0) {
-        const childPage = createTestPage(
-            ydoc,
-            `${id}-child`,
-            `${title} Child`,
-            id,
-            blocksCount,
-            nestedLevels - 1,
-        );
+        const childPage = createTestPage(ydoc, `${id}-child`, `${title} Child`, id, blocksCount, nestedLevels - 1);
         children.push([childPage]);
     }
     page.set('children', children);

@@ -6,7 +6,7 @@
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import type { Database } from '../../src/db/types';
-import { up, down } from '../../src/db/migrations/001_initial';
+import { up } from '../../src/db/migrations/001_initial';
 
 /**
  * Create a fresh in-memory test database
@@ -54,10 +54,11 @@ export async function seedTestUser(
         user_id: string;
         password: string;
         roles: string;
-    }> = {}
+    }> = {},
 ): Promise<number> {
     const now = new Date().toISOString();
-    const result = await db.insertInto('users')
+    const result = await db
+        .insertInto('users')
         .values({
             email: overrides.email ?? `test-${Date.now()}@example.com`,
             user_id: overrides.user_id ?? `user-${Date.now()}`,
@@ -84,10 +85,11 @@ export async function seedTestProject(
         uuid: string;
         title: string;
         description: string;
-    }> = {}
+    }> = {},
 ): Promise<number> {
     const now = new Date().toISOString();
-    const result = await db.insertInto('projects')
+    const result = await db
+        .insertInto('projects')
         .values({
             uuid: overrides.uuid ?? `proj-${Date.now()}`,
             title: overrides.title ?? 'Test Project',

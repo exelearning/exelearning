@@ -5,7 +5,7 @@
  * This tests the dual-route registration pattern where routes are accessible
  * at both root paths AND BASE_PATH prefixed paths for frontend compatibility.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { staticPlugin } from '@elysiajs/static';
 import * as fs from 'fs';
@@ -70,15 +70,16 @@ function createBasePathTestApp(basePath: string | null = null): Elysia {
                 }
             }
         })
-        .use(staticPlugin({
-            assets: 'public',
-            prefix: '/',
-            alwaysStatic: false,
-        }));
+        .use(
+            staticPlugin({
+                assets: 'public',
+                prefix: '/',
+                alwaysStatic: false,
+            }),
+        );
 
     // Define test routes
-    const healthRoute = new Elysia()
-        .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+    const healthRoute = new Elysia().get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
     const apiRoute = new Elysia()
         .get('/api', () => ({
@@ -98,9 +99,7 @@ function createBasePathTestApp(basePath: string | null = null): Elysia {
 
     // Also register routes at BASE_PATH if configured
     if (basePath) {
-        app.group(basePath, (group) =>
-            group.use(healthRoute).use(apiRoute)
-        );
+        app.group(basePath, group => group.use(healthRoute).use(apiRoute));
     }
 
     return app;

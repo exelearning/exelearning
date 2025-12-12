@@ -1,4 +1,4 @@
-import { test as base, Page, BrowserContext } from '@playwright/test';
+import { Page, BrowserContext } from '@playwright/test';
 import { AuthFixtures, test as authTest } from './auth.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
 import { waitForLoadingScreenHidden } from './auth.fixture';
@@ -64,8 +64,7 @@ export const test = authTest.extend<CollaborationFixtures>({
         await page.waitForFunction(
             () => {
                 return (
-                    typeof (window as any).eXeLearning !== 'undefined' &&
-                    (window as any).eXeLearning.app !== undefined
+                    typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined
                 );
             },
             { timeout: 30000 },
@@ -88,14 +87,13 @@ export const test = authTest.extend<CollaborationFixtures>({
      * Helper to get share URL from the share modal
      * Opens share modal, makes project public, extracts URL, and closes modal
      */
+    // eslint-disable-next-line no-empty-pattern
     getShareUrl: async ({}, use) => {
         const getShareUrlFn = async (page: Page): Promise<string> => {
             const shareModal = new ShareModalPage(page);
 
             // Open share button
-            const shareButton = page.locator(
-                '#head-top-share-button, .btn-share-pill, [data-action="share"]',
-            );
+            const shareButton = page.locator('#head-top-share-button, .btn-share-pill, [data-action="share"]');
             await shareButton.click();
 
             // Wait for modal to open
@@ -122,6 +120,7 @@ export const test = authTest.extend<CollaborationFixtures>({
      * Helper to join a shared project from second client
      * Navigates to share URL and waits for project to load
      */
+    // eslint-disable-next-line no-empty-pattern
     joinSharedProject: async ({}, use) => {
         const joinSharedProjectFn = async (pageB: Page, shareUrl: string): Promise<void> => {
             // Navigate to share URL

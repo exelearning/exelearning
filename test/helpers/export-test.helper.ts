@@ -6,17 +6,9 @@
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import { v4 as uuidv4 } from 'uuid';
-import {
-    ExportFormatType,
-    ExportContext,
-    ExportOptions,
-} from '../../src/services/export/interfaces';
+import { ExportFormatType, ExportContext } from '../../src/services/export/interfaces';
 import { ParsedOdeStructure } from '../../src/services/xml/interfaces';
-import {
-    getFixturePath,
-    createTempTestDir,
-    cleanupTempTestDir,
-} from './fixture-loader';
+import { createTempTestDir, cleanupTempTestDir } from './fixture-loader';
 
 // Export fixtures directory
 const EXPORT_FIXTURES_DIR = path.join(__dirname, '..', 'fixtures', 'export');
@@ -61,9 +53,7 @@ export interface DirectoryComparisonResult {
  * @param prefix Optional prefix for temp directory
  * @returns Test session configuration
  */
-export async function setupTestSession(
-    prefix: string = 'export-test-',
-): Promise<TestSessionConfig> {
+export async function setupTestSession(prefix: string = 'export-test-'): Promise<TestSessionConfig> {
     const sessionId = uuidv4();
     const tempDir = await createTempTestDir(prefix);
     const sessionPath = path.join(tempDir, 'session');
@@ -84,9 +74,7 @@ export async function setupTestSession(
  * Cleanup test session directories
  * @param config Test session configuration
  */
-export async function cleanupTestSession(
-    config: TestSessionConfig,
-): Promise<void> {
+export async function cleanupTestSession(config: TestSessionConfig): Promise<void> {
     await cleanupTempTestDir(config.tempDir);
 }
 
@@ -96,10 +84,7 @@ export async function cleanupTestSession(
  * @param format Export format
  * @returns Path to the fixture directory
  */
-export function getExportFixturePath(
-    fixtureName: string,
-    format: ExportFormatType,
-): string {
+export function getExportFixturePath(fixtureName: string, format: ExportFormatType): string {
     const suffixMap: Record<ExportFormatType, string> = {
         [ExportFormatType.HTML5]: '_web',
         [ExportFormatType.PAGE]: '_page',
@@ -118,10 +103,7 @@ export function getExportFixturePath(
  * @param fixtureName Base fixture name
  * @param format Export format
  */
-export async function exportFixtureExists(
-    fixtureName: string,
-    format: ExportFormatType,
-): Promise<boolean> {
+export async function exportFixtureExists(fixtureName: string, format: ExportFormatType): Promise<boolean> {
     const fixturePath = getExportFixturePath(fixtureName, format);
     return fs.pathExists(fixturePath);
 }
@@ -181,10 +163,7 @@ export async function getAvailableExportFixtures(): Promise<ExportFixtureInfo[]>
  * @param basePath Base path for relative paths
  * @returns Array of relative file paths
  */
-export async function getDirectoryFiles(
-    dir: string,
-    basePath?: string,
-): Promise<string[]> {
+export async function getDirectoryFiles(dir: string, basePath?: string): Promise<string[]> {
     const base = basePath || dir;
     const files: string[] = [];
 
@@ -230,10 +209,7 @@ export async function compareDirectoryStructure(
     const expectedFiles = await getDirectoryFiles(expectedDir);
 
     // Filter out ignored files
-    const filterIgnored = (files: string[]) =>
-        files.filter(
-            (f) => !ignorePatterns.some((pattern) => pattern.test(f)),
-        );
+    const filterIgnored = (files: string[]) => files.filter(f => !ignorePatterns.some(pattern => pattern.test(f)));
 
     const filteredActual = filterIgnored(actualFiles);
     const filteredExpected = filterIgnored(expectedFiles);
@@ -241,12 +217,12 @@ export async function compareDirectoryStructure(
     const actualSet = new Set(filteredActual);
     const expectedSet = new Set(filteredExpected);
 
-    const missing = filteredExpected.filter((f) => !actualSet.has(f));
-    const extra = filteredActual.filter((f) => !expectedSet.has(f));
+    const missing = filteredExpected.filter(f => !actualSet.has(f));
+    const extra = filteredActual.filter(f => !expectedSet.has(f));
     const different: string[] = [];
 
     if (compareContent) {
-        const common = filteredActual.filter((f) => expectedSet.has(f));
+        const common = filteredActual.filter(f => expectedSet.has(f));
 
         for (const file of common) {
             const actualPath = path.join(actualDir, file);
@@ -302,7 +278,7 @@ export async function validateExportStructure(
 
     // Format-specific validations
     switch (format) {
-        case ExportFormatType.SCORM12:
+        case ExportFormatType.SCORM12: {
             // Check for SCORM JS files
             const scormApiPath = path.join(exportDir, 'libs', 'SCORM_API_wrapper.js');
             const scoFunctionsPath = path.join(exportDir, 'libs', 'SCOFunctions.js');
@@ -313,8 +289,9 @@ export async function validateExportStructure(
                 errors.push('Missing SCOFunctions.js in libs/');
             }
             break;
+        }
 
-        case ExportFormatType.EPUB3:
+        case ExportFormatType.EPUB3: {
             // Check mimetype content
             const mimetypePath = path.join(exportDir, 'mimetype');
             if (await fs.pathExists(mimetypePath)) {
@@ -324,6 +301,7 @@ export async function validateExportStructure(
                 }
             }
             break;
+        }
     }
 
     return {
@@ -337,9 +315,7 @@ export async function validateExportStructure(
  * @param overrides Partial context to override defaults
  * @returns Export context
  */
-export function createMockExportContext(
-    overrides: Partial<ExportContext> = {},
-): ExportContext {
+export function createMockExportContext(overrides: Partial<ExportContext> = {}): ExportContext {
     const defaultStructure: ParsedOdeStructure = {
         meta: {
             title: 'Test Project',
@@ -426,18 +402,14 @@ export async function assertHtmlContains(
  * @param timeout Timeout in ms
  * @param interval Check interval in ms
  */
-export async function waitForFile(
-    filePath: string,
-    timeout: number = 5000,
-    interval: number = 100,
-): Promise<boolean> {
+export async function waitForFile(filePath: string, timeout: number = 5000, interval: number = 100): Promise<boolean> {
     const start = Date.now();
 
     while (Date.now() - start < timeout) {
         if (await fs.pathExists(filePath)) {
             return true;
         }
-        await new Promise((resolve) => setTimeout(resolve, interval));
+        await new Promise(resolve => setTimeout(resolve, interval));
     }
 
     return false;

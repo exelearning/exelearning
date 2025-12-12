@@ -6,7 +6,7 @@
  * connections require a running server. For E2E WebSocket tests,
  * use Playwright tests.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { Kysely } from 'kysely';
 import * as Y from 'yjs';
 import {
@@ -130,11 +130,7 @@ describe('Yjs Collaboration Integration', () => {
             expect(docId).toBeGreaterThan(0);
 
             // Verify it was stored
-            const stored = await db
-                .selectFrom('yjs_documents')
-                .selectAll()
-                .where('id', '=', docId)
-                .executeTakeFirst();
+            const stored = await db.selectFrom('yjs_documents').selectAll().where('id', '=', docId).executeTakeFirst();
 
             expect(stored).toBeDefined();
             expect(stored?.project_id).toBe(testProjectId);

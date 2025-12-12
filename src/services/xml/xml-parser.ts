@@ -316,10 +316,8 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
                             order: comp.odeComponentsOrder || 0,
                             // For JSON iDevices: use jsonProperties as primary source
                             // For HTML iDevices: use htmlView as primary source
-                            content: isJson ? '' : (comp.htmlView || ''),
-                            data: isJson && comp.jsonProperties
-                                ? JSON.parse(comp.jsonProperties)
-                                : {},
+                            content: isJson ? '' : comp.htmlView || '',
+                            data: isJson && comp.jsonProperties ? JSON.parse(comp.jsonProperties) : {},
                         });
                     }
                 }

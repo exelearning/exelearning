@@ -132,9 +132,7 @@ export default class IdevicesEngine {
         let afterElement = this.getDragAfterElement(ypos, otherElements);
         if (afterElement) {
             // Insert before element of container
-            if (container == afterElement.parentNode) {
-                afterElement = afterElement;
-            } else {
+            if (container !== afterElement.parentNode) {
                 afterElement = afterElement.parentNode;
             }
             container.insertBefore(this.draggedElement, afterElement);

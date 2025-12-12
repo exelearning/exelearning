@@ -88,7 +88,6 @@ export function loadIdeviceConfigs(customBasePath?: string): void {
             // Also store by directory name (for legacy compatibility)
             configCache.set(entry.name, config);
             configCache.set(entry.name.toLowerCase(), config);
-
         } catch (err) {
             console.warn(`[IdeviceConfig] Failed to parse ${configPath}:`, err);
         }

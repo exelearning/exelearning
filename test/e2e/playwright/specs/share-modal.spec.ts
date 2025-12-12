@@ -9,10 +9,7 @@ test.describe('Share Modal', () => {
     });
 
     test.describe('Modal Opening', () => {
-        test('should open share modal when clicking share button', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should open share modal when clicking share button', async ({ authenticatedPage, createProject }) => {
             // Create a project first
             const projectUuid = await createProject(authenticatedPage, 'Test Share Project');
 
@@ -31,10 +28,7 @@ test.describe('Share Modal', () => {
             expect(await shareModal.isVisible()).toBeTruthy();
         });
 
-        test('should display project title in modal header', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should display project title in modal header', async ({ authenticatedPage, createProject }) => {
             const projectTitle = 'My Unique Project Title';
             const projectUuid = await createProject(authenticatedPage, projectTitle);
 
@@ -86,9 +80,7 @@ test.describe('Share Modal', () => {
             const expectedLink = await shareModal.getShareLink();
 
             // Grant clipboard permissions
-            await authenticatedPage
-                .context()
-                .grantPermissions(['clipboard-read', 'clipboard-write']);
+            await authenticatedPage.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
             // Click copy button
             await shareModal.clickCopyLink();
@@ -97,16 +89,11 @@ test.describe('Share Modal', () => {
             await authenticatedPage.waitForTimeout(500);
 
             // Verify clipboard content
-            const clipboardContent = await authenticatedPage.evaluate(() =>
-                navigator.clipboard.readText(),
-            );
+            const clipboardContent = await authenticatedPage.evaluate(() => navigator.clipboard.readText());
             expect(clipboardContent).toBe(expectedLink);
         });
 
-        test('should show "Copied!" feedback after copying', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should show "Copied!" feedback after copying', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Feedback Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -117,9 +104,7 @@ test.describe('Share Modal', () => {
 
             await shareModal.waitForOpen();
 
-            await authenticatedPage
-                .context()
-                .grantPermissions(['clipboard-read', 'clipboard-write']);
+            await authenticatedPage.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
             await shareModal.clickCopyLink();
 
@@ -130,10 +115,7 @@ test.describe('Share Modal', () => {
     });
 
     test.describe('Visibility Settings', () => {
-        test('should display visibility selector for owner', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should display visibility selector for owner', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Visibility Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -149,10 +131,7 @@ test.describe('Share Modal', () => {
             expect(await shareModal.isVisibilitySelectDisabled()).toBeFalsy();
         });
 
-        test('should change visibility from private to public', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should change visibility from private to public', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Toggle Visibility Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -178,10 +157,7 @@ test.describe('Share Modal', () => {
             expect(currentVisibility).toBe(newVisibility);
         });
 
-        test('should show/hide help text based on visibility', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should show/hide help text based on visibility', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Help Text Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -209,10 +185,7 @@ test.describe('Share Modal', () => {
     });
 
     test.describe('Invite Section', () => {
-        test('should show invite section for project owner', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should show invite section for project owner', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Owner Invite Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -227,10 +200,7 @@ test.describe('Share Modal', () => {
             expect(await shareModal.isInviteSectionVisible()).toBeTruthy();
         });
 
-        test('should show error for invalid email format', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should show error for invalid email format', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Invalid Email Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -252,10 +222,7 @@ test.describe('Share Modal', () => {
             expect(error.length).toBeGreaterThan(0);
         });
 
-        test('should show error for non-existent user', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should show error for non-existent user', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Non-existent User Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -279,10 +246,7 @@ test.describe('Share Modal', () => {
     });
 
     test.describe('People List', () => {
-        test('should display owner in people list', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should display owner in people list', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'People List Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -300,16 +264,13 @@ test.describe('Share Modal', () => {
             expect(collaborators.length).toBeGreaterThanOrEqual(1);
 
             // One should be the owner
-            const owner = collaborators.find((c) => c.isOwner);
+            const owner = collaborators.find(c => c.isOwner);
             expect(owner).toBeDefined();
         });
     });
 
     test.describe('Modal Closing', () => {
-        test('should close modal when clicking Done button', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should close modal when clicking Done button', async ({ authenticatedPage, createProject }) => {
             const projectUuid = await createProject(authenticatedPage, 'Close Modal Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
