@@ -124,6 +124,7 @@
     "wait-on": "^9.0.3"
   },
   "build": {
+    "npmRebuild": false,
     "appId": "es.intef.exelearning",
     "productName": "eXeLearning",
     "directories": {
