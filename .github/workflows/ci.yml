@@ -87,6 +87,9 @@ jobs:
       - name: Frontend Tests
         run: make test-frontend
 
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
       - name: E2E Tests
         run: make test-e2e
 

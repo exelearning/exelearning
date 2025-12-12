@@ -35,6 +35,54 @@ function removeUnusedLocales(resourcesPath, keepLocales = ['en.lproj', 'es.lproj
   }
 }
 
+/**
+ * Remove the wrong-architecture server executable for universal app support.
+ * When building for arm64, remove the x64 server; when building for x64, remove the arm64 server.
+ * This prevents electron-builder from failing when merging into a universal binary.
+ *
+ * @param {string} resourcesPath - Path to Resources directory.
+ * @param {string} arch - Current build architecture ('arm64', 'x64', or 'universal').
+ */
+function removeWrongArchServer(resourcesPath, arch) {
+  console.log(`[afterPack] server: checking arch=${arch}, resourcesPath=${resourcesPath}`);
+  const distPath = path.join(resourcesPath, 'dist');
+  if (!fs.existsSync(distPath)) {
+    console.log(`[afterPack] server: dist path not found: ${distPath}`);
+    return;
+  }
+
+  // List all files in dist for debugging
+  try {
+    const files = fs.readdirSync(distPath);
+    console.log(`[afterPack] server: files in dist: ${files.filter(f => f.includes('server')).join(', ')}`);
+  } catch (e) {}
+
+  // Determine which file to remove based on architecture
+  let fileToRemove = null;
+  if (arch === 'arm64') {
+    fileToRemove = 'exelearning-server-x64';
+  } else if (arch === 'x64') {
+    fileToRemove = 'exelearning-server-arm64';
+  }
+  // For 'universal' arch, keep both (handled by electron-builder merge)
+
+  console.log(`[afterPack] server: fileToRemove=${fileToRemove}`);
+
+  if (fileToRemove) {
+    const fullPath = path.join(distPath, fileToRemove);
+    if (fs.existsSync(fullPath)) {
+      try {
+        fs.unlinkSync(fullPath);
+        console.log(`[afterPack] server: removed ${fileToRemove} (building for ${arch})`);
+      } catch (err) {
+        console.warn(`[afterPack] server: failed to remove ${fileToRemove}`, err);
+      }
+    } else {
+      console.log(`[afterPack] server: file not found: ${fullPath}`);
+    }
+  }
+}
+
 module.exports = async (context) => {
   if (context.electronPlatformName !== 'darwin') return;
 
@@ -58,6 +106,10 @@ module.exports = async (context) => {
   const keepLocales = ['en.lproj', 'es.lproj'];
 
   removeUnusedLocales(resourcesPath, keepLocales);
+
+  // Remove wrong-architecture server executable for universal app support
+  const appResourcesPath = path.join(context.appOutDir, appName, 'Contents', 'Resources');
+  removeWrongArchServer(appResourcesPath, context.arch);
 
   // If you also want to try alternate locations for Resources (some builds differ),
   // uncomment and adapt the following examples:
