@@ -351,6 +351,14 @@ class AssetManager {
     // 4. Check if already exists (same content = same ID)
     const existing = await this.getAsset(assetId);
     if (existing) {
+      // Ensure blob URL is in cache for immediate availability
+      if (!this.blobURLCache.has(assetId) && existing.blob) {
+        const blobUrl = URL.createObjectURL(existing.blob);
+        this.blobURLCache.set(assetId, blobUrl);
+        this.reverseBlobCache.set(blobUrl, assetId);
+        Logger.log(`[AssetManager] Cached existing blob URL for ${assetId}`);
+      }
+
       // Check if asset belongs to current project
       if (existing.projectId === this.projectId) {
         Logger.log(`[AssetManager] Asset already exists for this project: ${assetId}`);
@@ -390,7 +398,13 @@ class AssetManager {
     await this.putAsset(asset);
     Logger.log(`[AssetManager] Stored new asset ${assetId}`);
 
-    // 6. Return asset:// URL with filename (e.g., asset://uuid/image.jpg)
+    // 6. Add to blob URL cache immediately for instant availability
+    const blobUrl = URL.createObjectURL(blob);
+    this.blobURLCache.set(assetId, blobUrl);
+    this.reverseBlobCache.set(blobUrl, assetId);
+    Logger.log(`[AssetManager] Cached blob URL for ${assetId}`);
+
+    // 7. Return asset:// URL with filename (e.g., asset://uuid/image.jpg)
     return `asset://${assetId}/${file.name}`;
   }
 
@@ -1017,8 +1031,43 @@ class AssetManager {
    * @returns {string}
    */
   generatePlaceholder(text, type = 'notfound') {
+    // For loading type, use animated spinner (matching app loading screen)
+    if (type === 'loading') {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200">
+        <rect width="300" height="200" fill="#f8f9fa"/>
+        <g transform="translate(150, 100)">
+          <circle cx="0" cy="0" r="24" fill="none" stroke="#26DDC7" stroke-width="3" stroke-linecap="round"
+                  stroke-dasharray="1 200" stroke-dashoffset="0">
+            <animate attributeName="stroke-dasharray"
+                     values="1 200; 100 200; 1 200"
+                     dur="1.5s"
+                     repeatCount="indefinite"
+                     keyTimes="0;0.5;1"
+                     calcMode="spline"
+                     keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
+            <animate attributeName="stroke-dashoffset"
+                     values="0; -45; -180"
+                     dur="1.5s"
+                     repeatCount="indefinite"
+                     keyTimes="0;0.5;1"
+                     calcMode="spline"
+                     keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
+          </circle>
+          <animateTransform attributeName="transform"
+                            attributeType="XML"
+                            type="rotate"
+                            from="0 0 0"
+                            to="360 0 0"
+                            dur="2s"
+                            repeatCount="indefinite"
+                            additive="sum"/>
+        </g>
+      </svg>`;
+      return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    }
+
+    // For other types, use static placeholder with icon
     const colors = {
-      loading: { bg: '#e3f2fd', text: '#1976d2', icon: '&#8987;' }, // Blue, hourglass
       error: { bg: '#ffebee', text: '#c62828', icon: '&#9888;' },   // Red, warning
       notfound: { bg: '#f0f0f0', text: '#999', icon: '&#128247;' }, // Gray, camera
     };

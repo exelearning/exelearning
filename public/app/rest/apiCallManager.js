@@ -1157,8 +1157,19 @@ export default class ApiCallManager {
                 order: block.order,
                 odeNavStructureSyncId: pageId,
                 odeComponentsSyncs: components.map(comp => {
-                    const htmlView = comp.htmlContent || '';
+                    let htmlView = comp.htmlContent || '';
                     console.debug(`[apiCallManager] _getComponentsByPageFromYjs: Component ${comp.id} htmlView length: ${htmlView.length}`);
+
+                    // Resolve asset:// URLs to blob:// URLs for display
+                    // This ensures assets are immediately visible after import
+                    const assetManager = bridge?.assetManager;
+                    if (assetManager && htmlView.includes('asset://')) {
+                        htmlView = assetManager.resolveHTMLAssetsSync(htmlView, {
+                            usePlaceholder: true,
+                            addTracking: true
+                        });
+                    }
+
                     return {
                         id: comp.id,
                         odeId: comp.id,
