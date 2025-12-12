@@ -1735,7 +1735,11 @@ class YjsProjectBridge {
     const installedThemes = eXeLearning.app.themes?.list?.installed || {};
     if (Object.keys(installedThemes).includes(themeName)) {
       Logger.log(`[YjsProjectBridge] Theme "${themeName}" already installed, selecting it`);
-      eXeLearning.app.themes.selectTheme(themeName, true);
+      await eXeLearning.app.themes.selectTheme(themeName, true);
+      // Refresh navbar styles list so it shows correct selection when opened
+      if (eXeLearning.app.menus?.navbar?.styles?.updateThemes) {
+        eXeLearning.app.menus.navbar.styles.updateThemes();
+      }
       return;
     }
 
@@ -1794,7 +1798,11 @@ class YjsProjectBridge {
           if (response.responseMessage === 'OK' && response.themes) {
             // Reload theme list and select imported theme
             eXeLearning.app.themes.list.loadThemes(response.themes.themes);
-            eXeLearning.app.themes.selectTheme(themeName, true);
+            await eXeLearning.app.themes.selectTheme(themeName, true);
+            // Refresh navbar styles list so it shows correct selection when opened
+            if (eXeLearning.app.menus?.navbar?.styles?.updateThemes) {
+              eXeLearning.app.menus.navbar.styles.updateThemes();
+            }
             Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
           } else {
             console.error('[YjsProjectBridge] Theme import failed:', response.responseMessage);

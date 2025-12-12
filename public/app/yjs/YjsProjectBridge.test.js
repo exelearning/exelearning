@@ -410,4 +410,107 @@ describe('YjsProjectBridge', () => {
       expect(result).toHaveProperty('success');
     });
   });
+
+  describe('_checkAndImportTheme', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('should call updateThemes after selecting an installed theme', async () => {
+      // Setup mock for installed themes and navbar styles
+      const mockUpdateThemes = mock(() => undefined);
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: { 'test-theme': { id: 'test-theme', name: 'test-theme' } },
+            },
+            selectTheme: mockSelectTheme,
+          },
+          menus: {
+            navbar: {
+              styles: {
+                updateThemes: mockUpdateThemes,
+              },
+            },
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+        },
+      };
+
+      // Call the method
+      await bridge._checkAndImportTheme('test-theme', null);
+
+      // Verify selectTheme was called with correct args
+      expect(mockSelectTheme).toHaveBeenCalledWith('test-theme', true);
+
+      // Verify updateThemes was called to refresh UI
+      expect(mockUpdateThemes).toHaveBeenCalled();
+    });
+
+    it('should not call updateThemes when theme is not installed', async () => {
+      const mockUpdateThemes = mock(() => undefined);
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: {}, // No themes installed
+            },
+            selectTheme: mockSelectTheme,
+          },
+          menus: {
+            navbar: {
+              styles: {
+                updateThemes: mockUpdateThemes,
+              },
+            },
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+        },
+      };
+
+      // Mock JSZip to avoid trying to read the file
+      global.window.JSZip = {
+        loadAsync: mock(() =>
+          Promise.resolve({
+            file: mock(() => null), // No theme/config.xml in package
+          })
+        ),
+      };
+
+      await bridge._checkAndImportTheme('unknown-theme', new Blob());
+
+      // selectTheme should be called with default theme (fallback)
+      expect(mockSelectTheme).toHaveBeenCalledWith('base', false);
+
+      // updateThemes should NOT be called for default theme fallback
+      expect(mockUpdateThemes).not.toHaveBeenCalled();
+    });
+
+    it('should return early if themeName is empty', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: { installed: {} },
+            selectTheme: mockSelectTheme,
+          },
+        },
+      };
+
+      await bridge._checkAndImportTheme('', null);
+
+      // selectTheme should NOT be called
+      expect(mockSelectTheme).not.toHaveBeenCalled();
+    });
+  });
 });
