@@ -278,7 +278,11 @@ describe('Themes Routes', () => {
                     readFileSync: fs.readFileSync,
                     readdirSync: (dirPath: any, options?: any) => {
                         // Throw on theme directory reads for CSS/JS scanning
-                        if (typeof dirPath === 'string' && dirPath.includes('themes/base/base') && !dirPath.includes('icons')) {
+                        if (
+                            typeof dirPath === 'string' &&
+                            dirPath.includes('themes/base/base') &&
+                            !dirPath.includes('icons')
+                        ) {
                             callCount++;
                             if (callCount <= 2) {
                                 // Throw for first two calls (CSS and JS scanning)
@@ -336,7 +340,11 @@ describe('Themes Routes', () => {
                     readdirSync: (dirPath: any, options?: any) => {
                         const entries = fs.readdirSync(dirPath, options);
                         // Filter out CSS files for theme directory
-                        if (typeof dirPath === 'string' && dirPath.includes('themes/base/base') && !dirPath.includes('icons')) {
+                        if (
+                            typeof dirPath === 'string' &&
+                            dirPath.includes('themes/base/base') &&
+                            !dirPath.includes('icons')
+                        ) {
                             return entries.filter((e: any) => !e.name?.endsWith('.css'));
                         }
                         return entries;
