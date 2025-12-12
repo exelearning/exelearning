@@ -12,13 +12,45 @@ import * as path from 'path';
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
 const THEMES_USERS_PATH = 'public/files/perm/themes/users';
 
+/**
+ * Dependency injection for testing
+ */
+export interface ThemesRouteDependencies {
+    fs: {
+        existsSync: typeof fs.existsSync;
+        readFileSync: typeof fs.readFileSync;
+        readdirSync: typeof fs.readdirSync;
+    };
+    getEnv: (key: string) => string | undefined;
+}
+
+const defaultDeps: ThemesRouteDependencies = {
+    fs: {
+        existsSync: fs.existsSync,
+        readFileSync: fs.readFileSync,
+        readdirSync: fs.readdirSync,
+    },
+    getEnv: (key: string) => process.env[key],
+};
+
+let deps = defaultDeps;
+
+export function configure(newDeps: Partial<ThemesRouteDependencies>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+export function resetDependencies(): void {
+    deps = defaultDeps;
+}
+
 // Get app version for cache busting URLs
 const getAppVersion = (): string => {
-    if (process.env.APP_VERSION) {
-        return process.env.APP_VERSION;
+    const envVersion = deps.getEnv('APP_VERSION');
+    if (envVersion) {
+        return envVersion;
     }
     try {
-        const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+        const packageJson = JSON.parse(deps.fs.readFileSync('package.json', 'utf-8'));
         return `v${packageJson.version}`;
     } catch {
         return 'v0.0.0';
@@ -65,9 +97,9 @@ interface ThemeConfig {
 function scanThemeFiles(themePath: string, extension: string): string[] {
     try {
         const files: string[] = [];
-        if (!fs.existsSync(themePath)) return files;
+        if (!deps.fs.existsSync(themePath)) return files;
 
-        const entries = fs.readdirSync(themePath, { withFileTypes: true });
+        const entries = deps.fs.readdirSync(themePath, { withFileTypes: true });
         for (const entry of entries) {
             if (entry.isFile() && entry.name.endsWith(extension)) {
                 files.push(entry.name);
@@ -85,9 +117,9 @@ function scanThemeFiles(themePath: string, extension: string): string[] {
 function scanThemeIcons(themePath: string, themeUrl: string): Record<string, ThemeIcon> {
     try {
         const iconsPath = path.join(themePath, 'icons');
-        if (!fs.existsSync(iconsPath)) return {};
+        if (!deps.fs.existsSync(iconsPath)) return {};
 
-        const entries = fs.readdirSync(iconsPath, { withFileTypes: true });
+        const entries = deps.fs.readdirSync(iconsPath, { withFileTypes: true });
         const icons: Record<string, ThemeIcon> = {};
 
         for (const entry of entries) {
@@ -212,11 +244,11 @@ function parseThemeConfig(
 function scanThemes(basePath: string, type: 'base' | 'user'): ThemeConfig[] {
     const themes: ThemeConfig[] = [];
 
-    if (!fs.existsSync(basePath)) {
+    if (!deps.fs.existsSync(basePath)) {
         return themes;
     }
 
-    const entries = fs.readdirSync(basePath, { withFileTypes: true });
+    const entries = deps.fs.readdirSync(basePath, { withFileTypes: true });
 
     for (const entry of entries) {
         if (!entry.isDirectory() || entry.name.startsWith('.')) {
@@ -224,8 +256,8 @@ function scanThemes(basePath: string, type: 'base' | 'user'): ThemeConfig[] {
         }
 
         const configPath = path.join(basePath, entry.name, 'config.xml');
-        if (fs.existsSync(configPath)) {
-            const xmlContent = fs.readFileSync(configPath, 'utf-8');
+        if (deps.fs.existsSync(configPath)) {
+            const xmlContent = deps.fs.readFileSync(configPath, 'utf-8');
             const config = parseThemeConfig(xmlContent, entry.name, path.join(basePath, entry.name), type);
             if (config) {
                 themes.push(config);
@@ -266,19 +298,19 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
         let themePath = path.join(THEMES_USERS_PATH, themeId);
         let type: 'base' | 'user' = 'user';
 
-        if (!fs.existsSync(configPath)) {
+        if (!deps.fs.existsSync(configPath)) {
             // Fall back to base themes
             configPath = path.join(THEMES_BASE_PATH, themeId, 'config.xml');
             themePath = path.join(THEMES_BASE_PATH, themeId);
             type = 'base';
         }
 
-        if (!fs.existsSync(configPath)) {
+        if (!deps.fs.existsSync(configPath)) {
             set.status = 404;
             return { error: 'Not Found', message: `Theme ${themeId} not found` };
         }
 
-        const xmlContent = fs.readFileSync(configPath, 'utf-8');
+        const xmlContent = deps.fs.readFileSync(configPath, 'utf-8');
         const config = parseThemeConfig(xmlContent, themeId, themePath, type);
 
         if (!config) {

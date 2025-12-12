@@ -38,7 +38,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Get port from environment (default: 8080)
-const PORT = parseInt(process.env.PORT || '8080', 10);
+// APP_PORT is used by Electron, PORT is standard convention
+const PORT = parseInt(process.env.APP_PORT || process.env.PORT || '8080', 10);
 
 const app = new Elysia()
     // === GLOBAL ERROR HANDLER ===
