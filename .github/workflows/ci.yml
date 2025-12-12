@@ -84,6 +84,9 @@ jobs:
       - name: Integration Tests
         run: make test-integration
 
+      - name: Build CSS (prod)
+        run: make css
+
       - name: Frontend Tests
         run: make test-frontend
 
@@ -100,9 +103,6 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
-
-      - name: Build CSS (prod)
-        run: make css
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

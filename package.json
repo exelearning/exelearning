@@ -302,7 +302,7 @@
       "icon": "public/exe_elp.icns",
       "entitlements": "packaging/entitlements.mac.plist",
       "entitlementsInherit": "packaging/entitlements.mac.inherit.plist",
-      "x64ArchFiles": "**/exelearning-server-x64"
+      "singleArchFiles": "**/exelearning-server-*"
     },
     "dmg": {
       "format": "ULFO"

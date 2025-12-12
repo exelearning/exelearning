@@ -57,31 +57,11 @@ function removeWrongArchServer(resourcesPath, arch) {
     console.log(`[afterPack] server: files in dist: ${files.filter(f => f.includes('server')).join(', ')}`);
   } catch (e) {}
 
-  // Determine which file to remove based on architecture
-  // electron-builder uses numeric Arch enum: x64=1, arm64=3, universal=4
-  let fileToRemove = null;
-  if (arch === 3) { // arm64
-    fileToRemove = 'exelearning-server-x64';
-  } else if (arch === 1) { // x64
-    fileToRemove = 'exelearning-server-arm64';
-  }
-  // For universal (4), keep both (handled by electron-builder merge)
-
-  console.log(`[afterPack] server: fileToRemove=${fileToRemove}`);
-
-  if (fileToRemove) {
-    const fullPath = path.join(distPath, fileToRemove);
-    if (fs.existsSync(fullPath)) {
-      try {
-        fs.unlinkSync(fullPath);
-        console.log(`[afterPack] server: removed ${fileToRemove} (building for ${arch})`);
-      } catch (err) {
-        console.warn(`[afterPack] server: failed to remove ${fileToRemove}`, err);
-      }
-    } else {
-      console.log(`[afterPack] server: file not found: ${fullPath}`);
-    }
-  }
+  // Note: We keep both server executables in both builds.
+  // The singleArchFiles config in package.json tells electron-builder's
+  // universal merger to NOT try to merge these files (they're arch-specific).
+  // At runtime, main.js selects the correct one based on process.arch.
+  console.log(`[afterPack] server: arch=${arch}, keeping both server executables (singleArchFiles handles merging)`);
 }
 
 module.exports = async (context) => {
