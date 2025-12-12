@@ -1314,12 +1314,16 @@ export default class projectManager {
      *
      */
     async initialiceProject() {
-        // Select theme
-        let theme = eXeLearning.config.defaultTheme;
-        if (this.app.user.preferences.preferences.theme) {
-            theme = this.app.user.preferences.preferences.theme.value;
+        // Select theme - Yjs takes precedence
+        // If Yjs mode is enabled and a theme was already set from Yjs metadata,
+        // don't override it with user preferences or default
+        if (!this._yjsEnabled || !this.app.themes.selected) {
+            let theme = eXeLearning.config.defaultTheme;
+            if (this.app.user.preferences.preferences.theme) {
+                theme = this.app.user.preferences.preferences.theme.value;
+            }
+            await this.app.themes.selectTheme(theme, false);
         }
-        await this.app.themes.selectTheme(theme, false);
         // Select node and load idevices in page
         await this.lastNodeSelected();
     }
