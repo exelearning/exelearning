@@ -476,9 +476,7 @@ describe('Export Routes', () => {
                         ],
                     },
                 ],
-                navigation: [
-                    { id: 'nav-1', navText: 'Primera Página' },
-                ],
+                navigation: [{ id: 'nav-1', navText: 'Primera Página' }],
             };
 
             const res = await app.handle(
@@ -608,7 +606,10 @@ describe('convertYjsStructureToParsed', () => {
                                     htmlContent: '',
                                     properties: {
                                         questions: ['Q1', 'Q2'],
-                                        answers: [[1, 2], [3, 4]],
+                                        answers: [
+                                            [1, 2],
+                                            [3, 4],
+                                        ],
                                         passScore: 80,
                                     },
                                 },
@@ -625,7 +626,10 @@ describe('convertYjsStructureToParsed', () => {
 
         expect(comp.properties).toEqual({
             questions: ['Q1', 'Q2'],
-            answers: [[1, 2], [3, 4]],
+            answers: [
+                [1, 2],
+                [3, 4],
+            ],
             passScore: 80,
         });
     });
@@ -702,9 +706,7 @@ describe('convertYjsStructureToParsed', () => {
     it('should handle empty blocks array', () => {
         const yjs: YjsExportStructure = {
             meta: { title: 'Test' },
-            pages: [
-                { id: 'page-1', pageName: 'Empty Page', blocks: [] },
-            ],
+            pages: [{ id: 'page-1', pageName: 'Empty Page', blocks: [] }],
             navigation: [],
         };
 
@@ -716,9 +718,7 @@ describe('convertYjsStructureToParsed', () => {
     it('should handle undefined blocks', () => {
         const yjs: YjsExportStructure = {
             meta: { title: 'Test' },
-            pages: [
-                { id: 'page-1', pageName: 'No Blocks Page' } as any,
-            ],
+            pages: [{ id: 'page-1', pageName: 'No Blocks Page' } as any],
             navigation: [],
         };
 
@@ -734,9 +734,7 @@ describe('convertYjsStructureToParsed', () => {
                 {
                     id: 'page-1',
                     pageName: 'Page',
-                    blocks: [
-                        { id: 'block-1', blockName: 'Empty Block', components: [] },
-                    ],
+                    blocks: [{ id: 'block-1', blockName: 'Empty Block', components: [] }],
                 },
             ],
             navigation: [],
@@ -797,9 +795,7 @@ describe('convertYjsStructureToParsed', () => {
                         {
                             id: 'block-1',
                             // No blockName
-                            components: [
-                                { id: 'comp-1', ideviceType: 'TextIdevice' },
-                            ],
+                            components: [{ id: 'comp-1', ideviceType: 'TextIdevice' }],
                         },
                     ],
                 },
@@ -838,17 +834,13 @@ describe('convertYjsStructureToParsed', () => {
 
         const result = convertYjsStructureToParsed(yjs);
 
-        expect(result.pages[0].components[0].content).toBe(
-            '<h1>Title</h1><p>Paragraph with <strong>bold</strong></p>',
-        );
+        expect(result.pages[0].components[0].content).toBe('<h1>Title</h1><p>Paragraph with <strong>bold</strong></p>');
     });
 
     it('should handle orphan pages (invalid parentId)', () => {
         const yjs: YjsExportStructure = {
             meta: { title: 'Test' },
-            pages: [
-                { id: 'page-1', pageName: 'Orphan', parentId: 'non-existent-parent', blocks: [] },
-            ],
+            pages: [{ id: 'page-1', pageName: 'Orphan', parentId: 'non-existent-parent', blocks: [] }],
             navigation: [],
         };
 

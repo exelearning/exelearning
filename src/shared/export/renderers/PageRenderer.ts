@@ -14,7 +14,7 @@
  * This is a TypeScript port of public/app/yjs/exporters/renderers/PageHtmlRenderer.js
  */
 
-import type { ExportPage, ExportBlock, PageRenderOptions } from '../interfaces';
+import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
 
 /**
@@ -421,7 +421,7 @@ ${userFooterHtml}</div></footer>`;
      * @param basePath - Base path for URLs
      * @returns JSON string with page structure
      */
-    generateSearchData(allPages: ExportPage[], basePath: string): string {
+    generateSearchData(allPages: ExportPage[], _basePath: string): string {
         const pagesData: Record<string, unknown> = {};
 
         for (let i = 0; i < allPages.length; i++) {
@@ -615,10 +615,6 @@ ${this.renderLicense({ author, license })}
      */
     escapeAttr(str: string): string {
         if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 }

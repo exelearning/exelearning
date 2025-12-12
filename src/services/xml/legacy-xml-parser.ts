@@ -165,9 +165,7 @@ function extractMetadata(instance: unknown): LegacyMetadata {
                 const strItem = strings[i] as Record<string, unknown> | string;
                 // Legacy format: <string role="key" value="_title"></string>
                 // Parsed as: { "@_role": "key", "@_value": "_title" }
-                const strValue = typeof strItem === 'object' && strItem !== null
-                    ? strItem['@_value']
-                    : strItem;
+                const strValue = typeof strItem === 'object' && strItem !== null ? strItem['@_value'] : strItem;
 
                 if (strValue === key && unicodes[i]) {
                     const unicodeItem = unicodes[i] as Record<string, unknown>;
@@ -407,15 +405,14 @@ function extractIdeviceTitle(inst: LegacyInstanceNode): string {
 
         for (let i = 0; i < strings.length; i++) {
             const strItem = strings[i] as Record<string, unknown> | string;
-            const strValue = typeof strItem === 'object' && strItem !== null
-                ? strItem['@_value']
-                : strItem;
+            const strValue = typeof strItem === 'object' && strItem !== null ? strItem['@_value'] : strItem;
 
             if ((strValue === '_title' || strValue === 'title') && unicodes[i]) {
                 const unicodeItem = unicodes[i] as Record<string, unknown>;
-                const title = typeof unicodeItem === 'object' && unicodeItem !== null
-                    ? (unicodeItem['@_value'] as string)
-                    : String(unicodeItem);
+                const title =
+                    typeof unicodeItem === 'object' && unicodeItem !== null
+                        ? (unicodeItem['@_value'] as string)
+                        : String(unicodeItem);
                 if (title && title.trim()) {
                     return title;
                 }
@@ -442,7 +439,11 @@ function extractIdeviceTitle(inst: LegacyInstanceNode): string {
  * @param _defaultBlockName - Default block name (unused - each iDevice gets its own)
  * @returns Array of normalized components, each with its own blockName
  */
-function extractComponents(node: LegacyInstanceNode, _pageId: string, _defaultBlockName: string): NormalizedComponent[] {
+function extractComponents(
+    node: LegacyInstanceNode,
+    _pageId: string,
+    _defaultBlockName: string,
+): NormalizedComponent[] {
     const components: NormalizedComponent[] = [];
 
     if (!node.dictionary?.list) return components;
@@ -614,36 +615,37 @@ function convertPagesToRealOdeNavStructures(pages: NormalizedPage[]): RealOdeNav
             // LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
             // Each iDevice gets its own block (odePagStructure) to preserve its title.
             // This prevents loss of iDevice titles that would occur if all were in one block.
-            odePagStructure: page.components.length > 0
-                ? page.components.map((comp, idx) => ({
-                      odePageId: page.id,
-                      odeBlockId: generateId(),
-                      // Use the iDevice's title as the block name
-                      blockName: comp.blockName || comp.title || '',
-                      odePagStructureOrder: idx,
-                      odeComponents: {
-                          odeComponent: [
-                              {
-                                  odePageId: page.id,
-                                  odeBlockId: generateId(),
-                                  odeIdeviceId: comp.id,
-                                  odeIdeviceTypeName: comp.type,
-                                  htmlView: comp.content,
-                                  jsonProperties: comp.data ? JSON.stringify(comp.data) : undefined,
-                                  odeComponentsOrder: 0, // Always 0 since there's only one iDevice per block
-                              },
-                          ],
-                      },
-                  }))
-                : [
-                      {
+            odePagStructure:
+                page.components.length > 0
+                    ? page.components.map((comp, idx) => ({
                           odePageId: page.id,
                           odeBlockId: generateId(),
-                          blockName: page.title,
-                          odePagStructureOrder: 0,
-                          odeComponents: undefined,
-                      },
-                  ],
+                          // Use the iDevice's title as the block name
+                          blockName: comp.blockName || comp.title || '',
+                          odePagStructureOrder: idx,
+                          odeComponents: {
+                              odeComponent: [
+                                  {
+                                      odePageId: page.id,
+                                      odeBlockId: generateId(),
+                                      odeIdeviceId: comp.id,
+                                      odeIdeviceTypeName: comp.type,
+                                      htmlView: comp.content,
+                                      jsonProperties: comp.data ? JSON.stringify(comp.data) : undefined,
+                                      odeComponentsOrder: 0, // Always 0 since there's only one iDevice per block
+                                  },
+                              ],
+                          },
+                      }))
+                    : [
+                          {
+                              odePageId: page.id,
+                              odeBlockId: generateId(),
+                              blockName: page.title,
+                              odePagStructureOrder: 0,
+                              odeComponents: undefined,
+                          },
+                      ],
         },
     }));
 }

@@ -384,3 +384,4 @@ app.use(myFeatureRoutes);
 - GitHub: https://github.com/exelearning/exelearning
 - Documentation: https://exelearning.net/
 - Branch: `epic/migrate-to-elysia`
+- always use `make fix` to autocorrect lint issues and to check lint issues after coding

@@ -318,9 +318,9 @@ describe('legacy-xml-parser', () => {
             // After flattening: root stays at 0, level1 (direct child) promoted to 0, level2 at 1
             expect(root?.level).toBe(0);
             expect(root?.parent_id).toBe(null);
-            expect(level1?.level).toBe(0);      // Promoted from level 1
+            expect(level1?.level).toBe(0); // Promoted from level 1
             expect(level1?.parent_id).toBe(null); // No longer child of root
-            expect(level2?.level).toBe(1);      // Adjusted from level 2
+            expect(level2?.level).toBe(1); // Adjusted from level 2
             expect(level2?.parent_id).toBe('level1'); // Parent relationship preserved
         });
 
@@ -1073,9 +1073,7 @@ describe('legacy-xml-parser', () => {
             const navStructures = result.raw?.ode?.odeNavStructures?.odeNavStructure;
             expect(navStructures).toBeDefined();
 
-            const pageNav = Array.isArray(navStructures)
-                ? navStructures[0]
-                : navStructures;
+            const pageNav = Array.isArray(navStructures) ? navStructures[0] : navStructures;
 
             // Should have 2 blocks (odePagStructure entries)
             const pagStructures = pageNav.odePagStructures?.odePagStructure;
@@ -1130,9 +1128,7 @@ describe('legacy-xml-parser', () => {
 
             // Get the raw structure
             const navStructures = result.raw?.ode?.odeNavStructures?.odeNavStructure;
-            const pageNav = Array.isArray(navStructures)
-                ? navStructures[0]
-                : navStructures;
+            const pageNav = Array.isArray(navStructures) ? navStructures[0] : navStructures;
             const pagStructures = pageNav.odePagStructures?.odePagStructure;
 
             // Verify no block contains more than one iDevice

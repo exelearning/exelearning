@@ -79,9 +79,7 @@ export class IdeviceRenderer {
             // Use relative paths: "idevices/{type}/" or "../idevices/{type}/"
             // For preview mode: basePath starts with "/" (absolute), use: "{basePath}{type}/export/"
             const isPreviewMode = basePath.startsWith('/');
-            const idevicePath = isPreviewMode
-                ? `${basePath}${type}/export/`
-                : `${basePath}idevices/${type}/`;
+            const idevicePath = isPreviewMode ? `${basePath}${type}/export/` : `${basePath}idevices/${type}/`;
 
             dataAttrs = ` data-idevice-path="${this.escapeAttr(idevicePath)}"`;
             dataAttrs += ` data-idevice-type="${this.escapeAttr(type)}"`;

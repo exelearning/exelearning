@@ -415,11 +415,7 @@ function fixAssetUrls(content: string, basePath: string): string {
 /**
  * Generate complete footer section with license and optional user content
  */
-function generateFooterSection(options: {
-    license: string;
-    licenseUrl?: string;
-    userFooterContent?: string;
-}): string {
+function generateFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
     const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
 
     let userFooterHtml = '';
@@ -464,24 +460,6 @@ function generateNavButtons(page: NormalizedPage, allPages: NormalizedPage[]): s
 
     html += '\n</div>';
     return html;
-}
-
-/**
- * Generate License div
- * @deprecated Use generateFooterSection instead
- */
-function generateLicense(_structure: ParsedOdeStructure): string {
-    return `<div id="packageLicense" class="cc cc-by-sa">
-<p><span>Licensed under the</span> <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution Share Alike License 4.0</a></p>
-</div>`;
-}
-
-/**
- * Generate Pagination (Prev/Next buttons)
- * @deprecated Use generateNavButtons instead
- */
-function generatePagination(page: NormalizedPage, allPages: NormalizedPage[]): string {
-    return generateNavButtons(page, allPages);
 }
 
 /**

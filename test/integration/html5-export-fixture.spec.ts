@@ -45,7 +45,7 @@ describe('HTML5 Export Fixture Comparison', () => {
     let parsedStructure: ParsedOdeStructure;
     let exportedZip: JSZip;
     let exportedIndexHtml: string;
-    let referenceIndexHtml: string;
+    let _referenceIndexHtml: string;
 
     beforeAll(async () => {
         // Skip if fixtures don't exist
@@ -100,7 +100,7 @@ describe('HTML5 Export Fixture Comparison', () => {
         exportedIndexHtml = await exportedZip.files['index.html'].async('string');
 
         // Load reference HTML
-        referenceIndexHtml = await fs.readFile(path.join(referenceExportPath, 'index.html'), 'utf-8');
+        _referenceIndexHtml = await fs.readFile(path.join(referenceExportPath, 'index.html'), 'utf-8');
     });
 
     afterAll(async () => {
@@ -311,9 +311,7 @@ describe('HTML5 Export Fixture Comparison', () => {
             if (!exportedZip) return;
 
             // Find a subpage (not first page)
-            const subpageEntry = Object.keys(exportedZip.files).find(
-                (f) => f.startsWith('html/') && f.endsWith('.html'),
-            );
+            const subpageEntry = Object.keys(exportedZip.files).find(f => f.startsWith('html/') && f.endsWith('.html'));
 
             if (subpageEntry) {
                 const subpageHtml = await exportedZip.files[subpageEntry].async('string');
@@ -342,16 +340,14 @@ describe('HTML5 Export Fixture Comparison', () => {
         it('should contain html/ directory with subpages', async () => {
             if (!exportedZip) return;
 
-            const htmlFiles = Object.keys(exportedZip.files).filter(
-                (f) => f.startsWith('html/') && f.endsWith('.html'),
-            );
+            const htmlFiles = Object.keys(exportedZip.files).filter(f => f.startsWith('html/') && f.endsWith('.html'));
             expect(htmlFiles.length).toBeGreaterThan(0);
         });
 
         it('should contain theme/ directory', async () => {
             if (!exportedZip) return;
 
-            const themeFiles = Object.keys(exportedZip.files).filter((f) => f.startsWith('theme/'));
+            const themeFiles = Object.keys(exportedZip.files).filter(f => f.startsWith('theme/'));
             expect(themeFiles.length).toBeGreaterThan(0);
         });
 
@@ -364,7 +360,7 @@ describe('HTML5 Export Fixture Comparison', () => {
         it('should contain libs/ directory', async () => {
             if (!exportedZip) return;
 
-            const libFiles = Object.keys(exportedZip.files).filter((f) => f.startsWith('libs/'));
+            const libFiles = Object.keys(exportedZip.files).filter(f => f.startsWith('libs/'));
             expect(libFiles.length).toBeGreaterThan(0);
         });
 
@@ -416,11 +412,12 @@ describe('HTML5 Export Fixture Comparison', () => {
             // iDevices with content should NOT have db-no-data class
             // The db-no-data class indicates empty content, which is a bug
             // Note: Some iDevices may legitimately be empty, but text iDevices should have content
-            const ideviceMatches = exportedIndexHtml.match(/class="idevice_node[^"]*"/g) || [];
+            const _ideviceMatches = exportedIndexHtml.match(/class="idevice_node[^"]*"/g) || [];
 
             // Find text iDevices specifically - they should have content
-            const hasTextIdevice = exportedIndexHtml.includes('data-idevice-type="FreeTextIdevice"') ||
-                                   exportedIndexHtml.includes('data-idevice-type="text"');
+            const hasTextIdevice =
+                exportedIndexHtml.includes('data-idevice-type="FreeTextIdevice"') ||
+                exportedIndexHtml.includes('data-idevice-type="text"');
 
             if (hasTextIdevice) {
                 // Text iDevices should have exe-text class with content inside
@@ -457,14 +454,14 @@ describe('HTML5 Export Fixture Comparison', () => {
             const blockNames = pages.flatMap(p => (p.blocks || []).map(b => b.name));
 
             // At least one block should have a real name (not empty or "Block")
-            const hasRealBlockName = blockNames.some(name =>
-                name && name !== '' && name !== 'Block' && name !== 'default-block'
+            const hasRealBlockName = blockNames.some(
+                name => name && name !== '' && name !== 'Block' && name !== 'default-block',
             );
 
             if (hasRealBlockName) {
                 // Real block names should appear in the HTML as box-title
-                const firstRealBlockName = blockNames.find(name =>
-                    name && name !== '' && name !== 'Block' && name !== 'default-block'
+                const firstRealBlockName = blockNames.find(
+                    name => name && name !== '' && name !== 'Block' && name !== 'default-block',
                 );
                 if (firstRealBlockName) {
                     expect(exportedIndexHtml).toContain(firstRealBlockName);
@@ -478,9 +475,7 @@ describe('HTML5 Export Fixture Comparison', () => {
             if (!exportedZip) return;
 
             // Find a subpage
-            const subpageEntry = Object.keys(exportedZip.files).find(
-                (f) => f.startsWith('html/') && f.endsWith('.html'),
-            );
+            const subpageEntry = Object.keys(exportedZip.files).find(f => f.startsWith('html/') && f.endsWith('.html'));
 
             if (subpageEntry) {
                 const subpageHtml = await exportedZip.files[subpageEntry].async('string');
