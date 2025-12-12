@@ -3,7 +3,6 @@
     <title>Padlock</title>
     <css-class>padlock</css-class>
     <category>Games</category>
-    <component-type>json</component-type>
     <icon>
         <name>padlock-icon</name>
         <url>padlock-icon.svg</url>

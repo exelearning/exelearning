@@ -166,7 +166,7 @@ function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: str
             icon,
             version: getValue('version') || '1.0',
             apiVersion: getValue('api-version') || '3.0',
-            componentType: getValue('component-type') || 'json',
+            componentType: getValue('component-type') || 'html',
             author: getValue('author') || '',
             authorUrl: getValue('author-url') || '',
             license: getValue('license') || '',

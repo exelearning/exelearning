@@ -155,13 +155,11 @@ var $scrambledlist = {
 
         $('.exe-sortableList').each(function (instance) {
             if ($('body').hasClass('exe-epub3')) {
-                const epubDisabledMsg = (typeof $exe_i18n !== 'undefined' && $exe_i18n.epubDisabled) || 'This activity is not available in EPUB format';
-                const solutionMsg = (typeof $exe_i18n !== 'undefined' && $exe_i18n.solution) || 'Solution';
                 $(this).prepend(
                     '<p>' +
-                        epubDisabledMsg +
+                        $exe_i18n.epubDisabled +
                         '</p><p><strong>' +
-                        solutionMsg +
+                        $exe_i18n.solution +
                         ':</strong></p>'
                 );
             } else {

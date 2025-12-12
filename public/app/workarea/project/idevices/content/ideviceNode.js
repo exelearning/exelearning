@@ -58,6 +58,8 @@ export default class IdeviceNode {
         // Check if is valid
         this.checkIsValid();
 
+        this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
+
         this.nodeContainer = document.querySelector('#node-content-container');
 
         this.timeIdeviceEditing = null;
@@ -153,25 +155,9 @@ export default class IdeviceNode {
             let defaultValue =
                 this.default[param] != undefined ? this.default[param] : null;
             let value = data[param] ? data[param] : defaultValue;
-            // Handle parseParams (like jsonProperties) - support both string and object
-            if (this.parseParams.includes(param)) {
-                if (typeof value === 'object' && value !== null) {
-                    // Already an object, use directly
-                    this[param] = value;
-                } else if (typeof value === 'string') {
-                    // Parse JSON string
-                    try {
-                        this[param] = JSON.parse(value);
-                    } catch (e) {
-                        console.warn(`[IdeviceNode] Failed to parse ${param}:`, e.message);
-                        this[param] = {};
-                    }
-                } else {
-                    this[param] = {};
-                }
-            } else {
-                this[param] = value;
-            }
+            this[param] = this.parseParams.includes(param)
+                ? JSON.parse(value)
+                : value;
         }
         // Debug: Log htmlView to verify it's being set
         if (data.htmlView !== undefined) {
@@ -1352,51 +1338,44 @@ export default class IdeviceNode {
     */
 
     /**
-     * Download/export an iDevice or block as .idevice.elp or .block.elp
-     * Uses the ComponentExporter to generate the file from Yjs document in memory.
      *
-     * @param {string} odeBlockId - Block ID to export
-     * @param {string} odeIdeviceId - iDevice ID (or 'null' to export entire block)
+     * @param {*} odeBlockId
+     * @param {*} odeIdeviceId
      */
     async downloadIdeviceSelected(odeBlockId, odeIdeviceId) {
-        try {
-            // Get the Yjs document manager and asset manager from eXeLearning app
-            const documentManager = eXeLearning.app.project._yjsBridge?.getDocumentManager();
-            const assetManager = eXeLearning.app.project._yjsBridge?.assetManager;
+        let odeSessionId = eXeLearning.app.project.odeSession;
 
-            if (!documentManager) {
-                console.error('[ideviceNode] DocumentManager not available');
-                eXeLearning.app.modals.alert.show({
-                    title: _('Download error'),
-                    body: _('Document manager not available'),
-                    contentId: 'error',
-                });
-                return;
-            }
-
-            // Create ComponentExporter and configure it
-            const exporter = new ComponentExporter(documentManager, null);
-            if (assetManager) {
-                exporter.setAssetManager(assetManager);
-            }
-
-            // Export the component
-            const result = await exporter.exportComponent(odeBlockId, odeIdeviceId);
-
-            if (!result.success) {
-                eXeLearning.app.modals.alert.show({
-                    title: _('Download error'),
-                    body: _(result.error || 'Export failed'),
-                    contentId: 'error',
-                });
-            }
-        } catch (error) {
-            console.error('[ideviceNode] Export error:', error);
+        let response = await eXeLearning.app.api.getOdeIdevicesDownload(
+            odeSessionId,
+            odeBlockId,
+            odeIdeviceId
+        );
+        const responseBody = response['response'];
+        if (
+            typeof responseBody === 'string' &&
+            responseBody.includes('responseMessage')
+        ) {
+            // Response to show always on 3
+            let bodyResponse = responseBody.split('"');
             eXeLearning.app.modals.alert.show({
                 title: _('Download error'),
-                body: error.message || _('An unexpected error occurred'),
+                body: bodyResponse[3],
                 contentId: 'error',
             });
+        } else {
+            const downloadUrl = response['url'];
+            if (downloadUrl) {
+                const fileName = buildComponentFileName(
+                    odeIdeviceId,
+                    '.idevice'
+                );
+                await downloadComponentFile(downloadUrl, fileName, {
+                    absoluteKey: buildComponentStorageKey(
+                        odeIdeviceId,
+                        'idevice'
+                    ),
+                });
+            }
         }
     }
 
@@ -1607,17 +1586,14 @@ export default class IdeviceNode {
             this.idevice && this.idevice.componentType
                 ? this.idevice.componentType
                 : null;
-
-        // NOTE: Scripts are loaded CENTRALLY by idevicesEngine.js:loadIdevicesExportScripts()
-        // Do NOT load scripts here per-iDevice, as that causes double initialization
-        // for game iDevices (crossword, puzzle, etc.) that have auto-init scripts.
-
         switch (componentType) {
             case 'json':
                 let checkDeviceLoadNum = this.checkDeviceLoadNumMax;
                 // We try to load the idevice object several times asynchronously
                 do {
-                    if (typeof window[this.idevice.exportObject] !== 'undefined') {
+                    if (
+                        typeof window[this.idevice.exportObject] !== 'undefined'
+                    ) {
                         exportLoad = await this.ideviceInitExportLoadSuccess();
                     } else {
                         await eXeLearning.app.common.timer(this.interval);
@@ -1744,70 +1720,29 @@ export default class IdeviceNode {
     async exportProcessIdeviceJson() {
         let response = {};
         this.exportObject = window[this.idevice.exportObject];
-
-        // Check if exportObject exists and has renderView method
-        // Game iDevices (crossword, puzzle) don't have renderView - they use htmlView + init()
-        const hasRenderView =
-            this.exportObject &&
-            typeof this.exportObject.renderView === 'function';
-
-        // Check that the idevice has saved data
+        // Check that the idevice has save data
         if (
             this.jsonProperties &&
             Object.keys(this.jsonProperties).length > 0
         ) {
-            // If renderView exists, generate HTML from JSON
-            if (hasRenderView) {
-                let htmlTemplate = this.idevice.exportTemplateContent;
-                // Preserve original htmlView from ELP file in case renderView returns empty
-                const originalHtmlView = this.htmlView;
-                const renderedHtml = this.exportObject.renderView(
-                    this.jsonProperties,
-                    this.accesibility,
-                    htmlTemplate,
-                    this.odeIdeviceId
-                );
-                // Only use rendered result if non-empty, otherwise keep original htmlView
-                // This handles legacy iDevices where renderView may not understand the data format
-                this.htmlView = (renderedHtml && renderedHtml.trim() !== '')
-                    ? renderedHtml
-                    : originalHtmlView;
-            }
-            // Otherwise, htmlView should already contain pre-rendered HTML
-
-            // Fallback: For hybrid iDevices (crossword, puzzle, etc.), if htmlView is empty
-            // but jsonProperties contains HTML (from $exeDevice.save()), use it as htmlView
-            if (!this.htmlView || this.htmlView.trim() === '') {
-                // Check if jsonProperties is an object with textTextarea (game iDevices)
-                if (this.jsonProperties && typeof this.jsonProperties === 'object' && this.jsonProperties.textTextarea) {
-                    this.htmlView = this.jsonProperties.textTextarea;
-                }
-                // Fallback for when jsonProperties is a string HTML (legacy)
-                else if (typeof this.jsonProperties === 'string' && this.jsonProperties.includes('<')) {
-                    this.htmlView = this.jsonProperties;
-                }
-            }
-
-            // Insert HTML into DOM
+            // Get export html template
+            let htmlTemplate = this.idevice.exportTemplateContent;
+            // Idevice export function 1: renderView
+            this.htmlView = this.exportObject.renderView(
+                this.jsonProperties,
+                this.accesibility,
+                htmlTemplate,
+                this.odeIdeviceId
+            );
             this.ideviceBody.innerHTML = this.exportHtmlView();
-
-            // Call optional methods if they exist
-            if (this.exportObject) {
-                if (typeof this.exportObject.renderBehaviour === 'function') {
-                    this.exportObject.renderBehaviour(
-                        this.jsonProperties,
-                        this.accesibility,
-                        this.odeIdeviceId
-                    );
-                }
-                if (typeof this.exportObject.init === 'function') {
-                    this.exportObject.init(
-                        this.jsonProperties,
-                        this.accesibility
-                    );
-                }
-            }
-
+            // Idevice export function 2: renderBehaviour
+            this.exportObject.renderBehaviour(
+                this.jsonProperties,
+                this.accesibility,
+                this.odeIdeviceId
+            );
+            // Idevice export function 3: init
+            this.exportObject.init(this.jsonProperties, this.accesibility);
             // In case the idevice is in edition we must save the viewHTML
             if (this.mode == 'edition') {
                 let saveIdeviceResponse = await this.apiSaveIdeviceViewHTML();
@@ -1822,15 +1757,8 @@ export default class IdeviceNode {
             response = new Promise((resolve, reject) => {
                 // In case the idevice has no json data, We try to load the viewhtml of it
                 this.ideviceBody.innerHTML = this.exportHtmlView();
-                // Safe calls to optional methods
-                if (this.exportObject) {
-                    if (typeof this.exportObject.renderBehaviour === 'function') {
-                        this.exportObject.renderBehaviour({}, this.accesibility);
-                    }
-                    if (typeof this.exportObject.init === 'function') {
-                        this.exportObject.init({}, this.accesibility);
-                    }
-                }
+                this.exportObject.renderBehaviour({}, this.accesibility);
+                this.exportObject.init({}, this.accesibility);
                 resolve({ init: 'true' });
             });
             return response;
@@ -2015,11 +1943,6 @@ export default class IdeviceNode {
         let params = ['odeComponentsSyncId', 'jsonProperties'];
         if (saveIdevice && typeof $exeDevice !== 'undefined' && $exeDevice) {
             this.jsonProperties = $exeDevice.save();
-            // Handle hybrid iDevices: if save() returns HTML string, also update htmlView
-            // This ensures export view works for iDevices like crossword that return HTML with embedded JSON
-            if (typeof this.jsonProperties === 'string' && this.jsonProperties.includes('<')) {
-                this.htmlView = this.jsonProperties;
-            }
             // Add class error to idevice
             if (this.jsonProperties == false) {
                 this.ideviceBody.classList.add('save-error');
@@ -3264,9 +3187,7 @@ export default class IdeviceNode {
             // let buffer = await this.readFile(file);
             // await this.addUploadImage(buffer, file.name, id, type);
             await this.addUploadImage(file, file.name, id, type);
-        } catch (err) {
-            // Intentional: silently handle image upload failures
-        }
+        } catch (err) {}
     }
 
     /**

@@ -15,7 +15,7 @@ var $udlcontent = {
     isWorking: false,
 
     // Close alt content default button text
-    closeBtnTxt: (typeof $exe_i18n !== 'undefined' && $exe_i18n.hide) || 'Hide',
+    closeBtnTxt: $exe_i18n.hide,
 
     // Alternative content links position
     altContentLinks: 'bottom', // bottom or top
@@ -24,121 +24,6 @@ var $udlcontent = {
     // Get the base path (different in eXe)
     getBase: function () {
         return 'idevices/udl-content/export/';
-    },
-
-    /**
-     * Engine execution order: 1
-     * Generate HTML view from JSON data
-     * @param {Object} data - JSON data from edition save() containing blocks, contentType, ci18n
-     * @param {Object} accessibility - Accessibility settings
-     * @param {String} template - HTML template (not used for this idevice)
-     * @param {String} ideviceId - The idevice ID
-     * @returns {String} - Generated HTML
-     */
-    renderView: function (data, accessibility, template, ideviceId) {
-        // Handle legacy data format (old idevices might have different structure)
-        if (!data || typeof data !== 'object') {
-            return '';
-        }
-
-        // Get blocks array - support both new format {blocks: [...]} and legacy format (direct array)
-        var blocks = Array.isArray(data) ? data : (data.blocks || []);
-        if (!blocks || blocks.length === 0) {
-            return '';
-        }
-
-        // Get content type and i18n strings
-        var contentType = data.contentType || 'engagement';
-        var ci18n = data.ci18n || {};
-        var cont1T = ci18n.simplified || (typeof $exe_i18n !== 'undefined' && $exe_i18n.easierToRead) || 'Easier to read';
-        var cont2T = ci18n.audio || (typeof $exe_i18n !== 'undefined' && $exe_i18n.audio) || 'Audio';
-        var cont3T = ci18n.visual || (typeof $exe_i18n !== 'undefined' && $exe_i18n.visualAid) || 'Visual aid';
-        var hideText = ci18n.hide || this.closeBtnTxt;
-
-        var html = '';
-
-        for (var i = 0; i < blocks.length; i++) {
-            var block = blocks[i];
-            if (!block.contMain || block.contMain === '') continue;
-
-            var btnTxt = block.btnTxt || '';
-            btnTxt = btnTxt.trim();
-
-            // Check if the button text has accessible hidden content (format: "hidden | visible")
-            if (btnTxt.indexOf('|') !== -1) {
-                var tmp = btnTxt.replace('|', '~~');
-                var parts = tmp.split('~~');
-                if (parts.length === 2 && parts[0].trim() !== '' && parts[1].trim() !== '') {
-                    btnTxt = '<span class="sr-av">' + parts[0].trim() + ' </span>' + parts[1].trim();
-                }
-            }
-
-            var css = '';
-            if (btnTxt !== '') css = ' js-hidden';
-
-            // Alternative contents
-            var cont1 = block.contAlt1 || '';
-            var cont2 = block.contAlt2 || '';
-            var cont3 = block.contAlt3 || '';
-
-            // Close button
-            var clsBtn = '<button class="exe-udlContent-alt-content-hide">' + hideText + '</button>';
-
-            var res = '<section class="exe-udlContent-block' + css + '">';
-
-            // Header with button text
-            if (btnTxt !== '') {
-                var extraCSS = '';
-                var btnType = parseInt(block.btnType) || 0;
-                if (btnType >= 1 && btnType <= 4) {
-                    extraCSS = ' exe-udlContent-character-' + btnType;
-                }
-                res += '<header class="exe-udlContent-header' + extraCSS + '"><h2 style="display:none;">' + btnTxt + '</h2></header>';
-            }
-
-            res += '<div class="exe-udlContent-content">';
-            res += '<div class="exe-udlContent-content-main">' + block.contMain + '</div>';
-
-            // Simplified text (alternative 1)
-            if (cont1 !== '') {
-                cont1 = "<header class='exe-udlContent-alt-content-title'><h2>" + cont1T + '</h2></header>' + cont1 + clsBtn;
-                res += '<article class="exe-udlContent-content-simplified js-hidden">' + cont1 + '</article>';
-            }
-
-            // Audio (alternative 2)
-            if (cont2 !== '') {
-                cont2 = "<header class='exe-udlContent-alt-content-title'><h2>" + cont2T + '</h2></header>' + cont2 + clsBtn;
-                res += '<article class="exe-udlContent-content-audio js-hidden">' + cont2 + '</article>';
-            }
-
-            // Visual aid (alternative 3)
-            if (cont3 !== '') {
-                cont3 = "<header class='exe-udlContent-alt-content-title'><h2>" + cont3T + '</h2></header>' + cont3 + clsBtn;
-                res += '<article class="exe-udlContent-content-visual js-hidden">' + cont3 + '</article>';
-            }
-
-            res += '</div>';
-            res += '</section>';
-            html += res;
-        }
-
-        // Wrap in container with content type class
-        var containerCss = 'exe-udlContent-' + contentType;
-        html = '<div class="exe-udlContent ' + containerCss + '">' + html + '</div>';
-
-        return html;
-    },
-
-    /**
-     * Engine execution order: 2
-     * Add behavior and event handlers after HTML is rendered
-     * @param {Object} data - JSON data
-     * @param {Object} accessibility - Accessibility settings
-     * @param {String} ideviceId - The idevice ID
-     */
-    renderBehaviour: function (data, accessibility, ideviceId) {
-        // The init() method handles all behavior setup
-        // This is called after renderView() and before init()
     },
 
     // Check if the position of the links is set to top in the Style

@@ -507,7 +507,7 @@ var $exeDevice = {
 
     jsonToCard: function (p, inload) {
         const $card = $exeDevice.addCard(!inload);
-        // Safe default values for old versions without color/background
+        // Valores por defecto seguros para versiones antiguas sin color/fondo
         const safe = {
             x: typeof p.x === 'number' ? p.x : 0,
             y: typeof p.y === 'number' ? p.y : 0,
@@ -959,11 +959,11 @@ var $exeDevice = {
 
     hexToRgba: function (hex, opacity) {
         try {
-            // Safe fallback if hex is not defined or not a string
+            // Fallback seguro si hex no viene definido o no es string
             if (typeof hex !== 'string' || hex.trim() === '') hex = '#ffffff';
             hex = hex.trim();
             if (hex[0] !== '#') {
-                // Allow formats without '#', add it if it looks valid
+                // Permitir formatos sin '#', añadirla si parece válido
                 if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(hex)) {
                     hex = '#' + hex;
                 } else {
@@ -986,12 +986,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        let originalHTML = this.idevicePreviousData;
-
-        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
-        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
-            originalHTML = originalHTML.textTextarea;
-        }
+        const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>');

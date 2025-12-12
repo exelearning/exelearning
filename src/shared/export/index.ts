@@ -58,7 +58,6 @@ export type {
 export {
     ExportFormat,
     EXPORT_FORMAT_INFO,
-    IDEVICE_CONFIGS,
     getIdeviceConfig,
     LIBRARY_PATTERNS,
     BASE_LIBRARIES,
@@ -72,6 +71,9 @@ export {
     EPUB3_NAMESPACES,
     EPUB3_MIMETYPE,
 } from './constants';
+
+// iDevice config service (re-exported for convenience)
+export { getIdeviceConfig as getIdeviceConfigFromService, isJsonIdevice } from '../../services/idevice-config';
 
 // Utils
 export { LibraryDetector } from './utils/LibraryDetector';

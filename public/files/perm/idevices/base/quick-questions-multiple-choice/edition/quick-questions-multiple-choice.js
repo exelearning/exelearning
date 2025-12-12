@@ -1808,12 +1808,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        let originalHTML = this.idevicePreviousData;
-
-        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
-        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
-            originalHTML = originalHTML.textTextarea;
-        }
+        const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             $exeDevice.active = 0;
@@ -2618,20 +2613,20 @@ var $exeDevice = {
 
         $seleccionaEPaste.hide();
 
-        // Generic delegation for switch-style toggles (parity with guess.js)
+        // Delegación genérica para toggles estilo switch (paridad con guess.js)
         $quickMultipleQEIdeviceForm.on(
             'click.qq.toggle',
             '.toggle-item',
             function (e) {
-                // Prevent double change if click is directly on input, associated label
-                // or on internal interactive controls (numbers, texts, selects, buttons)
+                // Evita doble cambio si el clic es directamente sobre el input, label asociado
+                // o sobre controles interactivos internos (números, textos, selects, botones)
                 if (
                     $(e.target).is(
                         'input.toggle-input, label[for], input[type=number], input[type=text], select, textarea, button'
                     )
                 )
                     return;
-                // Don't toggle if click comes from evaluation identifier field or its help link
+                // No alternar si el clic proviene del campo identificador de evaluación o su enlace de ayuda
                 if (
                     $(e.target).is('#seleccionaEEvaluationID') ||
                     $(e.target).closest('#seleccionaEEvaluationHelpLnk').length
@@ -2645,7 +2640,7 @@ var $exeDevice = {
             }
         );
 
-        // Prevent click inside evaluation field from triggering container toggle
+        // Evitar que el clic dentro del campo de evaluación dispare el toggle del contenedor
         $quickMultipleQEIdeviceForm.on(
             'click',
             '#seleccionaEEvaluationID',

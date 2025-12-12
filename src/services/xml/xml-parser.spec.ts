@@ -1,13 +1,28 @@
 /**
  * Tests for XML Parser Service
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { parseFromFile, parseFromString, parseRawXml, buildXml } from './xml-parser';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../idevice-config';
+
+// Path to real iDevices for integration testing
+const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
 
 describe('xml-parser', () => {
     let tempDir: string;
+
+    // Load real iDevice configs before all tests
+    beforeAll(() => {
+        if (fs.existsSync(REAL_IDEVICES_PATH)) {
+            loadIdeviceConfigs(REAL_IDEVICES_PATH);
+        }
+    });
+
+    afterAll(() => {
+        resetIdeviceConfigCache();
+    });
 
     beforeEach(async () => {
         tempDir = path.join(__dirname, '..', '..', '..', 'test', 'temp', `xml-test-${Date.now()}`);
@@ -439,7 +454,8 @@ describe('xml-parser', () => {
             expect(result.pages[0].components[0].type).toBe('text');
         });
 
-        it('should parse JSON properties in components', () => {
+        it('should parse JSON properties in JSON iDevice components', () => {
+            // Use 'form' which is a JSON iDevice type
             const xml = `
                 <ode>
                     <odeNavStructures>
@@ -452,7 +468,7 @@ describe('xml-parser', () => {
                                     <odeComponents>
                                         <odeComponent>
                                             <odeIdeviceId>comp1</odeIdeviceId>
-                                            <odeIdeviceTypeName>quiz</odeIdeviceTypeName>
+                                            <odeIdeviceTypeName>form</odeIdeviceTypeName>
                                             <jsonProperties>{"question": "What is 2+2?", "answer": 4}</jsonProperties>
                                             <odeComponentsOrder>0</odeComponentsOrder>
                                         </odeComponent>
@@ -465,6 +481,38 @@ describe('xml-parser', () => {
 
             const result = parseFromString(xml);
             expect(result.pages[0].components[0].data).toEqual({ question: 'What is 2+2?', answer: 4 });
+        });
+
+        it('should use htmlView for HTML iDevice components', () => {
+            // Use 'crossword' which is an HTML iDevice type
+            const xml = `
+                <ode>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <odePageId>page1</odePageId>
+                            <pageName>Page 1</pageName>
+                            <odeNavStructureOrder>0</odeNavStructureOrder>
+                            <odePagStructures>
+                                <odePagStructure>
+                                    <odeComponents>
+                                        <odeComponent>
+                                            <odeIdeviceId>comp1</odeIdeviceId>
+                                            <odeIdeviceTypeName>crossword</odeIdeviceTypeName>
+                                            <htmlView>&lt;div class="crossword-game"&gt;Game content&lt;/div&gt;</htmlView>
+                                            <jsonProperties>{"ignored": true}</jsonProperties>
+                                            <odeComponentsOrder>0</odeComponentsOrder>
+                                        </odeComponent>
+                                    </odeComponents>
+                                </odePagStructure>
+                            </odePagStructures>
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml);
+            // HTML iDevices should use content (htmlView) and have empty data
+            expect(result.pages[0].components[0].content).toBe('<div class="crossword-game">Game content</div>');
+            expect(result.pages[0].components[0].data).toEqual({});
         });
 
         it('should handle single navStructure (non-array)', () => {

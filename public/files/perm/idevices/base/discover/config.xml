@@ -3,8 +3,6 @@
     <title>Discover</title>
     <css-class>discover</css-class>
     <category>Games</category>
-    <component-type>json</component-type>
-    <export-object>$eXeDescubre</export-object>
     <icon>
         <name>discover-icon</name>
         <url>discover-icon.svg</url>

@@ -3,7 +3,6 @@
     <title>Interactive video</title>
     <css-class>interactive-video</css-class>
     <category>Assessment and tracking</category>
-    <component-type>json</component-type>
     <icon>
         <name>interactive-video-icon</name>
         <url>interactive-video-icon.svg</url>

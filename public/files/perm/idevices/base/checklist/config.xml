@@ -3,8 +3,6 @@
     <title>Checklist</title>
     <css-class>checklist</css-class>
     <category>Assessment and tracking</category>
-    <component-type>json</component-type>
-    <export-object>$eXeListaCotejo</export-object>
     <icon>
         <name>checklist-icon</name>
         <url>checklist-icon.svg</url>

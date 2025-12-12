@@ -16,7 +16,7 @@ import type {
     BlockRenderOptions,
     ExportBlockProperties,
 } from '../interfaces';
-import { getIdeviceConfig } from '../constants';
+import { getIdeviceConfig } from '../../../services/idevice-config';
 
 /**
  * CSS link for an iDevice

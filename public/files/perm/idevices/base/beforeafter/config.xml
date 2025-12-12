@@ -3,7 +3,6 @@
     <title>Before/After</title>
     <css-class>beforeafter</css-class>
     <category>Interactive activities</category>
-    <export-object>$eXeBeforeAfter</export-object>
     <icon>
         <name>beforeafter-icon</name>
         <url>beforeafter-icon.svg</url>

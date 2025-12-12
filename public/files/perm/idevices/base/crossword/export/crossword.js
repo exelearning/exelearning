@@ -170,14 +170,14 @@ var $eXeCrucigrama = {
                     const hasVertical =
                         cellData.vi !== undefined && cellData.vi !== -1;
 
-                    // To determine the main wordindex (used in data-wordindex)
+                    // Para determinar el wordindex principal (usado en data-wordindex)
                     const wordindex = hasHorizontal ? cellData.hi : cellData.vi,
                         indexLetter = hasHorizontal
                             ? cellData.lhi
                             : cellData.lvi,
                         word = mOptions.wordsGame[wordindex].word;
 
-                    // Check if the letter should be shown in any of the words
+                    // Verificar si la letra debe mostrarse en cualquiera de las palabras
                     let shouldShowLetter = false;
                     if (hasHorizontal && lettersShow[cellData.hi]) {
                         shouldShowLetter = lettersShow[cellData.hi].includes(
@@ -1828,12 +1828,8 @@ var $eXeCrucigrama = {
                     imagesLink,
                     audioLink,
                     version
-                );
-
-            // Skip if no valid data found
-            if (!mOption) return;
-
-            const msg = mOption.msgs.msgPlayStart;
+                ),
+                msg = mOption.msgs.msgPlayStart;
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXeCrucigrama.idevicePath;
@@ -1897,11 +1893,6 @@ var $eXeCrucigrama = {
 
         const mOptions =
             $exeDevices.iDevice.gamification.helpers.isJsonString(json);
-
-        // Validate data exists before using
-        if (!mOptions || !mOptions.wordsGame || !Array.isArray(mOptions.wordsGame)) {
-            return null;
-        }
 
         mOptions.boardSize = 16;
         mOptions.mappedWords = [];
@@ -2665,8 +2656,8 @@ var $eXeCrucigrama = {
                             `input[data-row=${row}][data-col=${col}]`
                         );
                         if ($cellInput.length) {
-                            // If preserveExisting is true, only fill empty cells
-                            // If false, always overwrite (original behavior for verification)
+                            // Si preserveExisting es true, solo rellenar celdas vacías
+                            // Si es false, sobrescribir siempre (comportamiento original para verificación)
                             if (!preserveExisting || !$cellInput.val()) {
                                 $cellInput.val(letter);
                             }

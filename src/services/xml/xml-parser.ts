@@ -18,6 +18,7 @@ import {
 } from './interfaces';
 import { generateId } from '../../utils/id-generator.util';
 import * as legacyParser from './legacy-xml-parser';
+import { isJsonIdevice } from '../idevice-config';
 
 export interface XmlParseOptions {
     preserveOrder?: boolean;
@@ -306,12 +307,19 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
                     const compArray = Array.isArray(odeComponents) ? odeComponents : [odeComponents];
 
                     for (const comp of compArray) {
+                        const type = comp.odeIdeviceTypeName || 'unknown';
+                        const isJson = isJsonIdevice(type);
+
                         components.push({
                             id: comp.odeIdeviceId || generateId(),
-                            type: comp.odeIdeviceTypeName || 'unknown',
+                            type,
                             order: comp.odeComponentsOrder || 0,
-                            content: comp.htmlView || '',
-                            data: comp.jsonProperties ? JSON.parse(comp.jsonProperties) : {},
+                            // For JSON iDevices: use jsonProperties as primary source
+                            // For HTML iDevices: use htmlView as primary source
+                            content: isJson ? '' : (comp.htmlView || ''),
+                            data: isJson && comp.jsonProperties
+                                ? JSON.parse(comp.jsonProperties)
+                                : {},
                         });
                     }
                 }

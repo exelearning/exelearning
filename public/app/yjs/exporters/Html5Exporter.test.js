@@ -168,7 +168,14 @@ describe('Html5Exporter', () => {
   let mockDoc;
 
   beforeEach(() => {
+    // Mock fetch for /api/idevices endpoint (used by IdeviceHtmlRenderer.loadConfigs)
+    global.mockFetchForIdevices();
     mockDoc = createMockYjsDocument();
+  });
+
+  afterEach(() => {
+    // Clean up fetch mock
+    global.clearFetchMock();
   });
 
   describe('getFileExtension', () => {
@@ -318,8 +325,10 @@ describe('Html5Exporter', () => {
       expect(html).toContain('idevice_node');
     });
 
-    it('includes text class for FreeTextIdevice', () => {
+    it('includes text class for FreeTextIdevice', async () => {
       const exporter = new Html5Exporter(mockDoc, null, null);
+      // Load iDevice configs before rendering (FreeTextIdevice -> text mapping)
+      await exporter.ideviceRenderer.loadConfigs();
       const pages = exporter.buildPageList();
       const meta = mockDoc.getMetadata();
       const html = exporter.generatePageHtml(pages[0], pages, meta);

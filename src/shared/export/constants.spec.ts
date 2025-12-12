@@ -2,11 +2,12 @@
  * Tests for constants.ts
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import * as path from 'path';
+import * as fs from 'fs-extra';
 import {
     ExportFormat,
     EXPORT_FORMAT_INFO,
-    IDEVICE_CONFIGS,
     getIdeviceConfig,
     LIBRARY_PATTERNS,
     BASE_LIBRARIES,
@@ -18,6 +19,10 @@ import {
     IMS_NAMESPACES,
     LOM_NAMESPACES,
 } from './constants';
+import { resetIdeviceConfigCache, loadIdeviceConfigs } from '../../services/idevice-config';
+
+// Path to real iDevices for integration testing
+const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
 
 describe('Constants', () => {
     describe('ExportFormat enum', () => {
@@ -81,61 +86,45 @@ describe('Constants', () => {
         });
     });
 
-    describe('IDEVICE_CONFIGS', () => {
-        it('should have configuration for FreeTextIdevice', () => {
-            expect(IDEVICE_CONFIGS.FreeTextIdevice).toBeDefined();
-            expect(IDEVICE_CONFIGS.FreeTextIdevice.cssClass).toBe('text');
-            expect(IDEVICE_CONFIGS.FreeTextIdevice.componentType).toBe('json');
-            expect(IDEVICE_CONFIGS.FreeTextIdevice.template).toBe('text.html');
+    // NOTE: IDEVICE_CONFIGS tests removed - configs now loaded dynamically from config.xml
+    // See src/services/idevice-config.spec.ts for comprehensive tests
+
+    describe('getIdeviceConfig (re-exported from idevice-config service)', () => {
+        // Reset cache before and after each test
+        beforeEach(() => {
+            resetIdeviceConfigCache();
         });
 
-        it('should have configuration for form idevices', () => {
-            expect(IDEVICE_CONFIGS.form).toBeDefined();
-            expect(IDEVICE_CONFIGS.QuizActivity).toBeDefined();
-            expect(IDEVICE_CONFIGS.MultipleChoiceIdevice).toBeDefined();
+        afterEach(() => {
+            resetIdeviceConfigCache();
         });
 
-        it('should have configurations for games', () => {
-            expect(IDEVICE_CONFIGS.crossword).toBeDefined();
-            expect(IDEVICE_CONFIGS.trivial).toBeDefined();
-            expect(IDEVICE_CONFIGS.puzzle).toBeDefined();
-        });
-
-        it('should have configurations for media idevices', () => {
-            expect(IDEVICE_CONFIGS['image-gallery']).toBeDefined();
-            expect(IDEVICE_CONFIGS.ImageGallery).toBeDefined();
-            expect(IDEVICE_CONFIGS['interactive-video']).toBeDefined();
-        });
-
-        it('all configs should have required properties', () => {
-            for (const [_key, config] of Object.entries(IDEVICE_CONFIGS)) {
-                expect(config.cssClass).toBeDefined();
-                expect(config.componentType).toBeDefined();
-                expect(config.template).toBeDefined();
+        it('should return config for known idevice type (loaded from config.xml)', () => {
+            // Skip if real iDevices path doesn't exist
+            if (!fs.existsSync(REAL_IDEVICES_PATH)) {
+                console.log('Skipping test - real iDevices path not found');
+                return;
             }
-        });
-    });
 
-    describe('getIdeviceConfig', () => {
-        it('should return config for known idevice type', () => {
-            const config = getIdeviceConfig('FreeTextIdevice');
-            expect(config.cssClass).toBe('text');
-            expect(config.template).toBe('text.html');
-        });
+            // Explicitly load from real path
+            loadIdeviceConfigs(REAL_IDEVICES_PATH);
 
-        it('should return config for lowercase idevice type', () => {
             const config = getIdeviceConfig('text');
             expect(config.cssClass).toBe('text');
+            expect(config.componentType).toBe('json');
         });
 
         it('should return derived config for unknown idevice type', () => {
+            // This test uses fallback behavior, no real configs needed
             const config = getIdeviceConfig('CustomUnknownIdevice');
             expect(config.cssClass).toBe('customunknown');
-            expect(config.componentType).toBe('json');
+            // Default componentType for unknown iDevices is 'html' (not 'json')
+            expect(config.componentType).toBe('html');
             expect(config.template).toBe('customunknown.html');
         });
 
         it('should handle idevice types with "Idevice" suffix', () => {
+            // This test uses fallback behavior, no real configs needed
             const config = getIdeviceConfig('TestIdevice');
             expect(config.cssClass).toBe('test');
             expect(config.template).toBe('test.html');

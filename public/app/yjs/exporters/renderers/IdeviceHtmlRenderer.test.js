@@ -8,8 +8,19 @@ const IdeviceHtmlRenderer = require('./IdeviceHtmlRenderer');
 describe('IdeviceHtmlRenderer', () => {
   let renderer;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Mock fetch for /api/idevices endpoint
+    global.mockFetchForIdevices();
+
     renderer = new IdeviceHtmlRenderer();
+
+    // Load configs from mock API before testing
+    await renderer.loadConfigs();
+  });
+
+  afterEach(() => {
+    // Clean up fetch mock
+    global.clearFetchMock();
   });
 
   describe('getConfig', () => {
@@ -25,7 +36,8 @@ describe('IdeviceHtmlRenderer', () => {
     it('should return fallback config for unknown types', () => {
       const config = renderer.getConfig('UnknownIdevice');
       expect(config.cssClass).toBe('unknown');
-      expect(config.componentType).toBe('json');
+      // Fallback for unknown types is 'html' (not 'json')
+      expect(config.componentType).toBe('html');
     });
 
     it('should handle FreeTextIdevice as text type', () => {
@@ -377,7 +389,8 @@ describe('IdeviceHtmlRenderer', () => {
         const config = renderer.getConfig('crossword');
 
         expect(config.cssClass).toBe('crossword');
-        expect(config.componentType).toBe('json');
+        // crossword is an HTML iDevice (no <component-type> in config.xml)
+        expect(config.componentType).toBe('html');
         expect(config.template).toBe('crossword.html');
       });
 
@@ -431,7 +444,8 @@ describe('IdeviceHtmlRenderer', () => {
         const config = renderer.getConfig('puzzle');
 
         expect(config.cssClass).toBe('puzzle');
-        expect(config.componentType).toBe('json');
+        // puzzle is an HTML iDevice (no <component-type> in config.xml)
+        expect(config.componentType).toBe('html');
         expect(config.template).toBe('puzzle.html');
       });
 

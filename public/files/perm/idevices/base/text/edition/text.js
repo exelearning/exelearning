@@ -184,7 +184,7 @@ var $exeDevice = {
 
         const finalValues = {};
         unionKeys.forEach((key) => {
-            if (!key || key === 'ideviceId') return; // skip if not relevant
+            if (!key || key === 'ideviceId') return; // descartamos si no es relevante
 
             const orig = data[key];
             const hasDefault = defaults.hasOwnProperty(key);

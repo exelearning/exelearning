@@ -6,6 +6,8 @@
  * - <div class="idevice_node {cssClass}"> wrapper with data attributes
  * - Loads template from /export/{type}.html if available
  * - Injects content and JSON properties
+ *
+ * Configs are loaded dynamically from /api/idevices instead of being hardcoded.
  */
 class IdeviceHtmlRenderer {
   /**
@@ -13,66 +15,65 @@ class IdeviceHtmlRenderer {
    */
   constructor(resourceFetcher = null) {
     this.resourceFetcher = resourceFetcher;
-    // Cache for iDevice configurations
-    this.configCache = new Map();
+    // Cache for iDevice configurations (loaded from API)
+    this.configCache = null;
     // Cache for templates
     this.templateCache = new Map();
     // Base path for iDevice files
     this.idevicesBasePath = '/files/perm/idevices/base';
+    // Loading promise to avoid multiple parallel loads
+    this._loadingPromise = null;
   }
 
   /**
-   * iDevice type configurations
-   * Maps iDevice type names to their CSS class and component type
+   * Load iDevice configurations from API
+   * Call this before rendering to ensure configs are available
+   * @returns {Promise<void>}
    */
-  static IDEVICE_CONFIGS = {
-    // Text and content
-    'text': { cssClass: 'text', componentType: 'json', template: 'text.html' },
-    'FreeTextIdevice': { cssClass: 'text', componentType: 'json', template: 'text.html' },
-    'TextIdevice': { cssClass: 'text', componentType: 'json', template: 'text.html' },
+  async loadConfigs() {
+    // Return cached configs if already loaded
+    if (this.configCache) {
+      return;
+    }
 
-    // Forms and quizzes
-    'form': { cssClass: 'form', componentType: 'json', template: 'form.html' },
-    'QuizActivity': { cssClass: 'form', componentType: 'json', template: 'form.html' },
-    'MultipleChoiceIdevice': { cssClass: 'form', componentType: 'json', template: 'form.html' },
+    // Avoid multiple parallel loads
+    if (this._loadingPromise) {
+      return this._loadingPromise;
+    }
 
-    // Interactive activities
-    'guess': { cssClass: 'guess', componentType: 'json', template: 'guess.html' },
-    'checklist': { cssClass: 'checklist', componentType: 'json', template: 'checklist.html' },
-    'rubric': { cssClass: 'rubric', componentType: 'json', template: 'rubric.html' },
-    'casestudy': { cssClass: 'casestudy', componentType: 'json', template: 'casestudy.html' },
-    'challenge': { cssClass: 'challenge', componentType: 'json', template: 'challenge.html' },
-    'flipcards': { cssClass: 'flipcards', componentType: 'json', template: 'flipcards.html' },
-    'crossword': { cssClass: 'crossword', componentType: 'json', template: 'crossword.html' },
-    'trivial': { cssClass: 'trivial', componentType: 'json', template: 'trivial.html' },
-    'trueorfalse': { cssClass: 'trueorfalse', componentType: 'json', template: 'trueorfalse.html' },
+    this._loadingPromise = (async () => {
+      try {
+        const response = await fetch('/api/idevices');
+        if (!response.ok) {
+          console.warn('[IdeviceHtmlRenderer] Failed to load iDevice configs from API, using fallback');
+          this.configCache = new Map();
+          return;
+        }
 
-    // Media
-    'image-gallery': { cssClass: 'image-gallery', componentType: 'json', template: 'image-gallery.html' },
-    'interactive-video': { cssClass: 'interactive-video', componentType: 'json', template: 'interactive-video.html' },
-    'select-media-files': { cssClass: 'select-media-files', componentType: 'json', template: 'select-media-files.html' },
+        const idevices = await response.json();
+        this.configCache = new Map();
 
-    // Games
-    'az-quiz-game': { cssClass: 'az-quiz-game', componentType: 'json', template: 'az-quiz-game.html' },
-    'word-search': { cssClass: 'word-search', componentType: 'json', template: 'word-search.html' },
-    'puzzle': { cssClass: 'puzzle', componentType: 'json', template: 'puzzle.html' },
-    'padlock': { cssClass: 'padlock', componentType: 'json', template: 'padlock.html' },
+        for (const idev of idevices) {
+          const config = {
+            cssClass: idev.cssClass || idev.id,
+            componentType: idev.componentType || 'html',
+            template: idev.exportTemplateFilename || `${idev.id}.html`,
+          };
+          // Store by id (lowercase and original)
+          this.configCache.set(idev.id, config);
+          this.configCache.set(idev.id.toLowerCase(), config);
+        }
 
-    // External content
-    'external-website': { cssClass: 'external-website', componentType: 'json', template: 'external-website.html' },
-    'geogebra-activity': { cssClass: 'geogebra-activity', componentType: 'json', template: 'geogebra-activity.html' },
-    'map': { cssClass: 'map', componentType: 'json', template: 'map.html' },
+        console.log(`[IdeviceHtmlRenderer] Loaded ${this.configCache.size} iDevice configs`);
+      } catch (err) {
+        console.warn('[IdeviceHtmlRenderer] Error loading iDevice configs:', err);
+        this.configCache = new Map();
+      }
+    })();
 
-    // Utilities
-    'attached-files': { cssClass: 'attached-files', componentType: 'json', template: 'attached-files.html' },
-    'download-source-file': { cssClass: 'download-source-file', componentType: 'json', template: 'download-source-file.html' },
-    'progress-report': { cssClass: 'progress-report', componentType: 'json', template: 'progress-report.html' },
-
-    // Learning design
-    'udl-content': { cssClass: 'udl-content', componentType: 'json', template: 'udl-content.html' },
-    'discover': { cssClass: 'discover', componentType: 'json', template: 'discover.html' },
-    'example': { cssClass: 'example', componentType: 'json', template: 'example.html' },
-  };
+    await this._loadingPromise;
+    this._loadingPromise = null;
+  }
 
   /**
    * Get iDevice configuration
@@ -80,15 +81,19 @@ class IdeviceHtmlRenderer {
    * @returns {{cssClass: string, componentType: string, template: string}}
    */
   getConfig(ideviceType) {
-    if (IdeviceHtmlRenderer.IDEVICE_CONFIGS[ideviceType]) {
-      return IdeviceHtmlRenderer.IDEVICE_CONFIGS[ideviceType];
+    // Try to get from loaded configs
+    if (this.configCache) {
+      const config = this.configCache.get(ideviceType) || this.configCache.get(ideviceType.toLowerCase());
+      if (config) {
+        return config;
+      }
     }
 
-    // Fallback: derive from type name
+    // Fallback: derive from type name (default to HTML for unknown iDevices)
     const typeName = ideviceType.toLowerCase().replace('idevice', '');
     return {
       cssClass: typeName,
-      componentType: 'json',
+      componentType: 'html',
       template: `${typeName}.html`,
     };
   }
@@ -131,12 +136,17 @@ class IdeviceHtmlRenderer {
     // Build data attributes
     let dataAttrs = '';
     if (includeDataAttributes) {
-      // For preview mode (server paths), basePath already contains /files/perm/idevices/base/
-      // For export mode (ZIP), basePath is empty or relative and we need to add idevices/
-      const isPreviewPath = basePath.includes('/files/perm/idevices/base/');
-      const idevicePath = isPreviewPath
-        ? `${basePath}${type}/export/`
-        : `${basePath}idevices/${type}/`;
+      // Determine iDevice path based on basePath context:
+      // - Preview mode (basePath contains /files/perm/idevices/): use basePath + type + /export/
+      // - Export mode (relative basePath): use basePath + idevices/ + type + /
+      let idevicePath;
+      if (basePath && basePath.includes('/files/perm/idevices/')) {
+        // Preview mode: basePath already points to idevices base, add type + /export/
+        idevicePath = `${basePath}${type}/export/`;
+      } else {
+        // Export mode: standard path with idevices prefix
+        idevicePath = `${basePath}idevices/${type}/`;
+      }
       dataAttrs = ` data-idevice-path="${this.escapeAttr(idevicePath)}"`;
       dataAttrs += ` data-idevice-type="${this.escapeAttr(type)}"`;
 
@@ -228,14 +238,9 @@ ${contentHtml}
   /**
    * Fix asset URLs in HTML content
    *
-   * IMPORTANT: This method behaves differently in preview vs export mode:
-   *
-   * - Preview mode (basePath is absolute URL like http://...):
-   *   Preserves asset:// URLs so they can be resolved to blob:// URLs later
-   *   by AssetManager.resolveHTMLAssetsSync()
-   *
-   * - Export mode (basePath is relative like '' or '../'):
-   *   Transforms asset:// URLs to content/resources/ paths for ZIP export
+   * Behavior differs based on basePath:
+   * - Preview mode (http:// or https:// basePath): Preserve asset:// URLs for AssetManager resolution
+   * - Export mode (relative basePath): Transform asset:// to content/resources/ for static export
    *
    * @param {string} content - HTML content
    * @param {string} basePath - Base path prefix
@@ -244,50 +249,40 @@ ${contentHtml}
   fixAssetUrls(content, basePath) {
     if (!content) return '';
 
-    let result = content;
-
-    // Detect preview mode: basePath is an absolute URL (http:// or https://)
-    // In preview mode, preserve asset:// URLs - they'll be resolved to blob:// later
-    const isPreviewMode = basePath.startsWith('http://') || basePath.startsWith('https://');
+    // Detect preview mode - when basePath starts with http:// or https://
+    // In preview mode, asset:// URLs should be preserved for AssetManager to resolve to blob URLs
+    const isPreviewMode = basePath && (basePath.startsWith('http://') || basePath.startsWith('https://'));
 
     if (isPreviewMode) {
-      // Preview mode: preserve asset:// URLs for blob resolution
-      // Only convert files/tmp/ paths to asset:// format
-      result = result.replace(/files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g, (match, relativePath) => {
-        if (relativePath.startsWith('blob:') || relativePath.startsWith('data:')) {
-          return match;
-        }
+      // Preview mode: Convert files/tmp/ paths to asset:// format for AssetManager
+      content = content.replace(/files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g, (match, relativePath) => {
         return `asset://${relativePath}`;
       });
-      return result;
+      // asset:// URLs are preserved as-is for AssetManager to resolve
+      return content;
     }
 
-    // Export mode: transform asset:// to content/resources/
-    // Skip blob: and data: URLs (shouldn't happen, but defensive)
-    result = result.replace(/asset:\/\/([^"']+)/g, (match, assetPath) => {
+    // Export mode: Transform asset:// to content/resources/
+    // Skip blob: and data: URLs inside asset:// (shouldn't be transformed)
+    content = content.replace(/asset:\/\/([^"']+)/g, (match, assetPath) => {
+      // Skip blob: and data: URLs
       if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
-        return match; // Keep original, don't transform
+        return match;
       }
       return `${basePath}content/resources/${assetPath}`;
     });
 
     // Fix files/tmp/ paths (from server temp paths)
-    result = result.replace(/files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g, (match, relativePath) => {
-      if (relativePath.startsWith('blob:') || relativePath.startsWith('data:')) {
-        return match;
-      }
+    content = content.replace(/files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g, (match, relativePath) => {
       return `${basePath}content/resources/${relativePath}`;
     });
 
     // Fix relative paths that start with /files/
-    result = result.replace(/["']\/files\/tmp\/[^"']+\/([^"']+)["']/g, (match, path) => {
-      if (path.startsWith('blob:') || path.startsWith('data:')) {
-        return match;
-      }
+    content = content.replace(/["']\/files\/tmp\/[^"']+\/([^"']+)["']/g, (match, path) => {
       return `"${basePath}content/resources/${path}"`;
     });
 
-    return result;
+    return content;
   }
 
   /**

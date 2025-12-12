@@ -615,13 +615,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        let originalHTML = this.idevicePreviousData;
-
-        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
-        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
-            originalHTML = originalHTML.textTextarea;
-        }
-
+        const originalHTML = this.idevicePreviousData;
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>').html(originalHTML),
                 json = $('.sopa-DataGame', wrapper).text(),

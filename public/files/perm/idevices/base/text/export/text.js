@@ -17,7 +17,7 @@ var $text = {
     feedbackTitleId: 'textFeedbackInput',
     feedbackContentId: 'textFeedbackTextarea',
 
-    defaultBtnFeedbackText: (typeof $exe_i18n !== 'undefined' && $exe_i18n.showFeedback) || 'Show feedback',
+    defaultBtnFeedbackText: $exe_i18n.showFeedback,
 
     /**
      * Engine execution order: 1

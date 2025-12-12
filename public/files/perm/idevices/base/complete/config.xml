@@ -3,7 +3,6 @@
 	<title>Complete</title>
 	<css-class>complete</css-class>
 	<category>Interactive activities</category>
-	<export-object>$eXeCompleta</export-object>
 	<icon>
 		<name>commplete-icon</name>
 		<url>complete-icon.svg</url>

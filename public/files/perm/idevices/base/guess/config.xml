@@ -3,7 +3,6 @@
     <title>Guess</title>
     <css-class>guess</css-class>
     <category>Assessment and tracking</category>
-    <component-type>json</component-type>
     <icon>
         <name>gues-icon</name>
         <url>guess-icon.svg</url>

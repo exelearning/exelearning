@@ -15,9 +15,9 @@ export default class Idevice {
         this.path = `${manager.symfonyURL}${data.url}`;
         this.pathEdition = `${this.path}/edition/`;
         this.pathExport = `${this.path}/export/`;
-        // Use exportObject from config.xml if provided, otherwise calculate from idevice id
+        this.exportObject = null;
         if (this.exportJs.length > 0) {
-            this.exportObject = this.exportObject || this.getIdeviceObjectKey();
+            this.exportObject = this.getIdeviceObjectKey();
         }
     }
 
@@ -36,7 +36,6 @@ export default class Idevice {
         'editionJs',
         'exportCss',
         'exportJs',
-        'exportObject',
         'icon',
         'license',
         'licenseUrl',

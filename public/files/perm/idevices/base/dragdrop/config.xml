@@ -3,7 +3,6 @@
     <title>Drag and drop</title>
     <css-class>dragdrop</css-class>
     <category>Interactive activities</category>
-    <export-object>$eXeDragDrop</export-object>
     <icon>
         <name>dragdrop.icon</name>
         <url>dragdrop-icon.svg</url>

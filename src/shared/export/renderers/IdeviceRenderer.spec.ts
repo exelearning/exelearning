@@ -2,12 +2,29 @@
  * Tests for IdeviceRenderer
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'bun:test';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import type { ExportComponent, ExportBlock } from '../interfaces';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
+
+// Path to real iDevices for integration testing
+const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
 
 describe('IdeviceRenderer', () => {
     let renderer: IdeviceRenderer;
+
+    // Load real iDevice configs before all tests
+    beforeAll(() => {
+        if (fs.existsSync(REAL_IDEVICES_PATH)) {
+            loadIdeviceConfigs(REAL_IDEVICES_PATH);
+        }
+    });
+
+    afterAll(() => {
+        resetIdeviceConfigCache();
+    });
 
     beforeEach(() => {
         renderer = new IdeviceRenderer();
@@ -15,9 +32,10 @@ describe('IdeviceRenderer', () => {
 
     describe('render', () => {
         it('should render a text iDevice with exe-text wrapper', () => {
+            // Use 'text' iDevice which exists in config.xml and is a JSON type
             const component: ExportComponent = {
                 id: 'comp-1',
-                type: 'FreeTextIdevice',
+                type: 'text',
                 order: 0,
                 content: '<p>Hello World</p>',
                 properties: {},
@@ -32,9 +50,10 @@ describe('IdeviceRenderer', () => {
         });
 
         it('should render with correct data attributes', () => {
+            // Use 'form' iDevice which exists in config.xml and is a JSON type
             const component: ExportComponent = {
-                id: 'quiz-1',
-                type: 'QuizActivity',
+                id: 'form-1',
+                type: 'form',
                 order: 0,
                 content: '',
                 properties: { question: 'What is 2+2?', answers: ['3', '4', '5'] },
@@ -42,8 +61,8 @@ describe('IdeviceRenderer', () => {
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
 
-            expect(html).toContain('data-idevice-path="idevices/QuizActivity/"');
-            expect(html).toContain('data-idevice-type="QuizActivity"');
+            expect(html).toContain('data-idevice-path="idevices/form/"');
+            expect(html).toContain('data-idevice-type="form"');
             expect(html).toContain('data-idevice-component-type="json"');
             expect(html).toContain('data-idevice-json-data="');
         });
@@ -51,7 +70,7 @@ describe('IdeviceRenderer', () => {
         it('should not include data attributes when disabled', () => {
             const component: ExportComponent = {
                 id: 'comp-1',
-                type: 'FreeTextIdevice',
+                type: 'text',
                 order: 0,
                 content: '<p>Test</p>',
                 properties: {},

@@ -118,7 +118,7 @@ var $exeDevice = {
     },
 
     addPickerButton: function () {
-        // Handled globally by $exeDevicesEdition.iDevice.filePicker.init()
+        // Manejado globalmente por $exeDevicesEdition.iDevice.filePicker.init()
     },
 
     loadPreviousValues: function () {

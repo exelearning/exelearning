@@ -74,7 +74,7 @@ var $eXeSopa = {
             mOption.game = null;
             mOption.optionsPuzzle = {};
 
-            // Configure puzzle orientations
+            // Configurar orientaciones del puzzle
             let ors = ['horizontal', 'vertical'];
             if (mOption.reverses && mOption.diagonals) {
                 ors = [
@@ -99,7 +99,7 @@ var $eXeSopa = {
             }
             mOption.optionsPuzzle.orientations = ors;
 
-            // Save instance
+            // Guardar instancia
             $eXeSopa.instances[i] = mOption;
 
             const sopa = $eXeSopa.createInterfaceSopa(i);
@@ -127,7 +127,7 @@ var $eXeSopa = {
 
             $eXeSopa.addEvents(i);
 
-            // Add words
+            // Agregar palabras
             for (let j = 0; j < mOption.wordsGame.length; j++) {
                 let word = mOption.wordsGame[j].word,
                     definition = mOption.wordsGame[j].definition,
@@ -157,7 +157,7 @@ var $eXeSopa = {
         const $container = $('#sopaMainContainer-' + instanceId);
 
         let attempts = 0;
-        const maxRetries = 3; // Number of words to remove if necessary
+        const maxRetries = 3; // Número de palabras a eliminar si es necesario
 
         while (attempts <= maxRetries) {
             try {
@@ -168,13 +168,13 @@ var $eXeSopa = {
                     instanceId: instanceId,
                 });
 
-                // If successful, exit the loop
+                // Si tiene éxito, salir del bucle
                 if (window.game) window.game = mOptions.game;
 
-                // If words were removed, only show in console (not on screen)
+                // Si se eliminaron palabras, solo mostrar en consola (no en pantalla)
                 if (attempts > 0) {
                     console.info(
-                        `Word search generated successfully after removing ${attempts} word(s).`
+                        `Sopa de letras generada exitosamente después de eliminar ${attempts} palabra(s).`
                     );
                 }
                 return;
@@ -182,7 +182,7 @@ var $eXeSopa = {
                 attempts++;
 
                 if (attempts > maxRetries) {
-                    // No more attempts, show error
+                    // Ya no hay más intentos, mostrar error
                     $container
                         .find('#sopaMessage-' + instanceId)
                         .text(
@@ -195,15 +195,15 @@ var $eXeSopa = {
                     $container.find('#sopaMultimedia-' + instanceId).hide();
                     $container.find('#sopaResolve-' + instanceId).hide();
                     console.error(
-                        'Error generating word search after ' +
+                        'Error al generar sopa de letras después de ' +
                             maxRetries +
-                            ' attempts:',
+                            ' intentos:',
                         error
                     );
                     return;
                 }
 
-                // Find and remove the longest word from wordsGame
+                // Encontrar y eliminar la palabra más larga del wordsGame
                 const longestWordIndex = mOptions.wordsGame.reduce(
                     (maxIdx, word, idx, arr) =>
                         word.word.length > arr[maxIdx].word.length
@@ -216,10 +216,10 @@ var $eXeSopa = {
                 mOptions.wordsGame.splice(longestWordIndex, 1);
 
                 console.warn(
-                    `Attempt ${attempts}: Removed word "${removedWord}" (${removedWord.length} letters). ${mOptions.wordsGame.length} words remaining. Retrying...`
+                    `Intento ${attempts}: Eliminada palabra "${removedWord}" (${removedWord.length} letras). Quedan ${mOptions.wordsGame.length} palabras. Reintentando...`
                 );
 
-                // Update the word list in the DOM before retrying
+                // Actualizar la lista de palabras en el DOM antes de reintentar
                 $container.find('#sopaWords-' + instanceId).empty();
                 for (let j = 0; j < mOptions.wordsGame.length; j++) {
                     let word = mOptions.wordsGame[j].word,
@@ -1570,7 +1570,7 @@ $(function () {
                 return null;
             },
             a = function (a, i) {
-                // Extract instanceId from options
+                // Extraer instanceId de las opciones
                 var instanceId = i.instanceId || 0;
                 var $container = n('#sopaMainContainer-' + instanceId);
 

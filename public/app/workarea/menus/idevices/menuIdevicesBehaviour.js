@@ -111,17 +111,18 @@ export default class MenuIdevicesBehaviour {
      *
      */
     changeAttributePosBehaviour() {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
+        var parent = this;
+        var observer = new MutationObserver(function (mutations) {
+            mutations.forEach(function (mutation) {
                 if (
                     mutation.type === 'attributes' &&
                     mutation.attributeName == 'size'
                 ) {
-                    this.parent.categoriesIdevices.forEach((category) => {
+                    parent.parent.categoriesIdevices.forEach((category) => {
                         category.classList.remove('on');
                         category.classList.add('off');
                     });
-                    let lastOpen = this.parent.menuIdevices.querySelector(
+                    let lastOpen = parent.parent.menuIdevices.querySelector(
                         '.idevice_category.last-open'
                     );
                     if (lastOpen) {

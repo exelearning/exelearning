@@ -132,7 +132,9 @@ export default class IdevicesEngine {
         let afterElement = this.getDragAfterElement(ypos, otherElements);
         if (afterElement) {
             // Insert before element of container
-            if (container != afterElement.parentNode) {
+            if (container == afterElement.parentNode) {
+                afterElement = afterElement;
+            } else {
                 afterElement = afterElement.parentNode;
             }
             container.insertBefore(this.draggedElement, afterElement);
@@ -1334,11 +1336,7 @@ export default class IdevicesEngine {
                 // Update content based on iDevice type
                 if (ideviceNode.mode === 'export') {
                     // In view mode, update the displayed content
-                    // Resolve asset:// URLs to blob:// (with placeholders for missing assets)
-                    const resolvedHtml = window.resolveAssetUrls
-                        ? window.resolveAssetUrls(componentData.htmlContent || '', { fetchMissing: true })
-                        : (componentData.htmlContent || '');
-                    ideviceNode.ideviceBody.innerHTML = resolvedHtml;
+                    ideviceNode.ideviceBody.innerHTML = componentData.htmlContent || '';
                     await ideviceNode.loadInitScriptIdevice('export');
                 }
             }

@@ -1570,12 +1570,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        let originalHTML = this.idevicePreviousData;
-
-        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
-        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
-            originalHTML = originalHTML.textTextarea;
-        }
+        const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             $exeDevice.activesQuestions = [0, 0, 0, 0, 0, 0];
@@ -3174,7 +3169,7 @@ var $exeDevice = {
                 definition = $this
                     .find('DEFINITION')
                     .text()
-                    .replace(/<[^>]*>/g, ''); // Remove HTML
+                    .replace(/<[^>]*>/g, ''); // Elimina HTML
             if (concept && definition) {
                 questionsJson.push({
                     solution: concept,

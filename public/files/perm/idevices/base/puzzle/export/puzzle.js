@@ -123,9 +123,6 @@ var $eXePuzzle = {
             const dl = $('.puzzle-DataGame', this),
                 mOption = $eXePuzzle.loadDataGame(dl, this);
 
-            // Skip if no valid data found
-            if (!mOption) return;
-
             mOption.scorerp = 0;
             mOption.idevicePath = $eXePuzzle.idevicePath;
             mOption.main = 'pzlMainContainer-' + i;
@@ -186,11 +183,6 @@ var $eXePuzzle = {
             $audiosDef = $('.puzzle-LinkAudiosDef', sthis),
             $imagesDef = $('.puzzle-LinkImagesDef', sthis),
             $audiosClue = $('.puzzle-LinkAudiosClue', sthis);
-
-        // Validate data exists before using
-        if (!mOptions || !mOptions.puzzlesGame || !Array.isArray(mOptions.puzzlesGame)) {
-            return null;
-        }
 
         mOptions.playerAudio = '';
         mOptions.solutionShown = false;

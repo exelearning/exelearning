@@ -1273,7 +1273,7 @@ var $exeDevice = {
                 'beforeend'
             );
             this.behaviourEvaluation();
-            // Initialize toggles (accessibility + show/hide targets)
+            // Inicialización de toggles (accesibilidad + mostrar/ocultar targets)
             const initToggle = function ($input) {
                 const checked = $input.is(':checked');
                 $input

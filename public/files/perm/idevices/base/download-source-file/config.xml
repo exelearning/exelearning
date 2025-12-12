@@ -3,7 +3,6 @@
 	<title>Download source file</title>
 	<css-class>download-source-file</css-class>
 	<category>Information and presentation</category>
-	<component-type>json</component-type>
 	 <icon>
 		<name>download-source-file-icon</name>
 		<url>download-source-file-icon.svg</url>

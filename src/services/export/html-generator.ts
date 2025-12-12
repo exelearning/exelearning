@@ -6,8 +6,8 @@ import { ParsedOdeStructure, NormalizedPage, NormalizedComponent } from '../xml/
 import { Html5ExportOptions } from './interfaces';
 import { normalizeHtmlPaths } from '../../utils/html-path-normalizer.util';
 
-// Import shared iDevice configuration from constants
-import { getIdeviceConfig } from '../../shared/export/constants';
+// Import shared iDevice configuration service
+import { getIdeviceConfig } from '../idevice-config';
 
 /**
  * Generate the full HTML for a page

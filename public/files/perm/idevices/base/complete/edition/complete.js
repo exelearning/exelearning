@@ -287,12 +287,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        let originalHTML = this.idevicePreviousData;
-
-        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
-        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
-            originalHTML = originalHTML.textTextarea;
-        }
+        const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>');
@@ -577,7 +572,7 @@ var $exeDevice = {
     addEvents: function () {
         const $form = $('#completeQEIdeviceForm');
 
-        // Generic toggle: sync aria-checked and show/hide target if it exists
+        // Toggle genérico: sincroniza aria-checked y muestra/oculta el target si existe
         $form.on('change', '.toggle-input', function () {
             const checked = $(this).is(':checked');
             $(this).attr('aria-checked', checked);
@@ -674,7 +669,7 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
-        // Initialize toggles with their current state
+        // Inicialización de toggles con su estado actual
         $form.find('.toggle-input').each(function () {
             const checked = $(this).is(':checked');
             $(this).attr('aria-checked', checked).trigger('change');

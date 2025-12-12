@@ -3,7 +3,6 @@
     <title>GeoGebra activity</title>
     <css-class>geogebra-activity</css-class>
     <category>Science</category>
-    <component-type>json</component-type>
     <icon>
         <name>geogebra-activity-icon</name>
         <url>geogebra-activity-icon.svg</url>

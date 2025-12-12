@@ -2,7 +2,7 @@
  * Tests for export interfaces and constants
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -19,7 +19,6 @@ import type {
 import {
     ExportFormat,
     EXPORT_FORMAT_INFO,
-    IDEVICE_CONFIGS,
     getIdeviceConfig,
     LIBRARY_PATTERNS,
     BASE_LIBRARIES,
@@ -31,6 +30,12 @@ import {
     IMS_NAMESPACES,
     LOM_NAMESPACES,
 } from './constants';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../services/idevice-config';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+
+// Path to real iDevices for integration testing
+const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
 
 describe('Export Interfaces', () => {
     describe('ExportDocument interface', () => {
@@ -235,39 +240,24 @@ describe('Export Constants', () => {
         });
     });
 
-    describe('IDEVICE_CONFIGS', () => {
-        it('should have text iDevice configs', () => {
-            expect(IDEVICE_CONFIGS.text).toBeDefined();
-            expect(IDEVICE_CONFIGS.text.cssClass).toBe('text');
-            expect(IDEVICE_CONFIGS.FreeTextIdevice.cssClass).toBe('text');
-        });
-
-        it('should have quiz/form iDevice configs', () => {
-            expect(IDEVICE_CONFIGS.form).toBeDefined();
-            expect(IDEVICE_CONFIGS.QuizActivity).toBeDefined();
-        });
-
-        it('should have game iDevice configs', () => {
-            expect(IDEVICE_CONFIGS.crossword).toBeDefined();
-            expect(IDEVICE_CONFIGS.puzzle).toBeDefined();
-            expect(IDEVICE_CONFIGS['word-search']).toBeDefined();
-            expect(IDEVICE_CONFIGS.padlock).toBeDefined();
-        });
-
-        it('should have media iDevice configs', () => {
-            expect(IDEVICE_CONFIGS['image-gallery']).toBeDefined();
-            expect(IDEVICE_CONFIGS['interactive-video']).toBeDefined();
-        });
-
-        it('should have at least 40 iDevice types', () => {
-            const configCount = Object.keys(IDEVICE_CONFIGS).length;
-            expect(configCount).toBeGreaterThanOrEqual(40);
-        });
-    });
+    // NOTE: IDEVICE_CONFIGS tests removed - configs now loaded dynamically from config.xml
+    // See src/services/idevice-config.spec.ts for comprehensive tests
 
     describe('getIdeviceConfig', () => {
+        // Load real configs for tests that need them
+        beforeAll(() => {
+            if (fs.existsSync(REAL_IDEVICES_PATH)) {
+                loadIdeviceConfigs(REAL_IDEVICES_PATH);
+            }
+        });
+
+        afterAll(() => {
+            resetIdeviceConfigCache();
+        });
+
         it('should return known config for known type', () => {
-            const config = getIdeviceConfig('FreeTextIdevice');
+            // Use 'text' which exists in config.xml
+            const config = getIdeviceConfig('text');
             expect(config.cssClass).toBe('text');
             expect(config.componentType).toBe('json');
         });

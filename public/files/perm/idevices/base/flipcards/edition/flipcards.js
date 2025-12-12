@@ -819,12 +819,7 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
-        let originalHTML = this.idevicePreviousData;
-
-        // Handle legacy ELP format: { ideviceId, textTextarea: "<html>", ... }
-        if (originalHTML && typeof originalHTML === 'object' && originalHTML.textTextarea) {
-            originalHTML = originalHTML.textTextarea;
-        }
+        const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>');
@@ -1295,7 +1290,7 @@ var $exeDevice = {
 
     addEvents: function () {
         $('#flipcardsEPasteC').hide();
-        // Accessible toggle initialization
+        // Inicialización accesible de toggles
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
             const $item = $input.closest('.toggle-item[role="switch"]');

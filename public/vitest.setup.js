@@ -730,6 +730,78 @@ expect.extend({
 });
 
 // ============================================================================
+// Mock iDevice Configs for Tests
+// ============================================================================
+
+/**
+ * Creates mock iDevice configurations that match the real config.xml files.
+ * These configs are used by IdeviceHtmlRenderer tests.
+ *
+ * Note: componentType values match actual config.xml files:
+ * - 'json' = has <component-type>json</component-type> in config.xml
+ * - 'html' = no <component-type> tag (default behavior)
+ *
+ * @param {Array} overrides - Optional array of configs to add/override
+ * @returns {Array} Array of iDevice config objects
+ */
+global.createMockIdeviceConfigs = (overrides = []) => {
+  // These match the actual config.xml files in public/files/perm/idevices/base/
+  const defaults = [
+    // JSON iDevices (have <component-type>json</component-type> in config.xml)
+    { id: 'text', cssClass: 'text', componentType: 'json', exportTemplateFilename: 'text.html' },
+    // Legacy iDevice aliases that map to 'text'
+    { id: 'FreeTextIdevice', cssClass: 'text', componentType: 'json', exportTemplateFilename: 'text.html' },
+    { id: 'TextIdevice', cssClass: 'text', componentType: 'json', exportTemplateFilename: 'text.html' },
+    { id: 'form', cssClass: 'form', componentType: 'json', exportTemplateFilename: 'form.html' },
+    { id: 'example', cssClass: 'example', componentType: 'json', exportTemplateFilename: 'example.html' },
+    { id: 'casestudy', cssClass: 'casestudy', componentType: 'json', exportTemplateFilename: 'casestudy.html' },
+    { id: 'trueorfalse', cssClass: 'trueorfalse', componentType: 'json', exportTemplateFilename: 'trueorfalse.html' },
+    { id: 'magnifier', cssClass: 'magnifier', componentType: 'json', exportTemplateFilename: 'magnifier.html' },
+    { id: 'image-gallery', cssClass: 'image-gallery', componentType: 'json', exportTemplateFilename: 'image-gallery.html' },
+    { id: 'scrambled-list', cssClass: 'scrambled-list', componentType: 'json', exportTemplateFilename: 'scrambled-list.html' },
+
+    // HTML iDevices (NO <component-type> in config.xml, so default to 'html')
+    { id: 'crossword', cssClass: 'crossword', componentType: 'html', exportTemplateFilename: 'crossword.html' },
+    { id: 'puzzle', cssClass: 'puzzle', componentType: 'html', exportTemplateFilename: 'puzzle.html' },
+    { id: 'trivial', cssClass: 'trivial', componentType: 'html', exportTemplateFilename: 'trivial.html' },
+    { id: 'hangman', cssClass: 'hangman', componentType: 'html', exportTemplateFilename: 'hangman.html' },
+  ];
+
+  return [...defaults, ...overrides];
+};
+
+/**
+ * Sets up a mock fetch for the /api/idevices endpoint.
+ * Call this in beforeEach() before creating an IdeviceHtmlRenderer.
+ *
+ * @param {Array} configs - Optional array of configs to override defaults
+ */
+global.mockFetchForIdevices = (configs = []) => {
+  const mockConfigs = global.createMockIdeviceConfigs(configs);
+
+  global.fetch = vi.fn((url) => {
+    if (url === '/api/idevices') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(mockConfigs),
+      });
+    }
+    // For other URLs, return a rejection or mock as needed
+    return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+  });
+};
+
+/**
+ * Clears the fetch mock.
+ * Call this in afterEach() to clean up.
+ */
+global.clearFetchMock = () => {
+  if (global.fetch && typeof global.fetch.mockClear === 'function') {
+    global.fetch.mockClear();
+  }
+};
+
+// ============================================================================
 // Cleanup after each test
 // ============================================================================
 

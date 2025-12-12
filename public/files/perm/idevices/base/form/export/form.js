@@ -1427,7 +1427,7 @@ var $form = {
                 $sel.css('border-color', '').val($sel.next().text());
             });
 
-            // Hide score if necessary
+            // Ocultar puntuación si es necesario
             // this.hideScore(data.id);
         });
     },

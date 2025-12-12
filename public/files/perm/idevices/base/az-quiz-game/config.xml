@@ -3,7 +3,6 @@
     <title>A-Z quiz</title>
     <css-class>az-quiz-game</css-class>
     <category>Games</category>
-    <component-type>json</component-type>
     <icon>
         <name>az-quiz-game-icon</name>
         <url>az-quiz-game-icon.svg</url>

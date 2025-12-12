@@ -1,9 +1,26 @@
 /**
  * Tests for HTML Generator Helper
  */
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 import { generatePageHtml, generateIndexHtml } from './html-generator';
 import type { ParsedOdeStructure, NormalizedPage, NormalizedComponent } from '../xml/interfaces';
+import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../idevice-config';
+
+// Path to real iDevices for integration testing
+const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
+
+// Load real iDevice configs before all tests
+beforeAll(() => {
+    if (fs.existsSync(REAL_IDEVICES_PATH)) {
+        loadIdeviceConfigs(REAL_IDEVICES_PATH);
+    }
+});
+
+afterAll(() => {
+    resetIdeviceConfigCache();
+});
 
 // Helper to create a minimal valid structure
 function createMinimalStructure(overrides: Partial<ParsedOdeStructure> = {}): ParsedOdeStructure {
@@ -373,11 +390,11 @@ describe('HTML Generator Helper', () => {
 
     describe('iDevice rendering', () => {
         it('should render known iDevice types with correct CSS class', () => {
+            // Use iDevice types that exist in config.xml
             const ideviceTypes = [
                 { type: 'text', cssClass: 'text' },
                 { type: 'form', cssClass: 'form' },
-                { type: 'QuizActivity', cssClass: 'form' },
-                { type: 'guess', cssClass: 'guess' },
+                { type: 'trueorfalse', cssClass: 'trueorfalse' },
                 { type: 'crossword', cssClass: 'crossword' },
             ];
 
@@ -414,8 +431,9 @@ describe('HTML Generator Helper', () => {
         });
 
         it('should serialize JSON properties for non-text iDevices', () => {
+            // Use 'form' which is a real JSON iDevice type from config.xml
             const comp = createComponent({
-                type: 'QuizActivity',
+                type: 'form',
                 properties: { questions: [{ id: 1, text: 'What is 2+2?' }] },
             });
             const page = createPage({ components: [comp] });
