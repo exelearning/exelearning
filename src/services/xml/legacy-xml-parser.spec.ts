@@ -225,7 +225,9 @@ describe('legacy-xml-parser', () => {
             const page = result.pages.find(p => p.id === 'node-1');
             if (page && page.components.length > 0) {
                 const types = page.components.map(c => c.type);
-                expect(types).toContain('free-text');
+                // LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+                // FreeTextIdevice is converted to 'text' for editability
+                expect(types).toContain('text');
             }
         });
 
@@ -749,7 +751,18 @@ describe('legacy-xml-parser', () => {
     });
 
     describe('mapIdeviceType', () => {
-        it('should map unknown iDevice type using regex', () => {
+        /**
+         * LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+         *
+         * Tests for the iDevice type conversion that ensures all legacy iDevices
+         * become editable in modern eXeLearning.
+         *
+         * See doc/conventions.md section "Legacy .elp (v2.x) Import – Editable iDevice Conversion"
+         */
+
+        it('should convert unknown iDevice type to text for editability', () => {
+            // LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+            // Unknown iDevices are converted to 'text' to ensure editability
             const parsed: LegacyInstanceXmlDocument = {
                 instance: {
                     '@_class': 'exe.engine.package.Package',
@@ -771,12 +784,13 @@ describe('legacy-xml-parser', () => {
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
-            expect(page?.components[0]?.type).toBe('mycustom');
+            // Unknown iDevices are now converted to 'text' for editability
+            expect(page?.components[0]?.type).toBe('text');
         });
 
-        it('should return "unknown" for class with Idevice but no pattern match', () => {
-            // Class contains "Idevice" (to pass filter) but regex (\w+)Idevice doesn't match
-            // because there's no word char before "Idevice"
+        it('should convert unrecognized iDevice class to text for editability', () => {
+            // LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+            // Any iDevice class that doesn't match a known pattern is converted to 'text'
             const parsed: LegacyInstanceXmlDocument = {
                 instance: {
                     '@_class': 'exe.engine.package.Package',
@@ -799,14 +813,20 @@ describe('legacy-xml-parser', () => {
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
-            expect(page?.components[0]?.type).toBe('unknown');
+            // Fallback now converts to 'text' for editability
+            expect(page?.components[0]?.type).toBe('text');
         });
 
-        it('should map known iDevice types correctly', () => {
+        it('should map interactive iDevice types to modern equivalents', () => {
+            // LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+            // Interactive iDevices map to their modern equivalents
             const testCases = [
-                { className: 'exe.engine.cloze.ClozeIdevice', expected: 'cloze' },
-                { className: 'exe.engine.imagemagnifier.ImageMagnifierIdevice', expected: 'image-magnifier' },
-                { className: 'exe.engine.multiselect.MultiSelectIdevice', expected: 'multi-select' },
+                { className: 'exe.engine.cloze.ClozeIdevice', expected: 'complete' },
+                { className: 'exe.engine.imagemagnifier.ImageMagnifierIdevice', expected: 'magnifier' },
+                { className: 'exe.engine.multiselect.MultiSelectIdevice', expected: 'quick-questions-multiple-choice' },
+                { className: 'exe.engine.truefalse.TrueFalseIdevice', expected: 'trueorfalse' },
+                { className: 'exe.engine.gallery.GalleryIdevice', expected: 'image-gallery' },
+                { className: 'exe.engine.casestudy.CasestudyIdevice', expected: 'casestudy' },
             ];
 
             for (const { className, expected } of testCases) {
@@ -833,6 +853,424 @@ describe('legacy-xml-parser', () => {
                 const page = result.pages.find(p => p.id === `node-${expected}`);
                 expect(page?.components[0]?.type).toBe(expected);
             }
+        });
+    });
+
+    describe('legacy iDevice type conversion for editability', () => {
+        /**
+         * LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+         *
+         * These tests verify that legacy text-based iDevices are properly converted
+         * to the modern 'text' iDevice type to ensure editability.
+         *
+         * Historical context: In eXeLearning 2.x, many iDevices were essentially
+         * text containers with different icons/styling. Without conversion, they
+         * would render but be READ-ONLY in modern eXeLearning.
+         *
+         * See doc/conventions.md section "Legacy .elp (v2.x) Import – Editable iDevice Conversion"
+         */
+
+        it('should convert FreeTextIdevice to text', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.freetextidevice.FreeTextIdevice',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components[0]?.type).toBe('text');
+        });
+
+        it('should convert GenericIdevice to text', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.genericidevice.GenericIdevice',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components[0]?.type).toBe('text');
+        });
+
+        it('should convert ReflectionIdevice to text', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.reflectionidevice.ReflectionIdevice',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components[0]?.type).toBe('text');
+        });
+
+        it('should convert all Spanish FPD iDevice variants to text', () => {
+            // Spanish FPD (Formación Profesional a Distancia) iDevices
+            const fpdIdevices = [
+                'exe.engine.tareasidevice.TareasIdevice',
+                'exe.engine.comillasidevice.ComillasIdevice',
+                'exe.engine.notainformacionidevice.NotaInformacionIdevice',
+                'exe.engine.casopracticofpdidevice.CasopracticofpdIdevice',
+                'exe.engine.citasparapensarfpdidevice.CitasparapensarfpdIdevice',
+                'exe.engine.debesconocerfpdidevice.DebesconocerfpdIdevice',
+                'exe.engine.destacadofpdidevice.DestacadofpdIdevice',
+                'exe.engine.orientacionestutoriafpdidevice.OrientacionestutoriafpdIdevice',
+                'exe.engine.orientacionesalumnadofpdidevice.OrientacionesalumnadofpdIdevice',
+                'exe.engine.parasabermasfpdidevice.ParasabermasfpdIdevice',
+                'exe.engine.recomendacionfpdidevice.RecomendacionfpdIdevice',
+            ];
+
+            for (const className of fpdIdevices) {
+                const parsed: LegacyInstanceXmlDocument = {
+                    instance: {
+                        '@_class': 'exe.engine.package.Package',
+                        node: {
+                            '@_class': 'exe.engine.node.Node',
+                            '@_reference': 'node-1',
+                            dictionary: {
+                                unicode: { '@_value': 'Page' },
+                                list: {
+                                    instance: {
+                                        '@_class': className,
+                                        '@_reference': 'idevice-1',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                };
+
+                const result = parse(parsed);
+                const page = result.pages.find(p => p.id === 'node-1');
+                expect(page?.components[0]?.type).toBe('text');
+            }
+        });
+
+        it('should convert obsolete external content iDevices to text', () => {
+            // These iDevices have no modern equivalent but content can be preserved as text
+            const obsoleteIdevices = [
+                'exe.engine.wikipediaidevice.WikipediaIdevice',
+                'exe.engine.rssidevice.RssIdevice',
+                'exe.engine.appletidevice.AppletIdevice',
+            ];
+
+            for (const className of obsoleteIdevices) {
+                const parsed: LegacyInstanceXmlDocument = {
+                    instance: {
+                        '@_class': 'exe.engine.package.Package',
+                        node: {
+                            '@_class': 'exe.engine.node.Node',
+                            '@_reference': 'node-1',
+                            dictionary: {
+                                unicode: { '@_value': 'Page' },
+                                list: {
+                                    instance: {
+                                        '@_class': className,
+                                        '@_reference': 'idevice-1',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                };
+
+                const result = parse(parsed);
+                const page = result.pages.find(p => p.id === 'node-1');
+                expect(page?.components[0]?.type).toBe('text');
+            }
+        });
+
+        it('should preserve content when converting to text', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.reflectionidevice.ReflectionIdevice',
+                                    '@_reference': 'idevice-1',
+                                    content: {
+                                        __cdata: '<p>Important reflection content that must be preserved</p>',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+
+            // Type should be 'text' for editability
+            expect(page?.components[0]?.type).toBe('text');
+            // Content should be preserved exactly
+            expect(page?.components[0]?.content).toContain('Important reflection content that must be preserved');
+        });
+
+        it('should preserve title when converting to text', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.genericidevice.GenericIdevice',
+                                    '@_reference': 'idevice-1',
+                                    dictionary: {
+                                        string: '_title',
+                                        unicode: { '@_value': 'My Important Objectives' },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+
+            // Type should be 'text' for editability
+            expect(page?.components[0]?.type).toBe('text');
+            // Title should be preserved
+            expect(page?.components[0]?.title).toBe('My Important Objectives');
+        });
+
+        it('should detect JsIdevice as modern format', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.jsidevice.JsIdevice',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            // JsIdevice is detected as modern format
+            expect(page?.components[0]?.type).toBe('js');
+        });
+
+        it('should map TrueFalseIdevice to trueorfalse (interactive)', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.truefalseidevice.TrueFalseIdevice',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components[0]?.type).toBe('trueorfalse');
+        });
+
+        it('should map ClozeIdevice to complete (fill-in-blanks)', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.clozeidevice.ClozeIdevice',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components[0]?.type).toBe('complete');
+        });
+
+        it('should convert mixed iDevice types in a single page correctly', () => {
+            // This test simulates a real legacy ELP with multiple iDevice types
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: [
+                                    {
+                                        '@_class': 'exe.engine.freetextidevice.FreeTextIdevice',
+                                        '@_reference': 'idevice-freetext',
+                                        dictionary: {
+                                            string: '_title',
+                                            unicode: { '@_value': 'Introduction' },
+                                        },
+                                    },
+                                    {
+                                        '@_class': 'exe.engine.genericidevice.GenericIdevice',
+                                        '@_reference': 'idevice-generic',
+                                        dictionary: {
+                                            string: '_title',
+                                            unicode: { '@_value': 'Activity' },
+                                        },
+                                    },
+                                    {
+                                        '@_class': 'exe.engine.reflectionidevice.ReflectionIdevice',
+                                        '@_reference': 'idevice-reflection',
+                                        dictionary: {
+                                            string: '_title',
+                                            unicode: { '@_value': 'Reflection' },
+                                        },
+                                    },
+                                    {
+                                        '@_class': 'exe.engine.truefalseidevice.TrueFalseIdevice',
+                                        '@_reference': 'idevice-truefalse',
+                                        dictionary: {
+                                            string: '_title',
+                                            unicode: { '@_value': 'Quiz' },
+                                        },
+                                    },
+                                    {
+                                        '@_class': 'exe.engine.jsidevice.JsIdevice',
+                                        '@_reference': 'idevice-js',
+                                        dictionary: {
+                                            string: '_title',
+                                            unicode: { '@_value': 'Modern iDevice' },
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components.length).toBe(5);
+
+            // Text-based iDevices converted to 'text'
+            expect(page?.components[0]?.type).toBe('text');
+            expect(page?.components[1]?.type).toBe('text');
+            expect(page?.components[2]?.type).toBe('text');
+
+            // Interactive iDevice mapped to modern equivalent
+            expect(page?.components[3]?.type).toBe('trueorfalse');
+
+            // Modern JsIdevice detected
+            expect(page?.components[4]?.type).toBe('js');
+
+            // All titles preserved
+            expect(page?.components[0]?.title).toBe('Introduction');
+            expect(page?.components[1]?.title).toBe('Activity');
+            expect(page?.components[2]?.title).toBe('Reflection');
+            expect(page?.components[3]?.title).toBe('Quiz');
+            expect(page?.components[4]?.title).toBe('Modern iDevice');
+        });
+
+        it('should ensure converted iDevices have valid identifiers', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.reflectionidevice.ReflectionIdevice',
+                                    '@_reference': 'reflection-123',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+
+            // ID should be preserved and not undefined
+            expect(page?.components[0]?.id).toBe('reflection-123');
+            expect(page?.components[0]?.id).not.toBe('undefined');
+            expect(page?.components[0]?.id).not.toBeUndefined();
         });
     });
 

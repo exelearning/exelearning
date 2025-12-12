@@ -396,6 +396,116 @@ class LegacyXmlParser {
   }
 
   /**
+   * LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+   *
+   * Maps legacy iDevice class names to modern iDevice type names.
+   * This is critical for ensuring that imported legacy iDevices are EDITABLE
+   * in the modern editor.
+   *
+   * HISTORICAL CONTEXT:
+   * In eXeLearning 2.x, many iDevices were implemented as specialized variants
+   * of a Text iDevice, distinguished mainly by an icon and semantic label.
+   * Without conversion, they would render but be READ-ONLY in modern eXeLearning.
+   *
+   * CONVERSION STRATEGY:
+   * All text-based legacy iDevices are converted to the modern 'text' iDevice.
+   * This preserves content and enables editing in the modern editor.
+   *
+   * See doc/conventions.md section "Legacy .elp (v2.x) Import – Editable iDevice Conversion"
+   *
+   * @param {string} className - The legacy iDevice class name
+   * @returns {string} The modern iDevice type name
+   */
+  mapIdeviceType(className) {
+    // LEGACY TEXT-BASED IDEVICES → Convert to 'text' for editability
+    // These iDevices were essentially text containers with different icons/styling.
+    // Converting to 'text' preserves content AND enables editing in modern editor.
+    const textBasedIdevices = [
+      // Core text iDevices
+      'FreeTextIdevice',
+      'FreeTextfpdIdevice',
+      'GenericIdevice',
+      // Reflection variants
+      'ReflectionIdevice',
+      'ReflectionfpdIdevice',
+      'ReflectionfpdmodifIdevice',
+      // Spanish FPD variants (Formación Profesional a Distancia)
+      'TareasIdevice',           // Tasks
+      'ListaApartadosIdevice',   // List sections
+      'ComillasIdevice',         // Quotes
+      'NotaInformacionIdevice',  // Note/Information
+      'NotaIdevice',             // Note
+      'CasopracticofpdIdevice',  // Case study FPD
+      'CitasparapensarfpdIdevice', // Quotes to think
+      'DebesconocerfpdIdevice',  // Must know
+      'DestacadofpdIdevice',     // Highlighted
+      'OrientacionestutoriafpdIdevice',   // Teacher guidelines
+      'OrientacionesalumnadofpdIdevice',  // Student guidelines
+      'ParasabermasfpdIdevice',  // To learn more / Step ahead
+      'RecomendacionfpdIdevice', // Recommendation
+      'EjercicioresueltofpdIdevice', // Solved exercises
+      // External content iDevices (no modern equivalent, fallback to text)
+      'WikipediaIdevice',
+      'RssIdevice',
+      'AppletIdevice', // Java applets - no modern support
+    ];
+
+    // Check if this is a text-based iDevice that should convert to 'text'
+    for (const textType of textBasedIdevices) {
+      if (className.includes(textType)) {
+        Logger.log(`[LegacyXmlParser] Converting ${textType} to 'text' for editability`);
+        return 'text';
+      }
+    }
+
+    // INTERACTIVE IDEVICES → Map to modern equivalents
+    // These iDevices have structured content that requires specific handling.
+    const interactiveTypeMap = {
+      // True/False quiz
+      'TrueFalseIdevice': 'trueorfalse',
+      'VerdaderofalsofpdIdevice': 'trueorfalse',
+      // Multiple choice (single answer)
+      'MultichoiceIdevice': 'quick-questions-multiple-choice',
+      'EleccionmultiplefpdIdevice': 'quick-questions-multiple-choice',
+      // Multiple select (multiple answers)
+      'MultiSelectIdevice': 'quick-questions-multiple-choice',
+      'SeleccionmultiplefpdIdevice': 'quick-questions-multiple-choice',
+      // Fill in the blanks / Cloze
+      'ClozeIdevice': 'complete',
+      'ClozefpdIdevice': 'complete',
+      'ClozelangfpdIdevice': 'complete',
+      // Image magnifier
+      'ImageMagnifierIdevice': 'magnifier',
+      // Image gallery
+      'GalleryIdevice': 'image-gallery',
+      // Case study
+      'CasestudyIdevice': 'casestudy',
+      // File attachments
+      'FileAttachIdeviceInc': 'attached-files',
+      // External URL / website
+      'ExternalUrlIdevice': 'external-website',
+      // SCORM quiz/test
+      'QuizTestIdevice': 'quick-questions',
+    };
+
+    // Check for interactive iDevice mappings
+    for (const [legacyType, modernType] of Object.entries(interactiveTypeMap)) {
+      if (className.includes(legacyType)) {
+        Logger.log(`[LegacyXmlParser] Mapping ${legacyType} to '${modernType}'`);
+        return modernType;
+      }
+    }
+
+    // FALLBACK: Unknown iDevice types → Convert to 'text' for editability
+    // This ensures that ANY unrecognized legacy iDevice becomes editable
+    // rather than being rendered as a read-only, disabled component.
+    const match = className.match(/(\w+)Idevice/);
+    const extractedType = match ? match[1].toLowerCase() : 'unknown';
+    Logger.log(`[LegacyXmlParser] Unknown iDevice '${extractedType}' → converting to 'text' for editability`);
+    return 'text';
+  }
+
+  /**
    * LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
    *
    * Extract iDevices from a list element, including their titles.
@@ -421,19 +531,22 @@ class LegacyXmlParser {
 
       const ref = inst.getAttribute('reference') || `idev-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
-      // Extract iDevice type from class name or _iDeviceDir
-      // e.g., "exe.engine.jsidevice.JsIdevice" -> need to get _iDeviceDir for real type
-      const typeParts = className.split('.');
-      let ideviceType = typeParts[typeParts.length - 1] || 'FreeTextIdevice';
-
       const dict = inst.querySelector(':scope > dictionary');
 
-      // For JsIdevice, extract the actual type from _iDeviceDir
+      // For JsIdevice, extract the actual type from _iDeviceDir (modern iDevice)
+      let ideviceType;
       if (className === 'exe.engine.jsidevice.JsIdevice' && dict) {
         const iDeviceDir = this.findDictStringValue(dict, '_iDeviceDir');
         if (iDeviceDir) {
           ideviceType = iDeviceDir;
+          Logger.log(`[LegacyXmlParser] JsIdevice detected with type: ${ideviceType}`);
+        } else {
+          ideviceType = 'text'; // Fallback for JsIdevice without _iDeviceDir
         }
+      } else {
+        // LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+        // Convert legacy iDevice class names to modern type names for editability
+        ideviceType = this.mapIdeviceType(className);
       }
 
       // LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION

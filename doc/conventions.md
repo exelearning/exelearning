@@ -202,6 +202,179 @@ This transformation ensures that:
 
 ---
 
+## Legacy .elp (v2.x) Import – Editable iDevice Conversion
+
+### Background
+
+Legacy `contentv3.xml` files from eXeLearning 2.x contain iDevices that were implemented as **specialized variants of a Text iDevice**, distinguished mainly by:
+
+- An **icon** (e.g., lightbulb for Reflection, document for Activity)
+- A **semantic label** (e.g., "Prior Knowledge", "Objectives", "Reflection")
+
+Examples of such legacy iDevice types include:
+
+- Activity
+- Reading Activity
+- Prior Knowledge
+- Objectives
+- Reflection
+- FreeText, GenericIdevice
+- Spanish FPD variants (Tareas, Comillas, NotaInformacion, etc.)
+
+### The Editability Problem
+
+These legacy iDevices:
+
+- Were technically **Text-based** containers
+- Relied on the **legacy editor logic**
+- Have **no direct editable equivalent** in modern eXeLearning
+
+If imported verbatim without conversion:
+
+| Issue | Symptom |
+|-------|---------|
+| Edit button disabled | `btn-edit-idevice disabled` class present |
+| Undefined identifier | `identifier="undefined"` in DOM |
+| Content locked | Double-click opens editor but content cannot be modified |
+| User frustration | iDevice is effectively **read-only** |
+
+### Historical Precedent (Symfony Legacy)
+
+In the **Symfony legacy implementation**, a specific workaround existed:
+
+- When opening a legacy `.elp` in eXe 3:
+  - These specialized legacy iDevices were **converted into a standard Text iDevice**
+  - The content was preserved
+  - The result was fully editable
+
+This behavior is **recovered and preserved** in the current implementation.
+
+### Transformation Rule
+
+When opening or importing a legacy `.elp` (`contentv3.xml`):
+
+1. **Detect legacy text-based iDevices** that have no modern editable counterpart
+2. **Automatically convert them to modern Text iDevice** (`type: 'text'`)
+3. **Preserve the original content** (HTML)
+4. **Preserve the original title** (if present)
+5. Ensure the resulting iDevice:
+   - Has a **valid identifier**
+   - Has the **Edit button enabled**
+   - Is **fully editable** in modern eXeLearning
+
+### iDevice Conversion Table
+
+**Text-based iDevices (convert to `text`):**
+
+| Legacy iDevice Type | Description | Conversion |
+|---------------------|-------------|------------|
+| FreeTextIdevice | Free text content | → text |
+| FreeTextfpdIdevice | FPD variant | → text |
+| GenericIdevice | Generic iDevice | → text |
+| ReflectionIdevice | Reflection activity | → text |
+| ReflectionfpdIdevice | FPD variant | → text |
+| ReflectionfpdmodifIdevice | Modified FPD variant | → text |
+| TareasIdevice | Tasks (Spanish) | → text |
+| ListaApartadosIdevice | List sections (Spanish) | → text |
+| ComillasIdevice | Quotes (Spanish) | → text |
+| NotaInformacionIdevice | Note/Information | → text |
+| NotaIdevice | Note | → text |
+| CasopracticofpdIdevice | Case study FPD | → text |
+| CitasparapensarfpdIdevice | Quotes to think | → text |
+| DebesconocerfpdIdevice | Must know | → text |
+| DestacadofpdIdevice | Highlighted | → text |
+| OrientacionestutoriafpdIdevice | Teacher guidelines | → text |
+| OrientacionesalumnadofpdIdevice | Student guidelines | → text |
+| ParasabermasfpdIdevice | To learn more | → text |
+| RecomendacionfpdIdevice | Recommendation | → text |
+| EjercicioresueltofpdIdevice | Solved exercises | → text |
+| WikipediaIdevice | Wikipedia embed | → text |
+| RssIdevice | RSS feed | → text |
+| AppletIdevice | Java applet (obsolete) | → text |
+
+**Interactive iDevices (mapped to modern equivalents):**
+
+| Legacy iDevice Type | Modern Type |
+|---------------------|-------------|
+| TrueFalseIdevice | trueorfalse |
+| VerdaderofalsofpdIdevice | trueorfalse |
+| MultichoiceIdevice | quick-questions-multiple-choice |
+| EleccionmultiplefpdIdevice | quick-questions-multiple-choice |
+| MultiSelectIdevice | quick-questions-multiple-choice |
+| SeleccionmultiplefpdIdevice | quick-questions-multiple-choice |
+| ClozeIdevice | complete |
+| ClozefpdIdevice | complete |
+| ClozelangfpdIdevice | complete |
+| ImageMagnifierIdevice | magnifier |
+| GalleryIdevice | image-gallery |
+| CasestudyIdevice | casestudy |
+| FileAttachIdeviceInc | attached-files |
+| ExternalUrlIdevice | external-website |
+| QuizTestIdevice | quick-questions |
+
+**Modern iDevices:**
+
+| iDevice Type | Handling |
+|--------------|----------|
+| JsIdevice | Preserved (modern JSON-based iDevice system) |
+
+**Fallback:**
+
+Any unrecognized legacy iDevice type is **converted to `text`** to ensure editability.
+
+### When This Applies
+
+This conversion is applied **only** when:
+
+- Opening or importing **legacy `.elp` files (v2.x / contentv3.xml)**
+- Files use the Python pickle-based format
+
+### When This Does NOT Apply
+
+Conversion is **not** applied to:
+
+- **Modern `.elpx` files** – iDevice types are preserved as defined
+- **New projects** – no legacy conversion needed
+- **Native EXENEW iDevices** – already use modern type system
+
+### Implementation Details
+
+The conversion logic is implemented in **both** backend and frontend:
+
+**Backend:**
+- **File:** `src/services/xml/legacy-xml-parser.ts`
+- **Function:** `mapIdeviceType()`
+
+**Frontend:**
+- **File:** `public/app/yjs/LegacyXmlParser.js`
+- **Function:** `mapIdeviceType()`
+
+Both implementations must be kept in sync. When adding new iDevice type mappings, update both files.
+
+### Rationale
+
+**"Editable content takes precedence over preserving obsolete iDevice types."**
+
+This transformation ensures that:
+
+1. **No legacy content becomes read-only** – users can always edit their content
+2. **Content is preserved exactly** – only the iDevice type metadata changes
+3. **User experience is consistent** – all iDevices behave the same way
+4. **Legacy compatibility is maintained** – matches historical eXe 3 behavior
+
+### Important Notes
+
+- This behavior is **intentional and by design** – it is not a bug
+- This transformation applies **only to legacy v2.x imports** (`contentv3.xml`)
+- **Modern `.elpx` files are NOT affected** – their iDevice types are preserved
+- Do not change this behavior without updating:
+  - The code comments in `legacy-xml-parser.ts` (backend)
+  - The code comments in `LegacyXmlParser.js` (frontend)
+  - This documentation
+  - The test suite
+
+---
+
 ## Adding New Conventions
 
 When adding new conventions to this document:

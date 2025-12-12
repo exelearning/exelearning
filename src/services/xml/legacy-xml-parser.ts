@@ -567,25 +567,176 @@ function extractResourcePaths(inst: unknown): string[] {
     return [...new Set(paths)]; // Deduplicate
 }
 
+/**
+ * LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
+ *
+ * Maps legacy iDevice class names to modern iDevice type names.
+ * This is critical for ensuring that imported legacy iDevices are EDITABLE
+ * in the modern editor.
+ *
+ * HISTORICAL CONTEXT:
+ * In eXeLearning 2.x, many iDevices were implemented as specialized variants
+ * of a Text iDevice, distinguished mainly by:
+ *   - An icon (e.g., lightbulb for Reflection, document for Activity)
+ *   - A semantic label (e.g., "Prior Knowledge", "Objectives")
+ *
+ * These iDevices were technically Text-based and used the legacy editor.
+ * They do NOT have direct editable equivalents in modern eXeLearning.
+ *
+ * If imported verbatim (without conversion), they would:
+ *   - Appear visually but with Edit button DISABLED
+ *   - Have identifier="undefined" in the DOM
+ *   - Be effectively READ-ONLY, frustrating users
+ *
+ * CONVERSION STRATEGY (from Symfony legacy implementation):
+ * All text-based legacy iDevices are converted to the modern 'text' iDevice.
+ * This preserves:
+ *   - The original HTML content
+ *   - The iDevice title
+ *   - Full editability in the modern editor
+ *
+ * AFFECTED IDEVICE TYPES:
+ *
+ * Text-based iDevices (convert to 'text'):
+ *   - FreeTextIdevice, FreeTextfpdIdevice
+ *   - GenericIdevice
+ *   - ReflectionIdevice, ReflectionfpdIdevice, ReflectionfpdmodifIdevice
+ *   - TareasIdevice (Tasks)
+ *   - ListaApartadosIdevice (List sections)
+ *   - ComillasIdevice (Quotes)
+ *   - NotaInformacionIdevice, NotaIdevice (Notes)
+ *   - CasopracticofpdIdevice (Case study FPD)
+ *   - CitasparapensarfpdIdevice (Quotes to think)
+ *   - DebesconocerfpdIdevice (Must know)
+ *   - DestacadofpdIdevice (Highlighted)
+ *   - OrientacionestutoriafpdIdevice (Teacher guidelines)
+ *   - OrientacionesalumnadofpdIdevice (Student guidelines)
+ *   - ParasabermasfpdIdevice (To learn more)
+ *   - RecomendacionfpdIdevice (Recommendation)
+ *   - WikipediaIdevice, RssIdevice (external content, no modern equivalent)
+ *   - AppletIdevice (Java applets, no modern support)
+ *   - EjercicioresueltofpdIdevice (Solved exercises)
+ *
+ * Interactive iDevices (have modern equivalents):
+ *   - TrueFalseIdevice, VerdaderofalsofpdIdevice → trueorfalse
+ *   - MultichoiceIdevice, EleccionmultiplefpdIdevice → quick-questions-multiple-choice
+ *   - MultiSelectIdevice, SeleccionmultiplefpdIdevice → quick-questions-multiple-choice
+ *   - ClozeIdevice, ClozefpdIdevice, ClozelangfpdIdevice → complete
+ *   - ImageMagnifierIdevice → magnifier
+ *   - GalleryIdevice → image-gallery
+ *   - CasestudyIdevice → casestudy
+ *   - FileAttachIdeviceInc → attached-files
+ *   - ExternalUrlIdevice → external-website
+ *   - QuizTestIdevice → quick-questions
+ *
+ * Modern iDevices (keep as-is):
+ *   - JsIdevice → This IS the modern JSON-based iDevice system
+ *
+ * See doc/conventions.md for full documentation.
+ *
+ * @param className - The legacy iDevice class name (e.g., 'exe.engine.freetextidevice.FreeTextIdevice')
+ * @returns The modern iDevice type name (e.g., 'text')
+ */
 function mapIdeviceType(className: string): string {
-    const typeMap: Record<string, string> = {
-        'FreeTextIdevice': 'free-text',
-        'MultichoiceIdevice': 'multichoice',
-        'TrueFalseIdevice': 'true-false',
-        'ClozeIdevice': 'cloze',
-        'ImageMagnifierIdevice': 'image-magnifier',
-        'GalleryIdevice': 'gallery',
-        'MultiSelectIdevice': 'multi-select',
-        'QuizTestIdevice': 'quiz',
-    };
+    // LEGACY TEXT-BASED IDEVICES → Convert to 'text' for editability
+    // These iDevices were essentially text containers with different icons/styling.
+    // Converting to 'text' preserves content AND enables editing in modern editor.
+    const textBasedIdevices = [
+        // Core text iDevices
+        'FreeTextIdevice',
+        'FreeTextfpdIdevice',
+        'GenericIdevice',
+        // Reflection variants
+        'ReflectionIdevice',
+        'ReflectionfpdIdevice',
+        'ReflectionfpdmodifIdevice',
+        // Spanish FPD variants (Formación Profesional a Distancia)
+        'TareasIdevice', // Tasks
+        'ListaApartadosIdevice', // List sections
+        'ComillasIdevice', // Quotes
+        'NotaInformacionIdevice', // Note/Information
+        'NotaIdevice', // Note
+        'CasopracticofpdIdevice', // Case study FPD
+        'CitasparapensarfpdIdevice', // Quotes to think
+        'DebesconocerfpdIdevice', // Must know
+        'DestacadofpdIdevice', // Highlighted
+        'OrientacionestutoriafpdIdevice', // Teacher guidelines
+        'OrientacionesalumnadofpdIdevice', // Student guidelines
+        'ParasabermasfpdIdevice', // To learn more / Step ahead
+        'RecomendacionfpdIdevice', // Recommendation
+        'EjercicioresueltofpdIdevice', // Solved exercises
+        // External content iDevices (no modern equivalent, fallback to text)
+        'WikipediaIdevice',
+        'RssIdevice',
+        'AppletIdevice', // Java applets - no modern support
+    ];
 
-    for (const [key, value] of Object.entries(typeMap)) {
-        if (className.includes(key)) return value;
+    // Check if this is a text-based iDevice that should convert to 'text'
+    for (const textType of textBasedIdevices) {
+        if (className.includes(textType)) {
+            if (DEBUG) console.log(`[LegacyParser] Converting ${textType} to 'text' for editability`);
+            return 'text';
+        }
     }
 
-    // Extract type from class name
+    // INTERACTIVE IDEVICES → Map to modern equivalents
+    // These iDevices have structured content that requires specific handling.
+    const interactiveTypeMap: Record<string, string> = {
+        // True/False quiz
+        'TrueFalseIdevice': 'trueorfalse',
+        'VerdaderofalsofpdIdevice': 'trueorfalse',
+        // Multiple choice (single answer)
+        'MultichoiceIdevice': 'quick-questions-multiple-choice',
+        'EleccionmultiplefpdIdevice': 'quick-questions-multiple-choice',
+        // Multiple select (multiple answers)
+        'MultiSelectIdevice': 'quick-questions-multiple-choice',
+        'SeleccionmultiplefpdIdevice': 'quick-questions-multiple-choice',
+        // Fill in the blanks / Cloze
+        'ClozeIdevice': 'complete',
+        'ClozefpdIdevice': 'complete',
+        'ClozelangfpdIdevice': 'complete',
+        // Image magnifier
+        'ImageMagnifierIdevice': 'magnifier',
+        // Image gallery
+        'GalleryIdevice': 'image-gallery',
+        // Case study
+        'CasestudyIdevice': 'casestudy',
+        // File attachments
+        'FileAttachIdeviceInc': 'attached-files',
+        // External URL / website
+        'ExternalUrlIdevice': 'external-website',
+        // SCORM quiz/test
+        'QuizTestIdevice': 'quick-questions',
+    };
+
+    // Check for interactive iDevice mappings
+    for (const [legacyType, modernType] of Object.entries(interactiveTypeMap)) {
+        if (className.includes(legacyType)) {
+            if (DEBUG) console.log(`[LegacyParser] Mapping ${legacyType} to '${modernType}'`);
+            return modernType;
+        }
+    }
+
+    // MODERN JS IDEVICE → Keep the type from the iDevice itself
+    // JsIdevice is the modern JSON-based iDevice system. The actual type
+    // is stored within the iDevice's JSON properties.
+    if (className.includes('JsIdevice')) {
+        if (DEBUG) console.log(`[LegacyParser] Detected JsIdevice (modern format)`);
+        // Return 'js' to indicate this needs special handling to extract the actual type
+        return 'js';
+    }
+
+    // FALLBACK: Unknown iDevice types → Convert to 'text' for editability
+    // This ensures that ANY unrecognized legacy iDevice becomes editable
+    // rather than being rendered as a read-only, disabled component.
+    // Editable content takes precedence over preserving obsolete iDevice types.
     const match = className.match(/(\w+)Idevice/);
-    return match ? match[1].toLowerCase() : 'unknown';
+    const extractedType = match ? match[1].toLowerCase() : 'unknown';
+
+    if (DEBUG) console.log(`[LegacyParser] Unknown iDevice '${extractedType}' → converting to 'text' for editability`);
+
+    // Convert unknown types to 'text' to ensure editability
+    return 'text';
 }
 
 /**
