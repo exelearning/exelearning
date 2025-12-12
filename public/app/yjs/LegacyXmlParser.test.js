@@ -457,4 +457,547 @@ describe('LegacyXmlParser', () => {
       expect(result.pages.length).toBe(2);
     });
   });
+
+  describe('root node flattening for legacy v2.x imports', () => {
+    /**
+     * LEGACY V2.X ROOT NODE FLATTENING CONVENTION
+     *
+     * Legacy contentv3.xml files have a single root node with children.
+     * This convention promotes direct children to top-level pages.
+     * See doc/conventions.md for full documentation.
+     */
+
+    it('should flatten direct children of single root to top-level', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="root-node">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root"/>
+              <string role="key" value="parent"/>
+              <none/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="child-a">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child A"/>
+              <string role="key" value="parent"/>
+              <reference key="root-node"/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="child-b">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child B"/>
+              <string role="key" value="parent"/>
+              <reference key="root-node"/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="child-c">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child C"/>
+              <string role="key" value="parent"/>
+              <reference key="root-node"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      expect(result.pages).toHaveLength(4);
+
+      // All pages should be at top level (parent_id = null)
+      const root = result.pages.find(p => p.title === 'Root');
+      const childA = result.pages.find(p => p.title === 'Child A');
+      const childB = result.pages.find(p => p.title === 'Child B');
+      const childC = result.pages.find(p => p.title === 'Child C');
+
+      expect(root.parent_id).toBeNull();
+      expect(childA.parent_id).toBeNull();
+      expect(childB.parent_id).toBeNull();
+      expect(childC.parent_id).toBeNull();
+    });
+
+    it('should preserve grandchild relationships with promoted parent', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="root-node">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root"/>
+              <string role="key" value="parent"/>
+              <none/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="child-a">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child A"/>
+              <string role="key" value="parent"/>
+              <reference key="root-node"/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="grandchild-a1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Grandchild A1"/>
+              <string role="key" value="parent"/>
+              <reference key="child-a"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      expect(result.pages).toHaveLength(3);
+
+      const root = result.pages.find(p => p.title === 'Root');
+      const childA = result.pages.find(p => p.title === 'Child A');
+      const grandchildA1 = result.pages.find(p => p.title === 'Grandchild A1');
+
+      // Root at top level
+      expect(root.parent_id).toBeNull();
+
+      // Child A promoted to top level
+      expect(childA.parent_id).toBeNull();
+
+      // Grandchild A1 keeps parent relationship with Child A
+      expect(grandchildA1.parent_id).toBe(childA.id);
+    });
+
+    it('should not flatten when root has no children', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="lonely-root">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Lonely Root"/>
+              <string role="key" value="parent"/>
+              <none/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      expect(result.pages).toHaveLength(1);
+      expect(result.pages[0].title).toBe('Lonely Root');
+      expect(result.pages[0].parent_id).toBeNull();
+    });
+
+    it('should not flatten when multiple root nodes exist', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="root-1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root 1"/>
+              <string role="key" value="parent"/>
+              <none/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="child-of-1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child of 1"/>
+              <string role="key" value="parent"/>
+              <reference key="root-1"/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="root-2">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root 2"/>
+              <string role="key" value="parent"/>
+              <none/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      // With multiple roots, no flattening should occur
+      const childOf1 = result.pages.find(p => p.title === 'Child of 1');
+      const root1 = result.pages.find(p => p.title === 'Root 1');
+
+      // Child should still have its parent relationship (no flattening)
+      expect(childOf1.parent_id).toBe(root1.id);
+    });
+  });
+
+  describe('shouldFlattenRootChildren', () => {
+    it('returns shouldFlatten=false when no root pages', () => {
+      const result = parser.shouldFlattenRootChildren([]);
+      expect(result.shouldFlatten).toBe(false);
+      expect(result.rootPage).toBeNull();
+    });
+
+    it('returns shouldFlatten=false when multiple root pages', () => {
+      const rootPages = [
+        { id: 'root-1', children: [] },
+        { id: 'root-2', children: [] },
+      ];
+      const result = parser.shouldFlattenRootChildren(rootPages);
+      expect(result.shouldFlatten).toBe(false);
+      expect(result.rootPage).toBeNull();
+    });
+
+    it('returns shouldFlatten=false when single root has no children', () => {
+      const rootPages = [
+        { id: 'root', children: [] },
+      ];
+      const result = parser.shouldFlattenRootChildren(rootPages);
+      expect(result.shouldFlatten).toBe(false);
+    });
+
+    it('returns shouldFlatten=true when single root has children', () => {
+      const rootPages = [
+        { id: 'root', children: [{ id: 'child-1' }] },
+      ];
+      const result = parser.shouldFlattenRootChildren(rootPages);
+      expect(result.shouldFlatten).toBe(true);
+      expect(result.rootPage).toBe(rootPages[0]);
+    });
+  });
+
+  describe('flattenRootChildren', () => {
+    it('promotes direct children to top level', () => {
+      const rootPage = {
+        id: 'root',
+        title: 'Root',
+        blocks: [],
+        children: [
+          { id: 'child-a', title: 'Child A', blocks: [], children: [] },
+          { id: 'child-b', title: 'Child B', blocks: [], children: [] },
+        ],
+      };
+
+      const result = parser.flattenRootChildren(rootPage);
+
+      expect(result).toHaveLength(3);
+
+      // Root first
+      expect(result[0].id).toBe('root');
+      expect(result[0].parent_id).toBeNull();
+
+      // Children promoted to top level
+      expect(result[1].id).toBe('child-a');
+      expect(result[1].parent_id).toBeNull();
+      expect(result[2].id).toBe('child-b');
+      expect(result[2].parent_id).toBeNull();
+    });
+
+    it('preserves grandchild relationships', () => {
+      const rootPage = {
+        id: 'root',
+        title: 'Root',
+        blocks: [],
+        children: [
+          {
+            id: 'child-a',
+            title: 'Child A',
+            blocks: [],
+            children: [
+              { id: 'grandchild-a1', title: 'Grandchild A1', blocks: [], children: [] },
+            ],
+          },
+        ],
+      };
+
+      const result = parser.flattenRootChildren(rootPage);
+
+      expect(result).toHaveLength(3);
+
+      // Root first
+      expect(result[0].id).toBe('root');
+      expect(result[0].parent_id).toBeNull();
+
+      // Child A promoted
+      expect(result[1].id).toBe('child-a');
+      expect(result[1].parent_id).toBeNull();
+
+      // Grandchild A1 keeps parent relationship
+      expect(result[2].id).toBe('grandchild-a1');
+      expect(result[2].parent_id).toBe('child-a');
+    });
+  });
+
+  describe('iDevice box splitting for legacy v2.x imports', () => {
+    /**
+     * LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+     *
+     * When importing legacy contentv3.xml files, each iDevice must be placed
+     * in its own box (block), with the box title taken from the iDevice title.
+     * See doc/conventions.md for full documentation.
+     */
+
+    it('should create one block per iDevice', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="node-1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Test Page"/>
+              <string role="key" value="parent"/>
+              <none/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Introduction"/>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev2">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Objectives"/>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev3">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Activity"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      expect(result.pages).toHaveLength(1);
+      const page = result.pages[0];
+
+      // Should have 3 blocks, one per iDevice
+      expect(page.blocks).toHaveLength(3);
+
+      // Each block should have exactly one iDevice
+      page.blocks.forEach(block => {
+        expect(block.idevices).toHaveLength(1);
+      });
+
+      // Block names should match iDevice titles
+      expect(page.blocks[0].name).toBe('Introduction');
+      expect(page.blocks[1].name).toBe('Objectives');
+      expect(page.blocks[2].name).toBe('Activity');
+    });
+
+    it('should use iDevice title as block name', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="node-1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Page"/>
+              <string role="key" value="parent"/>
+              <none/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="My Custom Title"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      const page = result.pages[0];
+      expect(page.blocks).toHaveLength(1);
+      expect(page.blocks[0].name).toBe('My Custom Title');
+    });
+
+    it('should use empty string for iDevices without title', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="node-1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Page"/>
+              <string role="key" value="parent"/>
+              <none/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                  <dictionary>
+                    <string role="key" value="other_field"/>
+                    <unicode value="some value"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      const page = result.pages[0];
+      expect(page.blocks).toHaveLength(1);
+      expect(page.blocks[0].name).toBe('');
+    });
+
+    it('should preserve iDevice order across blocks', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="node-1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Page"/>
+              <string role="key" value="parent"/>
+              <none/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev-first">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="First"/>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev-second">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Second"/>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev-third">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Third"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      const page = result.pages[0];
+      expect(page.blocks[0].position).toBe(0);
+      expect(page.blocks[0].name).toBe('First');
+      expect(page.blocks[1].position).toBe(1);
+      expect(page.blocks[1].name).toBe('Second');
+      expect(page.blocks[2].position).toBe(2);
+      expect(page.blocks[2].name).toBe('Third');
+    });
+
+    it('should NOT group multiple iDevices into single block', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="node-1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Page"/>
+              <string role="key" value="parent"/>
+              <none/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="iDevice 1"/>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev2">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="iDevice 2"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      const result = parser.parse(xml);
+
+      const page = result.pages[0];
+
+      // Verify no block contains more than one iDevice
+      page.blocks.forEach(block => {
+        expect(block.idevices.length).toBe(1);
+      });
+
+      // Number of blocks should equal number of iDevices
+      expect(page.blocks.length).toBe(2);
+    });
+  });
+
+  describe('extractIdeviceTitle', () => {
+    it('extracts title from dictionary with _title key', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="My Title"/>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const inst = doc.querySelector('instance');
+      const title = parser.extractIdeviceTitle(inst);
+
+      expect(title).toBe('My Title');
+    });
+
+    it('extracts title from dictionary with title key', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+          <dictionary>
+            <string role="key" value="title"/>
+            <unicode value="Alternative Title"/>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const inst = doc.querySelector('instance');
+      const title = parser.extractIdeviceTitle(inst);
+
+      expect(title).toBe('Alternative Title');
+    });
+
+    it('returns empty string for missing dictionary', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const inst = doc.querySelector('instance');
+      const title = parser.extractIdeviceTitle(inst);
+
+      expect(title).toBe('');
+    });
+
+    it('returns empty string for empty title', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="   "/>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const inst = doc.querySelector('instance');
+      const title = parser.extractIdeviceTitle(inst);
+
+      expect(title).toBe('');
+    });
+  });
 });

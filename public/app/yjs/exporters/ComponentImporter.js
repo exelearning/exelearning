@@ -189,8 +189,9 @@ class ComponentImporter {
     let htmlView = this.getTextContent(compNode, 'htmlView') || '';
     htmlView = this.decodeHtmlContent(htmlView);
 
-    // Convert asset paths to asset:// URLs
-    if (this.assetManager && this.assetMap.size > 0 && htmlView) {
+    // Convert asset paths to asset:// URLs (check both modern and legacy asset maps)
+    const hasAssets = this.assetMap.size > 0 || (this.legacyAssetMap && this.legacyAssetMap.size > 0);
+    if (this.assetManager && hasAssets && htmlView) {
       htmlView = this.convertAssetPaths(htmlView);
     }
 
@@ -202,8 +203,8 @@ class ComponentImporter {
         let decoded = this.decodeHtmlContent(jsonPropsStr);
         jsonProperties = JSON.parse(decoded);
 
-        // Convert asset paths in JSON properties
-        if (this.assetManager && this.assetMap.size > 0) {
+        // Convert asset paths in JSON properties (check both modern and legacy asset maps)
+        if (this.assetManager && hasAssets) {
           jsonProperties = this.convertAssetPathsInObject(jsonProperties);
         }
       } catch (e) {
@@ -234,6 +235,8 @@ class ComponentImporter {
 
     // Extract assets from content/resources/ directory
     this.assetMap = new Map();
+    // Map to store ideviceId -> filename mappings for legacy path resolution
+    this.legacyAssetMap = new Map();
     let count = 0;
 
     for (const [path, zipEntry] of Object.entries(zip.files)) {
@@ -247,15 +250,15 @@ class ComponentImporter {
         try {
           const data = await zipEntry.async('blob');
           const filename = path.split('/').pop() || 'asset';
+          // Extract ideviceId from path: content/resources/{ideviceId}/{filename}
+          const pathParts = path.split('/');
+          const ideviceId = pathParts.length >= 3 ? pathParts[2] : null;
 
           // Create a File object
           const file = new File([data], filename, { type: this.getMimeType(filename) });
 
-          // Insert into asset manager
-          const assetId = await this.assetManager.insertAsset(file, {
-            originalPath: path,
-            filename: filename
-          });
+          // Insert into asset manager using insertImage (works for all media types)
+          const assetId = await this.assetManager.insertImage(file);
 
           if (assetId) {
             // Store mapping: original path -> asset ID (without asset:// prefix)
@@ -264,6 +267,13 @@ class ComponentImporter {
 
             // Also store by filename for simpler path matching
             this.assetMap.set(filename, cleanAssetId);
+
+            // Store legacy path mapping: {ideviceId}/{filename} for legacy path resolution
+            if (ideviceId) {
+              const legacyKey = `${ideviceId}/${filename}`;
+              this.legacyAssetMap.set(legacyKey, cleanAssetId);
+              Logger.log(`[ComponentImporter] Legacy mapping: ${legacyKey} -> ${cleanAssetId}`);
+            }
 
             Logger.log(`[ComponentImporter] Imported asset: ${path} -> ${cleanAssetId}`);
             count++;
@@ -280,15 +290,41 @@ class ComponentImporter {
 
   /**
    * Convert asset paths in HTML content to asset:// URLs
+   * Handles both modern paths (content/resources/...) and legacy paths
+   * (files/tmp/... or files/perm/...)
+   *
    * @param {string} html - HTML content
    * @returns {string} HTML with converted paths
    */
   convertAssetPaths(html) {
-    if (!html || this.assetMap.size === 0) return html;
+    if (!html || (this.assetMap.size === 0 && (!this.legacyAssetMap || this.legacyAssetMap.size === 0))) {
+      return html;
+    }
 
     let result = html;
 
-    // Replace content/resources/xxx paths
+    // First, handle legacy paths: files/tmp/{date}/{sessionId}/{ideviceId}/{filename}
+    // or files/perm/odes/{odeId}/{ideviceId}/{filename}
+    // These need to be mapped to content/resources/{ideviceId}/{filename}
+    if (this.legacyAssetMap && this.legacyAssetMap.size > 0) {
+      // Pattern: files/tmp/YYYY/MM/DD/{sessionId}/{ideviceId}/{filename}
+      // or: files/perm/odes/{odeId}/{ideviceId}/{filename}
+      const legacyPathRegex = /files\/(?:tmp\/\d{4}\/\d{2}\/\d{2}\/[A-Z0-9]+|perm\/odes\/[A-Z0-9]+)\/([A-Z0-9]+)\/([^"'\s<>]+)/gi;
+
+      result = result.replace(legacyPathRegex, (match, ideviceId, filename) => {
+        const legacyKey = `${ideviceId}/${filename}`;
+        const assetId = this.legacyAssetMap.get(legacyKey);
+        if (assetId) {
+          Logger.log(`[ComponentImporter] Replaced legacy path: ${match} -> asset://${assetId}`);
+          return `asset://${assetId}`;
+        }
+        // If no mapping found, leave as-is
+        Logger.warn(`[ComponentImporter] No mapping for legacy path: ${match}`);
+        return match;
+      });
+    }
+
+    // Then handle modern content/resources/xxx paths
     for (const [originalPath, assetId] of this.assetMap.entries()) {
       // Skip filename-only entries (they're duplicates for convenience)
       if (!originalPath.includes('/')) continue;

@@ -464,7 +464,8 @@ class AssetManager {
 
     // Find all asset:// references (supports both asset://uuid and asset://uuid/filename)
     // NOTE: Filename part can contain spaces, so we match until quote character
-    const assetRegex = /asset:\/\/([a-f0-9-]+)(\/[^"']+)?/gi;
+    // Note: [^"'\\] excludes quotes AND backslash to avoid matching JSON escape sequences
+    const assetRegex = /asset:\/\/([a-f0-9-]+)(\/[^"'\\]+)?/gi;
     const matches = [...html.matchAll(assetRegex)];
 
     if (matches.length === 0) return html;
@@ -583,7 +584,8 @@ class AssetManager {
 
     // Phase 2: Handle any remaining asset:// URLs (video, audio, background-image, etc.)
     // These won't have img-specific tracking but will still be resolved
-    const assetRegex = /asset:\/\/([a-f0-9-]+)(\/[^"']+)?/gi;
+    // Note: [^"'\\] excludes quotes AND backslash to avoid matching JSON escape sequences
+    const assetRegex = /asset:\/\/([a-f0-9-]+)(\/[^"'\\]+)?/gi;
 
     resolvedHTML = resolvedHTML.replace(assetRegex, (fullMatch, assetId) => {
       const blobURL = this.blobURLCache.get(assetId);

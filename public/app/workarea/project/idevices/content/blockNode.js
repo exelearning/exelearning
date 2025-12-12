@@ -922,37 +922,42 @@ export default class IdeviceBlockNode {
     */
 
     /**
-     *
+     * Download block as .block file using in-memory ComponentExporter
      * @param {*} odeBlockId
      */
     async downloadBlockSelected(odeBlockId) {
-        let odeSessionId = eXeLearning.app.project.odeSession;
+        try {
+            // Get the Yjs bridge and document manager
+            const yjsBridge = eXeLearning.app.project._yjsBridge;
+            if (!yjsBridge) {
+                throw new Error('Yjs bridge not initialized');
+            }
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
 
-        let response = await eXeLearning.app.api.getOdeIdevicesDownload(
-            odeSessionId,
-            odeBlockId,
-            null
-        );
-        const responseBody = response['response'];
-        if (
-            typeof responseBody === 'string' &&
-            responseBody.includes('responseMessage')
-        ) {
-            // Response to show always on 3
-            let bodyResponse = responseBody.split('"');
-            eXeLearning.app.modals.alert.show({
-                title: _('Download error'),
-                body: bodyResponse[3],
-                contentId: 'error',
-            });
-        } else {
-            const downloadUrl = response['url'];
-            if (downloadUrl) {
-                const fileName = buildComponentFileName(odeBlockId, '.block');
-                await downloadComponentFile(downloadUrl, fileName, {
-                    absoluteKey: buildComponentStorageKey(odeBlockId, 'block'),
+            const exporter = window.createExporter(
+                'COMPONENT',
+                documentManager,
+                assetCache,
+                null,
+                assetManager
+            );
+            const result = await exporter.exportComponent(odeBlockId, null);
+            if (!result.success) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: result.error || _('Failed to export block'),
+                    contentId: 'error',
                 });
             }
+        } catch (error) {
+            console.error('[blockNode] Export failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Download error'),
+                body: error.message,
+                contentId: 'error',
+            });
         }
     }
 

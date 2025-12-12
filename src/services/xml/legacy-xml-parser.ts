@@ -162,8 +162,18 @@ function extractMetadata(instance: unknown): LegacyMetadata {
             const unicodes = Array.isArray(record.unicode) ? record.unicode : [record.unicode];
 
             for (let i = 0; i < strings.length; i++) {
-                if (strings[i] === key && unicodes[i]) {
-                    return unicodes[i]['@_value'] || unicodes[i];
+                const strItem = strings[i] as Record<string, unknown> | string;
+                // Legacy format: <string role="key" value="_title"></string>
+                // Parsed as: { "@_role": "key", "@_value": "_title" }
+                const strValue = typeof strItem === 'object' && strItem !== null
+                    ? strItem['@_value']
+                    : strItem;
+
+                if (strValue === key && unicodes[i]) {
+                    const unicodeItem = unicodes[i] as Record<string, unknown>;
+                    return typeof unicodeItem === 'object' && unicodeItem !== null
+                        ? (unicodeItem['@_value'] as string)
+                        : String(unicodeItem);
                 }
             }
         }
@@ -186,6 +196,138 @@ function extractMetadata(instance: unknown): LegacyMetadata {
     return meta;
 }
 
+/**
+ * LEGACY V2.X ROOT NODE FLATTENING CONVENTION
+ *
+ * Legacy contentv3.xml files from eXeLearning 2.x often have a single root node
+ * that acts as a container, with all meaningful content pages as children.
+ * This does NOT match the target content model where multiple top-level pages are expected.
+ *
+ * This function detects if we have a single root node with children that should be flattened.
+ *
+ * See doc/conventions.md for full documentation.
+ *
+ * @returns true if the structure has a single root with children that should be flattened
+ */
+function shouldFlattenRootChildren(): { shouldFlatten: boolean; rootRef: string | null } {
+    // Find all root nodes (nodes with no parent)
+    const rootRefs: string[] = [];
+    for (const [nodeRef, parentRef] of parentRefMap.entries()) {
+        if (parentRef === null) {
+            rootRefs.push(nodeRef);
+        }
+    }
+
+    // Only flatten if there's exactly one root
+    if (rootRefs.length !== 1) {
+        return { shouldFlatten: false, rootRef: null };
+    }
+
+    const rootRef = rootRefs[0];
+
+    // Check if root has direct children
+    let hasDirectChildren = false;
+    for (const [_nodeRef, parentRef] of parentRefMap.entries()) {
+        if (parentRef === rootRef) {
+            hasDirectChildren = true;
+            break;
+        }
+    }
+
+    return { shouldFlatten: hasDirectChildren, rootRef };
+}
+
+/**
+ * LEGACY V2.X ROOT NODE FLATTENING CONVENTION
+ *
+ * Promotes the direct children of the root node to top-level pages.
+ * Deeper descendants keep their parent relationships but have their levels recalculated.
+ *
+ * Transformation:
+ *   Legacy:                    After Flattening:
+ *   Root                       Root (level 0, no parent)
+ *    ├─ Child A                Child A (level 0, no parent) ← promoted
+ *    │   └─ Grandchild A1      Grandchild A1 (level 1, parent: Child A) ← preserved
+ *    ├─ Child B                Child B (level 0, no parent) ← promoted
+ *    └─ Child C                Child C (level 0, no parent) ← promoted
+ *
+ * This behavior is INTENTIONAL and applies ONLY to legacy v2.x imports.
+ * See doc/conventions.md for full documentation.
+ *
+ * @param pages - The pages with original parent-child relationships
+ * @param rootRef - The reference ID of the single root node
+ * @returns Pages with flattened root children
+ */
+function flattenRootChildren(pages: NormalizedPage[], rootRef: string): NormalizedPage[] {
+    // Identify direct children of root (nodes whose parent is the root)
+    const directChildIds = new Set<string>();
+    for (const page of pages) {
+        if (page.parent_id === rootRef) {
+            directChildIds.add(page.id);
+        }
+    }
+
+    // Create a map of page IDs to pages for level recalculation
+    const pageMap = new Map<string, NormalizedPage>();
+    for (const page of pages) {
+        pageMap.set(page.id, page);
+    }
+
+    // Helper to recalculate level based on new parent chain
+    function calculateNewLevel(pageId: string): number {
+        const page = pageMap.get(pageId);
+        if (!page) return 0;
+
+        // Root and direct children of original root are now level 0
+        if (page.parent_id === null || directChildIds.has(page.id)) {
+            return 0;
+        }
+
+        // For other nodes, count parent chain depth
+        // but stop at direct children (which are now level 0)
+        let level = 0;
+        let currentParentId = page.parent_id;
+        while (currentParentId && level < 10) {
+            if (directChildIds.has(currentParentId) || currentParentId === rootRef) {
+                // Parent is now a top-level page
+                level++;
+                break;
+            }
+            level++;
+            const parentPage = pageMap.get(currentParentId);
+            currentParentId = parentPage?.parent_id || null;
+        }
+        return level;
+    }
+
+    // Transform pages: promote direct children to top-level, recalculate levels
+    return pages.map(page => {
+        // Direct children of root become top-level pages (no parent)
+        if (page.parent_id === rootRef) {
+            return {
+                ...page,
+                parent_id: null,
+                level: 0,
+            };
+        }
+
+        // Root stays at level 0 with no parent
+        if (page.id === rootRef) {
+            return {
+                ...page,
+                parent_id: null,
+                level: 0,
+            };
+        }
+
+        // Other pages: recalculate level, keep parent relationship
+        return {
+            ...page,
+            level: calculateNewLevel(page.id),
+        };
+    });
+}
+
 function buildPageHierarchy(nodes: LegacyInstanceNode[]): NormalizedPage[] {
     const pages: NormalizedPage[] = [];
 
@@ -204,8 +346,8 @@ function buildPageHierarchy(nodes: LegacyInstanceNode[]): NormalizedPage[] {
             }
         }
 
-        // Extract components (iDevices)
-        const components = extractComponents(node, pageId);
+        // Extract components (iDevices) - all go in one block named after the page
+        const components = extractComponents(node, pageId, title);
 
         // Get parent from map
         const parentId = parentRefMap.get(pageId) || null;
@@ -228,10 +370,79 @@ function buildPageHierarchy(nodes: LegacyInstanceNode[]): NormalizedPage[] {
         });
     }
 
+    // LEGACY V2.X ROOT NODE FLATTENING CONVENTION
+    // If there's a single root with children, flatten the structure by promoting
+    // the root's direct children to top-level pages.
+    // This is INTENTIONAL behavior for legacy imports. See doc/conventions.md.
+    const { shouldFlatten, rootRef } = shouldFlattenRootChildren();
+    if (shouldFlatten && rootRef) {
+        if (DEBUG) console.log('[LegacyParser] Applying root node flattening convention for v2.x import');
+        return flattenRootChildren(pages, rootRef);
+    }
+
     return pages;
 }
 
-function extractComponents(node: LegacyInstanceNode, _pageId: string): NormalizedComponent[] {
+/**
+ * LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+ *
+ * Extracts the title from a legacy iDevice instance.
+ * Legacy iDevices store their title in the dictionary under '_title' or 'title'.
+ *
+ * See doc/conventions.md for full documentation.
+ *
+ * @param inst - The iDevice instance node
+ * @returns The iDevice title or empty string if not found
+ */
+function extractIdeviceTitle(inst: LegacyInstanceNode): string {
+    if (!inst.dictionary) return '';
+
+    // Look for _title or title in the dictionary
+    const dict = inst.dictionary;
+
+    // Check for string/unicode pairs
+    if (dict.string && dict.unicode) {
+        const strings = Array.isArray(dict.string) ? dict.string : [dict.string];
+        const unicodes = Array.isArray(dict.unicode) ? dict.unicode : [dict.unicode];
+
+        for (let i = 0; i < strings.length; i++) {
+            const strItem = strings[i] as Record<string, unknown> | string;
+            const strValue = typeof strItem === 'object' && strItem !== null
+                ? strItem['@_value']
+                : strItem;
+
+            if ((strValue === '_title' || strValue === 'title') && unicodes[i]) {
+                const unicodeItem = unicodes[i] as Record<string, unknown>;
+                const title = typeof unicodeItem === 'object' && unicodeItem !== null
+                    ? (unicodeItem['@_value'] as string)
+                    : String(unicodeItem);
+                if (title && title.trim()) {
+                    return title;
+                }
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+ *
+ * Extracts components (iDevices) from a legacy Node.
+ * Each iDevice is assigned its own unique blockName based on its title.
+ * This ensures that when imported, each iDevice gets its own box,
+ * preventing loss of individual iDevice titles.
+ *
+ * This behavior applies ONLY to legacy .elp imports (contentv3.xml).
+ * See doc/conventions.md for full documentation.
+ *
+ * @param node - The legacy Node instance
+ * @param _pageId - The page ID (unused but kept for API compatibility)
+ * @param _defaultBlockName - Default block name (unused - each iDevice gets its own)
+ * @returns Array of normalized components, each with its own blockName
+ */
+function extractComponents(node: LegacyInstanceNode, _pageId: string, _defaultBlockName: string): NormalizedComponent[] {
     const components: NormalizedComponent[] = [];
 
     if (!node.dictionary?.list) return components;
@@ -251,11 +462,19 @@ function extractComponents(node: LegacyInstanceNode, _pageId: string): Normalize
             const resourcePaths = extractResourcePaths(inst);
             srcRoutes.push(...resourcePaths);
 
+            // LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+            // Each iDevice gets its own blockName based on its title.
+            // This ensures each iDevice is placed in its own box during import,
+            // preserving individual iDevice titles.
+            const ideviceTitle = extractIdeviceTitle(inst);
+
             components.push({
                 id: inst['@_reference'] || generateId(),
                 type: mapIdeviceType(inst['@_class']),
+                title: ideviceTitle,
                 order: idx,
                 content,
+                blockName: ideviceTitle, // Each iDevice gets its own block with its title
                 data: {},
             });
         }
@@ -269,23 +488,50 @@ function extractIdeviceContent(inst: unknown): string {
 
     function findContent(obj: unknown): void {
         if (!obj || typeof obj !== 'object') return;
+        if (content) return; // Already found
+
         const record = obj as Record<string, unknown>;
 
-        // Look for content_w_resourcePaths or similar fields
-        const unicode = record.unicode as Record<string, unknown> | undefined;
-        if (unicode?.['@_value']) {
-            const val = unicode['@_value'];
-            if (typeof val === 'string' && val.includes('<') && val.includes('>')) {
-                content = val;
-                return;
+        // Look for unicode elements - can be array or single object
+        // Legacy format: <unicode content="true" value="<html>...">
+        const unicode = record.unicode;
+        if (unicode) {
+            // Handle array of unicode elements
+            if (Array.isArray(unicode)) {
+                for (const u of unicode) {
+                    if (u && typeof u === 'object') {
+                        const uObj = u as Record<string, unknown>;
+                        // Prefer elements with content="true" attribute (can be string or boolean)
+                        if ((uObj['@_content'] === 'true' || uObj['@_content'] === true) && uObj['@_value']) {
+                            const val = uObj['@_value'];
+                            if (typeof val === 'string' && val.includes('<')) {
+                                content = val;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            // Handle single unicode object
+            else if (typeof unicode === 'object') {
+                const uObj = unicode as Record<string, unknown>;
+                if (uObj['@_value']) {
+                    const val = uObj['@_value'];
+                    if (typeof val === 'string' && val.includes('<') && val.includes('>')) {
+                        content = val;
+                        return;
+                    }
+                }
             }
         }
 
+        // Check for CDATA content
         if (typeof record.__cdata === 'string') {
             content = record.__cdata;
             return;
         }
 
+        // Recurse into child objects
         for (const v of Object.values(record)) {
             findContent(v);
             if (content) return;
@@ -341,6 +587,23 @@ function mapIdeviceType(className: string): string {
     return match ? match[1].toLowerCase() : 'unknown';
 }
 
+/**
+ * LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+ *
+ * Converts normalized pages to RealOdeNavStructures format.
+ * For legacy imports, each iDevice is placed in its own block (odePagStructure),
+ * with the block name set to the iDevice's title.
+ *
+ * This ensures that iDevice titles are preserved as box titles when imported,
+ * rather than being lost by grouping all iDevices into a single box.
+ *
+ * This behavior applies ONLY to legacy .elp imports (contentv3.xml).
+ * Modern .elpx files have their box structure preserved as-is.
+ * See doc/conventions.md for full documentation.
+ *
+ * @param pages - Normalized pages with components
+ * @returns RealOdeNavStructure array with one block per iDevice
+ */
 function convertPagesToRealOdeNavStructures(pages: NormalizedPage[]): RealOdeNavStructure[] {
     return pages.map(page => ({
         odePageId: page.id,
@@ -348,28 +611,39 @@ function convertPagesToRealOdeNavStructures(pages: NormalizedPage[]): RealOdeNav
         pageName: page.title,
         odeNavStructureOrder: page.position,
         odePagStructures: {
-            odePagStructure: [
-                {
-                    odePageId: page.id,
-                    odeBlockId: generateId(),
-                    blockName: page.title,
-                    odePagStructureOrder: 0,
-                    odeComponents:
-                        page.components.length > 0
-                            ? {
-                                  odeComponent: page.components.map(comp => ({
-                                      odePageId: page.id,
-                                      odeBlockId: generateId(),
-                                      odeIdeviceId: comp.id,
-                                      odeIdeviceTypeName: comp.type,
-                                      htmlView: comp.content,
-                                      jsonProperties: comp.data ? JSON.stringify(comp.data) : undefined,
-                                      odeComponentsOrder: comp.order,
-                                  })),
-                              }
-                            : undefined,
-                },
-            ],
+            // LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+            // Each iDevice gets its own block (odePagStructure) to preserve its title.
+            // This prevents loss of iDevice titles that would occur if all were in one block.
+            odePagStructure: page.components.length > 0
+                ? page.components.map((comp, idx) => ({
+                      odePageId: page.id,
+                      odeBlockId: generateId(),
+                      // Use the iDevice's title as the block name
+                      blockName: comp.blockName || comp.title || '',
+                      odePagStructureOrder: idx,
+                      odeComponents: {
+                          odeComponent: [
+                              {
+                                  odePageId: page.id,
+                                  odeBlockId: generateId(),
+                                  odeIdeviceId: comp.id,
+                                  odeIdeviceTypeName: comp.type,
+                                  htmlView: comp.content,
+                                  jsonProperties: comp.data ? JSON.stringify(comp.data) : undefined,
+                                  odeComponentsOrder: 0, // Always 0 since there's only one iDevice per block
+                              },
+                          ],
+                      },
+                  }))
+                : [
+                      {
+                          odePageId: page.id,
+                          odeBlockId: generateId(),
+                          blockName: page.title,
+                          odePagStructureOrder: 0,
+                          odeComponents: undefined,
+                      },
+                  ],
         },
     }));
 }

@@ -164,6 +164,82 @@ class LegacyXmlParser {
   }
 
   /**
+   * LEGACY V2.X ROOT NODE FLATTENING CONVENTION
+   *
+   * Checks if the structure has a single root node with children that should be flattened.
+   * Legacy contentv3.xml files often have a single root node acting as a container,
+   * with all meaningful content pages as children.
+   *
+   * See doc/conventions.md for full documentation.
+   *
+   * @param {Array} rootPages - Array of root-level pages
+   * @returns {Object} { shouldFlatten: boolean, rootPage: Object|null }
+   */
+  shouldFlattenRootChildren(rootPages) {
+    // Only flatten if there's exactly one root with children
+    if (rootPages.length !== 1) {
+      return { shouldFlatten: false, rootPage: null };
+    }
+
+    const rootPage = rootPages[0];
+    const hasDirectChildren = rootPage.children && rootPage.children.length > 0;
+
+    return { shouldFlatten: hasDirectChildren, rootPage };
+  }
+
+  /**
+   * LEGACY V2.X ROOT NODE FLATTENING CONVENTION
+   *
+   * Promotes the direct children of the root node to top-level pages.
+   * Deeper descendants keep their parent relationships but have their levels recalculated.
+   *
+   * Transformation:
+   *   Legacy:                    After Flattening:
+   *   Root                       Root (level 0, no parent)
+   *    ├─ Child A                Child A (level 0, no parent) ← promoted
+   *    │   └─ Grandchild A1      Grandchild A1 (level 1, parent: Child A) ← preserved
+   *    ├─ Child B                Child B (level 0, no parent) ← promoted
+   *    └─ Child C                Child C (level 0, no parent) ← promoted
+   *
+   * This behavior is INTENTIONAL and applies ONLY to legacy v2.x imports.
+   * See doc/conventions.md for full documentation.
+   *
+   * @param {Object} rootPage - The single root page
+   * @returns {Array} Array of pages with flattened root children
+   */
+  flattenRootChildren(rootPage) {
+    const flatPages = [];
+
+    // 1. Add root as first top-level page
+    flatPages.push({
+      id: rootPage.id,
+      title: rootPage.title,
+      parent_id: null,
+      position: 0,
+      blocks: rootPage.blocks,
+    });
+
+    // 2. Promote direct children to top-level (no parent)
+    rootPage.children.forEach((child, index) => {
+      flatPages.push({
+        id: child.id,
+        title: child.title,
+        parent_id: null,  // Promoted to top-level
+        position: flatPages.length,
+        blocks: child.blocks,
+      });
+
+      // 3. Add grandchildren with their parent relationships preserved
+      if (child.children && child.children.length > 0) {
+        this.flattenPages(child.children, flatPages, child.id);
+      }
+    });
+
+    Logger.log(`[LegacyXmlParser] Applied root node flattening convention for v2.x import`);
+    return flatPages;
+  }
+
+  /**
    * Build page hierarchy from Node instances
    * @param {Element[]} nodes - Array of Node instance elements
    * @returns {Array} Array of normalized pages (flat with parent_id)
@@ -207,7 +283,16 @@ class LegacyXmlParser {
       }
     });
 
-    // 3. Flatten into array with correct structure
+    // LEGACY V2.X ROOT NODE FLATTENING CONVENTION
+    // If there's a single root with children, flatten the structure by promoting
+    // the root's direct children to top-level pages.
+    // This is INTENTIONAL behavior for legacy imports. See doc/conventions.md.
+    const { shouldFlatten, rootPage } = this.shouldFlattenRootChildren(rootPages);
+    if (shouldFlatten && rootPage) {
+      return this.flattenRootChildren(rootPage);
+    }
+
+    // 3. Flatten into array with correct structure (no flattening needed)
     const flatPages = [];
     this.flattenPages(rootPages, flatPages, null);
 
@@ -239,9 +324,38 @@ class LegacyXmlParser {
   }
 
   /**
-   * Extract blocks and iDevices from a Node
+   * LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+   *
+   * Extracts the title from a legacy iDevice instance element.
+   * Legacy iDevices store their title in the dictionary under '_title' or 'title'.
+   *
+   * See doc/conventions.md for full documentation.
+   *
+   * @param {Element} inst - The iDevice instance element
+   * @returns {string} The iDevice title or empty string if not found
+   */
+  extractIdeviceTitle(inst) {
+    const dict = inst.querySelector(':scope > dictionary');
+    if (!dict) return '';
+
+    // Look for _title or title in the dictionary
+    const title = this.findDictValue(dict, '_title') || this.findDictValue(dict, 'title');
+    return title && title.trim() ? title : '';
+  }
+
+  /**
+   * LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+   *
+   * Extracts blocks and iDevices from a Node.
+   * Each iDevice is placed in its own block with its title as the block name.
+   * This ensures that iDevice titles are preserved when imported,
+   * preventing loss of individual iDevice titles.
+   *
+   * This behavior applies ONLY to legacy .elp imports (contentv3.xml).
+   * See doc/conventions.md for full documentation.
+   *
    * @param {Element} nodeEl - The Node instance element
-   * @returns {Array} Array of blocks with idevices
+   * @returns {Array} Array of blocks, each containing exactly one iDevice
    */
   extractNodeBlocks(nodeEl) {
     const blocks = [];
@@ -260,16 +374,19 @@ class LegacyXmlParser {
           child.getAttribute('value') === 'idevices') {
         const listEl = children[i + 1];
         if (listEl && listEl.tagName === 'list') {
-          // Create a single block containing all iDevices
-          const block = {
-            id: `block-${nodeEl.getAttribute('reference')}-0`,
-            name: '',  // Empty by default (legacy files didn't have block names)
-            position: 0,
-            idevices: this.extractIDevices(listEl),
-          };
-          if (block.idevices.length > 0) {
-            blocks.push(block);
-          }
+          // LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+          // Create one block per iDevice to preserve individual titles.
+          // This prevents loss of iDevice titles that would occur if all were in one block.
+          const idevices = this.extractIDevicesWithTitles(listEl);
+
+          idevices.forEach((idevice, idx) => {
+            blocks.push({
+              id: `block-${nodeEl.getAttribute('reference')}-${idx}`,
+              name: idevice.title || '',  // Use iDevice title as block name
+              position: idx,
+              idevices: [idevice],  // Exactly one iDevice per block
+            });
+          });
         }
         break;
       }
@@ -279,11 +396,18 @@ class LegacyXmlParser {
   }
 
   /**
-   * Extract iDevices from a list element
+   * LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+   *
+   * Extract iDevices from a list element, including their titles.
+   * Each iDevice's title is extracted and included in the result,
+   * which is used to set the block name.
+   *
+   * See doc/conventions.md for full documentation.
+   *
    * @param {Element} listEl - The list element containing iDevice instances
-   * @returns {Array} Array of iDevice objects
+   * @returns {Array} Array of iDevice objects with titles
    */
-  extractIDevices(listEl) {
+  extractIDevicesWithTitles(listEl) {
     const idevices = [];
 
     // Find all instance elements that are iDevices
@@ -312,9 +436,14 @@ class LegacyXmlParser {
         }
       }
 
+      // LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
+      // Extract the iDevice title to use as the block name
+      const title = this.extractIdeviceTitle(inst);
+
       const idevice = {
         id: `idevice-${ref}`,
         type: ideviceType,
+        title: title,  // Include title for block naming
         position: idevices.length,
         htmlView: '',
       };
@@ -348,8 +477,18 @@ class LegacyXmlParser {
       idevices.push(idevice);
     }
 
-    Logger.log(`[LegacyXmlParser] Extracted ${idevices.length} iDevices`);
+    Logger.log(`[LegacyXmlParser] Extracted ${idevices.length} iDevices with titles`);
     return idevices;
+  }
+
+  /**
+   * Extract iDevices from a list element (legacy method for backwards compatibility)
+   * @param {Element} listEl - The list element containing iDevice instances
+   * @returns {Array} Array of iDevice objects
+   * @deprecated Use extractIDevicesWithTitles instead
+   */
+  extractIDevices(listEl) {
+    return this.extractIDevicesWithTitles(listEl);
   }
 
   /**

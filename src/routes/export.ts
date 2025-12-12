@@ -319,7 +319,10 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             if (options.structure) {
                 // Yjs structure sent from client - convert to ParsedOdeStructure
                 console.log('[Export] Using Yjs structure from client');
+                console.log('[Export] Structure pages:', options.structure.pages?.length);
+                console.log('[Export] Structure meta theme:', options.structure.meta?.theme);
                 const parsedStructure = convertYjsStructureToParsed(options.structure);
+                console.log('[Export] Parsed theme:', parsedStructure.meta?.theme);
                 document = new ElpDocumentAdapter(parsedStructure, tempDir);
             } else if (session.structure) {
                 // Session structure from when ELP was opened
@@ -335,6 +338,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             }
 
             // Create providers using injected classes
+            console.log('[Export] Using publicDir:', publicDir);
             const resources: ResourceProvider = new FileSystemResourceProvider(publicDir);
             const zip: ZipProvider = new ArchiverZipProvider();
 

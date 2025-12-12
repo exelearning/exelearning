@@ -498,5 +498,95 @@ describe('ComponentImporter', () => {
 
       expect(result).toBe(html);
     });
+
+    it('should convert legacy files/tmp paths to asset:// URLs', () => {
+      const manager = createMockDocManager();
+      const importer = new ComponentImporter(manager);
+
+      // Simulate imported assets with legacy mapping
+      importer.assetMap = new Map();
+      importer.legacyAssetMap = new Map([
+        ['20251212110708PVAMZT/elcid.png', 'uuid-legacy-123'],
+      ]);
+
+      const html = '<img src="files/tmp/2025/12/12/20251212110708AYBTVB/20251212110708PVAMZT/elcid.png" alt="El Cid">';
+      const result = importer.convertAssetPaths(html);
+
+      expect(result).toContain('asset://uuid-legacy-123');
+      expect(result).not.toContain('files/tmp');
+    });
+
+    it('should convert legacy files/perm paths to asset:// URLs', () => {
+      const manager = createMockDocManager();
+      const importer = new ComponentImporter(manager);
+
+      // Simulate imported assets with legacy mapping
+      importer.assetMap = new Map();
+      importer.legacyAssetMap = new Map([
+        ['IDEVICEID123/photo.jpg', 'uuid-perm-456'],
+      ]);
+
+      const html = '<img src="files/perm/odes/ODEID999/IDEVICEID123/photo.jpg">';
+      const result = importer.convertAssetPaths(html);
+
+      expect(result).toContain('asset://uuid-perm-456');
+      expect(result).not.toContain('files/perm');
+    });
+
+    it('should handle multiple legacy asset paths in same HTML', () => {
+      const manager = createMockDocManager();
+      const importer = new ComponentImporter(manager);
+
+      importer.assetMap = new Map();
+      importer.legacyAssetMap = new Map([
+        ['IDEVICE1/image1.png', 'uuid-1'],
+        ['IDEVICE2/image2.jpg', 'uuid-2'],
+      ]);
+
+      const html = `
+        <img src="files/tmp/2025/01/01/SESSION1/IDEVICE1/image1.png">
+        <img src="files/tmp/2025/01/02/SESSION2/IDEVICE2/image2.jpg">
+      `;
+      const result = importer.convertAssetPaths(html);
+
+      expect(result).toContain('asset://uuid-1');
+      expect(result).toContain('asset://uuid-2');
+      expect(result).not.toContain('files/tmp');
+    });
+
+    it('should leave unmapped legacy paths unchanged', () => {
+      const manager = createMockDocManager();
+      const importer = new ComponentImporter(manager);
+
+      importer.assetMap = new Map();
+      importer.legacyAssetMap = new Map(); // Empty - no mappings
+
+      const html = '<img src="files/tmp/2025/12/12/SESSION/IDEVICE/missing.png">';
+      const result = importer.convertAssetPaths(html);
+
+      // Should be unchanged since no mapping exists
+      expect(result).toContain('files/tmp');
+    });
+
+    it('should handle both modern and legacy paths in same HTML', () => {
+      const manager = createMockDocManager();
+      const importer = new ComponentImporter(manager);
+
+      importer.assetMap = new Map([
+        ['content/resources/COMP1/modern.png', 'uuid-modern'],
+      ]);
+      importer.legacyAssetMap = new Map([
+        ['COMP2/legacy.jpg', 'uuid-legacy'],
+      ]);
+
+      const html = `
+        <img src="content/resources/COMP1/modern.png">
+        <img src="files/tmp/2025/12/12/SESSION/COMP2/legacy.jpg">
+      `;
+      const result = importer.convertAssetPaths(html);
+
+      expect(result).toContain('asset://uuid-modern');
+      expect(result).toContain('asset://uuid-legacy');
+    });
   });
 });
