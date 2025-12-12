@@ -54,6 +54,12 @@ composer.lock text eol=lf -executable
 mercure.run text eol=lf chmod=+x
 
 # ---------------------------------------------------------------------
+# Windows batch files (require CRLF)
+# ---------------------------------------------------------------------
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# ---------------------------------------------------------------------
 # Consistent line endings for core files
 # ---------------------------------------------------------------------
 .gitignore text eol=lf -executable
