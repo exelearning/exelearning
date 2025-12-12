@@ -57,14 +57,6 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: Set TEST_SCREENSHOTS_DIR for screenshots in GitHub Actions
-        run: echo "TEST_SCREENSHOTS_DIR=./e2e_screenshots" >> $GITHUB_ENV
-
-      - name: Ensure screenshots directory in GH Actions
-        run: |
-          mkdir -p $TEST_SCREENSHOTS_DIR
-          chmod 777 $TEST_SCREENSHOTS_DIR
-
       - name: TS Lint
         run: make lint-ts
 
