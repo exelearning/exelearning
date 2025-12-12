@@ -1165,7 +1165,19 @@ function checkAndCreateDatabase() {
 function startElysiaServer() {
   try {
     const isWindows = process.platform === 'win32';
-    const execName = isWindows ? 'exelearning-server.exe' : 'exelearning-server';
+    const isLinux = process.platform === 'linux';
+    const arch = process.arch; // 'arm64' or 'x64'
+
+    // Determine executable name based on platform and architecture
+    let execName;
+    if (isWindows) {
+      execName = 'exelearning-server.exe';
+    } else if (isLinux) {
+      execName = 'exelearning-server-linux';
+    } else {
+      // macOS - use architecture-specific executable for universal app support
+      execName = arch === 'arm64' ? 'exelearning-server-arm64' : 'exelearning-server-x64';
+    }
 
     const candidates = [
       // ExtraResources path (outside asar) - packaged app
