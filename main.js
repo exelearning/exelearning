@@ -1205,6 +1205,7 @@ function startElysiaServer() {
       APP_ONLINE_MODE: '0',
       APP_SECRET: customEnv?.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
       API_JWT_SECRET: customEnv?.API_JWT_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
+      APP_VERSION: `v${app.getVersion()}`,
     };
 
     serverProcess = spawn(serverBinary, [], {

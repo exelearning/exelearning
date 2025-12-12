@@ -150,7 +150,7 @@ endif
 .PHONY: run-app
 run-app: check-bun deps css bundle
 	@echo "Launching eXeLearning App (Electron + Elysia)..."
-	@APP_ONLINE_MODE=0 FILES_DIR=data/ DB_PATH=data/exelearning.db bun run dev:app
+	@bun run dev:app
 
 
 # =============================================================================

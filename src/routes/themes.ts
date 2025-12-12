@@ -13,8 +13,17 @@ const THEMES_BASE_PATH = 'public/files/perm/themes/base';
 const THEMES_USERS_PATH = 'public/files/perm/themes/users';
 
 // Get app version for cache busting URLs
-const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
-const getAppVersion = () => process.env.APP_VERSION || `v${packageJson.version}`;
+const getAppVersion = (): string => {
+    if (process.env.APP_VERSION) {
+        return process.env.APP_VERSION;
+    }
+    try {
+        const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+        return `v${packageJson.version}`;
+    } catch {
+        return 'v0.0.0';
+    }
+};
 
 interface ThemeIcon {
     id: string;

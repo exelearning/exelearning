@@ -154,21 +154,27 @@ const defaultDependencies: PagesDependencies = {
     utils: defaultUtils,
 };
 
-// Find package.json
-const findPackageJson = (): PackageJson => {
+// Get app version for cache busting URLs
+const getAppVersion = (): string => {
+    if (process.env.APP_VERSION) {
+        return process.env.APP_VERSION;
+    }
+    // Try to find package.json by searching up the directory tree
     let currentDir = __dirname;
     for (let i = 0; i < 10; i++) {
         const packagePath = join(currentDir, 'package.json');
         if (existsSync(packagePath)) {
-            return JSON.parse(readFileSync(packagePath, 'utf-8')) as PackageJson;
+            try {
+                const pkg = JSON.parse(readFileSync(packagePath, 'utf-8')) as PackageJson;
+                return `v${pkg.version}`;
+            } catch {
+                break;
+            }
         }
         currentDir = join(currentDir, '..');
     }
-    return { version: 'unknown' };
+    return 'v0.0.0';
 };
-
-const packageJson = findPackageJson();
-const getAppVersion = () => process.env.APP_VERSION || `v${packageJson.version}`;
 const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
 
 // Get JWT secret
