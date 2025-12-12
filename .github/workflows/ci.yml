@@ -87,6 +87,9 @@ jobs:
       - name: Build CSS (prod)
         run: make css
 
+      - name: Bundle JavaScript
+        run: make bundle
+
       - name: Frontend Tests
         run: make test-frontend
 

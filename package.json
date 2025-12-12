@@ -13,11 +13,7 @@
     "dev": "concurrently --names 'ELYSIA,SCSS' --prefix-colors 'blue,magenta' 'bun run start:dev' 'bun run sass:watch'",
     "dev:local": "concurrently --names 'ELYSIA,SCSS' --prefix-colors 'blue,magenta' 'bun run start:local' 'bun run sass:watch'",
     "build": "bun build src/index.ts --outdir dist --target bun && bun build src/cli/index.ts --outfile dist/cli.js --target bun",
-    "build:standalone": "bun run build:standalone:arm64 && bun run build:standalone:x64",
-    "build:standalone:arm64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile dist/exelearning-server-arm64",
-    "build:standalone:x64": "bun build src/index.ts --compile --target=bun-darwin-x64 --outfile dist/exelearning-server-x64",
-    "build:standalone:linux": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile dist/exelearning-server-linux",
-    "build:standalone:win": "bun build src/index.ts --compile --target=bun-windows-x64 --outfile dist/exelearning-server.exe",
+    "build:standalone": "node scripts/build-standalone.js",
     "build:all": "bun run build && bun run css:node && bun run bundle:app && bun run bundle:exporters",
     "css:node": "bunx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map",
     "sass:watch": "bunx sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map",
@@ -302,7 +298,7 @@
       "icon": "public/exe_elp.icns",
       "entitlements": "packaging/entitlements.mac.plist",
       "entitlementsInherit": "packaging/entitlements.mac.inherit.plist",
-      "singleArchFiles": "**/exelearning-server-*"
+      "x64ArchFiles": "**/exelearning-server-*"
     },
     "dmg": {
       "format": "ULFO"
