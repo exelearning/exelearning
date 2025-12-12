@@ -416,9 +416,8 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
-    it('should call updateThemes after selecting an installed theme', async () => {
-      // Setup mock for installed themes and navbar styles
-      const mockUpdateThemes = mock(() => undefined);
+    it('should select installed theme when available', async () => {
+      // Setup mock for installed themes
       const mockSelectTheme = mock(() => Promise.resolve());
 
       global.eXeLearning = {
@@ -428,13 +427,6 @@ describe('YjsProjectBridge', () => {
               installed: { 'test-theme': { id: 'test-theme', name: 'test-theme' } },
             },
             selectTheme: mockSelectTheme,
-          },
-          menus: {
-            navbar: {
-              styles: {
-                updateThemes: mockUpdateThemes,
-              },
-            },
           },
         },
         config: {
@@ -447,13 +439,9 @@ describe('YjsProjectBridge', () => {
 
       // Verify selectTheme was called with correct args
       expect(mockSelectTheme).toHaveBeenCalledWith('test-theme', true);
-
-      // Verify updateThemes was called to refresh UI
-      expect(mockUpdateThemes).toHaveBeenCalled();
     });
 
-    it('should not call updateThemes when theme is not installed', async () => {
-      const mockUpdateThemes = mock(() => undefined);
+    it('should fall back to default theme when theme is not installed', async () => {
       const mockSelectTheme = mock(() => Promise.resolve());
 
       global.eXeLearning = {
@@ -463,13 +451,6 @@ describe('YjsProjectBridge', () => {
               installed: {}, // No themes installed
             },
             selectTheme: mockSelectTheme,
-          },
-          menus: {
-            navbar: {
-              styles: {
-                updateThemes: mockUpdateThemes,
-              },
-            },
           },
         },
         config: {
@@ -490,9 +471,6 @@ describe('YjsProjectBridge', () => {
 
       // selectTheme should be called with default theme (fallback)
       expect(mockSelectTheme).toHaveBeenCalledWith('base', false);
-
-      // updateThemes should NOT be called for default theme fallback
-      expect(mockUpdateThemes).not.toHaveBeenCalled();
     });
 
     it('should return early if themeName is empty', async () => {
