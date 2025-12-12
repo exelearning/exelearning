@@ -58,13 +58,14 @@ function removeWrongArchServer(resourcesPath, arch) {
   } catch (e) {}
 
   // Determine which file to remove based on architecture
+  // electron-builder uses numeric Arch enum: x64=1, arm64=3, universal=4
   let fileToRemove = null;
-  if (arch === 'arm64') {
+  if (arch === 3) { // arm64
     fileToRemove = 'exelearning-server-x64';
-  } else if (arch === 'x64') {
+  } else if (arch === 1) { // x64
     fileToRemove = 'exelearning-server-arm64';
   }
-  // For 'universal' arch, keep both (handled by electron-builder merge)
+  // For universal (4), keep both (handled by electron-builder merge)
 
   console.log(`[afterPack] server: fileToRemove=${fileToRemove}`);
 
