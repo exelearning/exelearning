@@ -11,11 +11,13 @@ import { Elysia } from 'elysia';
 
 import {
     createExportRoutes,
+    convertYjsStructureToParsed,
     type ExportDependencies,
     type ExportSessionManagerDeps,
     type ExportFileHelperDeps,
     type ExportSystemDeps,
 } from './export';
+import type { YjsExportStructure } from './types/request-payloads';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'export-test');
 const testSessionId = '20250116testexport';
@@ -444,5 +446,416 @@ describe('Export Routes', () => {
             // Should still return success because mock adapter handles it
             expect(res.status).toBe(200);
         });
+    });
+
+    describe('POST with Yjs structure', () => {
+        it('should accept Yjs structure from client', async () => {
+            const yjsStructure: YjsExportStructure = {
+                meta: {
+                    title: 'Test Yjs Project',
+                    author: 'Test Author',
+                    language: 'es',
+                    theme: 'base',
+                },
+                pages: [
+                    {
+                        id: 'page-1',
+                        pageName: 'Primera Página',
+                        blocks: [
+                            {
+                                id: 'block-1',
+                                blockName: 'Introducción',
+                                components: [
+                                    {
+                                        id: 'comp-1',
+                                        ideviceType: 'FreeTextIdevice',
+                                        htmlContent: '<p>Test content</p>',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+                navigation: [
+                    { id: 'nav-1', navText: 'Primera Página' },
+                ],
+            };
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({ structure: yjsStructure }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+    });
+});
+
+describe('convertYjsStructureToParsed', () => {
+    it('should convert basic meta fields', () => {
+        const yjs: YjsExportStructure = {
+            meta: {
+                title: 'My Project',
+                author: 'John Doe',
+                description: 'A test project',
+                language: 'es',
+                license: 'CC BY',
+                theme: 'custom-theme',
+            },
+            pages: [],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.meta.title).toBe('My Project');
+        expect(result.meta.author).toBe('John Doe');
+        expect(result.meta.description).toBe('A test project');
+        expect(result.meta.language).toBe('es');
+        expect(result.meta.license).toBe('CC BY');
+        expect(result.meta.theme).toBe('custom-theme');
+    });
+
+    it('should use default values for missing meta fields', () => {
+        const yjs: YjsExportStructure = {
+            meta: {},
+            pages: [],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.meta.title).toBe('Untitled');
+        expect(result.meta.author).toBe('');
+        expect(result.meta.language).toBe('en');
+        expect(result.meta.theme).toBe('base');
+    });
+
+    it('should flatten blocks into components with blockName', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                {
+                    id: 'page-1',
+                    pageName: 'Page 1',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            blockName: 'Block One',
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    ideviceType: 'FreeTextIdevice',
+                                    htmlContent: '<p>Content 1</p>',
+                                },
+                                {
+                                    id: 'comp-2',
+                                    ideviceType: 'TextIdevice',
+                                    htmlContent: '<p>Content 2</p>',
+                                },
+                            ],
+                        },
+                        {
+                            id: 'block-2',
+                            blockName: 'Block Two',
+                            components: [
+                                {
+                                    id: 'comp-3',
+                                    ideviceType: 'GalleryIdevice',
+                                    properties: { images: [] },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.pages).toHaveLength(1);
+        expect(result.pages[0].components).toHaveLength(3);
+
+        // Check blockName is preserved
+        expect(result.pages[0].components[0].blockName).toBe('Block One');
+        expect(result.pages[0].components[1].blockName).toBe('Block One');
+        expect(result.pages[0].components[2].blockName).toBe('Block Two');
+
+        // Check order is incremental
+        expect(result.pages[0].components[0].order).toBe(0);
+        expect(result.pages[0].components[1].order).toBe(1);
+        expect(result.pages[0].components[2].order).toBe(2);
+    });
+
+    it('should preserve component properties', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                {
+                    id: 'page-1',
+                    pageName: 'Page 1',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    ideviceType: 'QuizIdevice',
+                                    htmlContent: '',
+                                    properties: {
+                                        questions: ['Q1', 'Q2'],
+                                        answers: [[1, 2], [3, 4]],
+                                        passScore: 80,
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+        const comp = result.pages[0].components[0];
+
+        expect(comp.properties).toEqual({
+            questions: ['Q1', 'Q2'],
+            answers: [[1, 2], [3, 4]],
+            passScore: 80,
+        });
+    });
+
+    it('should build page hierarchy from parentId', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                { id: 'page-1', pageName: 'Root Page', parentId: null, blocks: [] },
+                { id: 'page-2', pageName: 'Child 1', parentId: 'page-1', blocks: [] },
+                { id: 'page-3', pageName: 'Child 2', parentId: 'page-1', blocks: [] },
+                { id: 'page-4', pageName: 'Grandchild', parentId: 'page-2', blocks: [] },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        // Only root pages at top level
+        expect(result.pages).toHaveLength(1);
+        expect(result.pages[0].title).toBe('Root Page');
+
+        // Children nested
+        expect(result.pages[0].children).toHaveLength(2);
+        expect(result.pages[0].children[0].title).toBe('Child 1');
+        expect(result.pages[0].children[1].title).toBe('Child 2');
+
+        // Grandchild nested in Child 1
+        expect(result.pages[0].children[0].children).toHaveLength(1);
+        expect(result.pages[0].children[0].children[0].title).toBe('Grandchild');
+    });
+
+    it('should handle multiple root pages', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                { id: 'page-1', pageName: 'Root 1', blocks: [] },
+                { id: 'page-2', pageName: 'Root 2', blocks: [] },
+                { id: 'page-3', pageName: 'Root 3', blocks: [] },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.pages).toHaveLength(3);
+        expect(result.pages[0].title).toBe('Root 1');
+        expect(result.pages[1].title).toBe('Root 2');
+        expect(result.pages[2].title).toBe('Root 3');
+    });
+
+    it('should convert navigation structure', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [],
+            navigation: [
+                { id: 'nav-1', navText: 'Home' },
+                { id: 'nav-2', navText: 'About', parentId: 'nav-1' },
+                { id: 'nav-3', navText: 'Contact' },
+            ],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.navigation).toHaveLength(3);
+        expect(result.navigation[0].navText).toBe('Home');
+        expect(result.navigation[0].position).toBe(0);
+        expect(result.navigation[1].navText).toBe('About');
+        expect(result.navigation[1].parent_id).toBe('nav-1');
+        expect(result.navigation[2].navText).toBe('Contact');
+        expect(result.navigation[2].parent_id).toBeUndefined();
+    });
+
+    it('should handle empty blocks array', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                { id: 'page-1', pageName: 'Empty Page', blocks: [] },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.pages[0].components).toHaveLength(0);
+    });
+
+    it('should handle undefined blocks', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                { id: 'page-1', pageName: 'No Blocks Page' } as any,
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.pages[0].components).toHaveLength(0);
+    });
+
+    it('should handle empty components array in block', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                {
+                    id: 'page-1',
+                    pageName: 'Page',
+                    blocks: [
+                        { id: 'block-1', blockName: 'Empty Block', components: [] },
+                    ],
+                },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.pages[0].components).toHaveLength(0);
+    });
+
+    it('should use default type for missing ideviceType', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                {
+                    id: 'page-1',
+                    pageName: 'Page',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            components: [
+                                { id: 'comp-1' } as any, // Missing ideviceType
+                            ],
+                        },
+                    ],
+                },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.pages[0].components[0].type).toBe('FreeTextIdevice');
+    });
+
+    it('should include exelearning_version and timestamps in meta', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.meta.exelearning_version).toBe('4.0');
+        expect(result.meta.created).toBeDefined();
+        expect(result.meta.modified).toBeDefined();
+    });
+
+    it('should handle block without blockName', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                {
+                    id: 'page-1',
+                    pageName: 'Page',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            // No blockName
+                            components: [
+                                { id: 'comp-1', ideviceType: 'TextIdevice' },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.pages[0].components[0].blockName).toBe('');
+    });
+
+    it('should preserve htmlContent in component content field', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                {
+                    id: 'page-1',
+                    pageName: 'Page',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    ideviceType: 'FreeTextIdevice',
+                                    htmlContent: '<h1>Title</h1><p>Paragraph with <strong>bold</strong></p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        expect(result.pages[0].components[0].content).toBe(
+            '<h1>Title</h1><p>Paragraph with <strong>bold</strong></p>',
+        );
+    });
+
+    it('should handle orphan pages (invalid parentId)', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                { id: 'page-1', pageName: 'Orphan', parentId: 'non-existent-parent', blocks: [] },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+
+        // Orphan page should be treated as root
+        expect(result.pages).toHaveLength(1);
+        expect(result.pages[0].title).toBe('Orphan');
     });
 });

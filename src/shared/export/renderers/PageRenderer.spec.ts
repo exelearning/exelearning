@@ -49,9 +49,9 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('<html lang="en"');
-            expect(html).toContain('<title>Test Page | Test Project</title>');
-            expect(html).toContain('class="page-title"');
-            expect(html).toContain('Test Page</h2>');
+            expect(html).toContain('<title>Test Page</title>');
+            expect(html).toContain('class="page"'); // main element with page class
+            expect(html).toContain('id="siteNav"'); // navigation present
         });
 
         it('should set correct html id for index page', () => {
@@ -80,7 +80,7 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('bootstrap/bootstrap.min.css');
             expect(html).toContain('content/css/base.css');
-            expect(html).toContain('theme/style.css');
+            expect(html).toContain('theme/content.css');
         });
 
         it('should include custom styles when provided', () => {
@@ -96,15 +96,52 @@ describe('PageRenderer', () => {
             expect(html).toContain('.custom { color: red; }');
         });
 
-        it('should include footer with author and license', () => {
+        it('should include footer with license', () => {
             const page = createTestPage();
             const options = createDefaultOptions({ allPages: [page] });
 
             const html = renderer.render(page, options);
 
+            expect(html).toContain('id="siteFooter"');
+            expect(html).toContain('id="siteFooterContent"');
             expect(html).toContain('id="packageLicense"');
-            expect(html).toContain('Test Author');
-            expect(html).toContain('CC-BY-SA');
+        });
+
+        it('should include page header with page counter', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({ allPages: pages, isIndex: false });
+
+            const html = renderer.render(pages[1], options);
+
+            expect(html).toContain('class="page-header"');
+            expect(html).toContain('class="page-counter"');
+            expect(html).toContain('class="page-counter-current-page">2</strong>');
+            expect(html).toContain('class="page-counter-total">2</strong>');
+            expect(html).toContain('class="package-title"');
+            expect(html).toContain('class="page-title"');
+        });
+
+        it('should include page content wrapper', () => {
+            const page = createTestPage();
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-content"');
+            expect(html).toContain('id="page-content-page-1"');
+        });
+
+        it('should include made-with-eXe credit', () => {
+            const page = createTestPage();
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('id="made-with-eXe"');
+            expect(html).toContain('exelearning.net');
         });
 
         it('should include JavaScript scripts', () => {
@@ -192,56 +229,150 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavigation(pages, 'parent', '');
 
-            expect(html).toContain('class="active daddy"');
+            // First page gets main-node class too
+            expect(html).toContain('class="active main-node daddy"');
         });
     });
 
-    describe('renderPagination', () => {
-        it('should render prev/next links', () => {
+    describe('renderNavButtons', () => {
+        it('should render prev/next nav buttons', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
                 createTestPage({ id: 'page-3', title: 'Third' }),
             ];
 
-            const html = renderer.renderPagination(pages[1], pages, '');
+            const html = renderer.renderNavButtons(pages[1], pages, '');
 
-            expect(html).toContain('class="prev"');
-            expect(html).toContain('class="next"');
-            expect(html).toContain('First');
-            expect(html).toContain('Third');
+            expect(html).toContain('class="nav-buttons"');
+            expect(html).toContain('nav-button-left');
+            expect(html).toContain('nav-button-right');
+            expect(html).toContain('Anterior');
+            expect(html).toContain('Siguiente');
         });
 
-        it('should not render prev for first page', () => {
+        it('should not render prev button for first page', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
             ];
 
-            const html = renderer.renderPagination(pages[0], pages, '');
+            const html = renderer.renderNavButtons(pages[0], pages, '');
 
-            expect(html).not.toContain('class="prev"');
-            expect(html).toContain('class="next"');
+            expect(html).not.toContain('nav-button-left');
+            expect(html).toContain('nav-button-right');
         });
 
-        it('should not render next for last page', () => {
+        it('should not render next button for last page', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
             ];
 
-            const html = renderer.renderPagination(pages[1], pages, '');
+            const html = renderer.renderNavButtons(pages[1], pages, '');
 
-            expect(html).toContain('class="prev"');
-            expect(html).not.toContain('class="next"');
+            expect(html).toContain('nav-button-left');
+            expect(html).not.toContain('nav-button-right');
         });
 
-        it('should return empty for single page', () => {
+        it('should return empty string for single page', () => {
             const pages: ExportPage[] = [createTestPage({ id: 'page-1', title: 'Only' })];
 
-            const html = renderer.renderPagination(pages[0], pages, '');
+            const html = renderer.renderNavButtons(pages[0], pages, '');
 
             expect(html).toBe('');
+        });
+    });
+
+    describe('renderPagination (deprecated)', () => {
+        it('should delegate to renderNavButtons', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+
+            const paginationHtml = renderer.renderPagination(pages[0], pages, '');
+            const navButtonsHtml = renderer.renderNavButtons(pages[0], pages, '');
+
+            expect(paginationHtml).toBe(navButtonsHtml);
+        });
+    });
+
+    describe('renderPageHeader', () => {
+        it('should render page header with counter and titles', () => {
+            const page = createTestPage({ id: 'test-page', title: 'My Page' });
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                currentPageIndex: 2,
+                totalPages: 10,
+            });
+
+            expect(html).toContain('class="page-header"');
+            expect(html).toContain('id="header-test-page"');
+            expect(html).toContain('class="page-counter"');
+            expect(html).toContain('class="page-counter-current-page">3</strong>'); // 2 + 1
+            expect(html).toContain('class="page-counter-total">10</strong>');
+            expect(html).toContain('class="package-title">My Project</h1>');
+            expect(html).toContain('class="page-title">My Page</h2>');
+        });
+
+        it('should show Página label in Spanish', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'Test',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).toContain('Página');
+        });
+    });
+
+    describe('renderFooterSection', () => {
+        it('should render footer with license', () => {
+            const html = renderer.renderFooterSection({
+                license: 'Creative Commons',
+                licenseUrl: 'https://example.com/license',
+            });
+
+            expect(html).toContain('<footer id="siteFooter">');
+            expect(html).toContain('<div id="siteFooterContent">');
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('class="license-label">Licencia: </span>');
+            expect(html).toContain('class="license">Creative Commons</a>');
+            expect(html).toContain('href="https://example.com/license"');
+        });
+
+        it('should include user footer content when provided', () => {
+            const html = renderer.renderFooterSection({
+                license: 'CC',
+                userFooterContent: '<p>Custom footer</p>',
+            });
+
+            expect(html).toContain('id="siteUserFooter"');
+            expect(html).toContain('<p>Custom footer</p>');
+        });
+
+        it('should not include siteUserFooter when no custom content', () => {
+            const html = renderer.renderFooterSection({
+                license: 'CC',
+            });
+
+            expect(html).not.toContain('id="siteUserFooter"');
+        });
+    });
+
+    describe('renderMadeWithEXe', () => {
+        it('should render made-with-eXe credit', () => {
+            const html = renderer.renderMadeWithEXe();
+
+            expect(html).toContain('id="made-with-eXe"');
+            expect(html).toContain('href="https://exelearning.net/"');
+            expect(html).toContain('Creado con eXeLearning');
+            expect(html).toContain('target="_blank"');
+            expect(html).toContain('rel="noopener"');
         });
     });
 

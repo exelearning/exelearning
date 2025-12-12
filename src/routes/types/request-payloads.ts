@@ -224,6 +224,42 @@ export interface FileListItem {
 // ============================================================================
 
 /**
+ * Structure sent from Yjs client for export
+ * Matches the format built by apiCallManager.buildStructureFromYjs()
+ */
+export interface YjsExportStructure {
+    meta: {
+        title?: string;
+        author?: string;
+        language?: string;
+        description?: string;
+        license?: string;
+        theme?: string;
+    };
+    pages: Array<{
+        id: string;
+        pageName: string;
+        parentId?: string | null;
+        blocks: Array<{
+            id: string;
+            blockName?: string;
+            iconName?: string;
+            components: Array<{
+                id: string;
+                ideviceType: string;
+                htmlContent?: string;
+                properties?: Record<string, unknown>;
+            }>;
+        }>;
+    }>;
+    navigation: Array<{
+        id: string;
+        navText: string;
+        parentId?: string | null;
+    }>;
+}
+
+/**
  * Export options for various formats
  */
 export interface ExportOptionsRequest {
@@ -231,6 +267,8 @@ export interface ExportOptionsRequest {
     theme?: string;
     singlePage?: boolean;
     format?: 'html5' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elp' | 'elpx';
+    /** Structure from Yjs document (sent by client for real-time exports) */
+    structure?: YjsExportStructure;
 }
 
 /**

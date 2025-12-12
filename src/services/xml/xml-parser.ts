@@ -318,6 +318,8 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
                             // For HTML iDevices: use htmlView as primary source
                             content: isJson ? '' : comp.htmlView || '',
                             data: isJson && comp.jsonProperties ? JSON.parse(comp.jsonProperties) : {},
+                            // Include blockName from parent pagStructure for proper block grouping
+                            blockName: pag.blockName || '',
                         });
                     }
                 }

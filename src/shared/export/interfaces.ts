@@ -30,6 +30,7 @@ export interface ExportMetadata {
     theme: string;
     customStyles?: string;
     license?: string;
+    licenseUrl?: string;
     description?: string;
     keywords?: string;
     category?: string;
@@ -327,6 +328,15 @@ export interface PageRenderOptions {
     usedIdevices: string[];
     author: string;
     license: string;
+    description?: string;
+    licenseUrl?: string;
+
+    // Page counter options
+    totalPages?: number;
+    currentPageIndex?: number;
+
+    // Custom footer content from ODE
+    userFooterContent?: string;
 
     // SCORM-specific
     isScorm?: boolean;

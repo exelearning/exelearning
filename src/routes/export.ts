@@ -12,7 +12,8 @@ import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
 import { getSession as getSessionDefault } from '../services/session-manager';
-import type { ExportOptionsRequest } from './types/request-payloads';
+import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
+import type { ParsedOdeStructure, NormalizedPage, NormalizedComponent, OdeXmlMeta } from '../services/xml/interfaces';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -155,6 +156,104 @@ const EXPORT_FORMATS = [
 ];
 
 // ============================================================================
+// Yjs Structure Conversion
+// ============================================================================
+
+/**
+ * Convert YjsExportStructure (from client) to ParsedOdeStructure (for export)
+ *
+ * The client sends a structure with blocks already grouped inside pages,
+ * but ParsedOdeStructure expects flat components with blockName property.
+ *
+ * @param yjs - Yjs structure from client (blocks grouped inside pages)
+ * @returns ParsedOdeStructure with flat components (blockName on each component)
+ */
+export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeStructure {
+    const meta: OdeXmlMeta = {
+        title: yjs.meta.title || 'Untitled',
+        author: yjs.meta.author || '',
+        description: yjs.meta.description || '',
+        language: yjs.meta.language || 'en',
+        license: yjs.meta.license || '',
+        theme: yjs.meta.theme || 'base',
+        keywords: '',
+        exelearning_version: '4.0',
+        created: new Date().toISOString(),
+        modified: new Date().toISOString(),
+    };
+
+    // Build pages map for parent lookup
+    const pageMap = new Map<string, { id: string; parentId?: string | null }>();
+    for (const page of yjs.pages) {
+        pageMap.set(page.id, { id: page.id, parentId: page.parentId });
+    }
+
+    // Build hierarchical pages structure
+    const rootPages: NormalizedPage[] = [];
+    const pageById = new Map<string, NormalizedPage>();
+
+    // First pass: create all pages
+    for (const page of yjs.pages) {
+        // Flatten blocks into components with blockName
+        const components: NormalizedComponent[] = [];
+        let compOrder = 0;
+
+        for (const block of page.blocks || []) {
+            for (const comp of block.components || []) {
+                components.push({
+                    id: comp.id,
+                    type: comp.ideviceType || 'FreeTextIdevice',
+                    order: compOrder++,
+                    position: compOrder,
+                    content: comp.htmlContent || '',
+                    blockName: block.blockName || '',
+                    data: {},
+                    properties: comp.properties || {},
+                });
+            }
+        }
+
+        const normalizedPage: NormalizedPage = {
+            id: page.id,
+            title: page.pageName,
+            parent_id: page.parentId || undefined,
+            position: 0,
+            children: [],
+            components,
+        };
+
+        pageById.set(page.id, normalizedPage);
+    }
+
+    // Second pass: build hierarchy
+    for (const page of yjs.pages) {
+        const normalizedPage = pageById.get(page.id)!;
+
+        if (page.parentId && pageById.has(page.parentId)) {
+            const parent = pageById.get(page.parentId)!;
+            parent.children.push(normalizedPage);
+        } else {
+            rootPages.push(normalizedPage);
+        }
+    }
+
+    // Build navigation
+    const navigation = yjs.navigation.map((nav, index) => ({
+        id: nav.id,
+        navText: nav.navText,
+        parent_id: nav.parentId || undefined,
+        position: index,
+    }));
+
+    return {
+        meta,
+        pages: rootPages,
+        navigation,
+        raw: {} as ParsedOdeStructure['raw'], // Empty raw - not needed for export
+    };
+}
+
+// ============================================================================
 // Factory Function
 // ============================================================================
 
@@ -213,10 +312,17 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         await fs.ensureDir(distDir);
 
         try {
-            // Create document adapter from session structure
-            // session.structure contains the ParsedOdeStructure from when the ELP was opened
+            // Create document adapter from structure
+            // Priority: 1. options.structure (from Yjs client), 2. session.structure, 3. content.xml
             let document: ExportDocument;
-            if (session.structure) {
+
+            if (options.structure) {
+                // Yjs structure sent from client - convert to ParsedOdeStructure
+                console.log('[Export] Using Yjs structure from client');
+                const parsedStructure = convertYjsStructureToParsed(options.structure);
+                document = new ElpDocumentAdapter(parsedStructure, tempDir);
+            } else if (session.structure) {
+                // Session structure from when ELP was opened
                 document = new ElpDocumentAdapter(session.structure, tempDir);
             } else {
                 // Fallback: Try to parse content.xml directly

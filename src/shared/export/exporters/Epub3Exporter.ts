@@ -176,14 +176,21 @@ export class Epub3Exporter extends BaseExporter {
             this.zip.addFile('EPUB/content/css/base.css', baseCss);
             this.addManifestItem('css-base', 'content/css/base.css', 'text/css');
 
-            // 6. Fetch and add theme
+            // 6. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
             try {
                 const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [path, content] of themeFiles) {
-                    this.zip.addFile(`EPUB/theme/${path}`, content);
-                    const ext = this.getFileExtensionFromPath(path);
+                for (const [filePath, content] of themeFiles) {
+                    // Rename theme files to legacy export format
+                    let exportPath = filePath;
+                    if (filePath === 'style.css') {
+                        exportPath = 'content.css';
+                    } else if (filePath === 'style.js') {
+                        exportPath = 'default.js';
+                    }
+                    this.zip.addFile(`EPUB/theme/${exportPath}`, content);
+                    const ext = this.getFileExtensionFromPath(exportPath);
                     const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
-                    this.addManifestItem(this.generateUniqueId(`theme-${path}`), `theme/${path}`, mimeType);
+                    this.addManifestItem(this.generateUniqueId(`theme-${exportPath}`), `theme/${exportPath}`, mimeType);
                 }
             } catch {
                 // Add fallback theme
@@ -468,6 +475,8 @@ export class Epub3Exporter extends BaseExporter {
             usedIdevices,
             author: meta.author || '',
             license: meta.license || 'CC-BY-SA',
+            description: meta.description || '',
+            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
             bodyClass: 'exe-export exe-epub',
         });
 

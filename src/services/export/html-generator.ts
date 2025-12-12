@@ -1,6 +1,12 @@
 /**
  * HTML Generator Helper for Elysia
  * Generates HTML files for export (index.html, page files, etc.)
+ *
+ * Updated to match legacy Symfony export format:
+ * - Scripts BEFORE CSS in head
+ * - main-node class on first navigation item
+ * - exe-client-search div with JSON data
+ * - theme/content.css and theme/default.js naming
  */
 import { ParsedOdeStructure, NormalizedPage, NormalizedComponent } from '../xml/interfaces';
 import { Html5ExportOptions } from './interfaces';
@@ -19,33 +25,41 @@ export function generatePageHtml(
     resourcesPrefix: string = '',
 ): string {
     const lang = structure.meta.language || 'en';
-    const title = page.title;
-    const isPreview = options.preview === true;
+    const allPages = structure.pages;
+    const isIndex = page.id === allPages[0]?.id;
+    const projectTitle = structure.meta.title || 'eXeLearning';
 
-    // Build class list for body
-    const bodyClasses = ['exe-web-site'];
-    if (isPreview) bodyClasses.push('exe-preview');
-    if (options.includeNavigation !== false) bodyClasses.push('exe-search-bar');
+    // Calculate page counter values
+    const totalPages = allPages.length;
+    const currentPageIndex = allPages.findIndex(p => p.id === page.id);
 
-    return `<!doctype html>
-<html lang="${lang}">
+    // Collect used iDevice types for this page
+    const usedIdevices = collectUsedIdevices(page);
+
+    // Generate search data JSON
+    const searchDataJson = generateSearchData(allPages);
+
+    // Get license and user footer content
+    const license = structure.meta.license || 'creative commons: attribution - share alike 4.0';
+    const licenseUrl = structure.meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/';
+    const userFooterContent = structure.meta.userFooter || '';
+
+    return `<!DOCTYPE html>
+<html lang="${lang}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${generateHead(page, structure, resourcesPrefix)}
+${generateHead(page, structure, resourcesPrefix, usedIdevices)}
 </head>
-<body class="${bodyClasses.join(' ')}">
-<div id="content">
-${generateHeader(structure)}
-<div id="siteNav">
-${generateNavigation(structure.pages, page.id)}
+<body class="exe-export exe-web-site" lang="${lang}">
+<script>document.body.className+=" js"</script>
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${generateNavigation(allPages, page.id, isIndex)}${generatePageHeader(page, { projectTitle, currentPageIndex, totalPages })}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> <div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados." data-pages="${escapeAttr(searchDataJson)}">
 </div>
-<div id="main">
-<div id="nodeDecoration"><h1 id="nodeTitle">${escapeHtml(title)}</h1></div>
 ${generatePageContent(page, resourcesPrefix)}
-${generatePagination(page, structure.pages)}
+</main></div>${generateNavButtons(page, allPages)}
+${generateFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
-${generateFooter(structure)}
-</div>
-<script type="text/javascript" src="${resourcesPrefix}_style_js.js"></script></body></html>`;
+${generateMadeWithEXe()}
+</body>
+</html>`;
 }
 
 /**
@@ -63,49 +77,91 @@ export function generateIndexHtml(
 }
 
 /**
- * Generate HTML Head section
+ * Collect used iDevice types from a page
  */
-function generateHead(page: NormalizedPage, structure: ParsedOdeStructure, resourcesPrefix: string): string {
-    const title = `${escapeHtml(page.title)} | ${escapeHtml(structure.meta.title || 'eXeLearning')}`;
-
-    return `
-<link rel="stylesheet" type="text/css" href="${resourcesPrefix}base.css" />
-<link rel="stylesheet" type="text/css" href="${resourcesPrefix}theme/content.css" />
-<link rel="stylesheet" type="text/css" href="${resourcesPrefix}content.css" />
-<title>${title}</title>
-<meta http-equiv="content-type" content="text/html;  charset=utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="generator" content="eXeLearning ${structure.meta.exelearning_version || ''} - exelearning.net" />
-<!--[if lt IE 9]><script type="text/javascript" src="${resourcesPrefix}exe_html5.js"></script><![endif]-->
-<script type="text/javascript" src="${resourcesPrefix}exe_jquery.js"></script>
-<script type="text/javascript" src="${resourcesPrefix}common_i18n.js"></script>
-<script type="text/javascript" src="${resourcesPrefix}common.js"></script>
-<script type="text/javascript" src="${resourcesPrefix}theme/default.js"></script>
-`;
+function collectUsedIdevices(page: NormalizedPage): string[] {
+    const types = new Set<string>();
+    for (const component of page.components || []) {
+        types.add(component.type || 'text');
+    }
+    return Array.from(types);
 }
 
 /**
- * Generate Header
+ * Generate HTML Head section
+ * Legacy order: SCRIPTS first, then CSS
  */
-function generateHeader(structure: ParsedOdeStructure): string {
-    return `<header id="header" >
-<div id="headerContent">${escapeHtml(structure.meta.title || '')}</div>
-</header>`;
+function generateHead(
+    page: NormalizedPage,
+    structure: ParsedOdeStructure,
+    resourcesPrefix: string,
+    usedIdevices: string[],
+): string {
+    const title = escapeHtml(structure.meta.title || 'eXeLearning');
+    const description = structure.meta.description || '';
+    const licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/';
+
+    let head = `<meta charset="utf-8">
+<meta name="generator" content="eXeLearning v3.0.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="license" type="text/html" href="${licenseUrl}">
+<title>${title}</title>`;
+
+    if (description) {
+        head += `\n<meta name="description" content="${escapeAttr(description)}">`;
+    }
+
+    // SCRIPTS FIRST (legacy order requirement)
+    head += `
+<script>document.querySelector("html").classList.add("js");</script>`;
+    head += `<script src="${resourcesPrefix}libs/jquery/jquery.min.js"> </script>`;
+    head += `<script src="${resourcesPrefix}libs/common_i18n.js"> </script>`;
+    head += `<script src="${resourcesPrefix}libs/common.js"> </script>`;
+    head += `<script src="${resourcesPrefix}libs/exe_export.js"> </script>`;
+    head += `<script src="${resourcesPrefix}libs/bootstrap/bootstrap.bundle.min.js"> </script>`;
+    head += `<script src="${resourcesPrefix}libs/exe_lightbox/exe_lightbox.js"> </script>`;
+
+    // CSS AFTER scripts
+    head += `<link rel="stylesheet" href="${resourcesPrefix}libs/bootstrap/bootstrap.min.css">`;
+    head += `\n<link rel="stylesheet" href="${resourcesPrefix}libs/exe_lightbox/exe_lightbox.css">`;
+
+    // iDevice-specific scripts and CSS
+    const seen = new Set<string>();
+    for (const type of usedIdevices) {
+        const config = getIdeviceConfig(type);
+        const typeName = config.cssClass || type.toLowerCase().replace('idevice', '');
+        if (!seen.has(typeName)) {
+            seen.add(typeName);
+            head += `\n<script src="${resourcesPrefix}idevices/${typeName}/${typeName}.js"> </script>`;
+            head += `<link rel="stylesheet" href="${resourcesPrefix}idevices/${typeName}/${typeName}.css">`;
+        }
+    }
+
+    // Base CSS and theme (use legacy names)
+    head += `\n<link rel="stylesheet" href="${resourcesPrefix}content/css/base.css">`;
+    head += `<script src="${resourcesPrefix}theme/default.js"> </script>`;
+    head += `<link rel="stylesheet" href="${resourcesPrefix}theme/content.css">`;
+
+    // Custom styles from meta
+    const customStyles = structure.meta.customStyles;
+    if (customStyles) {
+        head += `\n<style>\n${customStyles}\n</style>`;
+    }
+
+    return head;
 }
 
 /**
  * Generate Navigation Menu
  */
-function generateNavigation(pages: NormalizedPage[], currentPageId: string): string {
+function generateNavigation(pages: NormalizedPage[], currentPageId: string, isCurrentIndex: boolean): string {
     const rootPages = pages.filter(p => p.parent_id === null);
 
-    let html = '<ul>\n';
-
+    let html = '<nav id="siteNav">\n<ul>\n';
     for (const page of rootPages) {
-        html += generateNavItem(page, pages, currentPageId, 0);
+        html += generateNavItem(page, pages, currentPageId, isCurrentIndex);
     }
-
-    html += '</ul>';
+    html += '</ul>\n</nav>';
     return html;
 }
 
@@ -113,24 +169,32 @@ function generateNavItem(
     page: NormalizedPage,
     allPages: NormalizedPage[],
     currentPageId: string,
-    level: number,
+    isCurrentIndex: boolean,
 ): string {
     const children = allPages.filter(p => p.parent_id === page.id);
     const isCurrent = page.id === currentPageId;
-    const isParentOfCurrent = isParentOf(page, currentPageId, allPages);
+    const isFirstPage = page.id === allPages[0]?.id;
+    const hasChildren = children.length > 0;
+    const isAncestor = isParentOf(page, currentPageId, allPages);
 
-    let classAttr = '';
-    if (isCurrent) classAttr = ' class="active"';
-    else if (isParentOfCurrent) classAttr = ' class="active"';
+    // Build li class
+    const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
 
-    const link = page.id === allPages[0].id ? 'index.html' : `${page.id}.html`;
+    // Build link classes
+    const linkClasses: string[] = [];
+    if (isCurrent) linkClasses.push('active');
+    if (isFirstPage) linkClasses.push('main-node');
+    linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
 
-    let html = `<li id="${isCurrent ? 'active' : ''}"><a href="${link}"${classAttr}>${escapeHtml(page.title)}</a>`;
+    const link = isFirstPage ? 'index.html' : `html/${sanitizeFilename(page.title)}.html`;
+
+    let html = `<li${liClass}>`;
+    html += ` <a href="${link}" class="${linkClasses.join(' ')}">${escapeHtml(page.title)}</a>\n`;
 
     if (children.length > 0) {
-        html += '\n<ul>\n';
+        html += '<ul class="other-section">\n';
         for (const child of children) {
-            html += generateNavItem(child, allPages, currentPageId, level + 1);
+            html += generateNavItem(child, allPages, currentPageId, isCurrentIndex);
         }
         html += '</ul>\n';
     }
@@ -147,6 +211,38 @@ function isParentOf(potentialParent: NormalizedPage, childId: string, allPages: 
 }
 
 /**
+ * Sanitize title for use as filename
+ */
+function sanitizeFilename(title: string): string {
+    if (!title) return 'page';
+    return title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .substring(0, 50);
+}
+
+/**
+ * Generate page header with page counter, package title (h1), and page title (h2)
+ */
+function generatePageHeader(
+    page: NormalizedPage,
+    options: {
+        projectTitle: string;
+        currentPageIndex: number;
+        totalPages: number;
+    },
+): string {
+    const { projectTitle, currentPageIndex, totalPages } = options;
+
+    return `<header id="header-${page.id}" class="page-header"> <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
+<h1 class="package-title">${escapeHtml(projectTitle)}</h1>
+<h2 class="page-title">${escapeHtml(page.title)}</h2></header>`;
+}
+
+/**
  * Generate Page Content (iDevices organized in blocks)
  */
 function generatePageContent(page: NormalizedPage, resourcesPrefix: string = ''): string {
@@ -155,7 +251,6 @@ function generatePageContent(page: NormalizedPage, resourcesPrefix: string = '')
     }
 
     const sortedComponents = [...page.components].sort((a, b) => (a.order || 0) - (b.order || 0));
-
     const blocks = groupComponentsByBlock(sortedComponents);
 
     return blocks.map(block => renderBlock(block, resourcesPrefix)).join('\n');
@@ -318,38 +413,125 @@ function fixAssetUrls(content: string, basePath: string): string {
 }
 
 /**
- * Generate Pagination (Prev/Next buttons)
+ * Generate complete footer section with license and optional user content
  */
-function generatePagination(page: NormalizedPage, allPages: NormalizedPage[]): string {
+function generateFooterSection(options: {
+    license: string;
+    licenseUrl?: string;
+    userFooterContent?: string;
+}): string {
+    const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+
+    let userFooterHtml = '';
+    if (userFooterContent) {
+        userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
+    }
+
+    return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="cc cc-by-sa"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${escapeHtml(license)}</a></p>
+</div>
+${userFooterHtml}</div></footer>`;
+}
+
+/**
+ * Generate "Made with eXeLearning" credit
+ */
+function generateMadeWithEXe(): string {
+    return `<p id="made-with-eXe"> <a href="https://exelearning.net/" target="_blank" rel="noopener"> <span>Creado con eXeLearning <span>(nueva ventana)</span></span></a></p>`;
+}
+
+/**
+ * Generate Navigation buttons (Prev/Next)
+ */
+function generateNavButtons(page: NormalizedPage, allPages: NormalizedPage[]): string {
     const currentIndex = allPages.findIndex(p => p.id === page.id);
     const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
     const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
-    let html =
-        '<div id="packageLicense" class="cc cc-by-sa">\n<p><span>Licensed under the</span> <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution Share Alike License 4.0</a></p>\n</div>\n';
+    if (!prevPage && !nextPage) return '';
 
-    if (prevPage || nextPage) {
-        html += '<div class="pagination">\n';
-        if (prevPage) {
-            const link = prevPage.id === allPages[0].id ? 'index.html' : `${prevPage.id}.html`;
-            html += `<a href="${link}" class="prev"><span>&laquo; </span>${escapeHtml(prevPage.title)}</a>`;
-        }
-        if (prevPage && nextPage) html += ' | ';
-        if (nextPage) {
-            const link = `${nextPage.id}.html`;
-            html += `<a href="${link}" class="next">${escapeHtml(nextPage.title)}<span> &raquo;</span></a>`;
-        }
-        html += '\n</div>';
+    let html = '<div class="nav-buttons">';
+
+    if (prevPage) {
+        const isFirst = prevPage.id === allPages[0]?.id;
+        const link = isFirst ? '../index.html' : `${sanitizeFilename(prevPage.title)}.html`;
+        html += ` <a href="${link}" title="Anterior" class="nav-button nav-button-left"> <span>Anterior</span></a>`;
     }
 
+    if (nextPage) {
+        const link = `${sanitizeFilename(nextPage.title)}.html`;
+        html += `<a href="${link}" title="Siguiente" class="nav-button nav-button-right"> <span>Siguiente</span></a>`;
+    }
+
+    html += '\n</div>';
     return html;
 }
 
 /**
- * Generate Footer
+ * Generate License div
+ * @deprecated Use generateFooterSection instead
  */
-function generateFooter(_structure: ParsedOdeStructure): string {
-    return '';
+function generateLicense(_structure: ParsedOdeStructure): string {
+    return `<div id="packageLicense" class="cc cc-by-sa">
+<p><span>Licensed under the</span> <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution Share Alike License 4.0</a></p>
+</div>`;
+}
+
+/**
+ * Generate Pagination (Prev/Next buttons)
+ * @deprecated Use generateNavButtons instead
+ */
+function generatePagination(page: NormalizedPage, allPages: NormalizedPage[]): string {
+    return generateNavButtons(page, allPages);
+}
+
+/**
+ * Generate search data JSON for client-side search
+ */
+function generateSearchData(pages: NormalizedPage[]): string {
+    const pagesData: Record<string, unknown> = {};
+
+    for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        const isIndex = i === 0;
+        const prevPage = i > 0 ? pages[i - 1] : null;
+        const nextPage = i < pages.length - 1 ? pages[i + 1] : null;
+
+        const fileName = isIndex ? 'index.html' : `${sanitizeFilename(page.title)}.html`;
+        const fileUrl = isIndex ? 'index.html' : `html/${fileName}`;
+
+        const blocksData: Record<string, unknown> = {};
+        const sortedComponents = [...(page.components || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+        const blocks = groupComponentsByBlock(sortedComponents);
+
+        for (const block of blocks) {
+            const idevicesData: Record<string, unknown> = {};
+            for (let j = 0; j < block.components.length; j++) {
+                const component = block.components[j];
+                idevicesData[component.id] = {
+                    order: j + 1,
+                    htmlView: component.content || '',
+                    jsonProperties: JSON.stringify(component.properties || {}),
+                };
+            }
+            blocksData[block.id] = {
+                name: block.name || '',
+                order: 1,
+                idevices: idevicesData,
+            };
+        }
+
+        pagesData[page.id] = {
+            name: page.title,
+            isIndex,
+            fileName,
+            fileUrl,
+            prePageId: prevPage?.id || null,
+            nextPageId: nextPage?.id || null,
+            blocks: blocksData,
+        };
+    }
+
+    return JSON.stringify(pagesData);
 }
 
 /**

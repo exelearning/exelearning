@@ -65,7 +65,7 @@ export class Html5Exporter extends BaseExporter {
             // 1. Generate HTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const html = this.generatePageHtml(page, pages, meta, i === 0);
+                const html = this.generatePageHtml(page, pages, meta, i === 0, i);
                 // First page is index.html, others go in html/ directory
                 const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 this.zip.addFile(pageFilename, html);
@@ -78,19 +78,26 @@ export class Html5Exporter extends BaseExporter {
             // 3. Add base CSS
             this.zip.addFile('content/css/base.css', this.getBaseCss());
 
-            // 4. Fetch and add theme
+            // 4. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
             try {
                 const themeFiles = await this.resources.fetchTheme(themeName);
                 console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFiles.size}`);
                 for (const [filePath, content] of themeFiles) {
-                    console.log(`[Html5Exporter] Adding theme file: theme/${filePath}`);
-                    this.zip.addFile(`theme/${filePath}`, content);
+                    // Rename theme files to legacy export format
+                    let exportPath = filePath;
+                    if (filePath === 'style.css') {
+                        exportPath = 'content.css';
+                    } else if (filePath === 'style.js') {
+                        exportPath = 'default.js';
+                    }
+                    console.log(`[Html5Exporter] Adding theme file: theme/${exportPath}`);
+                    this.zip.addFile(`theme/${exportPath}`, content);
                 }
             } catch (e) {
-                // Add fallback theme if fetch fails
+                // Add fallback theme if fetch fails (use legacy names)
                 console.warn(`[Html5Exporter] Failed to fetch theme: ${themeName}`, e);
-                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
+                this.zip.addFile('theme/content.css', this.getFallbackThemeCss());
+                this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
             }
 
             // 5. Detect and fetch required libraries
@@ -154,9 +161,16 @@ export class Html5Exporter extends BaseExporter {
     /**
      * Generate complete HTML for a page
      */
-    generatePageHtml(page: ExportPage, allPages: ExportPage[], meta: ExportMetadata, isIndex: boolean): string {
+    generatePageHtml(
+        page: ExportPage,
+        allPages: ExportPage[],
+        meta: ExportMetadata,
+        isIndex: boolean,
+        pageIndex?: number,
+    ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
+        const currentPageIndex = pageIndex ?? allPages.findIndex(p => p.id === page.id);
 
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
@@ -168,7 +182,13 @@ export class Html5Exporter extends BaseExporter {
             isIndex,
             usedIdevices,
             author: meta.author || '',
-            license: meta.license || 'CC-BY-SA',
+            license: meta.license || 'creative commons: attribution - share alike 4.0',
+            description: meta.description || '',
+            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
+            // New options for page counter and footer
+            totalPages: allPages.length,
+            currentPageIndex,
+            userFooterContent: (meta as Record<string, unknown>).userFooter as string | undefined,
         });
     }
 

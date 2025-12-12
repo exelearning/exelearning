@@ -79,7 +79,12 @@
       'exporters/generators/ImsManifestGenerator.js',
       'exporters/generators/LomMetadataGenerator.js',
     ],
-    // Group 4: All exporters (depend on renderers/generators)
+    // Group 4: Shared exporters bundle (TypeScript from src/shared/export/)
+    // This must load before the legacy JS exporters so index.js can delegate to SharedExporters
+    [
+      'exporters.bundle.js',  // Compiled from src/shared/export/browser/index.ts
+    ],
+    // Group 5: Legacy exporters (fallback, deprecated - will be removed once SharedExporters is verified)
     [
       'exporters/ElpxExporter.js',
       'exporters/Html5Exporter.js',
@@ -91,20 +96,20 @@
       'exporters/ComponentExporter.js',
       'exporters/ComponentImporter.js',
     ],
-    // Group 5: Preview exporters + index (depend on Html5Exporter)
+    // Group 6: Preview exporters + index (depend on Html5Exporter)
     [
       'exporters/PreviewExporter.js',
       'exporters/WebsitePreviewExporter.js',
       'exporters/index.js',
     ],
-    // Group 6: Bridge components (depend on exporters)
+    // Group 7: Bridge components (depend on exporters)
     [
       'SaveManager.js',
       'YjsTinyMCEBinding.js',
       'YjsStructureTreeAdapter.js',
       'YjsPropertiesBinding.js',
     ],
-    // Group 7: Final integration (must be sequential)
+    // Group 8: Final integration (must be sequential)
     [
       'YjsProjectBridge.js',  // depends on SaveManager
       'YjsProjectManagerMixin.js',  // depends on YjsProjectBridge

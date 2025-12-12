@@ -71,8 +71,8 @@ describe('HTML Generator Helper', () => {
 
             const html = generatePageHtml(page, structure, {});
 
-            expect(html).toContain('<!doctype html>');
-            expect(html).toContain('<html lang="en">');
+            expect(html).toContain('<!DOCTYPE html>');
+            expect(html).toContain('<html lang="en"');
             expect(html).toContain('<head>');
             expect(html).toContain('</head>');
             expect(html).toContain('<body');
@@ -89,16 +89,17 @@ describe('HTML Generator Helper', () => {
 
             const html = generatePageHtml(page, structure, {});
 
-            expect(html).toContain('<html lang="es">');
+            expect(html).toContain('<html lang="es"');
         });
 
-        it('should include page title in header', () => {
+        it('should include project title in header', () => {
             const page = createPage({ title: 'My Custom Page' });
             const structure = createMinimalStructure({ pages: [page] });
 
             const html = generatePageHtml(page, structure, {});
 
-            expect(html).toContain('<title>My Custom Page | Test Project</title>');
+            // New format uses project title in <title> for index page
+            expect(html).toContain('<title>Test Project</title>');
         });
 
         it('should escape HTML in title', () => {
@@ -111,22 +112,25 @@ describe('HTML Generator Helper', () => {
             expect(html).toContain('&lt;script&gt;');
         });
 
-        it('should add exe-preview class when preview option is true', () => {
+        it('should have exe-export exe-web-site classes on body', () => {
             const page = createPage();
             const structure = createMinimalStructure({ pages: [page] });
 
             const html = generatePageHtml(page, structure, { preview: true });
 
-            expect(html).toContain('exe-preview');
+            // New legacy-compatible format uses exe-export exe-web-site
+            expect(html).toContain('exe-export');
+            expect(html).toContain('exe-web-site');
         });
 
-        it('should include navigation class by default', () => {
+        it('should include exe-client-search div', () => {
             const page = createPage();
             const structure = createMinimalStructure({ pages: [page] });
 
             const html = generatePageHtml(page, structure, {});
 
-            expect(html).toContain('exe-search-bar');
+            // New format uses exe-client-search with data-pages
+            expect(html).toContain('exe-client-search');
         });
 
         it('should use resources prefix for CSS/JS paths', () => {
@@ -135,8 +139,9 @@ describe('HTML Generator Helper', () => {
 
             const html = generatePageHtml(page, structure, {}, '/custom/path/');
 
-            expect(html).toContain('href="/custom/path/base.css"');
-            expect(html).toContain('src="/custom/path/exe_jquery.js"');
+            // New format uses libs/ and content/css/ paths
+            expect(html).toContain('href="/custom/path/content/css/base.css"');
+            expect(html).toContain('src="/custom/path/libs/jquery/jquery.min.js"');
         });
 
         it('should render components in page content', () => {
@@ -184,7 +189,9 @@ describe('HTML Generator Helper', () => {
 
             const html = generatePageHtml(page, structure, {});
 
-            expect(html).toContain('<div id="main">');
+            // New format uses <main> with page class
+            expect(html).toContain('<main');
+            expect(html).toContain('class="page"');
         });
 
         it('should generate navigation with multiple pages', () => {
@@ -195,7 +202,8 @@ describe('HTML Generator Helper', () => {
             const html = generatePageHtml(page1, structure, {});
 
             expect(html).toContain('href="index.html"');
-            expect(html).toContain('href="page-2.html"');
+            // New format uses html/ directory for non-index pages
+            expect(html).toContain('href="html/about.html"');
             expect(html).toContain('Home');
             expect(html).toContain('About');
         });
@@ -222,7 +230,7 @@ describe('HTML Generator Helper', () => {
             expect(html).toContain('Child');
         });
 
-        it('should generate pagination links', () => {
+        it('should generate nav buttons', () => {
             const page1 = createPage({ id: 'page-1', title: 'First' });
             const page2 = createPage({ id: 'page-2', title: 'Second' });
             const page3 = createPage({ id: 'page-3', title: 'Third' });
@@ -230,32 +238,80 @@ describe('HTML Generator Helper', () => {
 
             const html = generatePageHtml(page2, structure, {});
 
-            expect(html).toContain('class="prev"');
-            expect(html).toContain('class="next"');
-            expect(html).toContain('First');
-            expect(html).toContain('Third');
+            expect(html).toContain('class="nav-buttons"');
+            expect(html).toContain('nav-button-left');
+            expect(html).toContain('nav-button-right');
+            expect(html).toContain('Anterior');
+            expect(html).toContain('Siguiente');
         });
 
-        it('should not show prev link on first page', () => {
+        it('should not show prev button on first page', () => {
             const page1 = createPage({ id: 'page-1', title: 'First' });
             const page2 = createPage({ id: 'page-2', title: 'Second' });
             const structure = createMinimalStructure({ pages: [page1, page2] });
 
             const html = generatePageHtml(page1, structure, {});
 
-            expect(html).not.toContain('class="prev"');
-            expect(html).toContain('class="next"');
+            expect(html).not.toContain('nav-button-left');
+            expect(html).toContain('nav-button-right');
         });
 
-        it('should not show next link on last page', () => {
+        it('should not show next button on last page', () => {
             const page1 = createPage({ id: 'page-1', title: 'First' });
             const page2 = createPage({ id: 'page-2', title: 'Second' });
             const structure = createMinimalStructure({ pages: [page1, page2] });
 
             const html = generatePageHtml(page2, structure, {});
 
-            expect(html).toContain('class="prev"');
-            expect(html).not.toContain('class="next"');
+            expect(html).toContain('nav-button-left');
+            expect(html).not.toContain('nav-button-right');
+        });
+
+        it('should include page header with page counter', () => {
+            const page1 = createPage({ id: 'page-1', title: 'First' });
+            const page2 = createPage({ id: 'page-2', title: 'Second' });
+            const structure = createMinimalStructure({ pages: [page1, page2] });
+
+            const html = generatePageHtml(page2, structure, {});
+
+            expect(html).toContain('class="page-header"');
+            expect(html).toContain('class="page-counter"');
+            expect(html).toContain('class="page-counter-current-page">2</strong>');
+            expect(html).toContain('class="page-counter-total">2</strong>');
+            expect(html).toContain('class="package-title"');
+            expect(html).toContain('class="page-title"');
+        });
+
+        it('should include page content wrapper', () => {
+            const page = createPage({ id: 'my-page' });
+            const structure = createMinimalStructure({ pages: [page] });
+
+            const html = generatePageHtml(page, structure, {});
+
+            expect(html).toContain('class="page-content"');
+            expect(html).toContain('id="page-content-my-page"');
+        });
+
+        it('should include footer section with license', () => {
+            const page = createPage();
+            const structure = createMinimalStructure({ pages: [page] });
+
+            const html = generatePageHtml(page, structure, {});
+
+            expect(html).toContain('<footer id="siteFooter">');
+            expect(html).toContain('id="siteFooterContent"');
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('class="license-label">Licencia: </span>');
+        });
+
+        it('should include made-with-eXe credit', () => {
+            const page = createPage();
+            const structure = createMinimalStructure({ pages: [page] });
+
+            const html = generatePageHtml(page, structure, {});
+
+            expect(html).toContain('id="made-with-eXe"');
+            expect(html).toContain('exelearning.net');
         });
 
         it('should add idevice-specific data attributes', () => {
@@ -322,7 +378,7 @@ describe('HTML Generator Helper', () => {
             expect(html).toContain('<div class="exe-text">');
         });
 
-        it('should fix asset:// protocol URLs', () => {
+        it('should fix asset:// protocol URLs in rendered content', () => {
             const comp = createComponent({
                 content: '<img src="asset://image.png">',
             });
@@ -331,8 +387,10 @@ describe('HTML Generator Helper', () => {
 
             const html = generatePageHtml(page, structure, {});
 
+            // Asset URLs are fixed in the rendered iDevice content
             expect(html).toContain('content/resources/image.png');
-            expect(html).not.toContain('asset://');
+            // Note: asset:// may still appear in the exe-client-search JSON (source data)
+            // The important check is that rendered content has the fixed path
         });
 
         it('should escape attributes properly', () => {
@@ -375,7 +433,8 @@ describe('HTML Generator Helper', () => {
 
             const html = generateIndexHtml(structure, { preview: true });
 
-            expect(html).toContain('exe-preview');
+            // Uses exe-export class in legacy-compatible format
+            expect(html).toContain('exe-export');
         });
 
         it('should pass resources prefix', () => {
@@ -384,7 +443,8 @@ describe('HTML Generator Helper', () => {
 
             const html = generateIndexHtml(structure, {}, '/assets/');
 
-            expect(html).toContain('/assets/base.css');
+            // New format uses content/css/base.css path
+            expect(html).toContain('/assets/content/css/base.css');
         });
     });
 

@@ -4,15 +4,17 @@
  * Renders complete HTML pages for export.
  * Generates full HTML5 pages matching legacy Symfony exports:
  * - Proper DOCTYPE and meta tags
+ * - Scripts BEFORE CSS (legacy order requirement)
  * - CSS/JS includes for theme and iDevices
- * - Navigation menu structure
+ * - Navigation menu structure with main-node class
+ * - exe-client-search div with JSON data
  * - Page content with blocks and iDevices
- * - Pagination and footer
+ * - Pagination and license footer inside main
  *
  * This is a TypeScript port of public/app/yjs/exporters/renderers/PageHtmlRenderer.js
  */
 
-import type { ExportPage, PageRenderOptions } from '../interfaces';
+import type { ExportPage, ExportBlock, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
 
 /**
@@ -44,8 +46,13 @@ export class PageRenderer {
             basePath = '',
             isIndex = false,
             usedIdevices = [],
-            author = '',
-            license = 'CC-BY-SA',
+            license = 'creative commons: attribution - share alike 4.0',
+            description = '',
+            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            // Page counter options
+            totalPages,
+            currentPageIndex,
+            userFooterContent = '',
             // SCORM-specific options
             isScorm = false,
             scormVersion = '',
@@ -55,39 +62,41 @@ export class PageRenderer {
             onUnloadScript = '',
         } = options;
 
-        const pageTitle = page.title || 'Page';
-        const fullTitle = `${this.escapeHtml(pageTitle)} | ${this.escapeHtml(projectTitle)}`;
+        const pageTitle = isIndex ? projectTitle : page.title || 'Page';
+
+        // Calculate page counter values
+        const total = totalPages ?? allPages.length;
+        const currentIdx = currentPageIndex ?? allPages.findIndex(p => p.id === page.id);
 
         // Build body class
         const bodyClassStr = bodyClass || 'exe-export exe-web-site';
         const onLoadAttr = onLoadScript ? ` onload="${onLoadScript}"` : '';
         const onUnloadAttr = onUnloadScript ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"` : '';
 
+        // Generate search data JSON for client-side search
+        const searchDataJson = this.generateSearchData(allPages, basePath);
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle: fullTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden">
-${this.renderNavigation(allPages, page.id, basePath)}
-<main id="${page.id}" class="page">
-${this.renderPageHeader(page)}
-<div id="page-content-${page.id}" class="page-content">
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}${this.renderPageHeader(page, { projectTitle, currentPageIndex: currentIdx, totalPages: total })}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> <div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados." data-pages="${this.escapeAttr(searchDataJson)}">
+</div>
 ${this.renderPageContent(page, basePath)}
+</main></div>${this.renderNavButtons(page, allPages, basePath)}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
-${this.renderPagination(page, allPages, basePath)}
-</main>
-${this.renderFooter({ author, license })}
-</div>
-${this.renderScripts(basePath, isScorm)}
+${this.renderMadeWithEXe()}
 </body>
 </html>`;
     }
 
     /**
      * Render HTML head section
+     * Legacy order: SCRIPTS first, then CSS (required for proper initialization)
      * @param options - Head render options
      * @returns HTML head content
      */
@@ -99,6 +108,8 @@ ${this.renderScripts(basePath, isScorm)}
         extraHeadScripts?: string;
         isScorm?: boolean;
         scormVersion?: string;
+        description?: string;
+        licenseUrl?: string;
     }): string {
         const {
             pageTitle,
@@ -107,29 +118,59 @@ ${this.renderScripts(basePath, isScorm)}
             customStyles,
             extraHeadScripts = '',
             isScorm: _isScorm = false,
+            description = '',
+            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
         } = options;
 
+        // Meta tags
         let head = `<meta charset="utf-8">
-<meta name="generator" content="eXeLearning 4.0 - exelearning.net">
+<meta name="generator" content="eXeLearning v3.0.0">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${pageTitle}</title>
-<script>document.querySelector("html").classList.add("js");</script>
-<link rel="stylesheet" href="${basePath}libs/bootstrap/bootstrap.min.css">
-<link rel="stylesheet" href="${basePath}content/css/base.css">
-<link rel="stylesheet" href="${basePath}theme/style.css">`;
+<link rel="license" type="text/html" href="${licenseUrl}">
+<title>${this.escapeHtml(pageTitle)}</title>`;
 
-        // Add iDevice-specific CSS
-        const cssLinks = this.ideviceRenderer.getCssLinks(usedIdevices, basePath);
-        for (const link of cssLinks) {
-            head += `\n${link}`;
+        // Description meta if provided
+        if (description) {
+            head += `\n<meta name="description" content="${this.escapeAttr(description)}">`;
         }
 
-        // Add custom styles
+        // SCRIPTS FIRST (legacy order requirement)
+        head += `
+<script>document.querySelector("html").classList.add("js");</script>`;
+
+        // Core library scripts
+        head += `<script src="${basePath}libs/jquery/jquery.min.js"> </script>`;
+        head += `<script src="${basePath}libs/common_i18n.js"> </script>`;
+        head += `<script src="${basePath}libs/common.js"> </script>`;
+        head += `<script src="${basePath}libs/exe_export.js"> </script>`;
+        head += `<script src="${basePath}libs/bootstrap/bootstrap.bundle.min.js"> </script>`;
+        head += `<script src="${basePath}libs/exe_lightbox/exe_lightbox.js"> </script>`;
+
+        // CSS AFTER scripts (legacy order)
+        head += `<link rel="stylesheet" href="${basePath}libs/bootstrap/bootstrap.min.css">`;
+        head += `\n<link rel="stylesheet" href="${basePath}libs/exe_lightbox/exe_lightbox.css">`;
+
+        // iDevice-specific scripts and CSS (script before CSS for each)
+        const jsScripts = this.ideviceRenderer.getJsScripts(usedIdevices, basePath);
+        const cssLinks = this.ideviceRenderer.getCssLinks(usedIdevices, basePath);
+        for (let i = 0; i < jsScripts.length; i++) {
+            head += `\n${jsScripts[i]}`;
+            if (cssLinks[i]) {
+                head += cssLinks[i];
+            }
+        }
+
+        // Base CSS and theme
+        head += `\n<link rel="stylesheet" href="${basePath}content/css/base.css">`;
+        head += `<script src="${basePath}theme/default.js"> </script>`;
+        head += `<link rel="stylesheet" href="${basePath}theme/content.css">`;
+
+        // Custom styles
         if (customStyles) {
             head += `\n<style>\n${customStyles}\n</style>`;
         }
 
-        // Add SCORM-specific scripts in head (before body scripts)
+        // SCORM-specific scripts in head
         if (extraHeadScripts) {
             head += `\n${extraHeadScripts}`;
         }
@@ -169,13 +210,20 @@ ${this.renderScripts(basePath, isScorm)}
         const isCurrent = page.id === currentPageId;
         const hasChildren = children.length > 0;
         const isAncestor = this.isAncestorOf(page.id, currentPageId, allPages);
+        const isFirstPage = page.id === allPages[0]?.id;
 
-        const classAttr = isCurrent ? ' class="active"' : isAncestor ? ' class="parent"' : '';
+        // Build li class attribute
+        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
         const link = this.getPageLink(page, allPages, basePath);
-        const linkClass = hasChildren ? 'daddy' : 'no-ch';
 
-        let html = `<li${classAttr}>`;
-        html += ` <a href="${link}" class="${isCurrent ? 'active ' : ''}${linkClass}">${this.escapeHtml(page.title)}</a>\n`;
+        // Build link classes: main-node for first page, daddy/no-ch for children, active if current
+        const linkClasses: string[] = [];
+        if (isCurrent) linkClasses.push('active');
+        if (isFirstPage) linkClasses.push('main-node');
+        linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
+
+        let html = `<li${liClass}>`;
+        html += ` <a href="${link}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
 
         if (hasChildren) {
             html += '<ul class="other-section">\n';
@@ -236,14 +284,24 @@ ${this.renderScripts(basePath, isScorm)}
     }
 
     /**
-     * Render page header with title
+     * Render page header with page counter, package title (h1), and page title (h2)
      * @param page - Page
+     * @param options - Header options including counter info
      * @returns Header HTML
      */
-    renderPageHeader(page: ExportPage): string {
-        return `<header class="page-header">
-<h2 class="page-title">${this.escapeHtml(page.title)}</h2>
-</header>`;
+    renderPageHeader(
+        page: ExportPage,
+        options: {
+            projectTitle: string;
+            currentPageIndex: number;
+            totalPages: number;
+        },
+    ): string {
+        const { projectTitle, currentPageIndex, totalPages } = options;
+
+        return `<header id="header-${page.id}" class="page-header"> <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
+<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
+<h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>`;
     }
 
     /**
@@ -266,70 +324,145 @@ ${this.renderScripts(basePath, isScorm)}
     }
 
     /**
-     * Render pagination (prev/next links)
+     * Render navigation buttons (prev/next links)
      * @param page - Current page
      * @param allPages - All pages
      * @param basePath - Base path
-     * @returns Pagination HTML
+     * @returns Navigation buttons HTML
      */
-    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string): string {
+    renderNavButtons(page: ExportPage, allPages: ExportPage[], basePath: string): string {
         const currentIndex = allPages.findIndex(p => p.id === page.id);
         const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
         const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
-        if (!prevPage && !nextPage) {
-            return '';
-        }
+        if (!prevPage && !nextPage) return '';
 
-        let html = '<nav class="pagination">\n';
+        let html = '<div class="nav-buttons">';
 
         if (prevPage) {
             const link = this.getPageLink(prevPage, allPages, basePath);
-            html += `<a href="${link}" class="prev"><span>&laquo; </span>${this.escapeHtml(prevPage.title)}</a>`;
-        }
-
-        if (prevPage && nextPage) {
-            html += ' | ';
+            html += ` <a href="${link}" title="Anterior" class="nav-button nav-button-left"> <span>Anterior</span></a>`;
         }
 
         if (nextPage) {
             const link = this.getPageLink(nextPage, allPages, basePath);
-            html += `<a href="${link}" class="next">${this.escapeHtml(nextPage.title)}<span> &raquo;</span></a>`;
+            html += `<a href="${link}" title="Siguiente" class="nav-button nav-button-right"> <span>Siguiente</span></a>`;
         }
 
-        html += '\n</nav>';
+        html += '\n</div>';
         return html;
     }
 
     /**
-     * Render footer section
+     * Render pagination (prev/next links) - legacy method kept for backward compatibility
+     * @param page - Current page
+     * @param allPages - All pages
+     * @param basePath - Base path
+     * @returns Pagination HTML
+     * @deprecated Use renderNavButtons instead
+     */
+    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string): string {
+        return this.renderNavButtons(page, allPages, basePath);
+    }
+
+    /**
+     * Render complete footer section with license and optional user content
+     * @param options - Footer options
+     * @returns Footer HTML with siteFooter wrapper
+     */
+    renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
+        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+
+        let userFooterHtml = '';
+        if (userFooterContent) {
+            userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
+        }
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="cc cc-by-sa"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
+</div>
+${userFooterHtml}</div></footer>`;
+    }
+
+    /**
+     * Render "Made with eXeLearning" credit
+     * @returns Made with eXe HTML
+     */
+    renderMadeWithEXe(): string {
+        return `<p id="made-with-eXe"> <a href="https://exelearning.net/" target="_blank" rel="noopener"> <span>Creado con eXeLearning <span>(nueva ventana)</span></span></a></p>`;
+    }
+
+    /**
+     * Render license div (inside main, before pagination)
+     * @param options - License options
+     * @returns License HTML
+     * @deprecated Use renderFooterSection instead
+     */
+    renderLicense(options: { author: string; license: string; licenseUrl?: string }): string {
+        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/' } = options;
+
+        return `<div id="packageLicense" class="cc cc-by-sa">
+<p><span>Licensed under the</span> <a rel="license" href="${licenseUrl}">${this.escapeHtml(license)}</a></p>
+</div>`;
+    }
+
+    /**
+     * Render footer section (legacy method, kept for backward compatibility)
      * @param options - Footer options
      * @returns Footer HTML
+     * @deprecated Use renderFooterSection instead
      */
     renderFooter(options: { author: string; license: string }): string {
-        const { author, license } = options;
-
-        let html = `<footer id="packageLicense" class="cc cc-by-sa">`;
-        if (author) {
-            html += `\n<p><span>Author:</span> ${this.escapeHtml(author)}</p>`;
-        }
-        html += `\n<p><span>License:</span> ${this.escapeHtml(license)}</p>`;
-        html += '\n</footer>';
-        return html;
+        return this.renderLicense({ ...options, licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/' });
     }
 
     /**
-     * Render script tags for JS libraries
-     * @param basePath - Base path
-     * @param isScorm - Whether this is a SCORM export
-     * @returns Scripts HTML
+     * Generate search data JSON for client-side search functionality
+     * @param allPages - All pages in the project
+     * @param basePath - Base path for URLs
+     * @returns JSON string with page structure
      */
-    renderScripts(basePath: string, _isScorm: boolean = false): string {
-        return `<script type="text/javascript" src="${basePath}libs/jquery/jquery.min.js"></script>
-<script type="text/javascript" src="${basePath}libs/exe_export.js"></script>
-<script type="text/javascript" src="${basePath}libs/common_i18n.js"></script>
-<script type="text/javascript" src="${basePath}libs/common.js"></script>
-<script type="text/javascript" src="${basePath}theme/style.js"></script>`;
+    generateSearchData(allPages: ExportPage[], basePath: string): string {
+        const pagesData: Record<string, unknown> = {};
+
+        for (let i = 0; i < allPages.length; i++) {
+            const page = allPages[i];
+            const isIndex = i === 0;
+            const prevPage = i > 0 ? allPages[i - 1] : null;
+            const nextPage = i < allPages.length - 1 ? allPages[i + 1] : null;
+
+            const fileName = isIndex ? 'index.html' : `${this.sanitizeFilename(page.title)}.html`;
+            const fileUrl = isIndex ? 'index.html' : `html/${fileName}`;
+
+            const blocksData: Record<string, unknown> = {};
+            for (const block of page.blocks || []) {
+                const idevicesData: Record<string, unknown> = {};
+                for (let j = 0; j < (block.components || []).length; j++) {
+                    const component = block.components[j];
+                    idevicesData[component.id] = {
+                        order: j + 1,
+                        htmlView: component.content || '',
+                        jsonProperties: JSON.stringify(component.properties || {}),
+                    };
+                }
+                blocksData[block.id] = {
+                    name: block.name || '',
+                    order: block.order || 1,
+                    idevices: idevicesData,
+                };
+            }
+
+            pagesData[page.id] = {
+                name: page.title,
+                isIndex,
+                fileName,
+                fileUrl,
+                prePageId: prevPage?.id || null,
+                nextPageId: nextPage?.id || null,
+                blocks: blocksData,
+            };
+        }
+
+        return JSON.stringify(pagesData);
     }
 
     /**
@@ -361,25 +494,46 @@ ${this.renderScripts(basePath, isScorm)}
         let contentHtml = '';
         for (const page of allPages) {
             contentHtml += `<section id="section-${page.id}" class="single-page-section">
-${this.renderPageHeader(page)}
+<header class="page-header">
+<h2 class="page-title">${this.escapeHtml(page.title)}</h2>
+</header>
 <div class="page-content">
 ${this.renderPageContent(page, '')}
 </div>
 </section>\n`;
         }
 
+        // Build head with scripts first, then CSS (legacy order)
+        const jsScripts = this.ideviceRenderer.getJsScripts(usedIdevices, '');
+        const cssLinks = this.ideviceRenderer.getCssLinks(usedIdevices, '');
+
+        let ideviceIncludes = '';
+        for (let i = 0; i < jsScripts.length; i++) {
+            ideviceIncludes += `\n${jsScripts[i]}`;
+            if (cssLinks[i]) {
+                ideviceIncludes += cssLinks[i];
+            }
+        }
+
         return `<!DOCTYPE html>
 <html lang="${language}">
 <head>
 <meta charset="utf-8">
-<meta name="generator" content="eXeLearning 4.0 - exelearning.net">
+<meta name="generator" content="eXeLearning v3.0.0">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${this.escapeHtml(projectTitle)}</title>
 <script>document.querySelector("html").classList.add("js");</script>
+<script src="libs/jquery/jquery.min.js"> </script>
+<script src="libs/common_i18n.js"> </script>
+<script src="libs/common.js"> </script>
+<script src="libs/exe_export.js"> </script>
+<script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
+<script src="libs/exe_lightbox/exe_lightbox.js"> </script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">
+<link rel="stylesheet" href="libs/exe_lightbox/exe_lightbox.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
-<link rel="stylesheet" href="theme/style.css">
-${this.ideviceRenderer.getCssLinks(usedIdevices, '').join('\n')}
+<script src="theme/default.js"> </script>
+<link rel="stylesheet" href="theme/content.css">
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 </head>
 <body class="exe-export exe-single-page" lang="${language}">
@@ -389,9 +543,8 @@ ${this.renderSinglePageNav(allPages)}
 <main class="single-page-content">
 ${contentHtml}
 </main>
-${this.renderFooter({ author, license })}
+${this.renderLicense({ author, license })}
 </div>
-${this.renderScripts('')}
 </body>
 </html>`;
     }
@@ -453,5 +606,19 @@ ${this.renderScripts('')}
             "'": '&#039;',
         };
         return String(str).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * Escape attribute value for use in HTML attributes
+     * @param str - String to escape
+     * @returns Escaped string safe for attribute values
+     */
+    escapeAttr(str: string): string {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 }

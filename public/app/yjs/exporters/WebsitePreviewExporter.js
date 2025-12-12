@@ -124,14 +124,16 @@ class WebsitePreviewExporter extends Html5Exporter {
     const customStyles = meta.get('customStyles') || '';
     const author = meta.get('author') || '';
     const license = meta.get('license') || 'CC-BY-SA';
+    const licenseUrl = meta.get('licenseUrl') || 'https://creativecommons.org/licenses/by-sa/4.0/';
     const themeName = meta.get('theme') || 'base';
+    const totalPages = pages.length;
 
     // Generate all page contents (hidden except first)
     let pagesHtml = '';
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];
       const isFirst = i === 0;
-      pagesHtml += this.renderPageArticle(page, isFirst);
+      pagesHtml += this.renderPageArticle(page, isFirst, i, totalPages, projectTitle);
     }
 
     return `<!DOCTYPE html>
@@ -147,8 +149,9 @@ ${this.renderSpaNavigation(pages)}
 ${pagesHtml}
 </main>
 ${this.renderNavButtons()}
-${this.renderWebsiteFooter(author, license)}
+${this.renderWebsiteFooter(author, license, licenseUrl)}
 </div>
+${this.renderMadeWithEXe()}
 ${this.generateWebsitePreviewScripts(themeName, usedIdevices)}
 </body>
 </html>`;
@@ -281,12 +284,15 @@ ${this.getWebsitePreviewCss()}
 
   /**
    * Render a page as an article (hidden except first)
-   * Matches the structure of the real export: main-header with page-header inside
+   * Matches the structure of the real export from PageRenderer.ts
    * @param {Object} page
    * @param {boolean} isFirst
+   * @param {number} pageIndex - Current page index (0-based)
+   * @param {number} totalPages - Total number of pages
+   * @param {string} projectTitle - Project title for header
    * @returns {string}
    */
-  renderPageArticle(page, isFirst) {
+  renderPageArticle(page, isFirst, pageIndex = 0, totalPages = 1, projectTitle = 'eXeLearning') {
     let blockHtml = '';
 
     // Use versioned path for iDevice resources so data-idevice-path resolves correctly
@@ -303,10 +309,11 @@ ${this.getWebsitePreviewCss()}
     const displayStyle = isFirst ? '' : ' style="display:none"';
     const pageId = page.id;
 
-    return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle}>
-<header id="header-${pageId}" class="main-header">
-<div class="page-header"><h1 class="page-title">${this.escapeHtml(page.title)}</h1></div>
-</header>
+    // Match PageRenderer.ts structure with page counter
+    return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}">
+<header id="header-${pageId}" class="page-header"> <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${pageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
+<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
+<h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>
 <div id="page-content-${pageId}" class="page-content">
 ${blockHtml}
 </div>
@@ -541,19 +548,25 @@ window.eXe.app = window.$exe;
 
   /**
    * Render footer for website preview
+   * Matches PageRenderer.ts renderFooterSection structure
    * @param {string} author
    * @param {string} license
+   * @param {string} licenseUrl
    * @returns {string}
    */
-  renderWebsiteFooter(author, license) {
-    let html = '<footer id="packageLicense" class="cc cc-by-sa">';
-    if (author) {
-      html += `\n<p><span>Author:</span> ${this.escapeHtml(author)}</p>`;
-    }
-    html += `\n<p><span>License:</span> ${this.escapeHtml(license)}</p>`;
-    html += '\n<p class="preview-notice"><em>Preview Mode - Navigate using the menu</em></p>';
-    html += '\n</footer>';
-    return html;
+  renderWebsiteFooter(author, license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/') {
+    return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="cc cc-by-sa"> <p> <span class="license-label">Licencia: </span><a href="${this.escapeHtml(licenseUrl)}" class="license">${this.escapeHtml(license)}</a></p>
+</div>
+</div></footer>`;
+  }
+
+  /**
+   * Render "Made with eXeLearning" credit
+   * Matches PageRenderer.ts renderMadeWithEXe structure
+   * @returns {string}
+   */
+  renderMadeWithEXe() {
+    return `<p id="made-with-eXe"> <a href="https://exelearning.net/" target="_blank" rel="noopener"> <span>Creado con eXeLearning <span>(nueva ventana)</span></span></a></p>`;
   }
 
   /**

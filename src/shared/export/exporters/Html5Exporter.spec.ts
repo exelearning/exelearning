@@ -377,9 +377,9 @@ describe('Html5Exporter', () => {
 
             const result = await exporter.export();
 
-            // Should still succeed with fallback
+            // Should still succeed with fallback (uses legacy names: content.css, default.js)
             expect(result.success).toBe(true);
-            expect(zip.files.has('theme/style.css')).toBe(true);
+            expect(zip.files.has('theme/content.css')).toBe(true);
         });
 
         it('should handle library fetch failure gracefully', async () => {

@@ -99,12 +99,19 @@ export class Scorm12Exporter extends Html5Exporter {
             this.zip.addFile('content/css/base.css', this.getBaseCss());
             commonFiles.push('content/css/base.css');
 
-            // 3. Fetch and add theme
+            // 3. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
             try {
                 const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [path, content] of themeFiles) {
-                    this.zip.addFile(`theme/${path}`, content);
-                    commonFiles.push(`theme/${path}`);
+                for (const [filePath, content] of themeFiles) {
+                    // Rename theme files to legacy export format
+                    let exportPath = filePath;
+                    if (filePath === 'style.css') {
+                        exportPath = 'content.css';
+                    } else if (filePath === 'style.js') {
+                        exportPath = 'default.js';
+                    }
+                    this.zip.addFile(`theme/${exportPath}`, content);
+                    commonFiles.push(`theme/${exportPath}`);
                 }
             } catch {
                 this.zip.addFile('theme/content.css', this.getFallbackThemeCss());
@@ -206,6 +213,8 @@ export class Scorm12Exporter extends Html5Exporter {
             usedIdevices,
             author: meta.author || '',
             license: meta.license || 'CC-BY-SA',
+            description: meta.description || '',
+            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
             // SCORM-specific options
             isScorm: true,
             scormVersion: '1.2',

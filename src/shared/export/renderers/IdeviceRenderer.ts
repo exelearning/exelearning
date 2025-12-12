@@ -75,10 +75,13 @@ export class IdeviceRenderer {
         // Build data attributes
         let dataAttrs = '';
         if (includeDataAttributes) {
-            // For preview mode (server paths), basePath already contains /files/perm/idevices/base/
-            // For export mode (ZIP), basePath is empty or relative and we need to add idevices/
-            const isPreviewPath = basePath.includes('/files/perm/idevices/base/');
-            const idevicePath = isPreviewPath ? `${basePath}${type}/export/` : `${basePath}idevices/${type}/`;
+            // For export mode: basePath is "" for index.html, "../" for subpages
+            // Use relative paths: "idevices/{type}/" or "../idevices/{type}/"
+            // For preview mode: basePath starts with "/" (absolute), use: "{basePath}{type}/export/"
+            const isPreviewMode = basePath.startsWith('/');
+            const idevicePath = isPreviewMode
+                ? `${basePath}${type}/export/`
+                : `${basePath}idevices/${type}/`;
 
             dataAttrs = ` data-idevice-path="${this.escapeAttr(idevicePath)}"`;
             dataAttrs += ` data-idevice-type="${this.escapeAttr(type)}"`;

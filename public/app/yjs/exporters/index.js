@@ -68,6 +68,14 @@ if (typeof window !== 'undefined') {
 
   /**
    * Factory function to create the appropriate exporter
+   *
+   * For standard export formats (HTML5, SCORM, IMS, etc.), this delegates to the
+   * shared TypeScript exporters (window.SharedExporters) which are compiled from
+   * src/shared/export/ and used by both browser and server.
+   *
+   * For preview-specific formats (PREVIEW, WEBSITEPREVIEW), this uses the
+   * browser-only preview exporters.
+   *
    * @param {string} format - Export format (ELPX, HTML5, PAGE, SCORM12, IMS, EPUB3)
    * @param {YjsDocumentManager} documentManager
    * @param {AssetCacheManager} assetCache
@@ -77,6 +85,16 @@ if (typeof window !== 'undefined') {
    */
   window.createExporter = function(format, documentManager, assetCache, resourceFetcher, assetManager = null) {
     const normalizedFormat = format.toUpperCase().replace('-', '');
+
+    // Use SharedExporters (from src/shared/export/) for supported export formats
+    // This ensures consistency between browser and server exports
+    const sharedFormats = ['HTML5', 'WEB', 'SCORM12', 'SCORM', 'SCORM2004', 'IMS', 'IMSCP', 'PAGE', 'HTML5SP'];
+    if (window.SharedExporters && sharedFormats.includes(normalizedFormat)) {
+      Logger.log(`[Exporters] Using SharedExporters for ${format}`);
+      return window.SharedExporters.createExporter(format.toLowerCase(), documentManager, assetCache, resourceFetcher);
+    }
+
+    // Fallback to legacy exporters for preview and other formats not yet in shared code
     let exporter;
 
     switch (normalizedFormat) {
@@ -87,6 +105,7 @@ if (typeof window !== 'undefined') {
 
       case 'HTML5':
       case 'WEB':
+        // Fallback if SharedExporters not available
         exporter = new window.Html5Exporter(documentManager, assetCache, resourceFetcher);
         break;
 
