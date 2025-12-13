@@ -1,6 +1,11 @@
 #menu_idevices {
     border: none;
-    /* max-height: 50%; */
+
+    // Flex layout: don't shrink, maintain minimum height for visibility
+    flex: 0 0 auto;
+    min-height: 200px;
+    max-height: 50vh; // Don't take more than half the viewport
+
     .accordion-button {
         color: var(--text) !important;
         justify-content: flex-start;

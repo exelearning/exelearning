@@ -125,7 +125,9 @@
             /*background-color: hsl(220 23% 96% / 1);*/
             border-bottom-left-radius: 8px;
             border-bottom-right-radius: 8px;
-            max-height: calc(100% - 15px);
+            // Flex: take remaining space and scroll
+            flex: 1 1 auto;
+            min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
             .nav-element {

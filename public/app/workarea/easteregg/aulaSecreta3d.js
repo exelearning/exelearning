@@ -123,8 +123,14 @@ export default class AulaSecreta3D {
 
     attach() {
         window.addEventListener('resize', this._onResize);
-        window.addEventListener('keydown', this._onKeyDown, { passive: false });
-        window.addEventListener('keyup', this._onKeyUp, { passive: false });
+        window.addEventListener('keydown', this._onKeyDown, {
+            passive: false,
+            capture: true,
+        });
+        window.addEventListener('keyup', this._onKeyUp, {
+            passive: false,
+            capture: true,
+        });
         this.startButton?.addEventListener('click', this._onStartClick);
         this.closeButton?.addEventListener('click', this._onCloseClick);
         this.canvas?.addEventListener('pointerdown', this._onCanvasPointerDown);
@@ -132,8 +138,8 @@ export default class AulaSecreta3D {
 
     detach() {
         window.removeEventListener('resize', this._onResize);
-        window.removeEventListener('keydown', this._onKeyDown);
-        window.removeEventListener('keyup', this._onKeyUp);
+        window.removeEventListener('keydown', this._onKeyDown, { capture: true });
+        window.removeEventListener('keyup', this._onKeyUp, { capture: true });
         this.startButton?.removeEventListener('click', this._onStartClick);
         this.closeButton?.removeEventListener('click', this._onCloseClick);
         this.canvas?.removeEventListener('pointerdown', this._onCanvasPointerDown);
@@ -215,6 +221,8 @@ export default class AulaSecreta3D {
             'a',
             's',
             'd',
+            'arrowup',
+            'arrowdown',
             'arrowleft',
             'arrowright',
             'm',
@@ -224,6 +232,7 @@ export default class AulaSecreta3D {
 
         if (handledKeys.has(lower) || handledKeys.has(key)) {
             event.preventDefault();
+            event.stopPropagation();
         }
 
         if (lower === 'escape') {
@@ -254,6 +263,24 @@ export default class AulaSecreta3D {
     onKeyUp(event) {
         const key = event.key;
         const lower = typeof key === 'string' ? key.toLowerCase() : '';
+        const handledKeys = new Set([
+            'w',
+            'a',
+            's',
+            'd',
+            'arrowup',
+            'arrowdown',
+            'arrowleft',
+            'arrowright',
+            'm',
+            'r',
+            'escape',
+        ]);
+
+        if (handledKeys.has(lower) || handledKeys.has(key)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
         this.keysDown.delete(lower);
     }
 
@@ -308,11 +335,11 @@ export default class AulaSecreta3D {
         const strafeX = Math.cos(this.player.a - Math.PI / 2);
         const strafeY = Math.sin(this.player.a - Math.PI / 2);
 
-        if (this.keysDown.has('w')) {
+        if (this.keysDown.has('w') || this.keysDown.has('arrowup')) {
             moveX += forwardX * speed * dt;
             moveY += forwardY * speed * dt;
         }
-        if (this.keysDown.has('s')) {
+        if (this.keysDown.has('s') || this.keysDown.has('arrowdown')) {
             moveX -= forwardX * speed * dt;
             moveY -= forwardY * speed * dt;
         }
