@@ -15,7 +15,7 @@ import {
     WebsitePreviewExporter,
     Html5Exporter,
     FileSystemAssetProvider,
-    ArchiverZipProvider,
+    FflateZipProvider,
     type ParsedOdeStructure,
 } from '../../../src/shared/export';
 
@@ -310,7 +310,7 @@ describe('WebsitePreviewExporter Integration', () => {
             const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
-            const zip = new ArchiverZipProvider();
+            const zip = new FflateZipProvider();
 
             // Generate preview
             const previewExporter = new WebsitePreviewExporter(document, resources);

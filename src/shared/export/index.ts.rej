@@ -1,9 +1,0 @@
-diff a/src/shared/export/index.ts b/src/shared/export/index.ts	(rejected hunks)
-@@ -119,7 +119,6 @@ export { DatabaseAssetProvider } from './providers/DatabaseAssetProvider';
- export { CombinedAssetProvider } from './providers/CombinedAssetProvider';
- export { ArchiverZipProvider } from './providers/ArchiverZipProvider';
- export { JSZipZipProvider } from './providers/JSZipZipProvider';
--export { FflateZipProvider } from './providers/FflateZipProvider';
- 
- // Exporters
- export { BaseExporter } from './exporters/BaseExporter';

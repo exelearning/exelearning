@@ -26,7 +26,7 @@ import {
     ElpDocumentAdapter as ElpDocumentAdapterDefault,
     FileSystemResourceProvider as FileSystemResourceProviderDefault,
     FileSystemAssetProvider as FileSystemAssetProviderDefault,
-    ArchiverZipProvider as ArchiverZipProviderDefault,
+    FflateZipProvider as FflateZipProviderDefault,
     Html5Exporter as Html5ExporterDefault,
     PageExporter as PageExporterDefault,
     Scorm12Exporter as Scorm12ExporterDefault,
@@ -82,7 +82,7 @@ export interface ExportSystemDeps {
     FileSystemAssetProvider: typeof FileSystemAssetProviderDefault;
     DatabaseAssetProvider: typeof DatabaseAssetProviderDefault;
     CombinedAssetProvider: typeof CombinedAssetProviderDefault;
-    ArchiverZipProvider: typeof ArchiverZipProviderDefault;
+    FflateZipProvider: typeof FflateZipProviderDefault;
     Html5Exporter: typeof Html5ExporterDefault;
     PageExporter: typeof PageExporterDefault;
     Scorm12Exporter: typeof Scorm12ExporterDefault;
@@ -141,7 +141,7 @@ const defaultExportSystem: ExportSystemDeps = {
     FileSystemAssetProvider: FileSystemAssetProviderDefault,
     DatabaseAssetProvider: DatabaseAssetProviderDefault,
     CombinedAssetProvider: CombinedAssetProviderDefault,
-    ArchiverZipProvider: ArchiverZipProviderDefault,
+    FflateZipProvider: FflateZipProviderDefault,
     Html5Exporter: Html5ExporterDefault,
     PageExporter: PageExporterDefault,
     Scorm12Exporter: Scorm12ExporterDefault,
@@ -299,7 +299,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         FileSystemAssetProvider,
         DatabaseAssetProvider,
         CombinedAssetProvider,
-        ArchiverZipProvider,
+        FflateZipProvider,
         Html5Exporter,
         PageExporter,
         Scorm12Exporter,
@@ -419,7 +419,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // Create providers using injected classes
             console.log('[Export] Using publicDir:', publicDir);
             const resources: ResourceProvider = new FileSystemResourceProvider(publicDir);
-            const zip: ZipProvider = new ArchiverZipProvider();
+            const zip: ZipProvider = new FflateZipProvider();
 
             // Create asset provider - combine database assets with filesystem assets
             const fsAssets = new FileSystemAssetProvider(tempDir);

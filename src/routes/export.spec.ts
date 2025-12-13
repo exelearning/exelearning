@@ -106,7 +106,7 @@ function createMockExportSystem(): ExportSystemDeps {
             getProjectAssets = async () => [];
             getAsset = async () => null;
         } as any,
-        ArchiverZipProvider: class MockZipProvider {
+        FflateZipProvider: class MockZipProvider {
             createZip = () => ({
                 addFile: () => {},
                 addFiles: () => {},

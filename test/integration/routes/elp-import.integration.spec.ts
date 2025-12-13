@@ -183,18 +183,20 @@ describe('ELP Import Flow Integration', () => {
                     await fs.ensureDir(tempDir);
 
                     // Extract ZIP to session temp dir (simplified for test)
-                    const JSZip = (await import('jszip')).default;
+                    const { unzipSync } = await import('../../../src/shared/export');
                     const zipBuffer = await fs.readFile(odeFilePath);
-                    const zip = await JSZip.loadAsync(zipBuffer);
+                    const zip = unzipSync(new Uint8Array(zipBuffer));
 
-                    // Extract all files
-                    for (const [filePath, zipEntry] of Object.entries(zip.files)) {
-                        if (!zipEntry.dir) {
-                            const content = await zipEntry.async('nodebuffer');
-                            const outputPath = path.join(tempDir, filePath);
-                            await fs.ensureDir(path.dirname(outputPath));
-                            await fs.writeFile(outputPath, content);
+                    // Extract all files (skip directory entries)
+                    for (const [filePath, fileData] of Object.entries(zip)) {
+                        // Skip directory entries (paths ending with /)
+                        if (filePath.endsWith('/')) {
+                            await fs.ensureDir(path.join(tempDir, filePath));
+                            continue;
                         }
+                        const outputPath = path.join(tempDir, filePath);
+                        await fs.ensureDir(path.dirname(outputPath));
+                        await fs.writeFile(outputPath, Buffer.from(fileData));
                     }
 
                     // Create session

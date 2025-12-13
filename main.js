@@ -6,7 +6,7 @@ const path                            = require('path');
 const i18n                            = require('i18n');
 const { spawn, execFileSync }         = require('child_process');
 const fs                              = require('fs');
-const JSZip                           = require('jszip');
+const fflate                          = require('fflate');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
 
@@ -851,19 +851,20 @@ ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, sugges
       return { ok: false, error: 'download-failed' };
     }
 
-    // Extract ZIP into chosen folder (overwrite) using JSZip
+    // Extract ZIP into chosen folder (overwrite) using fflate
     try {
       const zipData = fs.readFileSync(tmpZip);
-      const zip = await JSZip.loadAsync(zipData);
+      const uint8Data = new Uint8Array(zipData);
+      const unzipped = fflate.unzipSync(uint8Data);
 
-      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+      for (const [relativePath, content] of Object.entries(unzipped)) {
         const fullPath = path.join(destDir, relativePath);
-        if (zipEntry.dir) {
+        // Skip directories (they end with /)
+        if (relativePath.endsWith('/')) {
           fs.mkdirSync(fullPath, { recursive: true });
         } else {
-          const content = await zipEntry.async('nodebuffer');
           fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-          fs.writeFileSync(fullPath, content);
+          fs.writeFileSync(fullPath, Buffer.from(content));
         }
       }
     } finally {

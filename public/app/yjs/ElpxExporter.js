@@ -48,24 +48,20 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
     async exportToFile(filename = 'project.elpx') {
       Logger.log(`[ElpxExporter] Exporting to ${filename}...`);
 
-      const JSZip = window.JSZip;
-      if (!JSZip) {
-        throw new Error('JSZip library not loaded');
+      const fflateLib = window.fflate;
+      if (!fflateLib) {
+        throw new Error('fflate library not loaded');
       }
 
-      const zip = new JSZip();
+      const files = {};
       const contentXml = this.generateContentXml();
-      zip.file('content.xml', contentXml);
+      files['content.xml'] = fflateLib.strToU8(contentXml);
 
       if (this.assetCache) {
-        await this.addAssetsToZip(zip);
+        await this.addAssetsToFiles(files);
       }
 
-      const blob = await zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 },
-      });
+      const blob = await this.generateZipBlob(files);
 
       this.downloadBlob(blob, filename);
       Logger.log(`[ElpxExporter] Export complete: ${filename}`);
@@ -73,17 +69,31 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
     }
 
     async exportToBlob() {
-      const JSZip = window.JSZip;
-      if (!JSZip) throw new Error('JSZip library not loaded');
+      const fflateLib = window.fflate;
+      if (!fflateLib) throw new Error('fflate library not loaded');
 
-      const zip = new JSZip();
-      zip.file('content.xml', this.generateContentXml());
-      if (this.assetCache) await this.addAssetsToZip(zip);
+      const files = {};
+      files['content.xml'] = fflateLib.strToU8(this.generateContentXml());
+      if (this.assetCache) await this.addAssetsToFiles(files);
 
-      return zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 },
+      return this.generateZipBlob(files);
+    }
+
+    async generateZipBlob(files) {
+      const fflateLib = window.fflate;
+      return new Promise((resolve, reject) => {
+        // Convert files to fflate format with compression options
+        const zippable = {};
+        for (const [path, data] of Object.entries(files)) {
+          zippable[path] = [data, { level: 6 }];
+        }
+        fflateLib.zip(zippable, (err, data) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(new Blob([data], { type: 'application/zip' }));
+          }
+        });
       });
     }
 
@@ -189,12 +199,14 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
       return xml;
     }
 
-    async addAssetsToZip(zip) {
+    async addAssetsToFiles(files) {
       const assets = await this.assetCache.getAllAssets();
       for (const asset of assets) {
         try {
-          const path = asset.metadata?.originalPath || asset.metadata?.filename || `asset-${asset.assetId}`;
-          zip.file(path, asset.blob);
+          const filePath = asset.metadata?.originalPath || asset.metadata?.filename || `asset-${asset.assetId}`;
+          // Convert Blob to Uint8Array
+          const arrayBuffer = await asset.blob.arrayBuffer();
+          files[filePath] = new Uint8Array(arrayBuffer);
         } catch (e) {
           console.warn('[ElpxExporter] Failed to add asset:', e);
         }

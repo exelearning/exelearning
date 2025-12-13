@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
-import JSZip from 'jszip';
+import { unzipSync, zipSync } from '../../src/shared/export';
 import { XMLParser } from 'fast-xml-parser';
 
 describe('Component Export Integration', () => {
@@ -138,31 +138,28 @@ describe('Component Export Integration', () => {
     describe('ELP File Structure', () => {
         it('should create proper ZIP structure for component ELP', async () => {
             // Simulate the expected structure of an exported component ELP file
-            const zip = new JSZip();
-
-            // Add content.xml
-            zip.file('content.xml', expectedXml);
-
-            // Add a sample asset (simulating an image referenced in content)
-            const sampleAsset = Buffer.from('fake-image-data');
-            zip.file('content/resources/asset-uuid/image.png', sampleAsset);
+            const files: Record<string, Uint8Array | string> = {
+                'content.xml': expectedXml,
+                'content/resources/asset-uuid/image.png': new Uint8Array(Buffer.from('fake-image-data')),
+            };
 
             // Generate and verify
-            const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-            const loadedZip = await JSZip.loadAsync(zipBuffer);
+            const zipBuffer = zipSync(files);
+            const loadedZip = unzipSync(zipBuffer);
 
-            expect(loadedZip.file('content.xml')).toBeTruthy();
-            expect(loadedZip.file('content/resources/asset-uuid/image.png')).toBeTruthy();
+            expect(loadedZip['content.xml']).toBeDefined();
+            expect(loadedZip['content/resources/asset-uuid/image.png']).toBeDefined();
         });
 
         it('should have content.xml at root level', async () => {
-            const zip = new JSZip();
-            zip.file('content.xml', expectedXml);
+            const files: Record<string, Uint8Array | string> = {
+                'content.xml': expectedXml,
+            };
 
-            const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-            const loadedZip = await JSZip.loadAsync(zipBuffer);
+            const zipBuffer = zipSync(files);
+            const loadedZip = unzipSync(zipBuffer);
 
-            const contentXml = await loadedZip.file('content.xml')?.async('string');
+            const contentXml = new TextDecoder().decode(loadedZip['content.xml']);
             expect(contentXml).toBeDefined();
             expect(contentXml).toContain('<ode');
         });

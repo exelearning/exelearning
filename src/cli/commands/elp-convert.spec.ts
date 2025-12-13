@@ -3,6 +3,7 @@ import { execute, printHelp, configureDependencies, resetDependencies } from './
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { existsSync } from 'fs';
+import { zipSync, unzipSync, strToU8 } from 'fflate';
 
 // Fixtures directory
 const FIXTURES_DIR = path.resolve(__dirname, '../../../test/fixtures');
@@ -144,12 +145,11 @@ describe('elp:convert command', () => {
             const outputPath = path.join(TEMP_DIR, 'content-check.elpx');
             await execute([TEST_ELP, outputPath], {});
 
-            // Use JSZip to verify content
-            const JSZip = (await import('jszip')).default;
+            // Use fflate to verify content
             const buffer = await fs.readFile(outputPath);
-            const zip = await JSZip.loadAsync(buffer);
+            const zip = unzipSync(new Uint8Array(buffer));
 
-            expect(zip.file('content.xml')).not.toBeNull();
+            expect(zip['content.xml']).toBeDefined();
         });
     });
 
@@ -181,13 +181,12 @@ describe('elp:convert command', () => {
 
         it('should handle ELP without content.xml', async () => {
             // Create a valid ZIP but without content.xml
-            const JSZip = (await import('jszip')).default;
-            const zip = new JSZip();
-            zip.file('dummy.txt', 'no content.xml here');
-            const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+            const zipData = zipSync({
+                'dummy.txt': strToU8('no content.xml here'),
+            });
 
             const noContentElp = path.join(TEMP_DIR, 'no-content.elp');
-            await fs.writeFile(noContentElp, zipBuffer);
+            await fs.writeFile(noContentElp, Buffer.from(zipData));
 
             const outputPath = path.join(TEMP_DIR, 'no-content-output.elpx');
             const result = await execute([noContentElp, outputPath], {});

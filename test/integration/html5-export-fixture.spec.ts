@@ -15,15 +15,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import JSZip from 'jszip';
-
 // Import from shared export system
 import {
     ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
-    ArchiverZipProvider,
+    FflateZipProvider,
     Html5Exporter,
+    unzipSync,
     type ParsedOdeStructure,
 } from '../../src/shared/export';
 
@@ -43,7 +42,7 @@ const testDir = path.join(process.cwd(), 'test', 'temp', 'html5-fixture-test');
 describe('HTML5 Export Fixture Comparison', () => {
     let extractedPath: string;
     let parsedStructure: ParsedOdeStructure;
-    let exportedZip: JSZip;
+    let exportedZip: Record<string, Uint8Array>;
     let exportedIndexHtml: string;
     let _referenceIndexHtml: string;
 
@@ -64,15 +63,12 @@ describe('HTML5 Export Fixture Comparison', () => {
 
         // Extract ELP file
         const elpBuffer = await fs.readFile(elpFixturePath);
-        const elpZip = await JSZip.loadAsync(elpBuffer);
+        const elpZip = unzipSync(new Uint8Array(elpBuffer));
 
-        for (const [filename, file] of Object.entries(elpZip.files)) {
-            if (!file.dir) {
-                const content = await file.async('nodebuffer');
-                const filePath = path.join(extractedPath, filename);
-                await fs.ensureDir(path.dirname(filePath));
-                await fs.writeFile(filePath, content);
-            }
+        for (const [filename, fileData] of Object.entries(elpZip)) {
+            const filePath = path.join(extractedPath, filename);
+            await fs.ensureDir(path.dirname(filePath));
+            await fs.writeFile(filePath, Buffer.from(fileData));
         }
 
         // Parse content.xml or contentv3.xml (legacy format)
@@ -87,7 +83,7 @@ describe('HTML5 Export Fixture Comparison', () => {
         const document = new ElpDocumentAdapter(parsedStructure, extractedPath);
         const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
         const assets = new FileSystemAssetProvider(extractedPath);
-        const zip = new ArchiverZipProvider();
+        const zip = new FflateZipProvider();
 
         const exporter = new Html5Exporter(document, resources, assets, zip);
         const result = await exporter.export();
@@ -96,8 +92,8 @@ describe('HTML5 Export Fixture Comparison', () => {
         expect(result.data).toBeDefined();
 
         // Load exported ZIP
-        exportedZip = await JSZip.loadAsync(result.data!);
-        exportedIndexHtml = await exportedZip.files['index.html'].async('string');
+        exportedZip = unzipSync(result.data!);
+        exportedIndexHtml = new TextDecoder().decode(exportedZip['index.html']);
 
         // Load reference HTML
         _referenceIndexHtml = await fs.readFile(path.join(referenceExportPath, 'index.html'), 'utf-8');
@@ -311,10 +307,10 @@ describe('HTML5 Export Fixture Comparison', () => {
             if (!exportedZip) return;
 
             // Find a subpage (not first page)
-            const subpageEntry = Object.keys(exportedZip.files).find(f => f.startsWith('html/') && f.endsWith('.html'));
+            const subpageEntry = Object.keys(exportedZip).find(f => f.startsWith('html/') && f.endsWith('.html'));
 
             if (subpageEntry) {
-                const subpageHtml = await exportedZip.files[subpageEntry].async('string');
+                const subpageHtml = new TextDecoder().decode(exportedZip[subpageEntry]);
 
                 // Subpages should have nav buttons
                 expect(subpageHtml).toContain('class="nav-buttons"');
@@ -334,33 +330,33 @@ describe('HTML5 Export Fixture Comparison', () => {
         it('should contain index.html at root', async () => {
             if (!exportedZip) return;
 
-            expect(exportedZip.files['index.html']).toBeDefined();
+            expect(exportedZip['index.html']).toBeDefined();
         });
 
         it('should contain html/ directory with subpages', async () => {
             if (!exportedZip) return;
 
-            const htmlFiles = Object.keys(exportedZip.files).filter(f => f.startsWith('html/') && f.endsWith('.html'));
+            const htmlFiles = Object.keys(exportedZip).filter(f => f.startsWith('html/') && f.endsWith('.html'));
             expect(htmlFiles.length).toBeGreaterThan(0);
         });
 
         it('should contain theme/ directory', async () => {
             if (!exportedZip) return;
 
-            const themeFiles = Object.keys(exportedZip.files).filter(f => f.startsWith('theme/'));
+            const themeFiles = Object.keys(exportedZip).filter(f => f.startsWith('theme/'));
             expect(themeFiles.length).toBeGreaterThan(0);
         });
 
         it('should contain theme/content.css (renamed from style.css)', async () => {
             if (!exportedZip) return;
 
-            expect(exportedZip.files['theme/content.css']).toBeDefined();
+            expect(exportedZip['theme/content.css']).toBeDefined();
         });
 
         it('should contain libs/ directory', async () => {
             if (!exportedZip) return;
 
-            const libFiles = Object.keys(exportedZip.files).filter(f => f.startsWith('libs/'));
+            const libFiles = Object.keys(exportedZip).filter(f => f.startsWith('libs/'));
             expect(libFiles.length).toBeGreaterThan(0);
         });
 
@@ -374,13 +370,13 @@ describe('HTML5 Export Fixture Comparison', () => {
         it('should contain content/css/base.css', async () => {
             if (!exportedZip) return;
 
-            expect(exportedZip.files['content/css/base.css']).toBeDefined();
+            expect(exportedZip['content/css/base.css']).toBeDefined();
         });
 
         it('should contain content.xml for re-import', async () => {
             if (!exportedZip) return;
 
-            expect(exportedZip.files['content.xml']).toBeDefined();
+            expect(exportedZip['content.xml']).toBeDefined();
         });
     });
 
@@ -475,10 +471,10 @@ describe('HTML5 Export Fixture Comparison', () => {
             if (!exportedZip) return;
 
             // Find a subpage
-            const subpageEntry = Object.keys(exportedZip.files).find(f => f.startsWith('html/') && f.endsWith('.html'));
+            const subpageEntry = Object.keys(exportedZip).find(f => f.startsWith('html/') && f.endsWith('.html'));
 
             if (subpageEntry) {
-                const subpageHtml = await exportedZip.files[subpageEntry].async('string');
+                const subpageHtml = new TextDecoder().decode(exportedZip[subpageEntry]);
 
                 // Subpages should use ../ for resources
                 expect(subpageHtml).toContain('../libs/');

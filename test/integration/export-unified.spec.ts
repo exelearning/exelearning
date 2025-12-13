@@ -9,19 +9,18 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import JSZip from 'jszip';
-
 // Import from shared export system
 import {
     ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
-    ArchiverZipProvider,
+    FflateZipProvider,
     Html5Exporter,
     PageExporter,
     Scorm12Exporter,
     Scorm2004Exporter,
     ImsExporter,
+    unzipSync,
     type ParsedOdeStructure,
 } from '../../src/shared/export';
 
@@ -121,13 +120,13 @@ describe('Unified Export System Integration', () => {
         let document: ElpDocumentAdapter;
         let resources: FileSystemResourceProvider;
         let assets: FileSystemAssetProvider;
-        let zip: ArchiverZipProvider;
+        let zip: FflateZipProvider;
 
         beforeEach(() => {
             document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
             resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
-            zip = new ArchiverZipProvider();
+            zip = new FflateZipProvider();
         });
 
         it('Html5Exporter produces valid ZIP', async () => {
@@ -139,8 +138,8 @@ describe('Unified Export System Integration', () => {
             expect(result.data).toBeInstanceOf(Uint8Array);
 
             // Verify it's a valid ZIP
-            const zipFile = await JSZip.loadAsync(result.data!);
-            expect(Object.keys(zipFile.files).length).toBeGreaterThan(0);
+            const zipFile = unzipSync(result.data!);
+            expect(Object.keys(zipFile).length).toBeGreaterThan(0);
         });
 
         it('PageExporter produces valid ZIP', async () => {
@@ -159,8 +158,8 @@ describe('Unified Export System Integration', () => {
             expect(result.data).toBeDefined();
 
             // Verify manifest exists
-            const zipFile = await JSZip.loadAsync(result.data!);
-            expect(zipFile.files['imsmanifest.xml']).toBeDefined();
+            const zipFile = unzipSync(result.data!);
+            expect(zipFile['imsmanifest.xml']).toBeDefined();
         });
 
         it('Scorm2004Exporter produces ZIP with imsmanifest.xml', async () => {
@@ -171,8 +170,8 @@ describe('Unified Export System Integration', () => {
             expect(result.data).toBeDefined();
 
             // Verify manifest exists
-            const zipFile = await JSZip.loadAsync(result.data!);
-            expect(zipFile.files['imsmanifest.xml']).toBeDefined();
+            const zipFile = unzipSync(result.data!);
+            expect(zipFile['imsmanifest.xml']).toBeDefined();
         });
 
         it('ImsExporter produces ZIP with imsmanifest.xml', async () => {
@@ -183,8 +182,8 @@ describe('Unified Export System Integration', () => {
             expect(result.data).toBeDefined();
 
             // Verify manifest exists
-            const zipFile = await JSZip.loadAsync(result.data!);
-            expect(zipFile.files['imsmanifest.xml']).toBeDefined();
+            const zipFile = unzipSync(result.data!);
+            expect(zipFile['imsmanifest.xml']).toBeDefined();
         });
     });
 
@@ -192,42 +191,42 @@ describe('Unified Export System Integration', () => {
         let document: ElpDocumentAdapter;
         let resources: FileSystemResourceProvider;
         let assets: FileSystemAssetProvider;
-        let zip: ArchiverZipProvider;
+        let zip: FflateZipProvider;
 
         beforeEach(() => {
             document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
             resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
-            zip = new ArchiverZipProvider();
+            zip = new FflateZipProvider();
         });
 
         it('HTML5 export includes index.html', async () => {
             const exporter = new Html5Exporter(document, resources, assets, zip);
             const result = await exporter.export();
 
-            const zipFile = await JSZip.loadAsync(result.data!);
-            expect(zipFile.files['index.html']).toBeDefined();
+            const zipFile = unzipSync(result.data!);
+            expect(zipFile['index.html']).toBeDefined();
         });
 
         it('HTML5 export includes content.xml for re-import', async () => {
             const exporter = new Html5Exporter(document, resources, assets, zip);
             const result = await exporter.export();
 
-            const zipFile = await JSZip.loadAsync(result.data!);
-            expect(zipFile.files['content.xml']).toBeDefined();
+            const zipFile = unzipSync(result.data!);
+            expect(zipFile['content.xml']).toBeDefined();
         });
 
         it('SCORM exports include required SCORM files', async () => {
             const exporter = new Scorm12Exporter(document, resources, assets, zip);
             const result = await exporter.export();
 
-            const zipFile = await JSZip.loadAsync(result.data!);
+            const zipFile = unzipSync(result.data!);
 
             // SCORM 1.2 required files
-            expect(zipFile.files['imsmanifest.xml']).toBeDefined();
+            expect(zipFile['imsmanifest.xml']).toBeDefined();
 
             // Check manifest has SCORM 1.2 schema
-            const manifestContent = await zipFile.files['imsmanifest.xml'].async('string');
+            const manifestContent = new TextDecoder().decode(zipFile['imsmanifest.xml']);
             expect(manifestContent).toContain('ADL SCORM');
             expect(manifestContent).toContain('1.2');
         });
@@ -236,11 +235,11 @@ describe('Unified Export System Integration', () => {
             const exporter = new ImsExporter(document, resources, assets, zip);
             const result = await exporter.export();
 
-            const zipFile = await JSZip.loadAsync(result.data!);
-            expect(zipFile.files['imsmanifest.xml']).toBeDefined();
+            const zipFile = unzipSync(result.data!);
+            expect(zipFile['imsmanifest.xml']).toBeDefined();
 
             // Check manifest has IMS schema
-            const manifestContent = await zipFile.files['imsmanifest.xml'].async('string');
+            const manifestContent = new TextDecoder().decode(zipFile['imsmanifest.xml']);
             expect(manifestContent).toContain('imscp');
         });
     });
@@ -263,14 +262,14 @@ describe('Unified Export System Integration', () => {
             // All providers should be available
             expect(sharedExport.FileSystemResourceProvider).toBeDefined();
             expect(sharedExport.FileSystemAssetProvider).toBeDefined();
-            expect(sharedExport.ArchiverZipProvider).toBeDefined();
+            expect(sharedExport.FflateZipProvider).toBeDefined();
         });
 
         it('Export result structure is consistent', async () => {
             const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
-            const zip = new ArchiverZipProvider();
+            const zip = new FflateZipProvider();
 
             const exporters = [
                 new Html5Exporter(document, resources, assets, zip),
@@ -297,13 +296,13 @@ describe('Unified Export System Integration', () => {
             const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
-            const zip = new ArchiverZipProvider();
+            const zip = new FflateZipProvider();
 
             const exporter = new Scorm12Exporter(document, resources, assets, zip);
             const result = await exporter.export();
 
-            const zipFile = await JSZip.loadAsync(result.data!);
-            const manifestContent = await zipFile.files['imsmanifest.xml'].async('string');
+            const zipFile = unzipSync(result.data!);
+            const manifestContent = new TextDecoder().decode(zipFile['imsmanifest.xml']);
 
             // Title should be in manifest
             expect(manifestContent).toContain('Test Project');
@@ -313,17 +312,17 @@ describe('Unified Export System Integration', () => {
             const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
-            const zip = new ArchiverZipProvider();
+            const zip = new FflateZipProvider();
 
             const exporter = new Html5Exporter(document, resources, assets, zip);
             const result = await exporter.export();
 
-            const zipFile = await JSZip.loadAsync(result.data!);
+            const zipFile = unzipSync(result.data!);
 
             // content.xml should exist for re-import capability
-            expect(zipFile.files['content.xml']).toBeDefined();
+            expect(zipFile['content.xml']).toBeDefined();
 
-            const contentXml = await zipFile.files['content.xml'].async('string');
+            const contentXml = new TextDecoder().decode(zipFile['content.xml']);
             expect(contentXml).toContain('Test Project'); // Title
             expect(contentXml).toContain('Introduction'); // Page title
         });

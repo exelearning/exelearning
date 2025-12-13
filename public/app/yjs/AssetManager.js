@@ -685,7 +685,7 @@ class AssetManager {
    * Finds all images, stores in IndexedDB, returns mapping.
    * Also handles {{context_path}} replacement.
    *
-   * @param {JSZip} zip - JSZip instance
+   * @param {Object} zip - fflate extracted ZIP object {path: Uint8Array}
    * @returns {Promise<Map<string, string>>} Map of originalPath -> assetId
    */
   async extractAssetsFromZip(zip) {
@@ -696,23 +696,25 @@ class AssetManager {
     const assetMap = new Map();
     const assetFiles = [];
 
-    // Find all image/media files
-    zip.forEach((relativePath, file) => {
-      if (file.dir) return;
-      if (relativePath.startsWith('__MACOSX')) return;
-      if (relativePath.endsWith('.xml')) return;
+    // Find all image/media files (zip is an object with path -> Uint8Array)
+    for (const [relativePath, fileData] of Object.entries(zip)) {
+      // Skip directories (they end with /)
+      if (relativePath.endsWith('/')) continue;
+      if (relativePath.startsWith('__MACOSX')) continue;
+      if (relativePath.endsWith('.xml')) continue;
 
       // Include images and common media
       if (/\.(png|jpg|jpeg|gif|svg|webp|mp4|webm|mp3|ogg|wav|pdf)$/i.test(relativePath)) {
-        assetFiles.push({ path: relativePath, file });
+        assetFiles.push({ path: relativePath, fileData });
       }
-    });
+    }
 
     Logger.log(`[AssetManager] Found ${assetFiles.length} assets in ZIP`);
 
-    for (const { path, file } of assetFiles) {
+    for (const { path, fileData } of assetFiles) {
       try {
-        const arrayBuffer = await file.async('arraybuffer');
+        // fileData is already a Uint8Array from fflate
+        const arrayBuffer = fileData.buffer.slice(fileData.byteOffset, fileData.byteOffset + fileData.byteLength);
         const mime = this.getMimeType(path);
         const blob = new Blob([arrayBuffer], { type: mime });
 

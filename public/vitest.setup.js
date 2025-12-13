@@ -67,78 +67,82 @@ if (typeof window !== 'undefined') {
 }
 
 // ============================================================================
-// Mock JSZip
+// Mock fflate
 // ============================================================================
 
-class MockJSZip {
-  constructor() {
-    this._files = {};
-    this._folders = {};
-  }
+/**
+ * Mock fflate library for testing
+ * Provides synchronous and asynchronous zip/unzip operations
+ */
+const mockFflate = {
+  // Convert string to Uint8Array
+  strToU8: (str) => new TextEncoder().encode(str),
 
-  file(name, content) {
-    if (content === undefined) {
-      return this._files[name] || null;
+  // Convert Uint8Array to string
+  strFromU8: (data) => new TextDecoder().decode(data),
+
+  // Synchronous zip
+  zipSync: (files, options = {}) => {
+    // Create a mock ZIP structure as Uint8Array
+    const fileList = Object.keys(files);
+    const mockData = JSON.stringify({ files: fileList, mock: true });
+    return new Uint8Array(Buffer.from(mockData));
+  },
+
+  // Asynchronous zip
+  zip: (files, optionsOrCallback, callback) => {
+    const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+    try {
+      const result = mockFflate.zipSync(files, typeof optionsOrCallback === 'object' ? optionsOrCallback : {});
+      setTimeout(() => cb(null, result), 0);
+    } catch (err) {
+      setTimeout(() => cb(err, null), 0);
     }
-    this._files[name] = {
-      name,
-      content,
-      async: (type) => {
-        if (type === 'string') return String(content);
-        if (type === 'uint8array') return new Uint8Array(Buffer.from(String(content)));
-        if (type === 'blob') return new Blob([content]);
-        return content;
-      },
+  },
+
+  // Synchronous unzip
+  unzipSync: (data) => {
+    // Return a mock unzipped structure
+    // If data looks like our mock format, parse it
+    try {
+      const str = new TextDecoder().decode(data);
+      const parsed = JSON.parse(str);
+      if (parsed.files && parsed.mock) {
+        const result = {};
+        parsed.files.forEach((f) => {
+          result[f] = new Uint8Array(Buffer.from('mock content'));
+        });
+        return result;
+      }
+    } catch (e) {
+      // Not our mock format, return empty object
+    }
+    return {
+      'content.xml': new Uint8Array(Buffer.from('<?xml version="1.0"?><ode></ode>')),
     };
-    return this;
-  }
+  },
 
-  folder(name) {
-    if (!this._folders[name]) {
-      this._folders[name] = new MockJSZip();
-      this._folders[name]._parent = this;
-      this._folders[name]._folderName = name;
+  // Asynchronous unzip
+  unzip: (data, optionsOrCallback, callback) => {
+    const cb = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+    try {
+      const result = mockFflate.unzipSync(data);
+      setTimeout(() => cb(null, result), 0);
+    } catch (err) {
+      setTimeout(() => cb(err, null), 0);
     }
-    return this._folders[name];
-  }
+  },
 
-  async generateAsync(options = {}) {
-    const type = options.type || 'blob';
-    const content = JSON.stringify({
-      files: Object.keys(this._files),
-      folders: Object.keys(this._folders),
-    });
+  // Compression utilities
+  gzipSync: (data) => data,
+  gunzipSync: (data) => data,
+  deflateSync: (data) => data,
+  inflateSync: (data) => data,
+};
 
-    if (type === 'blob') {
-      return new Blob([content], { type: 'application/zip' });
-    }
-    if (type === 'uint8array') {
-      return new Uint8Array(Buffer.from(content));
-    }
-    if (type === 'arraybuffer') {
-      return Buffer.from(content).buffer;
-    }
-    return content;
-  }
-
-  async loadAsync(data) {
-    // Mock loading a ZIP file
-    return this;
-  }
-
-  forEach(callback) {
-    Object.entries(this._files).forEach(([path, file]) => {
-      callback(path, file);
-    });
-    Object.entries(this._folders).forEach(([path, folder]) => {
-      callback(path + '/', { dir: true });
-    });
-  }
-}
-
-global.JSZip = MockJSZip;
+global.fflate = mockFflate;
 if (typeof window !== 'undefined') {
-  window.JSZip = MockJSZip;
+  window.fflate = mockFflate;
 }
 
 // ============================================================================

@@ -17,7 +17,7 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
-import JSZip from 'jszip';
+import * as fflate from 'fflate';
 
 import type { ExportDocument, ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
 
@@ -60,7 +60,8 @@ export class ElpDocumentAdapter implements ExportDocument {
     static async fromElpFile(elpPath: string): Promise<ElpDocumentAdapter> {
         // Read the ELP file
         const elpBuffer = await fs.readFile(elpPath);
-        const zip = await JSZip.loadAsync(elpBuffer);
+        const uint8Data = new Uint8Array(elpBuffer);
+        const unzipped = fflate.unzipSync(uint8Data);
 
         // Create extraction directory
         const extractDir = path.join('/tmp', `elp-extract-${Date.now()}-${Math.random().toString(36).substring(7)}`);
@@ -69,23 +70,19 @@ export class ElpDocumentAdapter implements ExportDocument {
         }
 
         // Extract all files
-        const filePromises: Promise<void>[] = [];
-        zip.forEach((relativePath, zipEntry) => {
-            if (!zipEntry.dir) {
-                const filePath = path.join(extractDir, relativePath);
-                filePromises.push(
-                    (async () => {
-                        const content = await zipEntry.async('nodebuffer');
-                        const fileDir = path.dirname(filePath);
-                        if (!existsSync(fileDir)) {
-                            mkdirSync(fileDir, { recursive: true });
-                        }
-                        await fs.writeFile(filePath, content);
-                    })(),
-                );
+        for (const [relativePath, content] of Object.entries(unzipped)) {
+            // Skip directories (they end with /)
+            if (relativePath.endsWith('/')) {
+                continue;
             }
-        });
-        await Promise.all(filePromises);
+
+            const filePath = path.join(extractDir, relativePath);
+            const fileDir = path.dirname(filePath);
+            if (!existsSync(fileDir)) {
+                mkdirSync(fileDir, { recursive: true });
+            }
+            await fs.writeFile(filePath, Buffer.from(content));
+        }
 
         // Find content.xml (try both v2 and v3 formats)
         let contentXmlPath = path.join(extractDir, 'content.xml');

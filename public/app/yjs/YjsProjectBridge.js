@@ -1741,9 +1741,14 @@ class YjsProjectBridge {
 
     // Theme not installed - check if package has /theme/ folder
     try {
-      const JSZip = window.JSZip;
-      const zip = await JSZip.loadAsync(file);
-      const themeConfig = zip.file('theme/config.xml');
+      const fflateLib = window.fflate;
+      if (!fflateLib) {
+        throw new Error('fflate library not loaded');
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Data = new Uint8Array(arrayBuffer);
+      const zip = fflateLib.unzipSync(uint8Data);
+      const themeConfig = zip['theme/config.xml'];
 
       if (!themeConfig) {
         Logger.log(`[YjsProjectBridge] No theme folder in package, using default`);

@@ -30,7 +30,7 @@ import {
     ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
-    ArchiverZipProvider,
+    FflateZipProvider,
     Html5Exporter,
     PageExporter,
     Scorm12Exporter,
@@ -192,7 +192,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
             // Create providers
             const resources = new FileSystemResourceProvider(publicDir!);
             const assets = new FileSystemAssetProvider(document.extractedPath);
-            const zip = new ArchiverZipProvider();
+            const zip = new FflateZipProvider();
 
             // Select exporter based on format
             let exporter;

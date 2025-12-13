@@ -151,3 +151,44 @@
         }
     }
 }
+
+/* ========================================================================
+   Mobile Responsive Styles (< 768px) - Sidebar Overlay
+   ======================================================================== */
+@media (max-width: 767.98px) {
+    .asideleft {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 80% !important;
+        max-width: 320px !important;
+        min-width: 280px !important;
+        height: 100vh;
+        max-height: 100vh;
+        z-index: 1050;
+        padding-top: 64px;
+        background: var(--white);
+        transform: translateX(-100%);
+        transition: transform var(--sidebar);
+        overflow-y: auto;
+        overflow-x: hidden;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+
+        // Reset desktop constraints
+        .content-info,
+        #exe-logo,
+        #exe-title,
+        #menu_nav,
+        #menu_idevices {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            width: auto !important;
+        }
+
+        // Show sidebar when body doesn't have left-column-hidden
+        body:not(.left-column-hidden) & {
+            transform: translateX(0);
+        }
+    }
+}

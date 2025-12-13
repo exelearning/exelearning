@@ -14,21 +14,17 @@ delete window.ElpxExporter;
 
 const ElpxExporter = require('./ElpxExporter');
 
-// Mock JSZip
-class MockJSZip {
-  constructor() {
-    this.files = new Map();
-  }
-
-  file(name, content) {
-    this.files.set(name, content);
-    return this;
-  }
-
-  async generateAsync(options) {
-    return new Blob(['mock zip content'], { type: 'application/zip' });
-  }
-}
+// Mock fflate library
+const createMockFflate = () => ({
+  strToU8: (str) => new TextEncoder().encode(str),
+  strFromU8: (data) => new TextDecoder().decode(data),
+  zip: (files, callback) => {
+    const mockZip = new Uint8Array([80, 75, 3, 4]); // ZIP magic bytes
+    setTimeout(() => callback(null, mockZip), 0);
+  },
+  zipSync: (files) => new Uint8Array([80, 75, 3, 4]),
+  unzipSync: (data) => ({ 'content.xml': new TextEncoder().encode('<?xml?>') }),
+});
 
 // Mock document manager
 const createMockDocumentManager = () => {
@@ -152,7 +148,7 @@ describe('ElpxExporter', () => {
     mockDocManager = createMockDocumentManager();
     mockAssetCache = createMockAssetCache();
 
-    window.JSZip = MockJSZip;
+    window.fflate = createMockFflate();
 
     // Store original globals for restoration
     originalURL = global.URL;
@@ -185,7 +181,7 @@ describe('ElpxExporter', () => {
   });
 
   afterEach(() => {
-    // Restore original globals (don't delete JSZip - it's needed by other tests)
+    // Restore original globals
     global.URL = originalURL;
     global.document = originalDocument;
   });
@@ -274,15 +270,15 @@ describe('ElpxExporter', () => {
   });
 
   describe('exportToFile', () => {
-    it('throws when JSZip not loaded', async () => {
-      const savedJSZip = window.JSZip;
-      delete window.JSZip;
+    it('throws when fflate not loaded', async () => {
+      const savedFflate = window.fflate;
+      delete window.fflate;
 
       await expect(exporter.exportToFile('test.elpx')).rejects.toThrow(
-        'JSZip library not loaded'
+        'fflate library not loaded'
       );
 
-      window.JSZip = savedJSZip; // Restore for other tests
+      window.fflate = savedFflate; // Restore for other tests
     });
 
     it('creates ZIP with content.xml', async () => {
@@ -307,15 +303,15 @@ describe('ElpxExporter', () => {
   });
 
   describe('exportToBlob', () => {
-    it('throws when JSZip not loaded', async () => {
-      const savedJSZip = window.JSZip;
-      delete window.JSZip;
+    it('throws when fflate not loaded', async () => {
+      const savedFflate = window.fflate;
+      delete window.fflate;
 
       await expect(exporter.exportToBlob()).rejects.toThrow(
-        'JSZip library not loaded'
+        'fflate library not loaded'
       );
 
-      window.JSZip = savedJSZip; // Restore for other tests
+      window.fflate = savedFflate; // Restore for other tests
     });
 
     it('returns blob without triggering download', async () => {
@@ -446,45 +442,44 @@ describe('ElpxExporter', () => {
     });
   });
 
-  describe('addAssetsToZip', () => {
-    it('adds all assets to zip', async () => {
-      const zip = new MockJSZip();
-      await exporter.addAssetsToZip(zip);
+  describe('addAssetsToFiles', () => {
+    it('adds all assets to files object', async () => {
+      const files = {};
+      await exporter.addAssetsToFiles(files);
 
       expect(mockAssetCache.getAllAssets).toHaveBeenCalled();
-      expect(zip.files.size).toBe(2);
+      expect(Object.keys(files).length).toBe(2);
     });
 
     it('uses originalPath when available', async () => {
-      const zip = new MockJSZip();
-      await exporter.addAssetsToZip(zip);
+      const files = {};
+      await exporter.addAssetsToFiles(files);
 
-      expect(zip.files.has('images/test.jpg')).toBe(true);
+      expect('images/test.jpg' in files).toBe(true);
     });
 
     it('handles assets without originalPath', async () => {
-      const zip = new MockJSZip();
-      await exporter.addAssetsToZip(zip);
+      const files = {};
+      await exporter.addAssetsToFiles(files);
 
-      expect(zip.files.has('video.mp4')).toBe(true);
+      expect('video.mp4' in files).toBe(true);
     });
 
     it('handles errors gracefully', async () => {
       mockAssetCache.getAllAssets.mockResolvedValue([
         {
           assetId: 'bad-asset',
-          blob: null, // Will cause error when adding to zip
-          metadata: {},
+          blob: {
+            arrayBuffer: () => Promise.reject(new Error('Failed to read blob'))
+          },
+          metadata: { filename: 'bad.png' },
         },
       ]);
 
-      const zip = new MockJSZip();
-      zip.file = mock(() => {
-        throw new Error('Failed to add');
-      });
+      const files = {};
 
       // Should not throw
-      await exporter.addAssetsToZip(zip);
+      await exporter.addAssetsToFiles(files);
 
       expect(console.warn).toHaveBeenCalled();
     });

@@ -117,8 +117,16 @@ export { FileSystemResourceProvider } from './providers/FileSystemResourceProvid
 export { FileSystemAssetProvider } from './providers/FileSystemAssetProvider';
 export { DatabaseAssetProvider } from './providers/DatabaseAssetProvider';
 export { CombinedAssetProvider } from './providers/CombinedAssetProvider';
-export { ArchiverZipProvider } from './providers/ArchiverZipProvider';
-export { JSZipZipProvider } from './providers/JSZipZipProvider';
+export {
+    FflateZipProvider,
+    unzipSync,
+    zipSync,
+    unzip,
+    zip,
+    listZipContents,
+    readFileFromZip,
+    fileExistsInZip,
+} from './providers/FflateZipProvider';
 
 // Exporters
 export { BaseExporter } from './exporters/BaseExporter';

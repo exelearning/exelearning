@@ -12,53 +12,46 @@
 
 const ElpxImporter = require('./ElpxImporter');
 
-// Mock JSZip
-class MockZipFile {
-  constructor(content) {
-    this.content = content;
-  }
-  async async(type) {
-    return this.content;
-  }
-}
+// Sample content.xml for mock fflate
+const SAMPLE_CONTENT_XML = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <pp_title>Test Project</pp_title>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure odeNavStructureId="page1" odePageName="Page 1" odeNavStructureOrder="0">
+      <odePagStructures>
+        <odePagStructure odePagStructureId="block1" blockName="Block 1" odePagStructureOrder="0">
+          <odeComponents>
+            <odeComponent odeComponentId="comp1" odeIdeviceTypeName="FreeTextIdevice" odeComponentsOrder="0">
+              <htmlView>&lt;p&gt;Test content&lt;/p&gt;</htmlView>
+            </odeComponent>
+          </odeComponents>
+        </odePagStructure>
+      </odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
 
-class MockJSZip {
-  constructor() {
-    this.files = {};
-  }
+// Mock fflate that returns our sample content
+const createMockFflate = () => ({
+  unzipSync: (data) => ({
+    'content.xml': new TextEncoder().encode(SAMPLE_CONTENT_XML),
+  }),
+  strToU8: (str) => new TextEncoder().encode(str),
+  strFromU8: (data) => new TextDecoder().decode(data),
+  zip: (files, callback) => {
+    const mockZip = new Uint8Array([80, 75, 3, 4]); // ZIP magic bytes
+    setTimeout(() => callback(null, mockZip), 0);
+  },
+  zipSync: (files) => new Uint8Array([80, 75, 3, 4]),
+});
 
-  file(name) {
-    return this.files[name] || null;
-  }
-
-  static async loadAsync(file) {
-    const zip = new MockJSZip();
-    // Simulate a basic ZIP with content.xml
-    zip.files = {
-      'content.xml': new MockZipFile(`<?xml version="1.0"?>
-        <ode>
-          <odeProperties>
-            <pp_title>Test Project</pp_title>
-          </odeProperties>
-          <odeNavStructures>
-            <odeNavStructure odeNavStructureId="page1" odePageName="Page 1" odeNavStructureOrder="0">
-              <odePagStructures>
-                <odePagStructure odePagStructureId="block1" blockName="Block 1" odePagStructureOrder="0">
-                  <odeComponents>
-                    <odeComponent odeComponentId="comp1" odeIdeviceTypeName="FreeTextIdevice" odeComponentsOrder="0">
-                      <htmlView>&lt;p&gt;Test content&lt;/p&gt;</htmlView>
-                    </odeComponent>
-                  </odeComponents>
-                </odePagStructure>
-              </odePagStructures>
-            </odeNavStructure>
-          </odeNavStructures>
-        </ode>
-      `),
-    };
-    return zip;
-  }
-}
+// Create a mock File object with arrayBuffer() method
+const createMockFile = (name = 'test.elpx') => ({
+  name,
+  arrayBuffer: async () => new Uint8Array([80, 75, 3, 4]).buffer, // Mock ZIP data
+});
 
 // Mock Y.js types
 class MockYMap {
@@ -116,9 +109,9 @@ describe('ElpxImporter', () => {
   const originalWindow = global.window;
 
   beforeEach(() => {
-    // Setup globals
+    // Setup globals - use fflate instead of JSZip
     global.window = {
-      JSZip: MockJSZip,
+      fflate: createMockFflate(),
       Y: {
         Map: MockYMap,
         Array: MockYArray,
@@ -187,7 +180,7 @@ describe('ElpxImporter', () => {
   describe('importFromFile - progress callbacks', () => {
     it('stores onProgress callback from options', async () => {
       const progressCallback = () => undefined;
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -199,7 +192,7 @@ describe('ElpxImporter', () => {
     it('calls progress callback during import phases', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -217,10 +210,10 @@ describe('ElpxImporter', () => {
       expect(phases).toContain('precache');
     });
 
-    it('reports decompress phase at start and after JSZip loads', async () => {
+    it('reports decompress phase at start and after fflate loads', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -238,7 +231,7 @@ describe('ElpxImporter', () => {
     it('reports assets phase during extraction', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -254,7 +247,7 @@ describe('ElpxImporter', () => {
     it('reports structure phase during Yjs transaction', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -270,7 +263,7 @@ describe('ElpxImporter', () => {
     it('reports precache phase and completion at 100%', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -290,7 +283,7 @@ describe('ElpxImporter', () => {
     it('progress percentages are in ascending order', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -307,7 +300,7 @@ describe('ElpxImporter', () => {
     it('all progress messages are strings', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -322,7 +315,7 @@ describe('ElpxImporter', () => {
 
   describe('importFromFile - return value', () => {
     it('returns statistics object', async () => {
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       const stats = await importer.importFromFile(mockFile);
 
@@ -334,24 +327,24 @@ describe('ElpxImporter', () => {
   });
 
   describe('importFromFile - error handling', () => {
-    it('throws error when JSZip is not available', async () => {
-      global.window.JSZip = null;
-      const mockFile = { name: 'test.elpx' };
+    it('throws error when fflate is not available', async () => {
+      global.window.fflate = null;
+      const mockFile = createMockFile();
 
       await expect(importer.importFromFile(mockFile)).rejects.toThrow(
-        'JSZip library not loaded'
+        'fflate library not loaded'
       );
     });
 
     it('throws error when content.xml is not found', async () => {
-      // Mock ZIP without content.xml
-      global.window.JSZip = {
-        loadAsync: async () => ({
-          file: () => null,
-        }),
+      // Mock fflate without content.xml
+      global.window.fflate = {
+        unzipSync: () => ({}), // Return empty object - no content.xml
+        strToU8: (str) => new TextEncoder().encode(str),
+        strFromU8: (data) => new TextDecoder().decode(data),
       };
 
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await expect(importer.importFromFile(mockFile)).rejects.toThrow(
         'No content.xml found'
@@ -363,7 +356,7 @@ describe('ElpxImporter', () => {
     it('phase order is: decompress -> assets -> structure -> precache', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -385,7 +378,7 @@ describe('ElpxImporter', () => {
     it('decompress phase is 0-10%', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -404,7 +397,7 @@ describe('ElpxImporter', () => {
     it('assets phase is 10-50%', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -423,7 +416,7 @@ describe('ElpxImporter', () => {
     it('structure phase is 50-80%', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,
@@ -442,7 +435,7 @@ describe('ElpxImporter', () => {
     it('precache phase is 80-100%', async () => {
       const calls = [];
       const progressCallback = (progress) => calls.push(progress);
-      const mockFile = { name: 'test.elpx' };
+      const mockFile = createMockFile();
 
       await importer.importFromFile(mockFile, {
         onProgress: progressCallback,

@@ -2,12 +2,12 @@
  * ZIP Service for Elysia
  * Provides ZIP file extraction and creation utilities
  *
+ * Uses fflate for all ZIP operations (high-performance, works in Node.js and browser)
  * Uses Dependency Injection pattern for testability
  */
-import JSZipModule from 'jszip';
+import * as fflateModule from 'fflate';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
-import ArchiverModule from 'archiver';
 
 // ============================================================================
 // Types and Interfaces
@@ -19,8 +19,7 @@ import ArchiverModule from 'archiver';
 export interface ZipDeps {
     fs?: typeof fsExtra;
     path?: typeof pathModule;
-    JSZip?: typeof JSZipModule;
-    Archiver?: typeof ArchiverModule;
+    fflate?: typeof fflateModule;
 }
 
 /**
@@ -48,8 +47,7 @@ export interface ZipService {
 export function createZipService(deps: ZipDeps = {}): ZipService {
     const fs = deps.fs ?? fsExtra;
     const path = deps.path ?? pathModule;
-    const JSZip = deps.JSZip ?? JSZipModule;
-    const Archiver = deps.Archiver ?? ArchiverModule;
+    const fflate = deps.fflate ?? fflateModule;
 
     // ========================================================================
     // Extraction Functions
@@ -58,23 +56,23 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     const extractZip = async (zipPath: string, targetDir: string): Promise<string[]> => {
         // Read the zip file
         const zipData = await fs.readFile(zipPath);
-        const zip = await JSZip.loadAsync(zipData);
+        // Convert Buffer to Uint8Array
+        const uint8ZipData = new Uint8Array(zipData);
 
         // Ensure target directory exists
         await fs.ensureDir(targetDir);
 
+        // Use sync version for reliability in Node.js/Bun environment
+        const unzipped = fflate.unzipSync(uint8ZipData);
         const extractedFiles: string[] = [];
 
         // Extract all files
-        for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-            // Skip directories
-            if (zipEntry.dir) {
+        for (const [relativePath, data] of Object.entries(unzipped)) {
+            // Skip directories (they end with /)
+            if (relativePath.endsWith('/')) {
                 await fs.ensureDir(path.join(targetDir, relativePath));
                 continue;
             }
-
-            // Get file content
-            const content = await zipEntry.async('nodebuffer');
 
             // Build target path
             const targetPath = path.join(targetDir, relativePath);
@@ -83,7 +81,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
             await fs.ensureDir(path.dirname(targetPath));
 
             // Write file
-            await fs.writeFile(targetPath, content);
+            await fs.writeFile(targetPath, Buffer.from(data));
             extractedFiles.push(relativePath);
         }
 
@@ -91,23 +89,23 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
     };
 
     const extractZipFromBuffer = async (zipBuffer: Buffer, targetDir: string): Promise<string[]> => {
-        const zip = await JSZip.loadAsync(zipBuffer);
+        // Convert Buffer to Uint8Array
+        const uint8ZipData = new Uint8Array(zipBuffer);
 
         // Ensure target directory exists
         await fs.ensureDir(targetDir);
 
+        // Use sync version for reliability in Node.js/Bun environment
+        const unzipped = fflate.unzipSync(uint8ZipData);
         const extractedFiles: string[] = [];
 
         // Extract all files
-        for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-            // Skip directories
-            if (zipEntry.dir) {
+        for (const [relativePath, data] of Object.entries(unzipped)) {
+            // Skip directories (they end with /)
+            if (relativePath.endsWith('/')) {
                 await fs.ensureDir(path.join(targetDir, relativePath));
                 continue;
             }
-
-            // Get file content
-            const content = await zipEntry.async('nodebuffer');
 
             // Build target path
             const targetPath = path.join(targetDir, relativePath);
@@ -116,7 +114,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
             await fs.ensureDir(path.dirname(targetPath));
 
             // Write file
-            await fs.writeFile(targetPath, content);
+            await fs.writeFile(targetPath, Buffer.from(data));
             extractedFiles.push(relativePath);
         }
 
@@ -132,77 +130,88 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
         outputPath: string,
         options: { compressionLevel?: number } = {},
     ): Promise<void> => {
-        return new Promise((resolve, reject) => {
-            const output = fs.createWriteStream(outputPath);
-            const archive = Archiver('zip', {
-                zlib: { level: options.compressionLevel ?? 6 },
-            });
-
-            output.on('close', () => resolve());
-            output.on('error', reject);
-            archive.on('error', reject);
-
-            archive.pipe(output);
-            archive.directory(sourceDir, false);
-            archive.finalize();
-        });
-    };
-
-    const createZipBuffer = async (sourceDir: string): Promise<Buffer> => {
-        const zip = new JSZip();
+        const level = options.compressionLevel ?? 6;
+        const files: Record<string, fflateModule.Zippable[string]> = {};
 
         // Read all files from source directory
-        const addFilesToZip = async (dir: string, zipFolder: JSZipModule): Promise<void> => {
+        const addFilesToZip = async (dir: string, basePath: string = ''): Promise<void> => {
             const entries = await fs.readdir(dir, { withFileTypes: true });
 
             for (const entry of entries) {
                 const fullPath = path.join(dir, entry.name);
+                const zipPath = basePath ? `${basePath}/${entry.name}` : entry.name;
 
                 if (entry.isDirectory()) {
-                    const subFolder = zipFolder.folder(entry.name);
-                    if (subFolder) {
-                        await addFilesToZip(fullPath, subFolder);
-                    }
+                    await addFilesToZip(fullPath, zipPath);
                 } else {
                     const content = await fs.readFile(fullPath);
-                    zipFolder.file(entry.name, content);
+                    const uint8Data = new Uint8Array(content);
+                    files[zipPath] = [uint8Data, { level }];
                 }
             }
         };
 
-        await addFilesToZip(sourceDir, zip);
+        await addFilesToZip(sourceDir);
 
-        return zip.generateAsync({
-            type: 'nodebuffer',
-            compression: 'DEFLATE',
-            compressionOptions: { level: 6 },
-        });
+        // Create the ZIP
+        const zipped = fflate.zipSync(files);
+        await fs.writeFile(outputPath, Buffer.from(zipped));
     };
 
-    const addToZip = async (zipPath: string, files: Array<{ path: string; name: string }>): Promise<void> => {
-        // Load existing zip or create new
-        let zip: JSZipModule;
+    const createZipBuffer = async (sourceDir: string): Promise<Buffer> => {
+        const files: Record<string, fflateModule.Zippable[string]> = {};
+
+        // Read all files from source directory
+        const addFilesToZip = async (dir: string, basePath: string = ''): Promise<void> => {
+            const entries = await fs.readdir(dir, { withFileTypes: true });
+
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                const zipPath = basePath ? `${basePath}/${entry.name}` : entry.name;
+
+                if (entry.isDirectory()) {
+                    await addFilesToZip(fullPath, zipPath);
+                } else {
+                    const content = await fs.readFile(fullPath);
+                    const uint8Data = new Uint8Array(content);
+                    files[zipPath] = [uint8Data, { level: 6 }];
+                }
+            }
+        };
+
+        await addFilesToZip(sourceDir);
+
+        // Create the ZIP
+        const zipped = fflate.zipSync(files);
+        return Buffer.from(zipped);
+    };
+
+    const addToZip = async (zipPath: string, filesToAdd: Array<{ path: string; name: string }>): Promise<void> => {
+        // Load existing zip contents or start fresh
+        let existingFiles: Record<string, Uint8Array> = {};
 
         if (await fs.pathExists(zipPath)) {
             const zipData = await fs.readFile(zipPath);
-            zip = await JSZip.loadAsync(zipData);
-        } else {
-            zip = new JSZip();
+            const uint8ZipData = new Uint8Array(zipData);
+            existingFiles = fflate.unzipSync(uint8ZipData);
         }
 
-        // Add files
-        for (const file of files) {
+        // Add new files
+        for (const file of filesToAdd) {
             const content = await fs.readFile(file.path);
-            zip.file(file.name, content);
+            const uint8Data = new Uint8Array(content);
+            existingFiles[file.name] = uint8Data;
         }
 
-        // Write back
-        const buffer = await zip.generateAsync({
-            type: 'nodebuffer',
-            compression: 'DEFLATE',
-        });
+        // Convert to format expected by zip()
+        const zippableFiles: Record<string, fflateModule.Zippable[string]> = {};
+        for (const [name, data] of Object.entries(existingFiles)) {
+            zippableFiles[name] = [data, { level: 6 }];
+        }
 
-        await fs.writeFile(zipPath, buffer);
+        // Create and write the new ZIP
+        const zipped = fflate.zipSync(zippableFiles);
+        await fs.writeFile(zipPath, Buffer.from(zipped));
     };
 
     // ========================================================================
@@ -211,19 +220,23 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
 
     const listZipContents = async (zipPath: string): Promise<string[]> => {
         const zipData = await fs.readFile(zipPath);
-        const zip = await JSZip.loadAsync(zipData);
+        const uint8ZipData = new Uint8Array(zipData);
+        const unzipped = fflate.unzipSync(uint8ZipData);
 
-        return Object.keys(zip.files).filter(name => !zip.files[name].dir);
+        // Filter out directories (fflate doesn't include them, but just in case)
+        return Object.keys(unzipped).filter(name => !name.endsWith('/'));
     };
 
     const readFileFromZip = async (zipPath: string, fileName: string): Promise<Buffer | null> => {
         const zipData = await fs.readFile(zipPath);
-        const zip = await JSZip.loadAsync(zipData);
+        const uint8ZipData = new Uint8Array(zipData);
+        const unzipped = fflate.unzipSync(uint8ZipData);
 
-        const file = zip.file(fileName);
-        if (!file) return null;
+        if (unzipped[fileName]) {
+            return Buffer.from(unzipped[fileName]);
+        }
 
-        return file.async('nodebuffer');
+        return null;
     };
 
     const readFileFromZipAsString = async (
@@ -238,8 +251,9 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
 
     const fileExistsInZip = async (zipPath: string, fileName: string): Promise<boolean> => {
         const zipData = await fs.readFile(zipPath);
-        const zip = await JSZip.loadAsync(zipData);
-        return zip.file(fileName) !== null;
+        const uint8ZipData = new Uint8Array(zipData);
+        const unzipped = fflate.unzipSync(uint8ZipData);
+        return fileName in unzipped;
     };
 
     // ========================================================================

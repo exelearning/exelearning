@@ -40,7 +40,7 @@
   // Paths are computed lazily to ensure eXeLearning globals are available
   const getLIBS_PATH = () => assetPath('/libs/yjs');
   const getBASE_PATH = () => assetPath('/app/yjs');
-  const getJSZIP_DEPENDENCY = () => assetPath('/libs/jszip/jszip.min.js');
+  const getFflate_DEPENDENCY = () => assetPath('/libs/fflate/fflate.umd.js');
 
   // Local Yjs dependencies (bundled with esbuild) - computed lazily
   const getYJS_DEPENDENCIES = () => [
@@ -199,10 +199,10 @@
           Logger.log('[YjsLoader] Yjs already loaded');
         }
 
-        // Load JSZip if not already present (needed for .elpx import/export)
-        if (!window.JSZip) {
-          Logger.log('[YjsLoader] Loading JSZip...');
-          await loadScript(getJSZIP_DEPENDENCY());
+        // Load fflate if not already present (needed for .elpx import/export)
+        if (!window.fflate) {
+          Logger.log('[YjsLoader] Loading fflate...');
+          await loadScript(getFflate_DEPENDENCY());
         }
 
         // Verify Y is available

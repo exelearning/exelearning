@@ -72,25 +72,27 @@ class ElpxImporter {
       }
     }
 
-    // Load JSZip
-    const JSZip = window.JSZip;
-    if (!JSZip) {
-      throw new Error('JSZip library not loaded');
+    // Load fflate
+    const fflateLib = window.fflate;
+    if (!fflateLib) {
+      throw new Error('fflate library not loaded');
     }
 
-    // Load ZIP
-    const zip = await JSZip.loadAsync(file);
+    // Load ZIP - convert File to ArrayBuffer then to Uint8Array
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Data = new Uint8Array(arrayBuffer);
+    const zip = fflateLib.unzipSync(uint8Data);
 
     // Report decompression complete (10%)
     this._reportProgress('decompress', 10, typeof _ === 'function' ? _('File decompressed') : 'File decompressed');
 
     // Find content.xml (could be content.xml or contentv3.xml for legacy)
     let contentXml = null;
-    let contentFile = zip.file('content.xml');
+    let contentFile = zip['content.xml'];
     let isLegacyFormat = false;
 
     if (!contentFile) {
-      contentFile = zip.file('contentv3.xml');
+      contentFile = zip['contentv3.xml'];
       isLegacyFormat = true;
     }
 
@@ -98,7 +100,7 @@ class ElpxImporter {
       throw new Error('No content.xml found in .elpx file');
     }
 
-    contentXml = await contentFile.async('text');
+    contentXml = new TextDecoder().decode(contentFile);
 
     // Parse XML
     const parser = new DOMParser();
@@ -127,7 +129,7 @@ class ElpxImporter {
   /**
    * Import document structure from parsed XML
    * @param {Document} xmlDoc - Parsed XML document
-   * @param {JSZip} zip - The ZIP file for extracting assets
+   * @param {Object} zip - The extracted ZIP files object from fflate {path: Uint8Array}
    * @param {Object} options - Import options
    * @param {boolean} options.clearExisting - If true, clears existing structure before import
    * @param {string|null} options.parentId - Parent page ID to import under (null for root level)
@@ -326,7 +328,7 @@ class ElpxImporter {
    * Pages are added with parentId references instead of nested children arrays
    * Generates new unique IDs for all pages to avoid conflicts with existing pages
    * @param {Array} navNodes - Nav structure elements to process
-   * @param {JSZip} zip - The ZIP file
+   * @param {Object} zip - The extracted ZIP files object from fflate
    * @param {Array} allNavStructures - All nav structures for finding children
    * @param {Array} flatList - The flat list to populate
    * @param {string|null} parentId - Parent page ID for the imported pages
@@ -385,7 +387,7 @@ class ElpxImporter {
    * Build plain JavaScript data structure from XML (no Yjs types)
    * This is done BEFORE the transaction to separate parsing from Yjs operations
    * @param {Element} navNode - The odeNavStructure element
-   * @param {JSZip} zip - The ZIP file
+   * @param {Object} zip - The extracted ZIP files object from fflate
    * @param {string|null} parentId - Parent page ID
    * @param {string|null} newPageId - Pre-generated page ID (if null, generates new one)
    * @param {number|null} calculatedOrder - Pre-calculated order (if null, reads from XML)
@@ -434,7 +436,7 @@ class ElpxImporter {
   /**
    * Build plain JavaScript data structure for a block
    * @param {Element} pagNode - The odePagStructure element
-   * @param {JSZip} zip - The ZIP file
+   * @param {Object} zip - The extracted ZIP files object from fflate
    * @returns {Object} Plain JS object with block data
    */
   buildBlockData(pagNode, zip) {
@@ -484,7 +486,7 @@ class ElpxImporter {
   /**
    * Build plain JavaScript data structure for a component
    * @param {Element} compNode - The odeComponent element
-   * @param {JSZip} zip - The ZIP file
+   * @param {Object} zip - The extracted ZIP files object from fflate
    * @returns {Object} Plain JS object with component data
    */
   buildComponentData(compNode, zip) {
@@ -961,7 +963,7 @@ class ElpxImporter {
   /**
    * Import assets from ZIP file
    * Uses AssetManager if available, otherwise falls back to basic cache
-   * @param {JSZip} zip - The ZIP file
+   * @param {Object} zip - The extracted ZIP files object from fflate {path: Uint8Array}
    * @returns {Promise<number>} - Number of assets imported
    */
   async importAssets(zip) {
@@ -1149,16 +1151,22 @@ class ElpxImporter {
     // Phase 1: Decompressing
     this._reportProgress('decompress', 0, typeof _ === 'function' ? _('Decompressing legacy file...') : 'Decompressing legacy file...');
 
-    // 1. Load ZIP and extract contentv3.xml
-    const JSZip = window.JSZip;
-    const zip = await JSZip.loadAsync(file);
+    // 1. Load ZIP and extract contentv3.xml using fflate
+    const fflateLib = window.fflate;
+    if (!fflateLib) {
+      throw new Error('fflate library not loaded');
+    }
 
-    let contentFile = zip.file('contentv3.xml') || zip.file('content.xml');
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Data = new Uint8Array(arrayBuffer);
+    const zip = fflateLib.unzipSync(uint8Data);
+
+    let contentFile = zip['contentv3.xml'] || zip['content.xml'];
     if (!contentFile) {
       throw new Error('No content.xml or contentv3.xml found in legacy file');
     }
 
-    const xmlContent = await contentFile.async('text');
+    const xmlContent = new TextDecoder().decode(contentFile);
 
     // 2. Parse using client-side LegacyXmlParser
     if (!window.LegacyXmlParser) {

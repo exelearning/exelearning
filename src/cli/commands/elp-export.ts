@@ -33,7 +33,7 @@ import {
     ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
-    ArchiverZipProvider,
+    FflateZipProvider,
     Html5Exporter,
     PageExporter,
     Scorm12Exporter,
@@ -147,7 +147,7 @@ export async function execute(
         const extractedPath = document.extractedPath || path.dirname(inputPath);
         const assetProvider = new FileSystemAssetProvider(extractedPath);
 
-        const zipProvider = new ArchiverZipProvider();
+        const zipProvider = new FflateZipProvider();
 
         // Create appropriate exporter based on format
         let exporter;

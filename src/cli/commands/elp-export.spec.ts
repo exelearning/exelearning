@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll, afterAll } from 'bun:test';
 import { execute, printHelp, VALID_FORMATS } from './elp-export';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import JSZip from 'jszip';
+import { zipSync, unzipSync, strToU8 } from 'fflate';
 
 // Create a minimal test ELP file for integration tests
 const TEST_DIR = '/tmp/elp-export-test';
@@ -32,15 +32,14 @@ async function createTestElpFile(): Promise<void> {
 </odeNavStructures>
 </ode>`;
 
-    // Create a minimal ZIP file (ELP format)
-    const zip = new JSZip();
-    zip.file('content.xml', contentXml);
-
-    const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+    // Create a minimal ZIP file (ELP format) using fflate
+    const zipData = zipSync({
+        'content.xml': strToU8(contentXml),
+    });
 
     // Write to test directory
     await fs.mkdir(TEST_DIR, { recursive: true });
-    await fs.writeFile(TEST_ELP_PATH, buffer);
+    await fs.writeFile(TEST_ELP_PATH, Buffer.from(zipData));
 }
 
 async function cleanupTestDir(): Promise<void> {
@@ -161,8 +160,8 @@ describe('elp:export command', () => {
 
             // Verify output contains imsmanifest.xml
             const zipBuffer = await fs.readFile(outputPath);
-            const zip = await JSZip.loadAsync(zipBuffer);
-            expect(zip.file('imsmanifest.xml')).toBeTruthy();
+            const zip = unzipSync(new Uint8Array(zipBuffer));
+            expect(zip['imsmanifest.xml']).toBeDefined();
         });
 
         it('should export to scorm2004 format', async () => {
@@ -211,11 +210,11 @@ describe('elp:export command', () => {
             await execute([TEST_ELP_PATH, outputPath], {});
 
             const zipBuffer = await fs.readFile(outputPath);
-            const zip = await JSZip.loadAsync(zipBuffer);
+            const zip = unzipSync(new Uint8Array(zipBuffer));
 
             // Verify basic structure
-            expect(zip.file('index.html')).toBeTruthy();
-            expect(zip.file('content.xml')).toBeTruthy();
+            expect(zip['index.html']).toBeDefined();
+            expect(zip['content.xml']).toBeDefined();
         });
 
         it('should accept --base-url flag', async () => {
@@ -297,10 +296,7 @@ describe('elp:export command', () => {
     describe('execute - stdin input', () => {
         it('should read ELP from stdin when input is "-"', async () => {
             // Create test ELP content
-            const zip = new JSZip();
-            zip.file(
-                'content.xml',
-                `<?xml version="1.0" encoding="UTF-8"?>
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
 <ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
 <odeProperties>
   <pp_title>Stdin Project</pp_title>
@@ -316,9 +312,9 @@ describe('elp:export command', () => {
   </odePagStructure>
 </odeNavStructure>
 </odeNavStructures>
-</ode>`,
-            );
-            const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+</ode>`;
+            const zipData = zipSync({ 'content.xml': strToU8(contentXml) });
+            const buffer = Buffer.from(zipData);
 
             // Mock stdin
             const originalStdin = process.stdin;
@@ -359,14 +355,13 @@ describe('elp:export command', () => {
 
         it('should handle export errors gracefully', async () => {
             // Create an ELP without content.xml (truly invalid)
-            const zip = new JSZip();
-            // Only add a dummy file, no content.xml
-            zip.file('dummy.txt', 'no content here');
-            const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+            const zipData = zipSync({
+                'dummy.txt': strToU8('no content here'),
+            });
 
             const invalidElpPath = path.join(TEST_DIR, 'no_content.elp');
             await fs.mkdir(TEST_DIR, { recursive: true });
-            await fs.writeFile(invalidElpPath, buffer);
+            await fs.writeFile(invalidElpPath, Buffer.from(zipData));
 
             const outputPath = path.join(TEST_OUTPUT_DIR, 'invalid_output.zip');
             const result = await execute([invalidElpPath, outputPath], {});

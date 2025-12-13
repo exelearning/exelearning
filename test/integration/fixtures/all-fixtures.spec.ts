@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import JSZip from 'jszip';
+import { unzipSync } from '../../../src/shared/export';
 import { extractZip, listZipContents, readFileFromZip, fileExistsInZip } from '../../../src/services/zip';
 import { parseFromFile } from '../../../src/services/xml/xml-parser';
 import {
@@ -24,7 +24,7 @@ import {
 async function isValidZip(zipPath: string): Promise<boolean> {
     try {
         const zipData = await fs.readFile(zipPath);
-        await JSZip.loadAsync(zipData);
+        unzipSync(new Uint8Array(zipData));
         return true;
     } catch {
         return false;

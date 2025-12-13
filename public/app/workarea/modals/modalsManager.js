@@ -13,6 +13,7 @@ import ModalAssistant from './modals/pages/modalAssistant.js';
 import ModalReleaseNotes from './modals/pages/modalReleaseNotes.js';
 import ModalLegalNotes from './modals/pages/modalLegalNotes.js';
 import ModalAbout from './modals/pages/modalAbout.js';
+import ModalEasterEgg from './modals/pages/modalEasterEgg.js';
 import ModalProperties from './modals/pages/modalProperties.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
 import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
@@ -38,6 +39,7 @@ export default class ModalsManagement {
         this.releasenotes = null;
         this.legalnotes = null;
         this.about = null;
+        this.easteregg = null;
         this.properties = null;
         this.openuserodefiles = null;
         this.templateselection = null;
@@ -65,6 +67,7 @@ export default class ModalsManagement {
         this.releasenotes = new ModalReleaseNotes(this);
         this.legalnotes = new ModalLegalNotes(this);
         this.about = new ModalAbout(this);
+        this.easteregg = new ModalEasterEgg(this);
         this.properties = new ModalProperties(this);
         this.openuserodefiles = new ModalOpenUserOdeFiles(this);
         this.templateselection = new ModalTemplateSelection(this);
@@ -92,6 +95,7 @@ export default class ModalsManagement {
         this.releasenotes.behaviour();
         this.legalnotes.behaviour();
         this.about.behaviour();
+        this.easteregg.behaviour();
         this.properties.behaviour();
         this.openuserodefiles.behaviour();
         this.templateselection.behaviour();
@@ -121,6 +125,7 @@ export default class ModalsManagement {
             this.releasenotes,
             this.legalnotes,
             this.about,
+            this.easteregg,
             this.properties,
             this.openuserodefiles,
             this.templateselection,

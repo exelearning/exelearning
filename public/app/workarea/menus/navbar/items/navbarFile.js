@@ -951,6 +951,47 @@ export default class NavbarFile {
         window.addEventListener('resize', () => {
             this.handleResponsiveLayout();
         });
+
+        // Close sidebar when tapping backdrop on mobile
+        this.initMobileBackdropClose();
+    }
+
+    /**
+     * Initialize mobile backdrop tap-to-close functionality
+     * Closes sidebar when user taps the dark overlay area
+     */
+    initMobileBackdropClose() {
+        document.addEventListener('click', (e) => {
+            // Only on mobile
+            if (window.innerWidth >= 768) return;
+
+            // Only when sidebar is visible
+            if (document.body.classList.contains('left-column-hidden')) return;
+
+            // Check if click is on the backdrop (::after pseudo-element)
+            // The backdrop covers the entire screen except the sidebar
+            const sidebar = document.querySelector('.asideleft');
+            if (!sidebar) return;
+
+            const sidebarRect = sidebar.getBoundingClientRect();
+            const clickX = e.clientX;
+            const clickY = e.clientY;
+
+            // If click is outside the sidebar bounds, close it
+            const isOutsideSidebar =
+                clickX > sidebarRect.right ||
+                clickX < sidebarRect.left ||
+                clickY > sidebarRect.bottom ||
+                clickY < sidebarRect.top;
+
+            // Also check if click is on the toggler button (don't close in that case)
+            const toggler = document.getElementById('exe-panels-toggler');
+            const isOnToggler = toggler && toggler.contains(e.target);
+
+            if (isOutsideSidebar && !isOnToggler) {
+                document.body.classList.add('left-column-hidden');
+            }
+        });
     }
 
     /**
@@ -2962,23 +3003,25 @@ export default class NavbarFile {
      */
     async checkIfLegacyElpFormat(file) {
         try {
-            const JSZip = window.JSZip;
-            if (!JSZip) {
-                console.warn('[NavbarFile] JSZip not available for format detection');
+            const fflateLib = window.fflate;
+            if (!fflateLib) {
+                console.warn('[NavbarFile] fflate not available for format detection');
                 return false;
             }
 
-            const zip = await JSZip.loadAsync(file);
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8Data = new Uint8Array(arrayBuffer);
+            const zip = fflateLib.unzipSync(uint8Data);
 
             // Check if contentv3.xml exists (legacy marker)
-            const contentV3 = zip.file('contentv3.xml');
+            const contentV3 = zip['contentv3.xml'];
             if (!contentV3) {
                 // Has content.xml (standard format) - not legacy
                 return false;
             }
 
-            // Read first bytes of contentv3.xml to check if it's Python pickle XML
-            const xmlContent = await contentV3.async('text');
+            // Read contentv3.xml to check if it's Python pickle XML
+            const xmlContent = new TextDecoder().decode(contentV3);
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
 

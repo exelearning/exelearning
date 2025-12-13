@@ -322,3 +322,66 @@
     }
 }
 
+/* ========================================================================
+   Mobile Responsive Styles (< 768px) - Vertical Category Expansion
+   ======================================================================== */
+@media (max-width: 767.98px) {
+    #menu_idevices {
+        #menu_idevices_content {
+            &.show {
+                height: auto !important;
+                flex: 1;
+            }
+        }
+
+        #list_menu_idevices {
+            height: auto !important;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+
+            .idevice_category {
+                flex-direction: column;
+
+                &.on {
+                    // Expanded category styling for mobile
+                    .idevices {
+                        position: relative !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        right: 0 !important;
+                        width: 100% !important;
+                        max-width: 100%;
+                        max-height: none;
+                        margin-top: 10px;
+                        margin-bottom: 10px;
+                        box-shadow: none;
+                        background: var(--gray-50);
+                        border-radius: 8px;
+                        padding: 12px;
+
+                        .idevices-category-title {
+                            font-size: 1rem;
+                            margin-top: 0;
+                        }
+
+                        .idevices-category-description {
+                            font-size: 0.75rem;
+                            margin-bottom: 12px;
+                        }
+
+                        .idevice_item {
+                            width: 48%;
+                            height: 85px;
+                            padding: 10px;
+
+                            .idevice_title {
+                                font-size: 11px;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -21,7 +21,7 @@ import {
     ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
-    ArchiverZipProvider,
+    FflateZipProvider,
     ElpxExporter,
 } from '../../shared/export';
 
@@ -210,7 +210,7 @@ export async function execute(
         const extractedPath = document.extractedPath || path.dirname(inputPath);
         const assetProvider = new FileSystemAssetProvider(extractedPath);
 
-        const zipProvider = new ArchiverZipProvider();
+        const zipProvider = new FflateZipProvider();
 
         // Create ELPX exporter
         const exporter = new ElpxExporter(document, resourceProvider, assetProvider, zipProvider);

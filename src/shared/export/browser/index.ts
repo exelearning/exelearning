@@ -23,7 +23,7 @@ import { ExportAssetResolver } from '../adapters/ExportAssetResolver';
 import { PreviewAssetResolver } from '../adapters/PreviewAssetResolver';
 
 // Import providers
-import { JSZipZipProvider } from '../providers/JSZipZipProvider';
+import { FflateZipProvider } from '../providers/FflateZipProvider';
 
 // Import exporters
 import { Html5Exporter } from '../exporters/Html5Exporter';
@@ -169,7 +169,7 @@ export function createExporter(
               )
             : createNullAssetProvider();
 
-    const zip = new JSZipZipProvider();
+    const zip = new FflateZipProvider();
 
     // Normalize format
     const normalizedFormat = format.toLowerCase().replace('-', '');
@@ -374,7 +374,7 @@ export {
     ExportAssetResolver,
     PreviewAssetResolver,
     // Providers
-    JSZipZipProvider,
+    FflateZipProvider,
     // Exporters
     Html5Exporter,
     PageExporter,
