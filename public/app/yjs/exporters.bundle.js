@@ -963,7 +963,7 @@ ${contentHtml}
       const seen = /* @__PURE__ */ new Set();
       for (const type of ideviceTypes) {
         const config = getIdeviceConfig(type);
-        const typeName = type.toLowerCase().replace("idevice", "") || config.cssClass;
+        const typeName = config.cssClass;
         if (!seen.has(typeName)) {
           seen.add(typeName);
           links.push(`<link rel="stylesheet" href="${basePath}idevices/${typeName}/${typeName}.css">`);
@@ -982,7 +982,7 @@ ${contentHtml}
       const seen = /* @__PURE__ */ new Set();
       for (const type of ideviceTypes) {
         const config = getIdeviceConfig(type);
-        const typeName = type.toLowerCase().replace("idevice", "") || config.cssClass;
+        const typeName = config.cssClass;
         if (!seen.has(typeName)) {
           seen.add(typeName);
           scripts.push(`<script src="${basePath}idevices/${typeName}/${typeName}.js"><\/script>`);
@@ -1001,7 +1001,7 @@ ${contentHtml}
       const seen = /* @__PURE__ */ new Set();
       for (const type of ideviceTypes) {
         const config = getIdeviceConfig(type);
-        const typeName = type.toLowerCase().replace("idevice", "") || config.cssClass;
+        const typeName = config.cssClass;
         if (!seen.has(typeName)) {
           seen.add(typeName);
           const href = `${basePath}idevices/${typeName}/${typeName}.css`;
@@ -1024,7 +1024,7 @@ ${contentHtml}
       const seen = /* @__PURE__ */ new Set();
       for (const type of ideviceTypes) {
         const config = getIdeviceConfig(type);
-        const typeName = type.toLowerCase().replace("idevice", "") || config.cssClass;
+        const typeName = config.cssClass;
         if (!seen.has(typeName)) {
           seen.add(typeName);
           const src = `${basePath}idevices/${typeName}/${typeName}.js`;
@@ -1695,6 +1695,14 @@ ${this.renderLicense({ author, license })}
       type: "class",
       pattern: "exe-atools",
       files: ["exe_atools/exe_atools.js", "exe_atools/exe_atools.css"]
+    },
+    // ELPX download support (for download-source-file iDevice)
+    // Includes fflate for client-side ZIP generation
+    {
+      name: "exe_elpx_download",
+      type: "class",
+      pattern: "exe-download-package-link",
+      files: ["fflate/fflate.umd.js", "exe_elpx_download.js"]
     }
   ];
   var BASE_LIBRARIES = [
@@ -2304,18 +2312,43 @@ ${this.renderLicense({ author, license })}
     }
     /**
      * Pre-process pages to add filenames to asset URLs in all component content
+     * Also replaces exe-package:elp protocol for download-source-file iDevice
      */
     async preprocessPagesForExport(pages) {
+      const meta = this.getMetadata();
+      const projectTitle = meta.title || "eXeLearning";
       for (const page of pages) {
         for (const block of page.blocks || []) {
           for (const component of block.components || []) {
             if (component.content) {
               component.content = await this.addFilenamesToAssetUrls(component.content);
+              component.content = this.replaceElpxProtocol(component.content, projectTitle);
             }
           }
         }
       }
       return pages;
+    }
+    /**
+     * Replace exe-package:elp protocol with client-side download handler
+     * This enables the download-source-file iDevice to generate ELPX files on-the-fly
+     *
+     * @param content - HTML content
+     * @param projectTitle - Project title for the download filename
+     * @returns Content with exe-package:elp replaced with onclick handler
+     */
+    replaceElpxProtocol(content, projectTitle) {
+      if (!content) return "";
+      if (!content.includes("exe-package:elp")) {
+        return content;
+      }
+      let result = content.replace(
+        /href="exe-package:elp"/g,
+        `href="#" onclick="if(typeof downloadElpx==='function')downloadElpx();return false;"`
+      );
+      const safeTitle = this.escapeXml(projectTitle);
+      result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
+      return result;
     }
     /**
      * Collect all HTML content from all pages (for library detection)

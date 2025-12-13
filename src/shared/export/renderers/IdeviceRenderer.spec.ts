@@ -396,7 +396,8 @@ describe('IdeviceRenderer', () => {
         it('should normalize iDevice names', () => {
             const links = renderer.getCssLinks(['FreeTextIdevice'], '');
 
-            expect(links[0]).toContain('freetext');
+            // FreeTextIdevice normalizes to 'text' via config cssClass
+            expect(links[0]).toContain('text');
         });
     });
 

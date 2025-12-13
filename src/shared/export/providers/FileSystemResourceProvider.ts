@@ -78,8 +78,18 @@ export class FileSystemResourceProvider implements ResourceProvider {
             'freetextidevice': 'text',
             'textidevice': 'text',
             'freetext': 'text',
+            'download-package': 'download-source-file',
+            'adivina': 'guess',
+            'adivina-activity': 'guess',
+            'listacotejo': 'checklist',
+            'listacotejo-activity': 'checklist',
+            'ordena': 'sort',
+            'clasifica': 'classify',
+            'relaciona': 'relate',
+            'completa': 'complete',
+            'rubrics': 'rubric',
         };
-        const normalized = ideviceType.toLowerCase().replace(/idevice$/i, '');
+        const normalized = ideviceType.toLowerCase().replace(/-?idevice$/i, '');
         return typeMap[normalized] || typeMap[ideviceType.toLowerCase()] || normalized || 'text';
     }
 

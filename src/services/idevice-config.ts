@@ -97,6 +97,39 @@ export function loadIdeviceConfigs(customBasePath?: string): void {
 }
 
 /**
+ * Type name mappings for iDevices
+ * Maps alternative names to canonical folder names
+ */
+const IDEVICE_TYPE_ALIASES: Record<string, string> = {
+    // Text/FreeText variations
+    freetext: 'text',
+    freetextidevice: 'text',
+    textidevice: 'text',
+    // Alternative names
+    'download-package': 'download-source-file',
+    // Spanish → English mappings
+    adivina: 'guess',
+    'adivina-activity': 'guess',
+    listacotejo: 'checklist',
+    'listacotejo-activity': 'checklist',
+    ordena: 'sort',
+    clasifica: 'classify',
+    relaciona: 'relate',
+    completa: 'complete',
+    // Plural → singular
+    rubrics: 'rubric',
+};
+
+/**
+ * Normalize iDevice type name to canonical form
+ */
+function normalizeTypeName(type: string): string {
+    if (!type) return 'text';
+    const normalized = type.toLowerCase().replace(/-?idevice$/i, '');
+    return IDEVICE_TYPE_ALIASES[normalized] || normalized;
+}
+
+/**
  * Get iDevice config by type name
  * Falls back to derived config if not found
  */
@@ -107,15 +140,19 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
     }
 
     // Try exact match first, then lowercase
-    const config = configCache?.get(type) || configCache?.get(type.toLowerCase());
+    let config = configCache?.get(type) || configCache?.get(type.toLowerCase());
     if (config) return config;
 
-    // Fallback: derive config from type name
-    const baseName = type.replace(/Idevice$/i, '').toLowerCase();
+    // Try normalized type name (handles aliases like 'download-package' -> 'download-source-file')
+    const normalizedType = normalizeTypeName(type);
+    config = configCache?.get(normalizedType);
+    if (config) return config;
+
+    // Fallback: derive config from normalized type name
     return {
-        cssClass: baseName,
+        cssClass: normalizedType,
         componentType: 'html', // Default to HTML for unknown iDevices
-        template: `${baseName}.html`,
+        template: `${normalizedType}.html`,
     };
 }
 

@@ -282,7 +282,9 @@ ${contentHtml}
 
         for (const type of ideviceTypes) {
             const config = getIdeviceConfig(type);
-            const typeName = type.toLowerCase().replace('idevice', '') || config.cssClass;
+            // Use cssClass from config for consistent path generation
+            // This handles type normalization (e.g., 'download-package' -> 'download-source-file')
+            const typeName = config.cssClass;
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
@@ -305,7 +307,9 @@ ${contentHtml}
 
         for (const type of ideviceTypes) {
             const config = getIdeviceConfig(type);
-            const typeName = type.toLowerCase().replace('idevice', '') || config.cssClass;
+            // Use cssClass from config for consistent path generation
+            // This handles type normalization (e.g., 'download-package' -> 'download-source-file')
+            const typeName = config.cssClass;
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
@@ -328,7 +332,8 @@ ${contentHtml}
 
         for (const type of ideviceTypes) {
             const config = getIdeviceConfig(type);
-            const typeName = type.toLowerCase().replace('idevice', '') || config.cssClass;
+            // Use cssClass from config for consistent path generation
+            const typeName = config.cssClass;
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
@@ -355,7 +360,8 @@ ${contentHtml}
 
         for (const type of ideviceTypes) {
             const config = getIdeviceConfig(type);
-            const typeName = type.toLowerCase().replace('idevice', '') || config.cssClass;
+            // Use cssClass from config for consistent path generation
+            const typeName = config.cssClass;
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);

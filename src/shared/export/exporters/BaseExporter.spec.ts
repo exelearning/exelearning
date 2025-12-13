@@ -634,4 +634,82 @@ describe('BaseExporter', () => {
             expect(js).toContain('DOMContentLoaded');
         });
     });
+
+    describe('replaceElpxProtocol', () => {
+        it('should replace exe-package:elp href with onclick handler', () => {
+            const content = '<a download="exe-package:elp-name" href="exe-package:elp">Download</a>';
+            const result = exporter.replaceElpxProtocol(content, 'My Project');
+
+            expect(result).toContain('onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"');
+            expect(result).not.toContain('href="exe-package:elp"');
+        });
+
+        it('should replace download attribute with project name', () => {
+            const content = '<a download="exe-package:elp-name" href="exe-package:elp">Download</a>';
+            const result = exporter.replaceElpxProtocol(content, 'My Project');
+
+            expect(result).toContain('download="My Project.elpx"');
+            expect(result).not.toContain('download="exe-package:elp-name"');
+        });
+
+        it('should handle special characters in project title', () => {
+            const content = '<a download="exe-package:elp-name" href="exe-package:elp">Download</a>';
+            const result = exporter.replaceElpxProtocol(content, 'Project <Test> & "Quotes"');
+
+            // Should escape special XML characters
+            expect(result).toContain('download="Project &lt;Test&gt; &amp; &quot;Quotes&quot;.elpx"');
+        });
+
+        it('should return content unchanged if no exe-package:elp', () => {
+            const content = '<a href="normal-link.html">Normal Link</a>';
+            const result = exporter.replaceElpxProtocol(content, 'Project');
+
+            expect(result).toBe(content);
+        });
+
+        it('should return empty string for empty content', () => {
+            const result = exporter.replaceElpxProtocol('', 'Project');
+            expect(result).toBe('');
+        });
+
+        it('should handle multiple exe-package:elp links', () => {
+            const content = `
+                <a download="exe-package:elp-name" href="exe-package:elp">First</a>
+                <a download="exe-package:elp-name" href="exe-package:elp">Second</a>
+            `;
+            const result = exporter.replaceElpxProtocol(content, 'Project');
+
+            // Count occurrences of onclick
+            const onclickCount = (result.match(/onclick=/g) || []).length;
+            expect(onclickCount).toBe(2);
+
+            // Count occurrences of .elpx
+            const elpxCount = (result.match(/\.elpx/g) || []).length;
+            expect(elpxCount).toBe(2);
+        });
+
+        it('should work with download-source-file iDevice HTML structure', () => {
+            const content = `
+                <div class="exe-download-package-instructions">
+                    <table class="exe-table exe-package-info">
+                        <caption>General information</caption>
+                        <tbody>
+                            <tr><th>Title</th><td>My Course</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="exe-download-package-link">
+                    <a download="exe-package:elp-name" href="exe-package:elp" style="background-color:#107275;color:#ffffff;">
+                        Download .elp file
+                    </a>
+                </p>
+            `;
+            const result = exporter.replaceElpxProtocol(content, 'My Course');
+
+            expect(result).toContain('onclick=');
+            expect(result).toContain('download="My Course.elpx"');
+            expect(result).toContain('style="background-color:#107275;color:#ffffff;"');
+            expect(result).toContain('Download .elp file');
+        });
+    });
 });
