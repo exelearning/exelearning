@@ -2,10 +2,14 @@
 
 #menu_nav {
     border: none;
-    /* min-height: 48%;
-    height: 100%; */
     overflow: hidden;
     padding: 0 20px;
+
+    // Flex layout: take available space, shrink to allow iDevices panel visibility
+    flex: 1 1 auto;
+    min-height: 150px; // Minimum height for structure panel
+    display: flex;
+    flex-direction: column;
     .accordion-header {
         display: flex;
         flex-flow: row nowrap;
@@ -103,7 +107,11 @@
         }
     }
     #menu_nav_content {
-        height: calc(100% - 30px);
+        // Flex: take remaining space and scroll internally
+        flex: 1 1 auto;
+        min-height: 0; // Critical for flex children to shrink
+        overflow: hidden;
+
         &.show {
             display: flex;
             flex-direction: column;

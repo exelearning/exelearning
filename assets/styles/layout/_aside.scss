@@ -14,6 +14,19 @@
     max-height: 100vh;
     overflow: hidden;
     z-index: 1;
+
+    // Flex layout to keep iDevices panel always visible at bottom
+    display: flex;
+    flex-direction: column;
+
+    // Accordion container should also be flex
+    #menus_content {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0; // Important for flex children to shrink properly
+        overflow: hidden;
+    }
     .content-info,
     #exe-logo,
     #exe-title,
