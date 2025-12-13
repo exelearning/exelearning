@@ -60,12 +60,22 @@ interface YjsDocumentManagerLike {
 }
 
 /**
- * Asset Cache Manager interface (browser class)
+ * Asset Cache Manager interface (legacy browser class)
  */
 interface AssetCacheManagerLike {
     getAllAssets(): Promise<unknown[]>;
     getAssetByPath(path: string): Promise<unknown>;
     resolveAssetUrl(path: string): Promise<string | null>;
+}
+
+/**
+ * Asset Manager interface (new browser class - preferred for exports)
+ * Contains actual imported assets in IndexedDB 'exelearning-assets-v2' database
+ */
+interface AssetManagerLike {
+    getProjectAssets(): Promise<unknown[]>;
+    getAsset?(assetId: string): Promise<unknown>;
+    resolveAssetURL?(assetUrl: string): Promise<string | null>;
 }
 
 /**
@@ -123,8 +133,9 @@ function createNullAssetProvider() {
  *
  * @param format - Export format (html5, html5-sp, scorm12, scorm2004, ims, epub3, elpx)
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance (optional, but required for exports with assets)
+ * @param assetCache - AssetCacheManager instance (legacy, optional)
  * @param resourceFetcher - ResourceFetcher instance (optional, but required for exports with themes)
+ * @param assetManager - AssetManager instance (new, preferred for exports with assets)
  * @returns Exporter instance ready for export
  */
 export function createExporter(
@@ -132,6 +143,7 @@ export function createExporter(
     documentManager: YjsDocumentManagerLike,
     assetCache: AssetCacheManagerLike | null,
     resourceFetcher: ResourceFetcherLike | null,
+    assetManager?: AssetManagerLike | null,
 ) {
     // Validate required dependencies
     if (!documentManager) {
@@ -147,9 +159,15 @@ export function createExporter(
         : createNullResourceProvider();
 
     // Create asset provider with null-safe fallback
-    const assets = assetCache
-        ? new BrowserAssetProvider(assetCache as Parameters<typeof BrowserAssetProvider>[0])
-        : createNullAssetProvider();
+    // BrowserAssetProvider now supports both assetCache and assetManager
+    // assetManager is preferred as it contains actual imported assets
+    const assets =
+        assetCache || assetManager
+            ? new BrowserAssetProvider(
+                  assetCache as Parameters<typeof BrowserAssetProvider>[0],
+                  assetManager as Parameters<typeof BrowserAssetProvider>[1],
+              )
+            : createNullAssetProvider();
 
     const zip = new JSZipZipProvider();
 
@@ -195,9 +213,10 @@ export function createExporter(
  *
  * @param format - Export format
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance (optional)
+ * @param assetCache - AssetCacheManager instance (legacy, optional)
  * @param resourceFetcher - ResourceFetcher instance (optional)
  * @param options - Export options
+ * @param assetManager - AssetManager instance (new, preferred for assets)
  * @returns Export result with data buffer
  */
 export async function quickExport(
@@ -206,8 +225,9 @@ export async function quickExport(
     assetCache: AssetCacheManagerLike | null,
     resourceFetcher: ResourceFetcherLike | null,
     options?: ExportOptions,
+    assetManager?: AssetManagerLike | null,
 ) {
-    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher);
+    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
     return exporter.export(options);
 }
 
@@ -216,10 +236,11 @@ export async function quickExport(
  *
  * @param format - Export format
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance (optional)
+ * @param assetCache - AssetCacheManager instance (legacy, optional)
  * @param resourceFetcher - ResourceFetcher instance (optional)
  * @param filename - Download filename (without extension)
  * @param options - Export options
+ * @param assetManager - AssetManager instance (new, preferred for assets)
  */
 export async function exportAndDownload(
     format: ExportFormat | string,
@@ -228,8 +249,9 @@ export async function exportAndDownload(
     resourceFetcher: ResourceFetcherLike | null,
     filename: string,
     options?: ExportOptions,
+    assetManager?: AssetManagerLike | null,
 ) {
-    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher);
+    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
 
     const result = await exporter.export(options);
 

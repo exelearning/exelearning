@@ -1684,8 +1684,11 @@ export default class NavbarFile {
         let toast = eXeLearning.app.toasts.createToast(toastData);
 
         try {
-            // Get the document manager and asset cache from YjsBridge
+            // Get the document manager and asset managers from YjsBridge
             const documentManager = yjsBridge.documentManager;
+            // Note: assetManager (new) contains actual imported assets in 'exelearning-assets-v2' database
+            // assetCache (legacy) uses 'exelearning-assets' database which may be empty
+            const assetManager = yjsBridge.assetManager || null;
             const assetCache = yjsBridge.assetCache || null;
 
             // Create resource fetcher for server resources (themes, libs, iDevices)
@@ -1695,11 +1698,13 @@ export default class NavbarFile {
             }
 
             // Create the appropriate exporter using unified pipeline
+            // Pass assetManager as 5th parameter (preferred source for assets)
             const exporter = SharedExporters.createExporter(
                 format,
                 documentManager,
                 assetCache,
-                resourceFetcher
+                resourceFetcher,
+                assetManager
             );
 
             // Export

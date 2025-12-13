@@ -86,12 +86,80 @@ class MockAssetCacheManager implements MockAssetCacheManagerInterface {
     }
 }
 
+// Mock AssetManager interface (new style, preferred for exports)
+interface MockAssetManagerInterface {
+    getProjectAssets(): Promise<
+        Array<{
+            id: string;
+            blob: Blob;
+            mime: string;
+            filename?: string;
+            originalPath?: string;
+        }>
+    >;
+    getAsset?(assetId: string): Promise<{ id: string; blob: Blob; mime: string } | null>;
+    resolveAssetURL?(assetUrl: string): Promise<string | null>;
+}
+
+// Mock AssetManager (new style)
+class MockAssetManager implements MockAssetManagerInterface {
+    private assets: Map<string, { id: string; blob: Blob; mime: string; filename?: string; originalPath?: string }> =
+        new Map();
+    private urlMap: Map<string, string> = new Map();
+
+    addAsset(
+        id: string,
+        content: string | Uint8Array,
+        options: { filename?: string; originalPath?: string; mime?: string; skipOriginalPath?: boolean } = {},
+    ): void {
+        const blob = createMockBlob(content);
+        this.assets.set(id, {
+            id,
+            blob,
+            mime: options.mime || 'application/octet-stream',
+            filename: options.filename,
+            // Only set originalPath if explicitly provided or skipOriginalPath is not true
+            originalPath: options.skipOriginalPath
+                ? undefined
+                : (options.originalPath ?? `${id}/${options.filename || 'file.bin'}`),
+        });
+    }
+
+    setAssetUrl(assetId: string, url: string): void {
+        this.urlMap.set(assetId, url);
+    }
+
+    async getProjectAssets(): Promise<
+        Array<{
+            id: string;
+            blob: Blob;
+            mime: string;
+            filename?: string;
+            originalPath?: string;
+        }>
+    > {
+        return Array.from(this.assets.values());
+    }
+
+    async getAsset(assetId: string): Promise<{ id: string; blob: Blob; mime: string } | null> {
+        return this.assets.get(assetId) || null;
+    }
+
+    async resolveAssetURL(assetUrl: string): Promise<string | null> {
+        // Extract ID from asset://uuid or asset://uuid/filename
+        const id = assetUrl.replace('asset://', '').split('/')[0];
+        return this.urlMap.get(id) || null;
+    }
+}
+
 describe('BrowserAssetProvider', () => {
     let mockCache: MockAssetCacheManager;
+    let mockManager: MockAssetManager;
     let provider: BrowserAssetProvider;
 
     beforeEach(() => {
         mockCache = new MockAssetCacheManager();
+        mockManager = new MockAssetManager();
         provider = new BrowserAssetProvider(mockCache);
     });
 
@@ -103,6 +171,83 @@ describe('BrowserAssetProvider', () => {
         it('should create provider with optional asset manager', () => {
             const providerWithManager = new BrowserAssetProvider(mockCache, null);
             expect(providerWithManager).toBeDefined();
+        });
+
+        it('should create provider with only asset manager (null assetCache)', () => {
+            const providerWithManagerOnly = new BrowserAssetProvider(null, mockManager);
+            expect(providerWithManagerOnly).toBeDefined();
+        });
+
+        it('should create provider with both assetCache and assetManager', () => {
+            const providerWithBoth = new BrowserAssetProvider(mockCache, mockManager);
+            expect(providerWithBoth).toBeDefined();
+        });
+    });
+
+    describe('AssetManager preference', () => {
+        it('should prefer assetManager over assetCache for getAllAssets', async () => {
+            // Add asset only to assetManager
+            mockManager.addAsset('manager-asset', 'from manager', {
+                filename: 'manager.png',
+                mime: 'image/png',
+            });
+
+            const providerWithManager = new BrowserAssetProvider(mockCache, mockManager);
+            const result = await providerWithManager.getAllAssets();
+
+            expect(result.length).toBe(1);
+            expect(result[0].id).toBe('manager-asset');
+            expect(result[0].mime).toBe('image/png');
+            expect(new TextDecoder().decode(result[0].data as Uint8Array)).toBe('from manager');
+        });
+
+        it('should use assetManager when assetCache is null', async () => {
+            mockManager.addAsset('only-manager', 'only from manager', {
+                filename: 'only.png',
+                mime: 'image/png',
+            });
+
+            const providerOnlyManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerOnlyManager.getAllAssets();
+
+            expect(result.length).toBe(1);
+            expect(result[0].id).toBe('only-manager');
+        });
+
+        it('should fallback to assetCache when assetManager returns empty', async () => {
+            // Add asset only to assetCache
+            mockCache.addAsset('cache-asset', 'from cache', { filename: 'cache.png', mimeType: 'image/png' });
+
+            // Use empty assetManager
+            const emptyManager = new MockAssetManager();
+            const providerWithBoth = new BrowserAssetProvider(mockCache, emptyManager);
+            const result = await providerWithBoth.getAllAssets();
+
+            expect(result.length).toBe(1);
+            expect(result[0].originalPath).toBe('cache-asset');
+        });
+
+        it('should use assetManager for listAssets when available', async () => {
+            mockManager.addAsset('list-test', 'content', {
+                filename: 'test.png',
+                originalPath: 'manager/test.png',
+            });
+
+            const providerWithManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerWithManager.listAssets();
+
+            expect(result.length).toBe(1);
+            expect(result[0]).toBe('manager/test.png');
+        });
+
+        it('should use assetManager.resolveAssetURL when available', async () => {
+            mockManager.addAsset('resolve-test', 'content', { filename: 'test.png' });
+            mockManager.setAssetUrl('resolve-test', 'blob:http://localhost/resolved');
+
+            const providerWithManager = new BrowserAssetProvider(mockCache, mockManager);
+            const result = await providerWithManager.resolveAssetUrl('asset://resolve-test/test.png');
+
+            expect(result).toBe('blob:http://localhost/resolved');
         });
     });
 
@@ -247,6 +392,126 @@ describe('BrowserAssetProvider', () => {
 
             expect(allAssets.length).toBe(projectAssets.length);
             expect(allAssets[0].id).toBe(projectAssets[0].id);
+        });
+    });
+
+    describe('originalPath UUID folder handling (AssetManager)', () => {
+        let mockManager: MockAssetManager;
+
+        beforeEach(() => {
+            mockManager = new MockAssetManager();
+        });
+
+        it('should construct originalPath with UUID folder when originalPath is just filename', async () => {
+            // Simulates old ELP import where originalPath is just "elcid.png" without UUID folder
+            mockManager.addAsset('abc123', 'image data', {
+                filename: 'elcid.png',
+                originalPath: 'elcid.png', // Missing UUID folder - old ELP format
+                mime: 'image/png',
+            });
+
+            const providerWithManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerWithManager.getAllAssets();
+
+            expect(result.length).toBe(1);
+            // Should construct correct path: uuid/filename
+            expect(result[0].originalPath).toBe('abc123/elcid.png');
+            expect(result[0].id).toBe('abc123');
+            expect(result[0].filename).toBe('elcid.png');
+        });
+
+        it('should keep originalPath when it already includes UUID', async () => {
+            // New format where originalPath already has UUID folder
+            mockManager.addAsset('def456', 'image data', {
+                filename: 'photo.jpg',
+                originalPath: 'def456/photo.jpg', // Correct format
+                mime: 'image/jpeg',
+            });
+
+            const providerWithManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerWithManager.getAllAssets();
+
+            expect(result.length).toBe(1);
+            expect(result[0].originalPath).toBe('def456/photo.jpg');
+        });
+
+        it('should keep originalPath when it includes content/resources prefix with UUID', async () => {
+            // ELP import format with full path
+            mockManager.addAsset('ghi789', 'pdf data', {
+                filename: 'document.pdf',
+                originalPath: 'content/resources/ghi789/document.pdf', // Full path format
+                mime: 'application/pdf',
+            });
+
+            const providerWithManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerWithManager.getAllAssets();
+
+            expect(result.length).toBe(1);
+            expect(result[0].originalPath).toBe('content/resources/ghi789/document.pdf');
+        });
+
+        it('should handle undefined originalPath by constructing uuid/filename', async () => {
+            mockManager.addAsset('jkl012', 'data', {
+                filename: 'file.txt',
+                // No originalPath - should use fallback
+                mime: 'text/plain',
+                skipOriginalPath: true,
+            });
+
+            const providerWithManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerWithManager.getAllAssets();
+
+            expect(result.length).toBe(1);
+            expect(result[0].originalPath).toBe('jkl012/file.txt');
+        });
+
+        it('should generate filename from id when filename is missing', async () => {
+            mockManager.addAsset('mno345', 'data', {
+                // No filename, no originalPath - test fallback
+                mime: 'application/octet-stream',
+                skipOriginalPath: true,
+            });
+
+            const providerWithManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerWithManager.getAllAssets();
+
+            expect(result.length).toBe(1);
+            expect(result[0].filename).toBe('asset-mno345');
+            expect(result[0].originalPath).toBe('mno345/asset-mno345');
+        });
+
+        it('should handle multiple assets with mixed originalPath formats', async () => {
+            // Mix of old and new formats
+            mockManager.addAsset('id1', 'data1', {
+                filename: 'file1.png',
+                originalPath: 'file1.png', // Old format - no UUID
+                mime: 'image/png',
+            });
+            mockManager.addAsset('id2', 'data2', {
+                filename: 'file2.jpg',
+                originalPath: 'id2/file2.jpg', // New format - has UUID
+                mime: 'image/jpeg',
+            });
+            mockManager.addAsset('id3', 'data3', {
+                filename: 'file3.gif',
+                // No originalPath - fallback
+                mime: 'image/gif',
+                skipOriginalPath: true,
+            });
+
+            const providerWithManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerWithManager.getAllAssets();
+
+            expect(result.length).toBe(3);
+
+            const asset1 = result.find(a => a.id === 'id1');
+            const asset2 = result.find(a => a.id === 'id2');
+            const asset3 = result.find(a => a.id === 'id3');
+
+            // All should have UUID in path
+            expect(asset1!.originalPath).toBe('id1/file1.png');
+            expect(asset2!.originalPath).toBe('id2/file2.jpg');
+            expect(asset3!.originalPath).toBe('id3/file3.gif');
         });
     });
 

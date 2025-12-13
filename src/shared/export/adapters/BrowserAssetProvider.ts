@@ -1,23 +1,32 @@
 /**
  * BrowserAssetProvider
  *
- * Adapts AssetCacheManager (browser IndexedDB) to the unified AssetProvider interface.
+ * Adapts AssetCacheManager or AssetManager (browser IndexedDB) to the unified AssetProvider interface.
  * Provides access to project assets stored in browser's IndexedDB.
+ *
+ * Supports two asset manager interfaces:
+ * 1. AssetCacheManager (legacy) - uses `assetId` and nested `metadata` object
+ * 2. AssetManager (new) - uses `id`, `mime`, `filename` as top-level properties
  *
  * Usage:
  * ```typescript
  * import { BrowserAssetProvider } from './adapters/BrowserAssetProvider';
  *
+ * // With AssetManager (preferred)
+ * const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+ * const provider = new BrowserAssetProvider(null, assetManager);
+ *
+ * // With legacy AssetCacheManager
  * const assetCache = new AssetCacheManager(projectId);
  * const provider = new BrowserAssetProvider(assetCache);
- * const imageData = await provider.getAsset('abc123/image.png');
  * ```
  */
 
 import type { AssetProvider, ExportAsset } from '../interfaces';
 
 /**
- * Interface for AssetCacheManager (browser class)
+ * Interface for AssetCacheManager (legacy browser class)
+ * Uses nested metadata object and assetId property
  */
 interface AssetCacheManagerInterface {
     getAllAssets(): Promise<
@@ -36,11 +45,23 @@ interface AssetCacheManagerInterface {
 }
 
 /**
- * Optional AssetManager interface for additional asset operations
+ * Interface for AssetManager (new browser class)
+ * Uses top-level properties and id (not assetId)
  */
 interface AssetManagerInterface {
-    getAssetData?(assetId: string): Promise<Blob | null>;
-    listAssets?(): Promise<Array<{ id: string; path: string }>>;
+    getProjectAssets(): Promise<
+        Array<{
+            id: string;
+            blob: Blob;
+            mime: string;
+            filename?: string;
+            originalPath?: string;
+            hash?: string;
+            size?: number;
+        }>
+    >;
+    getAsset?(assetId: string): Promise<{ id: string; blob: Blob; mime: string } | null>;
+    resolveAssetURL?(assetUrl: string): Promise<string | null>;
 }
 
 /**
@@ -48,15 +69,18 @@ interface AssetManagerInterface {
  * Implements AssetProvider interface for browser-based exports
  */
 export class BrowserAssetProvider implements AssetProvider {
-    private assetCache: AssetCacheManagerInterface;
+    private assetCache: AssetCacheManagerInterface | null;
     private assetManager: AssetManagerInterface | null;
 
     /**
-     * Create provider with AssetCacheManager instance
-     * @param assetCache - AssetCacheManager instance
-     * @param assetManager - Optional AssetManager for additional operations
+     * Create provider with AssetCacheManager and/or AssetManager instance
+     * @param assetCache - AssetCacheManager instance (legacy, optional)
+     * @param assetManager - AssetManager instance (preferred, optional)
+     *
+     * Note: At least one of assetCache or assetManager should be provided.
+     * AssetManager is preferred for getAllAssets() as it contains the actual imported assets.
      */
-    constructor(assetCache: AssetCacheManagerInterface, assetManager: AssetManagerInterface | null = null) {
+    constructor(assetCache: AssetCacheManagerInterface | null, assetManager: AssetManagerInterface | null = null) {
         this.assetCache = assetCache;
         this.assetManager = assetManager;
     }
@@ -68,18 +92,37 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async getAsset(assetId: string): Promise<ExportAsset | null> {
         try {
-            const cached = await this.assetCache.getAssetByPath(assetId);
-            if (cached && cached.blob) {
-                const arrayBuffer = await cached.blob.arrayBuffer();
-                const filename = (cached.metadata?.filename as string) || assetId.split('/').pop() || 'unknown';
-                return {
-                    id: assetId,
-                    filename,
-                    originalPath: assetId,
-                    mime: (cached.metadata?.mimeType as string) || 'application/octet-stream',
-                    data: new Uint8Array(arrayBuffer),
-                };
+            // Try AssetManager first (preferred)
+            if (this.assetManager?.getAsset) {
+                const asset = await this.assetManager.getAsset(assetId);
+                if (asset && asset.blob) {
+                    const arrayBuffer = await asset.blob.arrayBuffer();
+                    return {
+                        id: asset.id,
+                        filename: assetId.split('/').pop() || 'unknown',
+                        originalPath: assetId,
+                        mime: asset.mime || 'application/octet-stream',
+                        data: new Uint8Array(arrayBuffer),
+                    };
+                }
             }
+
+            // Fall back to legacy AssetCacheManager
+            if (this.assetCache) {
+                const cached = await this.assetCache.getAssetByPath(assetId);
+                if (cached && cached.blob) {
+                    const arrayBuffer = await cached.blob.arrayBuffer();
+                    const filename = (cached.metadata?.filename as string) || assetId.split('/').pop() || 'unknown';
+                    return {
+                        id: assetId,
+                        filename,
+                        originalPath: assetId,
+                        mime: (cached.metadata?.mimeType as string) || 'application/octet-stream',
+                        data: new Uint8Array(arrayBuffer),
+                    };
+                }
+            }
+
             return null;
         } catch (error) {
             console.warn(`[BrowserAssetProvider] Failed to get asset: ${assetId}`, error);
@@ -94,8 +137,21 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async hasAsset(assetPath: string): Promise<boolean> {
         try {
-            const cached = await this.assetCache.getAssetByPath(assetPath);
-            return cached !== null && cached.blob !== undefined;
+            // Try AssetManager first
+            if (this.assetManager?.getAsset) {
+                const asset = await this.assetManager.getAsset(assetPath);
+                if (asset && asset.blob) {
+                    return true;
+                }
+            }
+
+            // Fall back to legacy AssetCacheManager
+            if (this.assetCache) {
+                const cached = await this.assetCache.getAssetByPath(assetPath);
+                return cached !== null && cached.blob !== undefined;
+            }
+
+            return false;
         } catch {
             return false;
         }
@@ -107,8 +163,21 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async listAssets(): Promise<string[]> {
         try {
-            const assets = await this.assetCache.getAllAssets();
-            return assets.filter(a => a.metadata?.originalPath).map(a => a.metadata.originalPath as string);
+            // Try AssetManager first (preferred, contains actual imported assets)
+            if (this.assetManager) {
+                const assets = await this.assetManager.getProjectAssets();
+                return assets
+                    .filter(a => a.originalPath || a.filename)
+                    .map(a => a.originalPath || `${a.id}/${a.filename}`);
+            }
+
+            // Fall back to legacy AssetCacheManager
+            if (this.assetCache) {
+                const assets = await this.assetCache.getAllAssets();
+                return assets.filter(a => a.metadata?.originalPath).map(a => a.metadata.originalPath as string);
+            }
+
+            return [];
         } catch (error) {
             console.warn('[BrowserAssetProvider] Failed to list assets:', error);
             return [];
@@ -117,28 +186,76 @@ export class BrowserAssetProvider implements AssetProvider {
 
     /**
      * Get all assets as ExportAsset array
+     * This is the main method used for exports - it retrieves all project assets
+     * and converts them to the ExportAsset format.
+     *
      * @returns Array of ExportAsset
      */
     async getAllAssets(): Promise<ExportAsset[]> {
         const result: ExportAsset[] = [];
 
         try {
-            const assets = await this.assetCache.getAllAssets();
+            // Try AssetManager first (preferred, contains actual imported assets)
+            // AssetManager uses IndexedDB 'exelearning-assets-v2' database
+            if (this.assetManager) {
+                const assets = await this.assetManager.getProjectAssets();
+                console.log(`[BrowserAssetProvider] Found ${assets.length} assets from AssetManager`);
 
-            for (const asset of assets) {
-                if (asset.blob) {
-                    const arrayBuffer = await asset.blob.arrayBuffer();
-                    const assetId = String(asset.assetId);
-                    const filename = asset.metadata?.filename || `asset-${assetId}`;
-                    const originalPath = asset.metadata?.originalPath || `${assetId}/${filename}`;
+                for (const asset of assets) {
+                    if (asset.blob) {
+                        const arrayBuffer = await asset.blob.arrayBuffer();
+                        const assetId = String(asset.id);
+                        const filename = asset.filename || `asset-${assetId}`;
 
-                    result.push({
-                        id: assetId,
-                        filename,
-                        originalPath,
-                        mime: asset.metadata?.mimeType || 'application/octet-stream',
-                        data: new Uint8Array(arrayBuffer),
-                    });
+                        // Ensure originalPath includes UUID folder
+                        // Old ELP imports may store just the filename (e.g., "elcid.png")
+                        // but HTML references include UUID: "content/resources/{uuid}/{filename}"
+                        let originalPath: string;
+                        if (asset.originalPath && asset.originalPath.includes(assetId)) {
+                            // Path already includes UUID (e.g., "abc123/elcid.png" or "content/resources/abc123/elcid.png")
+                            originalPath = asset.originalPath;
+                        } else {
+                            // Construct correct path with UUID folder
+                            originalPath = `${assetId}/${filename}`;
+                        }
+
+                        result.push({
+                            id: assetId,
+                            filename,
+                            originalPath,
+                            mime: asset.mime || 'application/octet-stream',
+                            data: new Uint8Array(arrayBuffer),
+                        });
+                    }
+                }
+
+                if (result.length > 0) {
+                    console.log(`[BrowserAssetProvider] Converted ${result.length} assets for export`);
+                    return result;
+                }
+            }
+
+            // Fall back to legacy AssetCacheManager if AssetManager returned nothing
+            // AssetCacheManager uses IndexedDB 'exelearning-assets' database
+            if (this.assetCache) {
+                const assets = await this.assetCache.getAllAssets();
+                console.log(`[BrowserAssetProvider] Found ${assets.length} assets from AssetCacheManager (legacy)`);
+
+                for (const asset of assets) {
+                    if (asset.blob) {
+                        const arrayBuffer = await asset.blob.arrayBuffer();
+                        const assetId = String(asset.assetId);
+                        const filename = asset.metadata?.filename || `asset-${assetId}`;
+                        const originalPath = asset.metadata?.originalPath || `${assetId}/${filename}`;
+
+                        result.push({
+                            id: assetId,
+                            filename,
+                            originalPath,
+                            mime: asset.metadata?.mimeType || 'application/octet-stream',
+                            data: new Uint8Array(arrayBuffer),
+                        });
+                    }
                 }
             }
         } catch (error) {
@@ -163,7 +280,18 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async resolveAssetUrl(assetPath: string): Promise<string | null> {
         try {
-            return await this.assetCache.resolveAssetUrl(assetPath);
+            // Try AssetManager first
+            if (this.assetManager?.resolveAssetURL) {
+                const url = await this.assetManager.resolveAssetURL(assetPath);
+                if (url) return url;
+            }
+
+            // Fall back to legacy AssetCacheManager
+            if (this.assetCache) {
+                return await this.assetCache.resolveAssetUrl(assetPath);
+            }
+
+            return null;
         } catch {
             return null;
         }

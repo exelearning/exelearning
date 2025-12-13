@@ -271,9 +271,12 @@
   // src/shared/export/adapters/BrowserAssetProvider.ts
   var BrowserAssetProvider = class {
     /**
-     * Create provider with AssetCacheManager instance
-     * @param assetCache - AssetCacheManager instance
-     * @param assetManager - Optional AssetManager for additional operations
+     * Create provider with AssetCacheManager and/or AssetManager instance
+     * @param assetCache - AssetCacheManager instance (legacy, optional)
+     * @param assetManager - AssetManager instance (preferred, optional)
+     *
+     * Note: At least one of assetCache or assetManager should be provided.
+     * AssetManager is preferred for getAllAssets() as it contains the actual imported assets.
      */
     constructor(assetCache, assetManager = null) {
       this.assetCache = assetCache;
@@ -286,17 +289,32 @@
      */
     async getAsset(assetId) {
       try {
-        const cached = await this.assetCache.getAssetByPath(assetId);
-        if (cached && cached.blob) {
-          const arrayBuffer = await cached.blob.arrayBuffer();
-          const filename = cached.metadata?.filename || assetId.split("/").pop() || "unknown";
-          return {
-            id: assetId,
-            filename,
-            originalPath: assetId,
-            mime: cached.metadata?.mimeType || "application/octet-stream",
-            data: new Uint8Array(arrayBuffer)
-          };
+        if (this.assetManager?.getAsset) {
+          const asset = await this.assetManager.getAsset(assetId);
+          if (asset && asset.blob) {
+            const arrayBuffer = await asset.blob.arrayBuffer();
+            return {
+              id: asset.id,
+              filename: assetId.split("/").pop() || "unknown",
+              originalPath: assetId,
+              mime: asset.mime || "application/octet-stream",
+              data: new Uint8Array(arrayBuffer)
+            };
+          }
+        }
+        if (this.assetCache) {
+          const cached = await this.assetCache.getAssetByPath(assetId);
+          if (cached && cached.blob) {
+            const arrayBuffer = await cached.blob.arrayBuffer();
+            const filename = cached.metadata?.filename || assetId.split("/").pop() || "unknown";
+            return {
+              id: assetId,
+              filename,
+              originalPath: assetId,
+              mime: cached.metadata?.mimeType || "application/octet-stream",
+              data: new Uint8Array(arrayBuffer)
+            };
+          }
         }
         return null;
       } catch (error) {
@@ -311,8 +329,17 @@
      */
     async hasAsset(assetPath) {
       try {
-        const cached = await this.assetCache.getAssetByPath(assetPath);
-        return cached !== null && cached.blob !== void 0;
+        if (this.assetManager?.getAsset) {
+          const asset = await this.assetManager.getAsset(assetPath);
+          if (asset && asset.blob) {
+            return true;
+          }
+        }
+        if (this.assetCache) {
+          const cached = await this.assetCache.getAssetByPath(assetPath);
+          return cached !== null && cached.blob !== void 0;
+        }
+        return false;
       } catch {
         return false;
       }
@@ -323,8 +350,15 @@
      */
     async listAssets() {
       try {
-        const assets = await this.assetCache.getAllAssets();
-        return assets.filter((a) => a.metadata?.originalPath).map((a) => a.metadata.originalPath);
+        if (this.assetManager) {
+          const assets = await this.assetManager.getProjectAssets();
+          return assets.filter((a) => a.originalPath || a.filename).map((a) => a.originalPath || `${a.id}/${a.filename}`);
+        }
+        if (this.assetCache) {
+          const assets = await this.assetCache.getAllAssets();
+          return assets.filter((a) => a.metadata?.originalPath).map((a) => a.metadata.originalPath);
+        }
+        return [];
       } catch (error) {
         console.warn("[BrowserAssetProvider] Failed to list assets:", error);
         return [];
@@ -332,25 +366,59 @@
     }
     /**
      * Get all assets as ExportAsset array
+     * This is the main method used for exports - it retrieves all project assets
+     * and converts them to the ExportAsset format.
+     *
      * @returns Array of ExportAsset
      */
     async getAllAssets() {
       const result = [];
       try {
-        const assets = await this.assetCache.getAllAssets();
-        for (const asset of assets) {
-          if (asset.blob) {
-            const arrayBuffer = await asset.blob.arrayBuffer();
-            const assetId = String(asset.assetId);
-            const filename = asset.metadata?.filename || `asset-${assetId}`;
-            const originalPath = asset.metadata?.originalPath || `${assetId}/${filename}`;
-            result.push({
-              id: assetId,
-              filename,
-              originalPath,
-              mime: asset.metadata?.mimeType || "application/octet-stream",
-              data: new Uint8Array(arrayBuffer)
-            });
+        if (this.assetManager) {
+          const assets = await this.assetManager.getProjectAssets();
+          console.log(`[BrowserAssetProvider] Found ${assets.length} assets from AssetManager`);
+          for (const asset of assets) {
+            if (asset.blob) {
+              const arrayBuffer = await asset.blob.arrayBuffer();
+              const assetId = String(asset.id);
+              const filename = asset.filename || `asset-${assetId}`;
+              let originalPath;
+              if (asset.originalPath && asset.originalPath.includes(assetId)) {
+                originalPath = asset.originalPath;
+              } else {
+                originalPath = `${assetId}/${filename}`;
+              }
+              result.push({
+                id: assetId,
+                filename,
+                originalPath,
+                mime: asset.mime || "application/octet-stream",
+                data: new Uint8Array(arrayBuffer)
+              });
+            }
+          }
+          if (result.length > 0) {
+            console.log(`[BrowserAssetProvider] Converted ${result.length} assets for export`);
+            return result;
+          }
+        }
+        if (this.assetCache) {
+          const assets = await this.assetCache.getAllAssets();
+          console.log(`[BrowserAssetProvider] Found ${assets.length} assets from AssetCacheManager (legacy)`);
+          for (const asset of assets) {
+            if (asset.blob) {
+              const arrayBuffer = await asset.blob.arrayBuffer();
+              const assetId = String(asset.assetId);
+              const filename = asset.metadata?.filename || `asset-${assetId}`;
+              const originalPath = asset.metadata?.originalPath || `${assetId}/${filename}`;
+              result.push({
+                id: assetId,
+                filename,
+                originalPath,
+                mime: asset.metadata?.mimeType || "application/octet-stream",
+                data: new Uint8Array(arrayBuffer)
+              });
+            }
           }
         }
       } catch (error) {
@@ -372,7 +440,14 @@
      */
     async resolveAssetUrl(assetPath) {
       try {
-        return await this.assetCache.resolveAssetUrl(assetPath);
+        if (this.assetManager?.resolveAssetURL) {
+          const url = await this.assetManager.resolveAssetURL(assetPath);
+          if (url) return url;
+        }
+        if (this.assetCache) {
+          return await this.assetCache.resolveAssetUrl(assetPath);
+        }
+        return null;
       } catch {
         return null;
       }
@@ -4847,13 +4922,16 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
       getProjectAssets: async () => []
     };
   }
-  function createExporter(format, documentManager, assetCache, resourceFetcher) {
+  function createExporter(format, documentManager, assetCache, resourceFetcher, assetManager) {
     if (!documentManager) {
       throw new Error("[SharedExporters] documentManager is required for export");
     }
     const document2 = new YjsDocumentAdapter(documentManager);
     const resources = resourceFetcher ? new BrowserResourceProvider(resourceFetcher) : createNullResourceProvider();
-    const assets = assetCache ? new BrowserAssetProvider(assetCache) : createNullAssetProvider();
+    const assets = assetCache || assetManager ? new BrowserAssetProvider(
+      assetCache,
+      assetManager
+    ) : createNullAssetProvider();
     const zip = new JSZipZipProvider();
     const normalizedFormat = format.toLowerCase().replace("-", "");
     switch (normalizedFormat) {
@@ -4881,12 +4959,12 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
         throw new Error(`Unknown export format: ${format}`);
     }
   }
-  async function quickExport(format, documentManager, assetCache, resourceFetcher, options) {
-    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher);
+  async function quickExport(format, documentManager, assetCache, resourceFetcher, options, assetManager) {
+    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
     return exporter.export(options);
   }
-  async function exportAndDownload(format, documentManager, assetCache, resourceFetcher, filename, options) {
-    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher);
+  async function exportAndDownload(format, documentManager, assetCache, resourceFetcher, filename, options, assetManager) {
+    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
     const result = await exporter.export(options);
     if (!result.success || !result.data) {
       throw new Error(result.error || "Export failed");
