@@ -19,6 +19,8 @@
 import { YjsDocumentAdapter } from '../adapters/YjsDocumentAdapter';
 import { BrowserResourceProvider } from '../adapters/BrowserResourceProvider';
 import { BrowserAssetProvider } from '../adapters/BrowserAssetProvider';
+import { ExportAssetResolver } from '../adapters/ExportAssetResolver';
+import { PreviewAssetResolver } from '../adapters/PreviewAssetResolver';
 
 // Import providers
 import { JSZipZipProvider } from '../providers/JSZipZipProvider';
@@ -29,6 +31,8 @@ import { PageExporter } from '../exporters/PageExporter';
 import { Scorm12Exporter } from '../exporters/Scorm12Exporter';
 import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
+import { WebsitePreviewExporter } from '../exporters/WebsitePreviewExporter';
+import type { PreviewOptions, PreviewResult } from '../exporters/WebsitePreviewExporter';
 
 // Import renderers
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
@@ -83,24 +87,70 @@ interface ResourceFetcherLike {
 type ExportFormat = 'html5' | 'html5-sp' | 'page' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elpx';
 
 /**
+ * Create a null-safe resource provider that returns empty results
+ * Used when ResourceFetcher is not available
+ */
+function createNullResourceProvider() {
+    return {
+        fetchTheme: async () => new Map<string, Uint8Array>(),
+        fetchIdeviceResources: async () => new Map<string, Uint8Array>(),
+        fetchBaseLibraries: async () => new Map<string, Uint8Array>(),
+        fetchScormFiles: async () => new Map<string, Uint8Array>(),
+        fetchLibraryFiles: async () => new Map<string, Uint8Array>(),
+        fetchLibraryDirectory: async () => new Map<string, Uint8Array>(),
+        fetchSchemas: async () => new Map<string, Uint8Array>(),
+        normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
+    };
+}
+
+/**
+ * Create a null-safe asset provider that returns empty results
+ * Used when AssetCacheManager is not available
+ */
+function createNullAssetProvider() {
+    return {
+        getAsset: async () => null,
+        hasAsset: async () => false,
+        listAssets: async () => [],
+        getAllAssets: async () => [],
+        resolveAssetUrl: async () => null,
+        getProjectAssets: async () => [],
+    };
+}
+
+/**
  * Create an exporter instance for the specified format
  *
  * @param format - Export format (html5, html5-sp, scorm12, scorm2004, ims, epub3, elpx)
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance
- * @param resourceFetcher - ResourceFetcher instance
+ * @param assetCache - AssetCacheManager instance (optional, but required for exports with assets)
+ * @param resourceFetcher - ResourceFetcher instance (optional, but required for exports with themes)
  * @returns Exporter instance ready for export
  */
 export function createExporter(
     format: ExportFormat | string,
     documentManager: YjsDocumentManagerLike,
-    assetCache: AssetCacheManagerLike,
-    resourceFetcher: ResourceFetcherLike,
+    assetCache: AssetCacheManagerLike | null,
+    resourceFetcher: ResourceFetcherLike | null,
 ) {
-    // Create adapters
+    // Validate required dependencies
+    if (!documentManager) {
+        throw new Error('[SharedExporters] documentManager is required for export');
+    }
+
+    // Create adapters with null-safe wrappers
     const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0]);
-    const assets = new BrowserAssetProvider(assetCache as Parameters<typeof BrowserAssetProvider>[0]);
+
+    // Create resource provider with null-safe fallback
+    const resources = resourceFetcher
+        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+        : createNullResourceProvider();
+
+    // Create asset provider with null-safe fallback
+    const assets = assetCache
+        ? new BrowserAssetProvider(assetCache as Parameters<typeof BrowserAssetProvider>[0])
+        : createNullAssetProvider();
+
     const zip = new JSZipZipProvider();
 
     // Normalize format
@@ -145,16 +195,16 @@ export function createExporter(
  *
  * @param format - Export format
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance
- * @param resourceFetcher - ResourceFetcher instance
+ * @param assetCache - AssetCacheManager instance (optional)
+ * @param resourceFetcher - ResourceFetcher instance (optional)
  * @param options - Export options
  * @returns Export result with data buffer
  */
 export async function quickExport(
     format: ExportFormat | string,
     documentManager: YjsDocumentManagerLike,
-    assetCache: AssetCacheManagerLike,
-    resourceFetcher: ResourceFetcherLike,
+    assetCache: AssetCacheManagerLike | null,
+    resourceFetcher: ResourceFetcherLike | null,
     options?: ExportOptions,
 ) {
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher);
@@ -166,16 +216,16 @@ export async function quickExport(
  *
  * @param format - Export format
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance
- * @param resourceFetcher - ResourceFetcher instance
+ * @param assetCache - AssetCacheManager instance (optional)
+ * @param resourceFetcher - ResourceFetcher instance (optional)
  * @param filename - Download filename (without extension)
  * @param options - Export options
  */
 export async function exportAndDownload(
     format: ExportFormat | string,
     documentManager: YjsDocumentManagerLike,
-    assetCache: AssetCacheManagerLike,
-    resourceFetcher: ResourceFetcherLike,
+    assetCache: AssetCacheManagerLike | null,
+    resourceFetcher: ResourceFetcherLike | null,
     filename: string,
     options?: ExportOptions,
 ) {
@@ -205,12 +255,102 @@ export async function exportAndDownload(
     return result;
 }
 
+/**
+ * Generate preview HTML from Yjs document
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
+ * @param options - Preview options (baseUrl, basePath, version)
+ * @returns Preview result with HTML string
+ */
+export async function generatePreview(
+    documentManager: YjsDocumentManagerLike,
+    resourceFetcher: ResourceFetcherLike | null,
+    options?: PreviewOptions,
+): Promise<PreviewResult> {
+    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    const resources = resourceFetcher
+        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+        : createNullResourceProvider();
+    const exporter = new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
+    return exporter.generatePreview(options);
+}
+
+/**
+ * Generate preview HTML and open in a new window
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @param options - Preview options
+ * @returns The opened window reference, or null if failed
+ */
+export async function openPreviewWindow(
+    documentManager: YjsDocumentManagerLike,
+    resourceFetcher: ResourceFetcherLike | null,
+    options?: PreviewOptions,
+): Promise<Window | null> {
+    const result = await generatePreview(documentManager, resourceFetcher, options);
+
+    if (!result.success || !result.html) {
+        console.error('[SharedExporters] Preview generation failed:', result.error);
+        return null;
+    }
+
+    // Resolve asset:// URLs to blob:// URLs before opening the preview
+    // The HTML contains asset:// URLs that need to be converted to blob:// for display
+    let html = result.html;
+
+    // Use global resolveAssetUrlsAsync if available (from AssetManager.js)
+    const resolveAssetUrlsAsync = (window as unknown as { resolveAssetUrlsAsync?: (html: string) => Promise<string> })
+        .resolveAssetUrlsAsync;
+    if (typeof resolveAssetUrlsAsync === 'function') {
+        try {
+            html = await resolveAssetUrlsAsync(html);
+        } catch (error) {
+            console.warn('[SharedExporters] Failed to resolve asset URLs:', error);
+        }
+    }
+
+    // Open new window and write HTML
+    const previewWindow = window.open('', '_blank');
+    if (!previewWindow) {
+        console.error('[SharedExporters] Could not open preview window (popup blocked?)');
+        return null;
+    }
+
+    previewWindow.document.open();
+    previewWindow.document.write(html);
+    previewWindow.document.close();
+
+    return previewWindow;
+}
+
+/**
+ * Create a preview exporter for advanced usage
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @returns WebsitePreviewExporter instance
+ */
+export function createPreviewExporter(
+    documentManager: YjsDocumentManagerLike,
+    resourceFetcher: ResourceFetcherLike | null,
+): WebsitePreviewExporter {
+    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    const resources = resourceFetcher
+        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+        : createNullResourceProvider();
+    return new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
+}
+
 // Export classes for advanced usage
 export {
     // Adapters
     YjsDocumentAdapter,
     BrowserResourceProvider,
     BrowserAssetProvider,
+    ExportAssetResolver,
+    PreviewAssetResolver,
     // Providers
     JSZipZipProvider,
     // Exporters
@@ -219,6 +359,7 @@ export {
     Scorm12Exporter,
     Scorm2004Exporter,
     ImsExporter,
+    WebsitePreviewExporter,
     // Renderers
     IdeviceRenderer,
     PageRenderer,
@@ -231,6 +372,9 @@ export {
     LibraryDetector,
 };
 
+// Export types for TypeScript consumers
+export type { PreviewOptions, PreviewResult };
+
 // Expose to window for browser use
 if (typeof window !== 'undefined') {
     const windowExports = {
@@ -238,10 +382,16 @@ if (typeof window !== 'undefined') {
         createExporter,
         quickExport,
         exportAndDownload,
+        // Preview functions
+        generatePreview,
+        openPreviewWindow,
+        createPreviewExporter,
         // Adapters
         YjsDocumentAdapter,
         BrowserResourceProvider,
         BrowserAssetProvider,
+        ExportAssetResolver,
+        PreviewAssetResolver,
         // Providers
         JSZipZipProvider,
         // Exporters
@@ -250,6 +400,7 @@ if (typeof window !== 'undefined') {
         Scorm12Exporter,
         Scorm2004Exporter,
         ImsExporter,
+        WebsitePreviewExporter,
         // Renderers
         IdeviceRenderer,
         PageRenderer,

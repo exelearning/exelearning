@@ -17,6 +17,7 @@ import { configRoutes } from './routes/config';
 import { idevicesRoutes } from './routes/idevices';
 import { gamesRoutes } from './routes/games';
 import { themesRoutes } from './routes/themes';
+import { resourcesRoutes } from './routes/resources';
 import { userRoutes } from './routes/user';
 import { yjsRoutes } from './routes/yjs';
 import {
@@ -259,6 +260,7 @@ app.use(healthRoutes)
     .use(idevicesRoutes)
     .use(gamesRoutes)
     .use(themesRoutes)
+    .use(resourcesRoutes)
     .use(userRoutes)
     .use(yjsRoutes)
     .use(createWebSocketRoutes())

@@ -279,6 +279,72 @@ describe('IdeviceRenderer', () => {
         it('should handle empty content', () => {
             expect(renderer.fixAssetUrls('', '')).toBe('');
         });
+
+        it('should convert legacy resources/ URLs to content/resources/', () => {
+            const content = '<img src="resources/elcid.png">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="content/resources/elcid.png">');
+        });
+
+        it('should apply basePath to legacy resources/ URLs', () => {
+            const content = '<img src="resources/imagen.jpg">';
+            const fixed = renderer.fixAssetUrls(content, '../');
+
+            expect(fixed).toBe('<img src="../content/resources/imagen.jpg">');
+        });
+
+        it('should handle resources/ URLs with spaces in filename', () => {
+            const content = '<img src="resources/my image file.png">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="content/resources/my image file.png">');
+        });
+
+        it('should handle href attributes with resources/ URLs', () => {
+            const content = '<a href="resources/document.pdf">Download</a>';
+            const fixed = renderer.fixAssetUrls(content, '../');
+
+            expect(fixed).toBe('<a href="../content/resources/document.pdf">Download</a>');
+        });
+
+        it('should handle single quotes in resources/ URLs', () => {
+            const content = "<img src='resources/photo.jpg'>";
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe("<img src='content/resources/photo.jpg'>");
+        });
+
+        it('should handle multiple resources/ URLs in content', () => {
+            const content = '<img src="resources/image1.png"><img src="resources/image2.jpg">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="content/resources/image1.png"><img src="content/resources/image2.jpg">');
+        });
+
+        // Preview mode tests
+        it('should preserve asset:// URLs in preview mode', () => {
+            const content = '<img src="asset://uuid-123/image.png">';
+            const fixed = renderer.fixAssetUrls(content, '', true); // isPreviewMode = true
+
+            expect(fixed).toBe('<img src="asset://uuid-123/image.png">');
+        });
+
+        it('should preserve {{context_path}} in preview mode', () => {
+            const content = '<img src="{{context_path}}/images/photo.jpg">';
+            const fixed = renderer.fixAssetUrls(content, '', true); // isPreviewMode = true
+
+            expect(fixed).toBe('<img src="{{context_path}}/images/photo.jpg">');
+        });
+
+        it('should still transform files/tmp/ paths in preview mode', () => {
+            // files/tmp/ are server-side temp paths that don't work in preview either
+            const content = '<img src="files/tmp/session123/uuid/image.jpg">';
+            const fixed = renderer.fixAssetUrls(content, '', true);
+
+            // These are still transformed because they're server-side paths, not asset references
+            expect(fixed).toContain('content/resources/');
+        });
     });
 
     describe('escapeHtml', () => {

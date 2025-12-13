@@ -62,54 +62,25 @@
       'AssetWebSocketHandler.js',
       'LegacyXmlParser.js',
     ],
-    // Group 2: Importers + Exporter base classes (depend on Group 1)
+    // Group 2: Importers/Exporters and ResourceFetcher (depend on Group 1)
     [
       'ElpxImporter.js',
       'ElpxExporter.js',
-      'exporters/BaseExporter.js',
-      'exporters/ResourceFetcher.js',
-      'exporters/LibraryDetector.js',
+      'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports
     ],
-    // Group 3: Renderers + Generators (depend on BaseExporter)
-    [
-      'exporters/renderers/IdeviceHtmlRenderer.js',
-      'exporters/renderers/PageHtmlRenderer.js',
-      'exporters/generators/Scorm12ManifestGenerator.js',
-      'exporters/generators/Scorm2004ManifestGenerator.js',
-      'exporters/generators/ImsManifestGenerator.js',
-      'exporters/generators/LomMetadataGenerator.js',
-    ],
-    // Group 4: Shared exporters bundle (TypeScript from src/shared/export/)
-    // This must load before the legacy JS exporters so index.js can delegate to SharedExporters
+    // Group 3: Shared exporters bundle (TypeScript from src/shared/export/)
+    // Contains all export functionality: Html5, SCORM, IMS, EPUB3, Preview
     [
       'exporters.bundle.js',  // Compiled from src/shared/export/browser/index.ts
     ],
-    // Group 5: Legacy exporters (fallback, deprecated - will be removed once SharedExporters is verified)
-    [
-      'exporters/ElpxExporter.js',
-      'exporters/Html5Exporter.js',
-      'exporters/PageExporter.js',
-      'exporters/Scorm12Exporter.js',
-      'exporters/Scorm2004Exporter.js',
-      'exporters/ImsExporter.js',
-      'exporters/Epub3Exporter.js',
-      'exporters/ComponentExporter.js',
-      'exporters/ComponentImporter.js',
-    ],
-    // Group 6: Preview exporters + index (depend on Html5Exporter)
-    [
-      'exporters/PreviewExporter.js',
-      'exporters/WebsitePreviewExporter.js',
-      'exporters/index.js',
-    ],
-    // Group 7: Bridge components (depend on exporters)
+    // Group 4: Bridge components (depend on exporters)
     [
       'SaveManager.js',
       'YjsTinyMCEBinding.js',
       'YjsStructureTreeAdapter.js',
       'YjsPropertiesBinding.js',
     ],
-    // Group 8: Final integration (must be sequential)
+    // Group 5: Final integration (must be sequential)
     [
       'YjsProjectBridge.js',  // depends on SaveManager
       'YjsProjectManagerMixin.js',  // depends on YjsProjectBridge

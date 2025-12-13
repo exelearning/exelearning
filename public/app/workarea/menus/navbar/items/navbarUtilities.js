@@ -483,7 +483,7 @@ export default class NavbarFile {
     }
 
     /**
-     * Client-side website preview using WebsitePreviewExporter (Yjs mode)
+     * Client-side website preview using SharedExporters (Yjs mode)
      * Generates multi-page SPA HTML entirely in the browser and opens in new window
      * @returns {Promise<boolean>} - True if preview was handled client-side
      */
@@ -494,9 +494,10 @@ export default class NavbarFile {
             return false;
         }
 
-        // Check if WebsitePreviewExporter is loaded
-        if (typeof window.WebsitePreviewExporter !== 'function') {
-            console.warn('[NavbarUtilities] WebsitePreviewExporter not loaded');
+        // Require SharedExporters (unified TypeScript export system)
+        const SharedExporters = window.SharedExporters;
+        if (!SharedExporters?.openPreviewWindow) {
+            console.error('[NavbarUtilities] SharedExporters not loaded - ensure exporters.bundle.js is included');
             return false;
         }
 
@@ -508,10 +509,8 @@ export default class NavbarFile {
         const toast = eXeLearning.app.toasts.createToast(toastData);
 
         try {
-            // Get the document manager and asset manager
+            // Get the document manager
             const documentManager = yjsBridge.documentManager;
-            const assetCache = eXeLearning.app.project?._assetCache || null;
-            const assetManager = yjsBridge.assetManager || null;
 
             // Create resource fetcher for server resources (themes, libs, iDevices)
             let resourceFetcher = null;
@@ -519,23 +518,26 @@ export default class NavbarFile {
                 resourceFetcher = new window.ResourceFetcher();
             }
 
-            // Create WebsitePreviewExporter (multi-page SPA preview)
-            const exporter = new window.WebsitePreviewExporter(
+            // Build preview options
+            const previewOptions = {
+                baseUrl: window.location.origin,
+                basePath: eXeLearning.app.config?.basePath || '',
+                version: eXeLearning.app.config?.version || 'v1',
+            };
+
+            // Generate preview using SharedExporters (unified TypeScript pipeline)
+            Logger.log('[NavbarUtilities] Starting unified preview via SharedExporters...');
+            const previewWindow = await SharedExporters.openPreviewWindow(
                 documentManager,
-                assetCache,
                 resourceFetcher,
-                assetManager
+                previewOptions
             );
 
-            // Generate preview
-            Logger.log('[NavbarUtilities] Starting client-side website preview...');
-            const result = await exporter.preview();
-
-            if (result.success) {
+            if (previewWindow) {
                 toast.toastBody.innerHTML = _('The preview has been generated.');
-                Logger.log('[NavbarUtilities] Client-side website preview opened successfully');
+                Logger.log('[NavbarUtilities] Unified preview opened successfully');
             } else {
-                throw new Error(result.error || 'Preview failed');
+                throw new Error('Failed to open preview window');
             }
 
         } catch (error) {

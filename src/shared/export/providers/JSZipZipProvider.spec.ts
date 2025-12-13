@@ -26,14 +26,14 @@ describe('JSZipZipProvider', () => {
             expect(provider.hasFile('test.txt')).toBe(true);
         });
 
-        it('should add buffer content file', () => {
-            const buffer = Buffer.from('Binary content');
-            provider.addFile('test.bin', buffer);
+        it('should add Uint8Array content file from text', () => {
+            const data = new TextEncoder().encode('Binary content');
+            provider.addFile('test.bin', data);
 
             expect(provider.hasFile('test.bin')).toBe(true);
         });
 
-        it('should add Uint8Array content file', () => {
+        it('should add Uint8Array content file with raw bytes', () => {
             const uint8 = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
             provider.addFile('test.dat', uint8);
 
@@ -74,12 +74,12 @@ describe('JSZipZipProvider', () => {
             expect(provider.getFile('test.txt')).toBe('Hello');
         });
 
-        it('should return buffer content', () => {
-            const buffer = Buffer.from('Binary');
-            provider.addFile('test.bin', buffer);
+        it('should return Uint8Array content', () => {
+            const data = new TextEncoder().encode('Binary');
+            provider.addFile('test.bin', data);
 
             const result = provider.getFile('test.bin');
-            expect(result).toBeInstanceOf(Buffer);
+            expect(result).toBeInstanceOf(Uint8Array);
         });
 
         it('should return undefined for non-existing file', () => {
@@ -114,12 +114,12 @@ describe('JSZipZipProvider', () => {
     });
 
     describe('generateAsync', () => {
-        it('should generate valid ZIP buffer', async () => {
+        it('should generate valid ZIP Uint8Array', async () => {
             provider.addFile('test.txt', 'Hello World');
 
             const buffer = await provider.generateAsync();
 
-            expect(buffer).toBeInstanceOf(Buffer);
+            expect(buffer).toBeInstanceOf(Uint8Array);
             expect(buffer.length).toBeGreaterThan(0);
 
             // Verify it's a valid ZIP by loading with JSZip
@@ -168,7 +168,7 @@ describe('JSZipZipProvider', () => {
         it('should generate empty ZIP for no files', async () => {
             const buffer = await provider.generateAsync();
 
-            expect(buffer).toBeInstanceOf(Buffer);
+            expect(buffer).toBeInstanceOf(Uint8Array);
             // Empty ZIP still has central directory
             expect(buffer.length).toBeGreaterThan(0);
         });

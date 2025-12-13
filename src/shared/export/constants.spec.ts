@@ -18,6 +18,8 @@ import {
     SCORM_2004_NAMESPACES,
     IMS_NAMESPACES,
     LOM_NAMESPACES,
+    IDEVICE_TYPE_MAP,
+    normalizeIdeviceType,
 } from './constants';
 import { resetIdeviceConfigCache, loadIdeviceConfigs } from '../../services/idevice-config';
 
@@ -296,6 +298,67 @@ describe('Constants', () => {
 
             it('should have xsi namespace', () => {
                 expect(LOM_NAMESPACES.xsi).toContain('XMLSchema-instance');
+            });
+        });
+    });
+
+    describe('iDevice Type Mapping', () => {
+        describe('IDEVICE_TYPE_MAP', () => {
+            it('should map freetext variations to text', () => {
+                expect(IDEVICE_TYPE_MAP['freetext']).toBe('text');
+                expect(IDEVICE_TYPE_MAP['text']).toBe('text');
+                expect(IDEVICE_TYPE_MAP['freetextidevice']).toBe('text');
+                expect(IDEVICE_TYPE_MAP['textidevice']).toBe('text');
+            });
+
+            it('should map Spanish iDevice names to English', () => {
+                expect(IDEVICE_TYPE_MAP['adivina']).toBe('guess');
+                expect(IDEVICE_TYPE_MAP['listacotejo']).toBe('checklist');
+                expect(IDEVICE_TYPE_MAP['ordena']).toBe('sort');
+                expect(IDEVICE_TYPE_MAP['clasifica']).toBe('classify');
+                expect(IDEVICE_TYPE_MAP['relaciona']).toBe('relate');
+            });
+
+            it('should map plural to singular', () => {
+                expect(IDEVICE_TYPE_MAP['rubrics']).toBe('rubric');
+            });
+
+            it('should map alternative names', () => {
+                expect(IDEVICE_TYPE_MAP['download-package']).toBe('download-source-file');
+            });
+        });
+
+        describe('normalizeIdeviceType', () => {
+            it('should return text for empty input', () => {
+                expect(normalizeIdeviceType('')).toBe('text');
+                expect(normalizeIdeviceType(null as unknown as string)).toBe('text');
+                expect(normalizeIdeviceType(undefined as unknown as string)).toBe('text');
+            });
+
+            it('should normalize to lowercase', () => {
+                expect(normalizeIdeviceType('TEXT')).toBe('text');
+                expect(normalizeIdeviceType('FreeText')).toBe('text');
+            });
+
+            it('should strip idevice suffix', () => {
+                expect(normalizeIdeviceType('TextIdevice')).toBe('text');
+                expect(normalizeIdeviceType('freetext-idevice')).toBe('text');
+            });
+
+            it('should map Spanish names', () => {
+                expect(normalizeIdeviceType('adivina-activity')).toBe('guess');
+                expect(normalizeIdeviceType('ADIVINA-ACTIVITY')).toBe('guess');
+                expect(normalizeIdeviceType('listacotejo-activity')).toBe('checklist');
+            });
+
+            it('should return canonical name for known types', () => {
+                expect(normalizeIdeviceType('rubrics')).toBe('rubric');
+                expect(normalizeIdeviceType('download-package')).toBe('download-source-file');
+            });
+
+            it('should return original (normalized) for unknown types', () => {
+                expect(normalizeIdeviceType('custom-idevice-type')).toBe('custom-idevice-type');
+                expect(normalizeIdeviceType('my-special-widget')).toBe('my-special-widget');
             });
         });
     });

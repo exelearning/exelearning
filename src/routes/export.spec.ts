@@ -411,6 +411,224 @@ describe('Export Routes', () => {
         });
     });
 
+    describe('export error handling', () => {
+        it('should return 500 when export fails (GET)', async () => {
+            // Create deps with failing exporter
+            const failingDeps = createMockDependencies();
+            failingDeps.exportSystem.Html5Exporter = class FailingExporter {
+                export = async () => ({ success: false, error: 'Export failed: test error' });
+            } as any;
+
+            const failingApp = new Elysia().use(createExportRoutes(failingDeps));
+
+            const res = await failingApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Export failed');
+        });
+
+        it('should return 500 when export fails (POST)', async () => {
+            // Create deps with failing exporter
+            const failingDeps = createMockDependencies();
+            failingDeps.exportSystem.Html5Exporter = class FailingExporter {
+                export = async () => ({ success: false, error: 'Export failed: test error' });
+            } as any;
+
+            const failingApp = new Elysia().use(createExportRoutes(failingDeps));
+
+            const res = await failingApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Export failed');
+        });
+
+        it('should catch and return error when export throws (GET)', async () => {
+            // Create deps with throwing exporter
+            const throwingDeps = createMockDependencies();
+            throwingDeps.exportSystem.Html5Exporter = class ThrowingExporter {
+                export = async () => {
+                    throw new Error('Unexpected export error');
+                };
+            } as any;
+
+            const throwingApp = new Elysia().use(createExportRoutes(throwingDeps));
+
+            const res = await throwingApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Unexpected export error');
+        });
+
+        it('should catch and return error when export throws (POST)', async () => {
+            // Create deps with throwing exporter
+            const throwingDeps = createMockDependencies();
+            throwingDeps.exportSystem.Html5Exporter = class ThrowingExporter {
+                export = async () => {
+                    throw new Error('Unexpected export error');
+                };
+            } as any;
+
+            const throwingApp = new Elysia().use(createExportRoutes(throwingDeps));
+
+            const res = await throwingApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Unexpected export error');
+        });
+
+        it('should handle non-Error throws gracefully', async () => {
+            // Create deps with exporter that throws a string
+            const throwingDeps = createMockDependencies();
+            throwingDeps.exportSystem.Html5Exporter = class StringThrowingExporter {
+                export = async () => {
+                    throw 'String error message';
+                };
+            } as any;
+
+            const throwingApp = new Elysia().use(createExportRoutes(throwingDeps));
+
+            const res = await throwingApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toBe('String error message');
+        });
+
+        it('should return error when session has no structure and no content.xml', async () => {
+            // Create session without structure
+            const noContentSessionId = 'no-content-session';
+            mockSessions.set(noContentSessionId, {
+                id: noContentSessionId,
+                fileName: 'test.elp',
+                // No structure and no odeId
+            });
+            // Create empty temp dir (no content.xml)
+            await fs.ensureDir(path.join(testDir, 'tmp', noContentSessionId));
+            await fs.ensureDir(path.join(testDir, 'dist', noContentSessionId));
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${noContentSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('No project structure');
+        });
+
+        it('should handle readFile error in GET download route', async () => {
+            // Create deps where export succeeds but readFile throws
+            const readFailDeps = createMockDependencies();
+            readFailDeps.fileHelper.readFile = async () => {
+                throw new Error('Failed to read file');
+            };
+
+            const readFailApp = new Elysia().use(createExportRoutes(readFailDeps));
+
+            const res = await readFailApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Failed to read file');
+        });
+
+        it('should handle readFile error in POST download route', async () => {
+            // Create deps where export succeeds but readFile throws
+            const readFailDeps = createMockDependencies();
+            readFailDeps.fileHelper.readFile = async () => {
+                throw new Error('Failed to read file');
+            };
+
+            const readFailApp = new Elysia().use(createExportRoutes(readFailDeps));
+
+            const res = await readFailApp.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('Failed to read file');
+        });
+
+        it('should use session structure when odeId lookup fails', async () => {
+            // Create session with odeId but structure as fallback
+            const odeIdSessionId = 'odeid-session';
+            mockSessions.set(odeIdSessionId, {
+                id: odeIdSessionId,
+                fileName: 'test.elp',
+                odeId: 'test-uuid-12345',
+                structure: mockParsedStructure, // Fallback structure
+            });
+            await fs.ensureDir(path.join(testDir, 'tmp', odeIdSessionId));
+            await fs.ensureDir(path.join(testDir, 'dist', odeIdSessionId));
+
+            // The findProjectByUuid will return null (no project found)
+            // This should trigger the fallback to session.structure
+            const res = await app.handle(new Request(`http://localhost/api/export/${odeIdSessionId}/html5/download`));
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should return error when session with odeId has no fallback structure', async () => {
+            // Create session with odeId but no structure
+            const noFallbackSessionId = 'no-fallback-session';
+            mockSessions.set(noFallbackSessionId, {
+                id: noFallbackSessionId,
+                fileName: 'test.elp',
+                odeId: 'test-uuid-no-fallback',
+                // No structure field
+            });
+            await fs.ensureDir(path.join(testDir, 'tmp', noFallbackSessionId));
+            await fs.ensureDir(path.join(testDir, 'dist', noFallbackSessionId));
+
+            // The findProjectByUuid will return null (no project found)
+            // And there's no session.structure to fall back to
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${noFallbackSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+            expect(body.error).toContain('No project structure');
+        });
+    });
+
     describe('unified export system integration', () => {
         it('should use ElpDocumentAdapter from shared export system', async () => {
             // This test verifies that the route uses the injected export system

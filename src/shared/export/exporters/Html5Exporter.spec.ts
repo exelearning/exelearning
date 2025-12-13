@@ -394,4 +394,81 @@ describe('Html5Exporter', () => {
             expect(result.success).toBe(true);
         });
     });
+
+    describe('Asset Inclusion', () => {
+        it('should include assets in content/resources/ folder', async () => {
+            // Create asset provider that returns actual assets
+            const assetsWithData: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'uuid-123',
+                            filename: 'image.png',
+                            originalPath: 'uuid-123/image.png',
+                            mime: 'image/png',
+                            data: Buffer.from('fake-image-data'),
+                        },
+                        {
+                            id: 'uuid-456',
+                            filename: 'photo.jpg',
+                            originalPath: 'uuid-456/photo.jpg',
+                            mime: 'image/jpeg',
+                            data: Buffer.from('fake-photo-data'),
+                        },
+                    ];
+                },
+            };
+
+            // Create new exporter with assets
+            const exporterWithAssets = new Html5Exporter(document, resources, assetsWithData, zip);
+            const result = await exporterWithAssets.export();
+
+            expect(result.success).toBe(true);
+
+            // Verify assets are in content/resources/ folder
+            expect(zip.files.has('content/resources/uuid-123/image.png')).toBe(true);
+            expect(zip.files.has('content/resources/uuid-456/photo.jpg')).toBe(true);
+
+            // Verify asset data is correct
+            const imageData = zip.files.get('content/resources/uuid-123/image.png') as Buffer;
+            expect(imageData.toString()).toBe('fake-image-data');
+        });
+
+        it('should handle empty asset list gracefully', async () => {
+            const result = await exporter.export();
+
+            // Should succeed even with no assets
+            expect(result.success).toBe(true);
+        });
+
+        it('should normalize asset paths correctly', async () => {
+            // Asset with content/resources/ prefix already (from ELP import)
+            const assetsWithPrefix: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'abc',
+                            filename: 'file.pdf',
+                            originalPath: 'content/resources/abc/file.pdf', // Already has prefix
+                            mime: 'application/pdf',
+                            data: Buffer.from('pdf-data'),
+                        },
+                    ];
+                },
+            };
+
+            const exporterWithPrefixedAssets = new Html5Exporter(document, resources, assetsWithPrefix, zip);
+            await exporterWithPrefixedAssets.export();
+
+            // Should NOT double-prefix (not content/resources/content/resources/...)
+            expect(zip.files.has('content/resources/abc/file.pdf')).toBe(true);
+            expect(zip.files.has('content/resources/content/resources/abc/file.pdf')).toBe(false);
+        });
+    });
 });

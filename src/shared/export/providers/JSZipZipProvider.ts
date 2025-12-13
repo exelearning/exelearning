@@ -40,7 +40,7 @@ declare const JSZip: JSZipConstructor; // eslint-disable-line @typescript-eslint
  */
 export class JSZipZipProvider implements ZipProvider {
     private zip: JSZipInstance;
-    private files: Map<string, string | Buffer | Uint8Array> = new Map();
+    private files: Map<string, string | Uint8Array> = new Map();
 
     constructor() {
         // Get JSZip from global or dynamic import
@@ -57,9 +57,9 @@ export class JSZipZipProvider implements ZipProvider {
     /**
      * Add a file to the ZIP archive
      * @param path - File path within the ZIP
-     * @param content - File content (string, Buffer, or Uint8Array)
+     * @param content - File content (string or Uint8Array)
      */
-    addFile(path: string, content: string | Buffer | Uint8Array): void {
+    addFile(path: string, content: string | Uint8Array): void {
         this.files.set(path, content);
 
         if (typeof content === 'string') {
@@ -84,7 +84,7 @@ export class JSZipZipProvider implements ZipProvider {
      * @param path - File path
      * @returns File content or undefined
      */
-    getFile(path: string): string | Buffer | Uint8Array | undefined {
+    getFile(path: string): string | Uint8Array | undefined {
         return this.files.get(path);
     }
 
@@ -108,17 +108,17 @@ export class JSZipZipProvider implements ZipProvider {
     }
 
     /**
-     * Generate the ZIP file as a Buffer
+     * Generate the ZIP file as a Uint8Array
      * @returns Promise resolving to ZIP buffer
      */
-    async generateAsync(): Promise<Buffer> {
+    async generateAsync(): Promise<Uint8Array> {
         const arrayBuffer = (await this.zip.generateAsync({
             type: 'arraybuffer',
             compression: 'DEFLATE',
             compressionOptions: { level: 6 },
         })) as ArrayBuffer;
 
-        return Buffer.from(arrayBuffer);
+        return new Uint8Array(arrayBuffer);
     }
 
     /**

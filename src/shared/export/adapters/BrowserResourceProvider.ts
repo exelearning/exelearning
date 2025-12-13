@@ -49,9 +49,9 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @param themeName - Theme name (e.g., 'base', 'blue')
      * @returns Map of path -> content
      */
-    async fetchTheme(themeName: string): Promise<Map<string, Buffer>> {
+    async fetchTheme(themeName: string): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchTheme(themeName);
-        return this.convertBlobMapToBufferMap(blobMap);
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
     /**
@@ -59,27 +59,27 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @param ideviceType - iDevice type name
      * @returns Map of path -> content
      */
-    async fetchIdeviceResources(ideviceType: string): Promise<Map<string, Buffer>> {
+    async fetchIdeviceResources(ideviceType: string): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchIdevice(ideviceType);
-        return this.convertBlobMapToBufferMap(blobMap);
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
     /**
      * Fetch base libraries (jQuery, common.js, etc.)
      * @returns Map of path -> content
      */
-    async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
+    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchBaseLibraries();
-        return this.convertBlobMapToBufferMap(blobMap);
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
     /**
      * Fetch SCORM-specific files
      * @returns Map of path -> content
      */
-    async fetchScormFiles(): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchScormFiles();
-        return this.convertBlobMapToBufferMap(blobMap);
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
     /**
@@ -87,9 +87,9 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @param files - Array of file paths
      * @returns Map of path -> content
      */
-    async fetchLibraryFiles(files: string[]): Promise<Map<string, Buffer>> {
+    async fetchLibraryFiles(files: string[]): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchLibraryFiles(files);
-        return this.convertBlobMapToBufferMap(blobMap);
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
     /**
@@ -97,9 +97,9 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @param libraryName - Library name (e.g., 'exe_effects')
      * @returns Map of path -> content
      */
-    async fetchLibraryDirectory(libraryName: string): Promise<Map<string, Buffer>> {
+    async fetchLibraryDirectory(libraryName: string): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchLibraryDirectory(libraryName);
-        return this.convertBlobMapToBufferMap(blobMap);
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
     /**
@@ -107,9 +107,9 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @param format - Format name (scorm12, scorm2004, ims, epub3)
      * @returns Map of path -> content
      */
-    async fetchSchemas(format: string): Promise<Map<string, Buffer>> {
+    async fetchSchemas(format: string): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchSchemas(format);
-        return this.convertBlobMapToBufferMap(blobMap);
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
     /**
@@ -129,25 +129,24 @@ export class BrowserResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Convert Map<string, Blob> to Map<string, Buffer>
-     * In browser, we convert Blob to ArrayBuffer then to Buffer-like Uint8Array
+     * Convert Map<string, Blob> to Map<string, Uint8Array>
+     * In browser, we convert Blob to ArrayBuffer then to Uint8Array
      * @param blobMap - Map of path -> Blob
-     * @returns Map of path -> Buffer
+     * @returns Map of path -> Uint8Array
      */
-    private async convertBlobMapToBufferMap(blobMap: Map<string, Blob>): Promise<Map<string, Buffer>> {
-        const result = new Map<string, Buffer>();
+    private async convertBlobMapToUint8ArrayMap(blobMap: Map<string, Blob>): Promise<Map<string, Uint8Array>> {
+        const result = new Map<string, Uint8Array>();
 
         const entries = Array.from(blobMap.entries());
         const conversions = entries.map(async ([path, blob]) => {
             const arrayBuffer = await blob.arrayBuffer();
-            // In browser, use Uint8Array which is Buffer-compatible
-            const buffer = Buffer.from(arrayBuffer);
-            return { path, buffer };
+            const data = new Uint8Array(arrayBuffer);
+            return { path, data };
         });
 
         const converted = await Promise.all(conversions);
-        for (const { path, buffer } of converted) {
-            result.set(path, buffer);
+        for (const { path, data } of converted) {
+            result.set(path, data);
         }
 
         return result;

@@ -137,7 +137,62 @@ export class FileSystemAssetProvider implements AssetProvider {
             }
         }
 
+        // Also scan root directory for legacy ELP format (assets at root level)
+        await this.collectRootAssets(assets);
+
         return assets;
+    }
+
+    /**
+     * Collect asset files from the root directory (for legacy ELP format)
+     * Only collects known asset file types to avoid including XML, etc.
+     */
+    private async collectRootAssets(assets: ExportAsset[]): Promise<void> {
+        const entries = await fs.readdir(this.basePath, { withFileTypes: true });
+        const assetExtensions = new Set([
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.webp',
+            '.svg',
+            '.bmp',
+            '.ico',
+            '.mp3',
+            '.wav',
+            '.ogg',
+            '.aac',
+            '.flac',
+            '.m4a',
+            '.mp4',
+            '.webm',
+            '.ogv',
+            '.avi',
+            '.mov',
+            '.pdf',
+            '.doc',
+            '.docx',
+            '.xls',
+            '.xlsx',
+            '.ppt',
+            '.pptx',
+            '.zip',
+            '.rar',
+            '.7z',
+        ]);
+
+        for (const entry of entries) {
+            if (entry.isFile()) {
+                const ext = path.extname(entry.name).toLowerCase();
+                if (assetExtensions.has(ext)) {
+                    const asset = await this.getAsset(entry.name);
+                    if (asset) {
+                        // Mark as root-level asset for proper path handling
+                        assets.push(asset);
+                    }
+                }
+            }
+        }
     }
 
     /**

@@ -107,14 +107,18 @@ describe('BrowserAssetProvider', () => {
     });
 
     describe('getAsset', () => {
-        it('should return Buffer for existing asset', async () => {
+        it('should return ExportAsset for existing asset', async () => {
             const content = 'Test asset content';
-            mockCache.addAsset('abc123/image.png', content);
+            mockCache.addAsset('abc123/image.png', content, { filename: 'image.png', mimeType: 'image/png' });
 
             const result = await provider.getAsset('abc123/image.png');
 
-            expect(result).toBeInstanceOf(Buffer);
-            expect(result?.toString()).toBe(content);
+            expect(result).toBeDefined();
+            expect(result!.id).toBe('abc123/image.png');
+            expect(result!.filename).toBe('image.png');
+            expect(result!.mime).toBe('image/png');
+            expect(result!.data).toBeInstanceOf(Uint8Array);
+            expect(new TextDecoder().decode(result!.data as Uint8Array)).toBe(content);
         });
 
         it('should return null for missing asset', async () => {
@@ -128,11 +132,12 @@ describe('BrowserAssetProvider', () => {
             mockCache.addAsset('binary/image.png', binaryData);
 
             const result = await provider.getAsset('binary/image.png');
+            const data = result!.data as Uint8Array;
 
-            expect(result?.[0]).toBe(0x89);
-            expect(result?.[1]).toBe(0x50);
-            expect(result?.[2]).toBe(0x4e);
-            expect(result?.[3]).toBe(0x47);
+            expect(data[0]).toBe(0x89);
+            expect(data[1]).toBe(0x50);
+            expect(data[2]).toBe(0x4e);
+            expect(data[3]).toBe(0x47);
         });
     });
 
@@ -189,23 +194,32 @@ describe('BrowserAssetProvider', () => {
     });
 
     describe('getAllAssets', () => {
-        it('should return empty map for no assets', async () => {
+        it('should return empty array for no assets', async () => {
             const result = await provider.getAllAssets();
 
-            expect(result).toBeInstanceOf(Map);
-            expect(result.size).toBe(0);
+            expect(Array.isArray(result)).toBe(true);
+            expect(result.length).toBe(0);
         });
 
-        it('should return map of path to Buffer', async () => {
-            mockCache.addAsset('image1.png', 'Image 1');
-            mockCache.addAsset('image2.jpg', 'Image 2');
+        it('should return array of ExportAsset', async () => {
+            mockCache.addAsset('image1.png', 'Image 1', { filename: 'image1.png', mimeType: 'image/png' });
+            mockCache.addAsset('image2.jpg', 'Image 2', { filename: 'image2.jpg', mimeType: 'image/jpeg' });
 
             const result = await provider.getAllAssets();
 
-            expect(result).toBeInstanceOf(Map);
-            expect(result.size).toBe(2);
-            expect(result.get('image1.png')?.toString()).toBe('Image 1');
-            expect(result.get('image2.jpg')?.toString()).toBe('Image 2');
+            expect(Array.isArray(result)).toBe(true);
+            expect(result.length).toBe(2);
+
+            const asset1 = result.find(a => a.originalPath === 'image1.png');
+            const asset2 = result.find(a => a.originalPath === 'image2.jpg');
+
+            expect(asset1).toBeDefined();
+            expect(asset1!.filename).toBe('image1.png');
+            expect(new TextDecoder().decode(asset1!.data as Uint8Array)).toBe('Image 1');
+
+            expect(asset2).toBeDefined();
+            expect(asset2!.filename).toBe('image2.jpg');
+            expect(new TextDecoder().decode(asset2!.data as Uint8Array)).toBe('Image 2');
         });
 
         it('should handle multiple assets concurrently', async () => {
@@ -215,10 +229,24 @@ describe('BrowserAssetProvider', () => {
 
             const result = await provider.getAllAssets();
 
-            expect(result.size).toBe(10);
+            expect(result.length).toBe(10);
             for (let i = 0; i < 10; i++) {
-                expect(result.get(`asset${i}.png`)?.toString()).toBe(`Content ${i}`);
+                const asset = result.find(a => a.originalPath === `asset${i}.png`);
+                expect(asset).toBeDefined();
+                expect(new TextDecoder().decode(asset!.data as Uint8Array)).toBe(`Content ${i}`);
             }
+        });
+    });
+
+    describe('getProjectAssets', () => {
+        it('should return same result as getAllAssets', async () => {
+            mockCache.addAsset('test/file.png', 'content');
+
+            const allAssets = await provider.getAllAssets();
+            const projectAssets = await provider.getProjectAssets();
+
+            expect(allAssets.length).toBe(projectAssets.length);
+            expect(allAssets[0].id).toBe(projectAssets[0].id);
         });
     });
 
@@ -322,8 +350,8 @@ describe('BrowserAssetProvider', () => {
             const failingProvider = new BrowserAssetProvider(failingCache);
             const result = await failingProvider.getAllAssets();
 
-            expect(result).toBeInstanceOf(Map);
-            expect(result.size).toBe(0);
+            expect(Array.isArray(result)).toBe(true);
+            expect(result.length).toBe(0);
         });
 
         it('should handle resolveAssetUrl errors gracefully', async () => {
@@ -346,17 +374,18 @@ describe('BrowserAssetProvider', () => {
         });
     });
 
-    describe('Blob to Buffer conversion', () => {
-        it('should correctly convert text Blob to Buffer', async () => {
+    describe('Blob to Uint8Array conversion', () => {
+        it('should correctly convert text Blob to Uint8Array', async () => {
             const textContent = 'Hello World from asset';
             mockCache.addAsset('text/file.txt', textContent);
 
             const result = await provider.getAsset('text/file.txt');
+            const data = result!.data as Uint8Array;
 
-            expect(result?.toString()).toBe(textContent);
+            expect(new TextDecoder().decode(data)).toBe(textContent);
         });
 
-        it('should correctly convert large binary Blob to Buffer', async () => {
+        it('should correctly convert large binary Blob to Uint8Array', async () => {
             // Create 1KB of binary data
             const binaryData = new Uint8Array(1024);
             for (let i = 0; i < 1024; i++) {
@@ -365,10 +394,11 @@ describe('BrowserAssetProvider', () => {
             mockCache.addAsset('large/binary.bin', binaryData);
 
             const result = await provider.getAsset('large/binary.bin');
+            const data = result!.data as Uint8Array;
 
-            expect(result?.length).toBe(1024);
+            expect(data.length).toBe(1024);
             for (let i = 0; i < 1024; i++) {
-                expect(result?.[i]).toBe(i % 256);
+                expect(data[i]).toBe(i % 256);
             }
         });
     });

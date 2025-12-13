@@ -531,9 +531,9 @@ export default class NavbarFile {
             : null;
 
         try {
-            // Get the document manager and asset manager
+            // Get the document manager and asset cache from YjsBridge
             const documentManager = yjsBridge.documentManager;
-            const assetCache = eXeLearning.app.project?._assetCache || null;
+            const assetCache = yjsBridge.assetCache || null;
             const assetManager = yjsBridge.assetManager || null;
 
             // Create resource fetcher for server resources (themes, libs, iDevices)
@@ -1643,7 +1643,7 @@ export default class NavbarFile {
     }
 
     /**
-     * Client-side export via Yjs exporters
+     * Client-side export via SharedExporters (unified TypeScript pipeline)
      * Runs entirely in the browser using the Yjs document and assets
      * @param {string} format - Export format: 'HTML5', 'PAGE', 'SCORM12', 'SCORM2004', 'IMS', 'EPUB3'
      * @param {string} fallbackApiFormat - API format string for server-side fallback
@@ -1661,9 +1661,10 @@ export default class NavbarFile {
             return false;
         }
 
-        // Check if client-side exporters are loaded
-        if (typeof window.createExporter !== 'function') {
-            console.warn('[NavbarFile] Client-side exporters not loaded');
+        // Require SharedExporters (unified TypeScript export system)
+        const SharedExporters = window.SharedExporters;
+        if (!SharedExporters?.createExporter) {
+            console.error('[NavbarFile] SharedExporters not loaded - ensure exporters.bundle.js is included');
             return false;
         }
 
@@ -1683,10 +1684,9 @@ export default class NavbarFile {
         let toast = eXeLearning.app.toasts.createToast(toastData);
 
         try {
-            // Get the document manager, asset cache, and asset manager
+            // Get the document manager and asset cache from YjsBridge
             const documentManager = yjsBridge.documentManager;
-            const assetCache = eXeLearning.app.project?._assetCache || null;
-            const assetManager = yjsBridge.assetManager || null;
+            const assetCache = yjsBridge.assetCache || null;
 
             // Create resource fetcher for server resources (themes, libs, iDevices)
             let resourceFetcher = null;
@@ -1694,22 +1694,32 @@ export default class NavbarFile {
                 resourceFetcher = new window.ResourceFetcher();
             }
 
-            // Create the appropriate exporter (with AssetManager for IndexedDB assets)
-            const exporter = window.createExporter(
+            // Create the appropriate exporter using unified pipeline
+            const exporter = SharedExporters.createExporter(
                 format,
                 documentManager,
                 assetCache,
-                resourceFetcher,
-                assetManager
+                resourceFetcher
             );
 
             // Export
-            Logger.log(`[NavbarFile] Starting client-side ${format} export...`);
+            Logger.log(`[NavbarFile] Starting unified ${format} export via SharedExporters...`);
             const result = await exporter.export();
 
-            if (result.success) {
+            if (result.success && result.data) {
+                // Trigger browser download
+                const blob = new Blob([result.data], { type: 'application/zip' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = result.filename || `export.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
                 toast.toastBody.innerHTML = _('The project has been exported.');
-                Logger.log(`[NavbarFile] Client-side export complete: ${result.filename}`);
+                Logger.log(`[NavbarFile] Unified export complete: ${result.filename}`);
             } else {
                 throw new Error(result.error || 'Export failed');
             }

@@ -311,6 +311,58 @@ export interface ExportResult {
 }
 
 // =============================================================================
+// Asset Resolution Interfaces
+// =============================================================================
+
+/**
+ * Asset URL resolver interface
+ * Allows different URL resolution strategies for preview vs export:
+ * - Preview mode: asset:// → blob:// URLs (browser-side)
+ * - Export mode: asset:// → relative paths (content/resources/...)
+ *
+ * Implemented by:
+ * - ExportAssetResolver (for ZIP exports)
+ * - PreviewAssetResolver (for browser preview with blob URLs)
+ */
+export interface AssetResolver {
+    /**
+     * Resolve an asset URL to the appropriate format
+     * @param assetUrl - Original asset URL (e.g., "asset://uuid/filename.jpg")
+     * @returns Resolved URL (sync or async depending on implementation)
+     */
+    resolve(assetUrl: string): string | Promise<string>;
+
+    /**
+     * Synchronous resolution (optional, for renderers that need sync behavior)
+     * Falls back to a placeholder if async resolution is needed
+     */
+    resolveSync?(assetUrl: string): string;
+
+    /**
+     * Process HTML content, resolving all asset URLs within
+     * @param html - HTML content with asset:// URLs
+     * @returns HTML with resolved URLs
+     */
+    processHtml(html: string): string | Promise<string>;
+
+    /**
+     * Synchronous HTML processing (optional)
+     */
+    processHtmlSync?(html: string): string;
+}
+
+/**
+ * Asset resolver options
+ */
+export interface AssetResolverOptions {
+    /** Base path for relative URLs (e.g., "" for index.html, "../" for subpages) */
+    basePath?: string;
+
+    /** Resource directory name (default: "content/resources") */
+    resourceDir?: string;
+}
+
+// =============================================================================
 // Renderer Interfaces
 // =============================================================================
 

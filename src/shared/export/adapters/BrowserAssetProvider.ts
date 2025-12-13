@@ -14,7 +14,7 @@
  * ```
  */
 
-import type { AssetProvider } from '../interfaces';
+import type { AssetProvider, ExportAsset } from '../interfaces';
 
 /**
  * Interface for AssetCacheManager (browser class)
@@ -62,20 +62,27 @@ export class BrowserAssetProvider implements AssetProvider {
     }
 
     /**
-     * Get asset data by path
-     * @param assetPath - Asset path (e.g., 'abc123/image.png')
-     * @returns Asset data as Buffer or null if not found
+     * Get asset data by path/id
+     * @param assetId - Asset path or ID (e.g., 'abc123/image.png')
+     * @returns ExportAsset or null if not found
      */
-    async getAsset(assetPath: string): Promise<Buffer | null> {
+    async getAsset(assetId: string): Promise<ExportAsset | null> {
         try {
-            const cached = await this.assetCache.getAssetByPath(assetPath);
+            const cached = await this.assetCache.getAssetByPath(assetId);
             if (cached && cached.blob) {
                 const arrayBuffer = await cached.blob.arrayBuffer();
-                return Buffer.from(arrayBuffer);
+                const filename = (cached.metadata?.filename as string) || assetId.split('/').pop() || 'unknown';
+                return {
+                    id: assetId,
+                    filename,
+                    originalPath: assetId,
+                    mime: (cached.metadata?.mimeType as string) || 'application/octet-stream',
+                    data: new Uint8Array(arrayBuffer),
+                };
             }
             return null;
         } catch (error) {
-            console.warn(`[BrowserAssetProvider] Failed to get asset: ${assetPath}`, error);
+            console.warn(`[BrowserAssetProvider] Failed to get asset: ${assetId}`, error);
             return null;
         }
     }
@@ -109,19 +116,29 @@ export class BrowserAssetProvider implements AssetProvider {
     }
 
     /**
-     * Get all assets as a Map
-     * @returns Map of path -> Buffer
+     * Get all assets as ExportAsset array
+     * @returns Array of ExportAsset
      */
-    async getAllAssets(): Promise<Map<string, Buffer>> {
-        const result = new Map<string, Buffer>();
+    async getAllAssets(): Promise<ExportAsset[]> {
+        const result: ExportAsset[] = [];
 
         try {
             const assets = await this.assetCache.getAllAssets();
 
             for (const asset of assets) {
-                if (asset.metadata?.originalPath && asset.blob) {
+                if (asset.blob) {
                     const arrayBuffer = await asset.blob.arrayBuffer();
-                    result.set(asset.metadata.originalPath, Buffer.from(arrayBuffer));
+                    const assetId = String(asset.assetId);
+                    const filename = asset.metadata?.filename || `asset-${assetId}`;
+                    const originalPath = asset.metadata?.originalPath || `${assetId}/${filename}`;
+
+                    result.push({
+                        id: assetId,
+                        filename,
+                        originalPath,
+                        mime: asset.metadata?.mimeType || 'application/octet-stream',
+                        data: new Uint8Array(arrayBuffer),
+                    });
                 }
             }
         } catch (error) {
@@ -129,6 +146,14 @@ export class BrowserAssetProvider implements AssetProvider {
         }
 
         return result;
+    }
+
+    /**
+     * Get all project assets (alias for getAllAssets)
+     * @returns Array of ExportAsset
+     */
+    async getProjectAssets(): Promise<ExportAsset[]> {
+        return this.getAllAssets();
     }
 
     /**

@@ -77,9 +77,9 @@ export class IdeviceRenderer {
         if (includeDataAttributes) {
             // For export mode: basePath is "" for index.html, "../" for subpages
             // Use relative paths: "idevices/{type}/" or "../idevices/{type}/"
-            // For preview mode: basePath starts with "/" (absolute), use: "{basePath}{type}/export/"
-            const isPreviewMode = basePath.startsWith('/');
-            const idevicePath = isPreviewMode ? `${basePath}${type}/export/` : `${basePath}idevices/${type}/`;
+            // For preview mode: basePath starts with "/" or contains "://" (absolute), use: "{basePath}{type}/export/"
+            const isPreviewModeForPath = basePath.startsWith('/') || basePath.includes('://');
+            const idevicePath = isPreviewModeForPath ? `${basePath}${type}/export/` : `${basePath}idevices/${type}/`;
 
             dataAttrs = ` data-idevice-path="${this.escapeAttr(idevicePath)}"`;
             dataAttrs += ` data-idevice-type="${this.escapeAttr(type)}"`;
@@ -97,7 +97,11 @@ export class IdeviceRenderer {
         }
 
         // Fix asset URLs in content
-        const fixedContent = this.fixAssetUrls(htmlContent, basePath);
+        // In preview mode (basePath starts with '/' or contains '://'), keep asset:// URLs for later blob resolution
+        // Export mode: basePath is '' or '../' (relative)
+        // Preview mode: basePath is '/files/...' or 'http://...' (absolute)
+        const isPreviewMode = basePath.startsWith('/') || basePath.includes('://');
+        const fixedContent = this.fixAssetUrls(htmlContent, basePath, isPreviewMode);
 
         // Wrap text iDevice content in exe-text div (as per legacy format)
         const isTextIdevice = type === 'text' || type === 'FreeTextIdevice' || type === 'TextIdevice';
@@ -175,9 +179,10 @@ ${contentHtml}
      * Fix asset URLs in HTML content
      * @param content - HTML content
      * @param basePath - Base path prefix
+     * @param isPreviewMode - If true, skip asset:// transformation (keep for blob resolution)
      * @returns Fixed HTML content
      */
-    fixAssetUrls(content: string, basePath: string): string {
+    fixAssetUrls(content: string, basePath: string, isPreviewMode: boolean = false): string {
         if (!content) return '';
 
         // Skip blob: URLs - they're already resolved display URLs (browser-only)
@@ -187,21 +192,26 @@ ${contentHtml}
 
         // Fix {{context_path}} placeholders (from ODE XML format)
         // These are stored in ELP files and need to be resolved during export
-        result = result.replace(/\{\{context_path\}\}\/([^"'\s]+)/g, (_match, assetPath) => {
-            if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
-                return _match;
-            }
-            return `${basePath}content/resources/${assetPath}`;
-        });
+        // In preview mode, keep these for blob resolution
+        if (!isPreviewMode) {
+            result = result.replace(/\{\{context_path\}\}\/([^"'\s]+)/g, (_match, assetPath) => {
+                if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
+                    return _match;
+                }
+                return `${basePath}content/resources/${assetPath}`;
+            });
+        }
 
         // Fix asset:// protocol URLs (filename can contain spaces)
-        // Skip if the path starts with blob: or data: (shouldn't happen, but defensive)
-        result = result.replace(/asset:\/\/([^"']+)/g, (_match, assetPath) => {
-            if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
-                return _match; // Keep original, don't transform
-            }
-            return `${basePath}content/resources/${assetPath}`;
-        });
+        // In preview mode, keep asset:// URLs for later blob resolution
+        if (!isPreviewMode) {
+            result = result.replace(/asset:\/\/([^"']+)/g, (_match, assetPath) => {
+                if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
+                    return _match; // Keep original, don't transform
+                }
+                return `${basePath}content/resources/${assetPath}`;
+            });
+        }
 
         // Fix files/tmp/ paths (from server temp paths)
         // Skip blob: URLs that might be embedded in paths
@@ -218,6 +228,16 @@ ${contentHtml}
                 return _match;
             }
             return `"${basePath}content/resources/${path}"`;
+        });
+
+        // Fix legacy ELP format: src="resources/filename.png"
+        // These are relative paths without asset:// or {{context_path}} prefix
+        // Must be transformed to content/resources/ path
+        result = result.replace(/(src|href)=(["'])resources\/([^"']+)\2/g, (_match, attr, quote, assetPath) => {
+            if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
+                return _match;
+            }
+            return `${attr}=${quote}${basePath}content/resources/${assetPath}${quote}`;
         });
 
         return result;

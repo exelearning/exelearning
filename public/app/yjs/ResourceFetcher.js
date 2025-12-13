@@ -8,10 +8,12 @@ class ResourceFetcher {
   constructor() {
     // In-memory cache for the session
     this.cache = new Map();
-    // Base URL for API endpoints
-    this.apiBase = '/api/resources';
-    // Base URL for static files
-    this.filesBase = '/files';
+    // Get basePath from eXeLearning globals (for subdirectory installs)
+    this.basePath = window.eXeLearning?.symfony?.basePath || '';
+    // Base URL for API endpoints (includes basePath)
+    this.apiBase = `${this.basePath}/api/resources`;
+    // Version for cache-busting static file URLs
+    this.version = window.eXeLearning?.version || 'v0.0.0';
   }
 
   // =========================================================================
@@ -348,10 +350,10 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
-    // Try /app/common/ first, then /libs/
+    // Try /app/common/ first, then /libs/ (with basePath and version)
     const possiblePaths = [
-      `/app/common/${path}`,
-      `/libs/${path}`,
+      `${this.basePath}/${this.version}/app/common/${path}`,
+      `${this.basePath}/${this.version}/libs/${path}`,
     ];
 
     for (const url of possiblePaths) {

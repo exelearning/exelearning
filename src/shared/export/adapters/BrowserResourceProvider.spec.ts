@@ -109,7 +109,7 @@ describe('BrowserResourceProvider', () => {
     });
 
     describe('fetchTheme', () => {
-        it('should return theme files as Buffer map', async () => {
+        it('should return theme files as Uint8Array map', async () => {
             const themeFiles = new Map<string, Blob>();
             themeFiles.set('content.css', createMockBlob('/* theme css */'));
             themeFiles.set('default.js', createMockBlob('// theme js'));
@@ -122,7 +122,7 @@ describe('BrowserResourceProvider', () => {
             expect(result.has('default.js')).toBe(true);
         });
 
-        it('should convert Blob to Buffer', async () => {
+        it('should convert Blob to Uint8Array', async () => {
             const cssContent = '/* CSS content */';
             const themeFiles = new Map<string, Blob>();
             themeFiles.set('content.css', createMockBlob(cssContent));
@@ -131,8 +131,8 @@ describe('BrowserResourceProvider', () => {
             const result = await provider.fetchTheme('blue');
             const buffer = result.get('content.css');
 
-            expect(buffer).toBeInstanceOf(Buffer);
-            expect(buffer?.toString()).toBe(cssContent);
+            expect(buffer).toBeInstanceOf(Uint8Array);
+            expect(new TextDecoder().decode(buffer!)).toBe(cssContent);
         });
 
         it('should return empty map for missing theme', async () => {
@@ -144,7 +144,7 @@ describe('BrowserResourceProvider', () => {
     });
 
     describe('fetchIdeviceResources', () => {
-        it('should return idevice files as Buffer map', async () => {
+        it('should return idevice files as Uint8Array map', async () => {
             const ideviceFiles = new Map<string, Blob>();
             ideviceFiles.set('idevice.js', createMockBlob('// idevice script'));
             ideviceFiles.set('idevice.css', createMockBlob('/* idevice styles */'));
@@ -234,8 +234,8 @@ describe('BrowserResourceProvider', () => {
         });
     });
 
-    describe('Blob to Buffer conversion', () => {
-        it('should correctly convert text Blob to Buffer', async () => {
+    describe('Blob to Uint8Array conversion', () => {
+        it('should correctly convert text Blob to Uint8Array', async () => {
             const textContent = 'Hello World';
             const files = new Map<string, Blob>();
             files.set('text.txt', createMockBlob(textContent));
@@ -244,10 +244,10 @@ describe('BrowserResourceProvider', () => {
             const result = await provider.fetchBaseLibraries();
             const buffer = result.get('text.txt');
 
-            expect(buffer?.toString()).toBe(textContent);
+            expect(new TextDecoder().decode(buffer!)).toBe(textContent);
         });
 
-        it('should correctly convert binary Blob to Buffer', async () => {
+        it('should correctly convert binary Blob to Uint8Array', async () => {
             const binaryData = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG header
             const files = new Map<string, Blob>();
             files.set('image.png', new Blob([binaryData]));
@@ -273,7 +273,7 @@ describe('BrowserResourceProvider', () => {
 
             expect(result.size).toBe(10);
             for (let i = 0; i < 10; i++) {
-                expect(result.get(`file${i}.txt`)?.toString()).toBe(`Content ${i}`);
+                expect(new TextDecoder().decode(result.get(`file${i}.txt`)!)).toBe(`Content ${i}`);
             }
         });
     });

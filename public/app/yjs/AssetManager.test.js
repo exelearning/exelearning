@@ -507,28 +507,33 @@ describe('AssetManager', () => {
   });
 
   describe('generatePlaceholder', () => {
-    it('generates loading placeholder', () => {
+    it('generates loading placeholder with animated spinner', () => {
       const placeholder = assetManager.generatePlaceholder('Loading...', 'loading');
       expect(placeholder).toContain('data:image/svg+xml');
-      expect(placeholder).toContain('Loading');
+      // Loading placeholder uses animated spinner without text
+      expect(placeholder).toContain('animate');
+      expect(placeholder).toContain('circle');
     });
 
-    it('generates error placeholder', () => {
-      const placeholder = assetManager.generatePlaceholder('Error', 'error');
+    it('generates error placeholder with text', () => {
+      const placeholder = assetManager.generatePlaceholder('Error message', 'error');
       expect(placeholder).toContain('data:image/svg+xml');
+      expect(placeholder).toContain('Error');
     });
 
-    it('generates notfound placeholder by default', () => {
+    it('generates notfound placeholder with text by default', () => {
       const placeholder = assetManager.generatePlaceholder('Not found');
       expect(placeholder).toContain('data:image/svg+xml');
+      expect(placeholder).toContain('Not%20found');
     });
   });
 
   describe('generateLoadingPlaceholder', () => {
-    it('generates loading placeholder for asset', () => {
+    it('generates loading placeholder for asset with spinner', () => {
       const placeholder = assetManager.generateLoadingPlaceholder('asset-123');
       expect(placeholder).toContain('data:image/svg+xml');
-      expect(placeholder).toContain('Loading');
+      // Loading spinner doesn't contain text, uses animation
+      expect(placeholder).toContain('animate');
     });
   });
 

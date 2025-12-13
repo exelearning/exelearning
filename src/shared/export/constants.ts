@@ -395,3 +395,163 @@ export const EPUB3_NAMESPACES = {
  * EPUB3 MIME type
  */
 export const EPUB3_MIMETYPE = 'application/epub+zip';
+
+// =============================================================================
+// iDevice Type Mappings
+// =============================================================================
+
+/**
+ * Maps iDevice type names from XML/ELP files to their export folder names.
+ *
+ * This handles:
+ * - Spanish → English name mappings (e.g., 'adivina' → 'guess')
+ * - Legacy name → current name (e.g., 'freetext' → 'text')
+ * - Plural → singular (e.g., 'rubrics' → 'rubric')
+ * - Variant names (e.g., 'download-package' → 'download-source-file')
+ *
+ * The key is the lowercase type name (after removing 'idevice' suffix),
+ * the value is the canonical export folder name.
+ */
+export const IDEVICE_TYPE_MAP: Record<string, string> = {
+    // Text/FreeText variations
+    freetext: 'text',
+    text: 'text',
+    freetextidevice: 'text',
+    textidevice: 'text',
+
+    // Spanish → English mappings
+    adivina: 'guess',
+    'adivina-activity': 'guess',
+    listacotejo: 'checklist',
+    'listacotejo-activity': 'checklist',
+    ordena: 'sort',
+    clasifica: 'classify',
+    relaciona: 'relate',
+    completa: 'complete',
+
+    // Plural → singular
+    rubrics: 'rubric',
+
+    // Alternative names
+    'download-package': 'download-source-file',
+    'pbl-tools': 'udl-content', // PBL tools maps to UDL content
+
+    // Quiz variants
+    selecciona: 'quick-questions-multiple-choice',
+    'selecciona-activity': 'quick-questions-multiple-choice',
+    quiz: 'quick-questions',
+    'quiz-activity': 'quick-questions',
+
+    // Game variants
+    'quiz-game': 'az-quiz-game',
+    trivialquiz: 'trivial',
+
+    // Interactive variants
+    'before-after': 'beforeafter',
+    'image-magnifier': 'magnifier',
+    'word-puzzle': 'word-search',
+    'palabras-puzzle': 'word-search',
+    'sopa-de-letras': 'word-search',
+
+    // Case study variants
+    'case-study': 'casestudy',
+    'estudio-de-caso': 'casestudy',
+
+    // Example/model variants
+    ejemplo: 'example',
+    modelo: 'example',
+
+    // Challenge variants
+    reto: 'challenge',
+    desafio: 'challenge',
+
+    // External website variants
+    'sitio-externo': 'external-website',
+    'web-externa': 'external-website',
+
+    // Form variants
+    formulario: 'form',
+
+    // Flipcards variants
+    tarjetas: 'flipcards',
+    'flash-cards': 'flipcards',
+
+    // Image gallery variants
+    galeria: 'image-gallery',
+    'galeria-imagenes': 'image-gallery',
+
+    // Crossword variants
+    crucigrama: 'crossword',
+
+    // Puzzle variants
+    rompecabezas: 'puzzle',
+
+    // Map variants
+    mapa: 'map',
+
+    // Discover variants
+    descubre: 'discover',
+
+    // Identify variants
+    identifica: 'identify',
+
+    // Hidden image variants
+    'imagen-oculta': 'hidden-image',
+
+    // Padlock variants
+    candado: 'padlock',
+
+    // Periodic table variants
+    'tabla-periodica': 'periodic-table',
+
+    // Progress report variants
+    'informe-progreso': 'progress-report',
+
+    // Scrambled list variants
+    'lista-desordenada': 'scrambled-list',
+
+    // True/false variants
+    verdaderofalso: 'trueorfalse',
+    'verdadero-falso': 'trueorfalse',
+
+    // Interactive video variants
+    'video-interactivo': 'interactive-video',
+
+    // Collaborative editing
+    'edicion-colaborativa': 'collaborative-editing',
+
+    // Dragdrop variants
+    'arrastrar-soltar': 'dragdrop',
+
+    // Attached files variants
+    'archivos-adjuntos': 'attached-files',
+
+    // Select media files variants
+    'seleccionar-archivos': 'select-media-files',
+
+    // Math operations variants
+    'operaciones-matematicas': 'mathematicaloperations',
+
+    // Math problems variants
+    'problemas-matematicos': 'mathproblems',
+
+    // GeoGebra variants
+    geogebra: 'geogebra-activity',
+};
+
+/**
+ * Normalize an iDevice type name to its canonical export folder name.
+ *
+ * @param typeName - The iDevice type name (from XML or component type)
+ * @returns The canonical export folder name
+ */
+export function normalizeIdeviceType(typeName: string): string {
+    if (!typeName) return 'text';
+
+    // Normalize: lowercase, remove 'idevice' suffix (with or without dash)
+    let normalized = typeName.toLowerCase();
+    normalized = normalized.replace(/-?idevice$/i, '');
+
+    // Look up in map or return as-is
+    return IDEVICE_TYPE_MAP[normalized] || normalized || 'text';
+}

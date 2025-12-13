@@ -285,7 +285,7 @@ describe('LegacyXmlParser', () => {
   });
 
   describe('extractIDevices', () => {
-    it('extracts type from class name as fallback', () => {
+    it('extracts and maps idevice type from class name', () => {
       const xml = `<?xml version="1.0"?>
         <list>
           <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
@@ -300,7 +300,8 @@ describe('LegacyXmlParser', () => {
       const idevices = parser.extractIDevices(listEl);
 
       expect(idevices).toHaveLength(1);
-      expect(idevices[0].type).toBe('FreeTextIdevice');
+      // FreeTextIdevice is mapped to 'text' for modern editor compatibility
+      expect(idevices[0].type).toBe('text');
     });
 
     it('ignores non-idevice instances', () => {

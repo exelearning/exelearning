@@ -34,12 +34,17 @@ import {
     ImsExporter as ImsExporterDefault,
     Epub3Exporter as Epub3ExporterDefault,
     ElpxExporter as ElpxExporterDefault,
+    YjsDocumentAdapter as YjsDocumentAdapterDefault,
+    ServerYjsDocumentWrapper as ServerYjsDocumentWrapperDefault,
     type ExportResult,
     type ExportDocument,
     type ResourceProvider,
     type AssetProvider,
     type ZipProvider,
 } from '../shared/export';
+
+// Yjs persistence for server-side Yjs documents
+import { reconstructDocument as reconstructDocumentDefault } from '../websocket/yjs-persistence';
 
 // Database and asset providers for server-side exports
 import { db as defaultDb } from '../db/client';
@@ -85,6 +90,15 @@ export interface ExportSystemDeps {
     ImsExporter: typeof ImsExporterDefault;
     Epub3Exporter: typeof Epub3ExporterDefault;
     ElpxExporter: typeof ElpxExporterDefault;
+    YjsDocumentAdapter: typeof YjsDocumentAdapterDefault;
+    ServerYjsDocumentWrapper: typeof ServerYjsDocumentWrapperDefault;
+}
+
+/**
+ * Yjs persistence dependencies (for testability)
+ */
+export interface ExportYjsDeps {
+    reconstructDocument: typeof reconstructDocumentDefault;
 }
 
 /**
@@ -105,6 +119,7 @@ export interface ExportDependencies {
     fileHelper?: ExportFileHelperDeps;
     exportSystem?: ExportSystemDeps;
     database?: ExportDatabaseDeps;
+    yjsPersistence?: ExportYjsDeps;
     publicDir?: string;
 }
 
@@ -134,6 +149,12 @@ const defaultExportSystem: ExportSystemDeps = {
     ImsExporter: ImsExporterDefault,
     Epub3Exporter: Epub3ExporterDefault,
     ElpxExporter: ElpxExporterDefault,
+    YjsDocumentAdapter: YjsDocumentAdapterDefault,
+    ServerYjsDocumentWrapper: ServerYjsDocumentWrapperDefault,
+};
+
+const defaultYjsPersistence: ExportYjsDeps = {
+    reconstructDocument: reconstructDocumentDefault,
 };
 
 const defaultDatabase: ExportDatabaseDeps = {
@@ -268,6 +289,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
     const { getOdeSessionTempDir, getOdeSessionDistDir, fileExists, readFile } = deps.fileHelper ?? defaultFileHelper;
     const exportSystem = deps.exportSystem ?? defaultExportSystem;
     const { db, findProjectByUuid } = deps.database ?? defaultDatabase;
+    const { reconstructDocument } = deps.yjsPersistence ?? defaultYjsPersistence;
     const publicDir = deps.publicDir ?? defaultPublicDir;
 
     // Destructure export system classes
@@ -285,6 +307,8 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         ImsExporter,
         Epub3Exporter,
         ElpxExporter,
+        YjsDocumentAdapter,
+        ServerYjsDocumentWrapper,
     } = exportSystem;
 
     // ========================================================================
@@ -294,13 +318,16 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
     /**
      * Prepare export using centralized export system
      * Uses the same exporters as CLI and frontend for consistency
+     *
+     * @param virtualSession - Optional virtual session for Yjs-only exports
      */
     async function prepareExport(
         sessionId: string,
         exportType: string,
         options: ExportOptionsRequest = {},
+        virtualSession?: ProjectSession,
     ): Promise<ExportResult & { zipPath?: string }> {
-        const session = getSession(sessionId);
+        const session = virtualSession || getSession(sessionId);
         if (!session) {
             return { success: false, error: 'Session not found' };
         }
@@ -311,9 +338,16 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         // Ensure dist directory exists
         await fs.ensureDir(distDir);
 
+        // Track if we need to cleanup Yjs document after export
+        let yjsDocWrapper: InstanceType<typeof ServerYjsDocumentWrapper> | null = null;
+
         try {
             // Create document adapter from structure
-            // Priority: 1. options.structure (from Yjs client), 2. session.structure, 3. content.xml
+            // Priority:
+            // 1. options.structure (Yjs from client)
+            // 2. Yjs from database (server-side Yjs document)
+            // 3. session.structure (from ELP open)
+            // 4. content.xml (legacy fallback for CLI)
             let document: ExportDocument;
 
             if (options.structure) {
@@ -324,13 +358,58 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 const parsedStructure = convertYjsStructureToParsed(options.structure);
                 console.log('[Export] Parsed theme:', parsedStructure.meta?.theme);
                 document = new ElpDocumentAdapter(parsedStructure, tempDir);
+            } else if (session.odeId) {
+                // Try to load Yjs document from database
+                try {
+                    const project = await findProjectByUuid(db, session.odeId);
+                    if (project) {
+                        const yjsDoc = await reconstructDocument(project.id);
+                        if (yjsDoc) {
+                            // Check if document has content
+                            yjsDocWrapper = new ServerYjsDocumentWrapper(yjsDoc, session.odeId);
+                            if (yjsDocWrapper.hasContent()) {
+                                console.log('[Export] Using Yjs document from database');
+                                document = new YjsDocumentAdapter(yjsDocWrapper);
+                            } else {
+                                console.log('[Export] Yjs document empty, falling back to session structure');
+                                yjsDocWrapper.destroy();
+                                yjsDocWrapper = null;
+                                if (session.structure) {
+                                    document = new ElpDocumentAdapter(session.structure, tempDir);
+                                } else {
+                                    return { success: false, error: 'No project structure found' };
+                                }
+                            }
+                        } else if (session.structure) {
+                            console.log('[Export] No Yjs document in database, using session structure');
+                            document = new ElpDocumentAdapter(session.structure, tempDir);
+                        } else {
+                            return { success: false, error: 'No project structure found' };
+                        }
+                    } else if (session.structure) {
+                        console.log('[Export] Project not found in database, using session structure');
+                        document = new ElpDocumentAdapter(session.structure, tempDir);
+                    } else {
+                        return { success: false, error: 'No project structure found' };
+                    }
+                } catch (yjsError) {
+                    // Database/Yjs lookup failed - fall back to session structure
+                    console.warn('[Export] Yjs lookup failed, falling back to session structure:', yjsError);
+                    if (session.structure) {
+                        document = new ElpDocumentAdapter(session.structure, tempDir);
+                    } else {
+                        return { success: false, error: 'No project structure found' };
+                    }
+                }
             } else if (session.structure) {
                 // Session structure from when ELP was opened
+                console.log('[Export] Using session structure (no odeId)');
                 document = new ElpDocumentAdapter(session.structure, tempDir);
             } else {
-                // Fallback: Try to parse content.xml directly
+                // Fallback: Try to parse content.xml directly (for CLI exports)
                 const contentXmlPath = path.join(tempDir, 'content.xml');
                 if (await fileExists(contentXmlPath)) {
+                    console.log('[Export] Fallback: parsing content.xml directly');
                     document = await ElpDocumentAdapter.fromElpFile(tempDir);
                 } else {
                     return { success: false, error: 'No project structure found in session' };
@@ -411,6 +490,11 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[Export] Error during ${exportType} export:`, error);
             return { success: false, error: errorMessage };
+        } finally {
+            // Cleanup Yjs document if we created one
+            if (yjsDocWrapper) {
+                yjsDocWrapper.destroy();
+            }
         }
     }
 
@@ -533,10 +617,27 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 const { odeSessionId, exportType } = params;
                 const options = body as ExportOptionsRequest;
 
-                const session = getSession(odeSessionId);
+                let session = getSession(odeSessionId);
+
+                // For Yjs-only sessions (yjs-*), create a virtual session if structure is provided
+                if (!session && options.structure) {
+                    console.log('[Export] Yjs-only session detected, using structure from request body');
+                    const projectTitle = options.structure.meta?.title || 'Untitled';
+                    session = {
+                        id: odeSessionId,
+                        fileName: `${projectTitle}.elp`,
+                        structure: convertYjsStructureToParsed(options.structure),
+                        created: new Date(),
+                        modified: new Date(),
+                    };
+                }
+
                 if (!session) {
                     set.status = 404;
-                    return { success: false, error: 'Session not found' };
+                    return {
+                        success: false,
+                        error: 'Session not found. For Yjs sessions, include structure in request body.',
+                    };
                 }
 
                 // Validate export type
@@ -551,8 +652,8 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 }
 
                 try {
-                    // Prepare export with options
-                    const exportResult = await prepareExport(odeSessionId, exportType, options);
+                    // Prepare export with options (pass virtual session for Yjs-only exports)
+                    const exportResult = await prepareExport(odeSessionId, exportType, options, session);
 
                     if (!exportResult.success) {
                         set.status = 500;

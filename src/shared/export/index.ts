@@ -40,6 +40,8 @@ export type {
     Epub3ExportOptions,
     ElpxExportOptions,
     ExportResult,
+    AssetResolver,
+    AssetResolverOptions,
     PageRenderOptions,
     ComponentRenderOptions,
     BlockRenderOptions,
@@ -101,8 +103,14 @@ export type {
     NormalizedComponent,
 } from './adapters/ElpDocumentAdapter';
 export { YjsDocumentAdapter } from './adapters/YjsDocumentAdapter';
+export { ServerYjsDocumentWrapper } from './adapters/ServerYjsDocumentWrapper';
 export { BrowserResourceProvider } from './adapters/BrowserResourceProvider';
 export { BrowserAssetProvider } from './adapters/BrowserAssetProvider';
+
+// Asset Resolvers
+export { ExportAssetResolver } from './adapters/ExportAssetResolver';
+export { PreviewAssetResolver } from './adapters/PreviewAssetResolver';
+export type { AssetCacheManager } from './adapters/PreviewAssetResolver';
 
 // Providers
 export { FileSystemResourceProvider } from './providers/FileSystemResourceProvider';
@@ -121,3 +129,5 @@ export { Scorm2004Exporter } from './exporters/Scorm2004Exporter';
 export { ImsExporter } from './exporters/ImsExporter';
 export { Epub3Exporter } from './exporters/Epub3Exporter';
 export { ElpxExporter } from './exporters/ElpxExporter';
+export { WebsitePreviewExporter } from './exporters/WebsitePreviewExporter';
+export type { PreviewOptions, PreviewResult } from './exporters/WebsitePreviewExporter';
