@@ -1,0 +1,59 @@
+diff a/src/shared/export/exporters/BaseExporter.ts b/src/shared/export/exporters/BaseExporter.ts	(rejected hunks)
+@@ -425,13 +425,20 @@ export abstract class BaseExporter {
+ 
+     /**
+      * Pre-process pages to add filenames to asset URLs in all component content
++     * Also replaces exe-package:elp protocol for download-source-file iDevice
+      */
+     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
++        const meta = this.getMetadata();
++        const projectTitle = meta.title || 'eXeLearning';
++
+         for (const page of pages) {
+             for (const block of page.blocks || []) {
+                 for (const component of block.components || []) {
+                     if (component.content) {
++                        // Add filenames to asset URLs
+                         component.content = await this.addFilenamesToAssetUrls(component.content);
++                        // Replace exe-package:elp protocol for client-side download
++                        component.content = this.replaceElpxProtocol(component.content, projectTitle);
+                     }
+                 }
+             }
+@@ -439,6 +446,36 @@ export abstract class BaseExporter {
+         return pages;
+     }
+ 
++    /**
++     * Replace exe-package:elp protocol with client-side download handler
++     * This enables the download-source-file iDevice to generate ELPX files on-the-fly
++     *
++     * @param content - HTML content
++     * @param projectTitle - Project title for the download filename
++     * @returns Content with exe-package:elp replaced with onclick handler
++     */
++    replaceElpxProtocol(content: string, projectTitle: string): string {
++        if (!content) return '';
++
++        // Check if content contains the exe-package:elp protocol
++        if (!content.includes('exe-package:elp')) {
++            return content;
++        }
++
++        // Replace href="exe-package:elp" with onclick handler
++        // Uses <a onclick> approach for styling compatibility
++        let result = content.replace(
++            /href="exe-package:elp"/g,
++            'href="#" onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"',
++        );
++
++        // Replace download="exe-package:elp-name" with actual filename
++        const safeTitle = this.escapeXml(projectTitle);
++        result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
++
++        return result;
++    }
++
+     /**
+      * Collect all HTML content from all pages (for library detection)
+      */

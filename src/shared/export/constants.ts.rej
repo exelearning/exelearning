@@ -1,0 +1,17 @@
+diff a/src/shared/export/constants.ts b/src/shared/export/constants.ts	(rejected hunks)
+@@ -267,6 +267,15 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
+         pattern: 'exe-atools',
+         files: ['exe_atools/exe_atools.js', 'exe_atools/exe_atools.css'],
+     },
++
++    // ELPX download support (for download-source-file iDevice)
++    // Includes fflate for client-side ZIP generation
++    {
++        name: 'exe_elpx_download',
++        type: 'class',
++        pattern: 'exe-download-package-link',
++        files: ['fflate/fflate.umd.js', 'exe_elpx_download.js'],
++    },
+ ];
+ 
+ // =============================================================================

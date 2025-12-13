@@ -1,0 +1,10 @@
+diff a/src/services/zip.spec.ts b/src/services/zip.spec.ts	(rejected hunks)
+@@ -450,7 +450,7 @@ describe('ZIP Service', () => {
+                 pathExists: async () => true,
+             } as any;
+ 
+-            // We can't fully test this without a proper fflate mock,
++            // We can't fully test this without a proper JSZip mock,
+             // but we can verify the pattern works
+             const service = createZipService({ fs: mockFs });
+             expect(service).toBeDefined();

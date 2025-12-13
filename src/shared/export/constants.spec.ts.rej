@@ -1,0 +1,17 @@
+diff a/src/shared/export/constants.spec.ts b/src/shared/export/constants.spec.ts	(rejected hunks)
+@@ -179,6 +179,15 @@ describe('Constants', () => {
+             expect(mathPattern?.type).toBe('regex');
+             expect(mathPattern?.pattern).toBeInstanceOf(RegExp);
+         });
++
++        it('exe_elpx_download pattern should match download-source-file iDevice', () => {
++            const elpxPattern = LIBRARY_PATTERNS.find(p => p.name === 'exe_elpx_download');
++            expect(elpxPattern).toBeDefined();
++            expect(elpxPattern?.type).toBe('class');
++            expect(elpxPattern?.pattern).toBe('exe-download-package-link');
++            expect(elpxPattern?.files).toContain('fflate/fflate.umd.js');
++            expect(elpxPattern?.files).toContain('exe_elpx_download.js');
++        });
+     });
+ 
+     describe('BASE_LIBRARIES', () => {
