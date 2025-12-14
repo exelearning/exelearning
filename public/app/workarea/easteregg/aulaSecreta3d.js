@@ -58,10 +58,16 @@ export default class AulaSecreta3D {
 
         this.map = defaultMap.map((row) => row.slice());
 
-        this.player = {
+        this.spawn = {
             x: 8.5,
-            y: 12.5,
+            y: 13.5,
             a: -Math.PI / 2,
+        };
+
+        this.player = {
+            x: this.spawn.x,
+            y: this.spawn.y,
+            a: this.spawn.a,
         };
 
         this.exit = {
@@ -71,10 +77,10 @@ export default class AulaSecreta3D {
         };
 
         this.pickups = [
-            { x: 3.5, y: 2.5, collected: false },
-            { x: 12.5, y: 5.5, collected: false },
+            { x: 4.5, y: 2.5, collected: false },
+            { x: 11.5, y: 5.5, collected: false },
             { x: 10.5, y: 10.5, collected: false },
-            { x: 6.5, y: 8.5, collected: false },
+            { x: 6.5, y: 7.5, collected: false },
         ];
 
         this.keysDown = new Set();
@@ -147,9 +153,10 @@ export default class AulaSecreta3D {
     }
 
     reset() {
-        this.player.x = 8.5;
-        this.player.y = 12.5;
-        this.player.a = -Math.PI / 2;
+        this.player.x = this.spawn.x;
+        this.player.y = this.spawn.y;
+        this.player.a = this.spawn.a;
+        this.placePlayerInFreeSpace();
         this.pickups.forEach((pickup) => {
             pickup.collected = false;
         });
@@ -374,6 +381,31 @@ export default class AulaSecreta3D {
         if (my < 0 || my >= this.map.length) return true;
         if (mx < 0 || mx >= this.map[0].length) return true;
         return this.map[my][mx] !== 0;
+    }
+
+    placePlayerInFreeSpace() {
+        if (!this.isSolid(this.player.x, this.player.y)) return;
+
+        const startCellX = Math.floor(this.player.x);
+        const startCellY = Math.floor(this.player.y);
+        const maxRadius = Math.max(this.map.length, this.map[0].length);
+
+        for (let radius = 1; radius <= maxRadius; radius++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                    const cx = startCellX + dx;
+                    const cy = startCellY + dy;
+                    if (cy < 0 || cy >= this.map.length) continue;
+                    if (cx < 0 || cx >= this.map[0].length) continue;
+                    if (this.map[cy][cx] === 0) {
+                        this.player.x = cx + 0.5;
+                        this.player.y = cy + 0.5;
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     checkPickups() {

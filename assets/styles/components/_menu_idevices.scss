@@ -1,10 +1,20 @@
 #menu_idevices {
     border: none;
 
-    // Flex layout: don't shrink, maintain minimum height for visibility
+    // Flex layout: don't grow, don't shrink - stay at bottom
     flex: 0 0 auto;
-    min-height: 200px;
-    max-height: 50vh; // Don't take more than half the viewport
+    max-height: 45vh; // Don't take more than 45% of viewport
+    overflow: hidden;
+
+    // When accordion is collapsed, only show header height
+    &:has(.accordion-button.collapsed) {
+        min-height: auto; // Just the header
+    }
+
+    // When accordion is expanded, ensure minimum content area
+    &:has(.accordion-button:not(.collapsed)) {
+        min-height: 180px;
+    }
 
     .accordion-button {
         color: var(--text) !important;
@@ -44,10 +54,16 @@
         }
     }
     #menu_idevices_content {
+        // Flex: take available space within idevices panel
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: calc(45vh - 50px); // Account for accordion header
+        overflow-y: auto;
+        overflow-x: hidden;
+
         &.show {
             display: flex;
             flex-wrap: wrap;
-            height: 100%;
         }
         .menu_content {
             padding: 12px;
@@ -332,6 +348,18 @@
    ======================================================================== */
 @media (max-width: 767.98px) {
     #menu_idevices {
+        // When accordion is collapsed, only show header height (mobile)
+        &:has(.accordion-button.collapsed) {
+            min-height: auto !important;
+            max-height: none;
+        }
+
+        // When accordion is expanded, ensure minimum content area (mobile)
+        &:has(.accordion-button:not(.collapsed)) {
+            min-height: 150px;
+            max-height: 250px;
+        }
+
         #menu_idevices_content {
             &.show {
                 height: auto !important;
@@ -362,25 +390,35 @@
                         box-shadow: none;
                         background: var(--gray-50);
                         border-radius: 8px;
-                        padding: 12px;
+                        padding: 8px;
 
+                        // Hide title and description on mobile to save space
                         .idevices-category-title {
-                            font-size: 1rem;
-                            margin-top: 0;
+                            display: none;
                         }
 
                         .idevices-category-description {
-                            font-size: 0.75rem;
-                            margin-bottom: 12px;
+                            display: none;
                         }
 
+                        // Reduce gap for 3 items per row
+                        gap: 4px !important;
+
+                        // 3 items per row on mobile
                         .idevice_item {
-                            width: 48%;
-                            height: 85px;
-                            padding: 10px;
+                            width: calc(33.33% - 3px);
+                            height: 65px;
+                            padding: 4px;
+                            gap: 2px;
+                            border-radius: 8px;
+
+                            .idevice_icon {
+                                font-size: 18px;
+                            }
 
                             .idevice_title {
-                                font-size: 11px;
+                                font-size: 8px;
+                                line-height: 1.1;
                             }
                         }
                     }

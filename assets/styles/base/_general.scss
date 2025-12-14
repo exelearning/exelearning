@@ -144,7 +144,8 @@ body {
     }
 
     // Backdrop for mobile sidebar - clickable to close
-    body:not(.left-column-hidden)::after {
+    // Only apply to workarea (body#main), not login page
+    body#main:not(.left-column-hidden)::after {
         content: '';
         position: fixed;
         top: 0;
@@ -159,7 +160,7 @@ body {
         transition: opacity var(--sidebar);
     }
 
-    body.left-column-hidden::after {
+    body#main.left-column-hidden::after {
         opacity: 0;
         pointer-events: none;
     }

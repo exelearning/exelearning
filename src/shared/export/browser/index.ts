@@ -415,7 +415,7 @@ if (typeof window !== 'undefined') {
         ExportAssetResolver,
         PreviewAssetResolver,
         // Providers
-        JSZipZipProvider,
+        FflateZipProvider,
         // Exporters
         Html5Exporter,
         PageExporter,

@@ -7,7 +7,7 @@
 
     // Flex layout: take available space, shrink to allow iDevices panel visibility
     flex: 1 1 auto;
-    min-height: 150px; // Minimum height for structure panel
+    min-height: 0; // CRITICAL: Allow flex shrinking, will use min-height on nav_list instead
     display: flex;
     flex-direction: column;
     .accordion-header {
@@ -109,8 +109,10 @@
     #menu_nav_content {
         // Flex: take remaining space and scroll internally
         flex: 1 1 auto;
-        min-height: 0; // Critical for flex children to shrink
+        min-height: 0; // CRITICAL: Allow flex children to shrink
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
 
         &.show {
             display: flex;
@@ -127,7 +129,7 @@
             border-bottom-right-radius: 8px;
             // Flex: take remaining space and scroll
             flex: 1 1 auto;
-            min-height: 0;
+            min-height: 100px; // Minimum visible area for pages
             overflow-y: auto;
             overflow-x: hidden;
             .nav-element {
