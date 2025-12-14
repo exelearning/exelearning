@@ -128,8 +128,9 @@ describe('FileSystemResourceProvider', () => {
             expect(provider.normalizeIdeviceType('TextIdevice')).toBe('text');
         });
 
-        it('should lowercase iDevice types', () => {
-            expect(provider.normalizeIdeviceType('QUIZ')).toBe('quiz');
+        it('should lowercase iDevice types and use canonical name', () => {
+            // 'QUIZ' is normalized to 'quick-questions' per IDEVICE_TYPE_MAP
+            expect(provider.normalizeIdeviceType('QUIZ')).toBe('quick-questions');
         });
     });
 

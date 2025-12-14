@@ -517,6 +517,30 @@ class ResourceFetcher {
       return null;
     }
   }
+
+  /**
+   * Fetch the eXeLearning "powered by" logo
+   * @returns {Promise<Blob|null>} Logo image as Blob, or null if not found
+   */
+  async fetchExeLogo() {
+    const cacheKey = 'logo:exe';
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    const logoUrl = `${this.basePath}/${this.version}/app/common/exe_powered_logo/exe_powered_logo.png`;
+    try {
+      const response = await fetch(logoUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        this.cache.set(cacheKey, blob);
+        return blob;
+      }
+    } catch (e) {
+      console.warn(`[ResourceFetcher] Error fetching eXeLearning logo:`, e);
+    }
+    return null;
+  }
 }
 
 // Export for use

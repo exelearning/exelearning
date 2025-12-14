@@ -79,10 +79,14 @@ export class IdeviceRenderer {
             // Use relative paths: "idevices/{type}/" or "../idevices/{type}/"
             // For preview mode: basePath starts with "/" or contains "://" (absolute), use: "{basePath}{type}/export/"
             const isPreviewModeForPath = basePath.startsWith('/') || basePath.includes('://');
-            const idevicePath = isPreviewModeForPath ? `${basePath}${type}/export/` : `${basePath}idevices/${type}/`;
+            // Use config.cssClass for path (normalized type, e.g., 'download-package' -> 'download-source-file')
+            const normalizedType = config.cssClass;
+            const idevicePath = isPreviewModeForPath
+                ? `${basePath}${normalizedType}/export/`
+                : `${basePath}idevices/${normalizedType}/`;
 
             dataAttrs = ` data-idevice-path="${this.escapeAttr(idevicePath)}"`;
-            dataAttrs += ` data-idevice-type="${this.escapeAttr(type)}"`;
+            dataAttrs += ` data-idevice-type="${this.escapeAttr(normalizedType)}"`;
 
             if (config.componentType === 'json') {
                 dataAttrs += ` data-idevice-component-type="json"`;

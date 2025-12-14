@@ -190,6 +190,14 @@ const EXPORT_FORMATS = [
  * @returns ParsedOdeStructure with flat components (blockName on each component)
  */
 export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeStructure {
+    // Helper to parse boolean values (may be boolean or string 'true'/'false')
+    const parseBoolean = (value: boolean | string | undefined, defaultValue: boolean): boolean => {
+        if (value === undefined || value === null) return defaultValue;
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') return value.toLowerCase() === 'true';
+        return defaultValue;
+    };
+
     const meta: OdeXmlMeta = {
         title: yjs.meta.title || 'Untitled',
         author: yjs.meta.author || '',
@@ -201,6 +209,17 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
         exelearning_version: '4.0',
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
+
+        // Export options
+        addExeLink: parseBoolean(yjs.meta.addExeLink, true),
+        addPagination: parseBoolean(yjs.meta.addPagination, false),
+        addSearchBox: parseBoolean(yjs.meta.addSearchBox, false),
+        addAccessibilityToolbar: parseBoolean(yjs.meta.addAccessibilityToolbar, false),
+        exportSource: parseBoolean(yjs.meta.exportSource, true),
+
+        // Custom content
+        extraHeadContent: yjs.meta.extraHeadContent,
+        footer: yjs.meta.footer,
     };
 
     // Build pages map for parent lookup

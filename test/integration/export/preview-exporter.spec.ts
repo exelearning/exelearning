@@ -173,8 +173,25 @@ describe('WebsitePreviewExporter Integration', () => {
             expect(result.html).toContain('Chapter 1');
         });
 
-        it('should include page counter', async () => {
+        it('should NOT include page counter by default (addPagination=false)', async () => {
             const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
+            const exporter = new WebsitePreviewExporter(document, resources);
+
+            const result = await exporter.generatePreview();
+
+            expect(result.html).not.toContain('page-counter');
+        });
+
+        it('should include page counter when addPagination is true', async () => {
+            const structureWithPagination: ParsedOdeStructure = {
+                ...sampleParsedStructure,
+                meta: {
+                    ...sampleParsedStructure.meta,
+                    addPagination: true,
+                },
+            };
+            const document = new ElpDocumentAdapter(structureWithPagination, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const exporter = new WebsitePreviewExporter(document, resources);
 

@@ -108,6 +108,17 @@ export class ElpDocumentAdapter implements ExportDocument {
     getMetadata(): ExportMetadata {
         const meta = this.parsed.meta;
 
+        // Access extended metadata properties that may be set by the XML parser
+        const extMeta = meta as typeof meta & {
+            addExeLink?: boolean;
+            addPagination?: boolean;
+            addSearchBox?: boolean;
+            addAccessibilityToolbar?: boolean;
+            exportSource?: boolean;
+            extraHeadContent?: string;
+            footer?: string;
+        };
+
         return {
             title: meta.title || 'eXeLearning',
             author: meta.author || '',
@@ -119,6 +130,17 @@ export class ElpDocumentAdapter implements ExportDocument {
             version: meta.exelearning_version || '4.0',
             created: meta.created || new Date().toISOString(),
             modified: meta.modified || new Date().toISOString(),
+
+            // Export options (with defaults)
+            addExeLink: extMeta.addExeLink ?? true,
+            addPagination: extMeta.addPagination ?? false,
+            addSearchBox: extMeta.addSearchBox ?? false,
+            addAccessibilityToolbar: extMeta.addAccessibilityToolbar ?? false,
+            exportSource: extMeta.exportSource ?? true,
+
+            // Custom content
+            extraHeadContent: extMeta.extraHeadContent,
+            footer: extMeta.footer,
         };
     }
 
@@ -180,7 +202,7 @@ export class ElpDocumentAdapter implements ExportDocument {
             if (!blockMap.has(blockId)) {
                 blockMap.set(blockId, {
                     id: blockId,
-                    name: comp.blockName || 'Block',
+                    name: comp.blockName || '',
                     order: comp.position || 0,
                     components: [],
                 });

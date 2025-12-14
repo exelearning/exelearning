@@ -107,12 +107,12 @@ describe('PageRenderer', () => {
             expect(html).toContain('id="packageLicense"');
         });
 
-        it('should include page header with page counter', () => {
+        it('should include page header with page counter when addPagination is true', () => {
             const pages = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
             ];
-            const options = createDefaultOptions({ allPages: pages, isIndex: false });
+            const options = createDefaultOptions({ allPages: pages, isIndex: false, addPagination: true });
 
             const html = renderer.render(pages[1], options);
 
@@ -122,6 +122,19 @@ describe('PageRenderer', () => {
             expect(html).toContain('class="page-counter-total">2</strong>');
             expect(html).toContain('class="package-title"');
             expect(html).toContain('class="page-title"');
+        });
+
+        it('should NOT include page counter when addPagination is false (default)', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({ allPages: pages, isIndex: false });
+
+            const html = renderer.render(pages[1], options);
+
+            expect(html).toContain('class="page-header"');
+            expect(html).not.toContain('class="page-counter"');
         });
 
         it('should include page content wrapper', () => {
@@ -299,13 +312,14 @@ describe('PageRenderer', () => {
     });
 
     describe('renderPageHeader', () => {
-        it('should render page header with counter and titles', () => {
+        it('should render page header with counter and titles when addPagination is true', () => {
             const page = createTestPage({ id: 'test-page', title: 'My Page' });
 
             const html = renderer.renderPageHeader(page, {
                 projectTitle: 'My Project',
                 currentPageIndex: 2,
                 totalPages: 10,
+                addPagination: true,
             });
 
             expect(html).toContain('class="page-header"');
@@ -317,13 +331,27 @@ describe('PageRenderer', () => {
             expect(html).toContain('class="page-title">My Page</h2>');
         });
 
-        it('should show Página label in Spanish', () => {
+        it('should NOT render page counter when addPagination is false (default)', () => {
+            const page = createTestPage({ id: 'test-page', title: 'My Page' });
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                currentPageIndex: 2,
+                totalPages: 10,
+            });
+
+            expect(html).toContain('class="page-header"');
+            expect(html).not.toContain('class="page-counter"');
+        });
+
+        it('should show Página label in Spanish when addPagination is true', () => {
             const page = createTestPage();
 
             const html = renderer.renderPageHeader(page, {
                 projectTitle: 'Test',
                 currentPageIndex: 0,
                 totalPages: 1,
+                addPagination: true,
             });
 
             expect(html).toContain('Página');
@@ -521,6 +549,192 @@ describe('PageRenderer', () => {
 
         it('should handle empty string', () => {
             expect(renderer.escapeHtml('')).toBe('');
+        });
+    });
+
+    describe('escapeAttr', () => {
+        it('should escape attribute special characters', () => {
+            expect(renderer.escapeAttr('<script>')).toBe('&lt;script&gt;');
+            expect(renderer.escapeAttr('a & b')).toBe('a &amp; b');
+            expect(renderer.escapeAttr('say "hello"')).toBe('say &quot;hello&quot;');
+        });
+
+        it('should handle empty string', () => {
+            expect(renderer.escapeAttr('')).toBe('');
+        });
+
+        it('should handle null/undefined gracefully', () => {
+            expect(renderer.escapeAttr(null as unknown as string)).toBe('');
+            expect(renderer.escapeAttr(undefined as unknown as string)).toBe('');
+        });
+    });
+
+    describe('renderFooter (deprecated)', () => {
+        it('should delegate to renderLicense', () => {
+            const html = renderer.renderFooter({
+                author: 'Test Author',
+                license: 'CC-BY-SA',
+            });
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('CC-BY-SA');
+            expect(html).toContain('creativecommons.org/licenses/by-sa/4.0/');
+        });
+    });
+
+    describe('generateSearchData', () => {
+        it('should generate search data JSON for pages', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First Page' }),
+                createTestPage({ id: 'page-2', title: 'Second Page' }),
+            ];
+
+            const json = renderer.generateSearchData(pages, '');
+            const data = JSON.parse(json);
+
+            expect(data['page-1']).toBeDefined();
+            expect(data['page-1'].name).toBe('First Page');
+            expect(data['page-1'].isIndex).toBe(true);
+            expect(data['page-1'].fileName).toBe('index.html');
+            expect(data['page-1'].fileUrl).toBe('index.html');
+            expect(data['page-1'].prePageId).toBeNull();
+            expect(data['page-1'].nextPageId).toBe('page-2');
+
+            expect(data['page-2']).toBeDefined();
+            expect(data['page-2'].name).toBe('Second Page');
+            expect(data['page-2'].isIndex).toBe(false);
+            expect(data['page-2'].fileName).toBe('second-page.html');
+            expect(data['page-2'].fileUrl).toBe('html/second-page.html');
+            expect(data['page-2'].prePageId).toBe('page-1');
+            expect(data['page-2'].nextPageId).toBeNull();
+        });
+
+        it('should include block data with idevices', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    title: 'Test Page',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block One',
+                            order: 1,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>Hello World</p>',
+                                    properties: { foo: 'bar' },
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            ];
+
+            const json = renderer.generateSearchData(pages, '');
+            const data = JSON.parse(json);
+
+            expect(data['page-1'].blocks['block-1']).toBeDefined();
+            expect(data['page-1'].blocks['block-1'].name).toBe('Block One');
+            expect(data['page-1'].blocks['block-1'].order).toBe(1);
+            expect(data['page-1'].blocks['block-1'].idevices['comp-1']).toBeDefined();
+            expect(data['page-1'].blocks['block-1'].idevices['comp-1'].order).toBe(1);
+            expect(data['page-1'].blocks['block-1'].idevices['comp-1'].htmlView).toBe('<p>Hello World</p>');
+            expect(data['page-1'].blocks['block-1'].idevices['comp-1'].jsonProperties).toBe('{"foo":"bar"}');
+        });
+
+        it('should handle pages without blocks', () => {
+            const pages: ExportPage[] = [createTestPage({ id: 'page-1', title: 'Empty Page', blocks: [] })];
+
+            const json = renderer.generateSearchData(pages, '');
+            const data = JSON.parse(json);
+
+            expect(data['page-1'].blocks).toEqual({});
+        });
+
+        it('should handle blocks without components', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    title: 'Test',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Empty Block',
+                            order: 1,
+                            components: [],
+                        },
+                    ],
+                }),
+            ];
+
+            const json = renderer.generateSearchData(pages, '');
+            const data = JSON.parse(json);
+
+            expect(data['page-1'].blocks['block-1'].idevices).toEqual({});
+        });
+
+        it('should handle component with missing content and properties', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    title: 'Test',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: '',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: undefined as unknown as string,
+                                    properties: undefined as unknown as Record<string, unknown>,
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            ];
+
+            const json = renderer.generateSearchData(pages, '');
+            const data = JSON.parse(json);
+
+            expect(data['page-1'].blocks['block-1'].name).toBe('');
+            expect(data['page-1'].blocks['block-1'].order).toBe(1); // defaults to 1 when 0
+            expect(data['page-1'].blocks['block-1'].idevices['comp-1'].htmlView).toBe('');
+            expect(data['page-1'].blocks['block-1'].idevices['comp-1'].jsonProperties).toBe('{}');
+        });
+    });
+
+    describe('generateSearchIndexFile', () => {
+        it('should generate JavaScript file content with window.exeSearchData', () => {
+            const pages: ExportPage[] = [createTestPage({ id: 'page-1', title: 'Test Page' })];
+
+            const content = renderer.generateSearchIndexFile(pages, '');
+
+            expect(content).toStartWith('window.exeSearchData = ');
+            expect(content).toContain('"page-1"');
+            expect(content).toContain('"Test Page"');
+        });
+
+        it('should produce valid JavaScript', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+
+            const content = renderer.generateSearchIndexFile(pages, '');
+
+            // Extract JSON part and parse it to verify it's valid
+            const jsonPart = content.replace('window.exeSearchData = ', '').replace(/;$/, '');
+            const parsed = JSON.parse(jsonPart);
+
+            expect(parsed['page-1']).toBeDefined();
+            expect(parsed['page-2']).toBeDefined();
         });
     });
 

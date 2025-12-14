@@ -84,6 +84,13 @@ export class ImsExporter extends Html5Exporter {
                 };
             }
 
+            // 1b. Add search_index.js if search box is enabled
+            if (meta.addSearchBox) {
+                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
+                this.zip.addFile('search_index.js', searchIndexContent);
+                commonFiles.push('search_index.js');
+            }
+
             // 2. Add base CSS
             this.zip.addFile('content/css/base.css', this.getBaseCss());
             commonFiles.push('content/css/base.css');
@@ -186,6 +193,8 @@ export class ImsExporter extends Html5Exporter {
             license: meta.license || 'CC-BY-SA',
             description: meta.description || '',
             licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
+            // Export options
+            addSearchBox: meta.addSearchBox ?? false,
             bodyClass: 'exe-web-site exe-ims',
         });
     }

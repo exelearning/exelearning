@@ -176,6 +176,17 @@ export class Epub3Exporter extends BaseExporter {
             this.zip.addFile('EPUB/content/css/base.css', baseCss);
             this.addManifestItem('css-base', 'content/css/base.css', 'text/css');
 
+            // 5b. Add eXeLearning logo for "Made with eXeLearning" footer
+            try {
+                const logoData = await this.resources.fetchExeLogo();
+                if (logoData) {
+                    this.zip.addFile('EPUB/content/img/exe_powered_logo.png', logoData);
+                    this.addManifestItem('exe-logo', 'content/img/exe_powered_logo.png', 'image/png');
+                }
+            } catch {
+                // Logo not available
+            }
+
             // 6. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
             try {
                 const themeFiles = await this.resources.fetchTheme(themeName);

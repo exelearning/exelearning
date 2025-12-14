@@ -235,6 +235,15 @@ export interface YjsExportStructure {
         description?: string;
         license?: string;
         theme?: string;
+        // Export options
+        addExeLink?: boolean | string;
+        addPagination?: boolean | string;
+        addSearchBox?: boolean | string;
+        addAccessibilityToolbar?: boolean | string;
+        exportSource?: boolean | string;
+        // Custom content
+        extraHeadContent?: string;
+        footer?: string;
     };
     pages: Array<{
         id: string;

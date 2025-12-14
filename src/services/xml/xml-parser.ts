@@ -153,6 +153,15 @@ interface NormalizedMetadata {
     locale: string;
     theme: string;
     version: string;
+    // Export options
+    addExeLink?: boolean;
+    addPagination?: boolean;
+    addSearchBox?: boolean;
+    addAccessibilityToolbar?: boolean;
+    exportSource?: boolean;
+    // Custom content
+    extraHeadContent?: string;
+    footer?: string;
 }
 
 /**
@@ -168,6 +177,14 @@ function extractMetadata(meta: OdeXmlMeta): NormalizedMetadata {
         theme: meta.theme || 'base',
         version: meta.version || '1.0',
     };
+}
+
+/**
+ * Parse boolean value from string
+ */
+function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
+    if (!value) return defaultValue;
+    return value.toLowerCase() === 'true';
 }
 
 /**
@@ -206,6 +223,24 @@ function extractMetadataFromOdeProperties(
             meta.locale = value || meta.locale;
         } else if (key.includes('style') || key.includes('theme')) {
             meta.theme = value || meta.theme;
+        }
+        // Export options
+        else if (key === 'pp_addexelink') {
+            meta.addExeLink = parseBoolean(value, true);
+        } else if (key === 'pp_addpagination') {
+            meta.addPagination = parseBoolean(value, false);
+        } else if (key === 'pp_addsearchbox') {
+            meta.addSearchBox = parseBoolean(value, false);
+        } else if (key === 'pp_addaccessibilitytoolbar') {
+            meta.addAccessibilityToolbar = parseBoolean(value, false);
+        } else if (key === 'exportsource') {
+            meta.exportSource = parseBoolean(value, true);
+        }
+        // Custom content
+        else if (key === 'pp_extraheadcontent') {
+            meta.extraHeadContent = value;
+        } else if (key === 'footer') {
+            meta.footer = value;
         }
     }
 

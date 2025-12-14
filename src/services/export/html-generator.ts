@@ -51,7 +51,7 @@ ${generateHead(page, structure, resourcesPrefix, usedIdevices)}
 </head>
 <body class="exe-export exe-web-site" lang="${lang}">
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${generateNavigation(allPages, page.id, isIndex)}${generatePageHeader(page, { projectTitle, currentPageIndex, totalPages })}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> <div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados." data-pages="${escapeAttr(searchDataJson)}">
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${generateNavigation(allPages, page.id, isIndex)}${generatePageHeader(page, { projectTitle, currentPageIndex, totalPages, addPagination: structure.meta.addPagination })}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> <div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados." data-pages="${escapeAttr(searchDataJson)}">
 </div>
 ${generatePageContent(page, resourcesPrefix)}
 </main></div>${generateNavButtons(page, allPages)}
@@ -233,12 +233,17 @@ function generatePageHeader(
         projectTitle: string;
         currentPageIndex: number;
         totalPages: number;
+        addPagination?: boolean;
     },
 ): string {
-    const { projectTitle, currentPageIndex, totalPages } = options;
+    const { projectTitle, currentPageIndex, totalPages, addPagination } = options;
 
-    return `<header id="header-${page.id}" class="page-header"> <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
-<h1 class="package-title">${escapeHtml(projectTitle)}</h1>
+    // Page counter is only shown if addPagination is true
+    const pageCounterHtml = addPagination
+        ? ` <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
+        : '';
+
+    return `<header id="header-${page.id}" class="page-header">${pageCounterHtml}<h1 class="package-title">${escapeHtml(projectTitle)}</h1>
 <h2 class="page-title">${escapeHtml(page.title)}</h2></header>`;
 }
 

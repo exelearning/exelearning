@@ -40,6 +40,17 @@ export interface OdeXmlMeta {
     created?: string;
     modified?: string;
     theme?: string;
+
+    // Export options
+    addExeLink?: boolean;
+    addPagination?: boolean;
+    addSearchBox?: boolean;
+    addAccessibilityToolbar?: boolean;
+    exportSource?: boolean;
+
+    // Custom content
+    extraHeadContent?: string;
+    footer?: string;
 }
 
 /**

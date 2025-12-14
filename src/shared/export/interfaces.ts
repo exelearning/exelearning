@@ -41,8 +41,16 @@ export interface ExportMetadata {
     createdAt?: string;
     modifiedAt?: string;
 
-    // Accessibility options
-    addAccessibilityToolbar?: boolean;
+    // Export options (from project properties)
+    addExeLink?: boolean; // "Made with eXeLearning" link
+    addPagination?: boolean; // Page counter (Página X/Y)
+    addSearchBox?: boolean; // Search functionality (HTML5 website only)
+    addAccessibilityToolbar?: boolean; // Accessibility toolbar
+    exportSource?: boolean; // Include content.xml for re-editing
+
+    // Custom content
+    extraHeadContent?: string; // Custom content in <head>
+    footer?: string; // Custom footer content
 
     // SCORM metadata
     scormIdentifier?: string;
@@ -140,6 +148,12 @@ export interface ResourceProvider {
      * @returns Normalized directory name (e.g., 'text')
      */
     normalizeIdeviceType(ideviceType: string): string;
+
+    /**
+     * Fetch the eXeLearning "powered by" logo
+     * @returns Logo image as Uint8Array, or null if not found
+     */
+    fetchExeLogo(): Promise<Uint8Array | null>;
 }
 
 /**
@@ -389,6 +403,15 @@ export interface PageRenderOptions {
 
     // Custom footer content from ODE
     userFooterContent?: string;
+
+    // Export options
+    addExeLink?: boolean;
+    addPagination?: boolean;
+    addSearchBox?: boolean;
+    addAccessibilityToolbar?: boolean;
+
+    // Custom head content
+    extraHeadContent?: string;
 
     // SCORM-specific
     isScorm?: boolean;

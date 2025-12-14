@@ -26,8 +26,32 @@
         created: meta.get("createdAt") || (/* @__PURE__ */ new Date()).toISOString(),
         modified: meta.get("modifiedAt") || (/* @__PURE__ */ new Date()).toISOString(),
         // Custom styles support
-        customStyles: meta.get("customStyles") || void 0
+        customStyles: meta.get("customStyles") || void 0,
+        // Export options (values stored as strings 'true'/'false' in Yjs)
+        addExeLink: this.parseBoolean(meta.get("addExeLink"), true),
+        // Default: true
+        addPagination: this.parseBoolean(meta.get("addPagination"), false),
+        addSearchBox: this.parseBoolean(meta.get("addSearchBox"), false),
+        addAccessibilityToolbar: this.parseBoolean(meta.get("addAccessibilityToolbar"), false),
+        exportSource: this.parseBoolean(meta.get("exportSource"), true),
+        // Default: true
+        // Custom content
+        extraHeadContent: meta.get("extraHeadContent") || void 0,
+        footer: meta.get("footer") || void 0
       };
+    }
+    /**
+     * Parse boolean value from Yjs storage
+     * Values may be stored as strings 'true'/'false' or actual booleans
+     * @param value - Value to parse
+     * @param defaultValue - Default value if not found
+     * @returns Boolean value
+     */
+    parseBoolean(value, defaultValue) {
+      if (value === void 0 || value === null) return defaultValue;
+      if (typeof value === "boolean") return value;
+      if (typeof value === "string") return value.toLowerCase() === "true";
+      return defaultValue;
     }
     /**
      * Get navigation structure as flat array of pages
@@ -91,7 +115,7 @@
       }
       return {
         id: blockMap.get("id") || `block-${index}`,
-        name: blockMap.get("name") || blockMap.get("blockName") || "Block",
+        name: blockMap.get("name") || blockMap.get("blockName") || "",
         order: blockMap.get("order") || index,
         components
       };
@@ -154,6 +178,344 @@
       return htmlParts.join("\n");
     }
   };
+
+  // src/shared/export/browser/idevice-config-browser.ts
+  function getIdeviceConfig(type) {
+    const normalized = type.replace(/Idevice$/i, "").replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
+    const typeMap = {
+      "text": "text",
+      "freetext": "text",
+      "freetextfpd": "text",
+      "generic": "text",
+      "reflection": "text",
+      "reflectionfpd": "text",
+      "multi-choice": "multi-choice",
+      "multichoice": "multi-choice",
+      "true-false": "true-false",
+      "truefalse": "true-false",
+      "cloze": "cloze",
+      "clozeactivity": "cloze",
+      "case-study": "case-study",
+      "casestudy": "case-study"
+    };
+    const cssClass = typeMap[normalized] || normalized || "text";
+    return {
+      cssClass,
+      componentType: "html",
+      // Default to HTML for browser rendering
+      template: `${cssClass}.html`
+    };
+  }
+
+  // src/shared/export/constants.ts
+  var LIBRARY_PATTERNS = [
+    // Effects library (animations, transitions)
+    {
+      name: "exe_effects",
+      type: "class",
+      pattern: "exe-fx",
+      files: ["exe_effects/exe_effects.js", "exe_effects/exe_effects.css"]
+    },
+    // Games library
+    {
+      name: "exe_games",
+      type: "class",
+      pattern: "exe-game",
+      files: ["exe_games/exe_games.js", "exe_games/exe_games.css"]
+    },
+    // Code highlighting
+    {
+      name: "exe_highlighter",
+      type: "class",
+      pattern: "highlighted-code",
+      files: ["exe_highlighter/exe_highlighter.js", "exe_highlighter/exe_highlighter.css"]
+    },
+    // Lightbox for images
+    {
+      name: "exe_lightbox",
+      type: "rel",
+      pattern: "lightbox",
+      files: ["exe_lightbox/exe_lightbox.js", "exe_lightbox/exe_lightbox.css"]
+    },
+    // Lightbox for image galleries
+    {
+      name: "exe_lightbox_gallery",
+      type: "class",
+      pattern: "imageGallery",
+      files: ["exe_lightbox/exe_lightbox.js", "exe_lightbox/exe_lightbox.css"]
+    },
+    // Tooltips (qTip2)
+    {
+      name: "exe_tooltips",
+      type: "class",
+      pattern: "exe-tooltip",
+      files: [
+        "exe_tooltips/exe_tooltips.js",
+        "exe_tooltips/jquery.qtip.min.js",
+        "exe_tooltips/jquery.qtip.min.css",
+        "exe_tooltips/imagesloaded.pkg.min.js"
+      ]
+    },
+    // Image magnifier
+    {
+      name: "exe_magnify",
+      type: "class",
+      pattern: "ImageMagnifierIdevice",
+      files: ["exe_magnify/mojomagnify.js"]
+    },
+    // Wikipedia content styling
+    {
+      name: "exe_wikipedia",
+      type: "class",
+      pattern: "exe-wikipedia-content",
+      files: ["exe_wikipedia/exe_wikipedia.css"]
+    },
+    // Media player (MediaElement.js)
+    {
+      name: "exe_media",
+      type: "class",
+      pattern: "mediaelement",
+      files: [
+        "exe_media/exe_media.js",
+        "exe_media/exe_media.css",
+        "exe_media/exe_media_background.png",
+        "exe_media/exe_media_bigplay.png",
+        "exe_media/exe_media_bigplay.svg",
+        "exe_media/exe_media_controls.png",
+        "exe_media/exe_media_controls.svg",
+        "exe_media/exe_media_loading.gif"
+      ]
+    },
+    // Media player via audio/video file links with lightbox
+    {
+      name: "exe_media_link",
+      type: "regex",
+      pattern: /href="[^"]*\.(mp3|mp4|flv|ogg|ogv)"[^>]*rel="[^"]*lightbox/i,
+      files: [
+        "exe_media/exe_media.js",
+        "exe_media/exe_media.css",
+        "exe_media/exe_media_background.png",
+        "exe_media/exe_media_bigplay.png",
+        "exe_media/exe_media_bigplay.svg",
+        "exe_media/exe_media_controls.png",
+        "exe_media/exe_media_controls.svg",
+        "exe_media/exe_media_loading.gif"
+      ]
+    },
+    // ABC Music notation (abcjs)
+    {
+      name: "abcjs",
+      type: "class",
+      pattern: "abc-music",
+      files: ["abcjs/abcjs-basic-min.js", "abcjs/exe_abc_music.js", "abcjs/abcjs-audio.css"]
+    },
+    // LaTeX math expressions (MathJax)
+    {
+      name: "exe_math",
+      type: "regex",
+      pattern: /\\\(|\\\[/,
+      files: ["exe_math/tex-mml-svg.js"]
+    },
+    // DataGame with encrypted LaTeX (special case)
+    {
+      name: "exe_math_datagame",
+      type: "class",
+      pattern: "DataGame",
+      files: ["exe_math/tex-mml-svg.js"],
+      requiresLatexCheck: true
+    },
+    // Mermaid diagrams
+    {
+      name: "mermaid",
+      type: "class",
+      pattern: "mermaid",
+      files: ["mermaid/mermaid.min.js"]
+    },
+    // jQuery UI for sortable/draggable iDevices
+    {
+      name: "jquery_ui_ordena",
+      type: "class",
+      pattern: "ordena-IDevice",
+      files: ["jquery-ui/jquery-ui.min.js"]
+    },
+    {
+      name: "jquery_ui_clasifica",
+      type: "class",
+      pattern: "clasifica-IDevice",
+      files: ["jquery-ui/jquery-ui.min.js"]
+    },
+    {
+      name: "jquery_ui_relaciona",
+      type: "class",
+      pattern: "relaciona-IDevice",
+      files: ["jquery-ui/jquery-ui.min.js"]
+    },
+    {
+      name: "jquery_ui_dragdrop",
+      type: "class",
+      pattern: "dragdrop-IDevice",
+      files: ["jquery-ui/jquery-ui.min.js"]
+    },
+    {
+      name: "jquery_ui_completa",
+      type: "class",
+      pattern: "completa-IDevice",
+      files: ["jquery-ui/jquery-ui.min.js"]
+    },
+    // Accessibility toolbar
+    {
+      name: "exe_atools",
+      type: "class",
+      pattern: "exe-atools",
+      files: ["exe_atools/exe_atools.js", "exe_atools/exe_atools.css"]
+    },
+    // ELPX download support (for download-source-file iDevice)
+    // Includes fflate for client-side ZIP generation
+    {
+      name: "exe_elpx_download",
+      type: "class",
+      pattern: "exe-download-package-link",
+      files: ["fflate/fflate.umd.js", "exe_elpx_download.js"]
+    }
+  ];
+  var BASE_LIBRARIES = [
+    // jQuery
+    "jquery/jquery.min.js",
+    // Common eXe scripts
+    "common_i18n.js",
+    "common.js",
+    "exe_export.js",
+    // Bootstrap (JS bundle includes Popper)
+    "bootstrap/bootstrap.bundle.min.js",
+    "bootstrap/bootstrap.bundle.min.js.map",
+    "bootstrap/bootstrap.min.css",
+    "bootstrap/bootstrap.min.css.map"
+  ];
+  var SCORM_LIBRARIES = ["scorm/SCORM_API_wrapper.js", "scorm/SCOFunctions.js"];
+  var SCORM_12_NAMESPACES = {
+    imscp: "http://www.imsproject.org/xsd/imscp_rootv1p1p2",
+    adlcp: "http://www.adlnet.org/xsd/adlcp_rootv1p2",
+    imsmd: "http://www.imsglobal.org/xsd/imsmd_v1p2",
+    xsi: "http://www.w3.org/2001/XMLSchema-instance"
+  };
+  var SCORM_2004_NAMESPACES = {
+    imscp: "http://www.imsglobal.org/xsd/imscp_v1p1",
+    adlcp: "http://www.adlnet.org/xsd/adlcp_v1p3",
+    adlseq: "http://www.adlnet.org/xsd/adlseq_v1p3",
+    adlnav: "http://www.adlnet.org/xsd/adlnav_v1p3",
+    imsss: "http://www.imsglobal.org/xsd/imsss",
+    xsi: "http://www.w3.org/2001/XMLSchema-instance"
+  };
+  var IMS_NAMESPACES = {
+    imscp: "http://www.imsglobal.org/xsd/imscp_v1p1",
+    imsmd: "http://www.imsglobal.org/xsd/imsmd_v1p2",
+    xsi: "http://www.w3.org/2001/XMLSchema-instance"
+  };
+  var LOM_NAMESPACES = {
+    lom: "http://ltsc.ieee.org/xsd/LOM",
+    xsi: "http://www.w3.org/2001/XMLSchema-instance"
+  };
+  var IDEVICE_TYPE_MAP = {
+    // Text/FreeText variations
+    freetext: "text",
+    text: "text",
+    freetextidevice: "text",
+    textidevice: "text",
+    // Spanish → English mappings
+    adivina: "guess",
+    "adivina-activity": "guess",
+    listacotejo: "checklist",
+    "listacotejo-activity": "checklist",
+    ordena: "sort",
+    clasifica: "classify",
+    relaciona: "relate",
+    completa: "complete",
+    // Plural → singular
+    rubrics: "rubric",
+    // Alternative names
+    "download-package": "download-source-file",
+    "pbl-tools": "udl-content",
+    // PBL tools maps to UDL content
+    // Quiz variants
+    selecciona: "quick-questions-multiple-choice",
+    "selecciona-activity": "quick-questions-multiple-choice",
+    quiz: "quick-questions",
+    "quiz-activity": "quick-questions",
+    // Game variants
+    "quiz-game": "az-quiz-game",
+    trivialquiz: "trivial",
+    // Interactive variants
+    "before-after": "beforeafter",
+    "image-magnifier": "magnifier",
+    "word-puzzle": "word-search",
+    "palabras-puzzle": "word-search",
+    "sopa-de-letras": "word-search",
+    // Case study variants
+    "case-study": "casestudy",
+    "estudio-de-caso": "casestudy",
+    // Example/model variants
+    ejemplo: "example",
+    modelo: "example",
+    // Challenge variants
+    reto: "challenge",
+    desafio: "challenge",
+    // External website variants
+    "sitio-externo": "external-website",
+    "web-externa": "external-website",
+    // Form variants
+    formulario: "form",
+    // Flipcards variants
+    tarjetas: "flipcards",
+    "flash-cards": "flipcards",
+    // Image gallery variants
+    galeria: "image-gallery",
+    "galeria-imagenes": "image-gallery",
+    // Crossword variants
+    crucigrama: "crossword",
+    // Puzzle variants
+    rompecabezas: "puzzle",
+    // Map variants
+    mapa: "map",
+    // Discover variants
+    descubre: "discover",
+    // Identify variants
+    identifica: "identify",
+    // Hidden image variants
+    "imagen-oculta": "hidden-image",
+    // Padlock variants
+    candado: "padlock",
+    // Periodic table variants
+    "tabla-periodica": "periodic-table",
+    // Progress report variants
+    "informe-progreso": "progress-report",
+    // Scrambled list variants
+    "lista-desordenada": "scrambled-list",
+    // True/false variants
+    verdaderofalso: "trueorfalse",
+    "verdadero-falso": "trueorfalse",
+    // Interactive video variants
+    "video-interactivo": "interactive-video",
+    // Collaborative editing
+    "edicion-colaborativa": "collaborative-editing",
+    // Dragdrop variants
+    "arrastrar-soltar": "dragdrop",
+    // Attached files variants
+    "archivos-adjuntos": "attached-files",
+    // Select media files variants
+    "seleccionar-archivos": "select-media-files",
+    // Math operations variants
+    "operaciones-matematicas": "mathematicaloperations",
+    // Math problems variants
+    "problemas-matematicos": "mathproblems",
+    // GeoGebra variants
+    geogebra: "geogebra-activity"
+  };
+  function normalizeIdeviceType(typeName) {
+    if (!typeName) return "text";
+    let normalized = typeName.toLowerCase();
+    normalized = normalized.replace(/-?idevice$/i, "");
+    return IDEVICE_TYPE_MAP[normalized] || normalized || "text";
+  }
 
   // src/shared/export/adapters/BrowserResourceProvider.ts
   var BrowserResourceProvider = class {
@@ -231,13 +593,19 @@
      * @returns Normalized directory name (e.g., 'text')
      */
     normalizeIdeviceType(ideviceType) {
-      const typeMap = {
-        freetextidevice: "text",
-        textidevice: "text",
-        freetext: "text"
-      };
-      const normalized = ideviceType.toLowerCase().replace(/idevice$/i, "");
-      return typeMap[normalized] || typeMap[ideviceType.toLowerCase()] || normalized || "text";
+      return normalizeIdeviceType(ideviceType);
+    }
+    /**
+     * Fetch the eXeLearning "powered by" logo
+     * @returns Logo image as Uint8Array, or null if not found
+     */
+    async fetchExeLogo() {
+      const blob = await this.fetcher.fetchExeLogo();
+      if (blob) {
+        const arrayBuffer = await blob.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
+      }
+      return null;
     }
     /**
      * Convert Map<string, Blob> to Map<string, Uint8Array>
@@ -1445,34 +1813,6 @@
     }
   };
 
-  // src/shared/export/browser/idevice-config-browser.ts
-  function getIdeviceConfig(type) {
-    const normalized = type.replace(/Idevice$/i, "").replace(/([A-Z])/g, "-$1").toLowerCase().replace(/^-/, "");
-    const typeMap = {
-      "text": "text",
-      "freetext": "text",
-      "freetextfpd": "text",
-      "generic": "text",
-      "reflection": "text",
-      "reflectionfpd": "text",
-      "multi-choice": "multi-choice",
-      "multichoice": "multi-choice",
-      "true-false": "true-false",
-      "truefalse": "true-false",
-      "cloze": "cloze",
-      "clozeactivity": "cloze",
-      "case-study": "case-study",
-      "casestudy": "case-study"
-    };
-    const cssClass = typeMap[normalized] || normalized || "text";
-    return {
-      cssClass,
-      componentType: "html",
-      // Default to HTML for browser rendering
-      template: `${cssClass}.html`
-    };
-  }
-
   // src/shared/export/renderers/IdeviceRenderer.ts
   var IdeviceRenderer = class {
     /**
@@ -1504,9 +1844,10 @@
       let dataAttrs = "";
       if (includeDataAttributes) {
         const isPreviewModeForPath = basePath.startsWith("/") || basePath.includes("://");
-        const idevicePath = isPreviewModeForPath ? `${basePath}${type}/export/` : `${basePath}idevices/${type}/`;
+        const normalizedType = config.cssClass;
+        const idevicePath = isPreviewModeForPath ? `${basePath}${normalizedType}/export/` : `${basePath}idevices/${normalizedType}/`;
         dataAttrs = ` data-idevice-path="${this.escapeAttr(idevicePath)}"`;
-        dataAttrs += ` data-idevice-type="${this.escapeAttr(type)}"`;
+        dataAttrs += ` data-idevice-type="${this.escapeAttr(normalizedType)}"`;
         if (config.componentType === "json") {
           dataAttrs += ` data-idevice-component-type="json"`;
           if (type !== "text" && Object.keys(properties).length > 0) {
@@ -1759,6 +2100,13 @@ ${contentHtml}
         totalPages,
         currentPageIndex,
         userFooterContent = "",
+        // Export options (with defaults)
+        addExeLink = true,
+        addPagination = false,
+        addSearchBox = false,
+        addAccessibilityToolbar = false,
+        // Custom head content
+        extraHeadContent = "",
         // SCORM-specific options
         isScorm = false,
         scormVersion = "",
@@ -1773,21 +2121,28 @@ ${contentHtml}
       const bodyClassStr = bodyClass || "exe-export exe-web-site";
       const onLoadAttr = onLoadScript ? ` onload="${onLoadScript}"` : "";
       const onUnloadAttr = onUnloadScript ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"` : "";
-      const searchDataJson = this.generateSearchData(allPages, basePath);
+      const pageHeaderHtml = this.renderPageHeader(page, {
+        projectTitle,
+        currentPageIndex: currentIdx,
+        totalPages: total,
+        addPagination
+      });
+      const searchBoxHtml = addSearchBox ? `<div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados.">
+</div>` : "";
+      const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : "";
       return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? "index" : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, extraHeadContent, addSearchBox })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"<\/script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}${this.renderPageHeader(page, { projectTitle, currentPageIndex: currentIdx, totalPages: total })}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> <div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados." data-pages="${this.escapeAttr(searchDataJson)}">
-</div>
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> ${searchBoxHtml}
 ${this.renderPageContent(page, basePath)}
 </main></div>${this.renderNavButtons(page, allPages, basePath)}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
-${this.renderMadeWithEXe()}
+${madeWithExeHtml}
 </body>
 </html>`;
     }
@@ -1806,7 +2161,10 @@ ${this.renderMadeWithEXe()}
         extraHeadScripts = "",
         isScorm: _isScorm = false,
         description = "",
-        licenseUrl = "https://creativecommons.org/licenses/by-sa/4.0/"
+        licenseUrl = "https://creativecommons.org/licenses/by-sa/4.0/",
+        addAccessibilityToolbar = false,
+        extraHeadContent = "",
+        addSearchBox = false
       } = options;
       let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning v3.0.0">
@@ -1823,6 +2181,9 @@ ${this.renderMadeWithEXe()}
       head += `<script src="${basePath}libs/common_i18n.js"> <\/script>`;
       head += `<script src="${basePath}libs/common.js"> <\/script>`;
       head += `<script src="${basePath}libs/exe_export.js"> <\/script>`;
+      if (addSearchBox) {
+        head += `<script src="${basePath}search_index.js"> <\/script>`;
+      }
       head += `<script src="${basePath}libs/bootstrap/bootstrap.bundle.min.js"> <\/script>`;
       head += `<script src="${basePath}libs/exe_lightbox/exe_lightbox.js"> <\/script>`;
       head += `<link rel="stylesheet" href="${basePath}libs/bootstrap/bootstrap.min.css">`;
@@ -1846,6 +2207,15 @@ ${jsScripts[i]}`;
 <style>
 ${customStyles}
 </style>`;
+      }
+      if (addAccessibilityToolbar) {
+        head += `
+<script src="${basePath}libs/exe_atools/exe_atools.js"> <\/script>`;
+        head += `<link rel="stylesheet" href="${basePath}libs/exe_atools/exe_atools.css">`;
+      }
+      if (extraHeadContent) {
+        head += `
+${extraHeadContent}`;
       }
       if (extraHeadScripts) {
         head += `
@@ -1946,9 +2316,10 @@ ${extraHeadScripts}`;
      * @returns Header HTML
      */
     renderPageHeader(page, options) {
-      const { projectTitle, currentPageIndex, totalPages } = options;
-      return `<header id="header-${page.id}" class="page-header"> <p class="page-counter"> <span class="page-counter-label">P\xE1gina </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
-<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
+      const { projectTitle, currentPageIndex, totalPages, addPagination } = options;
+      const pageCounterHtml = addPagination ? ` <p class="page-counter"> <span class="page-counter-label">P\xE1gina </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
+` : "";
+      return `<header id="header-${page.id}" class="page-header">${pageCounterHtml}<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
 <h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>`;
     }
     /**
@@ -2091,6 +2462,16 @@ ${userFooterHtml}</div></footer>`;
       return JSON.stringify(pagesData);
     }
     /**
+     * Generate the content for search_index.js file
+     * @param allPages - All pages in the project
+     * @param basePath - Base path for URLs
+     * @returns JavaScript file content with window.exeSearchData assignment
+     */
+    generateSearchIndexFile(allPages, basePath) {
+      const searchDataJson = this.generateSearchData(allPages, basePath);
+      return `window.exeSearchData = ${searchDataJson};`;
+    }
+    /**
      * Render a single-page HTML document with all pages
      * @param allPages - All pages in the project
      * @param options - Rendering options
@@ -2224,316 +2605,6 @@ ${this.renderLicense({ author, license })}
       return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
   };
-
-  // src/shared/export/constants.ts
-  var LIBRARY_PATTERNS = [
-    // Effects library (animations, transitions)
-    {
-      name: "exe_effects",
-      type: "class",
-      pattern: "exe-fx",
-      files: ["exe_effects/exe_effects.js", "exe_effects/exe_effects.css"]
-    },
-    // Games library
-    {
-      name: "exe_games",
-      type: "class",
-      pattern: "exe-game",
-      files: ["exe_games/exe_games.js", "exe_games/exe_games.css"]
-    },
-    // Code highlighting
-    {
-      name: "exe_highlighter",
-      type: "class",
-      pattern: "highlighted-code",
-      files: ["exe_highlighter/exe_highlighter.js", "exe_highlighter/exe_highlighter.css"]
-    },
-    // Lightbox for images
-    {
-      name: "exe_lightbox",
-      type: "rel",
-      pattern: "lightbox",
-      files: ["exe_lightbox/exe_lightbox.js", "exe_lightbox/exe_lightbox.css"]
-    },
-    // Lightbox for image galleries
-    {
-      name: "exe_lightbox_gallery",
-      type: "class",
-      pattern: "imageGallery",
-      files: ["exe_lightbox/exe_lightbox.js", "exe_lightbox/exe_lightbox.css"]
-    },
-    // Tooltips (qTip2)
-    {
-      name: "exe_tooltips",
-      type: "class",
-      pattern: "exe-tooltip",
-      files: [
-        "exe_tooltips/exe_tooltips.js",
-        "exe_tooltips/jquery.qtip.min.js",
-        "exe_tooltips/jquery.qtip.min.css",
-        "exe_tooltips/imagesloaded.pkg.min.js"
-      ]
-    },
-    // Image magnifier
-    {
-      name: "exe_magnify",
-      type: "class",
-      pattern: "ImageMagnifierIdevice",
-      files: ["exe_magnify/mojomagnify.js"]
-    },
-    // Wikipedia content styling
-    {
-      name: "exe_wikipedia",
-      type: "class",
-      pattern: "exe-wikipedia-content",
-      files: ["exe_wikipedia/exe_wikipedia.css"]
-    },
-    // Media player (MediaElement.js)
-    {
-      name: "exe_media",
-      type: "class",
-      pattern: "mediaelement",
-      files: [
-        "exe_media/exe_media.js",
-        "exe_media/exe_media.css",
-        "exe_media/exe_media_background.png",
-        "exe_media/exe_media_bigplay.png",
-        "exe_media/exe_media_bigplay.svg",
-        "exe_media/exe_media_controls.png",
-        "exe_media/exe_media_controls.svg",
-        "exe_media/exe_media_loading.gif"
-      ]
-    },
-    // Media player via audio/video file links with lightbox
-    {
-      name: "exe_media_link",
-      type: "regex",
-      pattern: /href="[^"]*\.(mp3|mp4|flv|ogg|ogv)"[^>]*rel="[^"]*lightbox/i,
-      files: [
-        "exe_media/exe_media.js",
-        "exe_media/exe_media.css",
-        "exe_media/exe_media_background.png",
-        "exe_media/exe_media_bigplay.png",
-        "exe_media/exe_media_bigplay.svg",
-        "exe_media/exe_media_controls.png",
-        "exe_media/exe_media_controls.svg",
-        "exe_media/exe_media_loading.gif"
-      ]
-    },
-    // ABC Music notation (abcjs)
-    {
-      name: "abcjs",
-      type: "class",
-      pattern: "abc-music",
-      files: ["abcjs/abcjs-basic-min.js", "abcjs/exe_abc_music.js", "abcjs/abcjs-audio.css"]
-    },
-    // LaTeX math expressions (MathJax)
-    {
-      name: "exe_math",
-      type: "regex",
-      pattern: /\\\(|\\\[/,
-      files: ["exe_math/tex-mml-svg.js"]
-    },
-    // DataGame with encrypted LaTeX (special case)
-    {
-      name: "exe_math_datagame",
-      type: "class",
-      pattern: "DataGame",
-      files: ["exe_math/tex-mml-svg.js"],
-      requiresLatexCheck: true
-    },
-    // Mermaid diagrams
-    {
-      name: "mermaid",
-      type: "class",
-      pattern: "mermaid",
-      files: ["mermaid/mermaid.min.js"]
-    },
-    // jQuery UI for sortable/draggable iDevices
-    {
-      name: "jquery_ui_ordena",
-      type: "class",
-      pattern: "ordena-IDevice",
-      files: ["jquery-ui/jquery-ui.min.js"]
-    },
-    {
-      name: "jquery_ui_clasifica",
-      type: "class",
-      pattern: "clasifica-IDevice",
-      files: ["jquery-ui/jquery-ui.min.js"]
-    },
-    {
-      name: "jquery_ui_relaciona",
-      type: "class",
-      pattern: "relaciona-IDevice",
-      files: ["jquery-ui/jquery-ui.min.js"]
-    },
-    {
-      name: "jquery_ui_dragdrop",
-      type: "class",
-      pattern: "dragdrop-IDevice",
-      files: ["jquery-ui/jquery-ui.min.js"]
-    },
-    {
-      name: "jquery_ui_completa",
-      type: "class",
-      pattern: "completa-IDevice",
-      files: ["jquery-ui/jquery-ui.min.js"]
-    },
-    // Accessibility toolbar
-    {
-      name: "exe_atools",
-      type: "class",
-      pattern: "exe-atools",
-      files: ["exe_atools/exe_atools.js", "exe_atools/exe_atools.css"]
-    },
-    // ELPX download support (for download-source-file iDevice)
-    // Includes fflate for client-side ZIP generation
-    {
-      name: "exe_elpx_download",
-      type: "class",
-      pattern: "exe-download-package-link",
-      files: ["fflate/fflate.umd.js", "exe_elpx_download.js"]
-    }
-  ];
-  var BASE_LIBRARIES = [
-    // jQuery
-    "jquery/jquery.min.js",
-    // Common eXe scripts
-    "common_i18n.js",
-    "common.js",
-    "exe_export.js",
-    // Bootstrap (JS bundle includes Popper)
-    "bootstrap/bootstrap.bundle.min.js",
-    "bootstrap/bootstrap.bundle.min.js.map",
-    "bootstrap/bootstrap.min.css",
-    "bootstrap/bootstrap.min.css.map"
-  ];
-  var SCORM_LIBRARIES = ["scorm/SCORM_API_wrapper.js", "scorm/SCOFunctions.js"];
-  var SCORM_12_NAMESPACES = {
-    imscp: "http://www.imsproject.org/xsd/imscp_rootv1p1p2",
-    adlcp: "http://www.adlnet.org/xsd/adlcp_rootv1p2",
-    imsmd: "http://www.imsglobal.org/xsd/imsmd_v1p2",
-    xsi: "http://www.w3.org/2001/XMLSchema-instance"
-  };
-  var SCORM_2004_NAMESPACES = {
-    imscp: "http://www.imsglobal.org/xsd/imscp_v1p1",
-    adlcp: "http://www.adlnet.org/xsd/adlcp_v1p3",
-    adlseq: "http://www.adlnet.org/xsd/adlseq_v1p3",
-    adlnav: "http://www.adlnet.org/xsd/adlnav_v1p3",
-    imsss: "http://www.imsglobal.org/xsd/imsss",
-    xsi: "http://www.w3.org/2001/XMLSchema-instance"
-  };
-  var IMS_NAMESPACES = {
-    imscp: "http://www.imsglobal.org/xsd/imscp_v1p1",
-    imsmd: "http://www.imsglobal.org/xsd/imsmd_v1p2",
-    xsi: "http://www.w3.org/2001/XMLSchema-instance"
-  };
-  var LOM_NAMESPACES = {
-    lom: "http://ltsc.ieee.org/xsd/LOM",
-    xsi: "http://www.w3.org/2001/XMLSchema-instance"
-  };
-  var IDEVICE_TYPE_MAP = {
-    // Text/FreeText variations
-    freetext: "text",
-    text: "text",
-    freetextidevice: "text",
-    textidevice: "text",
-    // Spanish → English mappings
-    adivina: "guess",
-    "adivina-activity": "guess",
-    listacotejo: "checklist",
-    "listacotejo-activity": "checklist",
-    ordena: "sort",
-    clasifica: "classify",
-    relaciona: "relate",
-    completa: "complete",
-    // Plural → singular
-    rubrics: "rubric",
-    // Alternative names
-    "download-package": "download-source-file",
-    "pbl-tools": "udl-content",
-    // PBL tools maps to UDL content
-    // Quiz variants
-    selecciona: "quick-questions-multiple-choice",
-    "selecciona-activity": "quick-questions-multiple-choice",
-    quiz: "quick-questions",
-    "quiz-activity": "quick-questions",
-    // Game variants
-    "quiz-game": "az-quiz-game",
-    trivialquiz: "trivial",
-    // Interactive variants
-    "before-after": "beforeafter",
-    "image-magnifier": "magnifier",
-    "word-puzzle": "word-search",
-    "palabras-puzzle": "word-search",
-    "sopa-de-letras": "word-search",
-    // Case study variants
-    "case-study": "casestudy",
-    "estudio-de-caso": "casestudy",
-    // Example/model variants
-    ejemplo: "example",
-    modelo: "example",
-    // Challenge variants
-    reto: "challenge",
-    desafio: "challenge",
-    // External website variants
-    "sitio-externo": "external-website",
-    "web-externa": "external-website",
-    // Form variants
-    formulario: "form",
-    // Flipcards variants
-    tarjetas: "flipcards",
-    "flash-cards": "flipcards",
-    // Image gallery variants
-    galeria: "image-gallery",
-    "galeria-imagenes": "image-gallery",
-    // Crossword variants
-    crucigrama: "crossword",
-    // Puzzle variants
-    rompecabezas: "puzzle",
-    // Map variants
-    mapa: "map",
-    // Discover variants
-    descubre: "discover",
-    // Identify variants
-    identifica: "identify",
-    // Hidden image variants
-    "imagen-oculta": "hidden-image",
-    // Padlock variants
-    candado: "padlock",
-    // Periodic table variants
-    "tabla-periodica": "periodic-table",
-    // Progress report variants
-    "informe-progreso": "progress-report",
-    // Scrambled list variants
-    "lista-desordenada": "scrambled-list",
-    // True/false variants
-    verdaderofalso: "trueorfalse",
-    "verdadero-falso": "trueorfalse",
-    // Interactive video variants
-    "video-interactivo": "interactive-video",
-    // Collaborative editing
-    "edicion-colaborativa": "collaborative-editing",
-    // Dragdrop variants
-    "arrastrar-soltar": "dragdrop",
-    // Attached files variants
-    "archivos-adjuntos": "attached-files",
-    // Select media files variants
-    "seleccionar-archivos": "select-media-files",
-    // Math operations variants
-    "operaciones-matematicas": "mathematicaloperations",
-    // Math problems variants
-    "problemas-matematicos": "mathproblems",
-    // GeoGebra variants
-    geogebra: "geogebra-activity"
-  };
-  function normalizeIdeviceType(typeName) {
-    if (!typeName) return "text";
-    let normalized = typeName.toLowerCase();
-    normalized = normalized.replace(/-?idevice$/i, "");
-    return IDEVICE_TYPE_MAP[normalized] || normalized || "text";
-  }
 
   // src/shared/export/utils/LibraryDetector.ts
   var LibraryDetector = class {
@@ -3088,8 +3159,20 @@ ${this.renderLicense({ author, license })}
         pp_lang: metadata.language || "en",
         pp_description: metadata.description || "",
         pp_license: metadata.license || "",
-        pp_theme: metadata.theme || "base"
+        pp_theme: metadata.theme || "base",
+        // Export options
+        pp_addExeLink: String(metadata.addExeLink ?? true),
+        pp_addPagination: String(metadata.addPagination ?? false),
+        pp_addSearchBox: String(metadata.addSearchBox ?? false),
+        pp_addAccessibilityToolbar: String(metadata.addAccessibilityToolbar ?? false),
+        exportSource: String(metadata.exportSource ?? true)
       };
+      if (metadata.extraHeadContent) {
+        props["pp_extraHeadContent"] = metadata.extraHeadContent;
+      }
+      if (metadata.footer) {
+        props["footer"] = metadata.footer;
+      }
       for (const [key, value] of Object.entries(props)) {
         xml += `  <${key}>${this.escapeXml(value)}</${key}>
 `;
@@ -3123,7 +3206,7 @@ ${this.renderLicense({ author, license })}
      */
     generateBlockXml(block, index) {
       const blockId = block.id;
-      const blockName = block.name || "Block";
+      const blockName = block.name || "";
       const order = block.order ?? index;
       let xml = `  <odePagStructure odePagStructureId="${this.escapeXml(blockId)}" `;
       xml += `blockName="${this.escapeXml(blockName)}" odePagStructureOrder="${order}">
@@ -3274,6 +3357,50 @@ ${this.renderLicense({ author, license })}
     max-width: 900px;
   }
 }
+
+/* Made with eXeLearning */
+#made-with-eXe {
+  margin: 0;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+}
+#made-with-eXe a {
+  text-decoration: none;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  border-top-left-radius: 4px;
+  color: #222;
+  font-size: 11px;
+  font-family: Arial, sans-serif;
+  line-height: 35px;
+  width: 35px;
+  height: 35px;
+  background: #fff url(../img/exe_powered_logo.png) no-repeat 3px 50%;
+  display: block;
+  background-size: auto 20px;
+  transition: .5s;
+  opacity: .8;
+}
+#made-with-eXe span {
+  padding-left: 35px;
+  padding-right: 5px;
+}
+#made-with-eXe span span {
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip: rect(0, 0, 0, 0);
+  height: 0;
+}
+#made-with-eXe a:hover {
+  width: auto;
+  padding: 0 5px;
+  background-position: 5px 50%;
+  opacity: 1;
+}
+@media print {
+  #made-with-eXe { display: none; }
+}
 `;
     }
     /**
@@ -3338,9 +3465,22 @@ body {
           const pageFilename = i === 0 ? "index.html" : `html/${this.sanitizePageFilename(page.title)}.html`;
           this.zip.addFile(pageFilename, html);
         }
-        const contentXml = this.generateContentXml();
-        this.zip.addFile("content.xml", contentXml);
+        if (meta.addSearchBox) {
+          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "");
+          this.zip.addFile("search_index.js", searchIndexContent);
+        }
+        if (meta.exportSource !== false) {
+          const contentXml = this.generateContentXml();
+          this.zip.addFile("content.xml", contentXml);
+        }
         this.zip.addFile("content/css/base.css", this.getBaseCss());
+        try {
+          const logoData = await this.resources.fetchExeLogo();
+          if (logoData) {
+            this.zip.addFile("content/img/exe_powered_logo.png", logoData);
+          }
+        } catch {
+        }
         try {
           const themeFiles = await this.resources.fetchTheme(themeName);
           console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFiles.size}`);
@@ -3361,7 +3501,7 @@ body {
         }
         const allHtmlContent = this.collectAllHtmlContent(pages);
         const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
-          includeAccessibilityToolbar: meta.accessibilityToolbar === true
+          includeAccessibilityToolbar: meta.addAccessibilityToolbar === true
         });
         try {
           const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles);
@@ -3422,10 +3562,17 @@ body {
         license: meta.license || "creative commons: attribution - share alike 4.0",
         description: meta.description || "",
         licenseUrl: meta.licenseUrl || "https://creativecommons.org/licenses/by-sa/4.0/",
-        // New options for page counter and footer
+        // Page counter options
         totalPages: allPages.length,
         currentPageIndex,
-        userFooterContent: meta.userFooter
+        userFooterContent: meta.footer,
+        // Export options
+        addExeLink: meta.addExeLink ?? true,
+        addPagination: meta.addPagination ?? false,
+        addSearchBox: meta.addSearchBox ?? false,
+        addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
+        // Custom head content
+        extraHeadContent: meta.extraHeadContent
       });
     }
     /**
@@ -4055,6 +4202,11 @@ html {
             files: []
           };
         }
+        if (meta.addSearchBox) {
+          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "");
+          this.zip.addFile("search_index.js", searchIndexContent);
+          commonFiles.push("search_index.js");
+        }
         this.zip.addFile("content/css/base.css", this.getBaseCss());
         commonFiles.push("content/css/base.css");
         try {
@@ -4150,6 +4302,8 @@ html {
         license: meta.license || "CC-BY-SA",
         description: meta.description || "",
         licenseUrl: meta.licenseUrl || "https://creativecommons.org/licenses/by-sa/4.0/",
+        // Export options
+        addSearchBox: meta.addSearchBox ?? false,
         // SCORM-specific options
         isScorm: true,
         scormVersion: "1.2",
@@ -4592,6 +4746,11 @@ ${indentStr}</imsss:sequencing>
             files: []
           };
         }
+        if (meta.addSearchBox) {
+          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "");
+          this.zip.addFile("search_index.js", searchIndexContent);
+          commonFiles.push("search_index.js");
+        }
         this.zip.addFile("content/css/base.css", this.getBaseCss());
         commonFiles.push("content/css/base.css");
         try {
@@ -4687,6 +4846,8 @@ ${indentStr}</imsss:sequencing>
         license: meta.license || "CC-BY-SA",
         description: meta.description || "",
         licenseUrl: meta.licenseUrl || "https://creativecommons.org/licenses/by-sa/4.0/",
+        // Export options
+        addSearchBox: meta.addSearchBox ?? false,
         // SCORM 2004-specific options
         isScorm: true,
         scormVersion: "2004",
@@ -5138,6 +5299,11 @@ function setScore(score, maxScore, minScore) {
             files: []
           };
         }
+        if (meta.addSearchBox) {
+          const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, "");
+          this.zip.addFile("search_index.js", searchIndexContent);
+          commonFiles.push("search_index.js");
+        }
         this.zip.addFile("content/css/base.css", this.getBaseCss());
         commonFiles.push("content/css/base.css");
         try {
@@ -5220,13 +5386,15 @@ function setScore(score, maxScore, minScore) {
         license: meta.license || "CC-BY-SA",
         description: meta.description || "",
         licenseUrl: meta.licenseUrl || "https://creativecommons.org/licenses/by-sa/4.0/",
+        // Export options
+        addSearchBox: meta.addSearchBox ?? false,
         bodyClass: "exe-web-site exe-ims"
       });
     }
   };
 
   // src/shared/export/exporters/WebsitePreviewExporter.ts
-  var WebsitePreviewExporter = class {
+  var WebsitePreviewExporter = class _WebsitePreviewExporter {
     /**
      * Create a WebsitePreviewExporter
      * @param document - Export document adapter
@@ -5250,12 +5418,53 @@ function setScore(score, maxScore, minScore) {
           return { success: false, error: "No pages to preview" };
         }
         const usedIdevices = this.getUsedIdevices(pages);
-        const html = this.generateWebsiteSpaHtml(pages, meta, usedIdevices, options);
+        const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+        let html = this.generateWebsiteSpaHtml(pages, meta, usedIdevices, options, needsElpxDownload);
+        if (needsElpxDownload) {
+          const projectTitle = meta.title || "project";
+          html = this.replaceElpxProtocol(html, projectTitle);
+        }
         return { success: true, html };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, error: errorMessage };
       }
+    }
+    /**
+     * Check if any page contains the download-source-file iDevice
+     * (needs fflate and exe_elpx_download.js)
+     */
+    needsElpxDownloadSupport(pages) {
+      for (const page of pages) {
+        for (const block of page.blocks || []) {
+          for (const component of block.components || []) {
+            const type = (component.type || "").toLowerCase();
+            if (type.includes("download-source-file") || type.includes("downloadsourcefile")) {
+              return true;
+            }
+            if (component.content && component.content.includes("exe-download-package-link")) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+    /**
+     * Replace exe-package:elp protocol with client-side download handler
+     * Enables the download-source-file iDevice to generate ELPX files on-the-fly
+     */
+    replaceElpxProtocol(content, projectTitle) {
+      if (!content || !content.includes("exe-package:elp")) {
+        return content;
+      }
+      let result = content.replace(
+        /href="exe-package:elp"/g,
+        `href="#" onclick="if(typeof downloadElpx==='function')downloadElpx();return false;"`
+      );
+      const safeTitle = this.escapeHtml(projectTitle);
+      result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
+      return result;
     }
     /**
      * Get all unique iDevice types used in pages
@@ -5289,7 +5498,7 @@ function setScore(score, maxScore, minScore) {
     /**
      * Generate complete SPA HTML with all pages
      */
-    generateWebsiteSpaHtml(pages, meta, usedIdevices, options) {
+    generateWebsiteSpaHtml(pages, meta, usedIdevices, options, needsElpxDownload = false) {
       const lang = meta.language || "en";
       const projectTitle = meta.title || "eXeLearning";
       const customStyles = meta.customStyles || "";
@@ -5297,19 +5506,28 @@ function setScore(score, maxScore, minScore) {
       const license = meta.license || "CC-BY-SA";
       const themeName = meta.theme || "base";
       const totalPages = pages.length;
+      const addExeLink = meta.addExeLink ?? true;
+      const addPagination = meta.addPagination ?? false;
+      const addSearchBox = meta.addSearchBox ?? false;
+      const addAccessibilityToolbar = meta.addAccessibilityToolbar ?? false;
+      const searchDataJson = addSearchBox ? this.generateSearchData(pages, options) : "";
       let pagesHtml = "";
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
         const isFirst = i === 0;
-        pagesHtml += this.renderPageArticle(page, isFirst, i, totalPages, projectTitle, options);
+        pagesHtml += this.renderPageArticle(page, isFirst, i, totalPages, projectTitle, options, addPagination);
       }
+      const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(lang) : "";
+      const searchBoxHtml = addSearchBox ? this.renderSearchBox() : "";
+      const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : "";
       return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
-${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options)}
+${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar)}
 </head>
 <body class="exe-web-site exe-preview" lang="${lang}">
 <script>document.body.className+=" js"<\/script>
+${searchBoxHtml}
 <div class="exe-content exe-export pre-js">
 ${this.renderSpaNavigation(pages)}
 <main class="page">
@@ -5318,15 +5536,16 @@ ${pagesHtml}
 ${this.renderNavButtons()}
 ${this.renderWebsiteFooter(author, license)}
 </div>
-${this.renderMadeWithEXe()}
-${this.generateWebsitePreviewScripts(themeName, usedIdevices, options)}
+${madeWithExeHtml}
+${searchDataScript}
+${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar)}
 </body>
 </html>`;
     }
     /**
      * Generate <head> content with versioned server paths
      */
-    generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options) {
+    generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar = false) {
       const bootstrapCss = this.getVersionedPath("/libs/bootstrap/bootstrap.min.css", options);
       const themeCss = this.getVersionedPath(`/files/perm/themes/base/${themeName}/style.css`, options);
       const fallbackCss = this.getVersionedPath("/style/content.css", options);
@@ -5364,7 +5583,7 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options)}
 <!-- Server-hosted libraries (versioned paths) -->
 <link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}
 
-<!-- Preview-only CSS (BEFORE theme so theme styles take precedence) -->
+<!-- Preview-only CSS for SPA behavior -->
 <style>
 ${this.getWebsitePreviewCss()}
 </style>
@@ -5390,10 +5609,19 @@ ${this.getWebsitePreviewCss()}
 ${customStyles}
 </style>`;
       }
+      if (addAccessibilityToolbar) {
+        const atoolsCss = this.getVersionedPath("/libs/exe_atools/exe_atools.css", options);
+        head += `
+<link rel="stylesheet" href="${atoolsCss}">`;
+      }
+      head += `
+<style>
+${this.getMadeWithExeCss(options)}
+</style>`;
       return head;
     }
     /**
-     * Get preview-only CSS for SPA behavior
+     * Get preview-only CSS for SPA behavior (basic styles only)
      */
     getWebsitePreviewCss() {
       return `/* SPA Preview Styles */
@@ -5402,6 +5630,51 @@ ${customStyles}
 .nav-buttons { display: flex; justify-content: space-between; padding: 1rem; }
 .nav-button { cursor: pointer; }
 .nav-button.disabled { opacity: 0.5; pointer-events: none; }`;
+    }
+    /**
+     * Get Made-with-eXe CSS (loaded AFTER theme to ensure it overrides)
+     */
+    getMadeWithExeCss(options) {
+      const logoUrl = this.getVersionedPath("/app/common/exe_powered_logo/exe_powered_logo.png", options);
+      return `/* Made with eXeLearning - Must load after theme */
+#made-with-eXe {
+    margin: 0;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    z-index: 9999;
+}
+#made-with-eXe a {
+    text-decoration: none;
+    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+    border-top-left-radius: 4px;
+    color: #222;
+    font-size: 11px;
+    font-family: Arial, sans-serif;
+    line-height: 35px;
+    width: 35px;
+    height: 35px;
+    background: #fff url(${logoUrl}) no-repeat 3px 50%;
+    display: block;
+    background-size: auto 20px;
+    transition: .5s;
+    opacity: .8;
+    overflow: hidden;
+}
+#made-with-eXe span {
+    padding-left: 35px;
+    padding-right: 5px;
+    white-space: nowrap;
+}
+#made-with-eXe a:hover {
+    width: auto;
+    padding: 0 5px;
+    background-position: 5px 50%;
+    opacity: 1;
+}
+@media print {
+    #made-with-eXe { display: none; }
+}`;
     }
     /**
      * Render SPA navigation with JavaScript page switching
@@ -5438,7 +5711,7 @@ ${customStyles}
     /**
      * Render a page as an article (hidden except first)
      */
-    renderPageArticle(page, isFirst, pageIndex, totalPages, projectTitle, options) {
+    renderPageArticle(page, isFirst, pageIndex, totalPages, projectTitle, options, addPagination = false) {
       let blockHtml = "";
       const ideviceBasePath = this.getVersionedPath("/files/perm/idevices/base/", options);
       for (const block of page.blocks || []) {
@@ -5449,8 +5722,9 @@ ${customStyles}
       }
       const displayStyle = isFirst ? "" : ' style="display:none"';
       const pageId = page.id;
+      const pageCounterHtml = addPagination ? `<p class="page-counter"> <span class="page-counter-label">P\xE1gina </span><span class="page-counter-content"> <strong class="page-counter-current-page">${pageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>` : "";
       return `<article id="page-${pageId}" class="spa-page${isFirst ? " active" : ""}"${displayStyle} data-page-index="${pageIndex}">
-<header id="header-${pageId}" class="page-header"> <p class="page-counter"> <span class="page-counter-label">P\xE1gina </span><span class="page-counter-content"> <strong class="page-counter-current-page">${pageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
+<header id="header-${pageId}" class="page-header"> ${pageCounterHtml}
 <h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
 <h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>
 <div id="page-content-${pageId}" class="page-content">
@@ -5480,16 +5754,34 @@ ${blockHtml}
 <p class="license">${this.escapeHtml(author ? `${author} - ` : "")}${this.escapeHtml(license)}</p>
 </footer>`;
     }
+    static {
+      /**
+       * Translations for "Made with eXeLearning" text
+       */
+      this.MADE_WITH_TRANSLATIONS = {
+        en: "Made with eXeLearning",
+        es: "Creado con eXeLearning",
+        ca: "Creat amb eXeLearning",
+        eu: "eXeLearning-ekin egina",
+        gl: "Creado con eXeLearning",
+        pt: "Criado com eXeLearning",
+        va: "Creat amb eXeLearning",
+        ro: "Creat cu eXeLearning",
+        eo: "Kreita per eXeLearning"
+      };
+    }
     /**
-     * Render "Made with eXeLearning" credit
+     * Render "Made with eXeLearning" credit with translated text
+     * The text is hidden by default and shown on hover via CSS
      */
-    renderMadeWithEXe() {
-      return `<p id="made-with-eXe"><a href="https://exelearning.net/" target="_blank" rel="noopener">eXeLearning.net</a></p>`;
+    renderMadeWithEXe(lang) {
+      const text = _WebsitePreviewExporter.MADE_WITH_TRANSLATIONS[lang] || _WebsitePreviewExporter.MADE_WITH_TRANSLATIONS["en"];
+      return `<p id="made-with-eXe"><a href="https://exelearning.net/" target="_blank" rel="noopener"><span>${this.escapeHtml(text)} </span></a></p>`;
     }
     /**
      * Generate scripts with SPA navigation logic
      */
-    generateWebsitePreviewScripts(themeName, usedIdevices, options) {
+    generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload = false, addAccessibilityToolbar = false) {
       const jqueryJs = this.getVersionedPath("/libs/jquery/jquery.min.js", options);
       const bootstrapJs = this.getVersionedPath("/libs/bootstrap/bootstrap.bundle.min.js", options);
       const commonJs = this.getVersionedPath("/app/common/common.js", options);
@@ -5521,6 +5813,14 @@ ${blockHtml}
         jqueryUiScript = `
 <script src="${jqueryUiJs}"><\/script>`;
       }
+      let elpxDownloadScripts = "";
+      if (needsElpxDownload) {
+        const fflateJs = this.getVersionedPath("/libs/fflate/fflate.umd.js", options);
+        const elpxDownloadJs = this.getVersionedPath("/libs/exe_elpx_download.js", options);
+        elpxDownloadScripts = `
+<script src="${fflateJs}"><\/script>
+<script src="${elpxDownloadJs}"><\/script>`;
+      }
       let ideviceScripts = "";
       const seenJs = /* @__PURE__ */ new Set();
       for (const idevice of usedIdevices) {
@@ -5535,11 +5835,17 @@ ${blockHtml}
 <script src="${ideviceJs}" onerror="this.remove()"><\/script>`;
         }
       }
+      let atoolsScript = "";
+      if (addAccessibilityToolbar) {
+        const atoolsJs = this.getVersionedPath("/libs/exe_atools/exe_atools.js", options);
+        atoolsScript = `
+<script src="${atoolsJs}"><\/script>`;
+      }
       return `<script src="${jqueryJs}"><\/script>
-<script src="${bootstrapJs}"><\/script>${jqueryUiScript}
+<script src="${bootstrapJs}"><\/script>${jqueryUiScript}${elpxDownloadScripts}
 <script src="${commonJs}"><\/script>
 <script src="${commonI18nJs}"><\/script>
-<script src="${exeExportJs}"><\/script>${ideviceScripts}
+<script src="${exeExportJs}"><\/script>${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"><\/script>
 <script>
 ${this.getSpaNavigationScript()}
@@ -5620,6 +5926,80 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
         "'": "&#39;"
       };
       return text.replace(/[&<>"']/g, (char) => escapes[char] || char);
+    }
+    /**
+     * Escape string for use in HTML attributes
+     */
+    escapeAttr(text) {
+      return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    /**
+     * Sanitize filename for URLs
+     */
+    sanitizeFilename(title) {
+      return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 50) || "page";
+    }
+    /**
+     * Render search box container (without data-pages attribute)
+     * The data is provided via window.exeSearchData inline script
+     * The form is created dynamically by exe_export.js
+     */
+    renderSearchBox() {
+      return `<div id="exe-client-search"
+    data-block-order-string="Caja %e"
+    data-no-results-string="Sin resultados.">
+</div>`;
+    }
+    /**
+     * Generate inline script for search data
+     * This avoids bloating each page with large JSON in attributes
+     */
+    generateSearchDataScript(searchDataJson) {
+      return `<script>window.exeSearchData = ${searchDataJson};<\/script>`;
+    }
+    /**
+     * Generate search data JSON for client-side search functionality
+     * @param pages - All pages in the project
+     * @param options - Preview options for URL generation
+     * @returns JSON string with page structure
+     */
+    generateSearchData(pages, _options) {
+      const pagesData = {};
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        const isIndex = i === 0;
+        const prevPage = i > 0 ? pages[i - 1] : null;
+        const nextPage = i < pages.length - 1 ? pages[i + 1] : null;
+        const fileName = isIndex ? "index.html" : `${this.sanitizeFilename(page.title)}.html`;
+        const fileUrl = isIndex ? "index.html" : `html/${fileName}`;
+        const blocksData = {};
+        for (const block of page.blocks || []) {
+          const idevicesData = {};
+          for (let j = 0; j < (block.components || []).length; j++) {
+            const component = block.components[j];
+            idevicesData[component.id] = {
+              order: j + 1,
+              htmlView: component.content || "",
+              jsonProperties: JSON.stringify(component.properties || {})
+            };
+          }
+          blocksData[block.id] = {
+            name: block.name || "",
+            order: block.order || 1,
+            idevices: idevicesData
+          };
+        }
+        pagesData[page.id] = {
+          name: page.title,
+          isIndex,
+          fileName,
+          fileUrl,
+          prePageId: prevPage?.id || null,
+          nextPageId: nextPage?.id || null,
+          blocks: blocksData
+        };
+      }
+      return JSON.stringify(pagesData);
     }
   };
 

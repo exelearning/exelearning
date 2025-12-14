@@ -74,7 +74,32 @@ export class YjsDocumentAdapter implements ExportDocument {
             modified: (meta.get('modifiedAt') as string) || new Date().toISOString(),
             // Custom styles support
             customStyles: (meta.get('customStyles') as string) || undefined,
+
+            // Export options (values stored as strings 'true'/'false' in Yjs)
+            addExeLink: this.parseBoolean(meta.get('addExeLink'), true), // Default: true
+            addPagination: this.parseBoolean(meta.get('addPagination'), false),
+            addSearchBox: this.parseBoolean(meta.get('addSearchBox'), false),
+            addAccessibilityToolbar: this.parseBoolean(meta.get('addAccessibilityToolbar'), false),
+            exportSource: this.parseBoolean(meta.get('exportSource'), true), // Default: true
+
+            // Custom content
+            extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,
+            footer: (meta.get('footer') as string) || undefined,
         };
+    }
+
+    /**
+     * Parse boolean value from Yjs storage
+     * Values may be stored as strings 'true'/'false' or actual booleans
+     * @param value - Value to parse
+     * @param defaultValue - Default value if not found
+     * @returns Boolean value
+     */
+    private parseBoolean(value: unknown, defaultValue: boolean): boolean {
+        if (value === undefined || value === null) return defaultValue;
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') return value.toLowerCase() === 'true';
+        return defaultValue;
     }
 
     /**
@@ -151,7 +176,7 @@ export class YjsDocumentAdapter implements ExportDocument {
 
         return {
             id: (blockMap.get('id') as string) || `block-${index}`,
-            name: (blockMap.get('name') as string) || (blockMap.get('blockName') as string) || 'Block',
+            name: (blockMap.get('name') as string) || (blockMap.get('blockName') as string) || '',
             order: (blockMap.get('order') as number) || index,
             components,
         };

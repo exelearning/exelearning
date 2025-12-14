@@ -71,14 +71,32 @@ export class Html5Exporter extends BaseExporter {
                 this.zip.addFile(pageFilename, html);
             }
 
-            // 2. Add content.xml (ODE format for re-import)
-            const contentXml = this.generateContentXml();
-            this.zip.addFile('content.xml', contentXml);
+            // 2. Add search_index.js if search box is enabled
+            if (meta.addSearchBox) {
+                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
+                this.zip.addFile('search_index.js', searchIndexContent);
+            }
 
-            // 3. Add base CSS
+            // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
+            if (meta.exportSource !== false) {
+                const contentXml = this.generateContentXml();
+                this.zip.addFile('content.xml', contentXml);
+            }
+
+            // 4. Add base CSS
             this.zip.addFile('content/css/base.css', this.getBaseCss());
 
-            // 4. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
+            // 5. Add eXeLearning logo for "Made with eXeLearning" footer
+            try {
+                const logoData = await this.resources.fetchExeLogo();
+                if (logoData) {
+                    this.zip.addFile('content/img/exe_powered_logo.png', logoData);
+                }
+            } catch {
+                // Logo not available - footer will still render but without background image
+            }
+
+            // 6. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
             try {
                 const themeFiles = await this.resources.fetchTheme(themeName);
                 console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFiles.size}`);
@@ -100,10 +118,10 @@ export class Html5Exporter extends BaseExporter {
                 this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
             }
 
-            // 5. Detect and fetch required libraries
+            // 7. Detect and fetch required libraries
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
-                includeAccessibilityToolbar: meta.accessibilityToolbar === true,
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
             });
 
             try {
@@ -123,7 +141,7 @@ export class Html5Exporter extends BaseExporter {
                 }
             }
 
-            // 6. Fetch and add iDevice assets
+            // 8. Fetch and add iDevice assets
             const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
@@ -139,10 +157,10 @@ export class Html5Exporter extends BaseExporter {
                 }
             }
 
-            // 7. Add project assets
+            // 9. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
-            // 8. Generate ZIP buffer
+            // 10. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 
             return {
@@ -185,10 +203,17 @@ export class Html5Exporter extends BaseExporter {
             license: meta.license || 'creative commons: attribution - share alike 4.0',
             description: meta.description || '',
             licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
-            // New options for page counter and footer
+            // Page counter options
             totalPages: allPages.length,
             currentPageIndex,
-            userFooterContent: (meta as Record<string, unknown>).userFooter as string | undefined,
+            userFooterContent: meta.footer,
+            // Export options
+            addExeLink: meta.addExeLink ?? true,
+            addPagination: meta.addPagination ?? false,
+            addSearchBox: meta.addSearchBox ?? false,
+            addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
+            // Custom head content
+            extraHeadContent: meta.extraHeadContent,
         });
     }
 

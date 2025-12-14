@@ -1321,7 +1321,7 @@ export default class ApiCallManager {
             // Ensure block exists - create if "new"
             let actualBlockId = blockId;
             if (blockId === 'new' || !structureBinding.getBlockMap(pageId, blockId)) {
-                actualBlockId = structureBinding.createBlock(pageId, params.blockName || 'Block');
+                actualBlockId = structureBinding.createBlock(pageId, params.blockName || '');
                 console.log('[apiCallManager] Created new block in Yjs:', actualBlockId);
             }
 

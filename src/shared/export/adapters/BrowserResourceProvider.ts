@@ -15,6 +15,7 @@
  */
 
 import type { ResourceProvider } from '../interfaces';
+import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants } from '../constants';
 
 /**
  * Interface for ResourceFetcher (browser class)
@@ -27,6 +28,7 @@ interface ResourceFetcherInterface {
     fetchLibraryFiles(paths: string[]): Promise<Map<string, Blob>>;
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
     fetchSchemas(format: string): Promise<Map<string, Blob>>;
+    fetchExeLogo(): Promise<Blob | null>;
 }
 
 /**
@@ -118,14 +120,21 @@ export class BrowserResourceProvider implements ResourceProvider {
      * @returns Normalized directory name (e.g., 'text')
      */
     normalizeIdeviceType(ideviceType: string): string {
-        // Map common type names to directory names
-        const typeMap: Record<string, string> = {
-            freetextidevice: 'text',
-            textidevice: 'text',
-            freetext: 'text',
-        };
-        const normalized = ideviceType.toLowerCase().replace(/idevice$/i, '');
-        return typeMap[normalized] || typeMap[ideviceType.toLowerCase()] || normalized || 'text';
+        // Use centralized mapping from constants.ts
+        return normalizeIdeviceTypeFromConstants(ideviceType);
+    }
+
+    /**
+     * Fetch the eXeLearning "powered by" logo
+     * @returns Logo image as Uint8Array, or null if not found
+     */
+    async fetchExeLogo(): Promise<Uint8Array | null> {
+        const blob = await this.fetcher.fetchExeLogo();
+        if (blob) {
+            const arrayBuffer = await blob.arrayBuffer();
+            return new Uint8Array(arrayBuffer);
+        }
+        return null;
     }
 
     /**

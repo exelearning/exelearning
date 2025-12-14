@@ -15,6 +15,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { ResourceProvider } from '../interfaces';
+import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants } from '../constants';
 
 /**
  * Resource file entry
@@ -73,24 +74,8 @@ export class FileSystemResourceProvider implements ResourceProvider {
      * @returns Normalized directory name
      */
     normalizeIdeviceType(ideviceType: string): string {
-        // Map common type names to directory names
-        const typeMap: Record<string, string> = {
-            'freetextidevice': 'text',
-            'textidevice': 'text',
-            'freetext': 'text',
-            'download-package': 'download-source-file',
-            'adivina': 'guess',
-            'adivina-activity': 'guess',
-            'listacotejo': 'checklist',
-            'listacotejo-activity': 'checklist',
-            'ordena': 'sort',
-            'clasifica': 'classify',
-            'relaciona': 'relate',
-            'completa': 'complete',
-            'rubrics': 'rubric',
-        };
-        const normalized = ideviceType.toLowerCase().replace(/-?idevice$/i, '');
-        return typeMap[normalized] || typeMap[ideviceType.toLowerCase()] || normalized || 'text';
+        // Use centralized mapping from constants.ts
+        return normalizeIdeviceTypeFromConstants(ideviceType);
     }
 
     /**
@@ -239,6 +224,18 @@ export class FileSystemResourceProvider implements ResourceProvider {
         const fullPath = path.join(this.publicDir, relativePath);
         if (await fs.pathExists(fullPath)) {
             return fs.readFile(fullPath);
+        }
+        return null;
+    }
+
+    /**
+     * Fetch the eXeLearning "powered by" logo
+     * @returns Logo image as Buffer, or null if not found
+     */
+    async fetchExeLogo(): Promise<Uint8Array | null> {
+        const logoPath = path.join(this.publicDir, 'app', 'common', 'exe_powered_logo', 'exe_powered_logo.png');
+        if (await fs.pathExists(logoPath)) {
+            return fs.readFile(logoPath);
         }
         return null;
     }

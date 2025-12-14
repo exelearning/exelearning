@@ -329,6 +329,19 @@ $exeExport.searchBar = {
     deepLinking : false,
     markResults : false,
     query : '',
+    /**
+     * Normalize text for search comparison: lowercase and remove diacritical marks
+     * (accents, tildes, umlauts, cedillas, etc.)
+     * @param {string} text - The text to normalize
+     * @returns {string} - Normalized text without diacritical marks
+     */
+    normalizeText : function(text) {
+        if (!text) return '';
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, ''); // Remove combining diacritical marks
+    },
     init : function(){
         var searchWrapper = $('#exe-client-search');
         if (searchWrapper.length != 1) return;
@@ -336,7 +349,15 @@ $exeExport.searchBar = {
         this.isIndex = $("html").attr('id') == 'exe-index';
         this.isPreview = window.location.href.indexOf('/file/resources?resource=/tmp/') != -1;
         this.createSearchForm();
-        this.data = JSON.parse(searchWrapper.attr('data-pages'));
+        // Try window.exeSearchData first (from search_index.js), fallback to data-pages attribute
+        if (window.exeSearchData) {
+            this.data = window.exeSearchData;
+        } else {
+            var dataPagesAttr = searchWrapper.attr('data-pages');
+            if (dataPagesAttr) {
+                this.data = JSON.parse(dataPagesAttr);
+            }
+        }
 
         let page = document.querySelector('.exe-content > .page');
         let searchContainer = document.querySelector('#exe-client-search');
@@ -396,12 +417,12 @@ $exeExport.searchBar = {
         var i;
         let res = '';
         let str = $exeExport.searchBar.query;
-        str = str.toLowerCase();
+        str = this.normalizeText(str);
         let data = this.data;
         for (i in data) {
             var node = data[i];
             var nodeTitle = node.name;
-            var nodetitle = nodeTitle.toLowerCase();
+            var nodetitle = this.normalizeText(nodeTitle);
             if (nodetitle.indexOf(str) != -1) {
                 this.results.push(i);
                 let lnk = this.getLink(node.fileUrl);
@@ -466,7 +487,7 @@ $exeExport.searchBar = {
             var box = boxes[x];
             var boxOrder = box.order;
             var boxTitle = box.name;
-            var boxtitle = boxTitle.toLowerCase();
+            var boxtitle = this.normalizeText(boxTitle);
 
             // Add the HTML of the iDevices to boxtitle so it searches there too
             var iDevices = box.idevices;
@@ -478,7 +499,7 @@ $exeExport.searchBar = {
                     var tmp = $("<div></div>");
                         tmp.html(iDeviceHTML);
                     var iDeviceText = tmp.text();
-                        iDeviceText = iDeviceText.toLowerCase();
+                        iDeviceText = this.normalizeText(iDeviceText);
                     boxtitle += ' ' + iDeviceText;
                 }
             }

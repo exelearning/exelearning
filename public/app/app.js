@@ -82,6 +82,81 @@ class App {
 
         // Electron: handle files opened via file association
         this.bindElectronFileOpenHandler();
+
+        // Handle exe-package:elp protocol for download-source-file iDevice
+        this.initExePackageProtocolHandler();
+    }
+
+    /**
+     * Initialize handler for exe-package:elp protocol
+     * Used by download-source-file iDevice to download project in editor/preview
+     */
+    initExePackageProtocolHandler() {
+        document.addEventListener('click', async (e) => {
+            const link = e.target.closest('a[href="exe-package:elp"]');
+            if (!link) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Check if Yjs mode is enabled
+            if (!this.project?._yjsEnabled || !this.project?.exportToElpxViaYjs) {
+                this.modals.alert.show({
+                    title: _('Error'),
+                    body: _('Project not loaded or Yjs not enabled'),
+                    contentId: 'error',
+                });
+                return;
+            }
+
+            // Show loading toast
+            const toastData = {
+                title: _('Download'),
+                body: _('Generating ELPX file...'),
+                icon: 'downloading',
+            };
+            const toast = this.toasts.createToast(toastData);
+
+            try {
+                // Get project title for filename - try Yjs metadata first, then legacy properties
+                let projectTitle = 'project';
+
+                // Try Yjs metadata (primary source in Yjs mode)
+                if (this.project?._yjsBridge?.documentManager) {
+                    const metadata = this.project._yjsBridge.documentManager.getMetadata();
+                    if (metadata && metadata.get('title')) {
+                        projectTitle = metadata.get('title');
+                    }
+                }
+
+                // Fallback to legacy properties if Yjs title not found
+                if (projectTitle === 'project' && this.project?.properties?.properties?.pp_title?.value) {
+                    projectTitle = this.project.properties.properties.pp_title.value;
+                }
+
+                const filename = `${projectTitle}.elpx`;
+
+                // Export using existing method
+                await this.project.exportToElpxViaYjs(filename);
+
+                // Update toast
+                toast.toastBody.innerHTML = _('File generated and downloaded.');
+            } catch (error) {
+                console.error('[exe-package:elp] Error:', error);
+                toast.toastBody.innerHTML = _('Error generating ELPX file.');
+                toast.toastBody.classList.add('error');
+                this.modals.alert.show({
+                    title: _('Error'),
+                    body: error.message || _('Unknown error.'),
+                    contentId: 'error',
+                });
+            }
+
+            // Remove toast after delay
+            setTimeout(() => {
+                toast.remove();
+            }, 2000);
+        });
     }
 
     /**

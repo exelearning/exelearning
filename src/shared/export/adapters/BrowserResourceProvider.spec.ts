@@ -14,6 +14,7 @@ interface MockResourceFetcherInterface {
     fetchLibraryFiles(paths: string[]): Promise<Map<string, Blob>>;
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
     fetchSchemas(format: string): Promise<Map<string, Blob>>;
+    fetchExeLogo(): Promise<Blob | null>;
 }
 
 // Create a mock Blob
@@ -33,10 +34,15 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
     private libraryFiles: Map<string, Blob> = new Map();
     private libraryDirectories: Map<string, Map<string, Blob>> = new Map();
     private schemas: Map<string, Map<string, Blob>> = new Map();
+    private exeLogo: Blob | null = null;
 
     // Setup methods for testing
     setTheme(themeName: string, files: Map<string, Blob>): void {
         this.themes.set(themeName, files);
+    }
+
+    setExeLogo(logo: Blob | null): void {
+        this.exeLogo = logo;
     }
 
     setIdevice(type: string, files: Map<string, Blob>): void {
@@ -90,6 +96,10 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
 
     async fetchSchemas(format: string): Promise<Map<string, Blob>> {
         return this.schemas.get(format) || new Map();
+    }
+
+    async fetchExeLogo(): Promise<Blob | null> {
+        return this.exeLogo;
     }
 }
 
@@ -284,6 +294,40 @@ describe('BrowserResourceProvider', () => {
 
             expect(result).toBeInstanceOf(Map);
             expect(result.size).toBe(0);
+        });
+    });
+
+    describe('fetchExeLogo', () => {
+        it('should return logo as Uint8Array when available', async () => {
+            const pngHeader = new Uint8Array([0x89, 0x50, 0x4e, 0x47]); // PNG header
+            const logoBlob = new Blob([pngHeader], { type: 'image/png' });
+            mockFetcher.setExeLogo(logoBlob);
+
+            const result = await provider.fetchExeLogo();
+
+            expect(result).toBeInstanceOf(Uint8Array);
+            expect(result![0]).toBe(0x89);
+            expect(result![1]).toBe(0x50);
+            expect(result![2]).toBe(0x4e);
+            expect(result![3]).toBe(0x47);
+        });
+
+        it('should return null when logo is not available', async () => {
+            mockFetcher.setExeLogo(null);
+
+            const result = await provider.fetchExeLogo();
+
+            expect(result).toBeNull();
+        });
+
+        it('should convert Blob content correctly', async () => {
+            const imageData = new Uint8Array([0x47, 0x49, 0x46, 0x38]); // GIF header
+            const logoBlob = new Blob([imageData], { type: 'image/gif' });
+            mockFetcher.setExeLogo(logoBlob);
+
+            const result = await provider.fetchExeLogo();
+
+            expect(result).toEqual(imageData);
         });
     });
 

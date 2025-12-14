@@ -2109,7 +2109,7 @@ export default class IdeviceNode {
      */
     async moveToPageViaYjs(targetPageId) {
         try {
-            const blockName = this.idevice?.title || 'Block';
+            const blockName = this.idevice?.title || '';
             const bridge = eXeLearning.app?.project?._yjsBridge;
             const structureBinding = bridge?.structureBinding;
 

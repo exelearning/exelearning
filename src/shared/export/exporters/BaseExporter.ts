@@ -532,7 +532,21 @@ export abstract class BaseExporter {
             pp_description: metadata.description || '',
             pp_license: metadata.license || '',
             pp_theme: metadata.theme || 'base',
+            // Export options
+            pp_addExeLink: String(metadata.addExeLink ?? true),
+            pp_addPagination: String(metadata.addPagination ?? false),
+            pp_addSearchBox: String(metadata.addSearchBox ?? false),
+            pp_addAccessibilityToolbar: String(metadata.addAccessibilityToolbar ?? false),
+            exportSource: String(metadata.exportSource ?? true),
         };
+
+        // Add custom content if present
+        if (metadata.extraHeadContent) {
+            props['pp_extraHeadContent'] = metadata.extraHeadContent;
+        }
+        if (metadata.footer) {
+            props['footer'] = metadata.footer;
+        }
 
         for (const [key, value] of Object.entries(props)) {
             xml += `  <${key}>${this.escapeXml(value)}</${key}>\n`;
@@ -571,7 +585,7 @@ export abstract class BaseExporter {
      */
     protected generateBlockXml(block: ExportBlock, index: number): string {
         const blockId = block.id;
-        const blockName = block.name || 'Block';
+        const blockName = block.name || '';
         const order = block.order ?? index;
 
         let xml = `  <odePagStructure odePagStructureId="${this.escapeXml(blockId)}" `;
@@ -727,6 +741,50 @@ export abstract class BaseExporter {
     padding: 20px 30px;
     max-width: 900px;
   }
+}
+
+/* Made with eXeLearning */
+#made-with-eXe {
+  margin: 0;
+  position: fixed;
+  bottom: 0;
+  right: 0;
+}
+#made-with-eXe a {
+  text-decoration: none;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  border-top-left-radius: 4px;
+  color: #222;
+  font-size: 11px;
+  font-family: Arial, sans-serif;
+  line-height: 35px;
+  width: 35px;
+  height: 35px;
+  background: #fff url(../img/exe_powered_logo.png) no-repeat 3px 50%;
+  display: block;
+  background-size: auto 20px;
+  transition: .5s;
+  opacity: .8;
+}
+#made-with-eXe span {
+  padding-left: 35px;
+  padding-right: 5px;
+}
+#made-with-eXe span span {
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip: rect(0, 0, 0, 0);
+  height: 0;
+}
+#made-with-eXe a:hover {
+  width: auto;
+  padding: 0 5px;
+  background-position: 5px 50%;
+  opacity: 1;
+}
+@media print {
+  #made-with-eXe { display: none; }
 }
 `;
     }

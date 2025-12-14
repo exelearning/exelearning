@@ -72,14 +72,68 @@ export class WebsitePreviewExporter {
             // Get all used iDevice types
             const usedIdevices = this.getUsedIdevices(pages);
 
+            // Check if download-source-file iDevice is used (needs special handling)
+            const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
             // Generate the SPA HTML
-            const html = this.generateWebsiteSpaHtml(pages, meta, usedIdevices, options);
+            let html = this.generateWebsiteSpaHtml(pages, meta, usedIdevices, options, needsElpxDownload);
+
+            // Apply exe-package:elp protocol replacement if download-source-file is used
+            if (needsElpxDownload) {
+                const projectTitle = meta.title || 'project';
+                html = this.replaceElpxProtocol(html, projectTitle);
+            }
 
             return { success: true, html };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { success: false, error: errorMessage };
         }
+    }
+
+    /**
+     * Check if any page contains the download-source-file iDevice
+     * (needs fflate and exe_elpx_download.js)
+     */
+    private needsElpxDownloadSupport(pages: ExportPage[]): boolean {
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    // Check by iDevice type
+                    const type = (component.type || '').toLowerCase();
+                    if (type.includes('download-source-file') || type.includes('downloadsourcefile')) {
+                        return true;
+                    }
+                    // Also check content for the CSS class (more reliable)
+                    if (component.content && component.content.includes('exe-download-package-link')) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Replace exe-package:elp protocol with client-side download handler
+     * Enables the download-source-file iDevice to generate ELPX files on-the-fly
+     */
+    private replaceElpxProtocol(content: string, projectTitle: string): string {
+        if (!content || !content.includes('exe-package:elp')) {
+            return content;
+        }
+
+        // Replace href="exe-package:elp" with onclick handler
+        let result = content.replace(
+            /href="exe-package:elp"/g,
+            'href="#" onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"',
+        );
+
+        // Replace download="exe-package:elp-name" with actual filename
+        const safeTitle = this.escapeHtml(projectTitle);
+        result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
+
+        return result;
     }
 
     /**
@@ -121,6 +175,7 @@ export class WebsitePreviewExporter {
         meta: ReturnType<ExportDocument['getMetadata']>,
         usedIdevices: string[],
         options: PreviewOptions,
+        needsElpxDownload: boolean = false,
     ): string {
         const lang = meta.language || 'en';
         const projectTitle = meta.title || 'eXeLearning';
@@ -130,21 +185,39 @@ export class WebsitePreviewExporter {
         const themeName = meta.theme || 'base';
         const totalPages = pages.length;
 
+        // Export options (with defaults)
+        const addExeLink = meta.addExeLink ?? true;
+        const addPagination = meta.addPagination ?? false;
+        const addSearchBox = meta.addSearchBox ?? false;
+        const addAccessibilityToolbar = meta.addAccessibilityToolbar ?? false;
+
+        // Generate search data if search box is enabled
+        const searchDataJson = addSearchBox ? this.generateSearchData(pages, options) : '';
+
         // Generate all page contents (hidden except first)
         let pagesHtml = '';
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
             const isFirst = i === 0;
-            pagesHtml += this.renderPageArticle(page, isFirst, i, totalPages, projectTitle, options);
+            pagesHtml += this.renderPageArticle(page, isFirst, i, totalPages, projectTitle, options, addPagination);
         }
+
+        // Conditionally render "Made with eXeLearning"
+        const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(lang) : '';
+
+        // Render search box container if enabled
+        const searchBoxHtml = addSearchBox ? this.renderSearchBox() : '';
+        // Generate inline search data script (avoids bloating HTML with large JSON attributes)
+        const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : '';
 
         return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
-${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options)}
+${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar)}
 </head>
 <body class="exe-web-site exe-preview" lang="${lang}">
 <script>document.body.className+=" js"</script>
+${searchBoxHtml}
 <div class="exe-content exe-export pre-js">
 ${this.renderSpaNavigation(pages)}
 <main class="page">
@@ -153,8 +226,9 @@ ${pagesHtml}
 ${this.renderNavButtons()}
 ${this.renderWebsiteFooter(author, license)}
 </div>
-${this.renderMadeWithEXe()}
-${this.generateWebsitePreviewScripts(themeName, usedIdevices, options)}
+${madeWithExeHtml}
+${searchDataScript}
+${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar)}
 </body>
 </html>`;
     }
@@ -168,6 +242,7 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options)}
         projectTitle: string,
         customStyles: string,
         options: PreviewOptions,
+        addAccessibilityToolbar: boolean = false,
     ): string {
         const bootstrapCss = this.getVersionedPath('/libs/bootstrap/bootstrap.min.css', options);
         const themeCss = this.getVersionedPath(`/files/perm/themes/base/${themeName}/style.css`, options);
@@ -214,7 +289,7 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options)}
 <!-- Server-hosted libraries (versioned paths) -->
 <link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}
 
-<!-- Preview-only CSS (BEFORE theme so theme styles take precedence) -->
+<!-- Preview-only CSS for SPA behavior -->
 <style>
 ${this.getWebsitePreviewCss()}
 </style>
@@ -242,11 +317,20 @@ ${this.getWebsitePreviewCss()}
             head += `\n<style>\n${customStyles}\n</style>`;
         }
 
+        // Accessibility toolbar CSS
+        if (addAccessibilityToolbar) {
+            const atoolsCss = this.getVersionedPath('/libs/exe_atools/exe_atools.css', options);
+            head += `\n<link rel="stylesheet" href="${atoolsCss}">`;
+        }
+
+        // Made-with-eXe CSS - MUST be last to override theme styles
+        head += `\n<style>\n${this.getMadeWithExeCss(options)}\n</style>`;
+
         return head;
     }
 
     /**
-     * Get preview-only CSS for SPA behavior
+     * Get preview-only CSS for SPA behavior (basic styles only)
      */
     private getWebsitePreviewCss(): string {
         return `/* SPA Preview Styles */
@@ -255,6 +339,54 @@ ${this.getWebsitePreviewCss()}
 .nav-buttons { display: flex; justify-content: space-between; padding: 1rem; }
 .nav-button { cursor: pointer; }
 .nav-button.disabled { opacity: 0.5; pointer-events: none; }`;
+    }
+
+    /**
+     * Get Made-with-eXe CSS (loaded AFTER theme to ensure it overrides)
+     */
+    private getMadeWithExeCss(options: PreviewOptions): string {
+        // Logo URL for "Made with eXeLearning" styling
+        const logoUrl = this.getVersionedPath('/app/common/exe_powered_logo/exe_powered_logo.png', options);
+
+        return `/* Made with eXeLearning - Must load after theme */
+#made-with-eXe {
+    margin: 0;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    z-index: 9999;
+}
+#made-with-eXe a {
+    text-decoration: none;
+    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+    border-top-left-radius: 4px;
+    color: #222;
+    font-size: 11px;
+    font-family: Arial, sans-serif;
+    line-height: 35px;
+    width: 35px;
+    height: 35px;
+    background: #fff url(${logoUrl}) no-repeat 3px 50%;
+    display: block;
+    background-size: auto 20px;
+    transition: .5s;
+    opacity: .8;
+    overflow: hidden;
+}
+#made-with-eXe span {
+    padding-left: 35px;
+    padding-right: 5px;
+    white-space: nowrap;
+}
+#made-with-eXe a:hover {
+    width: auto;
+    padding: 0 5px;
+    background-position: 5px 50%;
+    opacity: 1;
+}
+@media print {
+    #made-with-eXe { display: none; }
+}`;
     }
 
     /**
@@ -305,6 +437,7 @@ ${this.getWebsitePreviewCss()}
         totalPages: number,
         projectTitle: string,
         options: PreviewOptions,
+        addPagination: boolean = false,
     ): string {
         let blockHtml = '';
 
@@ -322,8 +455,13 @@ ${this.getWebsitePreviewCss()}
         const displayStyle = isFirst ? '' : ' style="display:none"';
         const pageId = page.id;
 
+        // Build page counter HTML (only if pagination is enabled)
+        const pageCounterHtml = addPagination
+            ? `<p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${pageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>`
+            : '';
+
         return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}">
-<header id="header-${pageId}" class="page-header"> <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${pageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
+<header id="header-${pageId}" class="page-header"> ${pageCounterHtml}
 <h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
 <h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>
 <div id="page-content-${pageId}" class="page-content">
@@ -357,16 +495,40 @@ ${blockHtml}
     }
 
     /**
-     * Render "Made with eXeLearning" credit
+     * Translations for "Made with eXeLearning" text
      */
-    private renderMadeWithEXe(): string {
-        return `<p id="made-with-eXe"><a href="https://exelearning.net/" target="_blank" rel="noopener">eXeLearning.net</a></p>`;
+    private static readonly MADE_WITH_TRANSLATIONS: Record<string, string> = {
+        en: 'Made with eXeLearning',
+        es: 'Creado con eXeLearning',
+        ca: 'Creat amb eXeLearning',
+        eu: 'eXeLearning-ekin egina',
+        gl: 'Creado con eXeLearning',
+        pt: 'Criado com eXeLearning',
+        va: 'Creat amb eXeLearning',
+        ro: 'Creat cu eXeLearning',
+        eo: 'Kreita per eXeLearning',
+    };
+
+    /**
+     * Render "Made with eXeLearning" credit with translated text
+     * The text is hidden by default and shown on hover via CSS
+     */
+    private renderMadeWithEXe(lang: string): string {
+        const text =
+            WebsitePreviewExporter.MADE_WITH_TRANSLATIONS[lang] || WebsitePreviewExporter.MADE_WITH_TRANSLATIONS['en'];
+        return `<p id="made-with-eXe"><a href="https://exelearning.net/" target="_blank" rel="noopener"><span>${this.escapeHtml(text)} </span></a></p>`;
     }
 
     /**
      * Generate scripts with SPA navigation logic
      */
-    private generateWebsitePreviewScripts(themeName: string, usedIdevices: string[], options: PreviewOptions): string {
+    private generateWebsitePreviewScripts(
+        themeName: string,
+        usedIdevices: string[],
+        options: PreviewOptions,
+        needsElpxDownload: boolean = false,
+        addAccessibilityToolbar: boolean = false,
+    ): string {
         const jqueryJs = this.getVersionedPath('/libs/jquery/jquery.min.js', options);
         const bootstrapJs = this.getVersionedPath('/libs/bootstrap/bootstrap.bundle.min.js', options);
         const commonJs = this.getVersionedPath('/app/common/common.js', options);
@@ -405,6 +567,14 @@ ${blockHtml}
             jqueryUiScript = `\n<script src="${jqueryUiJs}"></script>`;
         }
 
+        // ELPX download scripts (fflate + exe_elpx_download.js) for download-source-file iDevice
+        let elpxDownloadScripts = '';
+        if (needsElpxDownload) {
+            const fflateJs = this.getVersionedPath('/libs/fflate/fflate.umd.js', options);
+            const elpxDownloadJs = this.getVersionedPath('/libs/exe_elpx_download.js', options);
+            elpxDownloadScripts = `\n<script src="${fflateJs}"></script>\n<script src="${elpxDownloadJs}"></script>`;
+        }
+
         // iDevice scripts
         let ideviceScripts = '';
         const seenJs = new Set<string>();
@@ -421,11 +591,18 @@ ${blockHtml}
             }
         }
 
+        // Accessibility toolbar script
+        let atoolsScript = '';
+        if (addAccessibilityToolbar) {
+            const atoolsJs = this.getVersionedPath('/libs/exe_atools/exe_atools.js', options);
+            atoolsScript = `\n<script src="${atoolsJs}"></script>`;
+        }
+
         return `<script src="${jqueryJs}"></script>
-<script src="${bootstrapJs}"></script>${jqueryUiScript}
+<script src="${bootstrapJs}"></script>${jqueryUiScript}${elpxDownloadScripts}
 <script src="${commonJs}"></script>
 <script src="${commonI18nJs}"></script>
-<script src="${exeExportJs}"></script>${ideviceScripts}
+<script src="${exeExportJs}"></script>${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"></script>
 <script>
 ${this.getSpaNavigationScript()}
@@ -508,5 +685,100 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
             "'": '&#39;',
         };
         return text.replace(/[&<>"']/g, char => escapes[char] || char);
+    }
+
+    /**
+     * Escape string for use in HTML attributes
+     */
+    private escapeAttr(text: string): string {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    /**
+     * Sanitize filename for URLs
+     */
+    private sanitizeFilename(title: string): string {
+        return (
+            title
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '')
+                .substring(0, 50) || 'page'
+        );
+    }
+
+    /**
+     * Render search box container (without data-pages attribute)
+     * The data is provided via window.exeSearchData inline script
+     * The form is created dynamically by exe_export.js
+     */
+    private renderSearchBox(): string {
+        return `<div id="exe-client-search"
+    data-block-order-string="Caja %e"
+    data-no-results-string="Sin resultados.">
+</div>`;
+    }
+
+    /**
+     * Generate inline script for search data
+     * This avoids bloating each page with large JSON in attributes
+     */
+    private generateSearchDataScript(searchDataJson: string): string {
+        return `<script>window.exeSearchData = ${searchDataJson};</script>`;
+    }
+
+    /**
+     * Generate search data JSON for client-side search functionality
+     * @param pages - All pages in the project
+     * @param options - Preview options for URL generation
+     * @returns JSON string with page structure
+     */
+    private generateSearchData(pages: ExportPage[], _options: PreviewOptions): string {
+        const pagesData: Record<string, unknown> = {};
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            const isIndex = i === 0;
+            const prevPage = i > 0 ? pages[i - 1] : null;
+            const nextPage = i < pages.length - 1 ? pages[i + 1] : null;
+
+            const fileName = isIndex ? 'index.html' : `${this.sanitizeFilename(page.title)}.html`;
+            const fileUrl = isIndex ? 'index.html' : `html/${fileName}`;
+
+            const blocksData: Record<string, unknown> = {};
+            for (const block of page.blocks || []) {
+                const idevicesData: Record<string, unknown> = {};
+                for (let j = 0; j < (block.components || []).length; j++) {
+                    const component = block.components[j];
+                    idevicesData[component.id] = {
+                        order: j + 1,
+                        htmlView: component.content || '',
+                        jsonProperties: JSON.stringify(component.properties || {}),
+                    };
+                }
+                blocksData[block.id] = {
+                    name: block.name || '',
+                    order: block.order || 1,
+                    idevices: idevicesData,
+                };
+            }
+
+            pagesData[page.id] = {
+                name: page.title,
+                isIndex,
+                fileName,
+                fileUrl,
+                prePageId: prevPage?.id || null,
+                nextPageId: nextPage?.id || null,
+                blocks: blocksData,
+            };
+        }
+
+        return JSON.stringify(pagesData);
     }
 }

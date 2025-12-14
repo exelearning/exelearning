@@ -267,10 +267,21 @@ describe('HTML Generator Helper', () => {
             expect(html).not.toContain('nav-button-right');
         });
 
-        it('should include page header with page counter', () => {
+        it('should include page header with page counter when addPagination is true', () => {
             const page1 = createPage({ id: 'page-1', title: 'First' });
             const page2 = createPage({ id: 'page-2', title: 'Second' });
-            const structure = createMinimalStructure({ pages: [page1, page2] });
+            const structure = createMinimalStructure({
+                pages: [page1, page2],
+                meta: {
+                    title: 'Test Project',
+                    description: '',
+                    author: '',
+                    language: 'en',
+                    exelearning_version: '3.0',
+                    id: 'test-ode',
+                    addPagination: true,
+                },
+            });
 
             const html = generatePageHtml(page2, structure, {});
 
@@ -280,6 +291,17 @@ describe('HTML Generator Helper', () => {
             expect(html).toContain('class="page-counter-total">2</strong>');
             expect(html).toContain('class="package-title"');
             expect(html).toContain('class="page-title"');
+        });
+
+        it('should NOT include page counter when addPagination is false (default)', () => {
+            const page1 = createPage({ id: 'page-1', title: 'First' });
+            const page2 = createPage({ id: 'page-2', title: 'Second' });
+            const structure = createMinimalStructure({ pages: [page1, page2] });
+
+            const html = generatePageHtml(page2, structure, {});
+
+            expect(html).toContain('class="page-header"');
+            expect(html).not.toContain('class="page-counter"');
         });
 
         it('should include page content wrapper', () => {

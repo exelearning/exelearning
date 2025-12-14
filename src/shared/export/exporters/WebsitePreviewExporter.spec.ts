@@ -115,12 +115,39 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('class="exe-web-site exe-preview"');
         });
 
-        it('should include page counter', async () => {
-            const result = await exporter.generatePreview();
+        it('should include page counter when addPagination is true', async () => {
+            // Create a new exporter with addPagination enabled
+            const docWithPagination = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Home',
+                        parentId: null,
+                        order: 0,
+                        blocks: [],
+                    },
+                    {
+                        id: 'page-2',
+                        title: 'About',
+                        parentId: null,
+                        order: 1,
+                        blocks: [],
+                    },
+                ],
+                { addPagination: true },
+            );
+            const exporterWithPagination = new WebsitePreviewExporter(docWithPagination, mockResourceProvider);
+            const result = await exporterWithPagination.generatePreview();
+
             expect(result.html).toContain('page-counter');
             expect(result.html).toContain(
                 '1</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">2',
             );
+        });
+
+        it('should NOT include page counter when addPagination is false (default)', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).not.toContain('page-counter');
         });
 
         it('should include made-with-eXe credit', async () => {
@@ -291,6 +318,286 @@ describe('WebsitePreviewExporter', () => {
             const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
             const result = await exp.generatePreview();
             expect(result.html).toContain('&lt;script&gt;xss&lt;/script&gt; - Preview');
+        });
+    });
+
+    describe('export options', () => {
+        describe('addSearchBox', () => {
+            it('should not include search box container by default', async () => {
+                const result = await exporter.generatePreview();
+                expect(result.html).not.toContain('id="exe-client-search"');
+            });
+
+            it('should include search box container when addSearchBox is true', async () => {
+                const doc = createMockDocument([{ id: 'p1', title: 'Page', parentId: null, order: 0, blocks: [] }], {
+                    addSearchBox: true,
+                });
+                const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview();
+                expect(result.html).toContain('id="exe-client-search"');
+                // Search data is now in inline script instead of data-pages attribute
+                expect(result.html).toContain('window.exeSearchData');
+                expect(result.html).toContain('data-block-order-string="Caja %e"');
+                expect(result.html).toContain('data-no-results-string="Sin resultados."');
+                // Should NOT have data-pages attribute anymore
+                expect(result.html).not.toContain('data-pages=');
+            });
+
+            it('should generate valid JSON search data in inline script', async () => {
+                const doc = createMockDocument(
+                    [
+                        {
+                            id: 'page-1',
+                            title: 'Home Page',
+                            parentId: null,
+                            order: 0,
+                            blocks: [
+                                {
+                                    id: 'block-1',
+                                    name: 'Block 1',
+                                    order: 0,
+                                    components: [
+                                        {
+                                            id: 'comp-1',
+                                            type: 'text',
+                                            order: 0,
+                                            content: '<p>Test content</p>',
+                                            properties: { key: 'value' },
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                        { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+                    ],
+                    { addSearchBox: true },
+                );
+                const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview();
+
+                // Extract search data from inline script: window.exeSearchData = {...};
+                const match = result.html!.match(/window\.exeSearchData\s*=\s*(\{[\s\S]*?\});/);
+                expect(match).toBeTruthy();
+
+                // Parse the JSON
+                const data = JSON.parse(match![1]);
+
+                // Verify structure
+                expect(data['page-1']).toBeDefined();
+                expect(data['page-1'].name).toBe('Home Page');
+                expect(data['page-1'].isIndex).toBe(true);
+                expect(data['page-1'].fileName).toBe('index.html');
+                expect(data['page-1'].blocks['block-1']).toBeDefined();
+                expect(data['page-1'].blocks['block-1'].idevices['comp-1']).toBeDefined();
+
+                expect(data['page-2']).toBeDefined();
+                expect(data['page-2'].isIndex).toBe(false);
+                expect(data['page-2'].prePageId).toBe('page-1');
+            });
+
+            it('should handle special characters in search data', async () => {
+                const doc = createMockDocument(
+                    [
+                        {
+                            id: 'p1',
+                            title: 'Page "with" <special> & chars',
+                            parentId: null,
+                            order: 0,
+                            blocks: [],
+                        },
+                    ],
+                    { addSearchBox: true },
+                );
+                const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview();
+
+                // Extract search data from inline script
+                const match = result.html!.match(/window\.exeSearchData\s*=\s*(\{[\s\S]*?\});/);
+                expect(match).toBeTruthy();
+
+                // JSON.parse should work (special chars are properly escaped)
+                const data = JSON.parse(match![1]);
+                expect(data['p1'].name).toBe('Page "with" <special> & chars');
+            });
+        });
+
+        describe('addExeLink', () => {
+            it('should include made-with-eXe by default', async () => {
+                const result = await exporter.generatePreview();
+                expect(result.html).toContain('id="made-with-eXe"');
+            });
+
+            it('should not include made-with-eXe when addExeLink is false', async () => {
+                const doc = createMockDocument([{ id: 'p1', title: 'Page', parentId: null, order: 0, blocks: [] }], {
+                    addExeLink: false,
+                });
+                const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview();
+                expect(result.html).not.toContain('id="made-with-eXe"');
+            });
+
+            it('should include made-with-eXe CSS with correct positioning', async () => {
+                const result = await exporter.generatePreview();
+                // Check that CSS for made-with-eXe is included
+                expect(result.html).toContain('#made-with-eXe');
+                expect(result.html).toContain('position: fixed');
+                expect(result.html).toContain('bottom: 0');
+                expect(result.html).toContain('right: 0');
+                expect(result.html).toContain('z-index: 9999');
+            });
+
+            it('should include exe logo path in made-with-eXe CSS', async () => {
+                const result = await exporter.generatePreview({
+                    baseUrl: 'http://test.com',
+                    version: 'v1.0.0',
+                });
+                expect(result.html).toContain('exe_powered_logo.png');
+            });
+
+            it('should render made-with-eXe with span containing translated text', async () => {
+                const result = await exporter.generatePreview();
+                // Should have span structure for hover text
+                expect(result.html).toContain('<span>Made with eXeLearning </span>');
+            });
+
+            it('should translate made-with-eXe text in Spanish', async () => {
+                const doc = createMockDocument([{ id: 'p1', title: 'Page', parentId: null, order: 0, blocks: [] }], {
+                    language: 'es',
+                });
+                const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview();
+                expect(result.html).toContain('Creado con eXeLearning');
+            });
+
+            it('should fall back to English for unknown language', async () => {
+                const doc = createMockDocument([{ id: 'p1', title: 'Page', parentId: null, order: 0, blocks: [] }], {
+                    language: 'zh',
+                });
+                const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview();
+                expect(result.html).toContain('Made with eXeLearning');
+            });
+        });
+
+        describe('addPagination', () => {
+            it('should not include pagination by default', async () => {
+                const result = await exporter.generatePreview();
+                // Navigation buttons may exist but should not show pagination numbers
+                expect(result.html).not.toContain('class="pagination"');
+            });
+        });
+
+        describe('addAccessibilityToolbar', () => {
+            it('should not include accessibility toolbar by default', async () => {
+                const result = await exporter.generatePreview();
+                expect(result.html).not.toContain('exe_atools');
+            });
+
+            it('should include accessibility toolbar when enabled', async () => {
+                const doc = createMockDocument([{ id: 'p1', title: 'Page', parentId: null, order: 0, blocks: [] }], {
+                    addAccessibilityToolbar: true,
+                });
+                const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview();
+                expect(result.html).toContain('exe_atools.css');
+                expect(result.html).toContain('exe_atools.js');
+            });
+        });
+    });
+
+    describe('ELPX protocol handling', () => {
+        it('should replace exe-package:elp protocol with onclick handler', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content:
+                                        '<a class="exe-download-package-link" href="exe-package:elp" download="exe-package:elp-name">Download</a>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // Should have onclick handler
+            expect(result.html).toContain('onclick="if(typeof downloadElpx===');
+            // Should have proper download filename
+            expect(result.html).toContain('download="Test Project.elpx"');
+            // Should NOT have original protocol
+            expect(result.html).not.toContain('href="exe-package:elp"');
+            // Should include the elpx download script
+            expect(result.html).toContain('exe_elpx_download.js');
+        });
+
+        it('should not modify content without download-source-file iDevice', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<a href="https://example.com">Regular link</a>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+            expect(result.html).toContain('href="https://example.com"');
+            // Should NOT include the elpx download script
+            expect(result.html).not.toContain('exe_elpx_download.js');
+        });
+    });
+
+    describe('CSS load order', () => {
+        it('should load made-with-eXe CSS after theme CSS', async () => {
+            const result = await exporter.generatePreview();
+            const html = result.html!;
+
+            // Find positions of theme CSS and made-with-eXe CSS
+            const themeCssPos = html.indexOf('/themes/base/');
+            const madeWithCssPos = html.indexOf('#made-with-eXe {');
+
+            // Made-with-eXe CSS should come after theme CSS
+            expect(themeCssPos).toBeGreaterThan(-1);
+            expect(madeWithCssPos).toBeGreaterThan(-1);
+            expect(madeWithCssPos).toBeGreaterThan(themeCssPos);
+        });
+
+        it('should have SPA preview CSS separate from made-with-eXe CSS', async () => {
+            const result = await exporter.generatePreview();
+            // SPA styles should be present
+            expect(result.html).toContain('.spa-page');
+            expect(result.html).toContain('.nav-buttons');
         });
     });
 });

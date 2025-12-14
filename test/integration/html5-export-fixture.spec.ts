@@ -8,7 +8,7 @@
  * Key validations:
  * - HEAD order: scripts BEFORE CSS
  * - Navigation: main-node class on first element
- * - exe-client-search div exists with JSON data
+ * - exe-client-search div conditional (only with addSearchBox=true)
  * - Theme files renamed: content.css, default.js
  * - iDevice paths are relative
  */
@@ -202,16 +202,20 @@ describe('HTML5 Export Fixture Comparison', () => {
     });
 
     describe('Client Search Data', () => {
-        it('should have exe-client-search div', async () => {
+        // Note: exe-client-search is only rendered when addSearchBox is enabled in project properties
+        // The default is false, so by default no search box is rendered
+        it('should NOT have exe-client-search div by default (requires addSearchBox=true)', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('id="exe-client-search"');
+            // addSearchBox defaults to false, so no search div should be present
+            expect(exportedIndexHtml).not.toContain('id="exe-client-search"');
         });
 
-        it('should have data-pages attribute with JSON', async () => {
+        it('should NOT have data-pages attribute by default', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('data-pages="');
+            // data-pages is only present when exe-client-search is rendered
+            expect(exportedIndexHtml).not.toContain('data-pages="');
         });
     });
 
@@ -242,12 +246,12 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('class="page-header"');
         });
 
-        it('should have page-counter element', async () => {
+        it('should NOT have page-counter by default (addPagination must be enabled)', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('class="page-counter"');
-            expect(exportedIndexHtml).toContain('page-counter-current-page');
-            expect(exportedIndexHtml).toContain('page-counter-total');
+            // Page counter is now conditional - only shown when addPagination is true
+            // Legacy exports always included it, but new exports require explicit opt-in
+            expect(exportedIndexHtml).not.toContain('class="page-counter"');
         });
 
         it('should have package-title (h1)', async () => {

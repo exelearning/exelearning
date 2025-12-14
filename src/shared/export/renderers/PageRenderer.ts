@@ -53,6 +53,13 @@ export class PageRenderer {
             totalPages,
             currentPageIndex,
             userFooterContent = '',
+            // Export options (with defaults)
+            addExeLink = true,
+            addPagination = false,
+            addSearchBox = false,
+            addAccessibilityToolbar = false,
+            // Custom head content
+            extraHeadContent = '',
             // SCORM-specific options
             isScorm = false,
             scormVersion = '',
@@ -73,23 +80,37 @@ export class PageRenderer {
         const onLoadAttr = onLoadScript ? ` onload="${onLoadScript}"` : '';
         const onUnloadAttr = onUnloadScript ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"` : '';
 
-        // Generate search data JSON for client-side search
-        const searchDataJson = this.generateSearchData(allPages, basePath);
+        // Build page header (with optional page counter)
+        const pageHeaderHtml = this.renderPageHeader(page, {
+            projectTitle,
+            currentPageIndex: currentIdx,
+            totalPages: total,
+            addPagination,
+        });
+
+        // Build search box div (only if enabled)
+        // Note: Search data is now in a separate search_index.js file, not embedded in the HTML
+        const searchBoxHtml = addSearchBox
+            ? `<div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados.">
+</div>`
+            : '';
+
+        // Build "Made with eXeLearning" link (only if enabled)
+        const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : '';
 
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, extraHeadContent, addSearchBox })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}${this.renderPageHeader(page, { projectTitle, currentPageIndex: currentIdx, totalPages: total })}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> <div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados." data-pages="${this.escapeAttr(searchDataJson)}">
-</div>
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> ${searchBoxHtml}
 ${this.renderPageContent(page, basePath)}
 </main></div>${this.renderNavButtons(page, allPages, basePath)}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
-${this.renderMadeWithEXe()}
+${madeWithExeHtml}
 </body>
 </html>`;
     }
@@ -110,6 +131,9 @@ ${this.renderMadeWithEXe()}
         scormVersion?: string;
         description?: string;
         licenseUrl?: string;
+        addAccessibilityToolbar?: boolean;
+        extraHeadContent?: string;
+        addSearchBox?: boolean;
     }): string {
         const {
             pageTitle,
@@ -120,6 +144,9 @@ ${this.renderMadeWithEXe()}
             isScorm: _isScorm = false,
             description = '',
             licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            addAccessibilityToolbar = false,
+            extraHeadContent = '',
+            addSearchBox = false,
         } = options;
 
         // Meta tags
@@ -143,6 +170,12 @@ ${this.renderMadeWithEXe()}
         head += `<script src="${basePath}libs/common_i18n.js"> </script>`;
         head += `<script src="${basePath}libs/common.js"> </script>`;
         head += `<script src="${basePath}libs/exe_export.js"> </script>`;
+
+        // Search index script (loads before exe_export.js initializes)
+        if (addSearchBox) {
+            head += `<script src="${basePath}search_index.js"> </script>`;
+        }
+
         head += `<script src="${basePath}libs/bootstrap/bootstrap.bundle.min.js"> </script>`;
         head += `<script src="${basePath}libs/exe_lightbox/exe_lightbox.js"> </script>`;
 
@@ -168,6 +201,17 @@ ${this.renderMadeWithEXe()}
         // Custom styles
         if (customStyles) {
             head += `\n<style>\n${customStyles}\n</style>`;
+        }
+
+        // Accessibility toolbar (JS first, then CSS)
+        if (addAccessibilityToolbar) {
+            head += `\n<script src="${basePath}libs/exe_atools/exe_atools.js"> </script>`;
+            head += `<link rel="stylesheet" href="${basePath}libs/exe_atools/exe_atools.css">`;
+        }
+
+        // Custom head content (from project properties)
+        if (extraHeadContent) {
+            head += `\n${extraHeadContent}`;
         }
 
         // SCORM-specific scripts in head
@@ -295,12 +339,17 @@ ${this.renderMadeWithEXe()}
             projectTitle: string;
             currentPageIndex: number;
             totalPages: number;
+            addPagination?: boolean;
         },
     ): string {
-        const { projectTitle, currentPageIndex, totalPages } = options;
+        const { projectTitle, currentPageIndex, totalPages, addPagination } = options;
 
-        return `<header id="header-${page.id}" class="page-header"> <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
-<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
+        // Page counter is only shown if addPagination is true
+        const pageCounterHtml = addPagination
+            ? ` <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
+            : '';
+
+        return `<header id="header-${page.id}" class="page-header">${pageCounterHtml}<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
 <h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>`;
     }
 
@@ -463,6 +512,17 @@ ${userFooterHtml}</div></footer>`;
         }
 
         return JSON.stringify(pagesData);
+    }
+
+    /**
+     * Generate the content for search_index.js file
+     * @param allPages - All pages in the project
+     * @param basePath - Base path for URLs
+     * @returns JavaScript file content with window.exeSearchData assignment
+     */
+    generateSearchIndexFile(allPages: ExportPage[], basePath: string): string {
+        const searchDataJson = this.generateSearchData(allPages, basePath);
+        return `window.exeSearchData = ${searchDataJson};`;
     }
 
     /**

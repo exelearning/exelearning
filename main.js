@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, session, ipcMain, Menu, systemPreferences }  = require('electron');
+const { app, BrowserWindow, dialog, session, ipcMain, Menu, systemPreferences, shell }  = require('electron');
 const { autoUpdater }                 = require('electron-updater');
 
 const log                             = require('electron-log');
@@ -365,6 +365,28 @@ function getServerPort() {
   }
 }
 
+// Detecta si una URL es externa (debe abrirse en navegador del sistema)
+function isExternalUrl(url) {
+  try {
+    const parsed = new URL(url);
+    // URLs blob: y about: son internas (usadas por preview)
+    if (parsed.protocol === 'blob:' || parsed.protocol === 'about:') {
+      return false;
+    }
+    // URLs http/https que no sean localhost son externas
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      const host = parsed.hostname.toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return false;
+      }
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // Handler factory: creates an identical handler for any window
 function attachOpenHandler(win) {
   // Get parent size & position
@@ -386,6 +408,12 @@ function attachOpenHandler(win) {
           tabbingIdentifier: 'mainGroup',
         },
       };
+    }
+
+    // URLs externas → abrir en navegador del sistema
+    if (isExternalUrl(url)) {
+      shell.openExternal(url);
+      return { action: 'deny' };
     }
 
     // Create a completely independent child
@@ -417,6 +445,14 @@ function attachOpenHandler(win) {
     attachOpenHandler(childWindow);
 
     return { action: 'deny' }; // Prevents automatic creation and lets you manage the window manually
+  });
+
+  // Interceptar navegación a URLs externas (enlaces sin target="_blank")
+  win.webContents.on('will-navigate', (event, url) => {
+    if (isExternalUrl(url)) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
   });
 
 }

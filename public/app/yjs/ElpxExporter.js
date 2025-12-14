@@ -152,7 +152,7 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
 
     generateBlockXml(blockMap, index) {
       const blockId = blockMap.get('id') || blockMap.get('blockId');
-      const blockName = blockMap.get('blockName') || 'Block';
+      const blockName = blockMap.get('blockName') || '';
       const order = blockMap.get('order') ?? index;
 
       let xml = `  <odePagStructure odePagStructureId="${this.escapeXml(blockId)}" `;
