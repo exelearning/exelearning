@@ -5501,6 +5501,34 @@ function setScore(score, maxScore, minScore) {
       const cleanPath = path.startsWith("/") ? path.slice(1) : path;
       return `${baseUrl}${basePath}/${version}/${cleanPath}`;
     }
+    static {
+      /**
+       * Libraries that are located in /libs/ instead of /app/common/
+       * The LibraryDetector returns files without the base path, so we need to map them correctly
+       */
+      this.LIBS_FOLDER_LIBRARIES = /* @__PURE__ */ new Set([
+        "jquery-ui",
+        "fflate",
+        "exe_atools",
+        "mermaid",
+        "exe_elpx_download.js"
+        // Root-level file in /libs/
+      ]);
+    }
+    /**
+     * Get the correct server path for a detected library file
+     * Some libraries are in /libs/, others in /app/common/
+     * @param file - Library file path (e.g., 'jquery-ui/jquery-ui.min.js' or 'exe_lightbox/exe_lightbox.js')
+     * @param options - Preview options
+     * @returns Versioned URL with correct base path
+     */
+    getLibraryServerPath(file, options) {
+      const firstPart = file.split("/")[0];
+      if (_WebsitePreviewExporter.LIBS_FOLDER_LIBRARIES.has(firstPart) || _WebsitePreviewExporter.LIBS_FOLDER_LIBRARIES.has(file)) {
+        return this.getVersionedPath(`/libs/${file}`, options);
+      }
+      return this.getVersionedPath(`/app/common/${file}`, options);
+    }
     /**
      * Generate complete SPA HTML with all pages
      */
@@ -5591,7 +5619,7 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
       let detectedLibraryCss = "";
       for (const file of detectedLibraries.files) {
         if (file.endsWith(".css")) {
-          const serverPath = this.getVersionedPath(`/app/common/${file}`, options);
+          const serverPath = this.getLibraryServerPath(file, options);
           detectedLibraryCss += `
 <link rel="stylesheet" href="${serverPath}" onerror="this.remove()">`;
         }
@@ -5879,7 +5907,7 @@ ${blockHtml}
       let detectedLibraryScripts = "";
       for (const file of detectedLibraries.files) {
         if (file.endsWith(".js")) {
-          const serverPath = this.getVersionedPath(`/app/common/${file}`, options);
+          const serverPath = this.getLibraryServerPath(file, options);
           detectedLibraryScripts += `
 <script src="${serverPath}" onerror="this.remove()"><\/script>`;
         }

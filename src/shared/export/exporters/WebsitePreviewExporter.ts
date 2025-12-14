@@ -169,6 +169,38 @@ export class WebsitePreviewExporter {
     }
 
     /**
+     * Libraries that are located in /libs/ instead of /app/common/
+     * The LibraryDetector returns files without the base path, so we need to map them correctly
+     */
+    private static readonly LIBS_FOLDER_LIBRARIES = new Set([
+        'jquery-ui',
+        'fflate',
+        'exe_atools',
+        'mermaid',
+        'exe_elpx_download.js', // Root-level file in /libs/
+    ]);
+
+    /**
+     * Get the correct server path for a detected library file
+     * Some libraries are in /libs/, others in /app/common/
+     * @param file - Library file path (e.g., 'jquery-ui/jquery-ui.min.js' or 'exe_lightbox/exe_lightbox.js')
+     * @param options - Preview options
+     * @returns Versioned URL with correct base path
+     */
+    private getLibraryServerPath(file: string, options: PreviewOptions): string {
+        // Check if this is a library that lives in /libs/
+        const firstPart = file.split('/')[0];
+        if (
+            WebsitePreviewExporter.LIBS_FOLDER_LIBRARIES.has(firstPart) ||
+            WebsitePreviewExporter.LIBS_FOLDER_LIBRARIES.has(file)
+        ) {
+            return this.getVersionedPath(`/libs/${file}`, options);
+        }
+        // Default: /app/common/ for exe_* libraries
+        return this.getVersionedPath(`/app/common/${file}`, options);
+    }
+
+    /**
      * Generate complete SPA HTML with all pages
      */
     private generateWebsiteSpaHtml(
@@ -296,10 +328,8 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
         let detectedLibraryCss = '';
         for (const file of detectedLibraries.files) {
             if (file.endsWith('.css')) {
-                // Map library path to server path
-                // Library patterns use paths like 'exe_lightbox/exe_lightbox.css'
-                // which should map to '/app/common/exe_lightbox/exe_lightbox.css'
-                const serverPath = this.getVersionedPath(`/app/common/${file}`, options);
+                // Map library path to correct server path (/libs/ or /app/common/)
+                const serverPath = this.getLibraryServerPath(file, options);
                 detectedLibraryCss += `\n<link rel="stylesheet" href="${serverPath}" onerror="this.remove()">`;
             }
         }
@@ -637,10 +667,8 @@ ${blockHtml}
         let detectedLibraryScripts = '';
         for (const file of detectedLibraries.files) {
             if (file.endsWith('.js')) {
-                // Map library path to server path
-                // Library patterns use paths like 'exe_lightbox/exe_lightbox.js'
-                // which should map to '/app/common/exe_lightbox/exe_lightbox.js'
-                const serverPath = this.getVersionedPath(`/app/common/${file}`, options);
+                // Map library path to correct server path (/libs/ or /app/common/)
+                const serverPath = this.getLibraryServerPath(file, options);
                 detectedLibraryScripts += `\n<script src="${serverPath}" onerror="this.remove()"></script>`;
             }
         }

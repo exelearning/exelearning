@@ -528,19 +528,27 @@ class AssetManager {
 
     Logger.log(`[AssetManager] Resolving ${matches.length} asset references`);
 
-    let resolvedHTML = html;
+    // OPTIMIZATION: Resolve all assets IN PARALLEL instead of sequentially
+    const resolutions = await Promise.all(
+      matches.map(async (match) => {
+        const assetUrl = match[0]; // Full URL: asset://uuid or asset://uuid/filename (possibly corrupted)
+        const assetId = match[1];  // Just the UUID (extracted from possibly corrupted URL)
+        const blobURL = await this.resolveAssetURL(assetUrl);
+        return { assetUrl, assetId, blobURL };
+      })
+    );
 
-    for (const match of matches) {
-      const assetUrl = match[0]; // Full URL: asset://uuid or asset://uuid/filename (possibly corrupted)
-      const assetId = match[1];  // Just the UUID (extracted from possibly corrupted URL)
-      const blobURL = await this.resolveAssetURL(assetUrl);
+    // Build replacement map and track missing assets
+    const replacements = new Map();
+    const placeholder = this.generatePlaceholder('Loading...', 'loading');
+    const trackingAssetIds = new Set();
 
+    for (const { assetUrl, assetId, blobURL } of resolutions) {
       if (blobURL) {
-        resolvedHTML = resolvedHTML.split(assetUrl).join(blobURL);
+        replacements.set(assetUrl, blobURL);
       } else {
-        // Asset not found - use loading placeholder and trigger fetch
-        const placeholder = this.generatePlaceholder('Loading...', 'loading');
-        resolvedHTML = resolvedHTML.split(assetUrl).join(placeholder);
+        // Asset not found - use loading placeholder
+        replacements.set(assetUrl, placeholder);
 
         // Trigger background fetch if handler available
         if (wsHandler && !this.pendingFetches.has(assetId)) {
@@ -551,9 +559,27 @@ class AssetManager {
         }
       }
 
-      // Add tracking attribute for later DOM updates (for img tags)
+      // Collect asset IDs for tracking attributes
       if (addTrackingAttrs) {
-        // Find img tags with this asset and add data-asset-id
+        trackingAssetIds.add(assetId);
+      }
+    }
+
+    // OPTIMIZATION: Single-pass replacement using regex instead of multiple split/join
+    let resolvedHTML = html;
+    if (replacements.size > 0) {
+      const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(
+        Array.from(replacements.keys()).map(escapeRegex).join('|'),
+        'g'
+      );
+      resolvedHTML = resolvedHTML.replace(pattern, (match) => replacements.get(match) || match);
+    }
+
+    // Add tracking attributes for DOM updates (for img tags)
+    if (addTrackingAttrs && trackingAssetIds.size > 0) {
+      // Single regex to find all img tags and add data-asset-id if missing
+      for (const assetId of trackingAssetIds) {
         const imgRegex = new RegExp(`<img([^>]*)(src=["'][^"']*${assetId}[^"']*["'])`, 'gi');
         resolvedHTML = resolvedHTML.replace(imgRegex, (fullMatch, before, srcAttr) => {
           // Check if already has data-asset-id
@@ -2153,12 +2179,18 @@ window.resolveAssetUrlsAsync = async function(html, options = {}) {
         })),
       );
 
-      // Replace all occurrences
-      for (const { original, converted } of conversions) {
-        if (original !== converted) {
-          // Use split/join for global replacement (no regex escaping issues)
-          result = result.split(original).join(converted);
-        }
+      // OPTIMIZATION: Single-pass replacement using regex instead of multiple split/join
+      const blobReplacements = new Map(
+        conversions.filter(c => c.original !== c.converted)
+                   .map(c => [c.original, c.converted])
+      );
+      if (blobReplacements.size > 0) {
+        const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(
+          Array.from(blobReplacements.keys()).map(escapeRegex).join('|'),
+          'g'
+        );
+        result = result.replace(pattern, (m) => blobReplacements.get(m) || m);
       }
     }
   }
