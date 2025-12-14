@@ -6453,6 +6453,7 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
     };
     window.SharedExporters = windowExports;
     window.createSharedExporter = createExporter;
+    window.createExporter = createExporter;
     console.log("[SharedExporters] Browser export system loaded");
   }
 })();

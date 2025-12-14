@@ -448,6 +448,7 @@ if (typeof window !== 'undefined') {
 
     // Also expose createExporter at window level for compatibility
     (window as unknown as { createSharedExporter: typeof createExporter }).createSharedExporter = createExporter;
+    (window as unknown as { createExporter: typeof createExporter }).createExporter = createExporter;
 
     console.log('[SharedExporters] Browser export system loaded');
 }
