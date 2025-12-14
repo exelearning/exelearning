@@ -72,7 +72,7 @@
     <div id="load-screen-main" class="load-screen loading" data-testid="loading-main" data-visible="true">
         <span>eXeLearning {{ version }}</span>
     </div>
-    <div id="workarea" class="container-fluid d-flex flex-nowrap">
+    <div id="workarea" class="container-fluid d-flex flex-nowrap" data-preview-pinned="false">
         <aside class="asideleft col-md-4 col-lg-3 bg-light vh-100">
             <div class="content-info">
                 <div id="exe-title" class="title-not-editing">
@@ -94,18 +94,37 @@
                     {% include 'workarea/menus/menuHeadBottom.njk' %}
                 </nav>
             </header>
-            <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
-                <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
-                <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
-                    <div>
-                        <div id="header-node-content" class="header"></div>
-                        <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
+            <div id="main-content-wrapper" class="main-content-wrapper">
+                <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
+                    <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
+                    <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
+                        <div>
+                            <div id="header-node-content" class="header"></div>
+                            <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
+                        </div>
                     </div>
-                </div>
-                {# Idevices bottom menu #}
-                <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar">
-                </div>
-            </section>
+                    {# Idevices bottom menu #}
+                    <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar">
+                    </div>
+                </section>
+                {# Pinned preview container (3-panel mode) #}
+                <aside id="preview-pinned-container" class="preview-pinned" aria-label="{{ t.preview or 'Preview' }}">
+                    <div class="preview-pinned-header">
+                        <h2 class="preview-pinned-title">{{ t.preview or 'Preview' }}</h2>
+                        <div class="preview-pinned-actions">
+                            <button id="preview-unpin-button" class="btn button-square button-tertiary" title="{{ t.unpin_preview or 'Unpin preview' }}" aria-label="{{ t.unpin_preview or 'Unpin preview' }}">
+                                <span class="small-icon unpin-icon"></span>
+                            </button>
+                            <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="{{ t.refresh_preview or 'Refresh preview' }}" aria-label="{{ t.refresh_preview or 'Refresh preview' }}">
+                                <span class="small-icon refresh-icon"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="preview-pinned-body">
+                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin"></iframe>
+                    </div>
+                </aside>
+            </div>
         </main>
     </div>
     {# styles sidebar #}
@@ -141,6 +160,31 @@
                 </div>
                 <div class="tab-pane fade" id="importedstylescontent" role="tabpanel" aria-labelledby="importedstylescontent-tab">
                 </div>
+            </div>
+        </aside>
+    </div>
+    {# preview sidebar #}
+    <div id="previewsidenav-content" class="preview-panel-container">
+        <div id="preview-sidenav-overlay" class="sidenav-overlay"></div>
+        <aside id="previewsidenav" class="preview-sidenav" role="complementary">
+            <div class="preview-panel-header">
+                <h1 class="preview-title">{{ t.preview or 'Preview' }}</h1>
+                <div class="preview-header-actions">
+                    <button id="preview-pin-button" class="btn button-square button-tertiary" title="{{ t.pin_preview or 'Pin preview' }}" aria-label="{{ t.pin_preview or 'Pin preview to layout' }}">
+                        <span class="small-icon pin-icon"></span>
+                    </button>
+                    <button id="preview-refresh-button" class="btn button-square button-tertiary" title="{{ t.refresh_preview or 'Refresh preview' }}" aria-label="{{ t.refresh_preview or 'Refresh preview' }}">
+                        <span class="small-icon refresh-icon"></span>
+                    </button>
+                    <div id="previewsidenavclose" class="navbar-close" role="button" tabindex="0" aria-label="{{ t.close or 'Close' }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="preview-panel-body">
+                <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin"></iframe>
             </div>
         </aside>
     </div>

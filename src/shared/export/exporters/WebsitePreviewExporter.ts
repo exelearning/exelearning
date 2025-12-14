@@ -698,6 +698,26 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
     showPage(currentIndex + 1);
   });
 
+  // Handle hash changes for search result navigation
+  function showPageByHash() {
+    var hash = window.location.hash;
+    if (hash && hash.startsWith('#page-')) {
+      var targetId = hash.substring(1); // Remove the #
+      for (var i = 0; i < pages.length; i++) {
+        if (pages[i].id === targetId) {
+          showPage(i);
+          return;
+        }
+      }
+    }
+  }
+
+  // Listen for hash changes
+  window.addEventListener('hashchange', showPageByHash);
+
+  // Check initial hash on load
+  showPageByHash();
+
   updateNavButtons();
 })();`;
     }
@@ -763,6 +783,7 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
 
     /**
      * Generate search data JSON for client-side search functionality
+     * For SPA preview, uses anchor links (#page-{id}) instead of file URLs
      * @param pages - All pages in the project
      * @param options - Preview options for URL generation
      * @returns JSON string with page structure
@@ -776,8 +797,10 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
             const prevPage = i > 0 ? pages[i - 1] : null;
             const nextPage = i < pages.length - 1 ? pages[i + 1] : null;
 
-            const fileName = isIndex ? 'index.html' : `${this.sanitizeFilename(page.title)}.html`;
-            const fileUrl = isIndex ? 'index.html' : `html/${fileName}`;
+            // For SPA preview, use anchor links that point to page articles
+            // The articles have id="page-{pageId}" (see renderPageArticle)
+            const fileName = `#page-${page.id}`;
+            const fileUrl = `#page-${page.id}`;
 
             const blocksData: Record<string, unknown> = {};
             for (const block of page.blocks || []) {

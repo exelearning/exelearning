@@ -386,12 +386,15 @@ describe('WebsitePreviewExporter', () => {
                 expect(data['page-1']).toBeDefined();
                 expect(data['page-1'].name).toBe('Home Page');
                 expect(data['page-1'].isIndex).toBe(true);
-                expect(data['page-1'].fileName).toBe('index.html');
+                // SPA preview uses anchor-based URLs for search navigation
+                expect(data['page-1'].fileName).toBe('#page-page-1');
+                expect(data['page-1'].fileUrl).toBe('#page-page-1');
                 expect(data['page-1'].blocks['block-1']).toBeDefined();
                 expect(data['page-1'].blocks['block-1'].idevices['comp-1']).toBeDefined();
 
                 expect(data['page-2']).toBeDefined();
                 expect(data['page-2'].isIndex).toBe(false);
+                expect(data['page-2'].fileName).toBe('#page-page-2');
                 expect(data['page-2'].prePageId).toBe('page-1');
             });
 

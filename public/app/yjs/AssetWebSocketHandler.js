@@ -865,7 +865,8 @@ class AssetWebSocketHandler {
     if (!html) return [];
 
     // Find all asset:// references
-    const assetRegex = /asset:\/\/([a-f0-9-]+)/gi;
+    // Also handles corrupted URLs like asset://asset//uuid/filename
+    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)/gi;
     const matches = [...html.matchAll(assetRegex)];
 
     if (matches.length === 0) return [];

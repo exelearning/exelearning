@@ -39,22 +39,6 @@ class ElpxImporter {
   }
 
   /**
-   * Asynchronously decompress a ZIP file using fflate's Worker-based async API.
-   * Prevents main thread blocking during decompression.
-   * @param {Uint8Array} data - The ZIP file data
-   * @returns {Promise<{[path: string]: Uint8Array}>} - Decompressed files
-   */
-  _unzipAsync(data) {
-    const fflateLib = window.fflate;
-    return new Promise((resolve, reject) => {
-      fflateLib.unzip(data, (err, result) => {
-        if (err) reject(err);
-        else resolve(result);
-      });
-    });
-  }
-
-  /**
    * Import an .elpx file
    * @param {File} file - The .elpx file to import
    * @param {Object} options - Import options
@@ -98,12 +82,8 @@ class ElpxImporter {
     const arrayBuffer = await file.arrayBuffer();
     const uint8Data = new Uint8Array(arrayBuffer);
 
-    // Use async decompression for large files (>1MB) to avoid blocking UI
-    // For small files, sync is faster due to Worker overhead (~70ms)
-    const ASYNC_THRESHOLD = 1024 * 1024; // 1MB
-    const zip = uint8Data.length > ASYNC_THRESHOLD
-      ? await this._unzipAsync(uint8Data)
-      : fflateLib.unzipSync(uint8Data);
+    // Use sync decompression - async workers cause memory issues on mobile (Chrome Android)
+    const zip = fflateLib.unzipSync(uint8Data);
 
     // Report decompression complete (10%)
     this._reportProgress('decompress', 10, typeof _ === 'function' ? _('File decompressed') : 'File decompressed');
@@ -1182,11 +1162,8 @@ class ElpxImporter {
     const arrayBuffer = await file.arrayBuffer();
     const uint8Data = new Uint8Array(arrayBuffer);
 
-    // Use async decompression for large files (>1MB) to avoid blocking UI
-    const ASYNC_THRESHOLD = 1024 * 1024; // 1MB
-    const zip = uint8Data.length > ASYNC_THRESHOLD
-      ? await this._unzipAsync(uint8Data)
-      : fflateLib.unzipSync(uint8Data);
+    // Use sync decompression - async workers cause memory issues on mobile (Chrome Android)
+    const zip = fflateLib.unzipSync(uint8Data);
 
     let contentFile = zip['contentv3.xml'] || zip['content.xml'];
     if (!contentFile) {

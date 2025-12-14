@@ -379,6 +379,89 @@ app.use(myFeatureRoutes);
 - Server forwards messages between clients
 - Asset coordination via JSON protocol
 
+## E2E Testing with Playwright
+
+### Test Credentials
+
+```
+Email: user@exelearning.net
+Password: 1234
+```
+
+### Test Fixtures
+
+Sample ELP files and XML content available in:
+- `test/fixtures/` - General test fixtures
+- `test/fixtures/xml/` - Sample content.xml files for testing
+
+### UI Element Selectors
+
+**Login Form:**
+```javascript
+// Email input
+'input[type="email"]' or 'input[placeholder*="electr"]'
+// Password input
+'input[type="password"]'
+// Submit button
+'button[type="submit"]'
+```
+
+**Workarea Navigation:**
+```javascript
+// Preview button (eye icon next to Guardar)
+'#head-bottom-preview' or '[aria-label*="Visualización"]'
+// Save button
+'button:has-text("Guardar")'
+```
+
+**Preview Page Elements:**
+```javascript
+// Menu toggler (hamburger)
+'#siteNavToggler'
+// Search toggler (magnifying glass)
+'#searchBarTogger'
+// Search input
+'#exe-client-search-text'
+// Search results container
+'#exe-client-search-results'
+// Page articles
+'article.active' (current page)
+'article[id^="page-"]' (all page articles)
+```
+
+### Playwright Workflow
+
+The preview opens in a **popup window** (not a new tab). Use:
+
+```javascript
+// Listen for popup BEFORE clicking preview
+const popupPromise = page.context().waitForEvent('page', { timeout: 15000 });
+await page.click('#head-bottom-preview');
+const previewPage = await popupPromise;
+await previewPage.waitForLoadState('networkidle');
+```
+
+### SPA Preview Navigation
+
+The preview is a Single Page Application. Navigation uses anchor links:
+- Article IDs: `page-{pageId}` (e.g., `page-page-mj5izgdk-151ef2ikb`)
+- Search result links: `#page-{pageId}` format
+- Active page tracked via `article.active` class
+
+### Search Data
+
+Search data is injected as `window.exeSearchData` object with structure:
+```javascript
+{
+  "pageId": {
+    name: "Page Title",
+    fileName: "#page-pageId",  // Anchor for SPA navigation
+    fileUrl: "#page-pageId",
+    blocks: { ... }
+  }
+}
+```
+
 ## External Resources
 
 - GitHub: https://github.com/exelearning/exelearning

@@ -570,8 +570,12 @@ const YjsProjectManagerMixin = {
 
             // Store in AssetManager
             const assetUrl = await assetManager.insertImage(file);
-            const assetId = assetUrl.replace('asset://', '');
-            assetMap.set(asset.path, assetId);
+            // Extract just the UUID from the asset:// URL (format: asset://uuid/filename)
+            const assetUrlPath = assetUrl.replace('asset://', '');
+            const assetId = assetUrlPath.split('/')[0]; // Just the UUID
+            const assetFileName = assetUrlPath.split('/').slice(1).join('/') || fileName;
+            // Store mapping: originalPath -> {id, filename} for proper URL generation
+            assetMap.set(asset.path, { id: assetId, filename: assetFileName });
 
             stats.assets++;
           } catch (e) {
@@ -585,12 +589,20 @@ const YjsProjectManagerMixin = {
       // Always returns a string (empty string if input is invalid)
       const replaceAssetPaths = (str) => {
         if (str == null || typeof str !== 'string') return '';
-        for (const [originalPath, assetId] of assetMap.entries()) {
+        for (const [originalPath, assetInfo] of assetMap.entries()) {
+          const { id: assetId, filename: assetFileName } = assetInfo;
+          const assetUrl = `asset://${assetId}/${assetFileName}`;
           const fileName = originalPath.split('/').pop();
-          str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}`);
-          str = str.split(originalPath).join(`asset://${assetId}`);
+          str = str.split(`{{context_path}}/${originalPath}`).join(assetUrl);
+          str = str.split(originalPath).join(assetUrl);
           if (fileName) {
-            str = str.split(fileName).join(`asset://${assetId}`);
+            // Only replace bare filename references in src/href attributes to avoid
+            // corrupting existing asset:// URLs that already contain the filename
+            const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            str = str.replace(
+              new RegExp(`(src|href)=["']${escapedFileName}["']`, 'g'),
+              `$1="${assetUrl}"`
+            );
           }
         }
         return str;

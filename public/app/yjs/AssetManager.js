@@ -415,10 +415,51 @@ class AssetManager {
    * @returns {string} Asset UUID
    */
   extractAssetId(assetUrl) {
-    const path = assetUrl.replace('asset://', '');
+    let path = assetUrl.replace('asset://', '');
+
+    // Handle corrupted URLs like "asset//uuid/file.png" (double protocol, missing colon)
+    // These can occur from buggy import code that double-prefixes asset URLs
+    if (path.startsWith('asset//') || path.startsWith('asset/')) {
+      // Extract UUID from corrupted path: skip the "asset/" or "asset//" prefix
+      const match = path.match(/asset\/+([a-f0-9-]{36})/i);
+      if (match) {
+        console.warn(`[AssetManager] Sanitizing corrupted asset URL: asset://${path}`);
+        return match[1];
+      }
+    }
+
     // If path contains /, take only the first part (UUID)
     const slashIndex = path.indexOf('/');
     return slashIndex > 0 ? path.substring(0, slashIndex) : path;
+  }
+
+  /**
+   * Sanitize a potentially corrupted asset URL
+   * Handles cases like "asset://asset//uuid/file.png" that occur from buggy imports
+   * @param {string} assetUrl - Potentially corrupted asset URL
+   * @returns {string} Sanitized asset URL or original if already valid
+   */
+  sanitizeAssetUrl(assetUrl) {
+    if (!assetUrl || !assetUrl.startsWith('asset://')) {
+      return assetUrl;
+    }
+
+    const path = assetUrl.replace('asset://', '');
+
+    // Check for corrupted URLs with double protocol (asset://asset//...)
+    if (path.startsWith('asset//') || path.startsWith('asset/')) {
+      // Extract UUID from corrupted path
+      const match = path.match(/asset\/+([a-f0-9-]{36})(?:\/(.+))?/i);
+      if (match) {
+        const uuid = match[1];
+        const filename = match[2] || '';
+        const sanitized = filename ? `asset://${uuid}/${filename}` : `asset://${uuid}`;
+        console.warn(`[AssetManager] Sanitized corrupted URL: ${assetUrl} -> ${sanitized}`);
+        return sanitized;
+      }
+    }
+
+    return assetUrl;
   }
 
   /**
@@ -477,9 +518,10 @@ class AssetManager {
     const { wsHandler = null, addTrackingAttrs = false } = options;
 
     // Find all asset:// references (supports both asset://uuid and asset://uuid/filename)
+    // Also matches corrupted URLs like asset://asset//uuid/filename
     // NOTE: Filename part can contain spaces, so we match until quote character
     // Note: [^"'\\] excludes quotes AND backslash to avoid matching JSON escape sequences
-    const assetRegex = /asset:\/\/([a-f0-9-]+)(\/[^"'\\]+)?/gi;
+    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(\/[^"'\\]+)?/gi;
     const matches = [...html.matchAll(assetRegex)];
 
     if (matches.length === 0) return html;
@@ -489,8 +531,8 @@ class AssetManager {
     let resolvedHTML = html;
 
     for (const match of matches) {
-      const assetUrl = match[0]; // Full URL: asset://uuid or asset://uuid/filename
-      const assetId = match[1];  // Just the UUID
+      const assetUrl = match[0]; // Full URL: asset://uuid or asset://uuid/filename (possibly corrupted)
+      const assetId = match[1];  // Just the UUID (extracted from possibly corrupted URL)
       const blobURL = await this.resolveAssetURL(assetUrl);
 
       if (blobURL) {
@@ -567,7 +609,8 @@ class AssetManager {
 
     // Phase 1: Handle <img> tags with asset:// src specially (to add correct tracking per asset)
     // This regex captures: beforeSrc, quote, full assetUrl, assetId, afterSrc
-    const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/([a-f0-9-]+)(?:\/[^"']+)?)\2([^>]*>)/gi;
+    // Also handles corrupted URLs like asset://asset//uuid/filename
+    const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\/[^"']+)?)\2([^>]*>)/gi;
 
     resolvedHTML = resolvedHTML.replace(imgAssetRegex, (fullMatch, beforeSrc, quote, assetUrl, assetId, afterSrc) => {
       const blobURL = this.blobURLCache.get(assetId);
@@ -598,8 +641,9 @@ class AssetManager {
 
     // Phase 2: Handle any remaining asset:// URLs (video, audio, background-image, etc.)
     // These won't have img-specific tracking but will still be resolved
+    // Also handles corrupted URLs like asset://asset//uuid/filename
     // Note: [^"'\\] excludes quotes AND backslash to avoid matching JSON escape sequences
-    const assetRegex = /asset:\/\/([a-f0-9-]+)(\/[^"'\\]+)?/gi;
+    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(\/[^"'\\]+)?/gi;
 
     resolvedHTML = resolvedHTML.replace(assetRegex, (fullMatch, assetId) => {
       const blobURL = this.blobURLCache.get(assetId);
@@ -2025,13 +2069,47 @@ window.resolveAssetUrls = function(html, options = {}) {
 };
 
 /**
+ * Convert blob:// URL to data: URL for cross-window compatibility.
+ * blob: URLs are specific to the window context where they were created,
+ * so they don't work in popup/preview windows. data: URLs work everywhere.
+ *
+ * @param {string} blobUrl - blob:// URL
+ * @returns {Promise<string>} - data: URL or original URL if conversion failed
+ */
+async function blobUrlToDataUrl(blobUrl) {
+  try {
+    const response = await fetch(blobUrl);
+    if (!response.ok) {
+      console.warn('[AssetManager] Failed to fetch blob URL:', blobUrl, response.status);
+      return blobUrl;
+    }
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => {
+        console.warn('[AssetManager] FileReader error for blob:', blobUrl);
+        // Return original URL on error instead of rejecting
+        resolve(blobUrl);
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn('[AssetManager] Failed to convert blob URL to data URL:', blobUrl, error);
+    return blobUrl;
+  }
+}
+
+/**
  * Global async helper function to resolve asset:// URLs
  * Waits for assets to be fetched if missing
+ * Also converts blob:// URLs to data:// URLs for cross-window compatibility (preview popup)
  *
  * @param {string} html - HTML content with asset:// URLs
  * @param {Object} options - Options
  * @param {boolean} options.addTrackingAttrs - Add data-asset-id for DOM updates
- * @returns {Promise<string>} - HTML with blob:// URLs
+ * @param {boolean} options.convertBlobUrls - Convert blob:// to data:// (default: true)
+ * @returns {Promise<string>} - HTML with resolved URLs
  */
 window.resolveAssetUrlsAsync = async function(html, options = {}) {
   if (!html) return html;
@@ -2040,18 +2118,50 @@ window.resolveAssetUrlsAsync = async function(html, options = {}) {
   const assetManager = bridge?.assetManager;
   const wsHandler = bridge?.assetWebSocketHandler;
 
+  let result = html;
+
+  // First: resolve asset:// URLs to blob:// URLs
   if (assetManager && typeof assetManager.resolveHTMLAssets === 'function') {
-    return assetManager.resolveHTMLAssets(html, {
+    result = await assetManager.resolveHTMLAssets(html, {
       wsHandler,
       addTrackingAttrs: options.addTrackingAttrs,
     });
+  } else {
+    // Legacy fallback
+    const assetCache = bridge?.assetCache;
+    if (assetCache && typeof assetCache.resolveHtmlAssetUrls === 'function') {
+      result = await assetCache.resolveHtmlAssetUrls(html);
+    }
   }
 
-  // Legacy fallback
-  const assetCache = bridge?.assetCache;
-  if (assetCache && typeof assetCache.resolveHtmlAssetUrls === 'function') {
-    return assetCache.resolveHtmlAssetUrls(html);
+  // Second: Convert blob:// URLs to data:// URLs for cross-window compatibility
+  // This is needed for preview popups where blob: URLs from the main window don't work
+  const convertBlobUrls = options.convertBlobUrls !== false;
+  if (convertBlobUrls) {
+    // Find all blob: URLs in src and href attributes
+    const blobUrlPattern = /(?:src|href)="(blob:[^"]+)"/g;
+    const matches = [...result.matchAll(blobUrlPattern)];
+    const blobUrls = matches.map(m => m[1]);
+    const uniqueBlobUrls = [...new Set(blobUrls)];
+
+    if (uniqueBlobUrls.length > 0) {
+      // Convert all unique blob URLs to data URLs in parallel
+      const conversions = await Promise.all(
+        uniqueBlobUrls.map(async url => ({
+          original: url,
+          converted: await blobUrlToDataUrl(url),
+        })),
+      );
+
+      // Replace all occurrences
+      for (const { original, converted } of conversions) {
+        if (original !== converted) {
+          // Use split/join for global replacement (no regex escaping issues)
+          result = result.split(original).join(converted);
+        }
+      }
+    }
   }
 
-  return html;
+  return result;
 };

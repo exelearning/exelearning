@@ -442,7 +442,14 @@ export default class NavbarFile {
      *
      */
     async previewEvent() {
-        // Try client-side preview first (Yjs mode)
+        // Try panel-based preview first (new UI)
+        const previewPanel = eXeLearning.app.interface?.previewButton?.getPanel();
+        if (previewPanel) {
+            previewPanel.toggle();
+            return;
+        }
+
+        // Fallback: Try client-side popup preview (Yjs mode)
         if (eXeLearning.app.project?._yjsEnabled) {
             const handled = await this.openClientPreview();
             if (handled) return;
