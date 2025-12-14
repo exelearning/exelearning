@@ -33,6 +33,7 @@ import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
 import { WebsitePreviewExporter } from '../exporters/WebsitePreviewExporter';
 import type { PreviewOptions, PreviewResult } from '../exporters/WebsitePreviewExporter';
+import { ComponentExporter } from '../exporters/ComponentExporter';
 
 // Import renderers
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
@@ -94,7 +95,7 @@ interface ResourceFetcherLike {
 /**
  * Export format type
  */
-type ExportFormat = 'html5' | 'html5-sp' | 'page' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elpx';
+type ExportFormat = 'html5' | 'html5-sp' | 'page' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elpx' | 'component';
 
 /**
  * Create a null-safe resource provider that returns empty results
@@ -202,6 +203,11 @@ export function createExporter(
         case 'elpx':
         case 'elp':
             throw new Error('ELPX export not yet implemented in shared code');
+
+        case 'component':
+        case 'block':
+        case 'idevice':
+            return new ComponentExporter(document, resources, assets, zip);
 
         default:
             throw new Error(`Unknown export format: ${format}`);
@@ -382,6 +388,7 @@ export {
     Scorm2004Exporter,
     ImsExporter,
     WebsitePreviewExporter,
+    ComponentExporter,
     // Renderers
     IdeviceRenderer,
     PageRenderer,
@@ -423,6 +430,7 @@ if (typeof window !== 'undefined') {
         Scorm2004Exporter,
         ImsExporter,
         WebsitePreviewExporter,
+        ComponentExporter,
         // Renderers
         IdeviceRenderer,
         PageRenderer,

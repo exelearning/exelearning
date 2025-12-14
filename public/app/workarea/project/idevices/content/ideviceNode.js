@@ -1339,18 +1339,43 @@ export default class IdeviceNode {
 
     /**
      * Download iDevice as .idevice file
-     * TODO: Implement ComponentExporter in SharedExporters
      * @param {*} odeBlockId
      * @param {*} odeIdeviceId
      */
     async downloadIdeviceSelected(odeBlockId, odeIdeviceId) {
-        // Component export not yet implemented in unified SharedExporters
-        console.warn('[ideviceNode] Component export not yet available in SharedExporters');
-        eXeLearning.app.modals.alert.show({
-            title: _('Feature not available'),
-            body: _('iDevice download is not yet available. This feature is coming soon.'),
-            contentId: 'info',
-        });
+        try {
+            // Get the Yjs bridge and document manager
+            const yjsBridge = eXeLearning.app.project._yjsBridge;
+            if (!yjsBridge) {
+                throw new Error('Yjs bridge not initialized');
+            }
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
+
+            const exporter = window.createExporter(
+                'COMPONENT',
+                documentManager,
+                assetCache,
+                null,
+                assetManager
+            );
+            const result = await exporter.exportAndDownload(odeBlockId, odeIdeviceId);
+            if (!result.success) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: result.error || _('Failed to export iDevice'),
+                    contentId: 'error',
+                });
+            }
+        } catch (error) {
+            console.error('[ideviceNode] Export failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Download error'),
+                body: error.message,
+                contentId: 'error',
+            });
+        }
     }
 
     /*********************************

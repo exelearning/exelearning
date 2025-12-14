@@ -923,17 +923,42 @@ export default class IdeviceBlockNode {
 
     /**
      * Download block as .block file
-     * TODO: Implement ComponentExporter in SharedExporters
      * @param {*} odeBlockId
      */
     async downloadBlockSelected(odeBlockId) {
-        // Component export not yet implemented in unified SharedExporters
-        console.warn('[blockNode] Component export not yet available in SharedExporters');
-        eXeLearning.app.modals.alert.show({
-            title: _('Feature not available'),
-            body: _('Block download is not yet available. This feature is coming soon.'),
-            contentId: 'info',
-        });
+        try {
+            // Get the Yjs bridge and document manager
+            const yjsBridge = eXeLearning.app.project._yjsBridge;
+            if (!yjsBridge) {
+                throw new Error('Yjs bridge not initialized');
+            }
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
+
+            const exporter = window.createExporter(
+                'COMPONENT',
+                documentManager,
+                assetCache,
+                null,
+                assetManager
+            );
+            const result = await exporter.exportAndDownload(odeBlockId, null);
+            if (!result.success) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: result.error || _('Failed to export block'),
+                    contentId: 'error',
+                });
+            }
+        } catch (error) {
+            console.error('[blockNode] Export failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Download error'),
+                body: error.message,
+                contentId: 'error',
+            });
+        }
     }
 
     /*********************************

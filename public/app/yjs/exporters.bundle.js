@@ -1957,13 +1957,9 @@ ${contentHtml}
         }
         return `${attr}=${quote}${basePath}content/resources/${assetPath}${quote}`;
       });
-      // Fix hardcoded localhost URLs with development ports (legacy Symfony/PHP servers)
-      // These occur when content was created on a dev server with a specific port
-      // Pattern: http://localhost:XXXXX/files/... or http://localhost:XXXXX/scripts/...
-      // Convert to relative paths for portability
       result = result.replace(
         /http:\/\/localhost:\d+\/(files|scripts)\/(perm\/)?([^"'\s]+)/g,
-        (_match, _prefix, _perm, path) => {
+        (_match, prefix, _perm, path) => {
           return `${basePath}files/perm/${path}`;
         }
       );
@@ -6063,6 +6059,238 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
     }
   };
 
+  // src/shared/export/exporters/ComponentExporter.ts
+  var ComponentExporter = class extends BaseExporter {
+    constructor(document2, resources, assets, zip2) {
+      super(document2, resources, assets, zip2);
+    }
+    /**
+     * Get file extension for component export
+     */
+    getFileExtension() {
+      return ".elp";
+    }
+    /**
+     * Get file suffix for component export
+     */
+    getFileSuffix() {
+      return "";
+    }
+    /**
+     * Standard export method (not typically used for components)
+     * Use exportComponent() instead for targeted exports
+     */
+    async export(options) {
+      const componentOptions = options;
+      if (!componentOptions?.blockId) {
+        return {
+          success: false,
+          error: "blockId is required for component export"
+        };
+      }
+      return this.exportComponent(componentOptions.blockId, componentOptions.ideviceId);
+    }
+    /**
+     * Export a single component (iDevice) or entire block
+     * @param blockId - Block ID to export
+     * @param ideviceId - iDevice ID (null or 'null' = export whole block)
+     * @returns Export result with data buffer
+     */
+    async exportComponent(blockId, ideviceId) {
+      const isIdevice = ideviceId && ideviceId !== "null";
+      const filename = isIdevice ? `${ideviceId}.idevice` : `${blockId}.block`;
+      console.log(`[ComponentExporter] Exporting ${isIdevice ? "iDevice" : "block"}: ${filename}`);
+      try {
+        const { block, component, pageId } = this.findComponent(blockId, ideviceId);
+        if (!block) {
+          console.log(`[ComponentExporter] Block not found: ${blockId}`);
+          return { success: false, error: "Block not found" };
+        }
+        if (isIdevice && !component) {
+          console.log(`[ComponentExporter] Component not found: ${ideviceId}`);
+          return { success: false, error: "Component not found" };
+        }
+        const contentXml = this.generateComponentExportXml(block, component, pageId);
+        this.zip.addFile("content.xml", new TextEncoder().encode(contentXml));
+        await this.addComponentAssetsToZip(block, component);
+        const data = await this.zip.generate();
+        console.log(`[ComponentExporter] Export complete: ${filename}`);
+        return { success: true, data, filename };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error("[ComponentExporter] Export failed:", error);
+        return { success: false, error: message };
+      }
+    }
+    /**
+     * Export and trigger browser download
+     * @param blockId - Block ID to export
+     * @param ideviceId - iDevice ID (null = export whole block)
+     * @returns Export result
+     */
+    async exportAndDownload(blockId, ideviceId) {
+      const result = await this.exportComponent(blockId, ideviceId);
+      if (result.success && result.data && result.filename) {
+        this.downloadBlob(result.data, result.filename);
+      }
+      return result;
+    }
+    /**
+     * Find block and component in document navigation structure
+     * @param blockId - Block ID to find
+     * @param ideviceId - Optional iDevice ID to find within block
+     */
+    findComponent(blockId, ideviceId) {
+      const pages = this.buildPageList();
+      for (const page of pages) {
+        for (const block of page.blocks || []) {
+          if (block.id === blockId) {
+            if (ideviceId && ideviceId !== "null") {
+              const component = (block.components || []).find((c) => c.id === ideviceId);
+              return { block, component: component || null, pageId: page.id };
+            }
+            return { block, component: null, pageId: page.id };
+          }
+        }
+      }
+      return { block: null, component: null, pageId: null };
+    }
+    /**
+     * Generate XML for component export (ODE format)
+     * @param block - Block data
+     * @param component - Single component to export (null = all components in block)
+     * @param pageId - Page ID containing the block
+     */
+    generateComponentExportXml(block, component, pageId) {
+      let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+      xml += '<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">\n';
+      xml += "<odeResources>\n";
+      xml += "  <odeResource>\n";
+      xml += "    <key>odeComponentsResources</key>\n";
+      xml += "    <value>true</value>\n";
+      xml += "  </odeResource>\n";
+      xml += "</odeResources>\n";
+      xml += "<odePagStructures>\n";
+      xml += this.generateBlockExportXml(block, component, pageId);
+      xml += "</odePagStructures>\n";
+      xml += "</ode>";
+      return xml;
+    }
+    /**
+     * Generate XML for the block structure
+     * @param block - Block data
+     * @param singleComponent - Single component to include (null = all)
+     * @param pageId - Page ID
+     */
+    generateBlockExportXml(block, singleComponent, pageId) {
+      let xml = "  <odePagStructure>\n";
+      xml += `    <odeBlockId>${this.escapeXml(block.id)}</odeBlockId>
+`;
+      xml += `    <blockName>${this.escapeXml(block.name || "Block")}</blockName>
+`;
+      xml += `    <iconName></iconName>
+`;
+      xml += `    <odePagStructureOrder>0</odePagStructureOrder>
+`;
+      xml += `    <odePagStructureProperties>${this.escapeXml(JSON.stringify(block.properties || {}))}</odePagStructureProperties>
+`;
+      xml += "    <odeComponents>\n";
+      const components = singleComponent ? [singleComponent] : block.components || [];
+      for (const comp of components) {
+        xml += this.generateIdeviceExportXml(comp, block.id, pageId);
+      }
+      xml += "    </odeComponents>\n";
+      xml += "  </odePagStructure>\n";
+      return xml;
+    }
+    /**
+     * Generate XML for a single iDevice/component
+     * @param comp - Component data
+     * @param blockId - Parent block ID
+     * @param pageId - Parent page ID
+     */
+    generateIdeviceExportXml(comp, blockId, pageId) {
+      let xml = "      <odeComponent>\n";
+      xml += `        <odeIdeviceId>${this.escapeXml(comp.id)}</odeIdeviceId>
+`;
+      xml += `        <odePageId>${this.escapeXml(pageId)}</odePageId>
+`;
+      xml += `        <odeBlockId>${this.escapeXml(blockId)}</odeBlockId>
+`;
+      xml += `        <odeIdeviceTypeName>${this.escapeXml(comp.type || "FreeTextIdevice")}</odeIdeviceTypeName>
+`;
+      xml += `        <ideviceSrcType>json</ideviceSrcType>
+`;
+      xml += `        <userIdevice>0</userIdevice>
+`;
+      xml += `        <htmlView><![CDATA[${comp.content || ""}]]></htmlView>
+`;
+      xml += `        <jsonProperties><![CDATA[${JSON.stringify(comp.properties || {})}]]></jsonProperties>
+`;
+      xml += `        <odeComponentsOrder>${comp.order || 0}</odeComponentsOrder>
+`;
+      xml += `        <odeComponentsProperties></odeComponentsProperties>
+`;
+      xml += "      </odeComponent>\n";
+      return xml;
+    }
+    /**
+     * Add only assets used by this component to ZIP
+     * Scans component content for asset:// URLs and includes only those assets
+     * @param block - Block data
+     * @param singleComponent - Single component (null = all in block)
+     */
+    async addComponentAssetsToZip(block, singleComponent) {
+      try {
+        const allAssets = await this.assets.getAllAssets();
+        const components = singleComponent ? [singleComponent] : block.components || [];
+        const usedAssetIds = /* @__PURE__ */ new Set();
+        for (const comp of components) {
+          const content = comp.content || "";
+          const matches = content.matchAll(/asset:\/\/([a-f0-9-]+)/gi);
+          for (const match of matches) {
+            usedAssetIds.add(match[1]);
+          }
+        }
+        console.log(`[ComponentExporter] Found ${usedAssetIds.size} referenced assets`);
+        let addedCount = 0;
+        for (const asset of allAssets) {
+          const assetId = asset.id;
+          if (usedAssetIds.has(assetId)) {
+            const filename = asset.filename || `asset-${assetId}`;
+            const originalPath = asset.originalPath || `content/resources/${assetId}/${filename}`;
+            this.zip.addFile(originalPath, asset.data);
+            console.log(`[ComponentExporter] Added asset: ${originalPath}`);
+            addedCount++;
+          }
+        }
+        console.log(`[ComponentExporter] Added ${addedCount} assets to ZIP`);
+      } catch (e) {
+        console.warn("[ComponentExporter] Failed to add assets:", e);
+      }
+    }
+    /**
+     * Trigger browser download of blob data
+     * @param data - ZIP data buffer
+     * @param filename - Download filename
+     */
+    downloadBlob(data, filename) {
+      if (typeof window === "undefined" || typeof document === "undefined") {
+        console.warn("[ComponentExporter] downloadBlob only works in browser environment");
+        return;
+      }
+      const blob = new Blob([data], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
   // src/shared/export/browser/index.ts
   function createNullResourceProvider() {
     return {
@@ -6119,6 +6347,10 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
       case "elpx":
       case "elp":
         throw new Error("ELPX export not yet implemented in shared code");
+      case "component":
+      case "block":
+      case "idevice":
+        return new ComponentExporter(document2, resources, assets, zip2);
       default:
         throw new Error(`Unknown export format: ${format}`);
     }
@@ -6207,6 +6439,7 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
       Scorm2004Exporter,
       ImsExporter,
       WebsitePreviewExporter,
+      ComponentExporter,
       // Renderers
       IdeviceRenderer,
       PageRenderer,
