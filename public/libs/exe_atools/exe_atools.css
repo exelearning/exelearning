@@ -1,0 +1,141 @@
+/* OpenDyslexic: A typeface for Dyslexia (https://opendyslexic.org/) */
+/* OpenDyslexic uses the SIL-OFL license */
+/* v0.91.12 */
+@font-face {
+	font-family:opendyslexic;
+	font-style:normal;
+	font-weight:400;
+	src:local('OpenDyslexic'),url(exe_atools_od.woff) format('woff')
+}
+@font-face {
+	font-family:opendyslexic;
+	font-style:italic;
+	font-weight:400;
+	src:local('OpenDyslexic'),url(exe_atools_od_i.woff) format('woff')
+}
+@font-face {
+	font-family:opendyslexic;
+	font-style:normal;
+	font-weight:700;
+	src:local('OpenDyslexic'),url(exe_atools_od_b.woff) format('woff')
+}
+@font-face {
+	font-family:opendyslexic;
+	font-style:italic;
+	font-weight:700;
+	src:local('OpenDyslexic'),url(exe_atools_od_bi.woff) format('woff')
+}
+body.exe-atools-od .exe-content{font-family:opendyslexic, serif}
+
+/* Atkinson Hyperlegible: Greater legibility and readability for low vision readers (https://brailleinstitute.org/freefont) */
+/* Available under the SIL Open Font License */
+/* v11 */
+/* latin-ext */
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(exe_atools_ah_ext.woff2) format('woff2');
+  unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(exe_atools_ah.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+body.exe-atools-ah .exe-content{font-family:'Atkinson Hyperlegible', sans-serif}
+
+/* Montserrat: High readability (https://fonts.google.com/specimen/Montserrat) */
+/* Available under the SIL Open Font License */
+/* v26 */
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(exe_atools_mo_cy_ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(exe_atools_mo_cy.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(exe_atools_mo_vi.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(exe_atools_mo_ext.woff2) format('woff2');
+  unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Montserrat';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(exe_atools_mo.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+body.exe-atools-mo .exe-content{font-family:'Montserrat', sans-serif}
+
+/* eXeAtools: eXeLearning Accessibility Toolbar */
+#eXeAtools.loading{display:none}
+#eXeAtoolsBtnSet{position:fixed;bottom:0;left:0;z-index:999999;background:#000;border-top-right-radius:4px;width:35px;height:35px}
+#eXeAtoolsBtn{position:absolute;top:0;left:0;border-top-right-radius:4px}
+#eXeAtoolsSet{display:none;font-size:12px;font-family:Arial, sans-serif;position:fixed;bottom:0;left:0;background:#000;border-top-right-radius:4px;z-index:999999;white-space:nowrap;height:35px}
+.exe-atools-on #eXeAtoolsBtnSet{display:none}
+.exe-atools-on #eXeAtoolsSet{display:block}
+
+#eXeAtools .sr-av {
+    position: absolute!important;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+#eXeAtools label{margin:0;padding:0}
+#eXeAtools select{margin:0;padding:0;font-size:12px;font-family:Arial, sans-serif;background:#fff;color:#000;border:2px solid #fff; padding:2px 2px 1px 5px;margin:0 5px 0 10px;position:relative;top:6px;vertical-align:top}
+#eXeAtools select:focus{border-color:yellow}
+#eXeAtools button,
+#eXeAtools span{margin:0;padding:0;background:url(exe_atools.png) no-repeat 0 0;width:35px;height:35px;display:inline-block;background-size:auto 35px;cursor:pointer;border:none}
+#eXeAtools #eXeAtoolsCloseBtn{background-position:-35px 0;border-top-right-radius:4px}
+#eXeAtools #eXeAtoolsLgTextBtn{background-position:-70px 0}
+#eXeAtools #eXeAtoolsSmTextBtn{background-position:-105px 0}
+#eXeAtools #eXeAtoolsReadBtn{background-position:-140px 0}
+#eXeAtools #eXeAtoolsReadBtn.eXeAtoolsReading{background-position:-175px 0}
+#eXeAtools #eXeAtoolsTranslateBtn{background-position:-210px 0}
+#eXeAtools #eXeAtoolsSetDragHandler{background-position:-245px 0;cursor:move;opacity:.8;margin-right:-10px}
+#eXeAtools #eXeAtoolsResetBtn{background-position:-280px 0}
+#eXeAtools #eXeAtoolsModeToggler{background-position:-315px 0}
+#eXeAtools #eXeAtoolsResetBtn.reset-disabled{opacity:.5;cursor:not-allowed}
+#eXeAtools #eXeAtoolsSetDragHandler:hover{opacity:1}
+
+#eXeAtools button:hover,
+#eXeAtools button:focus{
+opacity:.9
+}
+#eXeAtools button:focus,#eXeAtools button.eXeAreminder{box-shadow:inset 0 0 0 2px yellow, 0 0 3px 1px yellow;outline:none}
+@media print{
+    #eXeAtools{display:none!important}
+}
