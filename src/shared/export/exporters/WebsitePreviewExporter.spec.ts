@@ -603,4 +603,138 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('.nav-buttons');
         });
     });
+
+    describe('Library detection', () => {
+        it('should include lightbox library when content has rel="lightbox"', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<a href="image.jpg" rel="lightbox"><img src="thumb.jpg" /></a>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // Should include lightbox CSS and JS
+            expect(result.html).toContain('exe_lightbox/exe_lightbox.css');
+            expect(result.html).toContain('exe_lightbox/exe_lightbox.js');
+        });
+
+        it('should include magnify library when content has ImageMagnifierIdevice class', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'magnifier',
+                                    order: 0,
+                                    content: '<div class="ImageMagnifierIdevice"><img src="image.jpg" /></div>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // Should include magnify JS (no CSS for this library)
+            expect(result.html).toContain('exe_magnify/mojomagnify.js');
+        });
+
+        it('should include lightbox for image gallery class', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'image-gallery',
+                                    order: 0,
+                                    content: '<div class="imageGallery"><img src="img1.jpg" /></div>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // Should include lightbox CSS and JS (used for galleries too)
+            expect(result.html).toContain('exe_lightbox/exe_lightbox.css');
+            expect(result.html).toContain('exe_lightbox/exe_lightbox.js');
+        });
+
+        it('should not include libraries when content does not require them', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>Simple text without special features</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // Should NOT include these libraries
+            expect(result.html).not.toContain('exe_lightbox');
+            expect(result.html).not.toContain('exe_magnify');
+            expect(result.html).not.toContain('mojomagnify');
+        });
+    });
 });
