@@ -330,12 +330,41 @@ ${this.getWebsitePreviewCss()}
     }
 
     /**
-     * Get preview-only CSS for SPA behavior (basic styles only)
+     * Get preview-only CSS for SPA behavior and critical theme fallbacks
      */
     private getWebsitePreviewCss(): string {
         return `/* SPA Preview Styles */
 .spa-page { display: none; }
 .spa-page.active { display: block; }
+
+/* Navigation link fixes (theme fallback) */
+#siteNav a {
+    text-decoration: none;
+}
+
+/* Button text hiding - visually hidden but accessible */
+.nav-buttons .nav-button span,
+button.toggler span,
+#exe-client-search-reset span {
+    position: absolute;
+    clip: rect(1px, 1px, 1px, 1px);
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Search form flex layout */
+#exe-client-search-form p {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 6px;
+    align-items: center;
+}
+
+/* Nav buttons positioning (theme fallback) */
 .nav-buttons { display: flex; justify-content: space-between; padding: 1rem; }
 .nav-button { cursor: pointer; }
 .nav-button.disabled { opacity: 0.5; pointer-events: none; }`;
