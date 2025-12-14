@@ -250,6 +250,11 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
         customStyles: string,
         options: PreviewOptions,
         addAccessibilityToolbar: boolean = false,
+        detectedLibraries: { libraries: Array<{ name: string; files: string[] }>; files: string[]; count: number } = {
+            libraries: [],
+            files: [],
+            count: 0,
+        },
     ): string {
         const bootstrapCss = this.getVersionedPath('/libs/bootstrap/bootstrap.min.css', options);
         const themeCss = this.getVersionedPath(`/files/perm/themes/base/${themeName}/style.css`, options);
@@ -287,6 +292,18 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
             jqueryUiCssLink = `\n<link rel="stylesheet" href="${jqueryUiCss}">`;
         }
 
+        // Build detected library CSS links
+        let detectedLibraryCss = '';
+        for (const file of detectedLibraries.files) {
+            if (file.endsWith('.css')) {
+                // Map library path to server path
+                // Library patterns use paths like 'exe_lightbox/exe_lightbox.css'
+                // which should map to '/app/common/exe_lightbox/exe_lightbox.css'
+                const serverPath = this.getVersionedPath(`/app/common/${file}`, options);
+                detectedLibraryCss += `\n<link rel="stylesheet" href="${serverPath}" onerror="this.remove()">`;
+            }
+        }
+
         let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning 4.0 - exelearning.net (Preview)">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -294,7 +311,7 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
 <script>document.querySelector("html").classList.add("js");</script>
 
 <!-- Server-hosted libraries (versioned paths) -->
-<link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}
+<link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}${detectedLibraryCss}
 
 <!-- Preview-only CSS for SPA behavior -->
 <style>
