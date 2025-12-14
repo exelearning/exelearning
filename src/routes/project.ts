@@ -1725,6 +1725,43 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
             })
 
+            // GET /api/projects/user/recent - Get user's most recent projects
+            .get('/api/projects/user/recent', async ({ currentUser }) => {
+                // If not authenticated, return empty array
+                if (!currentUser) {
+                    return [];
+                }
+
+                const userId = currentUser.id;
+
+                // Query owned projects that have been saved at least once
+                const ownedProjects = await findSavedProjectsByOwner(db, userId);
+
+                // Query projects where user is a collaborator (saved only)
+                const sharedProjects = await findProjectsAsCollaborator(db, userId, ['active']);
+                const savedSharedProjects = sharedProjects.filter(p => p.saved_once === 1);
+
+                // Combine all projects
+                const allProjects = [...ownedProjects, ...savedSharedProjects];
+
+                // Sort by updatedAt DESC and take the 3 most recent
+                const recentProjects = allProjects
+                    .sort((a, b) => {
+                        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                        return dateB - dateA;
+                    })
+                    .slice(0, 3);
+
+                // Return array directly (format expected by frontend makeRecentProjecList)
+                return recentProjects.map(project => ({
+                    odeId: project.uuid,
+                    title: project.title || 'Sin título',
+                    fileName: project.title || 'Sin título',
+                    updatedAt: project.updated_at,
+                }));
+            })
+
             // GET /api/projects/user/list - Get user's project list (owned + shared)
             .get('/api/projects/user/list', async ({ currentUser }) => {
                 // If not authenticated, return empty list

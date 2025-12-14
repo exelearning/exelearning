@@ -5523,13 +5523,17 @@ function setScore(score, maxScore, minScore) {
         const isFirst = i === 0;
         pagesHtml += this.renderPageArticle(page, isFirst, i, totalPages, projectTitle, options, addPagination);
       }
+      const libraryDetector = new LibraryDetector();
+      const detectedLibraries = libraryDetector.detectLibraries(pagesHtml, {
+        includeAccessibilityToolbar: addAccessibilityToolbar
+      });
       const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(lang) : "";
       const searchBoxHtml = addSearchBox ? this.renderSearchBox() : "";
       const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : "";
       return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
-${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar)}
+${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
 </head>
 <body class="exe-web-site exe-preview" lang="${lang}">
 <script>document.body.className+=" js"<\/script>
@@ -5544,14 +5548,18 @@ ${this.renderWebsiteFooter(author, license)}
 </div>
 ${madeWithExeHtml}
 ${searchDataScript}
-${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar)}
+${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar, detectedLibraries)}
 </body>
 </html>`;
     }
     /**
      * Generate <head> content with versioned server paths
      */
-    generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar = false) {
+    generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar = false, detectedLibraries = {
+      libraries: [],
+      files: [],
+      count: 0
+    }) {
       const bootstrapCss = this.getVersionedPath("/libs/bootstrap/bootstrap.min.css", options);
       const themeCss = this.getVersionedPath(`/files/perm/themes/base/${themeName}/style.css`, options);
       const fallbackCss = this.getVersionedPath("/style/content.css", options);
@@ -5580,6 +5588,14 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
         jqueryUiCssLink = `
 <link rel="stylesheet" href="${jqueryUiCss}">`;
       }
+      let detectedLibraryCss = "";
+      for (const file of detectedLibraries.files) {
+        if (file.endsWith(".css")) {
+          const serverPath = this.getVersionedPath(`/app/common/${file}`, options);
+          detectedLibraryCss += `
+<link rel="stylesheet" href="${serverPath}" onerror="this.remove()">`;
+        }
+      }
       let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning 4.0 - exelearning.net (Preview)">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -5587,7 +5603,7 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
 <script>document.querySelector("html").classList.add("js");<\/script>
 
 <!-- Server-hosted libraries (versioned paths) -->
-<link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}
+<link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}${detectedLibraryCss}
 
 <!-- Preview-only CSS for SPA behavior -->
 <style>
@@ -5816,7 +5832,11 @@ ${blockHtml}
     /**
      * Generate scripts with SPA navigation logic
      */
-    generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload = false, addAccessibilityToolbar = false) {
+    generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload = false, addAccessibilityToolbar = false, detectedLibraries = {
+      libraries: [],
+      files: [],
+      count: 0
+    }) {
       const jqueryJs = this.getVersionedPath("/libs/jquery/jquery.min.js", options);
       const bootstrapJs = this.getVersionedPath("/libs/bootstrap/bootstrap.bundle.min.js", options);
       const commonJs = this.getVersionedPath("/app/common/common.js", options);
@@ -5856,6 +5876,14 @@ ${blockHtml}
 <script src="${fflateJs}"><\/script>
 <script src="${elpxDownloadJs}"><\/script>`;
       }
+      let detectedLibraryScripts = "";
+      for (const file of detectedLibraries.files) {
+        if (file.endsWith(".js")) {
+          const serverPath = this.getVersionedPath(`/app/common/${file}`, options);
+          detectedLibraryScripts += `
+<script src="${serverPath}" onerror="this.remove()"><\/script>`;
+        }
+      }
       let ideviceScripts = "";
       const seenJs = /* @__PURE__ */ new Set();
       for (const idevice of usedIdevices) {
@@ -5880,7 +5908,7 @@ ${blockHtml}
 <script src="${bootstrapJs}"><\/script>${jqueryUiScript}${elpxDownloadScripts}
 <script src="${commonJs}"><\/script>
 <script src="${commonI18nJs}"><\/script>
-<script src="${exeExportJs}"><\/script>${ideviceScripts}${atoolsScript}
+<script src="${exeExportJs}"><\/script>${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"><\/script>
 <script>
 ${this.getSpaNavigationScript()}

@@ -121,6 +121,7 @@ const app = new Elysia()
     // Serve files from FILES_DIR for /files/tmp/* and /files/dist/* paths
     // Also handle versioned paths like /v0.0.0-alpha/libs/* -> /libs/*
     // Also handle BASE_PATH prefixed static files
+    // Also handle exemindmap editor to bypass Bun's HMR bundler
     .onRequest(({ request }) => {
         const url = new URL(request.url);
         let pathname = url.pathname;
@@ -230,6 +231,46 @@ const app = new Elysia()
                 });
             }
         }
+    })
+    // Serve exemindmap editor via API endpoint to bypass Bun's HTML bundler
+    // This uses /api/exemindmap-editor/* which Bun won't intercept
+    .get('/api/exemindmap-editor/*', ({ params, set }) => {
+        const relativePath = params['*'] || 'index.html';
+        const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor';
+        const filePath = path.join(process.cwd(), editorBase, relativePath);
+
+        // Security: ensure path is within the editor directory
+        const resolvedPath = path.resolve(filePath);
+        const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
+        if (!resolvedPath.startsWith(resolvedBase)) {
+            set.status = 403;
+            return 'Forbidden';
+        }
+
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            let content = fs.readFileSync(filePath);
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+            // For HTML files, rewrite relative paths to absolute paths
+            if (ext === '.html' || ext === '.htm') {
+                let html = content.toString('utf-8');
+                // Fix relative paths like ../../../../../../../app/ -> /app/
+                html = html.replace(/href="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'href="/app/');
+                html = html.replace(/src="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'src="/app/');
+                // Fix local paths like css/ and js/ -> /api/exemindmap-editor/css/ etc
+                html = html.replace(/href="css\//g, 'href="/api/exemindmap-editor/css/');
+                html = html.replace(/src="js\//g, 'src="/api/exemindmap-editor/js/');
+                content = Buffer.from(html, 'utf-8');
+            }
+
+            set.headers['Content-Type'] = contentType;
+            set.headers['Content-Length'] = content.length.toString();
+            return content;
+        }
+
+        set.status = 404;
+        return 'Not Found';
     })
     // Static files from public directory (served at root, BASE_PATH handled in onRequest)
     .use(

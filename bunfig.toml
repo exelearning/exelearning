@@ -5,10 +5,10 @@
 # Root directory for tests
 root = "."
 
-# Exclude legacy code and node_modules
+# Exclude legacy code, node_modules, and Playwright e2e tests
 # Note: websocket specs (yjs-persistence.spec.ts, yjs-websocket.spec.ts, room-manager.spec.ts) use mock.module()
 # and may cause test pollution when run together with other tests
-ignore = ["nestjs_legacy/**", "symfony_legacy/**", "node_modules/**"]
+ignore = ["nestjs_legacy/**", "symfony_legacy/**", "node_modules/**", "test/e2e/**"]
 
 # Environment variables for tests
 # Use in-memory SQLite database for fast, isolated tests

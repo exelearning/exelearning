@@ -10,7 +10,7 @@ import * as path from 'path';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import type { Kysely } from 'kysely';
-import JSZip from 'jszip';
+import { zipSync, strToU8 } from 'fflate';
 
 import { createConvertRoutes, type ConvertDependencies } from './convert';
 import type { Database } from '../db/types';
@@ -46,10 +46,7 @@ function createMockQueries() {
 
 // Create a test ELP file buffer (valid ZIP)
 async function createTestElpBuffer(): Promise<Buffer> {
-    const zip = new JSZip();
-    zip.file(
-        'content.xml',
-        `<?xml version="1.0" encoding="UTF-8"?>
+    const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
 <ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
   <userPreferences>
     <userPreference><key>theme</key><value>base</value></userPreference>
@@ -91,9 +88,9 @@ async function createTestElpBuffer(): Promise<Buffer> {
       </odePagStructures>
     </odeNavStructure>
   </odeNavStructures>
-</ode>`,
-    );
-    return await zip.generateAsync({ type: 'nodebuffer' });
+</ode>`;
+    const zipped = zipSync({ 'content.xml': strToU8(contentXml) });
+    return Buffer.from(zipped);
 }
 
 // Create mock dependencies

@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Scorm2004Exporter } from './Scorm2004Exporter';
-import JSZip from 'jszip';
+import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -100,11 +100,17 @@ class MockZipProvider implements ZipProvider {
     }
 
     async generateAsync(): Promise<Buffer> {
-        const zip = new JSZip();
+        // Create actual ZIP for realistic testing using fflate
+        const zipData: Record<string, Uint8Array> = {};
         for (const [path, content] of this.files) {
-            zip.file(path, content);
+            if (typeof content === 'string') {
+                zipData[path] = strToU8(content);
+            } else {
+                zipData[path] = new Uint8Array(content);
+            }
         }
-        return await zip.generateAsync({ type: 'nodebuffer' });
+        const zipped = zipSync(zipData);
+        return Buffer.from(zipped);
     }
 }
 
@@ -333,10 +339,10 @@ describe('Scorm2004Exporter', () => {
         it('should produce valid SCORM 2004 ZIP package', async () => {
             const result = await exporter.export();
 
-            const loadedZip = await JSZip.loadAsync(result.data!);
-            expect(loadedZip.files['imsmanifest.xml']).toBeDefined();
-            expect(loadedZip.files['index.html']).toBeDefined();
-            expect(loadedZip.files['imslrm.xml']).toBeDefined();
+            const loadedZip = unzipSync(new Uint8Array(result.data!));
+            expect(loadedZip['imsmanifest.xml']).toBeDefined();
+            expect(loadedZip['index.html']).toBeDefined();
+            expect(loadedZip['imslrm.xml']).toBeDefined();
         });
     });
 

@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { PageExporter } from './PageExporter';
-import JSZip from 'jszip';
+import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -97,11 +97,17 @@ class MockZipProvider implements ZipProvider {
     }
 
     async generateAsync(): Promise<Buffer> {
-        const zip = new JSZip();
+        // Create actual ZIP for realistic testing using fflate
+        const zipData: Record<string, Uint8Array> = {};
         for (const [path, content] of this.files) {
-            zip.file(path, content);
+            if (typeof content === 'string') {
+                zipData[path] = strToU8(content);
+            } else {
+                zipData[path] = new Uint8Array(content);
+            }
         }
-        return await zip.generateAsync({ type: 'nodebuffer' });
+        const zipped = zipSync(zipData);
+        return Buffer.from(zipped);
     }
 }
 
@@ -297,16 +303,16 @@ describe('PageExporter', () => {
             const result = await exporter.export();
 
             expect(result.success).toBe(true);
-            const loadedZip = await JSZip.loadAsync(result.data!);
-            expect(Object.keys(loadedZip.files).length).toBeGreaterThan(0);
+            const loadedZip = unzipSync(new Uint8Array(result.data!));
+            expect(Object.keys(loadedZip).length).toBeGreaterThan(0);
         });
 
         it('should have single index.html with all content', async () => {
             const result = await exporter.export();
-            const loadedZip = await JSZip.loadAsync(result.data!);
+            const loadedZip = unzipSync(new Uint8Array(result.data!));
 
             // Only one HTML file should exist
-            const htmlFiles = Object.keys(loadedZip.files).filter(f => f.endsWith('.html'));
+            const htmlFiles = Object.keys(loadedZip).filter(f => f.endsWith('.html'));
             expect(htmlFiles).toEqual(['index.html']);
         });
     });

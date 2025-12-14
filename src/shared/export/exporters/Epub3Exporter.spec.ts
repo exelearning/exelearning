@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Epub3Exporter } from './Epub3Exporter';
-import JSZip from 'jszip';
+import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -98,18 +98,19 @@ class MockZipProvider implements ZipProvider {
     }
 
     async generateAsync(): Promise<Buffer> {
-        // Create actual ZIP for realistic testing
-        const zip = new JSZip();
+        // Create actual ZIP for realistic testing using fflate
+        const zipData: Record<string, Uint8Array | [Uint8Array, { level: number }]> = {};
         for (const [path, content] of this.files) {
-            // EPUB requires mimetype to be first and uncompressed
+            const data = typeof content === 'string' ? strToU8(content) : new Uint8Array(content);
+            // EPUB requires mimetype to be first and uncompressed (level 0)
             if (path === 'mimetype') {
-                zip.file(path, content, { compression: 'STORE' });
+                zipData[path] = [data, { level: 0 }];
             } else {
-                zip.file(path, content);
+                zipData[path] = data;
             }
         }
-        const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-        return buffer;
+        const zipped = zipSync(zipData);
+        return Buffer.from(zipped);
     }
 }
 
@@ -298,34 +299,34 @@ describe('Epub3Exporter', () => {
             expect(result.success).toBe(true);
             expect(result.data).toBeDefined();
 
-            // Verify it's a valid ZIP by loading with JSZip
-            const loadedZip = await JSZip.loadAsync(result.data!);
-            expect(Object.keys(loadedZip.files).length).toBeGreaterThan(0);
+            // Verify it's a valid ZIP by loading with fflate
+            const loadedZip = unzipSync(new Uint8Array(result.data!));
+            expect(Object.keys(loadedZip).length).toBeGreaterThan(0);
         });
 
         it('should include mimetype file in ZIP', async () => {
             const result = await exporter.export();
-            const loadedZip = await JSZip.loadAsync(result.data!);
+            const loadedZip = unzipSync(new Uint8Array(result.data!));
 
-            expect(loadedZip.files['mimetype']).toBeDefined();
-            const mimetypeContent = await loadedZip.files['mimetype'].async('string');
+            expect(loadedZip['mimetype']).toBeDefined();
+            const mimetypeContent = new TextDecoder().decode(loadedZip['mimetype']);
             expect(mimetypeContent).toBe('application/epub+zip');
         });
 
         it('should include META-INF directory', async () => {
             const result = await exporter.export();
-            const loadedZip = await JSZip.loadAsync(result.data!);
+            const loadedZip = unzipSync(new Uint8Array(result.data!));
 
-            expect(loadedZip.files['META-INF/container.xml']).toBeDefined();
+            expect(loadedZip['META-INF/container.xml']).toBeDefined();
         });
 
         it('should include EPUB directory with content', async () => {
             const result = await exporter.export();
-            const loadedZip = await JSZip.loadAsync(result.data!);
+            const loadedZip = unzipSync(new Uint8Array(result.data!));
 
-            expect(loadedZip.files['EPUB/package.opf']).toBeDefined();
-            expect(loadedZip.files['EPUB/nav.xhtml']).toBeDefined();
-            expect(loadedZip.files['EPUB/index.xhtml']).toBeDefined();
+            expect(loadedZip['EPUB/package.opf']).toBeDefined();
+            expect(loadedZip['EPUB/nav.xhtml']).toBeDefined();
+            expect(loadedZip['EPUB/index.xhtml']).toBeDefined();
         });
     });
 
