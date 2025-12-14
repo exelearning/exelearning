@@ -244,6 +244,18 @@ ${contentHtml}
             return `${attr}=${quote}${basePath}content/resources/${assetPath}${quote}`;
         });
 
+        // Fix hardcoded localhost URLs with development ports (legacy Symfony/PHP servers)
+        // These occur when content was created on a dev server with a specific port
+        // Pattern: http://localhost:XXXXX/files/... or http://localhost:XXXXX/scripts/...
+        // Convert to relative paths for portability
+        result = result.replace(
+            /http:\/\/localhost:\d+\/(files|scripts)\/(perm\/)?([^"'\s]+)/g,
+            (_match, prefix, _perm, path) => {
+                // Both files/perm/ and scripts/ paths should go to /files/perm/
+                return `${basePath}files/perm/${path}`;
+            },
+        );
+
         return result;
     }
 

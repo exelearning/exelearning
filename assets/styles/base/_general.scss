@@ -164,5 +164,10 @@ body {
         opacity: 0;
         pointer-events: none;
     }
+
+    // Properties page should fill available height without extra padding
+    body main #node-content-container.properties-page {
+        height: calc(100% - 12px);
+    }
 }
 

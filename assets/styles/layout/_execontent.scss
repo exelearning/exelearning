@@ -8,6 +8,9 @@
             height: calc(100vh - 110px);
         }
     }
+    &.properties-page {
+        height: calc(100vh - var(--head-height, 64px) - 20px);
+    }
     .box {
         border-radius: var(--radius);
         opacity: 1;
@@ -297,6 +300,19 @@
                     pointer-events: none;
                 }
             }
+        }
+    }
+}
+
+/* ========================================================================
+   Mobile Responsive Styles (< 768px)
+   ======================================================================== */
+@media (max-width: 767.98px) {
+    #node-content-container.exe-content {
+        margin: 0 8px;
+        padding: 0 8px;
+        &.properties-page {
+            height: calc(100vh - 72px);
         }
     }
 }
