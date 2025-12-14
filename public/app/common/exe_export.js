@@ -468,6 +468,12 @@ $exeExport.searchBar = {
         }
         $("#exe-client-search-results-list a").on("click", function(){
             if (!$("#siteNav").is(":visible")) this.href += '?nav=false';
+            // Close search box and restore page content
+            $("main > header, main div.page-content").show();
+            $("#exe-client-search-reset").removeClass("visible");
+            $('#exe-client-search-results-list').html('');
+            $('#exe-client-search').hide();
+            $('#exe-client-search-text').val('');
         });
     },
     searchInBlocks : function(i, str, fullLink) {
