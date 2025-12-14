@@ -581,6 +581,11 @@ ${blockHtml}
         options: PreviewOptions,
         needsElpxDownload: boolean = false,
         addAccessibilityToolbar: boolean = false,
+        detectedLibraries: { libraries: Array<{ name: string; files: string[] }>; files: string[]; count: number } = {
+            libraries: [],
+            files: [],
+            count: 0,
+        },
     ): string {
         const jqueryJs = this.getVersionedPath('/libs/jquery/jquery.min.js', options);
         const bootstrapJs = this.getVersionedPath('/libs/bootstrap/bootstrap.bundle.min.js', options);
@@ -628,6 +633,18 @@ ${blockHtml}
             elpxDownloadScripts = `\n<script src="${fflateJs}"></script>\n<script src="${elpxDownloadJs}"></script>`;
         }
 
+        // Build detected library JS scripts
+        let detectedLibraryScripts = '';
+        for (const file of detectedLibraries.files) {
+            if (file.endsWith('.js')) {
+                // Map library path to server path
+                // Library patterns use paths like 'exe_lightbox/exe_lightbox.js'
+                // which should map to '/app/common/exe_lightbox/exe_lightbox.js'
+                const serverPath = this.getVersionedPath(`/app/common/${file}`, options);
+                detectedLibraryScripts += `\n<script src="${serverPath}" onerror="this.remove()"></script>`;
+            }
+        }
+
         // iDevice scripts
         let ideviceScripts = '';
         const seenJs = new Set<string>();
@@ -655,7 +672,7 @@ ${blockHtml}
 <script src="${bootstrapJs}"></script>${jqueryUiScript}${elpxDownloadScripts}
 <script src="${commonJs}"></script>
 <script src="${commonI18nJs}"></script>
-<script src="${exeExportJs}"></script>${ideviceScripts}${atoolsScript}
+<script src="${exeExportJs}"></script>${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"></script>
 <script>
 ${this.getSpaNavigationScript()}
