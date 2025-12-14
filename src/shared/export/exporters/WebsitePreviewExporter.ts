@@ -13,6 +13,7 @@
 import type { ExportDocument, ExportPage, ResourceProvider } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType } from '../constants';
+import { LibraryDetector } from '../utils/LibraryDetector';
 
 /**
  * Options for preview generation
@@ -202,6 +203,12 @@ export class WebsitePreviewExporter {
             pagesHtml += this.renderPageArticle(page, isFirst, i, totalPages, projectTitle, options, addPagination);
         }
 
+        // Detect required libraries by scanning all rendered HTML content
+        const libraryDetector = new LibraryDetector();
+        const detectedLibraries = libraryDetector.detectLibraries(pagesHtml, {
+            includeAccessibilityToolbar: addAccessibilityToolbar,
+        });
+
         // Conditionally render "Made with eXeLearning"
         const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(lang) : '';
 
@@ -213,7 +220,7 @@ export class WebsitePreviewExporter {
         return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
-${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar)}
+${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
 </head>
 <body class="exe-web-site exe-preview" lang="${lang}">
 <script>document.body.className+=" js"</script>
@@ -228,7 +235,7 @@ ${this.renderWebsiteFooter(author, license)}
 </div>
 ${madeWithExeHtml}
 ${searchDataScript}
-${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar)}
+${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar, detectedLibraries)}
 </body>
 </html>`;
     }
