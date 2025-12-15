@@ -717,6 +717,120 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     });
                 }
             })
+
+            // =====================================================
+            // Admin Panel
+            // =====================================================
+            .get('/admin', async ({ currentUser, request, set }) => {
+                // Require authentication
+                if (!currentUser) {
+                    return Response.redirect(prefixPath('/login?returnUrl=/admin') || '/login?returnUrl=/admin', 302);
+                }
+
+                // Check for ROLE_ADMIN
+                const userRoles: string[] =
+                    typeof currentUser.roles === 'string'
+                        ? JSON.parse(currentUser.roles || '[]')
+                        : currentUser.roles || [];
+
+                if (!userRoles.includes('ROLE_ADMIN')) {
+                    set.status = 403;
+                    const html = renderTemplate('error', {
+                        title: 'Access Denied',
+                        message: 'You do not have permission to access the admin panel.',
+                        statusCode: 403,
+                        basePath: getBasePath(),
+                    });
+                    return new Response(html, {
+                        status: 403,
+                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                    });
+                }
+
+                // Detect locale from Accept-Language header
+                const acceptLanguage = request.headers.get('accept-language');
+                const locale = detectLocaleFromHeader(acceptLanguage);
+
+                const email = currentUser.email || 'admin@exelearning.net';
+                const user = {
+                    id: currentUser.id,
+                    email,
+                    username: email,
+                    usernameFirsLetter: (email[0] || 'A').toUpperCase(),
+                    gravatarUrl: createGravatarUrl(email, null, email),
+                    roles: userRoles,
+                };
+
+                const t = {
+                    admin_panel: trans('Admin Panel', {}, locale),
+                    dashboard: trans('Dashboard', {}, locale),
+                    users: trans('Users', {}, locale),
+                    extensions: trans('Extensions', {}, locale),
+                    settings: trans('Settings', {}, locale),
+                    back_to_workarea: trans('Back to Workarea', {}, locale),
+                    logout: trans('Logout', {}, locale),
+                    total_users: trans('Total Users', {}, locale),
+                    active_users: trans('Active Users', {}, locale),
+                    total_projects: trans('Total Projects', {}, locale),
+                    active_projects: trans('Active Projects', {}, locale),
+                    user_management: trans('User Management', {}, locale),
+                    create_user: trans('Create User', {}, locale),
+                    email: trans('Email', {}, locale),
+                    roles: trans('Roles', {}, locale),
+                    status: trans('Status', {}, locale),
+                    actions: trans('Actions', {}, locale),
+                    edit: trans('Edit', {}, locale),
+                    delete: trans('Delete', {}, locale),
+                    save: trans('Save', {}, locale),
+                    cancel: trans('Cancel', {}, locale),
+                    active: trans('Active', {}, locale),
+                    inactive: trans('Inactive', {}, locale),
+                    search: trans('Search', {}, locale),
+                    loading: trans('Loading...', {}, locale),
+                    confirm_delete: trans('Are you sure you want to delete this user?', {}, locale),
+                    styles: trans('Styles', {}, locale),
+                    idevices: trans('iDevices', {}, locale),
+                    templates: trans('Templates', {}, locale),
+                    installed: trans('Installed', {}, locale),
+                    available: trans('Available', {}, locale),
+                    install: trans('Install', {}, locale),
+                    uninstall: trans('Uninstall', {}, locale),
+                    activate: trans('Activate', {}, locale),
+                    deactivate: trans('Deactivate', {}, locale),
+                };
+
+                const viewModel = {
+                    version: getAppVersion(),
+                    app_version: getAppVersion(),
+                    user,
+                    locale,
+                    t,
+                    basePath: getBasePath(),
+                };
+
+                try {
+                    const html = renderTemplate('admin/index', viewModel);
+                    return new Response(html, {
+                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                    });
+                } catch (error: unknown) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    // Fallback HTML if template fails
+                    const fallbackHtml = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>eXeLearning Admin</title>
+  </head>
+  <body>
+    <div id="root">eXeLearning Admin - Template error: ${errorMessage}</div>
+  </body>
+</html>`;
+                    return new Response(fallbackHtml, {
+                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                    });
+                }
+            })
     );
 }
 

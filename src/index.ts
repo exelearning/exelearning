@@ -19,6 +19,7 @@ import { gamesRoutes } from './routes/games';
 import { themesRoutes } from './routes/themes';
 import { resourcesRoutes } from './routes/resources';
 import { userRoutes } from './routes/user';
+import { adminRoutes } from './routes/admin';
 import { yjsRoutes } from './routes/yjs';
 import {
     createWebSocketRoutes,
@@ -303,6 +304,7 @@ app.use(healthRoutes)
     .use(themesRoutes)
     .use(resourcesRoutes)
     .use(userRoutes)
+    .use(adminRoutes)
     .use(yjsRoutes)
     .use(createWebSocketRoutes())
     .get('/api', () => ({
@@ -332,6 +334,7 @@ if (routePrefix) {
             .use(idevicesRoutes)
             .use(themesRoutes)
             .use(userRoutes)
+            .use(adminRoutes)
             .use(yjsRoutes)
             .use(createWebSocketRoutes())
             .get('/api', () => ({

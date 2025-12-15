@@ -8,6 +8,7 @@ import { cookie } from '@elysiajs/cookie';
 import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import type { User, Database } from '../db/types';
+import { parseRoles } from '../db/types';
 import {
     findUserByEmail as findUserByEmailDefault,
     findUserById as findUserByIdDefault,
@@ -153,7 +154,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
                         email: user.email,
-                        roles: user.roles,
+                        roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'local',
                     };
@@ -269,7 +270,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                     sub: user.id,
                     email: user.email,
-                    roles: user.roles,
+                    roles: parseRoles(user.roles),
                     isGuest: false,
                     authMethod: 'local',
                 };
@@ -480,7 +481,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
                         email: user.email,
-                        roles: user.roles,
+                        roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'cas',
                     };
@@ -731,7 +732,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
                         email: user.email,
-                        roles: user.roles,
+                        roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'openid',
                     };
@@ -836,7 +837,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                     sub: user.id,
                     email: user.email,
-                    roles: user.roles,
+                    roles: parseRoles(user.roles),
                     isGuest: true,
                     authMethod: 'guest',
                 };

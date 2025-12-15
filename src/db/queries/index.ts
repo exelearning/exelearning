@@ -126,3 +126,15 @@ export {
     getAllPreferencesAsMap,
     getAllPreferencesAsObject,
 } from './preferences';
+
+// Admin queries
+export * as adminQueries from './admin';
+export {
+    findUsersPaginated,
+    countAdmins,
+    updateUserStatus,
+    createUserAsAdmin,
+    updateUserQuota,
+    getSystemStats,
+} from './admin';
+export type { AppSetting } from './admin';
