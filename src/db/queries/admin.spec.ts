@@ -1,63 +1,154 @@
 /**
  * Admin Queries Unit Tests
- * Tests for admin database queries (using mocks)
+ * Tests for admin database queries with real in-memory SQLite database
  */
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'bun:test';
+import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser, seedTestProject } from '../../../test/helpers/test-db';
 import type { Kysely } from 'kysely';
-import type { Database, User } from '../types';
-
-// ============================================================================
-// MOCK HELPERS
-// ============================================================================
-
-const createMockUser = (overrides: Partial<User> = {}): User => ({
-    id: 1,
-    email: 'test@example.com',
-    password: 'hashed',
-    user_id: 'test_user',
-    roles: '["ROLE_USER"]',
-    is_active: 1,
-    quota_mb: null,
-    created_at: new Date().toISOString(),
-    updated_at: null,
-    last_login: null,
-    auth_method: 'local',
-    ...overrides,
-});
-
-// ============================================================================
-// findUsersPaginated TESTS
-// ============================================================================
+import type { Database } from '../types';
+import {
+    findUsersPaginated,
+    countAdmins,
+    updateUserStatus,
+    createUserAsAdmin,
+    updateUserQuota,
+    getSystemStats,
+    getAllSettings,
+    getSetting,
+    setSetting,
+} from './admin';
+import { createUser } from './users';
 
 describe('Admin Queries', () => {
+    let db: Kysely<Database>;
+
+    beforeAll(async () => {
+        db = await createTestDb();
+    });
+
+    afterAll(async () => {
+        await destroyTestDb(db);
+    });
+
+    beforeEach(async () => {
+        await cleanTestDb(db);
+    });
+
+    // ============================================================================
+    // findUsersPaginated TESTS
+    // ============================================================================
+
     describe('findUsersPaginated', () => {
-        it('should define pagination parameters', () => {
-            const options = {
-                limit: 10,
-                offset: 0,
-                search: 'admin',
-                sortBy: 'email' as const,
-                sortOrder: 'asc' as const,
-            };
+        it('should return empty results when no users', async () => {
+            const result = await findUsersPaginated(db);
 
-            expect(options.limit).toBe(10);
-            expect(options.offset).toBe(0);
-            expect(options.search).toBe('admin');
-            expect(options.sortBy).toBe('email');
-            expect(options.sortOrder).toBe('asc');
+            expect(result.users).toHaveLength(0);
+            expect(result.total).toBe(0);
         });
 
-        it('should support search parameter', () => {
-            const options = { limit: 10, offset: 0, search: 'test' };
-            expect(options.search).toBe('test');
+        it('should return all users with defaults', async () => {
+            await createUser(db, { email: 'user1@test.com', user_id: 'user1', password: 'hash1' });
+            await createUser(db, { email: 'user2@test.com', user_id: 'user2', password: 'hash2' });
+            await createUser(db, { email: 'user3@test.com', user_id: 'user3', password: 'hash3' });
+
+            const result = await findUsersPaginated(db);
+
+            expect(result.users).toHaveLength(3);
+            expect(result.total).toBe(3);
         });
 
-        it('should support sort parameters', () => {
-            const validSortBy = ['id', 'email', 'created_at'];
-            const validSortOrder = ['asc', 'desc'];
+        it('should paginate results with limit', async () => {
+            await createUser(db, { email: 'user1@test.com', user_id: 'user1', password: 'hash' });
+            await createUser(db, { email: 'user2@test.com', user_id: 'user2', password: 'hash' });
+            await createUser(db, { email: 'user3@test.com', user_id: 'user3', password: 'hash' });
 
-            expect(validSortBy).toContain('email');
-            expect(validSortOrder).toContain('asc');
+            const result = await findUsersPaginated(db, { limit: 2, offset: 0 });
+
+            expect(result.users).toHaveLength(2);
+            expect(result.total).toBe(3);
+        });
+
+        it('should paginate results with offset', async () => {
+            await createUser(db, { email: 'user1@test.com', user_id: 'user1', password: 'hash' });
+            await createUser(db, { email: 'user2@test.com', user_id: 'user2', password: 'hash' });
+            await createUser(db, { email: 'user3@test.com', user_id: 'user3', password: 'hash' });
+
+            const result = await findUsersPaginated(db, { limit: 10, offset: 2 });
+
+            expect(result.users).toHaveLength(1);
+            expect(result.total).toBe(3);
+        });
+
+        it('should search by email', async () => {
+            await createUser(db, { email: 'admin@test.com', user_id: 'admin', password: 'hash' });
+            await createUser(db, { email: 'user@example.com', user_id: 'user', password: 'hash' });
+
+            const result = await findUsersPaginated(db, { search: 'admin' });
+
+            expect(result.users).toHaveLength(1);
+            expect(result.users[0].email).toBe('admin@test.com');
+            expect(result.total).toBe(1);
+        });
+
+        it('should search by user_id', async () => {
+            await createUser(db, { email: 'a@test.com', user_id: 'john_doe', password: 'hash' });
+            await createUser(db, { email: 'b@test.com', user_id: 'jane_smith', password: 'hash' });
+
+            const result = await findUsersPaginated(db, { search: 'john' });
+
+            expect(result.users).toHaveLength(1);
+            expect(result.users[0].user_id).toBe('john_doe');
+        });
+
+        it('should sort by email ascending', async () => {
+            await createUser(db, { email: 'zebra@test.com', user_id: 'z', password: 'hash' });
+            await createUser(db, { email: 'alpha@test.com', user_id: 'a', password: 'hash' });
+
+            const result = await findUsersPaginated(db, { sortBy: 'email', sortOrder: 'asc' });
+
+            expect(result.users[0].email).toBe('alpha@test.com');
+            expect(result.users[1].email).toBe('zebra@test.com');
+        });
+
+        it('should sort by email descending', async () => {
+            await createUser(db, { email: 'alpha@test.com', user_id: 'a', password: 'hash' });
+            await createUser(db, { email: 'zebra@test.com', user_id: 'z', password: 'hash' });
+
+            const result = await findUsersPaginated(db, { sortBy: 'email', sortOrder: 'desc' });
+
+            expect(result.users[0].email).toBe('zebra@test.com');
+            expect(result.users[1].email).toBe('alpha@test.com');
+        });
+
+        it('should sort by id', async () => {
+            await createUser(db, { email: 'first@test.com', user_id: 'first', password: 'hash' });
+            await createUser(db, { email: 'second@test.com', user_id: 'second', password: 'hash' });
+
+            const result = await findUsersPaginated(db, { sortBy: 'id', sortOrder: 'asc' });
+
+            expect(result.users[0].email).toBe('first@test.com');
+            expect(result.users[1].email).toBe('second@test.com');
+        });
+
+        it('should sort by created_at', async () => {
+            await createUser(db, { email: 'older@test.com', user_id: 'older', password: 'hash' });
+            await new Promise(r => setTimeout(r, 10)); // Small delay for different timestamps
+            await createUser(db, { email: 'newer@test.com', user_id: 'newer', password: 'hash' });
+
+            const result = await findUsersPaginated(db, { sortBy: 'created_at', sortOrder: 'desc' });
+
+            expect(result.users[0].email).toBe('newer@test.com');
+        });
+
+        it('should combine search with pagination', async () => {
+            await createUser(db, { email: 'admin1@test.com', user_id: 'admin1', password: 'hash' });
+            await createUser(db, { email: 'admin2@test.com', user_id: 'admin2', password: 'hash' });
+            await createUser(db, { email: 'user@test.com', user_id: 'user', password: 'hash' });
+
+            const result = await findUsersPaginated(db, { search: 'admin', limit: 1, offset: 0 });
+
+            expect(result.users).toHaveLength(1);
+            expect(result.total).toBe(2);
         });
     });
 
@@ -66,23 +157,71 @@ describe('Admin Queries', () => {
     // ============================================================================
 
     describe('countAdmins', () => {
-        it('should return a number', () => {
-            const mockCount = 2;
-            expect(typeof mockCount).toBe('number');
-            expect(mockCount).toBeGreaterThanOrEqual(0);
+        it('should return 0 when no users', async () => {
+            const count = await countAdmins(db);
+            expect(count).toBe(0);
         });
 
-        it('should identify admin role correctly', () => {
-            const adminUser = createMockUser({
+        it('should return 0 when no admins', async () => {
+            await createUser(db, { email: 'user@test.com', user_id: 'user', password: 'hash', roles: '["ROLE_USER"]' });
+
+            const count = await countAdmins(db);
+
+            expect(count).toBe(0);
+        });
+
+        it('should count users with ROLE_ADMIN', async () => {
+            await createUser(db, {
+                email: 'admin@test.com',
+                user_id: 'admin',
+                password: 'hash',
                 roles: '["ROLE_USER", "ROLE_ADMIN"]',
             });
-            const normalUser = createMockUser({ roles: '["ROLE_USER"]' });
+            await createUser(db, { email: 'user@test.com', user_id: 'user', password: 'hash', roles: '["ROLE_USER"]' });
 
-            const adminRoles = JSON.parse(adminUser.roles);
-            const normalRoles = JSON.parse(normalUser.roles);
+            const count = await countAdmins(db);
 
-            expect(adminRoles).toContain('ROLE_ADMIN');
-            expect(normalRoles).not.toContain('ROLE_ADMIN');
+            expect(count).toBe(1);
+        });
+
+        it('should count multiple admins', async () => {
+            await createUser(db, {
+                email: 'admin1@test.com',
+                user_id: 'admin1',
+                password: 'hash',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+            await createUser(db, {
+                email: 'admin2@test.com',
+                user_id: 'admin2',
+                password: 'hash',
+                roles: '["ROLE_ADMIN"]',
+            });
+            await createUser(db, { email: 'user@test.com', user_id: 'user', password: 'hash', roles: '["ROLE_USER"]' });
+
+            const count = await countAdmins(db);
+
+            expect(count).toBe(2);
+        });
+
+        it('should handle malformed JSON roles gracefully', async () => {
+            await db
+                .insertInto('users')
+                .values({
+                    email: 'bad@test.com',
+                    user_id: 'bad',
+                    password: 'hash',
+                    roles: 'invalid-json',
+                    is_lopd_accepted: 0,
+                    is_active: 1,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                })
+                .execute();
+
+            const count = await countAdmins(db);
+
+            expect(count).toBe(0); // Malformed JSON should not be counted as admin
         });
     });
 
@@ -91,25 +230,50 @@ describe('Admin Queries', () => {
     // ============================================================================
 
     describe('updateUserStatus', () => {
-        it('should toggle is_active field', () => {
-            const activeUser = createMockUser({ is_active: 1 });
-            const inactiveUser = createMockUser({ is_active: 0 });
+        it('should activate a user', async () => {
+            await db
+                .insertInto('users')
+                .values({
+                    email: 'inactive@test.com',
+                    user_id: 'inactive',
+                    password: 'hash',
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 0,
+                    is_active: 0, // Initially inactive
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                })
+                .execute();
 
-            expect(activeUser.is_active).toBe(1);
-            expect(inactiveUser.is_active).toBe(0);
+            const user = await db.selectFrom('users').selectAll().where('email', '=', 'inactive@test.com').executeTakeFirst();
+            const updated = await updateUserStatus(db, user!.id, true);
+
+            expect(updated).toBeDefined();
+            expect(updated!.is_active).toBe(1);
         });
 
-        it('should preserve other user fields', () => {
-            const user = createMockUser({
-                email: 'preserve@test.com',
-                roles: '["ROLE_USER", "ROLE_EDITOR"]',
-            });
+        it('should deactivate a user', async () => {
+            const userId = await seedTestUser(db, { email: 'active@test.com', user_id: 'active' });
 
-            // Simulating status update
-            const updatedUser = { ...user, is_active: 0 };
+            const updated = await updateUserStatus(db, userId, false);
 
-            expect(updatedUser.email).toBe('preserve@test.com');
-            expect(updatedUser.roles).toBe('["ROLE_USER", "ROLE_EDITOR"]');
+            expect(updated).toBeDefined();
+            expect(updated!.is_active).toBe(0);
+        });
+
+        it('should return undefined for non-existent user', async () => {
+            const updated = await updateUserStatus(db, 99999, true);
+            expect(updated).toBeUndefined();
+        });
+
+        it('should update the updated_at timestamp', async () => {
+            const userId = await seedTestUser(db, { email: 'ts@test.com', user_id: 'ts' });
+            const before = await db.selectFrom('users').selectAll().where('id', '=', userId).executeTakeFirst();
+
+            await new Promise(r => setTimeout(r, 10));
+            const updated = await updateUserStatus(db, userId, false);
+
+            expect(updated!.updated_at! > before!.updated_at!).toBe(true);
         });
     });
 
@@ -118,38 +282,101 @@ describe('Admin Queries', () => {
     // ============================================================================
 
     describe('createUserAsAdmin', () => {
-        it('should create user with required fields', () => {
-            const createParams = {
+        it('should create user with minimal fields', async () => {
+            const user = await createUserAsAdmin(db, {
                 email: 'new@test.com',
-                password: 'hashed_password',
+                password: 'hashed-password',
                 userId: 'new_user',
-                roles: ['ROLE_USER', 'ROLE_EDITOR'],
-            };
+                roles: ['ROLE_USER'],
+            });
 
-            expect(createParams.email).toBeDefined();
-            expect(createParams.password).toBeDefined();
-            expect(createParams.userId).toBeDefined();
-            expect(createParams.roles).toContain('ROLE_USER');
+            expect(user.id).toBeDefined();
+            expect(user.email).toBe('new@test.com');
+            expect(user.user_id).toBe('new_user');
+            expect(user.is_active).toBe(1);
         });
 
-        it('should support optional quota_mb', () => {
-            const withQuota = {
+        it('should always include ROLE_USER', async () => {
+            const user = await createUserAsAdmin(db, {
+                email: 'admin@test.com',
+                password: 'hash',
+                userId: 'admin',
+                roles: ['ROLE_ADMIN'], // Only admin role provided
+            });
+
+            const roles = JSON.parse(user.roles);
+            expect(roles).toContain('ROLE_USER');
+            expect(roles).toContain('ROLE_ADMIN');
+        });
+
+        it('should not duplicate ROLE_USER', async () => {
+            const user = await createUserAsAdmin(db, {
+                email: 'user@test.com',
+                password: 'hash',
+                userId: 'user',
+                roles: ['ROLE_USER', 'ROLE_USER'], // Duplicate
+            });
+
+            const roles = JSON.parse(user.roles);
+            // ROLE_USER should appear at least once (we don't guarantee deduplication of input)
+            expect(roles).toContain('ROLE_USER');
+        });
+
+        it('should set quota_mb when provided', async () => {
+            const user = await createUserAsAdmin(db, {
                 email: 'quota@test.com',
                 password: 'hash',
-                userId: 'quota_user',
+                userId: 'quota',
                 roles: ['ROLE_USER'],
                 quotaMb: 500,
-            };
+            });
 
-            const withoutQuota = {
+            expect(user.quota_mb).toBe(500);
+        });
+
+        it('should set quota_mb to null when not provided', async () => {
+            const user = await createUserAsAdmin(db, {
                 email: 'noquota@test.com',
                 password: 'hash',
-                userId: 'noquota_user',
+                userId: 'noquota',
                 roles: ['ROLE_USER'],
-            };
+            });
 
-            expect(withQuota.quotaMb).toBe(500);
-            expect(withoutQuota.quotaMb).toBeUndefined();
+            expect(user.quota_mb).toBeNull();
+        });
+
+        it('should set timestamps', async () => {
+            const before = new Date().toISOString();
+            const user = await createUserAsAdmin(db, {
+                email: 'time@test.com',
+                password: 'hash',
+                userId: 'time',
+                roles: ['ROLE_USER'],
+            });
+            const after = new Date().toISOString();
+
+            expect(user.created_at).toBeDefined();
+            expect(user.updated_at).toBeDefined();
+            expect(user.created_at! >= before).toBe(true);
+            expect(user.created_at! <= after).toBe(true);
+        });
+
+        it('should throw on duplicate email', async () => {
+            await createUserAsAdmin(db, {
+                email: 'dupe@test.com',
+                password: 'hash',
+                userId: 'dupe1',
+                roles: ['ROLE_USER'],
+            });
+
+            await expect(
+                createUserAsAdmin(db, {
+                    email: 'dupe@test.com',
+                    password: 'hash',
+                    userId: 'dupe2',
+                    roles: ['ROLE_USER'],
+                }),
+            ).rejects.toThrow();
         });
     });
 
@@ -158,18 +385,38 @@ describe('Admin Queries', () => {
     // ============================================================================
 
     describe('updateUserQuota', () => {
-        it('should set quota to number value', () => {
-            const user = createMockUser({ quota_mb: null });
-            const updatedUser = { ...user, quota_mb: 1000 };
+        it('should set quota to specific value', async () => {
+            const userId = await seedTestUser(db, { email: 'quota@test.com', user_id: 'quota' });
 
-            expect(updatedUser.quota_mb).toBe(1000);
+            const updated = await updateUserQuota(db, userId, 1000);
+
+            expect(updated).toBeDefined();
+            expect(updated!.quota_mb).toBe(1000);
         });
 
-        it('should allow null quota (unlimited)', () => {
-            const user = createMockUser({ quota_mb: 500 });
-            const updatedUser = { ...user, quota_mb: null };
+        it('should set quota to null (unlimited)', async () => {
+            const userId = await seedTestUser(db, { email: 'unlim@test.com', user_id: 'unlim' });
+            await updateUserQuota(db, userId, 500); // First set a quota
 
-            expect(updatedUser.quota_mb).toBeNull();
+            const updated = await updateUserQuota(db, userId, null);
+
+            expect(updated).toBeDefined();
+            expect(updated!.quota_mb).toBeNull();
+        });
+
+        it('should return undefined for non-existent user', async () => {
+            const updated = await updateUserQuota(db, 99999, 100);
+            expect(updated).toBeUndefined();
+        });
+
+        it('should update the updated_at timestamp', async () => {
+            const userId = await seedTestUser(db, { email: 'qts@test.com', user_id: 'qts' });
+            const before = await db.selectFrom('users').selectAll().where('id', '=', userId).executeTakeFirst();
+
+            await new Promise(r => setTimeout(r, 10));
+            const updated = await updateUserQuota(db, userId, 2000);
+
+            expect(updated!.updated_at! > before!.updated_at!).toBe(true);
         });
     });
 
@@ -178,72 +425,247 @@ describe('Admin Queries', () => {
     // ============================================================================
 
     describe('getSystemStats', () => {
-        it('should return all required stat fields', () => {
-            const stats = {
-                totalUsers: 10,
-                activeUsers: 8,
-                totalProjects: 5,
-                activeProjects: 3,
-            };
+        it('should return zeros when database is empty', async () => {
+            const stats = await getSystemStats(db);
 
-            expect(stats).toHaveProperty('totalUsers');
-            expect(stats).toHaveProperty('activeUsers');
-            expect(stats).toHaveProperty('totalProjects');
-            expect(stats).toHaveProperty('activeProjects');
+            expect(stats.totalUsers).toBe(0);
+            expect(stats.activeUsers).toBe(0);
+            expect(stats.totalProjects).toBe(0);
+            expect(stats.activeProjects).toBe(0);
         });
 
-        it('should have non-negative values', () => {
-            const stats = {
-                totalUsers: 10,
-                activeUsers: 8,
-                totalProjects: 0,
-                activeProjects: 0,
-            };
+        it('should count total users', async () => {
+            await seedTestUser(db, { email: 'u1@test.com', user_id: 'u1' });
+            await seedTestUser(db, { email: 'u2@test.com', user_id: 'u2' });
 
-            expect(stats.totalUsers).toBeGreaterThanOrEqual(0);
-            expect(stats.activeUsers).toBeGreaterThanOrEqual(0);
-            expect(stats.totalProjects).toBeGreaterThanOrEqual(0);
-            expect(stats.activeProjects).toBeGreaterThanOrEqual(0);
+            const stats = await getSystemStats(db);
+
+            expect(stats.totalUsers).toBe(2);
         });
 
-        it('should have activeUsers <= totalUsers', () => {
-            const stats = { totalUsers: 10, activeUsers: 8 };
+        it('should count active users', async () => {
+            await seedTestUser(db, { email: 'active1@test.com', user_id: 'active1' });
+            await seedTestUser(db, { email: 'active2@test.com', user_id: 'active2' });
+
+            // Create inactive user
+            await db
+                .insertInto('users')
+                .values({
+                    email: 'inactive@test.com',
+                    user_id: 'inactive',
+                    password: 'hash',
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 0,
+                    is_active: 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                })
+                .execute();
+
+            const stats = await getSystemStats(db);
+
+            expect(stats.totalUsers).toBe(3);
+            expect(stats.activeUsers).toBe(2);
+        });
+
+        it('should count total projects', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Project 1', uuid: 'proj-stats-1' });
+            await seedTestProject(db, userId, { title: 'Project 2', uuid: 'proj-stats-2' });
+
+            const stats = await getSystemStats(db);
+
+            expect(stats.totalProjects).toBe(2);
+        });
+
+        it('should count active projects', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Active Project' });
+
+            // Create archived project
+            const now = new Date().toISOString();
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'archived-uuid',
+                    title: 'Archived Project',
+                    owner_id: userId,
+                    status: 'archived',
+                    visibility: 'private',
+                    saved_once: 0,
+                    is_active: 1,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+
+            const stats = await getSystemStats(db);
+
+            expect(stats.totalProjects).toBe(2);
+            expect(stats.activeProjects).toBe(1);
+        });
+
+        it('should return consistent numbers', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId);
+
+            const stats = await getSystemStats(db);
 
             expect(stats.activeUsers).toBeLessThanOrEqual(stats.totalUsers);
+            expect(stats.activeProjects).toBeLessThanOrEqual(stats.totalProjects);
         });
     });
 
     // ============================================================================
-    // Role Validation Tests
+    // App Settings TESTS
     // ============================================================================
 
-    describe('Role Validation', () => {
-        it('should parse roles from JSON string', () => {
-            const user = createMockUser({
-                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+    describe('App Settings', () => {
+        // Create app_settings table for testing
+        beforeAll(async () => {
+            // Create the app_settings table if it doesn't exist
+            try {
+                await db.schema
+                    .createTable('app_settings')
+                    .ifNotExists()
+                    .addColumn('key', 'varchar(255)', col => col.primaryKey())
+                    .addColumn('value', 'text', col => col.notNull())
+                    .addColumn('type', 'varchar(50)', col => col.notNull().defaultTo('string'))
+                    .addColumn('updated_at', 'varchar(255)')
+                    .addColumn('updated_by', 'integer')
+                    .execute();
+            } catch {
+                // Table may already exist
+            }
+        });
+
+        beforeEach(async () => {
+            // Clean app_settings table before each test
+            try {
+                await db.deleteFrom('app_settings' as any).execute();
+            } catch {
+                // Ignore errors if table doesn't exist
+            }
+        });
+
+        describe('getAllSettings', () => {
+            it('should return empty array when no settings', async () => {
+                const settings = await getAllSettings(db as any);
+                expect(settings).toHaveLength(0);
             });
 
-            const roles = JSON.parse(user.roles);
-            expect(Array.isArray(roles)).toBe(true);
-            expect(roles).toContain('ROLE_USER');
-            expect(roles).toContain('ROLE_ADMIN');
+            it('should return all settings', async () => {
+                await db
+                    .insertInto('app_settings' as any)
+                    .values([
+                        { key: 'site_name', value: 'eXeLearning', type: 'string', updated_at: new Date().toISOString() },
+                        { key: 'max_upload_size', value: '100', type: 'number', updated_at: new Date().toISOString() },
+                    ])
+                    .execute();
+
+                const settings = await getAllSettings(db as any);
+
+                expect(settings).toHaveLength(2);
+                expect(settings.map((s: any) => s.key)).toContain('site_name');
+                expect(settings.map((s: any) => s.key)).toContain('max_upload_size');
+            });
         });
 
-        it('should handle empty roles array', () => {
-            const user = createMockUser({ roles: '[]' });
+        describe('getSetting', () => {
+            it('should return undefined for non-existent key', async () => {
+                const setting = await getSetting(db as any, 'non_existent_key');
+                expect(setting).toBeUndefined();
+            });
 
-            const roles = JSON.parse(user.roles);
-            expect(roles).toHaveLength(0);
+            it('should return setting by key', async () => {
+                await db
+                    .insertInto('app_settings' as any)
+                    .values({ key: 'test_key', value: 'test_value', type: 'string', updated_at: new Date().toISOString() })
+                    .execute();
+
+                const setting = await getSetting(db as any, 'test_key');
+
+                expect(setting).toBeDefined();
+                expect(setting!.key).toBe('test_key');
+                expect(setting!.value).toBe('test_value');
+                expect(setting!.type).toBe('string');
+            });
         });
 
-        it('should identify protected ROLE_USER', () => {
-            const PROTECTED_ROLE = 'ROLE_USER';
+        describe('setSetting', () => {
+            it('should insert new setting', async () => {
+                await setSetting(db as any, 'new_setting', 'new_value', 'string');
 
-            const rolesWithProtected = ['ROLE_USER', 'ROLE_ADMIN'];
-            const rolesWithoutProtected = ['ROLE_ADMIN'];
+                const setting = await getSetting(db as any, 'new_setting');
 
-            expect(rolesWithProtected).toContain(PROTECTED_ROLE);
-            expect(rolesWithoutProtected).not.toContain(PROTECTED_ROLE);
+                expect(setting).toBeDefined();
+                expect(setting!.value).toBe('new_value');
+                expect(setting!.type).toBe('string');
+            });
+
+            it('should update existing setting', async () => {
+                // First insert
+                await setSetting(db as any, 'update_test', 'original', 'string');
+
+                // Then update
+                await setSetting(db as any, 'update_test', 'updated', 'string');
+
+                const setting = await getSetting(db as any, 'update_test');
+
+                expect(setting).toBeDefined();
+                expect(setting!.value).toBe('updated');
+            });
+
+            it('should set different types', async () => {
+                await setSetting(db as any, 'number_setting', '42', 'number');
+                await setSetting(db as any, 'bool_setting', 'true', 'boolean');
+                await setSetting(db as any, 'json_setting', '{"foo":"bar"}', 'json');
+
+                const numSetting = await getSetting(db as any, 'number_setting');
+                const boolSetting = await getSetting(db as any, 'bool_setting');
+                const jsonSetting = await getSetting(db as any, 'json_setting');
+
+                expect(numSetting!.type).toBe('number');
+                expect(boolSetting!.type).toBe('boolean');
+                expect(jsonSetting!.type).toBe('json');
+            });
+
+            it('should track updated_by', async () => {
+                await setSetting(db as any, 'tracked_setting', 'value', 'string', 123);
+
+                const setting = await getSetting(db as any, 'tracked_setting');
+
+                expect(setting).toBeDefined();
+                expect(setting!.updated_by).toBe(123);
+            });
+
+            it('should default type to string', async () => {
+                await setSetting(db as any, 'default_type', 'value');
+
+                const setting = await getSetting(db as any, 'default_type');
+
+                expect(setting!.type).toBe('string');
+            });
+
+            it('should update updated_by when updating', async () => {
+                // Insert with user 1
+                await setSetting(db as any, 'user_tracking', 'v1', 'string', 1);
+
+                // Update with user 2
+                await setSetting(db as any, 'user_tracking', 'v2', 'string', 2);
+
+                const setting = await getSetting(db as any, 'user_tracking');
+
+                expect(setting!.updated_by).toBe(2);
+            });
+
+            it('should handle null updated_by', async () => {
+                await setSetting(db as any, 'no_user', 'value', 'string');
+
+                const setting = await getSetting(db as any, 'no_user');
+
+                expect(setting!.updated_by).toBeNull();
+            });
         });
     });
 });

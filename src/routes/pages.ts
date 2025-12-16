@@ -735,10 +735,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 if (!userRoles.includes('ROLE_ADMIN')) {
                     set.status = 403;
-                    const html = renderTemplate('error', {
-                        title: 'Access Denied',
-                        message: 'You do not have permission to access the admin panel.',
-                        statusCode: 403,
+                    const html = renderTemplate('security/error', {
+                        error: 'You do not have permission to access the admin panel.',
+                        is_authenticated: true,
                         basePath: getBasePath(),
                     });
                     return new Response(html, {
