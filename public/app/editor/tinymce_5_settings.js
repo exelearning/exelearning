@@ -2,8 +2,7 @@ var $exeTinyMCE = {
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
     plugins:
-        'tooltips exeaudio edicuatex abcmusic exemindmap exemermaid rssfeed modalwindow exeimage exemedia toggletoolbars exeeffects easyattributes advlist lists autolink exelink charmap preview anchor searchreplace visualchars visualblocks code codemagic fullscreen insertdatetime table paste template hr clearfloat addcontent definitionlist blockquoteandcite pastecode abbr exegames_hangman directionality',
-    // exealign is disabled to avoid conflicts with exemedia alignment
+        'tooltips exeaudio edicuatex abcmusic exemindmap exemermaid rssfeed modalwindow exealign exeimage exemedia toggletoolbars exeeffects easyattributes advlist lists autolink exelink charmap preview anchor searchreplace visualchars visualblocks code codemagic fullscreen insertdatetime table paste template hr clearfloat addcontent definitionlist blockquoteandcite pastecode abbr exegames_hangman directionality',
     // These buttons will be visible when the others are hidden
     buttons0:
         'toggletoolbars | undo redo | bold italic | formatselect | alignleft aligncenter alignright alignjustify | exelink unlink | bullist numlist | exeimage exemedia | fullscreen',
