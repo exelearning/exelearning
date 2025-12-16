@@ -1,16 +1,9 @@
-.exe-figure{display:inline-block;margin:2em 0}
-figure.exe-media{margin:2em 0}
-.position-left{display:block;margin:2em auto 1em 0}
-.position-center{display:block;margin:2em auto}
-.position-right{display:block;margin:2em 0 2em auto}
-.float-left{float:left;margin:.5em 1em 1em 0}
-.float-right{float:right;margin:.5em 0 1em 2em}
-.exe-figure.position-center{display:block;margin:2em auto}
-/* Media elements with alignment classes */
-video.position-left,audio.position-left,iframe.position-left,embed.position-left,span[data-mce-object].position-left{display:block;margin:2em auto 2em 0}
-video.position-center,audio.position-center,iframe.position-center,embed.position-center,span[data-mce-object].position-center{display:block;margin:2em auto}
-video.position-right,audio.position-right,iframe.position-right,embed.position-right,span[data-mce-object].position-right{display:block;margin:2em 0 2em auto}
-video.float-left,audio.float-left,iframe.float-left,embed.float-left,span[data-mce-object].float-left{float:left;margin:.5em 2em 1em 0}
-video.float-right,audio.float-right,iframe.float-right,embed.float-right,span[data-mce-object].float-right{float:right;margin:.5em 0 1em 2em}
-.figcaption{padding-top:.2em}
+/* The New eXeLearning */
+.exe-figure{margin:1.5em 0}
+.position-center{margin:1.5em auto}
+.position-right{margin:1.5em 0 1.5em auto}
+.float-left{float:left;margin:.5em 1.5em 1em 0}
+.float-right{float:right;margin:.5em 0 1em 1.5em}
+.figcaption{padding-top:.2em;line-height:1em}
 .figcaption.header{padding-top:0;padding-bottom:.2em}
+/* / The New eXeLearning */
