@@ -4,7 +4,7 @@ This document describes the legacy `contentv3.xml` format used by eXeLearning 2.
 
 ## Overview
 
-The contentv3.xml format is a serialization of Python objects from the original eXe Learning application. It uses a reference-based system to represent complex object graphs.
+The contentv3.xml format is a serialization of Python objects from the original eXeLearning application. It uses a reference-based system to represent complex object graphs.
 
 **Important**: A DTD cannot effectively validate this format because:
 1. Class names are attribute values, not element names
