@@ -103,9 +103,9 @@ COPY --chown=nobody subdir.conf.template /etc/nginx/server-conf.d/subdir.conf.te
 COPY --chown=nobody nginx-logging-map.conf /etc/nginx/conf.d/logging-map.conf
 
 # Copy Mercure binary and configuration from the official container because Mercure is not yet available as an Alpine package
-COPY --from=dunglas/mercure:latest /usr/bin/caddy /usr/bin/mercure
-COPY --from=dunglas/mercure:latest /etc/caddy/Caddyfile /etc/caddy/Caddyfile
-COPY --from=dunglas/mercure:latest /etc/caddy/dev.Caddyfile /etc/caddy/dev.Caddyfile
+COPY --from=dunglas/mercure:v0.21.2 /usr/bin/caddy /usr/bin/mercure
+COPY --from=dunglas/mercure:v0.21.2 /etc/caddy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=dunglas/mercure:v0.21.2 /etc/caddy/dev.Caddyfile /etc/caddy/dev.Caddyfile
 
 # Create symbolic link to the php84 binary
 RUN ln -sf /usr/bin/php84 /usr/local/bin/php
