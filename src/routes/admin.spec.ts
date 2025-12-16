@@ -2,11 +2,10 @@
  * Admin Routes Unit Tests
  * Tests for admin API routes with DI and JWT authentication
  */
-import { describe, expect, it, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
+import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import { createAdminRoutes, type AdminDependencies, type AdminQueries } from './admin';
-import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser } from '../../test/helpers/test-db';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 

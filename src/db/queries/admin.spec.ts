@@ -245,7 +245,11 @@ describe('Admin Queries', () => {
                 })
                 .execute();
 
-            const user = await db.selectFrom('users').selectAll().where('email', '=', 'inactive@test.com').executeTakeFirst();
+            const user = await db
+                .selectFrom('users')
+                .selectAll()
+                .where('email', '=', 'inactive@test.com')
+                .executeTakeFirst();
             const updated = await updateUserStatus(db, user!.id, true);
 
             expect(updated).toBeDefined();
@@ -558,7 +562,12 @@ describe('Admin Queries', () => {
                 await db
                     .insertInto('app_settings' as any)
                     .values([
-                        { key: 'site_name', value: 'eXeLearning', type: 'string', updated_at: new Date().toISOString() },
+                        {
+                            key: 'site_name',
+                            value: 'eXeLearning',
+                            type: 'string',
+                            updated_at: new Date().toISOString(),
+                        },
                         { key: 'max_upload_size', value: '100', type: 'number', updated_at: new Date().toISOString() },
                     ])
                     .execute();
@@ -580,7 +589,12 @@ describe('Admin Queries', () => {
             it('should return setting by key', async () => {
                 await db
                     .insertInto('app_settings' as any)
-                    .values({ key: 'test_key', value: 'test_value', type: 'string', updated_at: new Date().toISOString() })
+                    .values({
+                        key: 'test_key',
+                        value: 'test_value',
+                        type: 'string',
+                        updated_at: new Date().toISOString(),
+                    })
                     .execute();
 
                 const setting = await getSetting(db as any, 'test_key');
