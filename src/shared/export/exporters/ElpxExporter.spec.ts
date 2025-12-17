@@ -515,12 +515,14 @@ describe('ElpxExporter', () => {
     });
 
     describe('Error Handling', () => {
-        it('should handle empty pages array', async () => {
+        it('should fail for empty pages array (invalid ODE - requires at least one page)', async () => {
             document = new MockDocument({}, []);
             exporter = new ElpxExporter(document, resources, assets, zip);
 
             const result = await exporter.export();
-            expect(result.success).toBe(true);
+            // Empty pages array produces invalid ODE XML (DTD requires at least one odeNavStructure)
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('MISSING_NAV_STRUCTURES');
         });
 
         it('should handle export with no title', async () => {

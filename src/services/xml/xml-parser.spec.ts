@@ -45,8 +45,8 @@ describe('xml-parser', () => {
                 <ode>
                     <odeProperties>
                         <odeProperty>
-                            <propertyKey>pp_title</propertyKey>
-                            <propertyValue>Test Title</propertyValue>
+                            <key>pp_title</key>
+                            <value>Test Title</value>
                         </odeProperty>
                     </odeProperties>
                     <odeNavStructures>
@@ -81,8 +81,8 @@ describe('xml-parser', () => {
                 <ode>
                     <odeProperties>
                         <odeProperty>
-                            <propertyKey>pp_title</propertyKey>
-                            <propertyValue>ODE Document</propertyValue>
+                            <key>pp_title</key>
+                            <value>ODE Document</value>
                         </odeProperty>
                     </odeProperties>
                     <odeNavStructures>
@@ -138,6 +138,8 @@ describe('xml-parser', () => {
     });
 
     describe('extractMetadataFromOdeProperties', () => {
+        // Note: These tests use skipValidation because the XML is intentionally minimal
+        // to test specific parsing functionality, not DTD validation
         it('should handle empty properties array', () => {
             const xml = `
                 <ode>
@@ -145,7 +147,7 @@ describe('xml-parser', () => {
                     <odeNavStructures></odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.title).toBe('Untitled');
             expect(result.meta.author).toBe('');
         });
@@ -155,14 +157,14 @@ describe('xml-parser', () => {
                 <ode>
                     <odeProperties>
                         <odeProperty>
-                            <propertyKey>pp_title</propertyKey>
-                            <propertyValue>Single Property</propertyValue>
+                            <key>pp_title</key>
+                            <value>Single Property</value>
                         </odeProperty>
                     </odeProperties>
                     <odeNavStructures></odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.title).toBe('Single Property');
         });
 
@@ -171,34 +173,34 @@ describe('xml-parser', () => {
                 <ode>
                     <odeProperties>
                         <odeProperty>
-                            <propertyKey>pp_title</propertyKey>
-                            <propertyValue>My Title</propertyValue>
+                            <key>pp_title</key>
+                            <value>My Title</value>
                         </odeProperty>
                         <odeProperty>
-                            <propertyKey>pp_author</propertyKey>
-                            <propertyValue>John Doe</propertyValue>
+                            <key>pp_author</key>
+                            <value>John Doe</value>
                         </odeProperty>
                         <odeProperty>
-                            <propertyKey>pp_description</propertyKey>
-                            <propertyValue>A description</propertyValue>
+                            <key>pp_description</key>
+                            <value>A description</value>
                         </odeProperty>
                         <odeProperty>
-                            <propertyKey>pp_license</propertyKey>
-                            <propertyValue>MIT</propertyValue>
+                            <key>pp_license</key>
+                            <value>MIT</value>
                         </odeProperty>
                         <odeProperty>
-                            <propertyKey>pp_locale</propertyKey>
-                            <propertyValue>es</propertyValue>
+                            <key>pp_locale</key>
+                            <value>es</value>
                         </odeProperty>
                         <odeProperty>
-                            <propertyKey>pp_style</propertyKey>
-                            <propertyValue>modern</propertyValue>
+                            <key>pp_style</key>
+                            <value>modern</value>
                         </odeProperty>
                     </odeProperties>
                     <odeNavStructures></odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.title).toBe('My Title');
             expect(result.meta.author).toBe('John Doe');
             expect(result.meta.description).toBe('A description');
@@ -212,13 +214,13 @@ describe('xml-parser', () => {
                 <ode>
                     <odeProperties>
                         <odeProperty>
-                            <propertyKey>pp_title</propertyKey>
+                            <key>pp_title</key>
                         </odeProperty>
                     </odeProperties>
                     <odeNavStructures></odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.title).toBe('Untitled'); // Falls back to default
         });
 
@@ -228,7 +230,7 @@ describe('xml-parser', () => {
                     <odeNavStructures></odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.title).toBe('Untitled');
         });
 
@@ -245,7 +247,7 @@ describe('xml-parser', () => {
                     </userPreferences>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.theme).toBe('base');
         });
 
@@ -254,8 +256,8 @@ describe('xml-parser', () => {
                 <ode>
                     <odeProperties>
                         <odeProperty>
-                            <propertyKey>pp_style</propertyKey>
-                            <propertyValue>intef</propertyValue>
+                            <key>pp_style</key>
+                            <value>intef</value>
                         </odeProperty>
                     </odeProperties>
                     <odeNavStructures></odeNavStructures>
@@ -267,7 +269,7 @@ describe('xml-parser', () => {
                     </userPreferences>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             // userPreferences should override odeProperties
             expect(result.meta.theme).toBe('base');
         });
@@ -289,7 +291,7 @@ describe('xml-parser', () => {
                     </userPreferences>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.theme).toBe('modern');
         });
     });
@@ -384,7 +386,7 @@ describe('xml-parser', () => {
                     </odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             const parent = result.pages.find(p => p.id === 'parent');
             const child = result.pages.find(p => p.id === 'child');
 
@@ -418,7 +420,7 @@ describe('xml-parser', () => {
                     </odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.pages.find(p => p.id === 'level0')?.level).toBe(0);
             expect(result.pages.find(p => p.id === 'level1')?.level).toBe(1);
             expect(result.pages.find(p => p.id === 'level2')?.level).toBe(2);
@@ -448,7 +450,7 @@ describe('xml-parser', () => {
                     </odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.pages[0].components.length).toBe(1);
             expect(result.pages[0].components[0].id).toBe('comp1');
             expect(result.pages[0].components[0].type).toBe('text');
@@ -479,7 +481,7 @@ describe('xml-parser', () => {
                     </odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.pages[0].components[0].data).toEqual({ question: 'What is 2+2?', answer: 4 });
         });
 
@@ -509,7 +511,7 @@ describe('xml-parser', () => {
                     </odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             // HTML iDevices should use content (htmlView) and have empty data
             expect(result.pages[0].components[0].content).toBe('<div class="crossword-game">Game content</div>');
             expect(result.pages[0].components[0].data).toEqual({});
@@ -527,7 +529,7 @@ describe('xml-parser', () => {
                     </odeNavStructures>
                 </ode>`;
 
-            const result = parseFromString(xml);
+            const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.pages.length).toBe(1);
             expect(result.pages[0].title).toBe('Single Page');
         });
