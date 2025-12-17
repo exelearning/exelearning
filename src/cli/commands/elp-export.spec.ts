@@ -136,11 +136,11 @@ describe('elp:export command', () => {
             await cleanupTestDir();
         });
 
-        it('should fail for elpx format (not implemented)', async () => {
+        it('should succeed for elpx format', async () => {
             await createTestElpFile();
             const result = await execute([TEST_ELP_PATH, TEST_OUTPUT_DIR, 'elpx'], {});
-            expect(result.success).toBe(false);
-            expect(result.message).toContain('not yet implemented');
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('Export completed');
             await cleanupTestDir();
         });
     });

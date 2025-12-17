@@ -2,13 +2,24 @@
  * ElpxExporter
  *
  * Exports a document to ELPX (eXeLearning Project) format.
- * Generates a ZIP archive containing the ODE XML structure and all assets.
+ * ELPX is a complete HTML5 export + content.xml for re-import.
  *
- * ELPX files are the native project format for eXeLearning 4.x and contain:
- * - content.xml (ODE format with full project structure)
- * - idevices/ (iDevice-specific CSS/JS/templates)
+ * ELPX files contain everything HTML5 exports have, plus:
+ * - content.xml (ODE format with full project structure for re-import)
+ * - ode-content.dtd (DTD for XML validation)
+ * - custom/ directory
+ *
+ * Structure:
+ * - index.html (main page)
+ * - html/*.html (individual pages)
+ * - content/css/ (base CSS + icons)
+ * - content/resources/ (project assets)
  * - libs/ (shared JavaScript libraries)
- * - content/resources/ (project assets: images, media, etc.)
+ * - theme/ (theme CSS/JS)
+ * - idevices/ (iDevice-specific CSS/JS)
+ * - content.xml (ODE format)
+ * - ode-content.dtd
+ * - custom/
  *
  * The ODE XML format is a hierarchical structure:
  * - odeProperties (metadata)
@@ -31,7 +42,7 @@ import type {
     ExportResult,
     ElpxExportOptions,
 } from '../interfaces';
-import { BaseExporter } from './BaseExporter';
+import { Html5Exporter } from './Html5Exporter';
 import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 
 /**
@@ -115,7 +126,7 @@ const ODE_DTD_CONTENT = `<!--
 <!ELEMENT odeComponentsProperty (key, value)>
 `;
 
-export class ElpxExporter extends BaseExporter {
+export class ElpxExporter extends Html5Exporter {
     constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         super(document, resources, assets, zip);
     }
@@ -128,7 +139,7 @@ export class ElpxExporter extends BaseExporter {
     }
 
     /**
-     * Get file suffix for ELPX format
+     * Get file suffix for ELPX format (no suffix for ELPX)
      */
     getFileSuffix(): string {
         return '';
@@ -136,6 +147,10 @@ export class ElpxExporter extends BaseExporter {
 
     /**
      * Export to ELPX format
+     *
+     * ELPX is a complete HTML5 export + content.xml (ODE format) + DTD for re-import.
+     * This method generates all HTML5 content (index.html, html/*.html, libs/, theme/, etc.)
+     * and then adds the content.xml with full ODE structure and DTD.
      */
     async export(options?: ExportOptions): Promise<ExportResult> {
         const exportFilename = options?.filename || this.buildFilename();
@@ -150,10 +165,119 @@ export class ElpxExporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
-            // 1. Generate content.xml (ODE format) and include DTD
+            // =========================================================================
+            // SECTION 1: Generate HTML5 content (same as Html5Exporter)
+            // =========================================================================
+
+            // 1.1 Generate HTML pages
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const html = this.generatePageHtml(page, pages, meta, i === 0, i);
+                // First page is index.html, others go in html/ directory
+                const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                this.zip.addFile(pageFilename, html);
+            }
+
+            // 1.2 Add search_index.js if search box is enabled
+            if (meta.addSearchBox) {
+                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
+                this.zip.addFile('search_index.js', searchIndexContent);
+            }
+
+            // 1.3 Add base CSS (fetch from content/css)
+            const contentCssFiles = await this.resources.fetchContentCss();
+            const baseCss = contentCssFiles.get('content/css/base.css');
+            if (!baseCss) {
+                throw new Error('Failed to fetch content/css/base.css');
+            }
+            this.zip.addFile('content/css/base.css', baseCss);
+
+            // 1.4 Add eXeLearning logo for "Made with eXeLearning" footer
+            try {
+                const logoData = await this.resources.fetchExeLogo();
+                if (logoData) {
+                    this.zip.addFile('content/img/exe_powered_logo.png', logoData);
+                }
+            } catch {
+                // Logo not available - footer will still render but without background image
+            }
+
+            // 1.5 Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
+            try {
+                const themeFiles = await this.resources.fetchTheme(themeName);
+                for (const [filePath, content] of themeFiles) {
+                    // Rename theme files to legacy export format
+                    let exportPath = filePath;
+                    if (filePath === 'style.css') {
+                        exportPath = 'content.css';
+                    } else if (filePath === 'style.js') {
+                        exportPath = 'default.js';
+                    }
+                    this.zip.addFile(`theme/${exportPath}`, content);
+                }
+            } catch (e) {
+                // Add fallback theme if fetch fails (use legacy names)
+                console.warn(`[ElpxExporter] Failed to fetch theme: ${themeName}`, e);
+                this.zip.addFile('theme/content.css', this.getFallbackThemeCss());
+                this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
+            }
+
+            // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
+            try {
+                const baseLibs = await this.resources.fetchBaseLibraries();
+                for (const [libPath, content] of baseLibs) {
+                    this.zip.addFile(`libs/${libPath}`, content);
+                }
+            } catch {
+                // Base libraries not available - continue anyway
+            }
+
+            // 1.7 Detect and fetch additional required libraries based on content
+            const allHtmlContent = this.collectAllHtmlContent(pages);
+            const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
+                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+            });
+
+            try {
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles);
+                for (const [libPath, content] of libFiles) {
+                    // Only add if not already added by base libraries
+                    const zipPath = `libs/${libPath}`;
+                    if (!this.zip.hasFile(zipPath)) {
+                        this.zip.addFile(zipPath, content);
+                    }
+                }
+            } catch {
+                // Additional libraries not available - continue anyway
+            }
+
+            // 1.8 Fetch and add iDevice assets
+            const usedIdevices = this.getUsedIdevices(pages);
+            for (const idevice of usedIdevices) {
+                try {
+                    // Normalize iDevice type to directory name (e.g., 'FreeTextIdevice' -> 'text')
+                    const normalizedType = this.resources.normalizeIdeviceType(idevice);
+                    const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
+                    for (const [filePath, content] of ideviceFiles) {
+                        // Use normalized type for ZIP path
+                        this.zip.addFile(`idevices/${normalizedType}/${filePath}`, content);
+                    }
+                } catch {
+                    // Many iDevices don't have extra files - this is normal
+                }
+            }
+
+            // 1.9 Add project assets
+            await this.addAssetsToZipWithResourcePath();
+
+            // =========================================================================
+            // SECTION 2: Add ELPX-specific files (content.xml with ODE format + DTD)
+            // =========================================================================
+
+            // 2.1 Generate content.xml with full ODE format (for re-import)
             const contentXml = this.generateOdeXml(meta, pages);
 
-            // Validate generated XML against DTD structure
+            // Validate generated XML
             const validation = validateXml(contentXml);
             if (!validation.valid) {
                 const errorMsg = formatValidationErrors(validation);
@@ -165,46 +289,16 @@ export class ElpxExporter extends BaseExporter {
             }
 
             this.zip.addFile('content.xml', contentXml);
+
+            // 2.2 Add DTD file
             this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
 
-            // 2. Fetch and add theme files
-            try {
-                const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [path, content] of themeFiles) {
-                    this.zip.addFile(`style/${themeName}/${path}`, content);
-                }
-            } catch {
-                // Theme fetch failed - continue without theme
-                console.warn(`[ElpxExporter] Failed to fetch theme: ${themeName}`);
-            }
+            // 2.3 Add custom/ directory (empty marker file)
+            this.zip.addFile('custom/.gitkeep', '');
 
-            // 3. Fetch and add iDevice resources
-            const usedIdevices = this.getUsedIdevices(pages);
-            for (const idevice of usedIdevices) {
-                try {
-                    const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
-                    for (const [path, content] of ideviceFiles) {
-                        this.zip.addFile(`idevices/${idevice}/${path}`, content);
-                    }
-                } catch {
-                    // Many iDevices don't have extra files - this is normal
-                }
-            }
-
-            // 4. Fetch and add base libraries
-            try {
-                const baseLibs = await this.resources.fetchBaseLibraries();
-                for (const [path, content] of baseLibs) {
-                    this.zip.addFile(`libs/${path}`, content);
-                }
-            } catch {
-                // Libraries fetch failed - continue without
-            }
-
-            // 5. Add project assets
-            await this.addAssetsToZipWithResourcePath();
-
-            // 6. Generate ZIP buffer
+            // =========================================================================
+            // SECTION 3: Generate final ZIP
+            // =========================================================================
             const buffer = await this.zip.generateAsync();
 
             return {
@@ -457,12 +551,12 @@ export class ElpxExporter extends BaseExporter {
 
         // HTML content (wrapped in CDATA)
         const htmlContent = component.content || '';
-        xml += `          <htmlView><![CDATA[${htmlContent}]]></htmlView>\n`;
+        xml += `          <htmlView><![CDATA[${this.escapeCdata(htmlContent)}]]></htmlView>\n`;
 
         // JSON properties (wrapped in CDATA)
         if (component.properties && Object.keys(component.properties).length > 0) {
             const jsonStr = JSON.stringify(component.properties);
-            xml += `          <jsonProperties><![CDATA[${jsonStr}]]></jsonProperties>\n`;
+            xml += `          <jsonProperties><![CDATA[${this.escapeCdata(jsonStr)}]]></jsonProperties>\n`;
         } else {
             xml += `          <jsonProperties></jsonProperties>\n`;
         }

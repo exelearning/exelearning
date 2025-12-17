@@ -33,10 +33,51 @@ const SAMPLE_CONTENT_XML = `<?xml version="1.0"?>
   </odeNavStructures>
 </ode>`;
 
+// Sample content.xml with export settings
+const SAMPLE_CONTENT_XML_WITH_EXPORT_SETTINGS = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <odeProperty><key>pp_title</key><value>Test Project With Settings</value></odeProperty>
+    <odeProperty><key>pp_author</key><value>Test Author</value></odeProperty>
+    <odeProperty><key>pp_lang</key><value>es</value></odeProperty>
+    <odeProperty><key>pp_description</key><value>Test description</value></odeProperty>
+    <odeProperty><key>pp_license</key><value>CC-BY-SA</value></odeProperty>
+    <odeProperty><key>pp_addPagination</key><value>true</value></odeProperty>
+    <odeProperty><key>pp_addSearchBox</key><value>true</value></odeProperty>
+    <odeProperty><key>pp_addExeLink</key><value>false</value></odeProperty>
+    <odeProperty><key>pp_addAccessibilityToolbar</key><value>true</value></odeProperty>
+    <odeProperty><key>exportSource</key><value>false</value></odeProperty>
+    <odeProperty><key>pp_extraHeadContent</key><value>&lt;meta name="test" content="value"&gt;</value></odeProperty>
+    <odeProperty><key>footer</key><value>&lt;footer&gt;Test footer&lt;/footer&gt;</value></odeProperty>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure>
+      <odePageId>page1</odePageId>
+      <pageName>Page 1</pageName>
+      <odeNavStructureOrder>1</odeNavStructureOrder>
+      <odePagStructures>
+        <odePagStructure>
+          <odeBlockId>block1</odeBlockId>
+          <blockName>Block 1</blockName>
+          <odePagStructureOrder>1</odePagStructureOrder>
+          <odeComponents>
+            <odeComponent>
+              <odeIdeviceId>comp1</odeIdeviceId>
+              <odeIdeviceTypeName>text</odeIdeviceTypeName>
+              <htmlView>&lt;p&gt;Test content&lt;/p&gt;</htmlView>
+              <odeComponentsOrder>1</odeComponentsOrder>
+            </odeComponent>
+          </odeComponents>
+        </odePagStructure>
+      </odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
+
 // Mock fflate that returns our sample content
-const createMockFflate = () => ({
+const createMockFflate = (contentXml = SAMPLE_CONTENT_XML) => ({
   unzipSync: (data) => ({
-    'content.xml': new TextEncoder().encode(SAMPLE_CONTENT_XML),
+    'content.xml': new TextEncoder().encode(contentXml),
   }),
   strToU8: (str) => new TextEncoder().encode(str),
   strFromU8: (data) => new TextDecoder().decode(data),
@@ -449,6 +490,155 @@ describe('ElpxImporter', () => {
         expect(call.percent).toBeGreaterThanOrEqual(80);
         expect(call.percent).toBeLessThanOrEqual(100);
       });
+    });
+  });
+
+  describe('parseBooleanProperty', () => {
+    it('parses string "true" as true', () => {
+      // Create a simple XML document to test getPropertyValue
+      const xmlStr = `<odeProperties>
+        <odeProperty><key>testKey</key><value>true</value></odeProperty>
+      </odeProperties>`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'text/xml');
+      const container = doc.documentElement;
+
+      const result = importer.parseBooleanProperty(container, 'testKey', false);
+      expect(result).toBe(true);
+    });
+
+    it('parses string "false" as false', () => {
+      const xmlStr = `<odeProperties>
+        <odeProperty><key>testKey</key><value>false</value></odeProperty>
+      </odeProperties>`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'text/xml');
+      const container = doc.documentElement;
+
+      const result = importer.parseBooleanProperty(container, 'testKey', true);
+      expect(result).toBe(false);
+    });
+
+    it('parses string "1" as true', () => {
+      const xmlStr = `<odeProperties>
+        <odeProperty><key>testKey</key><value>1</value></odeProperty>
+      </odeProperties>`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'text/xml');
+      const container = doc.documentElement;
+
+      const result = importer.parseBooleanProperty(container, 'testKey', false);
+      expect(result).toBe(true);
+    });
+
+    it('parses string "0" as false', () => {
+      const xmlStr = `<odeProperties>
+        <odeProperty><key>testKey</key><value>0</value></odeProperty>
+      </odeProperties>`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'text/xml');
+      const container = doc.documentElement;
+
+      const result = importer.parseBooleanProperty(container, 'testKey', true);
+      expect(result).toBe(false);
+    });
+
+    it('returns default value when key not found', () => {
+      const xmlStr = `<odeProperties></odeProperties>`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'text/xml');
+      const container = doc.documentElement;
+
+      expect(importer.parseBooleanProperty(container, 'nonExistent', true)).toBe(true);
+      expect(importer.parseBooleanProperty(container, 'nonExistent', false)).toBe(false);
+    });
+
+    it('returns default value when value is empty', () => {
+      const xmlStr = `<odeProperties>
+        <odeProperty><key>testKey</key><value></value></odeProperty>
+      </odeProperties>`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'text/xml');
+      const container = doc.documentElement;
+
+      expect(importer.parseBooleanProperty(container, 'testKey', true)).toBe(true);
+    });
+
+    it('handles case insensitive TRUE/FALSE', () => {
+      const xmlStr = `<odeProperties>
+        <odeProperty><key>upper</key><value>TRUE</value></odeProperty>
+        <odeProperty><key>mixed</key><value>False</value></odeProperty>
+      </odeProperties>`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'text/xml');
+      const container = doc.documentElement;
+
+      expect(importer.parseBooleanProperty(container, 'upper', false)).toBe(true);
+      expect(importer.parseBooleanProperty(container, 'mixed', true)).toBe(false);
+    });
+  });
+
+  describe('export settings extraction', () => {
+    let importerWithSettings;
+    let mockDocManagerWithSettings;
+
+    beforeEach(() => {
+      // Setup with export settings XML
+      global.window.fflate = createMockFflate(SAMPLE_CONTENT_XML_WITH_EXPORT_SETTINGS);
+      mockDocManagerWithSettings = createMockDocumentManager();
+      importerWithSettings = new ElpxImporter(mockDocManagerWithSettings, createMockAssetManager());
+    });
+
+    it('extracts boolean export settings from XML', async () => {
+      const mockFile = createMockFile();
+      await importerWithSettings.importFromFile(mockFile);
+
+      const metadata = mockDocManagerWithSettings.getMetadata();
+
+      // Check boolean export settings were extracted
+      expect(metadata.get('addPagination')).toBe(true);
+      expect(metadata.get('addSearchBox')).toBe(true);
+      expect(metadata.get('addExeLink')).toBe(false);
+      expect(metadata.get('addAccessibilityToolbar')).toBe(true);
+      expect(metadata.get('exportSource')).toBe(false);
+    });
+
+    it('extracts string export settings from XML', async () => {
+      const mockFile = createMockFile();
+      await importerWithSettings.importFromFile(mockFile);
+
+      const metadata = mockDocManagerWithSettings.getMetadata();
+
+      // Check string export settings were extracted
+      expect(metadata.get('extraHeadContent')).toContain('<meta name="test"');
+      expect(metadata.get('footer')).toContain('<footer>');
+      expect(metadata.get('footer')).toContain('Test footer');
+    });
+
+    it('extracts basic metadata along with export settings', async () => {
+      const mockFile = createMockFile();
+      await importerWithSettings.importFromFile(mockFile);
+
+      const metadata = mockDocManagerWithSettings.getMetadata();
+
+      // Check basic metadata is still extracted
+      expect(metadata.get('title')).toBe('Test Project With Settings');
+      expect(metadata.get('author')).toBe('Test Author');
+      expect(metadata.get('language')).toBe('es');
+      expect(metadata.get('description')).toBe('Test description');
+      expect(metadata.get('license')).toBe('CC-BY-SA');
+    });
+
+    it('uses default values when export settings are missing', async () => {
+      // Use basic XML without export settings
+      global.window.fflate = createMockFflate(SAMPLE_CONTENT_XML);
+      const basicImporter = new ElpxImporter(createMockDocumentManager(), createMockAssetManager());
+      const mockFile = createMockFile();
+
+      await basicImporter.importFromFile(mockFile);
+
+      // With basic XML (old format), values should use defaults
+      // The test just verifies no errors are thrown
     });
   });
 });

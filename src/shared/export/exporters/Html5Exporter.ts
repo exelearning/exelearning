@@ -83,8 +83,13 @@ export class Html5Exporter extends BaseExporter {
                 this.zip.addFile('content.xml', contentXml);
             }
 
-            // 4. Add base CSS
-            this.zip.addFile('content/css/base.css', this.getBaseCss());
+            // 4. Add base CSS (fetch from content/css)
+            const contentCssFiles = await this.resources.fetchContentCss();
+            const baseCss = contentCssFiles.get('content/css/base.css');
+            if (!baseCss) {
+                throw new Error('Failed to fetch content/css/base.css');
+            }
+            this.zip.addFile('content/css/base.css', baseCss);
 
             // 5. Add eXeLearning logo for "Made with eXeLearning" footer
             try {
@@ -118,7 +123,17 @@ export class Html5Exporter extends BaseExporter {
                 this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
             }
 
-            // 7. Detect and fetch required libraries
+            // 7. Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
+            try {
+                const baseLibs = await this.resources.fetchBaseLibraries();
+                for (const [libPath, content] of baseLibs) {
+                    this.zip.addFile(`libs/${libPath}`, content);
+                }
+            } catch {
+                // Base libraries not available - continue anyway
+            }
+
+            // 8. Detect and fetch additional required libraries based on content
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
@@ -126,19 +141,15 @@ export class Html5Exporter extends BaseExporter {
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles);
-                for (const [path, content] of libFiles) {
-                    this.zip.addFile(`libs/${path}`, content);
+                for (const [libPath, content] of libFiles) {
+                    // Only add if not already added by base libraries
+                    const zipPath = `libs/${libPath}`;
+                    if (!this.zip.hasFile(zipPath)) {
+                        this.zip.addFile(zipPath, content);
+                    }
                 }
             } catch {
-                // Try base libraries as fallback
-                try {
-                    const baseLibs = await this.resources.fetchBaseLibraries();
-                    for (const [path, content] of baseLibs) {
-                        this.zip.addFile(`libs/${path}`, content);
-                    }
-                } catch {
-                    // No libraries available
-                }
+                // Additional libraries not available - continue anyway
             }
 
             // 8. Fetch and add iDevice assets

@@ -84,6 +84,19 @@ export const EXPORT_FORMAT_INFO: Record<
 export { getIdeviceConfig } from '../../services/idevice-config';
 
 // =============================================================================
+// Legacy iDevice Type Mapping
+// =============================================================================
+
+/**
+ * Maps legacy iDevice type names to current names
+ * Used to support ELP files created with older eXeLearning versions
+ */
+export const LEGACY_IDEVICE_MAPPING: Record<string, string> = {
+    'download-package': 'download-source-file',
+    // Add more legacy mappings as discovered
+};
+
+// =============================================================================
 // Library Patterns (for detecting required JS/CSS libraries)
 // =============================================================================
 

@@ -102,8 +102,13 @@ export class Scorm2004Exporter extends Html5Exporter {
                 commonFiles.push('search_index.js');
             }
 
-            // 2. Add base CSS
-            this.zip.addFile('content/css/base.css', this.getBaseCss());
+            // 2. Add base CSS (fetch from content/css)
+            const contentCssFiles = await this.resources.fetchContentCss();
+            const baseCss = contentCssFiles.get('content/css/base.css');
+            if (!baseCss) {
+                throw new Error('Failed to fetch content/css/base.css');
+            }
+            this.zip.addFile('content/css/base.css', baseCss);
             commonFiles.push('content/css/base.css');
 
             // 3. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)

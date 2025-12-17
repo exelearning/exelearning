@@ -517,7 +517,8 @@ button.toggler span,
         linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
 
         let html = `<li${isActive ? ' class="active"' : ''}>`;
-        html += ` <a href="#" data-page-id="${page.id}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
+        const parentAttr = page.parentId ? ` data-parent-id="${page.parentId}"` : '';
+        html += ` <a href="#" data-page-id="${page.id}"${parentAttr} class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
 
         if (hasChildren) {
             html += '<ul class="other-section">\n';
@@ -748,11 +749,33 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
       p.style.display = i === index ? 'block' : 'none';
       p.classList.toggle('active', i === index);
     });
+    // Build parentId map for ancestor tracking
+    var parentMap = {};
     navLinks.forEach(function(link) {
       var pageId = link.getAttribute('data-page-id');
-      var isActive = activePage.id === 'page-' + pageId;
+      var parentId = link.getAttribute('data-parent-id');
+      if (pageId) parentMap[pageId] = parentId;
+    });
+
+    // Find ancestors of current page
+    var currentPageId = activePage.id.replace('page-', '');
+    var ancestors = {};
+    var pid = parentMap[currentPageId];
+    while (pid) {
+      ancestors[pid] = true;
+      pid = parentMap[pid];
+    }
+
+    // Update nav classes including ancestor expansion
+    navLinks.forEach(function(link) {
+      var pageId = link.getAttribute('data-page-id');
+      var isActive = currentPageId === pageId;
+      var isAncestor = ancestors[pageId] === true;
       link.classList.toggle('active', isActive);
-      if (link.parentElement) link.parentElement.classList.toggle('active', isActive);
+      if (link.parentElement) {
+        link.parentElement.classList.toggle('active', isActive);
+        link.parentElement.classList.toggle('current-page-parent', isAncestor);
+      }
     });
     // Update header with current page info
     if (pageTitleEl && activePage.dataset.pageTitle) {

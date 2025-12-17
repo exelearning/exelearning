@@ -15,6 +15,7 @@ interface MockResourceFetcherInterface {
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
     fetchSchemas(format: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
+    fetchContentCss(): Promise<Map<string, Blob>>;
 }
 
 // Create a mock Blob
@@ -35,6 +36,7 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
     private libraryDirectories: Map<string, Map<string, Blob>> = new Map();
     private schemas: Map<string, Map<string, Blob>> = new Map();
     private exeLogo: Blob | null = null;
+    private contentCss: Map<string, Blob> = new Map();
 
     // Setup methods for testing
     setTheme(themeName: string, files: Map<string, Blob>): void {
@@ -69,6 +71,10 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
         this.schemas.set(format, files);
     }
 
+    setContentCss(files: Map<string, Blob>): void {
+        this.contentCss = files;
+    }
+
     // Interface methods
     async fetchTheme(themeName: string): Promise<Map<string, Blob>> {
         return this.themes.get(themeName) || new Map();
@@ -100,6 +106,10 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
 
     async fetchExeLogo(): Promise<Blob | null> {
         return this.exeLogo;
+    }
+
+    async fetchContentCss(): Promise<Map<string, Blob>> {
+        return this.contentCss;
     }
 }
 
@@ -328,6 +338,52 @@ describe('BrowserResourceProvider', () => {
             const result = await provider.fetchExeLogo();
 
             expect(result).toEqual(imageData);
+        });
+    });
+
+    describe('fetchContentCss', () => {
+        it('should return content CSS files as Uint8Array map', async () => {
+            const cssFiles = new Map<string, Blob>();
+            cssFiles.set('content/css/base.css', createMockBlob('/* base css content */'));
+            mockFetcher.setContentCss(cssFiles);
+
+            const result = await provider.fetchContentCss();
+
+            expect(result).toBeInstanceOf(Map);
+            expect(result.has('content/css/base.css')).toBe(true);
+        });
+
+        it('should convert CSS Blob to Uint8Array', async () => {
+            const cssContent = '.sr-av { position: absolute; }';
+            const cssFiles = new Map<string, Blob>();
+            cssFiles.set('content/css/base.css', createMockBlob(cssContent));
+            mockFetcher.setContentCss(cssFiles);
+
+            const result = await provider.fetchContentCss();
+            const buffer = result.get('content/css/base.css');
+
+            expect(buffer).toBeInstanceOf(Uint8Array);
+            expect(new TextDecoder().decode(buffer!)).toBe(cssContent);
+        });
+
+        it('should return empty map when no CSS files', async () => {
+            const result = await provider.fetchContentCss();
+
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should handle multiple CSS files', async () => {
+            const cssFiles = new Map<string, Blob>();
+            cssFiles.set('content/css/base.css', createMockBlob('/* base */'));
+            cssFiles.set('content/css/extra.css', createMockBlob('/* extra */'));
+            mockFetcher.setContentCss(cssFiles);
+
+            const result = await provider.fetchContentCss();
+
+            expect(result.size).toBe(2);
+            expect(result.has('content/css/base.css')).toBe(true);
+            expect(result.has('content/css/extra.css')).toBe(true);
         });
     });
 

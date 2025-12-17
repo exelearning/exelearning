@@ -29,6 +29,7 @@ interface ResourceFetcherInterface {
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
     fetchSchemas(format: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
+    fetchContentCss(): Promise<Map<string, Blob>>;
 }
 
 /**
@@ -135,6 +136,15 @@ export class BrowserResourceProvider implements ResourceProvider {
             return new Uint8Array(arrayBuffer);
         }
         return null;
+    }
+
+    /**
+     * Fetch content CSS files (base.css, etc.)
+     * @returns Map of path -> content
+     */
+    async fetchContentCss(): Promise<Map<string, Uint8Array>> {
+        const blobMap = await this.fetcher.fetchContentCss();
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
     /**

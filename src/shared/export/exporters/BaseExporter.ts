@@ -168,6 +168,17 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Escape content for use in CDATA sections
+     * CDATA cannot contain the sequence ]]> as it closes the CDATA block.
+     * We split it into multiple CDATA sections when this sequence appears.
+     */
+    escapeCdata(str: string | null | undefined): string {
+        if (!str) return '';
+        // Replace ]]> with ]]]]><![CDATA[> to split the CDATA section
+        return String(str).replace(/\]\]>/g, ']]]]><![CDATA[>');
+    }
+
+    /**
      * Escape HTML special characters
      */
     escapeHtml(str: string | null | undefined): string {
@@ -611,11 +622,11 @@ export abstract class BaseExporter {
         xml += `odeIdeviceTypeDirName="${this.escapeXml(ideviceType)}" odeComponentOrder="${order}">\n`;
 
         if (component.content) {
-            xml += `      <htmlView><![CDATA[${component.content}]]></htmlView>\n`;
+            xml += `      <htmlView><![CDATA[${this.escapeCdata(component.content)}]]></htmlView>\n`;
         }
 
         if (component.properties && Object.keys(component.properties).length > 0) {
-            xml += `      <jsonProperties><![CDATA[${JSON.stringify(component.properties)}]]></jsonProperties>\n`;
+            xml += `      <jsonProperties><![CDATA[${this.escapeCdata(JSON.stringify(component.properties))}]]></jsonProperties>\n`;
         }
 
         xml += '    </odeComponent>\n';
@@ -625,169 +636,6 @@ export abstract class BaseExporter {
     // =========================================================================
     // Fallback Styles (used when resources can't be fetched)
     // =========================================================================
-
-    /**
-     * Get base CSS content
-     */
-    getBaseCss(): string {
-        return `.exe-content{
-  background: #fff;
-}
-.exe-content .page-title{
-  font-size: 1.45em;
-}
-.exe-content .box{
-  margin-top: 20px;
-  border: 1px solid #dbdbdb;
-}
-.exe-content a{
-  color: #5a7f0c;
-}
-.exe-content a:hover,
-.exe-content a:focus{
-  color: #71a300;
-}
-.exe-content h2{ font-size: 1.45em; }
-.exe-content h3{ font-size: 1.35em; }
-.exe-content h4{ font-size: 1.25em; }
-.exe-content h5{ font-size: 1.15em; }
-
-/* iDevice styles */
-.iDevice_wrapper {
-  margin-bottom: 25px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  background: #fff;
-}
-.iDevice_content {
-  line-height: 1.8;
-}
-.iDevice_content img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Navigation */
-#siteNav {
-  background: #34495e;
-  color: #fff;
-  padding: 15px 20px;
-  min-width: 220px;
-}
-#siteNav ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-#siteNav li {
-  margin: 5px 0;
-}
-#siteNav a {
-  color: #ecf0f1;
-  text-decoration: none;
-  display: block;
-  padding: 5px 10px;
-  border-radius: 4px;
-}
-#siteNav a:hover {
-  background: rgba(255,255,255,0.1);
-}
-#siteNav .active > a,
-#siteNav a.active {
-  background: #3498db;
-  font-weight: bold;
-}
-#siteNav ul ul {
-  padding-left: 15px;
-}
-
-/* Pagination */
-.pagination {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #e0e0e0;
-}
-.pagination a {
-  color: #3498db;
-  text-decoration: none;
-}
-.pagination a:hover {
-  text-decoration: underline;
-}
-
-/* Footer */
-#packageLicense {
-  margin-top: 30px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 4px;
-  font-size: 0.9em;
-  color: #666;
-}
-
-/* Responsive */
-@media (min-width: 768px) {
-  .exe-content {
-    display: flex;
-    flex-direction: row;
-  }
-  #siteNav {
-    width: 250px;
-    flex-shrink: 0;
-  }
-  main.page {
-    flex: 1;
-    padding: 20px 30px;
-    max-width: 900px;
-  }
-}
-
-/* Made with eXeLearning */
-#made-with-eXe {
-  margin: 0;
-  position: fixed;
-  bottom: 0;
-  right: 0;
-}
-#made-with-eXe a {
-  text-decoration: none;
-  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
-  border-top-left-radius: 4px;
-  color: #222;
-  font-size: 11px;
-  font-family: Arial, sans-serif;
-  line-height: 35px;
-  width: 35px;
-  height: 35px;
-  background: #fff url(../img/exe_powered_logo.png) no-repeat 3px 50%;
-  display: block;
-  background-size: auto 20px;
-  transition: .5s;
-  opacity: .8;
-}
-#made-with-eXe span {
-  padding-left: 35px;
-  padding-right: 5px;
-}
-#made-with-eXe span span {
-  position: absolute;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip: rect(0, 0, 0, 0);
-  height: 0;
-}
-#made-with-eXe a:hover {
-  width: auto;
-  padding: 0 5px;
-  background-position: 5px 50%;
-  opacity: 1;
-}
-@media print {
-  #made-with-eXe { display: none; }
-}
-`;
-    }
 
     /**
      * Get fallback theme CSS

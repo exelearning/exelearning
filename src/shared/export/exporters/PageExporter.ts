@@ -63,8 +63,13 @@ export class PageExporter extends Html5Exporter {
             const contentXml = this.generateContentXml();
             this.zip.addFile('content.xml', contentXml);
 
-            // 3. Add base CSS
-            this.zip.addFile('content/css/base.css', this.getBaseCss());
+            // 3. Add base CSS (fetch from content/css)
+            const contentCssFiles = await this.resources.fetchContentCss();
+            const baseCss = contentCssFiles.get('content/css/base.css');
+            if (!baseCss) {
+                throw new Error('Failed to fetch content/css/base.css');
+            }
+            this.zip.addFile('content/css/base.css', baseCss);
             this.zip.addFile('content/css/single-page.css', this.getSinglePageCss());
 
             // 4. Fetch and add theme

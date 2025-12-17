@@ -24,6 +24,15 @@ const browserAliasPlugin = {
             }
         });
 
+        // Intercept imports of xml-parser (uses fs-extra which doesn't work in browser)
+        build.onResolve({ filter: /xml-parser$/ }, (args) => {
+            if (args.importer.includes('src/shared/export') || args.importer.includes('src/services')) {
+                return {
+                    path: path.join(projectRoot, 'src/shared/export/browser/xml-validator-shim.ts'),
+                };
+            }
+        });
+
         // Mark fs-extra as external (shouldn't be imported by browser code,
         // but just in case any transitive dependency tries)
         build.onResolve({ filter: /^fs-extra$/ }, () => {
