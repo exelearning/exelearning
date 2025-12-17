@@ -18,7 +18,10 @@ export default defineConfig({
     setupFiles: ['./public/vitest.setup.js'],
 
     // Only include frontend tests
-    include: ['public/app/**/*.test.js'],
+    include: [
+      'public/app/**/*.test.js',
+      'public/files/perm/idevices/base/**/*.test.js',
+    ],
 
     // Exclude legacy code
     exclude: ['**/node_modules/**', '**/symfony_legacy/**', '**/nestjs_legacy/**'],
