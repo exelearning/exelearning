@@ -211,12 +211,21 @@ class ElpxImporter {
     }
 
     const metadataValues = {
+      // Basic metadata
       title: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_title') || 'Imported Project') : 'Imported Project',
       author: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_author') || '') : '',
       language: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_lang') || 'en') : 'en',
       description: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_description') || '') : '',
       license: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_license') || '') : '',
-      theme: themeFromXml
+      theme: themeFromXml,
+      // Export settings
+      addPagination: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addPagination', false) : false,
+      addSearchBox: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addSearchBox', false) : false,
+      addExeLink: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addExeLink', true) : true,
+      addAccessibilityToolbar: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addAccessibilityToolbar', false) : false,
+      exportSource: odeProperties ? this.parseBooleanProperty(odeProperties, 'exportSource', true) : true,
+      extraHeadContent: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_extraHeadContent') || '') : '',
+      footer: odeProperties ? (this.getPropertyValue(odeProperties, 'footer') || '') : '',
     };
 
     // Calculate order offset for imported pages (only when not clearing)
@@ -258,6 +267,7 @@ class ElpxImporter {
         // Set metadata only if clearing (replacing) the document
         if (odeProperties && clearExisting) {
           Logger.log('[ElpxImporter] Setting metadata...');
+          // Basic metadata
           metadata.set('title', metadataValues.title);
           metadata.set('author', metadataValues.author);
           metadata.set('language', metadataValues.language);
@@ -267,7 +277,19 @@ class ElpxImporter {
             metadata.set('theme', metadataValues.theme);
             Logger.log('[ElpxImporter] Theme set:', metadataValues.theme);
           }
-          Logger.log('[ElpxImporter] Metadata set');
+          // Export settings
+          metadata.set('addPagination', metadataValues.addPagination);
+          metadata.set('addSearchBox', metadataValues.addSearchBox);
+          metadata.set('addExeLink', metadataValues.addExeLink);
+          metadata.set('addAccessibilityToolbar', metadataValues.addAccessibilityToolbar);
+          metadata.set('exportSource', metadataValues.exportSource);
+          if (metadataValues.extraHeadContent) {
+            metadata.set('extraHeadContent', metadataValues.extraHeadContent);
+          }
+          if (metadataValues.footer) {
+            metadata.set('footer', metadataValues.footer);
+          }
+          Logger.log('[ElpxImporter] Metadata set (including export settings)');
         }
 
         // Now create Y types and add to document inside the transaction
@@ -1003,6 +1025,27 @@ class ElpxImporter {
     }
 
     return null;
+  }
+
+  /**
+   * Parse boolean property value from odeProperties container
+   * @param {Element} container - The odeProperties element
+   * @param {string} key - Property key to look for
+   * @param {boolean} defaultValue - Default value if not found
+   * @returns {boolean}
+   */
+  parseBooleanProperty(container, key, defaultValue = false) {
+    const value = this.getPropertyValue(container, key);
+    if (value === null || value === undefined || value === '') {
+      return defaultValue;
+    }
+    // Handle string 'true'/'false' and '1'/'0'
+    if (typeof value === 'string') {
+      const lower = value.toLowerCase();
+      if (lower === 'true' || lower === '1') return true;
+      if (lower === 'false' || lower === '0') return false;
+    }
+    return Boolean(value);
   }
 
   /**

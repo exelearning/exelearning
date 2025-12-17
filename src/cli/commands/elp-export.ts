@@ -39,6 +39,7 @@ import {
     Scorm12Exporter,
     Scorm2004Exporter,
     ImsExporter,
+    ElpxExporter,
 } from '../../shared/export';
 
 export const VALID_FORMATS = ['html5', 'html5-sp', 'scorm12', 'scorm2004', 'ims', 'epub3', 'elpx'] as const;
@@ -173,10 +174,8 @@ export async function execute(
                     message: 'EPUB3 export not yet implemented',
                 };
             case 'elpx':
-                return {
-                    success: false,
-                    message: 'ELPX re-export not yet implemented',
-                };
+                exporter = new ElpxExporter(document, resourceProvider, assetProvider, zipProvider);
+                break;
             // No default needed - invalid formats are caught by VALID_FORMATS check above
         }
 

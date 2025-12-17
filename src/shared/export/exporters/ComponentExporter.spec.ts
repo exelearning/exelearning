@@ -64,6 +64,20 @@ class MockResourceProvider implements ResourceProvider {
     async fetchScormFiles(_version: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
+
+    normalizeIdeviceType(ideviceType: string): string {
+        return ideviceType.toLowerCase().replace(/idevice$/i, '');
+    }
+
+    async fetchExeLogo(): Promise<Uint8Array | null> {
+        return null;
+    }
+
+    async fetchContentCss(): Promise<Map<string, Uint8Array>> {
+        const files = new Map<string, Uint8Array>();
+        files.set('content/css/base.css', new TextEncoder().encode('/* base css */'));
+        return files;
+    }
 }
 
 // Mock asset provider

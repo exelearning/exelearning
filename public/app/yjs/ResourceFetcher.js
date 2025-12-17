@@ -4,6 +4,25 @@
  * Uses an API endpoint that returns file lists, then fetches each file individually.
  * Implements in-memory caching to avoid redundant fetches within a session.
  */
+
+// Third-party libraries that live in /libs/ not /app/common/
+// Used to determine the correct path and avoid 404 noise during exports
+const THIRD_PARTY_LIBS = new Set([
+  'abcjs',
+  'bootstrap',
+  'exe_atools',
+  'exe_elpx_download',
+  'fflate',
+  'filegator',
+  'interact',
+  'jquery',
+  'jquery-ui',
+  'showdown',
+  'simplelightbox',
+  'tinymce_5',
+  'yjs',
+]);
+
 class ResourceFetcher {
   constructor() {
     // In-memory cache for the session
@@ -350,11 +369,20 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
-    // Try /app/common/ first, then /libs/ (with basePath and version)
-    const possiblePaths = [
-      `${this.basePath}/${this.version}/app/common/${path}`,
-      `${this.basePath}/${this.version}/libs/${path}`,
-    ];
+    // Determine correct base directory from path to avoid 404 noise
+    const firstDir = path.split('/')[0];
+    const isThirdParty = THIRD_PARTY_LIBS.has(firstDir);
+
+    // Try the most likely path first (with version for cache busting)
+    const possiblePaths = isThirdParty
+      ? [
+          `${this.basePath}/${this.version}/libs/${path}`,
+          `${this.basePath}/${this.version}/app/common/${path}`,
+        ]
+      : [
+          `${this.basePath}/${this.version}/app/common/${path}`,
+          `${this.basePath}/${this.version}/libs/${path}`,
+        ];
 
     for (const url of possiblePaths) {
       try {
@@ -540,6 +568,53 @@ class ResourceFetcher {
       console.warn(`[ResourceFetcher] Error fetching eXeLearning logo:`, e);
     }
     return null;
+  }
+
+  // =========================================================================
+  // Content CSS Resources
+  // =========================================================================
+
+  /**
+   * Fetch content CSS files (base.css, etc.)
+   * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
+   */
+  async fetchContentCss() {
+    const cacheKey = 'content-css';
+    if (this.cache.has(cacheKey)) {
+      Logger.log('[ResourceFetcher] Content CSS loaded from cache');
+      return this.cache.get(cacheKey);
+    }
+
+    Logger.log('[ResourceFetcher] Fetching content CSS from server...');
+
+    try {
+      const response = await fetch(`${this.apiBase}/content-css`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch content CSS list: ${response.status}`);
+      }
+
+      const fileList = await response.json();
+      const cssFiles = new Map();
+
+      for (const file of fileList) {
+        try {
+          const fileResponse = await fetch(file.url);
+          if (fileResponse.ok) {
+            const blob = await fileResponse.blob();
+            cssFiles.set(file.path, blob);
+          }
+        } catch (e) {
+          console.warn(`[ResourceFetcher] Error fetching CSS file ${file.url}:`, e);
+        }
+      }
+
+      this.cache.set(cacheKey, cssFiles);
+      Logger.log(`[ResourceFetcher] Content CSS loaded (${cssFiles.size} files)`);
+      return cssFiles;
+    } catch (e) {
+      console.error('[ResourceFetcher] Failed to fetch content CSS:', e);
+      return new Map();
+    }
   }
 }
 

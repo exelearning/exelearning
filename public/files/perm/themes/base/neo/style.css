@@ -372,6 +372,10 @@ body.exe-export.exe-epub .exe-content {
 #siteNav .other-section {
     display: none;
 }
+#siteNav li.active > .other-section,
+#siteNav li.current-page-parent > .other-section {
+    display: block;
+}
 #sidebar-nav.fixed,
 #sidebar-nav {
     position: fixed;

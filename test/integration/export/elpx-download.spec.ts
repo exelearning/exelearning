@@ -130,6 +130,15 @@ class FileResourceProvider implements ResourceProvider {
         return new Map();
     }
 
+    async fetchContentCss(): Promise<Map<string, Buffer>> {
+        const cssPath = path.join(this.publicDir, 'style', 'content', 'css', 'base.css');
+        if (await fs.pathExists(cssPath)) {
+            const content = await fs.readFile(cssPath);
+            return new Map([['content/css/base.css', content]]);
+        }
+        return new Map([['content/css/base.css', Buffer.from('/* Test base CSS */')]]);
+    }
+
     normalizeIdeviceType(type: string): string {
         return type.toLowerCase().replace(/idevice$/i, '');
     }

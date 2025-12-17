@@ -73,16 +73,21 @@ class MockYjsDocumentManager {
 }
 
 // Sample page structures
-const createMockPage = (id: string, title: string, blocks: unknown[] = [], children: unknown[] = []) => {
+const createMockPage = (
+    id: string,
+    title: string,
+    blocks: unknown[] = [],
+    parentId: string | null = null,
+    order: number = 0,
+) => {
     return new MockYMap({
         id,
         pageId: id,
         title,
         pageName: title,
-        parentId: null,
-        order: 0,
+        parentId,
+        order,
         blocks: new MockYArray(blocks),
-        children: new MockYArray(children),
     });
 };
 
@@ -197,19 +202,58 @@ describe('YjsDocumentAdapter', () => {
             expect(pages[1].title).toBe('Page 2');
         });
 
-        it('should flatten hierarchical navigation', () => {
-            const childPage = createMockPage('child', 'Child Page');
-            const parentPage = createMockPage('parent', 'Parent Page', [], [childPage]);
+        it('should return all pages from flat navigation with parentId references', () => {
+            // ElpxImporter stores pages in a FLAT array with parentId references
+            const parentPage = createMockPage('parent', 'Parent Page', [], null, 0);
+            const childPage = createMockPage('child', 'Child Page', [], 'parent', 0);
+            const grandchildPage = createMockPage('grandchild', 'Grandchild Page', [], 'child', 0);
 
-            manager = new MockYjsDocumentManager({}, [parentPage]);
+            // All pages stored flat in navigation array
+            manager = new MockYjsDocumentManager({}, [parentPage, childPage, grandchildPage]);
             adapter = new YjsDocumentAdapter(manager as any);
 
             const pages = adapter.getNavigation();
 
-            // Should include both parent and child
-            expect(pages).toHaveLength(2);
+            // Should return all pages
+            expect(pages).toHaveLength(3);
             expect(pages[0].id).toBe('parent');
+            expect(pages[0].parentId).toBeNull();
             expect(pages[1].id).toBe('child');
+            expect(pages[1].parentId).toBe('parent');
+            expect(pages[2].id).toBe('grandchild');
+            expect(pages[2].parentId).toBe('child');
+        });
+
+        it('should preserve parentId references for nested pages', () => {
+            // Test case matching really-simple-test-project.elpx structure
+            const page1 = createMockPage('page-1', 'Page 1', [], null, 0);
+            const page1_1 = createMockPage('page-1-1', 'Page 1 - 1', [], 'page-1', 0);
+            const page1_2 = createMockPage('page-1-2', 'Page 1 - 2', [], 'page-1', 1);
+            const page2 = createMockPage('page-2', 'Page 2', [], null, 1);
+            const page2_1 = createMockPage('page-2-1', 'Page 2 - 1', [], 'page-2', 0);
+
+            manager = new MockYjsDocumentManager({}, [page1, page1_1, page1_2, page2, page2_1]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            // Should return all 5 pages
+            expect(pages).toHaveLength(5);
+
+            // Verify parent-child relationships
+            const rootPages = pages.filter(p => p.parentId === null);
+            expect(rootPages).toHaveLength(2);
+            expect(rootPages[0].id).toBe('page-1');
+            expect(rootPages[1].id).toBe('page-2');
+
+            const page1Children = pages.filter(p => p.parentId === 'page-1');
+            expect(page1Children).toHaveLength(2);
+            expect(page1Children[0].id).toBe('page-1-1');
+            expect(page1Children[1].id).toBe('page-1-2');
+
+            const page2Children = pages.filter(p => p.parentId === 'page-2');
+            expect(page2Children).toHaveLength(1);
+            expect(page2Children[0].id).toBe('page-2-1');
         });
 
         it('should convert blocks correctly', () => {

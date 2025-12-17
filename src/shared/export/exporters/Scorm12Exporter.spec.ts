@@ -70,6 +70,20 @@ class MockResourceProvider implements ResourceProvider {
         files.set('SCOFunctions.js', Buffer.from('// SCO Functions'));
         return files;
     }
+
+    normalizeIdeviceType(ideviceType: string): string {
+        return ideviceType.toLowerCase().replace(/idevice$/i, '');
+    }
+
+    async fetchExeLogo(): Promise<Buffer | null> {
+        return null;
+    }
+
+    async fetchContentCss(): Promise<Map<string, Buffer>> {
+        const files = new Map<string, Buffer>();
+        files.set('content/css/base.css', Buffer.from('/* base css */'));
+        return files;
+    }
 }
 
 // Mock asset provider

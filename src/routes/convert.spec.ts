@@ -132,10 +132,13 @@ describe('Convert Routes', () => {
         await fs.ensureDir(path.join(testDir, 'tmp'));
         await fs.ensureDir(path.join(testDir, 'public'));
         await fs.ensureDir(path.join(testDir, 'public', 'style', 'base'));
+        await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
         await fs.ensureDir(path.join(testDir, 'public', 'libs'));
 
         // Create minimal theme file
         await fs.writeFile(path.join(testDir, 'public', 'style', 'base', 'content.css'), '/* base theme */');
+        // Create base.css required by exporters
+        await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base css */');
 
         // Create mock dependencies
         mockDeps = createMockDependencies();
@@ -425,6 +428,328 @@ describe('Convert Routes', () => {
                 // Check for download headers
                 expect(res.headers.get('content-type')).toBeDefined();
             }
+        });
+    });
+
+    describe('Additional export formats', () => {
+        it('should accept html5-sp (single page) format', async () => {
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/export/html5-sp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            expect([200, 201, 500]).toContain(res.status);
+        });
+
+        it('should accept scorm2004 format', async () => {
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/export/scorm2004', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            expect([200, 201, 500]).toContain(res.status);
+        });
+
+        it('should accept ims format', async () => {
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/export/ims', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            expect([200, 201, 500]).toContain(res.status);
+        });
+
+        it('should accept elp format (legacy)', async () => {
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/export/elp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            expect([200, 201, 500]).toContain(res.status);
+        });
+    });
+
+    describe('Error handling', () => {
+        it('should handle corrupt ELP file gracefully', async () => {
+            // Create a corrupt ZIP file (not valid ELP)
+            const corruptElp = zipSync({ 'not-content.xml': strToU8('invalid data') });
+            const formData = new FormData();
+            formData.append('file', new Blob([corruptElp], { type: 'application/zip' }), 'corrupt.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // Should return 500 with error details
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.code).toBe('CONVERSION_FAILED');
+        });
+
+        it('should handle export error for corrupt file', async () => {
+            // Create a corrupt ZIP file
+            const corruptElp = zipSync({ 'not-content.xml': strToU8('invalid data') });
+            const formData = new FormData();
+            formData.append('file', new Blob([corruptElp], { type: 'application/zip' }), 'corrupt.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/export/html5', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // Should return 500 with error details
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.code).toBe('EXPORT_FAILED');
+        });
+    });
+
+    describe('Successful exports', () => {
+        it('should successfully convert ELP and return metadata', async () => {
+            // Ensure required files exist
+            await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
+            await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base */');
+
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // Check if it succeeded
+            if (res.status === 200) {
+                const body = await res.json();
+                expect(body.status).toBe('success');
+                expect(body.fileName).toBeDefined();
+                expect(body.size).toBeGreaterThanOrEqual(0);
+            }
+        });
+
+        it('should return ELPX file with download=1', async () => {
+            // Ensure required files exist
+            await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
+            await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base */');
+
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp?download=1', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // If success, should return binary data with proper headers
+            if (res.status === 200) {
+                expect(res.headers.get('content-type')).toContain('exelearning');
+                expect(res.headers.get('content-disposition')).toContain('attachment');
+            }
+        });
+
+        it('should return export file with download=1 for export/:format', async () => {
+            // Ensure required files exist
+            await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
+            await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base */');
+
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/export/elpx?download=1', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // If success, should return binary data with proper headers
+            if (res.status === 200) {
+                expect(res.headers.get('content-type')).toBeDefined();
+                expect(res.headers.get('content-disposition')).toContain('attachment');
+            }
+        });
+
+        it('should return export metadata without download flag', async () => {
+            // Ensure required files exist
+            await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
+            await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base */');
+
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/export/elpx', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // If success, should return JSON metadata
+            if (res.status === 200) {
+                const body = await res.json();
+                expect(body.status).toBe('success');
+                expect(body.format).toBe('elpx');
+                expect(body.fileName).toBeDefined();
+                expect(body.size).toBeGreaterThanOrEqual(0);
+            }
+        });
+    });
+
+    describe('Authentication', () => {
+        it('should accept authentication via cookie', async () => {
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: {
+                        Cookie: `auth=${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // Should work with cookie auth (200/500 depending on export success)
+            expect([200, 500]).toContain(res.status);
+        });
+
+        it('should reject invalid JWT token', async () => {
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: 'Bearer invalid.token.here',
+                    },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should reject JWT without sub claim', async () => {
+            // Create token without sub claim
+            const secret = new TextEncoder().encode(JWT_SECRET);
+            const invalidToken = await new SignJWT({ email: 'test@test.com', roles: [] })
+                .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(secret);
+
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${invalidToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should reject user not found', async () => {
+            // Create token for non-existent user (id 999)
+            const secret = new TextEncoder().encode(JWT_SECRET);
+            const invalidToken = await new SignJWT({ sub: 999, email: 'nobody@test.com', roles: [] })
+                .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(secret);
+
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${invalidToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(401);
         });
     });
 

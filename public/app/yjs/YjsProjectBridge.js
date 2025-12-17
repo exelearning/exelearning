@@ -24,6 +24,7 @@ class YjsProjectBridge {
     this.lockManager = null;
     this.assetCache = null;  // Legacy - kept for backward compatibility
     this.assetManager = null; // New asset manager with asset:// URLs
+    this.resourceFetcher = null; // ResourceFetcher for fetching themes, libs, iDevices
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
     this.initialized = false;
@@ -96,6 +97,12 @@ class YjsProjectBridge {
 
     // Create legacy asset cache (for backward compatibility)
     this.assetCache = new window.AssetCacheManager(projectId);
+
+    // Create ResourceFetcher for fetching themes, libraries, iDevices for exports
+    if (window.ResourceFetcher) {
+      this.resourceFetcher = new window.ResourceFetcher();
+      Logger.log('[YjsProjectBridge] ResourceFetcher initialized');
+    }
 
     // Create AssetWebSocketHandler for peer-to-peer asset synchronization
     if (window.AssetWebSocketHandler && this.assetManager && this.documentManager?.wsProvider) {
@@ -1686,11 +1693,43 @@ class YjsProjectBridge {
 
   /**
    * Export project to .elpx file
+   * Uses SharedExporters (TypeScript unified pipeline) when available
    * @param {string} filename - Output filename
    */
   async exportToElpx(filename) {
-    const exporter = new window.ElpxExporter(this.documentManager, this.assetCache);
-    await exporter.exportToFile(filename);
+    // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
+    if (window.SharedExporters?.createExporter) {
+      try {
+        const exporter = window.SharedExporters.createExporter(
+          'elpx',
+          this.documentManager,
+          this.assetCache,
+          this.resourceFetcher,
+          this.assetManager
+        );
+        const result = await exporter.export();
+        if (result.success && result.data) {
+          // Trigger download
+          const blob = new Blob([result.data], { type: 'application/zip' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', filename);
+        } else {
+          throw new Error(result.error || 'Export failed');
+        }
+      } catch (error) {
+        console.error('[YjsProjectBridge] SharedExporters ELPX export failed:', error);
+        throw error; // Don't hide errors - let them bubble up for debugging
+      }
+    } else {
+      throw new Error('SharedExporters not available - ELPX export requires exporters.bundle.js');
+    }
   }
 
   /**
