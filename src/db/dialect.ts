@@ -80,14 +80,16 @@ function createSqliteDialect(dbPath: string): Dialect {
 
     if (isBun) {
         // Bun runtime: use kysely-bun-worker
-
         const { BunSqliteDialect } = require('kysely-bun-worker/normal');
         return new BunSqliteDialect({ url: fullPath });
         /* v8 ignore start - Node.js runtime branch (not covered in Bun tests) */
     } else {
         // Node.js runtime: use better-sqlite3
-        const { SqliteDialect } = require('kysely');
-        const Database = require('better-sqlite3');
+        // Dynamic require to prevent Bun's bundler from trying to resolve these modules
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const dynamicRequire = (mod: string) => require(mod);
+        const { SqliteDialect } = dynamicRequire('kysely');
+        const Database = dynamicRequire('better-sqlite3');
         return new SqliteDialect({
             database: new Database(fullPath),
         });
