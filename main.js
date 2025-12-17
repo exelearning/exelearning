@@ -25,7 +25,7 @@ log.transports.file.resolvePathFn = () =>
 let pendingOpenFiles = [];
 
 autoUpdater.logger = log;
-autoUpdater.allowPrerelease = true;
+autoUpdater.allowPrerelease = false;
 autoUpdater.forceDevUpdateConfig = false;
 // We control the flow with our own dialogs
 autoUpdater.autoDownload = false;
