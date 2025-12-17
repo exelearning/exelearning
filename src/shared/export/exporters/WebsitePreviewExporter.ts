@@ -249,6 +249,19 @@ export class WebsitePreviewExporter {
         // Generate inline search data script (avoids bloating HTML with large JSON attributes)
         const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : '';
 
+        // Get first page for initial header content
+        const firstPage = pages[0];
+        const firstPageIndex = 0;
+
+        // Build initial page counter HTML (only if pagination is enabled)
+        const initialPageCounterHtml = addPagination
+            ? `<p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${firstPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>`
+            : '';
+
+        // Build static header (direct child of .page for CSS selectors to work)
+        const staticHeaderHtml = `<header id="page-header" class="main-header">${initialPageCounterHtml}<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="page-header"><h2 id="page-title" class="page-title">${this.escapeHtml(firstPage?.title || '')}</h2></div></header>`;
+
         return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
@@ -256,10 +269,11 @@ ${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customS
 </head>
 <body class="exe-web-site exe-preview" lang="${lang}">
 <script>document.body.className+=" js"</script>
-${searchBoxHtml}
 <div class="exe-content exe-export pre-js">
 ${this.renderSpaNavigation(pages)}
 <main class="page">
+${searchBoxHtml}
+${staticHeaderHtml}
 ${pagesHtml}
 </main>
 ${this.renderNavButtons()}
@@ -494,9 +508,16 @@ button.toggler span,
         const children = allPages.filter(p => p.parentId === page.id);
         const hasChildren = children.length > 0;
         const isActive = page.id === currentPageId;
+        const isFirstPage = page.id === allPages[0]?.id;
+
+        // Build link classes: main-node for first page, active if current, daddy/no-ch based on children
+        const linkClasses: string[] = [];
+        if (isActive) linkClasses.push('active');
+        if (isFirstPage) linkClasses.push('main-node');
+        linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
 
         let html = `<li${isActive ? ' class="active"' : ''}>`;
-        html += ` <a href="#" data-page-id="${page.id}" class="${isActive ? 'active ' : ''}${hasChildren ? 'daddy' : 'no-ch'}">${this.escapeHtml(page.title)}</a>\n`;
+        html += ` <a href="#" data-page-id="${page.id}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
 
         if (hasChildren) {
             html += '<ul class="other-section">\n';
@@ -512,15 +533,16 @@ button.toggler span,
 
     /**
      * Render a page as an article (hidden except first)
+     * Note: Header is rendered separately as direct child of .page for CSS selector compatibility
      */
     private renderPageArticle(
         page: ExportPage,
         isFirst: boolean,
         pageIndex: number,
-        totalPages: number,
-        projectTitle: string,
+        _totalPages: number,
+        _projectTitle: string,
         options: PreviewOptions,
-        addPagination: boolean = false,
+        _addPagination: boolean = false,
     ): string {
         let blockHtml = '';
 
@@ -538,15 +560,8 @@ button.toggler span,
         const displayStyle = isFirst ? '' : ' style="display:none"';
         const pageId = page.id;
 
-        // Build page counter HTML (only if pagination is enabled)
-        const pageCounterHtml = addPagination
-            ? `<p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${pageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>`
-            : '';
-
-        return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}">
-<header id="header-${pageId}" class="page-header"> ${pageCounterHtml}
-<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
-<h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>
+        // Store page title as data attribute for SPA navigation to update header
+        return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}" data-page-title="${this.escapeAttr(page.title)}">
 <div id="page-content-${pageId}" class="page-content">
 ${blockHtml}
 </div>
@@ -559,11 +574,11 @@ ${blockHtml}
      */
     private renderNavButtons(): string {
         return `<div class="nav-buttons">
-<a href="#" title="Anterior" class="nav-button nav-button-left" data-nav="prev">
-<span>Anterior</span>
+<a href="#" title="Previous" class="nav-button nav-button-left" data-nav="prev">
+<span>Previous</span>
 </a>
-<a href="#" title="Siguiente" class="nav-button nav-button-right" data-nav="next">
-<span>Siguiente</span>
+<a href="#" title="Next" class="nav-button nav-button-right" data-nav="next">
+<span>Next</span>
 </a>
 </div>`;
     }
@@ -721,21 +736,31 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   var navLinks = document.querySelectorAll('[data-page-id]');
   var prevBtn = document.querySelector('[data-nav="prev"]');
   var nextBtn = document.querySelector('[data-nav="next"]');
+  var pageTitleEl = document.getElementById('page-title');
+  var pageCounterEl = document.querySelector('.page-counter-current-page');
   var currentIndex = 0;
 
   function showPage(index) {
     if (index < 0 || index >= pages.length) return;
     currentIndex = index;
+    var activePage = pages[index];
     pages.forEach(function(p, i) {
       p.style.display = i === index ? 'block' : 'none';
       p.classList.toggle('active', i === index);
     });
     navLinks.forEach(function(link) {
       var pageId = link.getAttribute('data-page-id');
-      var isActive = pages[index].id === 'page-' + pageId;
+      var isActive = activePage.id === 'page-' + pageId;
       link.classList.toggle('active', isActive);
       if (link.parentElement) link.parentElement.classList.toggle('active', isActive);
     });
+    // Update header with current page info
+    if (pageTitleEl && activePage.dataset.pageTitle) {
+      pageTitleEl.textContent = activePage.dataset.pageTitle;
+    }
+    if (pageCounterEl) {
+      pageCounterEl.textContent = (index + 1).toString();
+    }
     updateNavButtons();
   }
 

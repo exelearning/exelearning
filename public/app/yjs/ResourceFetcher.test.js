@@ -6,7 +6,7 @@
  * Run with: make test-frontend
  */
 
-/* eslint-disable no-undef */
+ 
 
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -27,7 +27,7 @@ describe('ResourceFetcher', () => {
     const scriptPath = join(__dirname, 'ResourceFetcher.js');
     const scriptContent = readFileSync(scriptPath, 'utf-8');
 
-    // eslint-disable-next-line no-new-func
+     
     const scriptFn = new Function(scriptContent + '\n; return ResourceFetcher;');
     ResourceFetcher = scriptFn();
   });

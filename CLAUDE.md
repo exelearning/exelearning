@@ -406,7 +406,17 @@ Sample ELP files and XML content available in:
 'button[type="submit"]'
 ```
 
-**Workarea Navigation:**
+**Workarea Keyboard Shortcuts (recommended for Playwright):**
+```javascript
+// Open file dialog - CMD+O (Mac) or Ctrl+O (Linux/Windows)
+await page.keyboard.press('Meta+o'); // or 'Control+o'
+
+// Open preview dialog - CMD+P (Mac) or Ctrl+P (Linux/Windows)
+await page.keyboard.press('Meta+p'); // or 'Control+p'
+// The preview opens in a popup window
+```
+
+**Workarea Navigation (CSS selectors - less reliable):**
 ```javascript
 // Preview button (eye icon next to Guardar)
 '#head-bottom-preview' or '[aria-label*="Visualización"]'

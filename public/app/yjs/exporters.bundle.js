@@ -375,7 +375,7 @@
       name: "exe_elpx_download",
       type: "class",
       pattern: "exe-download-package-link",
-      files: ["fflate/fflate.umd.js", "exe_elpx_download.js"]
+      files: ["fflate/fflate.umd.js", "exe_elpx_download/exe_elpx_download.js"]
     }
   ];
   var BASE_LIBRARIES = [
@@ -2143,9 +2143,10 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"<\/script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> ${searchBoxHtml}
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}<main id="${page.id}" class="page"> ${searchBoxHtml}
+${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${this.renderPageContent(page, basePath)}
-</main></div>${this.renderNavButtons(page, allPages, basePath)}
+</div></main>${this.renderNavButtons(page, allPages, basePath)}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
 ${madeWithExeHtml}
@@ -2325,8 +2326,8 @@ ${extraHeadScripts}`;
       const { projectTitle, currentPageIndex, totalPages, addPagination } = options;
       const pageCounterHtml = addPagination ? ` <p class="page-counter"> <span class="page-counter-label">P\xE1gina </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>
 ` : "";
-      return `<header id="header-${page.id}" class="page-header">${pageCounterHtml}<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
-<h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>`;
+      return `<header id="header-${page.id}" class="main-header">${pageCounterHtml}<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="page-header"><h2 class="page-title">${this.escapeHtml(page.title)}</h2></div></header>`;
     }
     /**
      * Render page content (blocks with iDevices)
@@ -2355,15 +2356,18 @@ ${extraHeadScripts}`;
       const currentIndex = allPages.findIndex((p) => p.id === page.id);
       const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
       const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
-      if (!prevPage && !nextPage) return "";
       let html = '<div class="nav-buttons">';
       if (prevPage) {
         const link = this.getPageLink(prevPage, allPages, basePath);
-        html += ` <a href="${link}" title="Anterior" class="nav-button nav-button-left"> <span>Anterior</span></a>`;
+        html += ` <a href="${link}" title="Previous" class="nav-button nav-button-left"> <span>Previous</span></a>`;
+      } else {
+        html += ` <span class="nav-button nav-button-left" aria-hidden="true"> <span>Previous</span></span>`;
       }
       if (nextPage) {
         const link = this.getPageLink(nextPage, allPages, basePath);
-        html += `<a href="${link}" title="Siguiente" class="nav-button nav-button-right"> <span>Siguiente</span></a>`;
+        html += `<a href="${link}" title="Next" class="nav-button nav-button-right"> <span>Next</span></a>`;
+      } else {
+        html += `<span class="nav-button nav-button-right" aria-hidden="true"> <span>Next</span></span>`;
       }
       html += "\n</div>";
       return html;
@@ -5511,8 +5515,8 @@ function setScore(score, maxScore, minScore) {
         "fflate",
         "exe_atools",
         "mermaid",
-        "exe_elpx_download.js"
-        // Root-level file in /libs/
+        "exe_elpx_download"
+        // Folder in /libs/
       ]);
     }
     /**
@@ -5558,6 +5562,11 @@ function setScore(score, maxScore, minScore) {
       const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(lang) : "";
       const searchBoxHtml = addSearchBox ? this.renderSearchBox() : "";
       const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : "";
+      const firstPage = pages[0];
+      const firstPageIndex = 0;
+      const initialPageCounterHtml = addPagination ? `<p class="page-counter"> <span class="page-counter-label">P\xE1gina </span><span class="page-counter-content"> <strong class="page-counter-current-page">${firstPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>` : "";
+      const staticHeaderHtml = `<header id="page-header" class="main-header">${initialPageCounterHtml}<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="page-header"><h2 id="page-title" class="page-title">${this.escapeHtml(firstPage?.title || "")}</h2></div></header>`;
       return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
@@ -5565,10 +5574,11 @@ ${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customS
 </head>
 <body class="exe-web-site exe-preview" lang="${lang}">
 <script>document.body.className+=" js"<\/script>
-${searchBoxHtml}
 <div class="exe-content exe-export pre-js">
 ${this.renderSpaNavigation(pages)}
 <main class="page">
+${searchBoxHtml}
+${staticHeaderHtml}
 ${pagesHtml}
 </main>
 ${this.renderNavButtons()}
@@ -5774,8 +5784,13 @@ button.toggler span,
       const children = allPages.filter((p) => p.parentId === page.id);
       const hasChildren = children.length > 0;
       const isActive = page.id === currentPageId;
+      const isFirstPage = page.id === allPages[0]?.id;
+      const linkClasses = [];
+      if (isActive) linkClasses.push("active");
+      if (isFirstPage) linkClasses.push("main-node");
+      linkClasses.push(hasChildren ? "daddy" : "no-ch");
       let html = `<li${isActive ? ' class="active"' : ""}>`;
-      html += ` <a href="#" data-page-id="${page.id}" class="${isActive ? "active " : ""}${hasChildren ? "daddy" : "no-ch"}">${this.escapeHtml(page.title)}</a>
+      html += ` <a href="#" data-page-id="${page.id}" class="${linkClasses.join(" ")}">${this.escapeHtml(page.title)}</a>
 `;
       if (hasChildren) {
         html += '<ul class="other-section">\n';
@@ -5789,8 +5804,9 @@ button.toggler span,
     }
     /**
      * Render a page as an article (hidden except first)
+     * Note: Header is rendered separately as direct child of .page for CSS selector compatibility
      */
-    renderPageArticle(page, isFirst, pageIndex, totalPages, projectTitle, options, addPagination = false) {
+    renderPageArticle(page, isFirst, pageIndex, _totalPages, _projectTitle, options, _addPagination = false) {
       let blockHtml = "";
       const ideviceBasePath = this.getVersionedPath("/files/perm/idevices/base/", options);
       for (const block of page.blocks || []) {
@@ -5801,11 +5817,7 @@ button.toggler span,
       }
       const displayStyle = isFirst ? "" : ' style="display:none"';
       const pageId = page.id;
-      const pageCounterHtml = addPagination ? `<p class="page-counter"> <span class="page-counter-label">P\xE1gina </span><span class="page-counter-content"> <strong class="page-counter-current-page">${pageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>` : "";
-      return `<article id="page-${pageId}" class="spa-page${isFirst ? " active" : ""}"${displayStyle} data-page-index="${pageIndex}">
-<header id="header-${pageId}" class="page-header"> ${pageCounterHtml}
-<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
-<h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>
+      return `<article id="page-${pageId}" class="spa-page${isFirst ? " active" : ""}"${displayStyle} data-page-index="${pageIndex}" data-page-title="${this.escapeAttr(page.title)}">
 <div id="page-content-${pageId}" class="page-content">
 ${blockHtml}
 </div>
@@ -5817,11 +5829,11 @@ ${blockHtml}
      */
     renderNavButtons() {
       return `<div class="nav-buttons">
-<a href="#" title="Anterior" class="nav-button nav-button-left" data-nav="prev">
-<span>Anterior</span>
+<a href="#" title="Previous" class="nav-button nav-button-left" data-nav="prev">
+<span>Previous</span>
 </a>
-<a href="#" title="Siguiente" class="nav-button nav-button-right" data-nav="next">
-<span>Siguiente</span>
+<a href="#" title="Next" class="nav-button nav-button-right" data-nav="next">
+<span>Next</span>
 </a>
 </div>`;
     }
@@ -5899,7 +5911,7 @@ ${blockHtml}
       let elpxDownloadScripts = "";
       if (needsElpxDownload) {
         const fflateJs = this.getVersionedPath("/libs/fflate/fflate.umd.js", options);
-        const elpxDownloadJs = this.getVersionedPath("/libs/exe_elpx_download.js", options);
+        const elpxDownloadJs = this.getVersionedPath("/libs/exe_elpx_download/exe_elpx_download.js", options);
         elpxDownloadScripts = `
 <script src="${fflateJs}"><\/script>
 <script src="${elpxDownloadJs}"><\/script>`;
@@ -5956,21 +5968,31 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   var navLinks = document.querySelectorAll('[data-page-id]');
   var prevBtn = document.querySelector('[data-nav="prev"]');
   var nextBtn = document.querySelector('[data-nav="next"]');
+  var pageTitleEl = document.getElementById('page-title');
+  var pageCounterEl = document.querySelector('.page-counter-current-page');
   var currentIndex = 0;
 
   function showPage(index) {
     if (index < 0 || index >= pages.length) return;
     currentIndex = index;
+    var activePage = pages[index];
     pages.forEach(function(p, i) {
       p.style.display = i === index ? 'block' : 'none';
       p.classList.toggle('active', i === index);
     });
     navLinks.forEach(function(link) {
       var pageId = link.getAttribute('data-page-id');
-      var isActive = pages[index].id === 'page-' + pageId;
+      var isActive = activePage.id === 'page-' + pageId;
       link.classList.toggle('active', isActive);
       if (link.parentElement) link.parentElement.classList.toggle('active', isActive);
     });
+    // Update header with current page info
+    if (pageTitleEl && activePage.dataset.pageTitle) {
+      pageTitleEl.textContent = activePage.dataset.pageTitle;
+    }
+    if (pageCounterEl) {
+      pageCounterEl.textContent = (index + 1).toString();
+    }
     updateNavButtons();
   }
 

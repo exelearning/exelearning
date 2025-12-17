@@ -147,7 +147,9 @@ describe('WebsitePreviewExporter', () => {
 
         it('should NOT include page counter when addPagination is false (default)', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).not.toContain('page-counter');
+            // Check that the HTML element with class page-counter is NOT present
+            // (note: the JS code may reference .page-counter-current-page class, but the HTML element should not exist)
+            expect(result.html).not.toContain('<p class="page-counter">');
         });
 
         it('should include made-with-eXe credit', async () => {
@@ -169,6 +171,57 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('nav-button-right');
             expect(result.html).toContain('data-nav="prev"');
             expect(result.html).toContain('data-nav="next"');
+        });
+
+        it('should use English labels for navigation buttons', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('<span>Previous</span>');
+            expect(result.html).toContain('<span>Next</span>');
+            expect(result.html).toContain('title="Previous"');
+            expect(result.html).toContain('title="Next"');
+        });
+
+        it('should render header with main-header class as direct child of .page', async () => {
+            const result = await exporter.generatePreview();
+            // Header should be a direct child of main.page (not inside articles)
+            // This is critical for Fluxus theme CSS selector: .page > header
+            expect(result.html).toContain('id="page-header" class="main-header"');
+            // Header should be outside articles (inside main.page)
+            const htmlAfterMain = result.html!.split('<main class="page">')[1];
+            const headerPos = htmlAfterMain.indexOf('id="page-header"');
+            const articlePos = htmlAfterMain.indexOf('<article');
+            // Header should come before articles
+            expect(headerPos).toBeGreaterThan(-1);
+            expect(articlePos).toBeGreaterThan(-1);
+            expect(headerPos).toBeLessThan(articlePos);
+        });
+
+        it('should render header with package-header and page-header wrappers', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('<div class="package-header">');
+            expect(result.html).toContain('<div class="page-header">');
+            expect(result.html).toContain('class="package-title"');
+            expect(result.html).toContain('class="page-title"');
+        });
+
+        it('should store page title in data attribute for SPA navigation', async () => {
+            const result = await exporter.generatePreview();
+            // Articles should have data-page-title for JS to update header
+            expect(result.html).toContain('data-page-title="Home"');
+            expect(result.html).toContain('data-page-title="About"');
+        });
+
+        it('should include first page title in static header', async () => {
+            const result = await exporter.generatePreview();
+            // First page title should be in the static header (h2#page-title)
+            expect(result.html).toContain('id="page-title" class="page-title">Home</h2>');
+        });
+
+        it('should update header content in SPA navigation script', async () => {
+            const result = await exporter.generatePreview();
+            // SPA script should update page title when switching pages
+            expect(result.html).toContain('pageTitleEl');
+            expect(result.html).toContain('activePage.dataset.pageTitle');
         });
 
         it('should include SPA navigation script', async () => {

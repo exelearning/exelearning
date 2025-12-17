@@ -397,9 +397,9 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
                             id: comp.odeIdeviceId || generateId(),
                             type,
                             order: comp.odeComponentsOrder || 0,
-                            // For JSON iDevices: use jsonProperties as primary source
-                            // For HTML iDevices: use htmlView as primary source
-                            content: isJson ? '' : comp.htmlView || '',
+                            // Always use htmlView for content - it contains pre-rendered HTML
+                            // JSON iDevices also have htmlView populated with their rendered output
+                            content: comp.htmlView || '',
                             data: isJson && comp.jsonProperties ? JSON.parse(comp.jsonProperties) : {},
                             // Include blockName from parent pagStructure for proper block grouping
                             blockName: pag.blockName || '',
