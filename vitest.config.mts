@@ -21,6 +21,7 @@ export default defineConfig({
     include: [
       'public/app/**/*.test.js',
       'public/files/perm/idevices/base/**/*.test.js',
+      'public/libs/**/*.test.js',
     ],
 
     // Exclude legacy code
