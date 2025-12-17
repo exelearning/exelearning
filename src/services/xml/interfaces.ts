@@ -188,7 +188,7 @@ export interface RealOdeNavStructure {
  * Structure properties map (key-value pairs)
  */
 export interface StructurePropertiesMap {
-    odeProperty?: Array<{ propertyKey: string; propertyValue: string }>;
+    odeProperty?: Array<{ key: string; value: string }>;
 }
 
 export interface RealOdePagStructure {

@@ -32,11 +32,88 @@ import type {
     ElpxExportOptions,
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
+import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 
 /**
  * ODE XML version identifier
  */
 const ODE_VERSION = '4.0';
+
+/**
+ * ODE DTD filename (included in ELPX exports)
+ */
+const ODE_DTD_FILENAME = 'ode-content.dtd';
+
+/**
+ * ODE Content DTD
+ * Embedded DTD for ELPX exports - validates content.xml structure
+ */
+const ODE_DTD_CONTENT = `<!--
+    ODE Content DTD
+    Document Type Definition for eXeLearning ODE XML format (content.xml)
+    Version: 2.0
+    Namespace: http://www.intef.es/xsd/ode
+    Copyright (C) 2025 eXeLearning - License: AGPL-3.0
+-->
+
+<!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
+<!ATTLIST ode
+    xmlns CDATA #FIXED "http://www.intef.es/xsd/ode"
+    version CDATA #IMPLIED>
+
+<!-- User Preferences -->
+<!ELEMENT userPreferences (userPreference*)>
+<!ELEMENT userPreference (key, value)>
+
+<!-- ODE Resources -->
+<!ELEMENT odeResources (odeResource*)>
+<!ELEMENT odeResource (key, value)>
+
+<!-- ODE Properties -->
+<!ELEMENT odeProperties (odeProperty*)>
+<!ELEMENT odeProperty (key, value)>
+
+<!-- Shared Key-Value Elements -->
+<!ELEMENT key (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
+
+<!-- Navigation Structures (Pages) -->
+<!ELEMENT odeNavStructures (odeNavStructure+)>
+<!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
+
+<!ELEMENT odePageId (#PCDATA)>
+<!ELEMENT odeParentPageId (#PCDATA)>
+<!ELEMENT pageName (#PCDATA)>
+<!ELEMENT odeNavStructureOrder (#PCDATA)>
+
+<!ELEMENT odeNavStructureProperties (odeNavStructureProperty*)>
+<!ELEMENT odeNavStructureProperty (key, value)>
+
+<!-- Block Structures -->
+<!ELEMENT odePagStructures (odePagStructure*)>
+<!ELEMENT odePagStructure (odePageId, odeBlockId, blockName, iconName?, odePagStructureOrder, odePagStructureProperties?, odeComponents?)>
+
+<!ELEMENT odeBlockId (#PCDATA)>
+<!ELEMENT blockName (#PCDATA)>
+<!ELEMENT iconName (#PCDATA)>
+<!ELEMENT odePagStructureOrder (#PCDATA)>
+
+<!ELEMENT odePagStructureProperties (odePagStructureProperty*)>
+<!ELEMENT odePagStructureProperty (key, value)>
+
+<!-- Components (iDevices) -->
+<!ELEMENT odeComponents (odeComponent*)>
+<!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
+
+<!ELEMENT odeIdeviceId (#PCDATA)>
+<!ELEMENT odeIdeviceTypeName (#PCDATA)>
+<!ELEMENT htmlView (#PCDATA)>
+<!ELEMENT jsonProperties (#PCDATA)>
+<!ELEMENT odeComponentsOrder (#PCDATA)>
+
+<!ELEMENT odeComponentsProperties (odeComponentsProperty*)>
+<!ELEMENT odeComponentsProperty (key, value)>
+`;
 
 export class ElpxExporter extends BaseExporter {
     constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
@@ -73,9 +150,22 @@ export class ElpxExporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
-            // 1. Generate content.xml (ODE format)
+            // 1. Generate content.xml (ODE format) and include DTD
             const contentXml = this.generateOdeXml(meta, pages);
+
+            // Validate generated XML against DTD structure
+            const validation = validateXml(contentXml);
+            if (!validation.valid) {
+                const errorMsg = formatValidationErrors(validation);
+                console.error(`[ElpxExporter] Generated XML failed validation:\n${errorMsg}`);
+                throw new Error(`Generated content.xml is invalid:\n${errorMsg}`);
+            }
+            if (validation.warnings.length > 0) {
+                console.warn(`[ElpxExporter] XML validation warnings:\n${formatValidationErrors(validation)}`);
+            }
+
             this.zip.addFile('content.xml', contentXml);
+            this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
 
             // 2. Fetch and add theme files
             try {
@@ -138,6 +228,7 @@ export class ElpxExporter extends BaseExporter {
         const versionId = this.generateOdeId();
 
         let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        xml += `<!DOCTYPE ode SYSTEM "${ODE_DTD_FILENAME}">\n`;
         xml += '<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">\n';
 
         // User preferences (theme selection)
