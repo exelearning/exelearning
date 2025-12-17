@@ -214,7 +214,7 @@ describe('ELPX Download Integration', () => {
 
         it('should include exe_elpx_download.js in libs/', async () => {
             await exporter.export();
-            expect(zip.hasFile('libs/exe_elpx_download.js')).toBe(true);
+            expect(zip.hasFile('libs/exe_elpx_download/exe_elpx_download.js')).toBe(true);
         });
 
         it('should replace exe-package:elp with onclick handler in HTML', async () => {
