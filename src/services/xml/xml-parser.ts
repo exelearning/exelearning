@@ -19,6 +19,7 @@ import {
 import { generateId } from '../../utils/id-generator.util';
 import * as legacyParser from './legacy-xml-parser';
 import { isJsonIdevice } from '../idevice-config';
+import { validateOdeXml, formatValidationErrors, type ValidationResult } from './ode-xml-validator';
 
 export interface XmlParseOptions {
     preserveOrder?: boolean;
@@ -59,9 +60,19 @@ export async function parseFromFile(xmlPath: string, sessionId?: string): Promis
 }
 
 /**
+ * Parse options for XML parsing
+ */
+export interface ParseOptions {
+    /** Skip DTD validation (default: false) */
+    skipValidation?: boolean;
+    /** Throw error on validation warnings (default: false) */
+    strictValidation?: boolean;
+}
+
+/**
  * Parse ODE XML from string
  */
-export function parseFromString(xmlContent: string, sessionId?: string): ParsedOdeStructure {
+export function parseFromString(xmlContent: string, sessionId?: string, options?: ParseOptions): ParsedOdeStructure {
     if (DEBUG) console.log('[XmlParser] Parsing XML from string');
 
     const parsed = parser.parse(xmlContent);
@@ -71,6 +82,24 @@ export function parseFromString(xmlContent: string, sessionId?: string): ParsedO
         console.log(
             `[XmlParser] Has ode: ${!!parsed.ode}, Has exe_document: ${!!parsed.exe_document}, Has instance: ${!!parsed.instance}`,
         );
+    }
+
+    // Validate ODE XML structure (for real ODE format)
+    if (parsed.ode && !options?.skipValidation) {
+        const validation = validateOdeXml(parsed);
+        if (!validation.valid) {
+            const errorMsg = formatValidationErrors(validation);
+            console.error(`[XmlParser] XML validation failed:\n${errorMsg}`);
+            throw new Error(`Invalid ODE XML structure:\n${errorMsg}`);
+        }
+        if (validation.warnings.length > 0 && options?.strictValidation) {
+            const errorMsg = formatValidationErrors(validation);
+            console.warn(`[XmlParser] XML validation warnings:\n${errorMsg}`);
+            throw new Error(`ODE XML has validation warnings:\n${errorMsg}`);
+        }
+        if (validation.warnings.length > 0 && DEBUG) {
+            console.warn(`[XmlParser] XML validation warnings:\n${formatValidationErrors(validation)}`);
+        }
     }
 
     // Check format and parse accordingly
@@ -91,6 +120,19 @@ export function parseFromString(xmlContent: string, sessionId?: string): ParsedO
 
     throw new Error('Invalid ODE XML: Missing ode or exe_document root element');
 }
+
+/**
+ * Validate ODE XML content without parsing
+ * @param xmlContent - XML string to validate
+ * @returns Validation result
+ */
+export function validateXml(xmlContent: string): ValidationResult {
+    const parsed = parser.parse(xmlContent);
+    return validateOdeXml(parsed);
+}
+
+// Re-export formatValidationErrors for convenience
+export { formatValidationErrors } from './ode-xml-validator';
 
 /**
  * Parse exe_document format
@@ -180,18 +222,21 @@ function extractMetadata(meta: OdeXmlMeta): NormalizedMetadata {
 }
 
 /**
- * Parse boolean value from string
+ * Parse boolean value from string or boolean
+ * fast-xml-parser may return booleans for "true"/"false" values
  */
-function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
-    if (!value) return defaultValue;
-    return value.toLowerCase() === 'true';
+function parseBoolean(value: string | boolean | undefined, defaultValue: boolean): boolean {
+    if (value === undefined || value === null || value === '') return defaultValue;
+    if (typeof value === 'boolean') return value;
+    return String(value).toLowerCase() === 'true';
 }
 
 /**
  * Extract metadata from odeProperties
+ * Note: fast-xml-parser may parse values as boolean/number, so value type is flexible
  */
 function extractMetadataFromOdeProperties(
-    properties: Array<{ propertyKey: string; propertyValue: string }>,
+    properties: Array<{ key: string; value: string | boolean | number }>,
 ): NormalizedMetadata {
     const meta: NormalizedMetadata = {
         title: 'Untitled',
@@ -206,41 +251,44 @@ function extractMetadataFromOdeProperties(
     const propArray = Array.isArray(properties) ? properties : [properties];
 
     for (const prop of propArray) {
-        if (!prop || !prop.propertyKey) continue;
+        if (!prop || !prop.key) continue;
 
-        const key = prop.propertyKey.toLowerCase();
-        const value = prop.propertyValue || '';
+        // Ensure key is string (fast-xml-parser may parse numeric/boolean keys)
+        const key = String(prop.key).toLowerCase();
+        // raw value may be string, boolean, number - convert to string for text fields
+        const rawValue = prop.value;
+        const stringValue = rawValue !== null && rawValue !== undefined ? String(rawValue) : '';
 
         if (key.includes('title') || key.includes('pp_title')) {
-            meta.title = value || meta.title;
+            meta.title = stringValue || meta.title;
         } else if (key.includes('author')) {
-            meta.author = value;
+            meta.author = stringValue;
         } else if (key.includes('description')) {
-            meta.description = value;
+            meta.description = stringValue;
         } else if (key.includes('license')) {
-            meta.license = value;
+            meta.license = stringValue;
         } else if (key.includes('locale') || key.includes('language')) {
-            meta.locale = value || meta.locale;
+            meta.locale = stringValue || meta.locale;
         } else if (key.includes('style') || key.includes('theme')) {
-            meta.theme = value || meta.theme;
+            meta.theme = stringValue || meta.theme;
         }
-        // Export options
+        // Export options - use rawValue directly for booleans
         else if (key === 'pp_addexelink') {
-            meta.addExeLink = parseBoolean(value, true);
+            meta.addExeLink = parseBoolean(rawValue, true);
         } else if (key === 'pp_addpagination') {
-            meta.addPagination = parseBoolean(value, false);
+            meta.addPagination = parseBoolean(rawValue, false);
         } else if (key === 'pp_addsearchbox') {
-            meta.addSearchBox = parseBoolean(value, false);
+            meta.addSearchBox = parseBoolean(rawValue, false);
         } else if (key === 'pp_addaccessibilitytoolbar') {
-            meta.addAccessibilityToolbar = parseBoolean(value, false);
+            meta.addAccessibilityToolbar = parseBoolean(rawValue, false);
         } else if (key === 'exportsource') {
-            meta.exportSource = parseBoolean(value, true);
+            meta.exportSource = parseBoolean(rawValue, true);
         }
         // Custom content
         else if (key === 'pp_extraheadcontent') {
-            meta.extraHeadContent = value;
+            meta.extraHeadContent = stringValue;
         } else if (key === 'footer') {
-            meta.footer = value;
+            meta.footer = stringValue;
         }
     }
 
