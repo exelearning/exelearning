@@ -6,7 +6,7 @@
  * Run with: make test-frontend
  */
 
-/* eslint-disable no-undef */
+ 
 
 import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
 
