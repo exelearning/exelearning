@@ -322,11 +322,15 @@ describe('HTML5 Export Fixture Comparison', () => {
             }
         });
 
-        it('should not have nav-button-left on first page', async () => {
+        it('should have disabled nav-button-left on first page', async () => {
             if (!exportedIndexHtml) return;
 
-            // First page should not have prev button
-            expect(exportedIndexHtml).not.toContain('nav-button-left');
+            // First page should have prev button as a disabled span (not an anchor)
+            // This matches the Symfony fixture behavior
+            expect(exportedIndexHtml).toContain('nav-button-left');
+            expect(exportedIndexHtml).toContain('<span class="nav-button nav-button-left"');
+            // The prev button should NOT be an anchor link on the first page
+            expect(exportedIndexHtml).not.toMatch(/<a[^>]*nav-button-left/);
         });
     });
 

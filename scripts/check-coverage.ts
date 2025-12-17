@@ -13,6 +13,14 @@
 const MINIMUM_COVERAGE = 90;
 
 /**
+ * Files excluded from coverage threshold check.
+ * These contain runtime-specific code that can't be fully covered in a single runtime.
+ */
+const EXCLUDED_FILES = [
+    'src/db/dialect.ts', // Contains Node.js fallback branch (only runs in Node, not Bun)
+];
+
+/**
  * Remove ANSI escape codes from string
  */
 function stripAnsi(str: string): string {
@@ -128,8 +136,10 @@ async function main() {
         process.exit(0);
     }
 
-    // Filter files below threshold
-    const belowThreshold = results.filter((r) => r.lines < MINIMUM_COVERAGE);
+    // Filter files below threshold (excluding runtime-specific files)
+    const belowThreshold = results.filter(
+        (r) => r.lines < MINIMUM_COVERAGE && !EXCLUDED_FILES.some((excluded) => r.file.includes(excluded)),
+    );
 
     console.log('');
     console.log(`Coverage Threshold Check (minimum: ${MINIMUM_COVERAGE}%)`);

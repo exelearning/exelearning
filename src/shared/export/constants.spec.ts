@@ -186,7 +186,7 @@ describe('Constants', () => {
             expect(elpxPattern?.type).toBe('class');
             expect(elpxPattern?.pattern).toBe('exe-download-package-link');
             expect(elpxPattern?.files).toContain('fflate/fflate.umd.js');
-            expect(elpxPattern?.files).toContain('exe_elpx_download.js');
+            expect(elpxPattern?.files).toContain('exe_elpx_download/exe_elpx_download.js');
         });
     });
 

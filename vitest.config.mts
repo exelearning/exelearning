@@ -18,7 +18,11 @@ export default defineConfig({
     setupFiles: ['./public/vitest.setup.js'],
 
     // Only include frontend tests
-    include: ['public/app/**/*.test.js'],
+    include: [
+      'public/app/**/*.test.js',
+      'public/files/perm/idevices/base/**/*.test.js',
+      'public/libs/**/*.test.js',
+    ],
 
     // Exclude legacy code
     exclude: ['**/node_modules/**', '**/symfony_legacy/**', '**/nestjs_legacy/**'],
@@ -40,5 +44,24 @@ export default defineConfig({
 
     // Silence console.log in tests
     silent: false,
+
+    // Coverage configuration for CI (activated with --coverage flag)
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage/vitest',
+      include: [
+        'public/app/**/*.js',
+        'public/files/perm/idevices/base/**/*.js',
+      ],
+      exclude: [
+        '**/node_modules/**',
+        '**/*.test.js',
+        '**/vitest.setup.js',
+        '**/libs/**',
+        '**/*.min.js',
+        '**/*.bundle.js',
+      ],
+    },
   },
 });

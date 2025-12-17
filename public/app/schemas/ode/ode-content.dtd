@@ -1,0 +1,107 @@
+<!--
+    ODE Content DTD
+    Document Type Definition for eXeLearning ODE XML format (content.xml)
+
+    Version: 2.0
+    Namespace: http://www.intef.es/xsd/ode
+
+    This DTD defines the structure for eXeLearning project files (ELPX).
+    The ODE format is a hierarchical structure containing:
+    - User preferences (theme, settings)
+    - ODE resources (identifiers, version info)
+    - ODE properties (metadata: title, author, language, etc.)
+    - Navigation structures (pages with blocks and components/iDevices)
+
+    Copyright (C) 2025 eXeLearning
+    License: AGPL-3.0
+-->
+
+<!-- Root element -->
+<!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
+<!ATTLIST ode
+    xmlns CDATA #FIXED "http://www.intef.es/xsd/ode"
+    version CDATA #IMPLIED>
+
+<!-- ==================== User Preferences ==================== -->
+<!-- Stores user configuration settings (e.g., theme selection) -->
+<!ELEMENT userPreferences (userPreference*)>
+<!ELEMENT userPreference (key, value)>
+
+<!-- ==================== ODE Resources ==================== -->
+<!-- Package-level identifiers and version information -->
+<!ELEMENT odeResources (odeResource*)>
+<!ELEMENT odeResource (key, value)>
+
+<!-- ==================== ODE Properties ==================== -->
+<!-- Document metadata (title, author, description, export options) -->
+<!ELEMENT odeProperties (odeProperty*)>
+<!ELEMENT odeProperty (key, value)>
+
+<!-- ==================== Shared Key-Value Elements ==================== -->
+<!ELEMENT key (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
+
+<!-- ==================== Navigation Structures (Pages) ==================== -->
+<!--
+    The navigation structure defines the page hierarchy.
+    Each odeNavStructure represents a single page.
+    Pages can have parent-child relationships via odeParentPageId.
+-->
+<!ELEMENT odeNavStructures (odeNavStructure+)>
+<!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
+
+<!-- Page identification -->
+<!ELEMENT odePageId (#PCDATA)>
+<!ELEMENT odeParentPageId (#PCDATA)>
+<!ELEMENT pageName (#PCDATA)>
+<!ELEMENT odeNavStructureOrder (#PCDATA)>
+
+<!-- Page-level properties -->
+<!ELEMENT odeNavStructureProperties (odeNavStructureProperty*)>
+<!ELEMENT odeNavStructureProperty (key, value)>
+
+<!-- ==================== Block Structures (odePagStructures) ==================== -->
+<!--
+    Blocks are containers for components within a page.
+    Each block can have visibility settings, custom CSS classes, etc.
+-->
+<!ELEMENT odePagStructures (odePagStructure*)>
+<!ELEMENT odePagStructure (odePageId, odeBlockId, blockName, iconName?, odePagStructureOrder, odePagStructureProperties?, odeComponents?)>
+
+<!-- Block identification -->
+<!ELEMENT odeBlockId (#PCDATA)>
+<!ELEMENT blockName (#PCDATA)>
+<!ELEMENT iconName (#PCDATA)>
+<!ELEMENT odePagStructureOrder (#PCDATA)>
+
+<!-- Block-level properties -->
+<!ELEMENT odePagStructureProperties (odePagStructureProperty*)>
+<!ELEMENT odePagStructureProperty (key, value)>
+
+<!-- ==================== Components (iDevices) ==================== -->
+<!--
+    Components are the interactive learning elements (iDevices).
+    They can store content in two formats:
+    - htmlView: Rendered HTML content (for text-based iDevices)
+    - jsonProperties: Structured JSON data (for interactive iDevices)
+
+    Common iDevice types include:
+    - text, form, matching, sort, classify, guess, checklist
+    - crossword, image-gallery, magnifier, casestudy
+    - external-website, attached-files, etc.
+-->
+<!ELEMENT odeComponents (odeComponent*)>
+<!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
+
+<!-- Component identification -->
+<!ELEMENT odeIdeviceId (#PCDATA)>
+<!ELEMENT odeIdeviceTypeName (#PCDATA)>
+
+<!-- Component content -->
+<!ELEMENT htmlView (#PCDATA)>
+<!ELEMENT jsonProperties (#PCDATA)>
+<!ELEMENT odeComponentsOrder (#PCDATA)>
+
+<!-- Component-level properties -->
+<!ELEMENT odeComponentsProperties (odeComponentsProperty*)>
+<!ELEMENT odeComponentsProperty (key, value)>

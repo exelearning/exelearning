@@ -105,9 +105,10 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> ${searchBoxHtml}
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}<main id="${page.id}" class="page"> ${searchBoxHtml}
+${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${this.renderPageContent(page, basePath)}
-</main></div>${this.renderNavButtons(page, allPages, basePath)}
+</div></main>${this.renderNavButtons(page, allPages, basePath)}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
 ${madeWithExeHtml}
@@ -349,8 +350,8 @@ ${madeWithExeHtml}
             ? ` <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
             : '';
 
-        return `<header id="header-${page.id}" class="page-header">${pageCounterHtml}<h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>
-<h2 class="page-title">${this.escapeHtml(page.title)}</h2></header>`;
+        return `<header id="header-${page.id}" class="main-header">${pageCounterHtml}<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="page-header"><h2 class="page-title">${this.escapeHtml(page.title)}</h2></div></header>`;
     }
 
     /**
@@ -384,18 +385,22 @@ ${madeWithExeHtml}
         const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
         const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
-        if (!prevPage && !nextPage) return '';
-
         let html = '<div class="nav-buttons">';
 
+        // Previous button - span if disabled, anchor if enabled
         if (prevPage) {
             const link = this.getPageLink(prevPage, allPages, basePath);
-            html += ` <a href="${link}" title="Anterior" class="nav-button nav-button-left"> <span>Anterior</span></a>`;
+            html += ` <a href="${link}" title="Previous" class="nav-button nav-button-left"> <span>Previous</span></a>`;
+        } else {
+            html += ` <span class="nav-button nav-button-left" aria-hidden="true"> <span>Previous</span></span>`;
         }
 
+        // Next button - span if disabled, anchor if enabled
         if (nextPage) {
             const link = this.getPageLink(nextPage, allPages, basePath);
-            html += `<a href="${link}" title="Siguiente" class="nav-button nav-button-right"> <span>Siguiente</span></a>`;
+            html += `<a href="${link}" title="Next" class="nav-button nav-button-right"> <span>Next</span></a>`;
+        } else {
+            html += `<span class="nav-button nav-button-right" aria-hidden="true"> <span>Next</span></span>`;
         }
 
         html += '\n</div>';

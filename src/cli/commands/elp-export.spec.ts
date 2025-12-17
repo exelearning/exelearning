@@ -10,25 +10,48 @@ const TEST_ELP_PATH = path.join(TEST_DIR, 'test.elp');
 const TEST_OUTPUT_DIR = path.join(TEST_DIR, 'output');
 
 async function createTestElpFile(): Promise<void> {
-    // Create minimal content.xml
+    // Create minimal valid content.xml following ODE DTD structure
     const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
 <ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
 <odeProperties>
-  <pp_title>Test Project</pp_title>
-  <pp_author>Test Author</pp_author>
-  <pp_lang>en</pp_lang>
-  <pp_description>Test description</pp_description>
-  <pp_license>CC-BY-SA</pp_license>
-  <pp_theme>base</pp_theme>
+  <odeProperty>
+    <key>pp_title</key>
+    <value>Test Project</value>
+  </odeProperty>
+  <odeProperty>
+    <key>pp_author</key>
+    <value>Test Author</value>
+  </odeProperty>
+  <odeProperty>
+    <key>pp_lang</key>
+    <value>en</value>
+  </odeProperty>
 </odeProperties>
 <odeNavStructures>
-<odeNavStructure odeNavStructureId="page1" odePageName="Test Page" odeNavStructureOrder="0">
-  <odePagStructure odePagStructureId="block1" blockName="Block 1" odePagStructureOrder="0">
-    <odeComponent odeComponentId="comp1" odeIdeviceTypeDirName="FreeTextIdevice" odeComponentOrder="0">
-      <htmlView><![CDATA[<p>Hello World</p>]]></htmlView>
-    </odeComponent>
-  </odePagStructure>
-</odeNavStructure>
+  <odeNavStructure>
+    <odePageId>page1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Test Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page1</odePageId>
+        <odeBlockId>block1</odeBlockId>
+        <blockName>Block 1</blockName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page1</odePageId>
+            <odeBlockId>block1</odeBlockId>
+            <odeIdeviceId>comp1</odeIdeviceId>
+            <odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p>Hello World</p>]]></htmlView>
+            <odeComponentsOrder>0</odeComponentsOrder>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
 </odeNavStructures>
 </ode>`;
 
@@ -113,11 +136,11 @@ describe('elp:export command', () => {
             await cleanupTestDir();
         });
 
-        it('should fail for elpx format (not implemented)', async () => {
+        it('should succeed for elpx format', async () => {
             await createTestElpFile();
             const result = await execute([TEST_ELP_PATH, TEST_OUTPUT_DIR, 'elpx'], {});
-            expect(result.success).toBe(false);
-            expect(result.message).toContain('not yet implemented');
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('Export completed');
             await cleanupTestDir();
         });
     });
@@ -295,22 +318,48 @@ describe('elp:export command', () => {
 
     describe('execute - stdin input', () => {
         it('should read ELP from stdin when input is "-"', async () => {
-            // Create test ELP content
+            // Create test ELP content following ODE DTD structure
             const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
 <ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
 <odeProperties>
-  <pp_title>Stdin Project</pp_title>
-  <pp_author>Test</pp_author>
-  <pp_lang>en</pp_lang>
+  <odeProperty>
+    <key>pp_title</key>
+    <value>Stdin Project</value>
+  </odeProperty>
+  <odeProperty>
+    <key>pp_author</key>
+    <value>Test</value>
+  </odeProperty>
+  <odeProperty>
+    <key>pp_lang</key>
+    <value>en</value>
+  </odeProperty>
 </odeProperties>
 <odeNavStructures>
-<odeNavStructure odeNavStructureId="p1" odePageName="Page" odeNavStructureOrder="0">
-  <odePagStructure odePagStructureId="b1" blockName="Block" odePagStructureOrder="0">
-    <odeComponent odeComponentId="c1" odeIdeviceTypeDirName="FreeTextIdevice" odeComponentOrder="0">
-      <htmlView><![CDATA[<p>Test</p>]]></htmlView>
-    </odeComponent>
-  </odePagStructure>
-</odeNavStructure>
+  <odeNavStructure>
+    <odePageId>p1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>p1</odePageId>
+        <odeBlockId>b1</odeBlockId>
+        <blockName>Block</blockName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>p1</odePageId>
+            <odeBlockId>b1</odeBlockId>
+            <odeIdeviceId>c1</odeIdeviceId>
+            <odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p>Test</p>]]></htmlView>
+            <odeComponentsOrder>0</odeComponentsOrder>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
 </odeNavStructures>
 </ode>`;
             const zipData = zipSync({ 'content.xml': strToU8(contentXml) });

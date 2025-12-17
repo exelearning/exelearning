@@ -130,6 +130,15 @@ class FileResourceProvider implements ResourceProvider {
         return new Map();
     }
 
+    async fetchContentCss(): Promise<Map<string, Buffer>> {
+        const cssPath = path.join(this.publicDir, 'style', 'content', 'css', 'base.css');
+        if (await fs.pathExists(cssPath)) {
+            const content = await fs.readFile(cssPath);
+            return new Map([['content/css/base.css', content]]);
+        }
+        return new Map([['content/css/base.css', Buffer.from('/* Test base CSS */')]]);
+    }
+
     normalizeIdeviceType(type: string): string {
         return type.toLowerCase().replace(/idevice$/i, '');
     }
@@ -214,7 +223,7 @@ describe('ELPX Download Integration', () => {
 
         it('should include exe_elpx_download.js in libs/', async () => {
             await exporter.export();
-            expect(zip.hasFile('libs/exe_elpx_download.js')).toBe(true);
+            expect(zip.hasFile('libs/exe_elpx_download/exe_elpx_download.js')).toBe(true);
         });
 
         it('should replace exe-package:elp with onclick handler in HTML', async () => {

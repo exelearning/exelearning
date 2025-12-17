@@ -150,6 +150,10 @@ body.exe-web-site {
 #siteNav .other-section {
     display: none;
 }
+#siteNav li.active > .other-section,
+#siteNav li.current-page-parent > .other-section {
+    display: block;
+}
 #sidebar-nav.fixed {
     position: fixed;
 }

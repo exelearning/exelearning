@@ -80,6 +80,14 @@ describe('Unified Export System Integration', () => {
         await fs.ensureDir(path.join(testDir, 'public', 'theme', 'base'));
         await fs.ensureDir(path.join(testDir, 'public', 'libs'));
         await fs.ensureDir(path.join(testDir, 'extracted'));
+
+        // Create required CSS file for exporters
+        await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
+        await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* Test base CSS */');
+
+        // Create minimal theme files
+        await fs.writeFile(path.join(testDir, 'public', 'theme', 'base', 'style.css'), '/* Test theme CSS */');
+        await fs.writeFile(path.join(testDir, 'public', 'theme', 'base', 'style.js'), '/* Test theme JS */');
     });
 
     afterEach(async () => {

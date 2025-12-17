@@ -260,11 +260,11 @@ describe('PageRenderer', () => {
             expect(html).toContain('class="nav-buttons"');
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('Anterior');
-            expect(html).toContain('Siguiente');
+            expect(html).toContain('Previous');
+            expect(html).toContain('Next');
         });
 
-        it('should not render prev button for first page', () => {
+        it('should render disabled prev button for first page', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -272,11 +272,14 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavButtons(pages[0], pages, '');
 
-            expect(html).not.toContain('nav-button-left');
+            // First page: disabled prev (span), enabled next (anchor)
+            expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
+            expect(html).toContain('<span class="nav-button nav-button-left"');
+            expect(html).toContain('<a href=');
         });
 
-        it('should not render next button for last page', () => {
+        it('should render disabled next button for last page', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -284,16 +287,23 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavButtons(pages[1], pages, '');
 
+            // Last page: enabled prev (anchor), disabled next (span)
             expect(html).toContain('nav-button-left');
-            expect(html).not.toContain('nav-button-right');
+            expect(html).toContain('nav-button-right');
+            expect(html).toContain('<span class="nav-button nav-button-right"');
+            expect(html).toContain('<a href=');
         });
 
-        it('should return empty string for single page', () => {
+        it('should render both buttons disabled for single page', () => {
             const pages: ExportPage[] = [createTestPage({ id: 'page-1', title: 'Only' })];
 
             const html = renderer.renderNavButtons(pages[0], pages, '');
 
-            expect(html).toBe('');
+            // Single page: both buttons disabled (spans)
+            expect(html).toContain('nav-buttons');
+            expect(html).toContain('<span class="nav-button nav-button-left"');
+            expect(html).toContain('<span class="nav-button nav-button-right"');
+            expect(html).not.toContain('<a href=');
         });
     });
 

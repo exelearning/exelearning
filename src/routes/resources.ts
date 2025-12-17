@@ -6,6 +6,7 @@
 import { Elysia } from 'elysia';
 import * as fs from 'fs';
 import * as path from 'path';
+import { LEGACY_IDEVICE_MAPPING } from '../shared/export/constants';
 
 // Base paths for resources
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -149,11 +150,14 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     .get('/api/resources/idevice/:ideviceType', ({ params, set }) => {
         const { ideviceType } = params;
 
+        // First check for legacy iDevice name mapping
+        const mappedType = LEGACY_IDEVICE_MAPPING[ideviceType] || ideviceType;
+
         // Normalize iDevice type (remove 'Idevice' suffix if present)
-        const normalizedType = ideviceType.toLowerCase().replace(/idevice$/i, '');
+        const normalizedType = mappedType.toLowerCase().replace(/idevice$/i, '');
 
         // Compute kebab-case variations BEFORE lowercasing (to detect camelCase)
-        const kebabVariant = ideviceType
+        const kebabVariant = mappedType
             .replace(/Idevice$/i, '')
             .replace(/([a-z])([A-Z])/g, '$1-$2')
             .toLowerCase();
@@ -258,4 +262,22 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
         }
 
         return buildFileList(schemasPath, `/files/perm/schemas/${format}`);
+    })
+
+    // GET /api/resources/content-css - Get content CSS files (base.css, etc.)
+    .get('/api/resources/content-css', () => {
+        const cssPath = 'public/style/content/css';
+        if (!deps.fs.existsSync(cssPath)) {
+            return [];
+        }
+
+        // Build list with full relative path (content/css/base.css) for exporter compatibility
+        const files = scanDirectory(cssPath);
+        const version = getAppVersion();
+        const basePath = getBasePath();
+
+        return files.map(filePath => ({
+            path: `content/css/${filePath}`, // Full path expected by exporters
+            url: `${basePath}/${version}/style/content/css/${filePath}`,
+        }));
     });

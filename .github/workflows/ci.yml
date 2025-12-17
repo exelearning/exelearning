@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - tikismaker
+      - 'release/*'
     tags:
       - '*'
   pull_request:
@@ -65,14 +66,7 @@ jobs:
         run: make lint-js
 
       - name: Unit Tests + 90% Coverage
-        run: make test-unit
-
-      # TODO: Enable this when released 3.1
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v4
-      #   with:
-      #     files: ./coverage/lcov.info
-      #     token: ${{ secrets.CODECOV_TOKEN }}
+        run: make test-unit-ci
 
       - name: Integration Tests
         run: make test-integration
@@ -83,8 +77,16 @@ jobs:
       - name: Bundle JavaScript
         run: make bundle
 
-      - name: Frontend Tests
-        run: make test-frontend
+      - name: Frontend Tests + Coverage
+        run: make test-frontend-ci
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/bun/lcov.info,./coverage/vitest/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          flags: unittests,frontend
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
