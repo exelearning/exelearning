@@ -44,5 +44,24 @@ export default defineConfig({
 
     // Silence console.log in tests
     silent: false,
+
+    // Coverage configuration for CI (activated with --coverage flag)
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: './coverage/vitest',
+      include: [
+        'public/app/**/*.js',
+        'public/files/perm/idevices/base/**/*.js',
+      ],
+      exclude: [
+        '**/node_modules/**',
+        '**/*.test.js',
+        '**/vitest.setup.js',
+        '**/libs/**',
+        '**/*.min.js',
+        '**/*.bundle.js',
+      ],
+    },
   },
 });
