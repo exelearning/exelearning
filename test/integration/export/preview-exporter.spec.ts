@@ -180,7 +180,9 @@ describe('WebsitePreviewExporter Integration', () => {
 
             const result = await exporter.generatePreview();
 
-            expect(result.html).not.toContain('page-counter');
+            // Check that the HTML element with class page-counter is NOT present
+            // (note: the JS code may reference .page-counter-current-page class, but the HTML element should not exist)
+            expect(result.html).not.toContain('<p class="page-counter">');
         });
 
         it('should include page counter when addPagination is true', async () => {
