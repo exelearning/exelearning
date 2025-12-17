@@ -86,7 +86,6 @@ function createSqliteDialect(dbPath: string): Dialect {
     } else {
         // Node.js runtime: use better-sqlite3
         // Dynamic require to prevent Bun's bundler from trying to resolve these modules
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const dynamicRequire = (mod: string) => require(mod);
         const { SqliteDialect } = dynamicRequire('kysely');
         const Database = dynamicRequire('better-sqlite3');

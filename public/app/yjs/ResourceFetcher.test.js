@@ -418,7 +418,7 @@ describe('ResourceFetcher', () => {
       );
     });
 
-    it('falls back to /libs/ path if /app/common/ fails', async () => {
+    it('falls back to /libs/ path if /app/common/ fails for non-third-party libs', async () => {
       const fetcher = new ResourceFetcher();
       mockFetch
         .mockResolvedValueOnce({ ok: false })
@@ -427,11 +427,31 @@ describe('ResourceFetcher', () => {
           blob: () => Promise.resolve(new Blob(['content'])),
         });
 
-      await fetcher.fetchLibraryFile('jquery/jquery.min.js');
+      // Use a non-third-party library that tries /app/common/ first
+      await fetcher.fetchLibraryFile('exe_custom/custom.js');
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        '/web/exelearning/v3.1.0/app/common/exe_custom/custom.js'
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
         2,
+        '/web/exelearning/v3.1.0/libs/exe_custom/custom.js'
+      );
+    });
+
+    it('tries /libs/ first for third-party libraries like jquery', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['content'])),
+      });
+
+      await fetcher.fetchLibraryFile('jquery/jquery.min.js');
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
         '/web/exelearning/v3.1.0/libs/jquery/jquery.min.js'
       );
     });
