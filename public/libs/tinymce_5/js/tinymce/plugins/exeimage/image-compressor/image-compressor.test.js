@@ -7,8 +7,6 @@
  * Run with: bun test public/libs/tinymce_5/js/tinymce/plugins/exeimage/image-compressor/__tests__/
  */
 
-const { describe, it, expect, beforeEach } = require('bun:test');
-
 /* eslint-disable no-undef */
 
 describe('Image Compressor URL Detection', () => {

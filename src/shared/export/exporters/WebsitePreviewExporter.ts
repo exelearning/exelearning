@@ -177,7 +177,7 @@ export class WebsitePreviewExporter {
         'fflate',
         'exe_atools',
         'mermaid',
-        'exe_elpx_download.js', // Root-level file in /libs/
+        'exe_elpx_download', // Folder in /libs/
     ]);
 
     /**
@@ -659,7 +659,7 @@ ${blockHtml}
         let elpxDownloadScripts = '';
         if (needsElpxDownload) {
             const fflateJs = this.getVersionedPath('/libs/fflate/fflate.umd.js', options);
-            const elpxDownloadJs = this.getVersionedPath('/libs/exe_elpx_download.js', options);
+            const elpxDownloadJs = this.getVersionedPath('/libs/exe_elpx_download/exe_elpx_download.js', options);
             elpxDownloadScripts = `\n<script src="${fflateJs}"></script>\n<script src="${elpxDownloadJs}"></script>`;
         }
 

@@ -10,6 +10,13 @@
 /* eslint-disable no-undef */
 
 import { vi, expect, afterEach, describe, it, beforeEach, beforeAll, afterAll } from 'vitest';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get directory path for loading local files (jQuery, etc.)
+const __vitest_setup_filename = fileURLToPath(import.meta.url);
+const __vitest_setup_dirname = dirname(__vitest_setup_filename);
 
 // ============================================================================
 // Bun:test Compatibility Layer
@@ -806,6 +813,537 @@ global.clearFetchMock = () => {
 };
 
 // ============================================================================
+// iDevice Test Helper - Load iDevice files with global $exeDevice
+// ============================================================================
+
+/**
+ * Load an iDevice file and expose $exeDevice globally.
+ * iDevice files use 'var $exeDevice = {...}' which doesn't work with ES module imports.
+ * This helper reads the file, replaces 'var $exeDevice' with 'global.$exeDevice',
+ * and executes it in the global context.
+ *
+ * @param {string} filePath - Absolute path to the iDevice JS file
+ * @returns {object} The $exeDevice object
+ *
+ * @example
+ * import { fileURLToPath } from 'url';
+ * import { dirname, join } from 'path';
+ *
+ * const __filename = fileURLToPath(import.meta.url);
+ * const __dirname = dirname(__filename);
+ *
+ * beforeEach(() => {
+ *   global.$exeDevice = undefined;
+ *   $exeDevice = global.loadIdevice(join(__dirname, 'my-idevice.js'));
+ * });
+ */
+global.loadIdevice = function (filePath) {
+  const code = readFileSync(filePath, 'utf-8');
+  // Replace 'var $exeDevice' with 'global.$exeDevice' to expose in global scope
+  const modifiedCode = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
+  // Execute the modified code using eval in global context
+  // eslint-disable-next-line no-eval
+  (0, eval)(modifiedCode);
+  return global.$exeDevice;
+};
+
+// ============================================================================
+// Load Real jQuery for iDevice tests
+// ============================================================================
+
+/**
+ * Load real jQuery library for testing iDevices.
+ * This allows tests to perform actual DOM manipulation with jQuery.
+ *
+ * jQuery 3.7.1 is loaded from public/libs/jquery/jquery.min.js
+ */
+
+// Load jQuery source code
+const jqueryPath = join(__vitest_setup_dirname, 'libs/jquery/jquery.min.js');
+const jqueryCode = readFileSync(jqueryPath, 'utf-8');
+
+// Execute jQuery in global context
+// jQuery expects 'window' to be defined (provided by happy-dom)
+try {
+  (0, eval)(jqueryCode);
+  // jQuery sets itself on window, copy to global
+  global.$ = window.$;
+  global.jQuery = window.jQuery;
+} catch (e) {
+  // Fallback to minimal mock if jQuery fails to load
+  console.warn('jQuery failed to load, using minimal mock:', e.message);
+
+  const createMinimalJQuery = (selector) => {
+    if (typeof selector === 'string' && selector.startsWith('<')) {
+      // Creating element from HTML
+      const div = document.createElement('div');
+      div.innerHTML = selector;
+      return window.$(div.firstChild);
+    }
+    const elements = typeof selector === 'string' ? document.querySelectorAll(selector) : [selector];
+    const result = Array.from(elements);
+    result.val = function (v) {
+      if (v === undefined) return this[0]?.value;
+      this.forEach((el) => (el.value = v));
+      return this;
+    };
+    result.html = function (v) {
+      if (v === undefined) return this[0]?.innerHTML;
+      this.forEach((el) => (el.innerHTML = v));
+      return this;
+    };
+    result.addClass = function (c) {
+      this.forEach((el) => el.classList?.add(c));
+      return this;
+    };
+    result.removeClass = function (c) {
+      this.forEach((el) => el.classList?.remove(c));
+      return this;
+    };
+    result.find = function (s) {
+      return createMinimalJQuery(this[0]?.querySelectorAll(s) || []);
+    };
+    result.parent = function () {
+      return createMinimalJQuery(this[0]?.parentElement || []);
+    };
+    result.width = function () {
+      return 100;
+    };
+    result.height = function () {
+      return 100;
+    };
+    return result;
+  };
+
+  global.$ = createMinimalJQuery;
+  global.jQuery = createMinimalJQuery;
+  if (typeof window !== 'undefined') {
+    window.$ = createMinimalJQuery;
+    window.jQuery = createMinimalJQuery;
+  }
+}
+
+// ============================================================================
+// Mock TinyMCE for iDevice tests (Improved with state tracking)
+// ============================================================================
+
+/**
+ * Mock TinyMCE implementation with state tracking and DOM synchronization.
+ * This mock:
+ * - Maintains content state per editor
+ * - Syncs with DOM textareas when available
+ * - Tracks dirty state
+ * - Supports event handlers
+ */
+const mockTinyMCEEditors = new Map();
+
+/**
+ * Creates a mock TinyMCE editor instance with full state tracking.
+ * @param {string} id - The editor ID (usually textarea id)
+ * @param {string} initialContent - Initial content for the editor
+ * @returns {Object} Mock editor instance
+ */
+const createMockTinyMCEEditor = (id, initialContent = '') => {
+  let content = initialContent;
+  let dirty = false;
+  const eventHandlers = new Map();
+
+  const editor = {
+    id,
+
+    // Content management with DOM sync
+    getContent: vi.fn(function (options) {
+      return content;
+    }),
+
+    setContent: vi.fn(function (newContent, options) {
+      content = newContent;
+      dirty = true;
+      // Sync with DOM textarea if it exists
+      if (typeof document !== 'undefined') {
+        const textarea = document.getElementById(id);
+        if (textarea) textarea.value = content;
+      }
+    }),
+
+    // Get body element (for DOM operations)
+    getBody: vi.fn(function () {
+      const div = document.createElement('div');
+      div.innerHTML = content;
+      return div;
+    }),
+
+    // Dirty state tracking
+    isDirty: vi.fn(function () {
+      return dirty;
+    }),
+
+    save: vi.fn(function () {
+      dirty = false;
+      // Sync to textarea
+      if (typeof document !== 'undefined') {
+        const textarea = document.getElementById(id);
+        if (textarea) textarea.value = content;
+      }
+    }),
+
+    // Event handling
+    on: vi.fn(function (event, handler) {
+      if (!eventHandlers.has(event)) eventHandlers.set(event, []);
+      eventHandlers.get(event).push(handler);
+      return this;
+    }),
+
+    off: vi.fn(function (event, handler) {
+      if (handler) {
+        const handlers = eventHandlers.get(event) || [];
+        const index = handlers.indexOf(handler);
+        if (index > -1) handlers.splice(index, 1);
+      } else {
+        eventHandlers.delete(event);
+      }
+      return this;
+    }),
+
+    fire: vi.fn(function (event, data) {
+      const handlers = eventHandlers.get(event) || [];
+      handlers.forEach((h) => h({ ...data, target: this }));
+      return this;
+    }),
+
+    // Focus management
+    focus: vi.fn(function () {
+      mockTinyMCE.activeEditor = this;
+    }),
+    blur: vi.fn(),
+    hasFocus: vi.fn(() => mockTinyMCE.activeEditor === editor),
+
+    // Lifecycle
+    destroy: vi.fn(function () {
+      mockTinyMCEEditors.delete(id);
+      delete mockTinyMCE.editors[id];
+    }),
+    remove: vi.fn(function () {
+      this.destroy();
+    }),
+
+    // Visibility
+    hide: vi.fn(),
+    show: vi.fn(),
+
+    // Commands
+    execCommand: vi.fn(function (cmd, ui, value) {
+      if (cmd === 'mceInsertContent') {
+        content += value;
+        dirty = true;
+      }
+      return true;
+    }),
+
+    insertContent: vi.fn(function (html) {
+      content += html;
+      dirty = true;
+    }),
+
+    // Selection
+    selection: {
+      getContent: vi.fn(() => ''),
+      setContent: vi.fn(),
+      getRng: vi.fn(() => ({})),
+      setRng: vi.fn(),
+      getNode: vi.fn(() => document.createElement('div')),
+      collapse: vi.fn(),
+      select: vi.fn(),
+    },
+
+    // Additional properties used by iDevices
+    getDoc: vi.fn(() => document),
+    getWin: vi.fn(() => window),
+    getContainer: vi.fn(() => document.createElement('div')),
+    getElement: vi.fn(function () {
+      return document.getElementById(id);
+    }),
+    initialized: true,
+    settings: {},
+    theme: {},
+    formatter: {
+      apply: vi.fn(),
+      remove: vi.fn(),
+      toggle: vi.fn(),
+    },
+  };
+
+  return editor;
+};
+
+// Create a Proxy for editors that auto-creates editors on access
+const editorsProxy = new Proxy(
+  {},
+  {
+    get(target, prop) {
+      if (typeof prop === 'string' && prop !== 'then') {
+        // Auto-create editor if it doesn't exist
+        if (!mockTinyMCEEditors.has(prop)) {
+          let initialContent = '';
+          if (typeof document !== 'undefined') {
+            const textarea = document.getElementById(prop);
+            if (textarea) initialContent = textarea.value || '';
+          }
+          const editor = createMockTinyMCEEditor(prop, initialContent);
+          mockTinyMCEEditors.set(prop, editor);
+          target[prop] = editor;
+        }
+        return mockTinyMCEEditors.get(prop);
+      }
+      return target[prop];
+    },
+    set(target, prop, value) {
+      target[prop] = value;
+      return true;
+    },
+  }
+);
+
+const mockTinyMCE = {
+  editors: editorsProxy,
+  activeEditor: null,
+
+  // Get or create an editor by ID
+  get: vi.fn(function (id) {
+    if (!mockTinyMCEEditors.has(id)) {
+      // Check if there's a textarea with initial content
+      let initialContent = '';
+      if (typeof document !== 'undefined') {
+        const textarea = document.getElementById(id);
+        if (textarea) initialContent = textarea.value || '';
+      }
+      const editor = createMockTinyMCEEditor(id, initialContent);
+      mockTinyMCEEditors.set(id, editor);
+    }
+    return mockTinyMCEEditors.get(id);
+  }),
+
+  // Initialize TinyMCE on elements matching selector
+  init: vi.fn(function (config) {
+    const selector = config.selector || config.target;
+    const editors = [];
+
+    if (typeof document !== 'undefined' && selector) {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach((el) => {
+        const id = el.id;
+        if (id) {
+          const initialContent = el.value || el.innerHTML || '';
+          const editor = createMockTinyMCEEditor(id, initialContent);
+          mockTinyMCEEditors.set(id, editor);
+          this.editors[id] = editor;
+          editors.push(editor);
+
+          // Call init callback if provided
+          if (config.init_instance_callback) {
+            config.init_instance_callback(editor);
+          }
+        }
+      });
+    }
+
+    return Promise.resolve(editors);
+  }),
+
+  // Remove editors
+  remove: vi.fn(function (selector) {
+    if (typeof selector === 'string' && typeof document !== 'undefined') {
+      document.querySelectorAll(selector).forEach((el) => {
+        const id = el.id;
+        if (id) {
+          mockTinyMCEEditors.delete(id);
+          delete this.editors[id];
+        }
+      });
+    }
+  }),
+
+  execCommand: vi.fn(),
+
+  EditorManager: {
+    get: vi.fn((id) => mockTinyMCE.get(id)),
+  },
+
+  // Helper: Reset all editors (for testing)
+  _reset: function () {
+    mockTinyMCEEditors.clear();
+    // Clear the proxy target by deleting all keys
+    for (const key of Object.keys(editorsProxy)) {
+      delete editorsProxy[key];
+    }
+    this.activeEditor = null;
+  },
+};
+
+global.tinyMCE = mockTinyMCE;
+global.tinymce = mockTinyMCE;
+if (typeof window !== 'undefined') {
+  window.tinyMCE = mockTinyMCE;
+  window.tinymce = mockTinyMCE;
+}
+
+// ============================================================================
+// Mock c_() translation function for iDevice export strings
+// ============================================================================
+
+global.c_ = vi.fn((key) => key);
+if (typeof window !== 'undefined') {
+  window.c_ = global.c_;
+}
+
+// ============================================================================
+// Mock eXe.app for iDevice tests (Improved with history tracking)
+// ============================================================================
+
+/**
+ * Mock eXe.app with history tracking for assertions.
+ * This allows tests to verify what alerts/confirms/prompts were shown.
+ *
+ * Usage in tests:
+ *   eXe.app.alert('message');
+ *   expect(eXe.app.getLastAlert()).toBe('message');
+ *   expect(eXe.app._alertHistory).toContain('message');
+ */
+global.eXe = {
+  app: {
+    // History arrays for tracking calls
+    _alertHistory: [],
+    _confirmHistory: [],
+    _promptHistory: [],
+
+    // Alert with history tracking
+    alert: vi.fn(function (message) {
+      this._alertHistory.push(message);
+      return Promise.resolve();
+    }),
+
+    // Confirm with history tracking (default returns true)
+    confirm: vi.fn(function (message) {
+      this._confirmHistory.push(message);
+      return Promise.resolve(true);
+    }),
+
+    // Prompt with history tracking
+    prompt: vi.fn(function (message, defaultValue) {
+      this._promptHistory.push({ message, defaultValue });
+      return Promise.resolve(defaultValue || '');
+    }),
+
+    // Utility methods
+    getBasePath: vi.fn(() => ''),
+    showLoading: vi.fn(),
+    hideLoading: vi.fn(),
+
+    // Helper methods for tests
+    getLastAlert: function () {
+      return this._alertHistory[this._alertHistory.length - 1];
+    },
+
+    getLastConfirm: function () {
+      return this._confirmHistory[this._confirmHistory.length - 1];
+    },
+
+    getLastPrompt: function () {
+      return this._promptHistory[this._promptHistory.length - 1];
+    },
+
+    clearHistory: function () {
+      this._alertHistory = [];
+      this._confirmHistory = [];
+      this._promptHistory = [];
+    },
+
+    // Configure confirm behavior for specific messages
+    _confirmResponses: new Map(),
+    setConfirmResponse: function (message, response) {
+      this._confirmResponses.set(message, response);
+    },
+  },
+};
+
+if (typeof window !== 'undefined') {
+  window.eXe = global.eXe;
+}
+
+// ============================================================================
+// Mock $exeDevices and $exeDevicesEdition helpers for iDevice tests
+// ============================================================================
+
+/**
+ * Mock gamification helpers used by iDevices.
+ * These provide SCORM, instructions, and common gamification functionality.
+ */
+
+const mockGamificationInstructions = {
+  getFieldset: vi.fn(() => '<fieldset class="exe-gamification-instructions"></fieldset>'),
+  init: vi.fn(),
+  save: vi.fn(() => ({})),
+  load: vi.fn(),
+};
+
+const mockGamificationScorm = {
+  getFieldset: vi.fn(() => '<fieldset class="exe-gamification-scorm"></fieldset>'),
+  init: vi.fn(),
+  save: vi.fn(() => ({})),
+  load: vi.fn(),
+  // Used by some iDevices like trueorfalse.js
+  getValues: vi.fn(() => ({
+    textButtonScorm: 'Save',
+    repeatActivity: true,
+    isScorm: 0,
+    textAfter: '',
+    weighted: 0,
+  })),
+  setValues: vi.fn(),
+};
+
+const mockGamificationCommon = {
+  getFieldset: vi.fn(() => '<fieldset class="exe-gamification-common"></fieldset>'),
+  init: vi.fn(),
+  save: vi.fn(() => ({})),
+  load: vi.fn(),
+};
+
+const mockGamificationHelpers = {
+  getFieldset: vi.fn((config) => {
+    const title = config?.title || 'Gamification';
+    return `<fieldset class="exe-gamification-helpers"><legend>${title}</legend></fieldset>`;
+  }),
+};
+
+global.$exeDevices = {
+  iDevice: {
+    gamification: {
+      instructions: mockGamificationInstructions,
+      scorm: mockGamificationScorm,
+      common: mockGamificationCommon,
+      helpers: mockGamificationHelpers,
+    },
+  },
+};
+
+global.$exeDevicesEdition = {
+  iDevice: {
+    gamification: {
+      instructions: mockGamificationInstructions,
+      scorm: mockGamificationScorm,
+      common: mockGamificationCommon,
+      helpers: mockGamificationHelpers,
+    },
+  },
+};
+
+if (typeof window !== 'undefined') {
+  window.$exeDevices = global.$exeDevices;
+  window.$exeDevicesEdition = global.$exeDevicesEdition;
+}
+
+// ============================================================================
 // Cleanup after each test
 // ============================================================================
 
@@ -833,6 +1371,20 @@ afterEach(() => {
     global.eXeLearning.project.author = defaultProjectState.author;
     global.eXeLearning.project.language = defaultProjectState.language;
     global.eXeLearning.project.theme = defaultProjectState.theme;
+  }
+
+  // Clear TinyMCE mock editors and reset state
+  mockTinyMCE._reset();
+
+  // Clear eXe.app history
+  if (global.eXe && global.eXe.app) {
+    global.eXe.app.clearHistory();
+    global.eXe.app._confirmResponses.clear();
+  }
+
+  // Clear DOM (happy-dom) - reset body for next test
+  if (typeof document !== 'undefined') {
+    document.body.innerHTML = '';
   }
 
   // Clear all mocks between tests

@@ -274,7 +274,7 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         name: 'exe_elpx_download',
         type: 'class',
         pattern: 'exe-download-package-link',
-        files: ['fflate/fflate.umd.js', 'exe_elpx_download.js'],
+        files: ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'],
     },
 ];
 
