@@ -6,7 +6,7 @@
  * Run with: make test-frontend
  */
 
-/* eslint-disable no-undef */
+ 
 
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -29,7 +29,7 @@ describe('SaveManager', () => {
     const scriptContent = readFileSync(scriptPath, 'utf-8');
 
     // Execute script using new Function() to properly return the class
-    // eslint-disable-next-line no-new-func
+     
     const scriptFn = new Function(scriptContent + '\n; return SaveManager;');
     SaveManager = scriptFn();
   });
