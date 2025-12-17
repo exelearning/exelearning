@@ -232,8 +232,8 @@ export class ComponentExporter extends BaseExporter {
         xml += `        <odeIdeviceTypeName>${this.escapeXml(comp.type || 'FreeTextIdevice')}</odeIdeviceTypeName>\n`;
         xml += `        <ideviceSrcType>json</ideviceSrcType>\n`;
         xml += `        <userIdevice>0</userIdevice>\n`;
-        xml += `        <htmlView><![CDATA[${comp.content || ''}]]></htmlView>\n`;
-        xml += `        <jsonProperties><![CDATA[${JSON.stringify(comp.properties || {})}]]></jsonProperties>\n`;
+        xml += `        <htmlView><![CDATA[${this.escapeCdata(comp.content || '')}]]></htmlView>\n`;
+        xml += `        <jsonProperties><![CDATA[${this.escapeCdata(JSON.stringify(comp.properties || {}))}]]></jsonProperties>\n`;
         xml += `        <odeComponentsOrder>${comp.order || 0}</odeComponentsOrder>\n`;
         xml += `        <odeComponentsProperties></odeComponentsProperties>\n`;
         xml += '      </odeComponent>\n';

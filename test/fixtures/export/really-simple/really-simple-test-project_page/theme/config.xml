@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<theme>
+    <name>base</name>
+    <title>Default</title>
+    <version>2025</version>
+    <compatibility>3.0</compatibility>
+    <author>eXeLearning.net</author>
+    <license>Creative Commons by-sa</license>
+    <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
+    <description>Minimally-styled, feature rich responsive style for eXe.
+
+iDevice icons by Francisco Javier Pulido Cuadrado.</description>
+    <downloadable>1</downloadable>
+</theme>

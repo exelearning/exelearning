@@ -91,6 +91,14 @@ describe('WebsitePreviewExporter Integration', () => {
         await fs.ensureDir(path.join(testDir, 'public', 'theme', 'base'));
         await fs.ensureDir(path.join(testDir, 'public', 'libs'));
         await fs.ensureDir(path.join(testDir, 'extracted'));
+
+        // Create required CSS file for exporters
+        await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
+        await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* Test base CSS */');
+
+        // Create minimal theme files
+        await fs.writeFile(path.join(testDir, 'public', 'theme', 'base', 'style.css'), '/* Test theme CSS */');
+        await fs.writeFile(path.join(testDir, 'public', 'theme', 'base', 'style.js'), '/* Test theme JS */');
     });
 
     afterEach(async () => {
@@ -180,7 +188,9 @@ describe('WebsitePreviewExporter Integration', () => {
 
             const result = await exporter.generatePreview();
 
-            expect(result.html).not.toContain('page-counter');
+            // Check that the HTML element with class page-counter is NOT present
+            // (note: the JS code may reference .page-counter-current-page class, but the HTML element should not exist)
+            expect(result.html).not.toContain('<p class="page-counter">');
         });
 
         it('should include page counter when addPagination is true', async () => {

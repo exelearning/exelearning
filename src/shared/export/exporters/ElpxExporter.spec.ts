@@ -68,6 +68,20 @@ class MockResourceProvider implements ResourceProvider {
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
         return new Map();
     }
+
+    normalizeIdeviceType(ideviceType: string): string {
+        return ideviceType.toLowerCase().replace(/idevice$/i, '');
+    }
+
+    async fetchExeLogo(): Promise<Buffer | null> {
+        return null;
+    }
+
+    async fetchContentCss(): Promise<Map<string, Buffer>> {
+        const files = new Map<string, Buffer>();
+        files.set('content/css/base.css', Buffer.from('/* base css */'));
+        return files;
+    }
 }
 
 // Mock asset provider
@@ -502,7 +516,8 @@ describe('ElpxExporter', () => {
             const result = await exporter.export();
             const loadedZip = unzipSync(new Uint8Array(result.data!));
 
-            expect(loadedZip['style/base/content.css']).toBeDefined();
+            // ELPX now uses HTML5 export structure: theme/content.css instead of style/base/content.css
+            expect(loadedZip['theme/content.css']).toBeDefined();
         });
 
         it('should include library files in ZIP', async () => {

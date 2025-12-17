@@ -171,8 +171,15 @@ export class Epub3Exporter extends BaseExporter {
                 this.spineItems.push({ idref: pageId });
             }
 
-            // 5. Add base CSS
-            const baseCss = this.getBaseCss() + '\n' + this.getEpubSpecificCss();
+            // 5. Add base CSS (fetch from content/css, then add EPUB-specific)
+            const contentCssFiles = await this.resources.fetchContentCss();
+            const fetchedBaseCss = contentCssFiles.get('content/css/base.css');
+            if (!fetchedBaseCss) {
+                throw new Error('Failed to fetch content/css/base.css');
+            }
+            const baseCssContent =
+                typeof fetchedBaseCss === 'string' ? fetchedBaseCss : new TextDecoder().decode(fetchedBaseCss);
+            const baseCss = baseCssContent + '\n' + this.getEpubSpecificCss();
             this.zip.addFile('EPUB/content/css/base.css', baseCss);
             this.addManifestItem('css-base', 'content/css/base.css', 'text/css');
 

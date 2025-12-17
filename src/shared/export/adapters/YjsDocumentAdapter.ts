@@ -104,34 +104,25 @@ export class YjsDocumentAdapter implements ExportDocument {
 
     /**
      * Get navigation structure as flat array of pages
-     * @returns Array of export pages
+     *
+     * Note: The Yjs navigation stores pages in a FLAT structure where each page
+     * has a `parentId` attribute referencing its parent (not nested `children` arrays).
+     * This matches how ElpxImporter.js stores pages in the browser.
+     *
+     * @returns Array of export pages with parentId references
      */
     getNavigation(): ExportPage[] {
         const navigation = this.manager.getNavigation();
         const pages: ExportPage[] = [];
 
-        // Flatten hierarchical navigation to flat array
-        this.flattenNavigation(navigation, pages);
-
-        return pages;
-    }
-
-    /**
-     * Recursively flatten navigation structure
-     * @param navigation - Y.Array of pages
-     * @param result - Result array to populate
-     */
-    private flattenNavigation(navigation: YArray, result: ExportPage[]): void {
+        // Iterate all pages in the flat navigation array
+        // Each page has parentId set to reference its parent (null for root pages)
         navigation.forEach(pageMap => {
             const page = this.convertPage(pageMap as YMap);
-            result.push(page);
-
-            // Process children recursively
-            const children = (pageMap as YMap).get('children') as YArray | undefined;
-            if (children && children.length > 0) {
-                this.flattenNavigation(children, result);
-            }
+            pages.push(page);
         });
+
+        return pages;
     }
 
     /**

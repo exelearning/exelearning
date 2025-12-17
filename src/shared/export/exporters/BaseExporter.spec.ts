@@ -66,6 +66,20 @@ class MockResourceProvider implements ResourceProvider {
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
         return this.scormFiles;
     }
+
+    normalizeIdeviceType(ideviceType: string): string {
+        return ideviceType.toLowerCase().replace(/idevice$/i, '');
+    }
+
+    async fetchExeLogo(): Promise<Buffer | null> {
+        return null;
+    }
+
+    async fetchContentCss(): Promise<Map<string, Buffer>> {
+        const files = new Map<string, Buffer>();
+        files.set('content/css/base.css', Buffer.from('/* base css */'));
+        return files;
+    }
 }
 
 // Mock asset provider
@@ -314,6 +328,19 @@ describe('BaseExporter', () => {
             expect(exporter.escapeHtml('<script>')).toBe('&lt;script&gt;');
             expect(exporter.escapeHtml('"quoted"')).toBe('&quot;quoted&quot;');
             expect(exporter.escapeHtml("it's")).toBe('it&#039;s');
+        });
+
+        it('should escape CDATA content', () => {
+            // Normal content passes through
+            expect(exporter.escapeCdata('Hello World')).toBe('Hello World');
+            expect(exporter.escapeCdata('<script>alert(1)</script>')).toBe('<script>alert(1)</script>');
+            // The ]]> sequence is split to prevent premature CDATA close
+            expect(exporter.escapeCdata('content]]>more')).toBe('content]]]]><![CDATA[>more');
+            expect(exporter.escapeCdata('a]]>b]]>c')).toBe('a]]]]><![CDATA[>b]]]]><![CDATA[>c');
+            // Edge cases
+            expect(exporter.escapeCdata(null)).toBe('');
+            expect(exporter.escapeCdata(undefined)).toBe('');
+            expect(exporter.escapeCdata('')).toBe('');
         });
 
         it('should sanitize filenames', () => {
@@ -616,13 +643,6 @@ describe('BaseExporter', () => {
     });
 
     describe('Fallback Styles', () => {
-        it('should provide base CSS', () => {
-            const css = exporter.getBaseCss();
-            expect(css).toContain('.exe-content');
-            expect(css).toContain('.iDevice_wrapper');
-            expect(css).toContain('#siteNav');
-        });
-
         it('should provide fallback theme CSS', () => {
             const css = exporter.getFallbackThemeCss();
             expect(css).toContain('body');

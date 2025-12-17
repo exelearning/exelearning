@@ -31,6 +31,7 @@ import { PageExporter } from '../exporters/PageExporter';
 import { Scorm12Exporter } from '../exporters/Scorm12Exporter';
 import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
+import { ElpxExporter } from '../exporters/ElpxExporter';
 import { WebsitePreviewExporter } from '../exporters/WebsitePreviewExporter';
 import type { PreviewOptions, PreviewResult } from '../exporters/WebsitePreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
@@ -202,7 +203,7 @@ export function createExporter(
 
         case 'elpx':
         case 'elp':
-            throw new Error('ELPX export not yet implemented in shared code');
+            return new ElpxExporter(document, resources, assets, zip);
 
         case 'component':
         case 'block':
@@ -387,6 +388,7 @@ export {
     Scorm12Exporter,
     Scorm2004Exporter,
     ImsExporter,
+    ElpxExporter,
     WebsitePreviewExporter,
     ComponentExporter,
     // Renderers
@@ -429,6 +431,7 @@ if (typeof window !== 'undefined') {
         Scorm12Exporter,
         Scorm2004Exporter,
         ImsExporter,
+        ElpxExporter,
         WebsitePreviewExporter,
         ComponentExporter,
         // Renderers

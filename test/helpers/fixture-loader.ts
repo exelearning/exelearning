@@ -21,6 +21,12 @@ export interface FixtureInfo {
 
 // All available fixtures with their metadata
 export const FIXTURES: Record<string, Omit<FixtureInfo, 'path' | 'size'>> = {
+    'really-simple-test-project.elpx': {
+        name: 'really-simple-test-project.elpx',
+        category: 'small',
+        format: 'elpx',
+        isLegacy: false,
+    },
     'basic-example.elp': {
         name: 'basic-example.elp',
         category: 'small',

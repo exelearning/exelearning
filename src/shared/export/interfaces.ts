@@ -154,6 +154,12 @@ export interface ResourceProvider {
      * @returns Logo image as Uint8Array, or null if not found
      */
     fetchExeLogo(): Promise<Uint8Array | null>;
+
+    /**
+     * Fetch content CSS files (base.css, etc.)
+     * @returns Map of relative path -> content buffer
+     */
+    fetchContentCss(): Promise<Map<string, Uint8Array>>;
 }
 
 /**
@@ -223,6 +229,13 @@ export interface ZipArchive {
      * @param files - Map of path -> content
      */
     addFiles(files: Map<string, string | Uint8Array | Blob>): void;
+
+    /**
+     * Check if a file exists in the archive
+     * @param path - Path to check
+     * @returns True if file exists
+     */
+    hasFile(path: string): boolean;
 
     /**
      * Generate the ZIP archive

@@ -15,7 +15,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { ResourceProvider } from '../interfaces';
-import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants } from '../constants';
+import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
 
 /**
  * Resource file entry
@@ -58,8 +58,10 @@ export class FileSystemResourceProvider implements ResourceProvider {
      */
     async fetchIdeviceResources(ideviceType: string): Promise<Map<string, Buffer>> {
         // iDevices export files are in public/files/perm/idevices/base/{type}/export/
-        // Normalize type name (e.g., 'FreeTextIdevice' -> 'text')
-        const typeName = this.normalizeIdeviceType(ideviceType);
+        // First check for legacy iDevice name mapping
+        const mappedType = LEGACY_IDEVICE_MAPPING[ideviceType] || ideviceType;
+        // Then normalize type name (e.g., 'FreeTextIdevice' -> 'text')
+        const typeName = this.normalizeIdeviceType(mappedType);
         const idevicePath = path.join(this.publicDir, 'files', 'perm', 'idevices', 'base', typeName, 'export');
         if (await fs.pathExists(idevicePath)) {
             // No prefix - files go to idevices/{type}/ folder (prefix added by caller)
@@ -93,10 +95,16 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Bootstrap
             { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js' },
             { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css' },
+            // Bootstrap source maps (for debugging)
+            { src: 'libs/bootstrap/bootstrap.bundle.min.js.map', dest: 'bootstrap/bootstrap.bundle.min.js.map' },
+            { src: 'libs/bootstrap/bootstrap.min.css.map', dest: 'bootstrap/bootstrap.min.css.map' },
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
             { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
+            // exe_lightbox (always included - hardcoded in PageRenderer)
+            { src: 'app/common/exe_lightbox/exe_lightbox.js', dest: 'exe_lightbox/exe_lightbox.js' },
+            { src: 'app/common/exe_lightbox/exe_lightbox.css', dest: 'exe_lightbox/exe_lightbox.css' },
         ];
 
         for (const { src, dest } of libsMapping) {
@@ -119,18 +127,43 @@ export class FileSystemResourceProvider implements ResourceProvider {
     async fetchLibraryFiles(filePaths: string[]): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
 
-        // Mapping for files that are in app/common/ instead of libs/
+        // Mapping for specific files that are in app/common/ instead of libs/
         const commonFilesMapping: Record<string, string> = {
             'common_i18n.js': 'app/common/common_i18n.js',
             'common.js': 'app/common/common.js',
             'exe_export.js': 'app/common/exe_export.js',
         };
 
+        // Libraries that live in app/common/ instead of libs/
+        // These are exe_* libraries with their own subdirectories
+        const appCommonLibraries = new Set([
+            'exe_lightbox',
+            'exe_tooltips',
+            'exe_effects',
+            'exe_games',
+            'exe_media',
+            'exe_magnify',
+            'exe_highlighter',
+            'exe_slidesjs',
+            'exe_media_link',
+        ]);
+
         for (const filePath of filePaths) {
-            // Check if this is a common file that's in app/common/
-            const sourcePath = commonFilesMapping[filePath]
-                ? path.join(this.publicDir, commonFilesMapping[filePath])
-                : path.join(this.publicDir, 'libs', filePath);
+            let sourcePath: string;
+
+            // Check if this is a specific mapped file
+            if (commonFilesMapping[filePath]) {
+                sourcePath = path.join(this.publicDir, commonFilesMapping[filePath]);
+            } else {
+                // Check if this is an app/common library (exe_* libraries)
+                const firstPart = filePath.split('/')[0];
+                if (appCommonLibraries.has(firstPart)) {
+                    sourcePath = path.join(this.publicDir, 'app/common', filePath);
+                } else {
+                    // Default: libs/ folder
+                    sourcePath = path.join(this.publicDir, 'libs', filePath);
+                }
+            }
 
             if (await fs.pathExists(sourcePath)) {
                 const content = await fs.readFile(sourcePath);
