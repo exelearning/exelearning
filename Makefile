@@ -386,6 +386,76 @@ format-check: check-bun
 
 
 # =============================================================================
+# LEGACY SYSTEM (Core2 Duo / No Bun support)
+# =============================================================================
+# UNSUPPORTED legacy mode for developers whose systems cannot run Bun
+# (e.g., older CPUs like Core2 Duo that lack AVX instructions).
+#
+# LIMITATIONS:
+# - No WebSocket support (real-time collaboration disabled)
+# - Runs in offline/single-user mode (APP_ONLINE_MODE=0)
+# - Performance may be slower than Bun
+# - Not recommended for production use
+#
+# For full functionality, use "make up" with Bun.
+
+# Start Docker with Node.js (legacy mode)
+.PHONY: up-legacy
+up-legacy: check-docker check-env ## Start server with Node.js (for systems without Bun)
+	@echo ""
+	@echo "============================================================"
+	@echo "  LEGACY MODE (Node.js) - UNSUPPORTED"
+	@echo "============================================================"
+	@echo "  This mode is for developers whose systems cannot run Bun"
+	@echo "  (e.g., older CPUs like Core2 Duo without AVX support)."
+	@echo ""
+	@echo "  LIMITATIONS:"
+	@echo "  - No WebSocket support (real-time collaboration disabled)"
+	@echo "  - Runs in offline/single-user mode"
+	@echo "  - Performance may be slower than Bun"
+	@echo ""
+	@echo "  For full functionality, use 'make up' with Bun."
+	@echo "============================================================"
+	@echo ""
+	@docker compose -f docker-compose.legacy.yml up --build --remove-orphans
+
+# Start Docker with Node.js in background
+.PHONY: upd-legacy
+upd-legacy: check-docker check-env ## Start server with Node.js detached
+	@echo ""
+	@echo "[LEGACY MODE] Starting with Node.js (no WebSocket, offline mode)"
+	@echo ""
+	@docker compose -f docker-compose.legacy.yml up -d --build --remove-orphans
+
+# Stop legacy Docker
+.PHONY: down-legacy
+down-legacy: check-docker ## Stop legacy server
+	@docker compose -f docker-compose.legacy.yml down
+
+# Check Node.js is installed
+check-node:
+ifeq ($(SYSTEM_OS),windows)
+	@where node >NUL 2>&1 || (echo. & echo [ERROR] Node.js is not installed. & echo    Install it from: https://nodejs.org/ & echo. & exit 1)
+else
+	@command -v node >/dev/null 2>&1 || { \
+		echo ""; \
+		echo "[ERROR] Node.js is not installed."; \
+		echo "   Install it from: https://nodejs.org/"; \
+		echo ""; \
+		exit 1; \
+	}
+endif
+
+.PHONY: test-frontend-node
+test-frontend-node: check-node check-env ## Run frontend tests with Node.js (Vitest) - for systems without Bun
+	npm run test:frontend:node
+
+.PHONY: test-frontend-node-ci
+test-frontend-node-ci: check-node check-env ## Run frontend tests with Node.js + coverage (CI)
+	npm run test:frontend:node:ci
+
+
+# =============================================================================
 # TESTING
 # =============================================================================
 
@@ -608,6 +678,13 @@ help:
 	@echo "  make test-frontend   Run frontend tests"
 	@echo "  make test-watch      Run tests in watch mode"
 	@echo "  make test-e2e        Run Playwright E2E tests"
+	@echo ""
+	@echo "Legacy (Core2 Duo / No Bun):"
+	@echo "  make up-legacy              Start server with Node.js (Docker)"
+	@echo "  make upd-legacy             Start server with Node.js detached"
+	@echo "  make down-legacy            Stop legacy server"
+	@echo "  make test-frontend-node     Run frontend tests with Node.js"
+	@echo "  make test-frontend-node-ci  Run frontend tests with Node.js + coverage"
 	@echo ""
 	@echo "Linting:"
 	@echo "  make lint            Run ESLint on all files"
