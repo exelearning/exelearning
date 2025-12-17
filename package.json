@@ -36,6 +36,8 @@
     "test:frontend": "vitest run --config vitest.config.mts",
     "test:frontend:ci": "vitest run --config vitest.config.mts --coverage",
     "test:frontend:ui": "vitest --ui --config vitest.config.mts",
+    "test:frontend:node": "npx vitest run --config vitest.config.mts",
+    "test:frontend:node:ci": "npx vitest run --config vitest.config.mts --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "electron": "electron .",
