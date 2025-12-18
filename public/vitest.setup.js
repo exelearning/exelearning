@@ -10,13 +10,19 @@
 /* eslint-disable no-undef */
 
 import { vi, expect, afterEach, describe, it, beforeEach, beforeAll, afterAll } from 'vitest';
-import { readFileSync } from 'fs';
+import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 // Get directory path for loading local files (jQuery, etc.)
 const __vitest_setup_filename = fileURLToPath(import.meta.url);
 const __vitest_setup_dirname = dirname(__vitest_setup_filename);
+
+try {
+  mkdirSync('coverage/vitest/.tmp', { recursive: true });
+} catch {
+  // Coverage directory creation is best-effort; ignore failures when it already exists or cannot be created.
+}
 
 // ============================================================================
 // Bun:test Compatibility Layer

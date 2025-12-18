@@ -60,14 +60,16 @@ export default class Theme {
      * @param {Array} data
      */
     setConfigValues(data) {
-        for (let [key, value] of Object.entries(data)) {
-            let defaultValue = this.default[key] ? this.default[key] : null;
-            let v = value ? value : defaultValue;
-            if (this.isTranslatable(key)) {
+        this.configParams.forEach((key) => {
+            let value = data[key];
+            let defaultValue =
+                this.default[key] !== undefined ? this.default[key] : null;
+            let v = value !== undefined && value !== null ? value : defaultValue;
+            if (this.isTranslatable(key) && v) {
                 v = _(v, this.id);
             }
             this[key] = v;
-        }
+        });
     }
 
     /**

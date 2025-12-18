@@ -18,23 +18,31 @@ export default defineConfig({
     setupFiles: ['./public/vitest.setup.js'],
 
     // Only include frontend tests
-    include: [
-      'public/app/**/*.test.js',
-      'public/files/perm/idevices/base/**/*.test.js',
-      'public/libs/**/*.test.js',
-    ],
+    include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js'],
 
     // Exclude legacy code
-    exclude: ['**/node_modules/**', '**/symfony_legacy/**', '**/nestjs_legacy/**'],
+    exclude: [
+      '**/node_modules/**',
+      '**/symfony_legacy/**',
+      '**/nestjs_legacy/**',
+      'public/app/common/edicuatex/**',
+      'public/app/common/mermaid/**',
+      'public/app/common/mindmaps/**',
+      'public/app/common/fix_webm_duration/**',
+      'public/app/common/exe_tooltips/imagesloaded.pkg.min.js',
+      'public/app/common/exe_tooltips/jquery.qtip.min.js',
+      'public/app/common/exe_media/**',
+      'public/app/common/exe_math/**',
+      'public/app/common/exe_magnify/**',
+      'public/app/common/exe_lightbox/**',
+      'public/app/common/exe_highlighter/**',
+      'public/files/perm/**',
+    ],
 
     // Worker isolation - critical for memory management
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: false,
-        isolate: true,
-      },
-    },
+    singleFork: false,
+    isolate: true,
 
     // Limit concurrent tests to prevent memory explosion
     maxConcurrency: 4,
@@ -51,8 +59,7 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       reportsDirectory: './coverage/vitest',
       include: [
-        'public/app/**/*.js',
-        'public/files/perm/idevices/base/**/*.js',
+      'public/app/**/*.js',
       ],
       exclude: [
         '**/node_modules/**',
@@ -61,6 +68,18 @@ export default defineConfig({
         '**/libs/**',
         '**/*.min.js',
         '**/*.bundle.js',
+        'public/app/common/mermaid/**',
+        'public/app/common/mindmaps/**',
+        'public/app/common/fix_webm_duration/**',
+        'public/app/common/exe_tooltips/imagesloaded.pkg.min.js',
+        'public/app/common/exe_tooltips/jquery.qtip.min.js',
+        'public/app/common/exe_media/**',
+        'public/app/common/exe_math/**',
+        'public/app/common/exe_magnify/**',
+        'public/app/common/exe_lightbox/**',
+        'public/app/common/exe_highlighter/**',
+        'public/app/common/edicuatex/**',
+        'public/files/perm/**',
       ],
     },
   },
