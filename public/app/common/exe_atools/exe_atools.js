@@ -81,6 +81,14 @@ $exe.atools = {
     },
     init : function(){
         if (typeof(localStorage)=='undefined') return;
+        // Custom options
+        try {
+            // Those values might be changed in HEADER / FOOTER
+            this.options.modeToggler = $exe.options.atools.modeToggler;
+            this.options.translator = $exe.options.atools.translator;
+        } catch(e) {
+            
+        }
         // Custom strings
         var strs = $exe.options.atools.i18n;
         for (i in strs) {
@@ -474,11 +482,13 @@ $(function(){
         if(e.type === touchmove)
             elmnt = this[father];
 
-        // Calculate the new cursor position:
-        try{
+        // Calculate the new cursor position
+        try {
             elmnt[Xf] = e.clientX || e.targetTouches[0].clientX;
             elmnt[Yf] = e.clientY || e.targetTouches[0].clientY;
-        }catch(e){}
+        } catch(e){
+            
+        }
 
         elmnt[Xt] -= elmnt[Xi] - elmnt[Xf];
         elmnt[Yt] -= elmnt[Yi] - elmnt[Yf];
