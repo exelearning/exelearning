@@ -68,7 +68,7 @@ describe('ElpDocumentAdapter', () => {
             expect(metadata.license).toBe('CC-BY-SA');
             expect(metadata.keywords).toBe('test, export');
             expect(metadata.theme).toBe('base');
-            expect(metadata.version).toBe('4.0');
+            expect(metadata.exelearningVersion).toBe('4.0');
         });
 
         it('should use default values for missing metadata', () => {
