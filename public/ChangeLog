@@ -4,21 +4,21 @@
 
 ### Added
 
-- Complete iDevice: Apply custom font color to improve readability over semi-transparent backgrounds
-- GitHub Actions workflow updated for bumping the Homebrew cask.
-- Update the Mercure binary and configuration files used in the Docker image to a specific version (v0.21.2) 
-- Don't update automatically to -beta and -rc versions
-- Check if the .elpx is from a newer version and display a warning message if so
-- Unify MathJax (now 4.0) configuration in common.js and improve MathJax loads
-- Adapt all the iDevices to use the centralized hasLatex function
+- Unified MathJax configuration (now 4.0) in `common.js` and improved MathJax loading
+- Full LaTeX rendering support in page titles, iDevices, and project titles
+- Adapted all iDevices to use the centralized `hasLatex` function
+- Complete iDevice: apply custom font color to improve readability over semi-transparent backgrounds
+- Detect .elpx files created with newer versions and display a warning message
+- Prevent automatic updates to `-beta` and `-rc` versions
+- Updated Mercure binary and configuration files used in the Docker image to a fixed version (v0.21.2)
+- Updated GitHub Actions workflow for bumping the Homebrew cask
 
 ### Fixed
 
-- Accessibility Toolbar. You could not enable the translator
-- Add full LaTeX rendering support in page titles, iDevices and project title
-- TinyMCE image and media plugins bugs
-- TinyMCE alignment problems
-- Prevent the TinyMCE "exelink" plugin from removing videos and multimedia when creating links
+- Accessibility Toolbar: translator could not be enabled
+- TinyMCE alignment issues
+- TinyMCE image and media plugin bugs
+- Prevent TinyMCE `exelink` plugin from removing videos and multimedia when creating links
 
 ### Upgraded
 
@@ -26,7 +26,6 @@
 - chmodr: 1.2.0 → 2.0.0
 - doctrine/orm: 3.5.3 → 3.5.8
 - erseco/alpine-php-webserver: 3.22 → 3.23
-- keycloak/keycloak: 26.4.5 → 26.4.7 in /doc/deploy
 - liip/imagine-bundle: 2.15.0 → 2.16.0
 - mathjax/MathJax: 3.2.2 → 4.0
 - phpunit/phpunit: 12.4.1 → 12.5.4
