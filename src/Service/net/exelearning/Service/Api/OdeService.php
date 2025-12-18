@@ -1798,6 +1798,40 @@ class OdeService implements OdeServiceInterface
                     $value = (string) $odeResource->getValue();
                     $odeResponse[$key] = $value;
                 }
+
+                // Check if file was created with a newer version of eXeLearning
+                // Look for pp_exelearning_version in odeProperties (new files have this property)
+                $fileVersion = null;
+                $hasPpExelearningVersion = false;
+                foreach ($odeResponse['odeProperties'] as $property) {
+                    if ('pp_exelearning_version' === (string) $property->getKey()) {
+                        $hasPpExelearningVersion = true;
+                        $fileVersion = (string) $property->getValue();
+                        break;
+                    }
+                }
+
+                $hasOdeContentDtd = file_exists($odeSessionDistDirPath.'ode-content.dtd');
+
+                // Show warning if:
+                // 1. File has ode-content.dtd (indicates newer format), OR
+                // 2. File has pp_exelearning_version property (old files don't have it)
+                if ($hasOdeContentDtd || $hasPpExelearningVersion) {
+                    $odeResponse['newerVersionWarning'] = $this->translator->trans(
+                        'This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.'
+                    );
+                    $this->logger->info(
+                        'File created with newer version detected',
+                        [
+                            'fileVersion' => $fileVersion,
+                            'currentVersion' => Constants::APP_VERSION,
+                            'hasOdeContentDtd' => $hasOdeContentDtd,
+                            'hasPpExelearningVersion' => $hasPpExelearningVersion,
+                            'file:' => $this,
+                            'line' => __LINE__,
+                        ]
+                    );
+                }
             }
 
             // If is a local file generate a new ode id
@@ -3283,5 +3317,80 @@ class OdeService implements OdeServiceInterface
         }
 
         return $propertiesData;
+    }
+
+    /**
+     * Compares two version strings to determine if the file version is newer.
+     *
+     * @param string $fileVersion    The version from the opened file (e.g., 'v1.2.3-alpha')
+     * @param string $currentVersion The current application version
+     *
+     * @return bool True if the file version is newer than the current version
+     */
+    private function isNewerVersion(string $fileVersion, string $currentVersion): bool
+    {
+        // Normalize versions by removing 'v' prefix and extracting numeric parts
+        $normalizeVersion = function (string $version): array {
+            // Remove 'v' prefix if present
+            $version = ltrim($version, 'vV');
+
+            // Split by '-' to separate version from suffix (alpha, beta, etc.)
+            $parts = explode('-', $version, 2);
+            $numericPart = $parts[0];
+            $suffix = $parts[1] ?? '';
+
+            // Split numeric part by '.'
+            $numbers = array_map('intval', explode('.', $numericPart));
+
+            // Ensure we have at least 3 parts (major, minor, patch)
+            while (count($numbers) < 3) {
+                $numbers[] = 0;
+            }
+
+            return [
+                'numbers' => $numbers,
+                'suffix' => $suffix,
+            ];
+        };
+
+        $file = $normalizeVersion($fileVersion);
+        $current = $normalizeVersion($currentVersion);
+
+        // Compare numeric parts
+        $maxParts = max(count($file['numbers']), count($current['numbers']));
+        for ($i = 0; $i < $maxParts; ++$i) {
+            $filePart = $file['numbers'][$i] ?? 0;
+            $currentPart = $current['numbers'][$i] ?? 0;
+
+            if ($filePart > $currentPart) {
+                return true;
+            }
+            if ($filePart < $currentPart) {
+                return false;
+            }
+        }
+
+        // If numeric parts are equal, compare suffixes
+        // No suffix > suffix (e.g., '1.0.0' > '1.0.0-alpha')
+        // Among suffixes: release > rc > beta > alpha
+        $getSuffixWeight = function (string $suffix): int {
+            if ('' === $suffix) {
+                return 100; // No suffix is highest (release)
+            }
+            $suffix = strtolower($suffix);
+            if (str_starts_with($suffix, 'alpha')) {
+                return 10;
+            }
+            if (str_starts_with($suffix, 'beta')) {
+                return 20;
+            }
+            if (str_starts_with($suffix, 'rc')) {
+                return 30;
+            }
+
+            return 50; // Unknown suffix
+        };
+
+        return $getSuffixWeight($file['suffix']) > $getSuffixWeight($current['suffix']);
     }
 }

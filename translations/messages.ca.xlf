@@ -13057,6 +13057,10 @@
         <source>Need help? Visit %s</source>
         <target>~Necessites ajuda? Visita %s</target>
       </trans-unit>
+      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
+        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
+        <target>~Aquest fitxer ha estat creat amb una versió més recent d'eXeLearning. Algunes funcions podrien no funcionar correctament. Si us plau, actualitza l'aplicació.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

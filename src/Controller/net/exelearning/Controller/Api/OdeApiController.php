@@ -1034,6 +1034,11 @@ class OdeApiController extends DefaultApiController
             $responseData['authorized'] = false;
         }
 
+        // Pass newer version warning to frontend if present
+        if (!empty($odeValues['newerVersionWarning'])) {
+            $responseData['newerVersionWarning'] = $odeValues['newerVersionWarning'];
+        }
+
         return $this->json($responseData, $this->status);
     }
 

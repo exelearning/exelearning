@@ -13061,6 +13061,10 @@
         <source>Need help? Visit %s</source>
         <target>~Ai nevoie de ajutor? Vizitează %s</target>
       </trans-unit>
+      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
+        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
+        <target>~Acest fișier a fost creat cu o versiune mai nouă de eXeLearning. Unele funcții pot să nu funcționeze corect. Vă rugăm să actualizați aplicația.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

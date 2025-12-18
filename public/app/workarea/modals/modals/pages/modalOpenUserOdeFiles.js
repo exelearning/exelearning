@@ -1037,6 +1037,17 @@ export default class modalOpenUserOdeFiles extends Modal {
                 await eXeLearning.app.project.openLoad();
                 this.loadOdeTheme(response);
                 clearPreUploadedData();
+
+                // Show warning if file was created with a newer version
+                if (response.newerVersionWarning) {
+                    setTimeout(() => {
+                        eXeLearning.app.modals.alert.show({
+                            title: _('Warning'),
+                            body: response.newerVersionWarning,
+                            contentId: 'warning',
+                        });
+                    }, 500);
+                }
             } else {
                 eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
                     false,
