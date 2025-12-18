@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## v3.0.2 – 2025-12-22
+
+### Added
+
+- Complete iDevice: Apply custom font color to improve readability over semi-transparent backgrounds
+- GitHub Actions workflow updated for bumping the Homebrew cask.
+- Update the Mercure binary and configuration files used in the Docker image to a specific version (v0.21.2) 
+- Don't update automatically to -beta and -rc versions
+- Check if the .elpx is from a newer version and display a warning message if so
+- Unify MathJax (now 4.0) configuration in common.js and improve MathJax loads
+- Adapt all the iDevices to use the centralized hasLatex function
+
+### Fixed
+
+- Accessibility Toolbar. You could not enable the translator
+- Add full LaTeX rendering support in page titles, iDevices and project title
+- TinyMCE image and media plugins bugs
+- TinyMCE alignment problems
+- Prevent the TinyMCE "exelink" plugin from removing videos and multimedia when creating links
+
+### Upgraded
+
+- api-platform/core: 4.2.6 → 4.2.9
+- chmodr: 1.2.0 → 2.0.0
+- doctrine/orm: 3.5.3 → 3.5.8
+- erseco/alpine-php-webserver: 3.22 → 3.23
+- keycloak/keycloak: 26.4.5 → 26.4.7 in /doc/deploy
+- liip/imagine-bundle: 2.15.0 → 2.16.0
+- mathjax/MathJax: 3.2.2 → 4.0
+- phpunit/phpunit: 12.4.1 → 12.5.4
+- symfony/asset: 7.3.0 → 8.0.0
+- symfony/phpunit-bridge: 7.3.4 → 8.0.0
+
+---
+
 ## v3.0.1 – 2025-12-02
 
 ### Added
