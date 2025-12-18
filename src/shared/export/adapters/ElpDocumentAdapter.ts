@@ -282,4 +282,31 @@ export class ElpDocumentAdapter implements ExportDocument {
 
         return htmlParts.join('\n');
     }
+
+    /**
+     * Get content.xml content for inclusion in export packages
+     * This allows packages to be re-edited in eXeLearning
+     * @returns content.xml as string, or null if not available
+     */
+    async getContentXml(): Promise<string | null> {
+        if (!this.extractedPath) {
+            return null;
+        }
+
+        // Try to read content.xml from the extracted path
+        const contentXmlPath = path.join(this.extractedPath, 'content.xml');
+        const contentV3XmlPath = path.join(this.extractedPath, 'contentv3.xml');
+
+        try {
+            if (existsSync(contentXmlPath)) {
+                return await fs.readFile(contentXmlPath, 'utf-8');
+            } else if (existsSync(contentV3XmlPath)) {
+                return await fs.readFile(contentV3XmlPath, 'utf-8');
+            }
+        } catch {
+            // Could not read content.xml
+        }
+
+        return null;
+    }
 }

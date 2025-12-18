@@ -44,7 +44,8 @@ var $exeDevice = {
     },
 
     getId: function () {
-        return Math.round(new Date().getTime() + Math.random() * 100);
+        this._idSequence = (this._idSequence || 0) + 1;
+        return Date.now() * 10000 + (this._idSequence % 10000);
     },
 
     refreshTranslations: function () {

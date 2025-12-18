@@ -160,6 +160,20 @@ export interface ResourceProvider {
      * @returns Map of relative path -> content buffer
      */
     fetchContentCss(): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Fetch SCORM API wrapper files (SCORM_API_wrapper.js, SCOFunctions.js)
+     * @param version - SCORM version: '1.2' or '2004'
+     * @returns Map of relative path -> content buffer
+     */
+    fetchScormFiles(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Fetch SCORM schema XSD files for validation
+     * @param version - SCORM version: '1.2' or '2004'
+     * @returns Map of relative path -> content buffer
+     */
+    fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
 }
 
 /**
