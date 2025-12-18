@@ -323,6 +323,8 @@ export default class ModalShare extends Modal {
     renderVisibilitySection() {
         if (!this.projectData || !this.visibilitySelect) return;
 
+        this.updateVisibilityOptionLabels();
+
         // Set current visibility
         this.visibilitySelect.value = this.projectData.visibility || 'public';
 
@@ -331,6 +333,23 @@ export default class ModalShare extends Modal {
 
         // Show/hide help text
         this.updateVisibilityHelp(this.projectData.visibility);
+    }
+
+    /**
+     * Ensure visibility option labels include icons and no public/private suffix.
+     */
+    updateVisibilityOptionLabels() {
+        if (!this.visibilitySelect) return;
+
+        const privateOption = this.visibilitySelect.querySelector(
+            'option[value="private"]'
+        );
+        const publicOption = this.visibilitySelect.querySelector(
+            'option[value="public"]'
+        );
+
+        if (privateOption) privateOption.textContent = '🔒 Restricted (Private)';
+        if (publicOption) publicOption.textContent = '🌐 Anyone with the link (Public)';
     }
 
     /**
