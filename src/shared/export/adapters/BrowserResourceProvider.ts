@@ -77,11 +77,23 @@ export class BrowserResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch SCORM-specific files
+     * Fetch SCORM API wrapper files
+     * @param version - SCORM version: '1.2' or '2004' (files are the same for both)
      * @returns Map of path -> content
      */
-    async fetchScormFiles(): Promise<Map<string, Uint8Array>> {
+    async fetchScormFiles(_version: '1.2' | '2004' = '1.2'): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchScormFiles();
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
+    }
+
+    /**
+     * Fetch SCORM schema XSD files
+     * @param version - SCORM version: '1.2' or '2004'
+     * @returns Map of path -> content
+     */
+    async fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>> {
+        const format = version === '1.2' ? 'scorm12' : 'scorm2004';
+        const blobMap = await this.fetcher.fetchSchemas(format);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
