@@ -41,7 +41,14 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
     buildFilename() {
       const meta = this.manager.getMetadata();
       const title = meta.get('title') || 'export';
-      const sanitized = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 50);
+      // Normalize: lowercase, remove accents, keep only alphanumeric/space/hyphen, spaces to hyphens
+      const sanitized = title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .substring(0, 50);
       return `${sanitized}.elpx`;
     }
 
@@ -121,9 +128,12 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
         pp_description: metadata.get('description') || '',
         pp_license: metadata.get('license') || '',
         pp_createdAt: metadata.get('createdAt') || new Date().toISOString(),
+        pp_exelearning_version: metadata.get('exelearning_version') || '',
       };
       for (const [key, value] of Object.entries(props)) {
-        xml += `  <${key}>${this.escapeXml(value)}</${key}>\n`;
+        if (value) {
+          xml += `  <${key}>${this.escapeXml(value)}</${key}>\n`;
+        }
       }
       xml += '</odeProperties>\n';
       return xml;

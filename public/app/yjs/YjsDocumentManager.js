@@ -866,6 +866,26 @@ class YjsDocumentManager {
   }
 
   /**
+   * Update exelearning_version in metadata before saving
+   * Fetches the current app version from the server and stores it in metadata
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _updateVersionMetadata() {
+    try {
+      const response = await fetch(`${this.config.apiUrl}/version`);
+      if (response.ok) {
+        const { version } = await response.json();
+        const metadata = this.getMetadata();
+        metadata.set('exelearning_version', version);
+      }
+    } catch (error) {
+      console.warn('[YjsDocumentManager] Could not fetch app version:', error);
+      // Continue without setting version - non-critical
+    }
+  }
+
+  /**
    * Get locks map
    * @returns {Y.Map}
    */
@@ -1127,6 +1147,9 @@ class YjsDocumentManager {
     }
 
     try {
+      // Store exelearning_version in metadata before saving
+      await this._updateVersionMetadata();
+
       const state = this.Y.encodeStateAsUpdate(this.ydoc);
 
       const headers = {

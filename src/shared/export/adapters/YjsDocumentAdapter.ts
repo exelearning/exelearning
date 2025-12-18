@@ -69,8 +69,8 @@ export class YjsDocumentAdapter implements ExportDocument {
             license: (meta.get('license') as string) || '',
             keywords: (meta.get('keywords') as string) || '',
             theme: (meta.get('theme') as string) || 'base',
-            version: (meta.get('version') as string) || '4.0',
-            created: (meta.get('createdAt') as string) || new Date().toISOString(),
+            exelearningVersion: (meta.get('exelearning_version') as string) || undefined,
+            createdAt: (meta.get('createdAt') as string) || new Date().toISOString(),
             modified: (meta.get('modifiedAt') as string) || new Date().toISOString(),
             // Custom styles support
             customStyles: (meta.get('customStyles') as string) || undefined,
