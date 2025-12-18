@@ -63,6 +63,7 @@ export {
     findAssetsByHashes,
     findAllAssetsForProject,
     getProjectStorageSize,
+    getUserStorageUsage,
     createAsset,
     createAssets,
     updateAsset,

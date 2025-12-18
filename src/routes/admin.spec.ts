@@ -60,6 +60,7 @@ const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries 
         totalProjects: 5,
         activeProjects: 3,
     }),
+    getUserStorageUsage: async () => 0,
     ...overrides,
 });
 

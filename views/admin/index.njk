@@ -725,6 +725,50 @@
             color: var(--admin-primary);
             border-bottom-color: var(--admin-primary);
         }
+
+        /* Storage quota progress bar */
+        .quota-container {
+            min-width: 180px;
+        }
+
+        .quota-text {
+            font-size: 0.75rem;
+            color: var(--admin-text-muted);
+            margin-bottom: 0.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quota-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--gray-200, #e5e7eb);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .quota-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--admin-primary) 0%, var(--admin-primary-dark) 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .quota-fill.warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .quota-fill.danger {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .quota-unlimited {
+            font-size: 0.75rem;
+            color: var(--admin-text-muted);
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -1259,7 +1303,36 @@
                     const statusCls = user.is_active ? 'badge-active' : 'badge-inactive';
                     const statusText = user.is_active ? T.active : T.inactive;
                     const isChecked = selectedUserIds.has(user.id) ? 'checked' : '';
-                    const quotaDisplay = user.quota_mb != null ? user.quota_mb : '-';
+
+                    // Build quota display with progress bar
+                    let quotaHTML = '';
+                    if (user.quota_mb == null) {
+                        quotaHTML = '<span class="quota-unlimited">Unlimited</span>';
+                    } else {
+                        const usedMB = user.storage_used_mb || 0;
+                        const quotaMB = user.quota_mb;
+                        const percentage = quotaMB > 0 ? Math.min(Math.round((usedMB / quotaMB) * 100), 100) : 0;
+
+                        // Determine color class based on usage
+                        let fillClass = '';
+                        if (percentage >= 90) {
+                            fillClass = 'danger';
+                        } else if (percentage >= 75) {
+                            fillClass = 'warning';
+                        }
+
+                        quotaHTML = `
+                            <div class="quota-container">
+                                <div class="quota-text">
+                                    <span style="font-weight: 500;">${usedMB} / ${quotaMB} MB</span>
+                                    <span>${percentage}%</span>
+                                </div>
+                                <div class="quota-bar">
+                                    <div class="quota-fill ${fillClass}" style="width: ${percentage}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }
 
                     const tr = document.createElement('tr');
                     tr.dataset.userId = user.id;
@@ -1275,7 +1348,7 @@
                             </div>
                         </td>
                         <td>${roles}</td>
-                        <td style="font-weight: 500;">${quotaDisplay}</td>
+                        <td>${quotaHTML}</td>
                         <td><span class="badge-role ${statusCls}">${statusText}</span></td>
                         <td>
                             <button class="btn-admin-outline" onclick="editUser(${user.id})" title="Edit">

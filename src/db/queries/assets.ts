@@ -152,6 +152,21 @@ export async function getProjectStorageSize(db: Kysely<Database>, projectId: num
     return parseInt(result?.total_size || '0', 10);
 }
 
+/**
+ * Get total storage usage for a user (sum of all their projects' assets)
+ * Returns size in bytes
+ */
+export async function getUserStorageUsage(db: Kysely<Database>, userId: number): Promise<number> {
+    const result = await db
+        .selectFrom('assets')
+        .innerJoin('projects', 'assets.project_id', 'projects.id')
+        .select(sql<string>`SUM(CAST(assets.file_size AS INTEGER))`.as('total_size'))
+        .where('projects.owner_id', '=', userId)
+        .executeTakeFirst();
+
+    return parseInt(result?.total_size || '0', 10);
+}
+
 // ============================================================================
 // WRITE QUERIES
 // ============================================================================

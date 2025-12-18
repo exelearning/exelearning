@@ -26,6 +26,7 @@ import {
     updateUserQuota as updateUserQuotaDefault,
     getSystemStats as getSystemStatsDefault,
 } from '../db/queries/admin';
+import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 
 // ============================================================================
@@ -46,6 +47,7 @@ export interface AdminQueries {
     updateUserQuota: typeof updateUserQuotaDefault;
     deleteUser: typeof deleteUserDefault;
     getSystemStats: typeof getSystemStatsDefault;
+    getUserStorageUsage: typeof getUserStorageUsageDefault;
 }
 
 /**
@@ -73,6 +75,7 @@ const defaultDependencies: AdminDependencies = {
         updateUserQuota: updateUserQuotaDefault,
         deleteUser: deleteUserDefault,
         getSystemStats: getSystemStatsDefault,
+        getUserStorageUsage: getUserStorageUsageDefault,
     },
 };
 
@@ -209,8 +212,20 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     sortOrder,
                 });
 
+                // Calculate storage usage for each user
+                const usersWithStorage = await Promise.all(
+                    users.map(async user => {
+                        const storageBytes = await queries.getUserStorageUsage(db, user.id);
+                        const storageMB = Math.round(storageBytes / (1024 * 1024));
+                        return {
+                            ...sanitizeUser(user),
+                            storage_used_mb: storageMB,
+                        };
+                    }),
+                );
+
                 return {
-                    users: users.map(sanitizeUser),
+                    users: usersWithStorage,
                     total,
                     limit,
                     offset,
