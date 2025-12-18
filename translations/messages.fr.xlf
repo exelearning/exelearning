@@ -13059,7 +13059,11 @@
       </trans-unit>
       <trans-unit id="uk.Vvql" resname="Need help? Visit %s">
         <source>Need help? Visit %s</source>
-        <target>~Besoin d’aide? Visitez %s</target>
+        <target>~Besoin d'aide? Visitez %s</target>
+      </trans-unit>
+      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
+        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
+        <target>~Ce fichier a été créé avec une version plus récente d'eXeLearning. Certaines fonctionnalités peuvent ne pas fonctionner correctement. Veuillez mettre à jour l'application.</target>
       </trans-unit>
     </body>
   </file>
