@@ -751,6 +751,7 @@ describe('NavbarUtilities', () => {
             });
 
             it('should fall back to server-side preview when panel not available', async () => {
+                vi.useFakeTimers();
                 eXeLearning.app.interface = null;
                 eXeLearning.app.project._yjsEnabled = false;
                 eXeLearning.app.api.getOdePreviewUrl.mockResolvedValue({
@@ -762,9 +763,14 @@ describe('NavbarUtilities', () => {
 
                 expect(eXeLearning.app.toasts.createToast).toHaveBeenCalled();
                 expect(eXeLearning.app.api.getOdePreviewUrl).toHaveBeenCalledWith('test-session-123');
+
+                // Advance timers to complete pending setTimeout callbacks
+                await vi.runAllTimersAsync();
+                vi.useRealTimers();
             });
 
             it('should show error on server preview failure', async () => {
+                vi.useFakeTimers();
                 eXeLearning.app.interface = null;
                 eXeLearning.app.project._yjsEnabled = false;
                 eXeLearning.app.api.getOdePreviewUrl.mockResolvedValue({
@@ -774,6 +780,10 @@ describe('NavbarUtilities', () => {
                 await navbarUtilities.previewEvent();
 
                 expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+
+                // Advance timers to complete pending setTimeout callbacks
+                await vi.runAllTimersAsync();
+                vi.useRealTimers();
             });
         });
 
