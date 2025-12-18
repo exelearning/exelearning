@@ -509,11 +509,11 @@ const YjsProjectManagerMixin = {
 
     /**
      * Export project to .elpx file via Yjs
-     * @param {string} filename - Output filename
+     * Filename is auto-generated from project title (sanitized: lowercase, no accents, no special chars)
      */
-    projectManager.exportToElpxViaYjs = async function (filename) {
+    projectManager.exportToElpxViaYjs = async function () {
       if (this._yjsEnabled && this._yjsBridge) {
-        await this._yjsBridge.exportToElpx(filename);
+        await this._yjsBridge.exportToElpx();
       }
     };
 

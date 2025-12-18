@@ -194,12 +194,14 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Sanitize string for use as filename
+     * Sanitize string for use as filename (with accent normalization)
      */
     sanitizeFilename(str: string | null | undefined, maxLength = 50): string {
         if (!str) return 'export';
         return str
             .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove accents
             .replace(/[^a-z0-9\s-]/g, '')
             .replace(/\s+/g, '-')
             .substring(0, maxLength);

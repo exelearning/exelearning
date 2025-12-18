@@ -15,6 +15,7 @@ import {
     detectLocaleFromHeader,
     translateObject,
 } from '../services/translation';
+import { getAppVersion } from '../utils/version';
 
 /**
  * Available licenses for content
@@ -830,4 +831,9 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
             odeProjectSyncPropertiesConfig: translateObject(ODE_PROJECT_SYNC_PROPERTIES_CONFIG, locale),
             odeProjectSyncCataloguingConfig: translateObject(ODE_PROJECT_SYNC_CATALOGUING_CONFIG, locale),
         };
+    })
+
+    // GET /api/version - Get application version
+    .get('/api/version', () => {
+        return { version: getAppVersion() };
     });

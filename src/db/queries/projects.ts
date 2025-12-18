@@ -362,6 +362,22 @@ export async function markProjectAsSaved(db: Kysely<Database>, projectId: number
         .execute();
 }
 
+/**
+ * Update project title and mark as saved in a single operation
+ * Used when saving Yjs document to sync title from metadata to database
+ */
+export async function updateProjectTitleAndSave(db: Kysely<Database>, projectId: number, title: string): Promise<void> {
+    await db
+        .updateTable('projects')
+        .set({
+            title,
+            saved_once: 1,
+            updated_at: now(),
+        })
+        .where('id', '=', projectId)
+        .execute();
+}
+
 export async function updateLastAccessed(db: Kysely<Database>, projectId: number): Promise<void> {
     await db
         .updateTable('projects')

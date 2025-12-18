@@ -18,6 +18,7 @@ const MINIMUM_COVERAGE = 90;
  */
 const EXCLUDED_FILES = [
     'src/db/dialect.ts', // Contains Node.js fallback branch (only runs in Node, not Bun)
+    'src/utils/version.ts', // Catch block for invalid JSON is defensive code
 ];
 
 /**

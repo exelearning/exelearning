@@ -409,6 +409,7 @@ export class ElpxExporter extends Html5Exporter {
             pp_category: meta.category,
             pp_addAccessibilityToolbar: meta.addAccessibilityToolbar,
             pp_customStyles: meta.customStyles,
+            pp_exelearning_version: meta.exelearningVersion,
         };
 
         for (const [key, value] of Object.entries(properties)) {
