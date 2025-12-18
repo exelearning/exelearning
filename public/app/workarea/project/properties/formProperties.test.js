@@ -350,16 +350,16 @@ describe('FormProperties', () => {
             expect(formContent.querySelector('.exe-table-content')).not.toBe(null);
         });
 
-        it('should remove loading class after timeout', (done) => {
+        it('should remove loading class after timeout', async () => {
             const formProperties = new FormProperties(mockProperties);
             const properties = { titleNode: mockProperties.properties.titleNode };
 
             const element = formProperties.makeBodyElement(properties);
 
-            setTimeout(() => {
-                expect(element.classList.contains('loading')).toBe(false);
-                done();
-            }, 150);
+            await new Promise((resolve) => {
+                setTimeout(resolve, 150);
+            });
+            expect(element.classList.contains('loading')).toBe(false);
         });
     });
 
