@@ -117,8 +117,8 @@ class ElpxImporter {
     // Check if it's Python pickle format (legacy .elp with contentv3.xml)
     const rootElement = xmlDoc.documentElement?.tagName;
     if (rootElement === 'instance' || rootElement === 'dictionary') {
-      Logger.log('[ElpxImporter] Legacy Python pickle format detected, converting via backend...');
-      return await this.importLegacyViaBackend(file, { clearExisting, parentId });
+      Logger.log('[ElpxImporter] Legacy Python pickle format detected, importing legacy format...');
+      return await this.importLegacyFormat(file, { clearExisting, parentId });
     }
 
     // Extract and import structure
@@ -1178,12 +1178,20 @@ class ElpxImporter {
   }
 
   /**
-   * Import a legacy .elp file (Python pickle format) using client-side parser
-   * @param {File} file - The legacy .elp file
+   * Import a legacy .elp file (pre-v3.0 eXeLearning, Python pickle format).
+   *
+   * This method handles .elp files with contentv3.xml containing XML in Python pickle format
+   * (root element is 'instance' or 'dictionary'). Despite the previous name "ViaBackend",
+   * this is entirely client-side using LegacyXmlParser.js.
+   *
+   * @param {File} file - The legacy .elp file to import
    * @param {Object} options - Import options
-   * @returns {Promise<Object>} Import statistics
+   * @param {boolean} [options.clearExisting=true] - Whether to clear existing content
+   * @param {string|null} [options.parentId=null] - Parent page ID for nested import
+   * @param {Function|null} [options.onProgress=null] - Progress callback
+   * @returns {Promise<Object>} Import statistics { pages, blocks, components, assets }
    */
-  async importLegacyViaBackend(file, options = {}) {
+  async importLegacyFormat(file, options = {}) {
     const { clearExisting = true, parentId = null, onProgress = null } = options;
 
     // Store progress callback if provided

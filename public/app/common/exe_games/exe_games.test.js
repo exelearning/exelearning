@@ -1,104 +1,101 @@
-import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Mock jQuery BEFORE requiring the module
+const mockElement = {
+  length: 0,
+  each: vi.fn(),
+  hasClass: vi.fn().mockReturnValue(false),
+  addClass: vi.fn().mockReturnThis(),
+  removeClass: vi.fn().mockReturnThis(),
+  html: vi.fn().mockReturnValue(''),
+  val: vi.fn().mockReturnValue(''),
+  hide: vi.fn().mockReturnThis(),
+  show: vi.fn().mockReturnThis(),
+  css: vi.fn().mockReturnThis(),
+  append: vi.fn().mockReturnThis(),
+  prepend: vi.fn().mockReturnThis(),
+  remove: vi.fn().mockReturnThis(),
+  eq: vi.fn().mockReturnThis(),
+  height: vi.fn().mockReturnValue(100),
+  attr: vi.fn().mockReturnThis(),
+  text: vi.fn().mockReturnValue(''),
+};
+
+const mockJQuery = vi.fn((selector) => {
+  if (typeof selector === 'function') {
+    // $(function() {...}) - document ready handler - DON'T call it automatically
+    return mockElement;
+  }
+  return mockElement;
+});
+mockJQuery.ajax = vi.fn().mockReturnValue({
+  then: vi.fn().mockReturnThis(),
+  done: vi.fn().mockReturnThis(),
+  fail: vi.fn().mockReturnThis(),
+});
+
+globalThis.$ = mockJQuery;
+
+// Mock $exe_i18n
+globalThis.$exe_i18n = {
+  exeGames: {
+    hangManGame: 'Hangman Game',
+    yes: 'Yes',
+    no: 'No',
+    accept: 'Accept',
+    az: 'abcdefghijklmnopqrstuvwxyz',
+    play: 'Play',
+    playAgain: 'Play Again',
+    otherWord: 'Other Word',
+    selectedLetters: 'Selected Letters',
+    stat: 'Status',
+    word: 'Word',
+    results: 'Results',
+    total: 'Total',
+    right: 'Right',
+    wrong: 'Wrong',
+    words: 'Words',
+    gameOver: 'Game Over',
+    confirmReload: 'Confirm reload?',
+    clickOnPlay: 'Click on Play',
+    clickOnOtherWord: 'Click on Other Word',
+    rightAnswer: 'Right answer',
+  },
+};
+
+// Mock $exe
+globalThis.$exe = {
+  isIE: vi.fn().mockReturnValue(false),
+};
+
+// Now require the module
+const { $exeGames, hangMan } = require('./exe_games.js');
+
+// Also assign to globalThis for tests that expect them there
+globalThis.$exeGames = $exeGames;
+globalThis.hangMan = hangMan;
 
 describe('exe_games.js', () => {
-  let scriptContent;
   let originalGetElementById;
-
-  beforeAll(() => {
-    const scriptPath = join(__dirname, 'exe_games.js');
-    scriptContent = readFileSync(scriptPath, 'utf-8');
-  });
 
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Reset $ mock to return mockElement (important for test isolation)
+    mockJQuery.mockImplementation((selector) => {
+      if (typeof selector === 'function') {
+        return mockElement;
+      }
+      return mockElement;
+    });
+
     // Save original getElementById
     originalGetElementById = document.getElementById;
-
-    // Mock jQuery
-    const createMockJQuery = () => {
-      const mockElement = {
-        length: 0,
-        each: vi.fn(),
-        hasClass: vi.fn().mockReturnValue(false),
-        addClass: vi.fn().mockReturnThis(),
-        removeClass: vi.fn().mockReturnThis(),
-        html: vi.fn().mockReturnValue(''),
-        val: vi.fn().mockReturnValue(''),
-        hide: vi.fn().mockReturnThis(),
-        show: vi.fn().mockReturnThis(),
-        css: vi.fn().mockReturnThis(),
-        append: vi.fn().mockReturnThis(),
-        prepend: vi.fn().mockReturnThis(),
-        remove: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        height: vi.fn().mockReturnValue(100),
-        attr: vi.fn().mockReturnThis(),
-        text: vi.fn().mockReturnValue(''),
-      };
-
-      const mockJQuery = vi.fn((selector) => {
-        if (typeof selector === 'function') {
-          // $(function() {...}) - document ready handler - DON'T call it automatically
-          return mockElement;
-        }
-        return mockElement;
-      });
-      mockJQuery.ajax = vi.fn().mockReturnValue({
-        then: vi.fn().mockReturnThis(),
-        done: vi.fn().mockReturnThis(),
-        fail: vi.fn().mockReturnThis(),
-      });
-      return mockJQuery;
-    };
-
-    globalThis.$ = createMockJQuery();
-
-    // Mock $exe_i18n
-    globalThis.$exe_i18n = {
-      exeGames: {
-        hangManGame: 'Hangman Game',
-        yes: 'Yes',
-        no: 'No',
-        accept: 'Accept',
-        az: 'abcdefghijklmnopqrstuvwxyz',
-        play: 'Play',
-        playAgain: 'Play Again',
-        otherWord: 'Other Word',
-        selectedLetters: 'Selected Letters',
-        stat: 'Status',
-        word: 'Word',
-        results: 'Results',
-        total: 'Total',
-        right: 'Right',
-        wrong: 'Wrong',
-        words: 'Words',
-        gameOver: 'Game Over',
-        confirmReload: 'Confirm reload?',
-        clickOnPlay: 'Click on Play',
-        clickOnOtherWord: 'Click on Other Word',
-        rightAnswer: 'Right answer',
-      },
-    };
-
-    // Mock $exe
-    globalThis.$exe = {
-      isIE: vi.fn().mockReturnValue(false),
-    };
 
     // Mock eXeLearning as undefined (since script checks for it)
     if (typeof globalThis.eXeLearning !== 'undefined') {
       delete globalThis.eXeLearning;
     }
-
-    // Execute the script
-    (0, eval)(scriptContent);
   });
 
   afterEach(() => {
@@ -109,13 +106,13 @@ describe('exe_games.js', () => {
 
   describe('script structure', () => {
     it('should define $exeGames object', () => {
-      expect(globalThis.$exeGames).toBeDefined();
-      expect(typeof globalThis.$exeGames).toBe('object');
+      expect($exeGames).toBeDefined();
+      expect(typeof $exeGames).toBe('object');
     });
 
     it('should define hangMan object', () => {
-      expect(globalThis.hangMan).toBeDefined();
-      expect(typeof globalThis.hangMan).toBe('object');
+      expect(hangMan).toBeDefined();
+      expect(typeof hangMan).toBe('object');
     });
 
     it('should have init method on $exeGames', () => {

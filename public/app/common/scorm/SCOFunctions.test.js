@@ -1,29 +1,36 @@
-import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+
+// Load SCORM_API_wrapper first (defines pipwerks)
+const pipwerks = require('./SCORM_API_wrapper.js');
+globalThis.pipwerks = pipwerks;
+
+// Then load SCOFunctions (depends on pipwerks)
+const scoFunctions = require('./SCOFunctions.js');
+globalThis.loadPage = scoFunctions.loadPage;
+globalThis.startTimer = scoFunctions.startTimer;
+globalThis.computeTime = scoFunctions.computeTime;
+globalThis.doBack = scoFunctions.doBack;
+globalThis.doContinue = scoFunctions.doContinue;
+globalThis.doQuit = scoFunctions.doQuit;
+globalThis.unloadPage = scoFunctions.unloadPage;
+globalThis.goBack = scoFunctions.goBack;
+globalThis.goForward = scoFunctions.goForward;
+
+// Test helpers for internal state
+const setStartDate = scoFunctions._setStartDate;
+const getStartDate = scoFunctions._getStartDate;
+const setExitPageStatus = scoFunctions._setExitPageStatus;
+const getExitPageStatus = scoFunctions._getExitPageStatus;
 
 describe('SCOFunctions.js', () => {
-  beforeAll(async () => {
-    const fs = await import('fs');
-    const path = await import('path');
-
-    // Load both files because SCOFunctions depends on pipwerks
-    const wrapperPath = path.resolve(__dirname, './SCORM_API_wrapper.js');
-    const functionsPath = path.resolve(__dirname, './SCOFunctions.js');
-
-    const wrapperContent = fs.readFileSync(wrapperPath, 'utf8');
-    const functionsContent = fs.readFileSync(functionsPath, 'utf8');
-
-    (0, eval)(wrapperContent);
-    (0, eval)(functionsContent);
-  });
-
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Reset global state
-    globalThis.startDate = 0;
-    globalThis.exitPageStatus = false;
+    // Reset internal state via helpers
+    setStartDate(0);
+    setExitPageStatus(false);
 
-    // Mock the scorm object methods - these are globally defined now
+    // Mock the scorm object methods
     globalThis.pipwerks.SCORM.init = vi.fn(() => true);
     globalThis.pipwerks.SCORM.GetCompletionStatus = vi.fn(() => 'not attempted');
     globalThis.pipwerks.SCORM.SetCompletionStatus = vi.fn();
@@ -61,7 +68,7 @@ describe('SCOFunctions.js', () => {
       expect(globalThis.pipwerks.SCORM.init).toHaveBeenCalled();
       expect(globalThis.pipwerks.SCORM.SetCompletionStatus).toHaveBeenCalledWith('unknown');
       expect(globalThis.pipwerks.SCORM.SetSuccessStatus).toHaveBeenCalledWith('unknown');
-      expect(globalThis.exitPageStatus).toBe(false);
+      expect(getExitPageStatus()).toBe(false);
     });
 
     it('sets status to unknown if incomplete', () => {
@@ -92,11 +99,11 @@ describe('SCOFunctions.js', () => {
     });
 
     it('sets exitPageStatus to false', () => {
-      globalThis.exitPageStatus = true;
+      setExitPageStatus(true);
 
       globalThis.loadPage();
 
-      expect(globalThis.exitPageStatus).toBe(false);
+      expect(getExitPageStatus()).toBe(false);
     });
 
     it('starts the timer by setting startDate', () => {
@@ -105,8 +112,8 @@ describe('SCOFunctions.js', () => {
       globalThis.loadPage();
 
       const afterTime = new Date().getTime();
-      expect(globalThis.startDate).toBeGreaterThanOrEqual(beforeTime);
-      expect(globalThis.startDate).toBeLessThanOrEqual(afterTime);
+      expect(getStartDate()).toBeGreaterThanOrEqual(beforeTime);
+      expect(getStartDate()).toBeLessThanOrEqual(afterTime);
     });
   });
 
@@ -117,14 +124,14 @@ describe('SCOFunctions.js', () => {
       globalThis.startTimer();
 
       const afterTime = new Date().getTime();
-      expect(globalThis.startDate).toBeGreaterThanOrEqual(beforeTime);
-      expect(globalThis.startDate).toBeLessThanOrEqual(afterTime);
+      expect(getStartDate()).toBeGreaterThanOrEqual(beforeTime);
+      expect(getStartDate()).toBeLessThanOrEqual(afterTime);
     });
   });
 
   describe('computeTime', () => {
     it('sets session time based on start date', () => {
-      globalThis.startDate = new Date().getTime() - 10000; // 10 seconds ago
+      setStartDate(new Date().getTime() - 10000); // 10 seconds ago
 
       globalThis.computeTime();
 
@@ -134,7 +141,7 @@ describe('SCOFunctions.js', () => {
     });
 
     it('handles zero start date', () => {
-      globalThis.startDate = 0;
+      setStartDate(0);
 
       globalThis.computeTime();
 
@@ -145,7 +152,7 @@ describe('SCOFunctions.js', () => {
 
     it('calculates elapsed time correctly', () => {
       // Set startDate to 65 seconds ago (1 min 5 sec)
-      globalThis.startDate = new Date().getTime() - 65000;
+      setStartDate(new Date().getTime() - 65000);
 
       globalThis.computeTime();
 
@@ -158,7 +165,7 @@ describe('SCOFunctions.js', () => {
 
   describe('doBack', () => {
     it('sets exit to suspend', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doBack();
 
@@ -166,7 +173,7 @@ describe('SCOFunctions.js', () => {
     });
 
     it('computes and saves session time', () => {
-      globalThis.startDate = new Date().getTime() - 5000;
+      setStartDate(new Date().getTime() - 5000);
 
       globalThis.doBack();
 
@@ -175,15 +182,15 @@ describe('SCOFunctions.js', () => {
     });
 
     it('sets exitPageStatus to true', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doBack();
 
-      expect(globalThis.exitPageStatus).toBe(true);
+      expect(getExitPageStatus()).toBe(true);
     });
 
     it('calls quit to unload SCO', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doBack();
 
@@ -193,7 +200,7 @@ describe('SCOFunctions.js', () => {
 
   describe('doContinue', () => {
     it('clears exit status', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doContinue('completed');
 
@@ -201,7 +208,7 @@ describe('SCOFunctions.js', () => {
     });
 
     it('sets completion status to completed', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doContinue('completed');
 
@@ -209,7 +216,7 @@ describe('SCOFunctions.js', () => {
     });
 
     it('sets completion status to incomplete', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doContinue('incomplete');
 
@@ -217,7 +224,7 @@ describe('SCOFunctions.js', () => {
     });
 
     it('sets success status based on completion', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doContinue('completed');
 
@@ -227,7 +234,7 @@ describe('SCOFunctions.js', () => {
 
     it('does not change status in review mode', () => {
       globalThis.pipwerks.SCORM.GetMode.mockReturnValue('review');
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doContinue('completed');
 
@@ -237,7 +244,7 @@ describe('SCOFunctions.js', () => {
 
     it('does not change status in browse mode', () => {
       globalThis.pipwerks.SCORM.GetMode.mockReturnValue('browse');
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doContinue('completed');
 
@@ -246,19 +253,19 @@ describe('SCOFunctions.js', () => {
     });
 
     it('saves and quits after setting status', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doContinue('completed');
 
       expect(globalThis.pipwerks.SCORM.save).toHaveBeenCalled();
       expect(globalThis.pipwerks.SCORM.quit).toHaveBeenCalled();
-      expect(globalThis.exitPageStatus).toBe(true);
+      expect(getExitPageStatus()).toBe(true);
     });
   });
 
   describe('doQuit', () => {
     it('sets exit to suspend', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doQuit();
 
@@ -266,7 +273,7 @@ describe('SCOFunctions.js', () => {
     });
 
     it('computes session time', () => {
-      globalThis.startDate = new Date().getTime() - 5000;
+      setStartDate(new Date().getTime() - 5000);
 
       globalThis.doQuit();
 
@@ -274,15 +281,15 @@ describe('SCOFunctions.js', () => {
     });
 
     it('sets exitPageStatus to true', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doQuit();
 
-      expect(globalThis.exitPageStatus).toBe(true);
+      expect(getExitPageStatus()).toBe(true);
     });
 
     it('saves data and quits', () => {
-      globalThis.startDate = new Date().getTime();
+      setStartDate(new Date().getTime());
 
       globalThis.doQuit();
 
@@ -293,7 +300,7 @@ describe('SCOFunctions.js', () => {
 
   describe('unloadPage', () => {
     it('does nothing if exitPageStatus is already true', () => {
-      globalThis.exitPageStatus = true;
+      setExitPageStatus(true);
 
       globalThis.unloadPage();
 
@@ -301,8 +308,8 @@ describe('SCOFunctions.js', () => {
     });
 
     it('sets status to completed if not SCORM and exitPageStatus is false', () => {
-      globalThis.exitPageStatus = false;
-      globalThis.startDate = new Date().getTime();
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
       globalThis.unloadPage(false);
@@ -312,8 +319,8 @@ describe('SCOFunctions.js', () => {
     });
 
     it('sets status to incomplete if isSCORM is true', () => {
-      globalThis.exitPageStatus = false;
-      globalThis.startDate = new Date().getTime();
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
       globalThis.unloadPage(true);
@@ -323,8 +330,8 @@ describe('SCOFunctions.js', () => {
     });
 
     it('defaults isSCORM to false when undefined', () => {
-      globalThis.exitPageStatus = false;
-      globalThis.startDate = new Date().getTime();
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
       globalThis.unloadPage(); // No argument
@@ -334,8 +341,8 @@ describe('SCOFunctions.js', () => {
     });
 
     it('does not change status if already passed', () => {
-      globalThis.exitPageStatus = false;
-      globalThis.startDate = new Date().getTime();
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('passed');
 
       globalThis.unloadPage();
@@ -344,8 +351,8 @@ describe('SCOFunctions.js', () => {
     });
 
     it('does not change status if already failed', () => {
-      globalThis.exitPageStatus = false;
-      globalThis.startDate = new Date().getTime();
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('failed');
 
       globalThis.unloadPage();
@@ -354,8 +361,8 @@ describe('SCOFunctions.js', () => {
     });
 
     it('does not change status if already completed', () => {
-      globalThis.exitPageStatus = false;
-      globalThis.startDate = new Date().getTime();
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('completed');
 
       globalThis.unloadPage();
@@ -364,8 +371,8 @@ describe('SCOFunctions.js', () => {
     });
 
     it('calls doQuit after setting status', () => {
-      globalThis.exitPageStatus = false;
-      globalThis.startDate = new Date().getTime();
+      setExitPageStatus(false);
+      setStartDate(new Date().getTime());
       globalThis.pipwerks.SCORM.GetSuccessStatus.mockReturnValue('unknown');
 
       globalThis.unloadPage();

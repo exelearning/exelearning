@@ -146,13 +146,22 @@ describe('YjsStructureBinding', () => {
   const originalWindow = global.window;
 
   beforeEach(() => {
-    // Mock Y.Text
+    // Mock Y.Text with full methods
     class MockYText {
       constructor(text = '') {
         this._text = text;
       }
       toString() {
         return this._text;
+      }
+      insert(index, text) {
+        this._text = this._text.slice(0, index) + text + this._text.slice(index);
+      }
+      delete(index, length) {
+        this._text = this._text.slice(0, index) + this._text.slice(index + length);
+      }
+      get length() {
+        return this._text.length;
       }
     }
 
@@ -764,6 +773,1873 @@ describe('YjsStructureBinding', () => {
       // jsonProperties should not be set (or be undefined)
       const storedJsonProps = compMap.get('jsonProperties');
       expect(storedJsonProps).toBeUndefined();
+    });
+  });
+
+  // ===== Block Operations Tests =====
+
+  describe('getBlocks', () => {
+    it('returns empty array for non-existent page', () => {
+      const blocks = binding.getBlocks('non-existent');
+      expect(blocks).toEqual([]);
+    });
+
+    it('returns empty array when page has no blocks', () => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      pageMap.set('blocks', new MockYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const blocks = binding.getBlocks('page-1');
+      expect(blocks).toEqual([]);
+    });
+
+    it('returns multiple blocks correctly', () => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+
+      const blocksArray = new MockYArray();
+      const block1 = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        order: 0,
+      });
+      block1.set('components', new MockYArray());
+      blocksArray.push([block1]);
+
+      const block2 = new MockYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+        order: 1,
+      });
+      block2.set('components', new MockYArray());
+      blocksArray.push([block2]);
+
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const blocks = binding.getBlocks('page-1');
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].blockName).toBe('Block 1');
+      expect(blocks[1].blockName).toBe('Block 2');
+    });
+  });
+
+  describe('createBlock', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      pageMap.set('blocks', new MockYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('creates block with default name', () => {
+      const blockId = binding.createBlock('page-1');
+
+      expect(blockId).toBeDefined();
+      expect(typeof blockId).toBe('string');
+    });
+
+    it('creates block with custom name', () => {
+      const blockId = binding.createBlock('page-1', 'Custom Block');
+
+      const blocks = binding.getBlocks('page-1');
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].blockName).toBe('Custom Block');
+    });
+
+    it('returns null for non-existent page', () => {
+      const blockId = binding.createBlock('non-existent', 'Block');
+      expect(blockId).toBeNull();
+    });
+
+    it('uses existing block ID when provided', () => {
+      const blockId = binding.createBlock('page-1', 'Block', 'my-existing-id');
+      expect(blockId).toBe('my-existing-id');
+    });
+
+    it('increments order for multiple blocks', () => {
+      binding.createBlock('page-1', 'Block 1');
+      binding.createBlock('page-1', 'Block 2');
+
+      const blocks = binding.getBlocks('page-1');
+      expect(blocks[0].order).toBe(0);
+      expect(blocks[1].order).toBe(1);
+    });
+  });
+
+  describe('updateBlock', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Original Name',
+        order: 0,
+      });
+      block.set('components', new MockYArray());
+      blocksArray.push([block]);
+
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('updates block name', () => {
+      const result = binding.updateBlock('block-1', { blockName: 'Updated Name' });
+
+      expect(result).toBe(true);
+      const blocks = binding.getBlocks('page-1');
+      expect(blocks[0].blockName).toBe('Updated Name');
+    });
+
+    it('updates block properties', () => {
+      const result = binding.updateBlock('block-1', {
+        properties: { visibility: 'true', teacherOnly: 'false' },
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false for non-existent block', () => {
+      const result = binding.updateBlock('non-existent', { blockName: 'Test' });
+      expect(result).toBe(false);
+    });
+
+    it('converts checkbox values in properties', () => {
+      const result = binding.updateBlock('block-1', {
+        properties: { visibility: true, teacherOnly: '1', minimized: 'false' },
+      });
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('deleteBlock', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+
+      const blocksArray = new MockYArray();
+      const block1 = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        order: 0,
+      });
+      block1.set('components', new MockYArray());
+      blocksArray.push([block1]);
+
+      const block2 = new MockYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+        order: 1,
+      });
+      block2.set('components', new MockYArray());
+      blocksArray.push([block2]);
+
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('deletes block successfully', () => {
+      const result = binding.deleteBlock('page-1', 'block-1');
+
+      expect(result).toBe(true);
+      const blocks = binding.getBlocks('page-1');
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].id).toBe('block-2');
+    });
+
+    it('returns false for non-existent block', () => {
+      const result = binding.deleteBlock('page-1', 'non-existent');
+      expect(result).toBe(false);
+    });
+
+    it('updates order after deletion', () => {
+      binding.deleteBlock('page-1', 'block-1');
+
+      const blocks = binding.getBlocks('page-1');
+      expect(blocks[0].order).toBe(0);
+    });
+  });
+
+  describe('updateBlockOrder', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+
+      const blocksArray = new MockYArray();
+      for (let i = 0; i < 3; i++) {
+        const block = new MockYMap({
+          id: `block-${i + 1}`,
+          blockId: `block-${i + 1}`,
+          blockName: `Block ${i + 1}`,
+          order: i,
+        });
+        block.set('components', new MockYArray());
+        blocksArray.push([block]);
+      }
+
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('reorders block to new position', () => {
+      const result = binding.updateBlockOrder('block-1', 2);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false for non-existent block', () => {
+      const result = binding.updateBlockOrder('non-existent', 0);
+      expect(result).toBe(false);
+    });
+
+    it('handles same position gracefully', () => {
+      const result = binding.updateBlockOrder('block-1', 0);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('cloneBlock', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Original Block',
+        order: 0,
+      });
+
+      const componentsArray = new MockYArray();
+      const comp = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+      componentsArray.push([comp]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('clones block with new ID', () => {
+      const cloned = binding.cloneBlock('page-1', 'block-1');
+
+      expect(cloned).toBeDefined();
+      expect(cloned.id).not.toBe('block-1');
+      expect(cloned.blockName).toBe('Original Block');
+    });
+
+    it('returns null for non-existent page', () => {
+      const cloned = binding.cloneBlock('non-existent', 'block-1');
+      expect(cloned).toBeNull();
+    });
+
+    it('returns null for non-existent block', () => {
+      const cloned = binding.cloneBlock('page-1', 'non-existent');
+      expect(cloned).toBeNull();
+    });
+
+    it('clones components within block', () => {
+      const cloned = binding.cloneBlock('page-1', 'block-1');
+
+      expect(cloned.componentCount).toBe(1);
+    });
+  });
+
+  describe('moveBlockToPage', () => {
+    beforeEach(() => {
+      // Create two pages with blocks
+      const page1 = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Page 1',
+      });
+      const blocks1 = new MockYArray();
+      const block1 = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        order: 0,
+      });
+      block1.set('components', new MockYArray());
+      blocks1.push([block1]);
+      page1.set('blocks', blocks1);
+
+      const page2 = new MockYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Page 2',
+      });
+      page2.set('blocks', new MockYArray());
+
+      mockDocManager.getNavigation().push([page1]);
+      mockDocManager.getNavigation().push([page2]);
+    });
+
+    it('moves block to different page', () => {
+      const result = binding.moveBlockToPage('block-1', 'page-2');
+
+      expect(result).toBe(true);
+      expect(binding.getBlocks('page-1')).toHaveLength(0);
+      expect(binding.getBlocks('page-2')).toHaveLength(1);
+    });
+
+    it('returns false for non-existent block', () => {
+      const result = binding.moveBlockToPage('non-existent', 'page-2');
+      expect(result).toBe(false);
+    });
+
+    it('returns false for non-existent target page', () => {
+      const result = binding.moveBlockToPage('block-1', 'non-existent');
+      expect(result).toBe(false);
+    });
+
+    it('returns false when moving to same page', () => {
+      const result = binding.moveBlockToPage('block-1', 'page-1');
+      expect(result).toBe(false);
+    });
+  });
+
+  // ===== Component Operations Tests =====
+
+  describe('getComponents', () => {
+    it('returns empty array for non-existent block', () => {
+      const components = binding.getComponents('page-1', 'non-existent');
+      expect(components).toEqual([]);
+    });
+
+    it('returns empty array when block has no components', () => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+      block.set('components', new MockYArray());
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const components = binding.getComponents('page-1', 'block-1');
+      expect(components).toEqual([]);
+    });
+
+    it('returns multiple components correctly', () => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+
+      const componentsArray = new MockYArray();
+      const comp1 = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+      const comp2 = new MockYMap({
+        id: 'comp-2',
+        ideviceId: 'comp-2',
+        ideviceType: 'MultiChoiceIdevice',
+        order: 1,
+      });
+      componentsArray.push([comp1]);
+      componentsArray.push([comp2]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const components = binding.getComponents('page-1', 'block-1');
+      expect(components).toHaveLength(2);
+      expect(components[0].ideviceType).toBe('FreeTextIdevice');
+      expect(components[1].ideviceType).toBe('MultiChoiceIdevice');
+    });
+  });
+
+  describe('getComponent', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+
+      const componentsArray = new MockYArray();
+      const comp = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+      componentsArray.push([comp]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('returns component by ID', () => {
+      const component = binding.getComponent('comp-1');
+
+      expect(component).toBeDefined();
+      expect(component.id).toBe('comp-1');
+      expect(component.ideviceType).toBe('FreeTextIdevice');
+    });
+
+    it('returns null for non-existent component', () => {
+      const component = binding.getComponent('non-existent');
+      expect(component).toBeNull();
+    });
+  });
+
+  describe('createComponent', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+      block.set('components', new MockYArray());
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('creates component with idevice type', () => {
+      const compId = binding.createComponent('page-1', 'block-1', 'FreeTextIdevice');
+
+      expect(compId).toBeDefined();
+      const components = binding.getComponents('page-1', 'block-1');
+      expect(components).toHaveLength(1);
+      expect(components[0].ideviceType).toBe('FreeTextIdevice');
+    });
+
+    it('creates component with initial data', () => {
+      const compId = binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', {
+        title: 'Test Title',
+      });
+
+      expect(compId).toBeDefined();
+    });
+
+    it('uses provided ID if given in initialData', () => {
+      const compId = binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', {
+        id: 'my-custom-id',
+      });
+
+      expect(compId).toBe('my-custom-id');
+    });
+
+    it('returns null for non-existent block', () => {
+      const compId = binding.createComponent('page-1', 'non-existent', 'FreeTextIdevice');
+      expect(compId).toBeNull();
+    });
+
+    it('increments order for multiple components', () => {
+      binding.createComponent('page-1', 'block-1', 'FreeTextIdevice');
+      binding.createComponent('page-1', 'block-1', 'MultiChoiceIdevice');
+
+      const components = binding.getComponents('page-1', 'block-1');
+      expect(components[0].order).toBe(0);
+      expect(components[1].order).toBe(1);
+    });
+  });
+
+  describe('updateComponent', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+
+      const componentsArray = new MockYArray();
+      const comp = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+      componentsArray.push([comp]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('updates simple property', () => {
+      binding.updateComponent('comp-1', { title: 'New Title' });
+
+      const comp = binding.getComponent('comp-1');
+      expect(comp).toBeDefined();
+    });
+
+    it('updates htmlContent property', () => {
+      binding.updateComponent('comp-1', { htmlContent: '<p>New content</p>' });
+
+      // Should not throw
+    });
+
+    it('updates properties object with checkbox conversion', () => {
+      binding.updateComponent('comp-1', {
+        properties: { visibility: 'true', teacherOnly: false },
+      });
+
+      // Should not throw
+    });
+
+    it('does nothing for non-existent component', () => {
+      // Should not throw
+      binding.updateComponent('non-existent', { title: 'Test' });
+    });
+  });
+
+  describe('deleteComponent', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+
+      const componentsArray = new MockYArray();
+      const comp1 = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+      const comp2 = new MockYMap({
+        id: 'comp-2',
+        ideviceId: 'comp-2',
+        ideviceType: 'MultiChoiceIdevice',
+        order: 1,
+      });
+      componentsArray.push([comp1]);
+      componentsArray.push([comp2]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('deletes component successfully', () => {
+      const result = binding.deleteComponent('comp-1');
+
+      expect(result).toBe(true);
+      const components = binding.getComponents('page-1', 'block-1');
+      expect(components).toHaveLength(1);
+      expect(components[0].id).toBe('comp-2');
+    });
+
+    it('returns false for non-existent component', () => {
+      const result = binding.deleteComponent('non-existent');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('reorderComponent', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+
+      const componentsArray = new MockYArray();
+      for (let i = 0; i < 3; i++) {
+        const comp = new MockYMap({
+          id: `comp-${i + 1}`,
+          ideviceId: `comp-${i + 1}`,
+          ideviceType: 'FreeTextIdevice',
+          order: i,
+        });
+        componentsArray.push([comp]);
+      }
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('reorders component to new position', () => {
+      const result = binding.reorderComponent('comp-1', 2);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false for non-existent component', () => {
+      const result = binding.reorderComponent('non-existent', 0);
+      expect(result).toBe(false);
+    });
+
+    it('handles same position gracefully', () => {
+      const result = binding.reorderComponent('comp-1', 0);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('cloneComponent', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+
+      const componentsArray = new MockYArray();
+      const comp = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+        title: 'Original Title',
+      });
+      componentsArray.push([comp]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('clones component with new ID', () => {
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'comp-1');
+
+      expect(cloned).toBeDefined();
+      expect(cloned.id).not.toBe('comp-1');
+      expect(cloned.ideviceType).toBe('FreeTextIdevice');
+    });
+
+    it('returns null for non-existent block', () => {
+      const cloned = binding.cloneComponent('page-1', 'non-existent', 'comp-1');
+      expect(cloned).toBeNull();
+    });
+
+    it('returns null for non-existent component', () => {
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'non-existent');
+      expect(cloned).toBeNull();
+    });
+
+    it('increments order for cloned component', () => {
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'comp-1');
+
+      expect(cloned.order).toBe(1);
+    });
+  });
+
+  describe('moveComponentToBlock', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = new MockYArray();
+
+      const block1 = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+      const components1 = new MockYArray();
+      const comp = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+      components1.push([comp]);
+      block1.set('components', components1);
+
+      const block2 = new MockYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+      });
+      block2.set('components', new MockYArray());
+
+      blocksArray.push([block1]);
+      blocksArray.push([block2]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('moves component to different block', () => {
+      const result = binding.moveComponentToBlock('comp-1', 'block-2');
+
+      expect(result).toBe(true);
+      expect(binding.getComponents('page-1', 'block-1')).toHaveLength(0);
+      expect(binding.getComponents('page-1', 'block-2')).toHaveLength(1);
+    });
+
+    it('returns false for non-existent component', () => {
+      const result = binding.moveComponentToBlock('non-existent', 'block-2');
+      expect(result).toBe(false);
+    });
+
+    it('returns false for non-existent target block', () => {
+      const result = binding.moveComponentToBlock('comp-1', 'non-existent');
+      expect(result).toBe(false);
+    });
+
+    it('handles moving within same block as reorder', () => {
+      const result = binding.moveComponentToBlock('comp-1', 'block-1', 0);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('moveComponentToPage', () => {
+    beforeEach(() => {
+      const page1 = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Page 1',
+      });
+      const blocks1 = new MockYArray();
+      const block1 = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+      const components1 = new MockYArray();
+      const comp = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+      components1.push([comp]);
+      block1.set('components', components1);
+      blocks1.push([block1]);
+      page1.set('blocks', blocks1);
+
+      const page2 = new MockYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Page 2',
+      });
+      page2.set('blocks', new MockYArray());
+
+      mockDocManager.getNavigation().push([page1]);
+      mockDocManager.getNavigation().push([page2]);
+    });
+
+    it('moves component to different page creating new block', () => {
+      const result = binding.moveComponentToPage('comp-1', 'page-2');
+
+      expect(result).toBeDefined();
+      expect(result.blockId).toBeDefined();
+      expect(result.componentId).toBe('comp-1');
+    });
+
+    it('returns null for non-existent component', () => {
+      const result = binding.moveComponentToPage('non-existent', 'page-2');
+      expect(result).toBeNull();
+    });
+
+    it('returns null for non-existent target page', () => {
+      const result = binding.moveComponentToPage('comp-1', 'non-existent');
+      expect(result).toBeNull();
+    });
+
+    it('uses custom block name', () => {
+      const result = binding.moveComponentToPage('comp-1', 'page-2', 'Custom Block Name');
+
+      expect(result).toBeDefined();
+      expect(result.blockId).toBeDefined();
+    });
+  });
+
+  // ===== Advanced Page Movement Tests =====
+
+  describe('movePagePrev', () => {
+    beforeEach(() => {
+      ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
+        const pageMap = new MockYMap({
+          id: `page-${i + 1}`,
+          pageId: `page-${i + 1}`,
+          pageName: name,
+          order: i,
+          parentId: null,
+        });
+        pageMap.set('blocks', new MockYArray());
+        mockDocManager.getNavigation().push([pageMap]);
+      });
+    });
+
+    it('swaps with previous sibling', () => {
+      const result = binding.movePagePrev('page-2');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false for first sibling', () => {
+      const result = binding.movePagePrev('page-1');
+      expect(result).toBe(false);
+    });
+
+    it('returns false for non-existent page', () => {
+      const result = binding.movePagePrev('non-existent');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('movePageNext', () => {
+    beforeEach(() => {
+      ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
+        const pageMap = new MockYMap({
+          id: `page-${i + 1}`,
+          pageId: `page-${i + 1}`,
+          pageName: name,
+          order: i,
+          parentId: null,
+        });
+        pageMap.set('blocks', new MockYArray());
+        mockDocManager.getNavigation().push([pageMap]);
+      });
+    });
+
+    it('swaps with next sibling', () => {
+      const result = binding.movePageNext('page-2');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false for last sibling', () => {
+      const result = binding.movePageNext('page-3');
+      expect(result).toBe(false);
+    });
+
+    it('returns false for non-existent page', () => {
+      const result = binding.movePageNext('non-existent');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('movePageLeft', () => {
+    beforeEach(() => {
+      // Parent page
+      const parent = new MockYMap({
+        id: 'parent',
+        pageId: 'parent',
+        pageName: 'Parent',
+        order: 0,
+        parentId: null,
+      });
+      parent.set('blocks', new MockYArray());
+
+      // Child page
+      const child = new MockYMap({
+        id: 'child',
+        pageId: 'child',
+        pageName: 'Child',
+        order: 0,
+        parentId: 'parent',
+      });
+      child.set('blocks', new MockYArray());
+
+      mockDocManager.getNavigation().push([parent]);
+      mockDocManager.getNavigation().push([child]);
+    });
+
+    it('moves child to grandparent level', () => {
+      const result = binding.movePageLeft('child');
+
+      expect(result).toBe(true);
+      const page = binding.getPage('child');
+      expect(page.parentId).toBeNull();
+    });
+
+    it('returns false for root level page', () => {
+      const result = binding.movePageLeft('parent');
+      expect(result).toBe(false);
+    });
+
+    it('returns false for non-existent page', () => {
+      const result = binding.movePageLeft('non-existent');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('movePageRight', () => {
+    beforeEach(() => {
+      ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
+        const pageMap = new MockYMap({
+          id: `page-${i + 1}`,
+          pageId: `page-${i + 1}`,
+          pageName: name,
+          order: i,
+          parentId: null,
+        });
+        pageMap.set('blocks', new MockYArray());
+        mockDocManager.getNavigation().push([pageMap]);
+      });
+    });
+
+    it('becomes child of previous sibling', () => {
+      const result = binding.movePageRight('page-2');
+
+      expect(result).toBe(true);
+      const page = binding.getPage('page-2');
+      expect(page.parentId).toBe('page-1');
+    });
+
+    it('returns false for first sibling', () => {
+      const result = binding.movePageRight('page-1');
+      expect(result).toBe(false);
+    });
+
+    it('returns false for non-existent page', () => {
+      const result = binding.movePageRight('non-existent');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('canMoveLeft', () => {
+    beforeEach(() => {
+      const parent = new MockYMap({
+        id: 'parent',
+        pageId: 'parent',
+        pageName: 'Parent',
+        order: 0,
+        parentId: null,
+      });
+      parent.set('blocks', new MockYArray());
+
+      const child = new MockYMap({
+        id: 'child',
+        pageId: 'child',
+        pageName: 'Child',
+        order: 0,
+        parentId: 'parent',
+      });
+      child.set('blocks', new MockYArray());
+
+      mockDocManager.getNavigation().push([parent]);
+      mockDocManager.getNavigation().push([child]);
+    });
+
+    it('returns true for child page', () => {
+      expect(binding.canMoveLeft('child')).toBe(true);
+    });
+
+    it('returns false for root page', () => {
+      expect(binding.canMoveLeft('parent')).toBe(false);
+    });
+
+    it('returns false for non-existent page', () => {
+      expect(binding.canMoveLeft('non-existent')).toBe(false);
+    });
+  });
+
+  describe('canMoveRight', () => {
+    beforeEach(() => {
+      ['Page 1', 'Page 2'].forEach((name, i) => {
+        const pageMap = new MockYMap({
+          id: `page-${i + 1}`,
+          pageId: `page-${i + 1}`,
+          pageName: name,
+          order: i,
+          parentId: null,
+        });
+        pageMap.set('blocks', new MockYArray());
+        mockDocManager.getNavigation().push([pageMap]);
+      });
+    });
+
+    it('returns true for page with previous sibling', () => {
+      expect(binding.canMoveRight('page-2')).toBe(true);
+    });
+
+    it('returns false for first page', () => {
+      expect(binding.canMoveRight('page-1')).toBe(false);
+    });
+  });
+
+  describe('movePageToTarget', () => {
+    beforeEach(() => {
+      ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
+        const pageMap = new MockYMap({
+          id: `page-${i + 1}`,
+          pageId: `page-${i + 1}`,
+          pageName: name,
+          order: i,
+          parentId: null,
+        });
+        pageMap.set('blocks', new MockYArray());
+        mockDocManager.getNavigation().push([pageMap]);
+      });
+    });
+
+    it('moves page to become sibling of target', () => {
+      const result = binding.movePageToTarget('page-1', 'page-3');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when moving to self', () => {
+      const result = binding.movePageToTarget('page-1', 'page-1');
+      expect(result).toBe(false);
+    });
+
+    it('returns false for non-existent page', () => {
+      const result = binding.movePageToTarget('non-existent', 'page-2');
+      expect(result).toBe(false);
+    });
+
+    it('returns false for non-existent target', () => {
+      const result = binding.movePageToTarget('page-1', 'non-existent');
+      expect(result).toBe(false);
+    });
+
+    it('becomes first child when target has children', () => {
+      // Add a child to page-2
+      const child = new MockYMap({
+        id: 'child',
+        pageId: 'child',
+        pageName: 'Child',
+        order: 0,
+        parentId: 'page-2',
+      });
+      child.set('blocks', new MockYArray());
+      mockDocManager.getNavigation().push([child]);
+
+      const result = binding.movePageToTarget('page-3', 'page-2');
+
+      expect(result).toBe(true);
+      const page = binding.getPage('page-3');
+      expect(page.parentId).toBe('page-2');
+    });
+  });
+
+  describe('isDescendant', () => {
+    beforeEach(() => {
+      // Create hierarchy: grandparent > parent > child
+      const grandparent = new MockYMap({
+        id: 'grandparent',
+        pageId: 'grandparent',
+        pageName: 'Grandparent',
+        order: 0,
+        parentId: null,
+      });
+      grandparent.set('blocks', new MockYArray());
+
+      const parent = new MockYMap({
+        id: 'parent',
+        pageId: 'parent',
+        pageName: 'Parent',
+        order: 0,
+        parentId: 'grandparent',
+      });
+      parent.set('blocks', new MockYArray());
+
+      const child = new MockYMap({
+        id: 'child',
+        pageId: 'child',
+        pageName: 'Child',
+        order: 0,
+        parentId: 'parent',
+      });
+      child.set('blocks', new MockYArray());
+
+      mockDocManager.getNavigation().push([grandparent]);
+      mockDocManager.getNavigation().push([parent]);
+      mockDocManager.getNavigation().push([child]);
+    });
+
+    it('returns true for direct child', () => {
+      expect(binding.isDescendant('child', 'parent')).toBe(true);
+    });
+
+    it('returns true for grandchild', () => {
+      expect(binding.isDescendant('child', 'grandparent')).toBe(true);
+    });
+
+    it('returns false for non-descendant', () => {
+      expect(binding.isDescendant('grandparent', 'child')).toBe(false);
+    });
+
+    it('returns false for same page', () => {
+      expect(binding.isDescendant('parent', 'parent')).toBe(false);
+    });
+
+    it('returns false for non-existent page', () => {
+      expect(binding.isDescendant('non-existent', 'parent')).toBe(false);
+    });
+  });
+
+  describe('cloneChildPages', () => {
+    beforeEach(() => {
+      // Parent page
+      const parent = new MockYMap({
+        id: 'parent',
+        pageId: 'parent',
+        pageName: 'Parent',
+        order: 0,
+        parentId: null,
+      });
+      parent.set('blocks', new MockYArray());
+
+      // Child pages
+      const child1 = new MockYMap({
+        id: 'child-1',
+        pageId: 'child-1',
+        pageName: 'Child 1',
+        order: 0,
+        parentId: 'parent',
+      });
+      child1.set('blocks', new MockYArray());
+
+      const child2 = new MockYMap({
+        id: 'child-2',
+        pageId: 'child-2',
+        pageName: 'Child 2',
+        order: 1,
+        parentId: 'parent',
+      });
+      child2.set('blocks', new MockYArray());
+
+      mockDocManager.getNavigation().push([parent]);
+      mockDocManager.getNavigation().push([child1]);
+      mockDocManager.getNavigation().push([child2]);
+    });
+
+    it('clones child pages with new parent', () => {
+      // Clone parent first to have a new parent ID
+      const clonedParent = binding.clonePage('parent', 'Cloned Parent');
+
+      // cloneChildPages is called internally by clonePage
+      // Verify the original structure
+      const pages = binding.getPages();
+      expect(pages.length).toBeGreaterThan(3);
+    });
+
+    it('handles page with no children', () => {
+      // child-1 has no children
+      binding.cloneChildPages('child-1', 'new-parent-id');
+
+      // Should not throw and navigation should be unchanged
+      const pages = binding.getPages();
+      expect(pages).toHaveLength(3);
+    });
+  });
+
+  // ===== Import & Properties Tests =====
+
+  describe('importFromApiStructure', () => {
+    it('imports valid API structure', () => {
+      const apiStructure = [
+        {
+          id: 1,
+          pageId: 'page-1',
+          pageName: 'Test Page',
+          parent: null,
+          order: 0,
+          odePagStructureSyncs: [],
+        },
+      ];
+
+      binding.importFromApiStructure(apiStructure);
+
+      const pages = binding.getPages();
+      expect(pages).toHaveLength(1);
+      expect(pages[0].pageName).toBe('Test Page');
+    });
+
+    it('clears existing navigation before import', () => {
+      // Add existing page
+      binding.createPage('Existing Page');
+      expect(binding.getPages()).toHaveLength(1);
+
+      // Import new structure
+      const apiStructure = [
+        {
+          pageId: 'new-page',
+          pageName: 'New Page',
+          parent: null,
+          order: 0,
+          odePagStructureSyncs: [],
+        },
+      ];
+
+      binding.importFromApiStructure(apiStructure);
+
+      const pages = binding.getPages();
+      expect(pages).toHaveLength(1);
+      expect(pages[0].pageName).toBe('New Page');
+    });
+
+    it('handles null/undefined structure', () => {
+      binding.importFromApiStructure(null);
+      expect(binding.getPages()).toHaveLength(0);
+
+      binding.importFromApiStructure(undefined);
+      expect(binding.getPages()).toHaveLength(0);
+    });
+
+    it('imports pages with blocks and components', () => {
+      const apiStructure = [
+        {
+          pageId: 'page-1',
+          pageName: 'Page 1',
+          parent: null,
+          order: 0,
+          odePagStructureSyncs: [
+            {
+              blockId: 'block-1',
+              blockName: 'Block 1',
+              order: 0,
+              odeComponentsSyncs: [
+                {
+                  odeIdeviceId: 'comp-1',
+                  odeIdeviceTypeName: 'FreeTextIdevice',
+                  htmlView: '<p>Hello</p>',
+                  order: 0,
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      binding.importFromApiStructure(apiStructure);
+
+      const pages = binding.getPages();
+      expect(pages).toHaveLength(1);
+
+      const blocks = binding.getBlocks('page-1');
+      expect(blocks).toHaveLength(1);
+
+      const components = binding.getComponents('page-1', 'block-1');
+      expect(components).toHaveLength(1);
+    });
+
+    it('handles root parent correctly', () => {
+      const apiStructure = [
+        {
+          pageId: 'page-1',
+          pageName: 'Root Page',
+          parent: 'root',
+          order: 0,
+          odePagStructureSyncs: [],
+        },
+      ];
+
+      binding.importFromApiStructure(apiStructure);
+
+      const page = binding.getPage('page-1');
+      expect(page.parentId).toBeNull();
+    });
+  });
+
+  describe('clearNavigation', () => {
+    it('clears all pages from navigation', () => {
+      binding.createPage('Page 1');
+      binding.createPage('Page 2');
+      expect(binding.getPages()).toHaveLength(2);
+
+      binding.clearNavigation();
+
+      expect(binding.getPages()).toHaveLength(0);
+    });
+
+    it('handles empty navigation', () => {
+      binding.clearNavigation();
+      expect(binding.getPages()).toHaveLength(0);
+    });
+  });
+
+  describe('createBlockMapFromApi', () => {
+    it('creates block with properties', () => {
+      const apiBlock = {
+        blockId: 'block-1',
+        blockName: 'Test Block',
+        blockType: 'custom',
+        order: 1,
+        odePagStructureSyncProperties: {
+          visibility: { value: true },
+          teacherOnly: { value: false },
+        },
+        odeComponentsSyncs: [],
+      };
+
+      const blockMap = binding.createBlockMapFromApi(apiBlock);
+
+      expect(blockMap.get('id')).toBe('block-1');
+      expect(blockMap.get('blockName')).toBe('Test Block');
+      expect(blockMap.get('blockType')).toBe('custom');
+    });
+
+    it('handles empty block name', () => {
+      const apiBlock = {
+        blockId: 'block-1',
+        blockName: '',
+        order: 0,
+        odeComponentsSyncs: [],
+      };
+
+      const blockMap = binding.createBlockMapFromApi(apiBlock);
+
+      expect(blockMap.get('blockName')).toBe('');
+    });
+  });
+
+  describe('getPageProperties', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const propsMap = new MockYMap({
+        hidePageTitle: true,
+        customProp: 'value',
+      });
+      // Add toJSON method to MockYMap for this test
+      propsMap.toJSON = function () {
+        return Object.fromEntries(this._data);
+      };
+      pageMap.set('properties', propsMap);
+      pageMap.set('blocks', new MockYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('returns page properties', () => {
+      const props = binding.getPageProperties('page-1');
+
+      expect(props).toBeDefined();
+      expect(props.hidePageTitle).toBe(true);
+      expect(props.customProp).toBe('value');
+    });
+
+    it('includes pageName as titleNode fallback', () => {
+      const props = binding.getPageProperties('page-1');
+
+      expect(props.titleNode).toBe('Test Page');
+    });
+
+    it('returns null for non-existent page', () => {
+      const props = binding.getPageProperties('non-existent');
+      expect(props).toBeNull();
+    });
+  });
+
+  describe('getBlockProperties', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+      const propsMap = new MockYMap({
+        visibility: true,
+        teacherOnly: false,
+      });
+      propsMap.toJSON = function () {
+        return Object.fromEntries(this._data);
+      };
+      block.set('properties', propsMap);
+      block.set('components', new MockYArray());
+      blocksArray.push([block]);
+
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('returns block properties', () => {
+      const props = binding.getBlockProperties('block-1');
+
+      expect(props).toBeDefined();
+      expect(props.visibility).toBe(true);
+      expect(props.teacherOnly).toBe(false);
+    });
+
+    it('returns null for non-existent block', () => {
+      const props = binding.getBlockProperties('non-existent');
+      expect(props).toBeNull();
+    });
+
+    it('returns empty object when no properties', () => {
+      // Create a block without properties
+      const pageMap = mockDocManager.getNavigation().get(0);
+      const blocks = pageMap.get('blocks');
+      const block2 = new MockYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+      });
+      block2.set('components', new MockYArray());
+      blocks.push([block2]);
+
+      const props = binding.getBlockProperties('block-2');
+      expect(props).toEqual({});
+    });
+  });
+
+  describe('getComponentProperties', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+
+      const blocksArray = new MockYArray();
+      const block = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+
+      const componentsArray = new MockYArray();
+      const comp = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+      });
+      const propsMap = new MockYMap({
+        visibility: true,
+        customField: 'test',
+      });
+      propsMap.toJSON = function () {
+        return Object.fromEntries(this._data);
+      };
+      comp.set('properties', propsMap);
+      componentsArray.push([comp]);
+
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('returns component properties', () => {
+      const props = binding.getComponentProperties('comp-1');
+
+      expect(props).toBeDefined();
+      expect(props.visibility).toBe(true);
+      expect(props.customField).toBe('test');
+    });
+
+    it('returns null for non-existent component', () => {
+      const props = binding.getComponentProperties('non-existent');
+      expect(props).toBeNull();
+    });
+  });
+
+  describe('updatePageProperties', () => {
+    beforeEach(() => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      pageMap.set('blocks', new MockYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('updates page properties', () => {
+      const result = binding.updatePageProperties('page-1', {
+        customProp: 'value',
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('converts checkbox values to boolean', () => {
+      const result = binding.updatePageProperties('page-1', {
+        hidePageTitle: 'true',
+        visibility: '1',
+        editableInPage: true,
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false for non-existent page', () => {
+      const result = binding.updatePageProperties('non-existent', {
+        prop: 'value',
+      });
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('mapToBlock', () => {
+    it('maps Y.Map to block object', () => {
+      const blockMap = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Test Block',
+        iconName: 'icon-test',
+        blockType: 'custom',
+        order: 2,
+        createdAt: '2024-01-01',
+      });
+      blockMap.set('components', new MockYArray());
+
+      const block = binding.mapToBlock(blockMap, 0);
+
+      expect(block.id).toBe('block-1');
+      expect(block.blockName).toBe('Test Block');
+      expect(block.iconName).toBe('icon-test');
+      expect(block.blockType).toBe('custom');
+      expect(block.order).toBe(2);
+      expect(block.componentCount).toBe(0);
+    });
+
+    it('uses index as fallback for order', () => {
+      const blockMap = new MockYMap({
+        id: 'block-1',
+        blockName: 'Test Block',
+      });
+      blockMap.set('components', new MockYArray());
+
+      const block = binding.mapToBlock(blockMap, 5);
+
+      expect(block.order).toBe(5);
+    });
+  });
+
+  // ===== Observers & Edge Cases Tests =====
+
+  describe('onBlocksComponentsChange', () => {
+    it('registers callback for block/component changes', () => {
+      const callback = mock(() => undefined);
+
+      binding.onBlocksComponentsChange(callback);
+
+      expect(binding.blocksComponentsCallbacks).toContain(callback);
+    });
+
+    it('does not add duplicate observer', () => {
+      const callback1 = mock(() => undefined);
+      const callback2 = mock(() => undefined);
+
+      binding.onBlocksComponentsChange(callback1);
+      binding.onBlocksComponentsChange(callback2);
+
+      // Both callbacks should be registered
+      expect(binding.blocksComponentsCallbacks).toHaveLength(2);
+      // But observer should only be set once
+      expect(binding._blocksComponentsObserverSet).toBe(true);
+    });
+  });
+
+  describe('edge cases', () => {
+    describe('null navigation handling', () => {
+      it('getBlocks returns empty array when page has no blocks property', () => {
+        const pageMap = new MockYMap({
+          id: 'page-1',
+          pageId: 'page-1',
+          pageName: 'Test Page',
+        });
+        // Don't set blocks property
+        mockDocManager.getNavigation().push([pageMap]);
+
+        const blocks = binding.getBlocks('page-1');
+        expect(blocks).toEqual([]);
+      });
+
+      it('getComponents returns empty array when block has no components', () => {
+        const pageMap = new MockYMap({
+          id: 'page-1',
+          pageId: 'page-1',
+          pageName: 'Test Page',
+        });
+        const blocksArray = new MockYArray();
+        const block = new MockYMap({
+          id: 'block-1',
+          blockId: 'block-1',
+          blockName: 'Block 1',
+        });
+        // Don't set components property
+        blocksArray.push([block]);
+        pageMap.set('blocks', blocksArray);
+        mockDocManager.getNavigation().push([pageMap]);
+
+        const components = binding.getComponents('page-1', 'block-1');
+        expect(components).toEqual([]);
+      });
+    });
+
+    describe('empty structures', () => {
+      it('handles page with empty blocks array', () => {
+        const pageMap = new MockYMap({
+          id: 'page-1',
+          pageId: 'page-1',
+          pageName: 'Test Page',
+        });
+        pageMap.set('blocks', new MockYArray());
+        mockDocManager.getNavigation().push([pageMap]);
+
+        expect(binding.getBlocks('page-1')).toEqual([]);
+        expect(binding.getPage('page-1').blockCount).toBe(0);
+      });
+
+      it('handles block with empty components array', () => {
+        const pageMap = new MockYMap({
+          id: 'page-1',
+          pageId: 'page-1',
+          pageName: 'Test Page',
+        });
+        const blocksArray = new MockYArray();
+        const block = new MockYMap({
+          id: 'block-1',
+          blockId: 'block-1',
+          blockName: 'Block 1',
+        });
+        block.set('components', new MockYArray());
+        blocksArray.push([block]);
+        pageMap.set('blocks', blocksArray);
+        mockDocManager.getNavigation().push([pageMap]);
+
+        const blocks = binding.getBlocks('page-1');
+        expect(blocks[0].componentCount).toBe(0);
+      });
+    });
+
+    describe('Y.Text handling', () => {
+      it('mapToComponent handles Y.Text htmlContent', () => {
+        // Create a mock Y.Text
+        class MockYText {
+          constructor(text = '') {
+            this._text = text;
+          }
+          toString() {
+            return this._text;
+          }
+        }
+        global.window.Y.Text = MockYText;
+
+        const compMap = new MockYMap({
+          id: 'comp-1',
+          ideviceId: 'comp-1',
+          ideviceType: 'FreeTextIdevice',
+          order: 0,
+        });
+        compMap.set('htmlContent', new MockYText('<p>Test Content</p>'));
+
+        const component = binding.mapToComponent(compMap, 0);
+
+        expect(component.htmlContent).toBe('<p>Test Content</p>');
+      });
+
+      it('mapToComponent handles null htmlContent', () => {
+        const compMap = new MockYMap({
+          id: 'comp-1',
+          ideviceId: 'comp-1',
+          ideviceType: 'FreeTextIdevice',
+          order: 0,
+        });
+        // Don't set htmlContent
+
+        const component = binding.mapToComponent(compMap, 0);
+
+        expect(component.htmlContent).toBe('');
+      });
+
+      it('mapToComponent handles string htmlContent', () => {
+        const compMap = new MockYMap({
+          id: 'comp-1',
+          ideviceId: 'comp-1',
+          ideviceType: 'FreeTextIdevice',
+          order: 0,
+          htmlContent: '<p>Direct string content</p>',
+        });
+
+        const component = binding.mapToComponent(compMap, 0);
+
+        expect(component.htmlContent).toBe('<p>Direct string content</p>');
+      });
+    });
+
+    describe('getPageMap and getBlockMap', () => {
+      it('getPageMap returns null for non-existent page', () => {
+        const pageMap = binding.getPageMap('non-existent');
+        expect(pageMap).toBeNull();
+      });
+
+      it('getBlockMap returns null for non-existent page', () => {
+        const blockMap = binding.getBlockMap('non-existent', 'block-1');
+        expect(blockMap).toBeNull();
+      });
+
+      it('getBlockMap returns null for non-existent block', () => {
+        const pageMap = new MockYMap({
+          id: 'page-1',
+          pageId: 'page-1',
+          pageName: 'Test Page',
+        });
+        pageMap.set('blocks', new MockYArray());
+        mockDocManager.getNavigation().push([pageMap]);
+
+        const blockMap = binding.getBlockMap('page-1', 'non-existent');
+        expect(blockMap).toBeNull();
+      });
+    });
+
+    describe('getComponentMap', () => {
+      it('returns null for non-existent component', () => {
+        const compMap = binding.getComponentMap('non-existent');
+        expect(compMap).toBeNull();
+      });
+
+      it('searches through all pages and blocks', () => {
+        const pageMap = new MockYMap({
+          id: 'page-1',
+          pageId: 'page-1',
+          pageName: 'Test Page',
+        });
+        const blocksArray = new MockYArray();
+        const block = new MockYMap({
+          id: 'block-1',
+          blockId: 'block-1',
+          blockName: 'Block 1',
+        });
+        const componentsArray = new MockYArray();
+        const comp = new MockYMap({
+          id: 'comp-1',
+          ideviceId: 'comp-1',
+          ideviceType: 'FreeTextIdevice',
+        });
+        componentsArray.push([comp]);
+        block.set('components', componentsArray);
+        blocksArray.push([block]);
+        pageMap.set('blocks', blocksArray);
+        mockDocManager.getNavigation().push([pageMap]);
+
+        const compMap = binding.getComponentMap('comp-1');
+        expect(compMap).toBeDefined();
+        expect(compMap.get('id')).toBe('comp-1');
+      });
+    });
+
+    describe('createPageMapFromApi', () => {
+      it('handles page with properties', () => {
+        const apiPage = {
+          pageId: 'page-1',
+          pageName: 'Test Page',
+          parent: null,
+          order: 0,
+          odeNavStructureSyncProperties: {
+            hidePageTitle: { value: true },
+            customProp: { value: 'test' },
+          },
+          odePagStructureSyncs: [],
+        };
+
+        const pageMap = binding.createPageMapFromApi(apiPage);
+
+        const props = pageMap.get('properties');
+        expect(props).toBeDefined();
+        expect(props.get('hidePageTitle')).toBe(true);
+        expect(props.get('customProp')).toBe('test');
+      });
+
+      it('generates ID when not provided', () => {
+        const apiPage = {
+          pageName: 'Test Page',
+          parent: null,
+          order: 0,
+          odePagStructureSyncs: [],
+        };
+
+        const pageMap = binding.createPageMapFromApi(apiPage);
+
+        expect(pageMap.get('id')).toBeDefined();
+        expect(pageMap.get('id')).toContain('page');
+      });
     });
   });
 });

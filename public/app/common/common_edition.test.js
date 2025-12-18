@@ -1,146 +1,140 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Setup globals needed BEFORE the script is loaded
+globalThis._ = vi.fn((key) => key);
+globalThis.c_ = vi.fn((key) => key);
+globalThis.eXe = {
+  app: {
+    alert: vi.fn(),
+    clearHistory: vi.fn(),
+    _confirmResponses: {
+      clear: vi.fn()
+    }
+  },
+};
+globalThis.tinymce = {
+  majorVersion: 4,
+};
+globalThis.$exeTinyMCE = {
+  init: vi.fn(),
+};
+globalThis.$exeDevice = {
+  init: vi.fn(),
+  save: vi.fn(() => '<div>Saved HTML</div>'),
+  i18n: {
+    en: { 'Test': 'Translated Test' }
+  }
+};
+globalThis.top = {
+  translations: {}
+};
+
+// Mock jQuery
+const mockJQuery = vi.fn((selector) => {
+  const elements = {
+    '#exe-submitButton a': {
+      length: 1,
+      attr: vi.fn(() => 'console.log("clicked")'),
+      0: { onclick: null },
+      eq: function() { return this; }
+    },
+    'HTML': {
+      attr: vi.fn(() => 'en')
+    },
+    '.exe-fieldset legend a': {
+      click: vi.fn()
+    },
+    '.exe-info': {
+      each: vi.fn(),
+      html: vi.fn()
+    },
+    'textarea.mceEditor, #node-content .idevice_node[mode=edition]': {
+      val: vi.fn()
+    },
+    '#eXeGameShowClue': {
+      is: vi.fn(() => true),
+      prop: vi.fn()
+    },
+    '#eXeGameClue': {
+      val: vi.fn(() => 'Clue Text'),
+      prop: vi.fn()
+    },
+    '#eXeGamePercentajeClue': {
+      children: vi.fn(() => ({
+        val: vi.fn(() => '40')
+      })),
+      val: vi.fn()
+    },
+    '#eXeGameShowCodeAccess': {
+      is: vi.fn(() => false),
+      prop: vi.fn()
+    },
+    '#eXeGameCodeAccess': {
+      val: vi.fn(() => ''),
+      prop: vi.fn()
+    },
+    '#eXeGameMessageCodeAccess': {
+      val: vi.fn(() => ''),
+      prop: vi.fn()
+    },
+    'input[type=radio][name=\'eXeGameSCORM\']:checked': {
+      val: vi.fn(() => '1')
+    },
+    '#eXeGameSCORMbuttonText': {
+      val: vi.fn(() => 'Save'),
+    },
+    '#eXeGameSCORMWeight': {
+      val: vi.fn(() => '100'),
+    }
+  };
+
+  if (typeof selector === 'string' && elements[selector]) {
+    return elements[selector];
+  }
+
+  return {
+    length: 0,
+    attr: vi.fn(),
+    click: vi.fn(),
+    each: vi.fn(),
+    html: vi.fn(),
+    val: vi.fn(),
+    find: vi.fn().mockReturnThis(),
+    parent: vi.fn().mockReturnThis(),
+    prev: vi.fn().mockReturnThis(),
+    next: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    before: vi.fn().mockReturnThis(),
+    after: vi.fn().mockReturnThis(),
+    addClass: vi.fn().mockReturnThis(),
+    removeClass: vi.fn().mockReturnThis(),
+    toggleClass: vi.fn().mockReturnThis(),
+    css: vi.fn().mockReturnThis(),
+    fadeOut: vi.fn().mockReturnThis(),
+    prop: vi.fn().mockReturnThis(),
+    on: vi.fn().mockReturnThis(),
+    off: vi.fn().mockReturnThis(),
+    is: vi.fn(() => false),
+    children: vi.fn().mockReturnThis(),
+    trigger: vi.fn().mockReturnThis(),
+    removeAttr: vi.fn().mockReturnThis(),
+  };
+});
+
+// Add $.trim
+mockJQuery.trim = (str) => str ? str.trim() : '';
+
+globalThis.$ = mockJQuery;
+globalThis.jQuery = mockJQuery;
+
+// Load the module using require() for coverage tracking
+const $exeDevicesEdition = require('./common_edition.js');
+globalThis.$exeDevicesEdition = $exeDevicesEdition;
 
 describe('common_edition.js', () => {
-  beforeAll(async () => {
-    // Setup globals needed BEFORE the script is loaded
-    globalThis._ = vi.fn((key) => key);
-    globalThis.c_ = vi.fn((key) => key);
-    globalThis.eXe = {
-      app: {
-        alert: vi.fn(),
-        clearHistory: vi.fn(),
-        _confirmResponses: {
-          clear: vi.fn()
-        }
-      },
-    };
-    globalThis.tinymce = {
-      majorVersion: 4,
-    };
-    globalThis.$exeTinyMCE = {
-      init: vi.fn(),
-    };
-    globalThis.$exeDevice = {
-      init: vi.fn(),
-      save: vi.fn(() => '<div>Saved HTML</div>'),
-      i18n: {
-        en: { 'Test': 'Translated Test' }
-      }
-    };
-    globalThis.top = {
-      translations: {}
-    };
-
-    // Mock jQuery
-    const mockJQuery = vi.fn((selector) => {
-      const elements = {
-        '#exe-submitButton a': {
-          length: 1,
-          attr: vi.fn(() => 'console.log("clicked")'),
-          0: { onclick: null },
-          eq: function() { return this; }
-        },
-        'HTML': {
-          attr: vi.fn(() => 'en')
-        },
-        '.exe-fieldset legend a': {
-          click: vi.fn()
-        },
-        '.exe-info': {
-          each: vi.fn(),
-          html: vi.fn()
-        },
-        'textarea.mceEditor, #node-content .idevice_node[mode=edition]': {
-          val: vi.fn()
-        },
-        '#eXeGameShowClue': {
-          is: vi.fn(() => true),
-          prop: vi.fn()
-        },
-        '#eXeGameClue': {
-          val: vi.fn(() => 'Clue Text'),
-          prop: vi.fn()
-        },
-        '#eXeGamePercentajeClue': {
-          children: vi.fn(() => ({
-            val: vi.fn(() => '40')
-          })),
-          val: vi.fn()
-        },
-        '#eXeGameShowCodeAccess': {
-          is: vi.fn(() => false),
-          prop: vi.fn()
-        },
-        '#eXeGameCodeAccess': {
-          val: vi.fn(() => ''),
-          prop: vi.fn()
-        },
-        '#eXeGameMessageCodeAccess': {
-          val: vi.fn(() => ''),
-          prop: vi.fn()
-        },
-        'input[type=radio][name=\'eXeGameSCORM\']:checked': {
-          val: vi.fn(() => '1')
-        },
-        '#eXeGameSCORMbuttonText': {
-          val: vi.fn(() => 'Save'),
-        },
-        '#eXeGameSCORMWeight': {
-          val: vi.fn(() => '100'),
-        }
-      };
-
-      if (typeof selector === 'string' && elements[selector]) {
-        return elements[selector];
-      }
-
-      return {
-        length: 0,
-        attr: vi.fn(),
-        click: vi.fn(),
-        each: vi.fn(),
-        html: vi.fn(),
-        val: vi.fn(),
-        find: vi.fn().mockReturnThis(),
-        parent: vi.fn().mockReturnThis(),
-        prev: vi.fn().mockReturnThis(),
-        next: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        before: vi.fn().mockReturnThis(),
-        after: vi.fn().mockReturnThis(),
-        addClass: vi.fn().mockReturnThis(),
-        removeClass: vi.fn().mockReturnThis(),
-        toggleClass: vi.fn().mockReturnThis(),
-        css: vi.fn().mockReturnThis(),
-        fadeOut: vi.fn().mockReturnThis(),
-        prop: vi.fn().mockReturnThis(),
-        on: vi.fn().mockReturnThis(),
-        off: vi.fn().mockReturnThis(),
-        is: vi.fn(() => false),
-        children: vi.fn().mockReturnThis(),
-        trigger: vi.fn().mockReturnThis(),
-        removeAttr: vi.fn().mockReturnThis(),
-      };
-    });
-    
-    // Add $.trim
-    mockJQuery.trim = (str) => str ? str.trim() : '';
-    
-    globalThis.$ = mockJQuery;
-    globalThis.jQuery = mockJQuery;
-
-    // Load the script content and eval it
-    const fs = await import('fs');
-    const path = await import('path');
-    const scriptPath = path.resolve(__dirname, './common_edition.js');
-    const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-    
-    (0, eval)(scriptContent);
-  });
-
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Ensure $exeDevice is defined globally before script evaluation in each test
     globalThis.$exeDevice = {
       init: vi.fn(),
@@ -151,9 +145,9 @@ describe('common_edition.js', () => {
     };
 
     // Re-mock jQuery to ensure it handles string checks safely
-    const mockJQuery = vi.fn((selector) => {
+    mockJQuery.mockImplementation((selector) => {
       const isString = typeof selector === 'string';
-      
+
       const elements = {
         '#exe-submitButton a': {
           length: 1,
@@ -227,11 +221,11 @@ describe('common_edition.js', () => {
     it('shows alert if $exeDevice is not fully defined', () => {
       const originalInit = globalThis.$exeDevice.init;
       delete globalThis.$exeDevice.init;
-      
+
       globalThis.$exeDevicesEdition.iDevice.init();
-      
+
       expect(globalThis.eXe.app.alert).toHaveBeenCalled();
-      
+
       globalThis.$exeDevice.init = originalInit;
     });
   });
@@ -270,7 +264,7 @@ describe('common_edition.js', () => {
     it('init handles tabs', () => {
       const mockTabs = {
         each: vi.fn((callback) => {
-          callback.call({ 
+          callback.call({
             attr: vi.fn((name, val) => {
               if (name === 'title') return 'Tab Title';
               return '';
@@ -282,7 +276,7 @@ describe('common_edition.js', () => {
           before: vi.fn()
         }))
       };
-      
+
       globalThis.$ = vi.fn((selector) => {
         if (typeof selector === 'string' && selector.includes('.exe-form-tab')) return mockTabs;
         return {

@@ -17,65 +17,87 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Read script content for string-matching tests
+const scriptPath = join(__dirname, 'exe_atools.js');
+const scriptContent = readFileSync(scriptPath, 'utf-8');
+
+// Setup globals BEFORE requiring the module
+global.$exe_i18n = {
+  read: 'Read',
+  translate: 'Translate',
+  drag_and_drop: 'Drag and drop',
+  mode_toggler: 'Mode toggler',
+  accessibility_tools: 'Accessibility tools',
+  default_font: 'Default font',
+  increase_text_size: 'Increase text size',
+  decrease_text_size: 'Decrease text size',
+  reset: 'Reset',
+  close_toolbar: 'Close toolbar',
+  stop_reading: 'Stop reading',
+};
+
+global.$exe = {
+  options: {
+    atools: {
+      modeToggler: false,
+      translator: false,
+      i18n: {},
+    },
+  },
+};
+
+// Mock jQuery for module load
+const mockJQuery = vi.fn((selector) => {
+  if (typeof selector === 'function') {
+    return { length: 0 };
+  }
+  return {
+    length: 0,
+    after: vi.fn(),
+    prepend: vi.fn(),
+    addClass: vi.fn(),
+    removeClass: vi.fn(),
+    hasClass: vi.fn(() => false),
+    val: vi.fn().mockReturnThis(),
+    trigger: vi.fn().mockReturnThis(),
+    click: vi.fn(),
+    change: vi.fn(),
+    each: vi.fn(),
+    on: vi.fn(),
+    attr: vi.fn(),
+    css: vi.fn(() => '0px'),
+    height: vi.fn(() => 600),
+    width: vi.fn(() => 800),
+  };
+});
+global.$ = mockJQuery;
+
+// Mock localStorage
+global.localStorage = {
+  getItem: vi.fn(() => null),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+};
+
+// Now require the module to get coverage
+const exeAtools = require('./exe_atools.js');
+
 describe('exe_atools (app/common)', () => {
-  let scriptContent;
-  let originalExe;
-  let originalExeI18n;
-  let originalLocalStorage;
   let localStorageData;
 
-  beforeAll(() => {
-    // Read the script content from app/common location
-    const scriptPath = join(__dirname, 'exe_atools.js');
-    scriptContent = readFileSync(scriptPath, 'utf-8');
-  });
-
   beforeEach(() => {
-    // Store originals
-    originalExe = global.$exe;
-    originalExeI18n = global.$exe_i18n;
-    originalLocalStorage = global.localStorage;
+    vi.clearAllMocks();
 
-    // Mock localStorage
+    // Reset localStorage mock data
     localStorageData = {};
-    global.localStorage = {
-      getItem: vi.fn((key) => localStorageData[key] || null),
-      setItem: vi.fn((key, value) => {
-        localStorageData[key] = value;
-      }),
-      removeItem: vi.fn((key) => {
-        delete localStorageData[key];
-      }),
-      clear: vi.fn(() => {
-        localStorageData = {};
-      }),
-    };
-
-    // Mock $exe_i18n
-    global.$exe_i18n = {
-      read: 'Read',
-      translate: 'Translate',
-      drag_and_drop: 'Drag and drop',
-      mode_toggler: 'Mode toggler',
-      accessibility_tools: 'Accessibility tools',
-      default_font: 'Default font',
-      increase_text_size: 'Increase text size',
-      decrease_text_size: 'Decrease text size',
-      reset: 'Reset',
-      close_toolbar: 'Close toolbar',
-      stop_reading: 'Stop reading',
-    };
-
-    // Mock $exe
-    global.$exe = {
-      options: {
-        atools: {
-          modeToggler: false,
-          translator: false,
-          i18n: {},
-        },
-      },
-    };
+    global.localStorage.getItem.mockImplementation((key) => localStorageData[key] || null);
+    global.localStorage.setItem.mockImplementation((key, value) => {
+      localStorageData[key] = value;
+    });
+    global.localStorage.removeItem.mockImplementation((key) => {
+      delete localStorageData[key];
+    });
 
     // Reset DOM
     document.body.innerHTML = '';
@@ -84,11 +106,7 @@ describe('exe_atools (app/common)', () => {
   });
 
   afterEach(() => {
-    // Restore originals
-    global.$exe = originalExe;
-    global.$exe_i18n = originalExeI18n;
-    global.localStorage = originalLocalStorage;
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('script structure', () => {
@@ -647,60 +665,15 @@ describe('exe_atools (app/common)', () => {
   });
 
   describe('script execution', () => {
-    it('executes without errors when dependencies are available', () => {
-      // Setup complete mock environment
-      global.$exe = {
-        options: {
-          atools: {
-            modeToggler: false,
-            translator: false,
-            i18n: {},
-          },
-        },
-        atools: undefined,
-      };
-
-      // Mock jQuery
-      const mockJQuery = vi.fn((selector) => {
-        if (typeof selector === 'function') {
-          // Document ready callback - don't execute to avoid full init
-          return { length: 0 };
-        }
-        return {
-          length: 0,
-          after: vi.fn(),
-          prepend: vi.fn(),
-          addClass: vi.fn(),
-          removeClass: vi.fn(),
-          hasClass: vi.fn(() => false),
-          val: vi.fn().mockReturnThis(),
-          trigger: vi.fn().mockReturnThis(),
-          click: vi.fn(),
-          change: vi.fn(),
-          each: vi.fn(),
-          on: vi.fn(),
-          attr: vi.fn(),
-          css: vi.fn(() => '0px'),
-          height: vi.fn(() => 600),
-          width: vi.fn(() => 800),
-        };
-      });
-      global.$ = mockJQuery;
-
-      // Execute script (but don't run document ready)
-      expect(() => {
-        // eslint-disable-next-line no-eval
-        eval(scriptContent);
-      }).not.toThrow();
-
-      // Verify $exe.atools was created
-      expect(global.$exe.atools).toBeDefined();
-      expect(typeof global.$exe.atools.init).toBe('function');
-      expect(typeof global.$exe.atools.start).toBe('function');
-      expect(typeof global.$exe.atools.storage).toBe('object');
-      expect(typeof global.$exe.atools.reader).toBe('object');
-      expect(typeof global.$exe.atools.draggable).toBe('object');
-      expect(typeof global.$exe.atools.Drog).toBe('object');
+    it('exports $exe.atools with expected structure', () => {
+      // Verify the module was loaded and $exe.atools was created
+      expect(exeAtools).toBeDefined();
+      expect(typeof exeAtools.init).toBe('function');
+      expect(typeof exeAtools.start).toBe('function');
+      expect(typeof exeAtools.storage).toBe('object');
+      expect(typeof exeAtools.reader).toBe('object');
+      expect(typeof exeAtools.draggable).toBe('object');
+      expect(typeof exeAtools.Drog).toBe('object');
     });
   });
 

@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -6,19 +6,48 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Read script content for string-matching tests
+const scriptPath = join(__dirname, 'exe_tooltips.js');
+const scriptContent = readFileSync(scriptPath, 'utf-8');
+
+// Setup globals BEFORE requiring the module
+const mockJQuery = vi.fn((selector) => {
+  return {
+    length: 0,
+    each: vi.fn(),
+    attr: vi.fn().mockReturnThis(),
+    text: vi.fn().mockReturnValue(''),
+    qtip: vi.fn(),
+    html: vi.fn().mockReturnValue(''),
+    append: vi.fn(),
+    next: vi.fn().mockReturnValue({ length: 0, html: vi.fn().mockReturnValue('') }),
+    eq: vi.fn().mockReturnThis(),
+  };
+});
+mockJQuery.ajax = vi.fn().mockReturnValue({
+  then: vi.fn(),
+  done: vi.fn().mockReturnThis(),
+  fail: vi.fn().mockReturnThis(),
+});
+globalThis.$ = mockJQuery;
+
+// Mock $exe global
+globalThis.$exe = {
+  loadScript: vi.fn(),
+};
+
+// Now require the module to get coverage
+const exeTooltips = require('./exe_tooltips.js');
+
+// Assign to globalThis for tests that expect it there
+globalThis.$exe.tooltips = exeTooltips;
+
 describe('exe_tooltips.js', () => {
-  let scriptContent;
-
-  beforeAll(() => {
-    const scriptPath = join(__dirname, 'exe_tooltips.js');
-    scriptContent = readFileSync(scriptPath, 'utf-8');
-  });
-
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock jQuery
-    const mockJQuery = vi.fn((selector) => {
+    // Reset mock implementations
+    mockJQuery.mockImplementation((selector) => {
       return {
         length: 0,
         each: vi.fn(),
@@ -31,35 +60,26 @@ describe('exe_tooltips.js', () => {
         eq: vi.fn().mockReturnThis(),
       };
     });
-    mockJQuery.ajax = vi.fn().mockReturnValue({
-      then: vi.fn(),
-      done: vi.fn().mockReturnThis(),
-      fail: vi.fn().mockReturnThis(),
-    });
-    globalThis.$ = mockJQuery;
 
-    // Mock $exe global
-    globalThis.$exe = {
-      loadScript: vi.fn(),
-      tooltips: null,
-    };
+    // Reset $exe.tooltips state
+    globalThis.$exe.tooltips.isAJAXAllowed = undefined;
+    globalThis.$exe.tooltips.path = undefined;
+    globalThis.$exe.tooltips.viewport = undefined;
+    globalThis.$exe.tooltips.links = undefined;
 
-    // Mock window
+    // Mock window for init tests
     globalThis.window = {
       location: {
         protocol: 'http:',
       },
     };
 
-    // Mock document.body
+    // Mock document.body for init tests
     globalThis.document = {
       body: {
         className: '',
       },
     };
-
-    // Execute the script to create $exe.tooltips
-    (0, eval)(scriptContent);
   });
 
   afterEach(() => {
@@ -68,28 +88,28 @@ describe('exe_tooltips.js', () => {
 
   describe('script structure', () => {
     it('should define $exe.tooltips object', () => {
-      expect(globalThis.$exe.tooltips).toBeDefined();
-      expect(typeof globalThis.$exe.tooltips).toBe('object');
+      expect(exeTooltips).toBeDefined();
+      expect(typeof exeTooltips).toBe('object');
     });
 
     it('should have className property set to exe-tooltip', () => {
-      expect(globalThis.$exe.tooltips.className).toBe('exe-tooltip');
+      expect(exeTooltips.className).toBe('exe-tooltip');
     });
 
     it('should have init method', () => {
-      expect(typeof globalThis.$exe.tooltips.init).toBe('function');
+      expect(typeof exeTooltips.init).toBe('function');
     });
 
     it('should have loadCSS method', () => {
-      expect(typeof globalThis.$exe.tooltips.loadCSS).toBe('function');
+      expect(typeof exeTooltips.loadCSS).toBe('function');
     });
 
     it('should have loadJS method', () => {
-      expect(typeof globalThis.$exe.tooltips.loadJS).toBe('function');
+      expect(typeof exeTooltips.loadJS).toBe('function');
     });
 
     it('should have run method', () => {
-      expect(typeof globalThis.$exe.tooltips.run).toBe('function');
+      expect(typeof exeTooltips.run).toBe('function');
     });
   });
 

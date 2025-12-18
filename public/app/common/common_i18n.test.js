@@ -1,17 +1,10 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+
+// Load the module using require() for coverage tracking
+const $exe_i18n = require('./common_i18n.js');
+globalThis.$exe_i18n = $exe_i18n;
 
 describe('common_i18n.js', () => {
-  beforeAll(async () => {
-    // Load the script content and evaluate it in the global scope
-    const fs = await import('fs');
-    const path = await import('path');
-    const scriptPath = path.resolve(__dirname, './common_i18n.js');
-    const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-    
-    // (0, eval) ensures the code is evaluated in the global scope
-    (0, eval)(scriptContent);
-  });
-
   it('should define the global $exe_i18n object', () => {
     expect(globalThis.$exe_i18n).toBeDefined();
     expect(typeof globalThis.$exe_i18n).toBe('object');
@@ -28,7 +21,7 @@ describe('common_i18n.js', () => {
       'stop_reading', 'translate', 'drag_and_drop', 'reset', 'mode_toggler',
       'teacher_mode'
     ];
-    
+
     keys.forEach(key => {
       expect(globalThis.$exe_i18n).toHaveProperty(key);
       expect(typeof globalThis.$exe_i18n[key]).toBe('string');
@@ -47,7 +40,7 @@ describe('common_i18n.js', () => {
       'results', 'total', 'otherWord', 'gameOver', 'confirmReload',
       'clickOnPlay', 'clickOnOtherWord', 'az'
     ];
-    
+
     gameKeys.forEach(key => {
       expect(globalThis.$exe_i18n.exeGames).toHaveProperty(key);
       expect(typeof globalThis.$exe_i18n.exeGames[key]).toBe('string');

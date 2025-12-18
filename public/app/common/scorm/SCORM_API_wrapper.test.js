@@ -1,24 +1,17 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Load the module using require() for coverage tracking
+const pipwerks = require('./SCORM_API_wrapper.js');
+globalThis.pipwerks = pipwerks;
 
 describe('SCORM_API_wrapper.js', () => {
-  beforeAll(async () => {
-    // Load the script content and evaluate it in the global scope
-    const fs = await import('fs');
-    const path = await import('path');
-    const scriptPath = path.resolve(__dirname, './SCORM_API_wrapper.js');
-    const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-    
-    // (0, eval) ensures the code is evaluated in the global scope
-    (0, eval)(scriptContent);
-  });
-
   beforeEach(() => {
     // Reset pipwerks state before each test
     globalThis.pipwerks.SCORM.version = null;
     globalThis.pipwerks.SCORM.connection.isActive = false;
     globalThis.pipwerks.SCORM.API.handle = null;
     globalThis.pipwerks.SCORM.API.isFound = false;
-    
+
     // Clean up window mocks
     delete window.API;
     delete window.API_1484_11;

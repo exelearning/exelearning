@@ -358,6 +358,12 @@ export const myFeatureRoutes = new Elysia({ prefix: '/api/my-feature' })
 app.use(myFeatureRoutes);
 ```
 
+## Legacy File Support
+
+The application MUST support importing legacy .elp files from pre-v3.0 eXeLearning. These files use a Python pickle XML format with `contentv3.xml`. This is handled client-side by `ElpxImporter.importLegacyFormat()` using `LegacyXmlParser.js`.
+
+**Important**: Do not remove legacy import support - backwards compatibility with old .elp files is required.
+
 ## Known Issues & Best Practices
 
 ### Database

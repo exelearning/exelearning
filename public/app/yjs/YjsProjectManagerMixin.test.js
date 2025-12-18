@@ -503,4 +503,798 @@ describe('YjsProjectManagerMixin', () => {
       // Should not throw
     });
   });
+
+  // ===== Lock Management Tests =====
+
+  describe('acquireIdeviceLock', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns true when Yjs not enabled', () => {
+      const result = projectManager.acquireIdeviceLock('comp-1');
+      expect(result).toBe(true);
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.acquireLock = mock(() => true);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.acquireIdeviceLock('comp-1');
+
+      expect(mockBridge.acquireLock).toHaveBeenCalledWith('comp-1');
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('releaseIdeviceLock', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('does nothing when Yjs not enabled', () => {
+      // Should not throw
+      projectManager.releaseIdeviceLock('comp-1');
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.releaseLock = mock(() => undefined);
+      await projectManager.enableYjsMode(123, 'token');
+
+      projectManager.releaseIdeviceLock('comp-1');
+
+      expect(mockBridge.releaseLock).toHaveBeenCalledWith('comp-1');
+    });
+  });
+
+  describe('getIdeviceLockInfo', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', () => {
+      const result = projectManager.getIdeviceLockInfo('comp-1');
+      expect(result).toBeNull();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const lockInfo = { userId: 'user-1', userName: 'Test User' };
+      mockBridge.getLockInfo = mock(() => lockInfo);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.getIdeviceLockInfo('comp-1');
+
+      expect(mockBridge.getLockInfo).toHaveBeenCalledWith('comp-1');
+      expect(result).toBe(lockInfo);
+    });
+  });
+
+  // ===== Page Operations Tests =====
+
+  describe('addPageViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', () => {
+      const result = projectManager.addPageViaYjs('New Page');
+      expect(result).toBeNull();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const newPage = { id: 'page-1', pageName: 'New Page' };
+      mockBridge.addPage = mock(() => newPage);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.addPageViaYjs('New Page', 'parent-1');
+
+      expect(mockBridge.addPage).toHaveBeenCalledWith('New Page', 'parent-1');
+      expect(result).toBe(newPage);
+    });
+  });
+
+  describe('deletePageViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns false when Yjs not enabled', () => {
+      const result = projectManager.deletePageViaYjs('page-1');
+      expect(result).toBe(false);
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.deletePage = mock(() => true);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.deletePageViaYjs('page-1');
+
+      expect(mockBridge.deletePage).toHaveBeenCalledWith('page-1');
+      expect(result).toBe(true);
+    });
+
+    it('logs error when deletion fails', async () => {
+      mockBridge.deletePage = mock(() => false);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.deletePageViaYjs('page-1');
+
+      expect(result).toBe(false);
+      expect(console.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('renamePageViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns false when Yjs not enabled', () => {
+      const result = projectManager.renamePageViaYjs('page-1', 'New Name');
+      expect(result).toBe(false);
+    });
+
+    it('updates both pageName and title', async () => {
+      mockBridge.updatePage = mock(() => undefined);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.renamePageViaYjs('page-1', 'New Name');
+
+      expect(mockBridge.updatePage).toHaveBeenCalledWith('page-1', {
+        pageName: 'New Name',
+        title: 'New Name',
+      });
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('clonePageViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', () => {
+      const result = projectManager.clonePageViaYjs('page-1');
+      expect(result).toBeNull();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const clonedPage = { id: 'page-2', pageName: 'Page 1 (copy)' };
+      mockBridge.clonePage = mock(() => clonedPage);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.clonePageViaYjs('page-1', 'Custom Name');
+
+      expect(mockBridge.clonePage).toHaveBeenCalledWith('page-1', 'Custom Name');
+      expect(result).toBe(clonedPage);
+    });
+  });
+
+  describe('movePageViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns false when Yjs not enabled', () => {
+      const result = projectManager.movePageViaYjs('page-1', 'parent-1', 0);
+      expect(result).toBe(false);
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.movePage = mock(() => true);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.movePageViaYjs('page-1', 'parent-1', 2);
+
+      expect(mockBridge.movePage).toHaveBeenCalledWith('page-1', 'parent-1', 2);
+      expect(result).toBe(true);
+    });
+
+    it('logs warning when move fails', async () => {
+      mockBridge.movePage = mock(() => false);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.movePageViaYjs('page-1', 'parent-1', 0);
+
+      expect(result).toBe(false);
+      expect(console.warn).toHaveBeenCalled();
+    });
+  });
+
+  // ===== Block Operations Tests =====
+
+  describe('addBlockViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', () => {
+      const result = projectManager.addBlockViaYjs('page-1', 'New Block');
+      expect(result).toBeNull();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.addBlock = mock(() => 'block-123');
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.addBlockViaYjs('page-1', 'New Block');
+
+      expect(mockBridge.addBlock).toHaveBeenCalledWith('page-1', 'New Block');
+      expect(result).toBe('block-123');
+    });
+  });
+
+  describe('deleteBlockViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns false when Yjs not enabled', () => {
+      const result = projectManager.deleteBlockViaYjs('page-1', 'block-1');
+      expect(result).toBe(false);
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.deleteBlock = mock(() => undefined);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.deleteBlockViaYjs('page-1', 'block-1');
+
+      expect(mockBridge.deleteBlock).toHaveBeenCalledWith('page-1', 'block-1');
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('cloneBlockViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', () => {
+      const result = projectManager.cloneBlockViaYjs('page-1', 'block-1');
+      expect(result).toBeNull();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const clonedBlock = { id: 'block-2', blockName: 'Block 1' };
+      mockBridge.cloneBlock = mock(() => clonedBlock);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.cloneBlockViaYjs('page-1', 'block-1');
+
+      expect(mockBridge.cloneBlock).toHaveBeenCalledWith('page-1', 'block-1');
+      expect(result).toBe(clonedBlock);
+    });
+  });
+
+  // ===== Component Operations Tests =====
+
+  describe('addComponentViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', () => {
+      const result = projectManager.addComponentViaYjs('page-1', 'block-1', 'FreeTextIdevice');
+      expect(result).toBeNull();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.addComponent = mock(() => 'comp-123');
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.addComponentViaYjs('page-1', 'block-1', 'FreeTextIdevice', {
+        title: 'Test',
+      });
+
+      expect(mockBridge.addComponent).toHaveBeenCalledWith('page-1', 'block-1', 'FreeTextIdevice', {
+        title: 'Test',
+      });
+      expect(result).toBe('comp-123');
+    });
+  });
+
+  describe('deleteComponentViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns false when Yjs not enabled', () => {
+      const result = projectManager.deleteComponentViaYjs('comp-1');
+      expect(result).toBe(false);
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.deleteComponent = mock(() => undefined);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.deleteComponentViaYjs('comp-1');
+
+      expect(mockBridge.deleteComponent).toHaveBeenCalledWith('comp-1');
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('cloneComponentViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', () => {
+      const result = projectManager.cloneComponentViaYjs('page-1', 'block-1', 'comp-1');
+      expect(result).toBeNull();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const clonedComp = { id: 'comp-2', ideviceType: 'FreeTextIdevice' };
+      mockBridge.cloneComponent = mock(() => clonedComp);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.cloneComponentViaYjs('page-1', 'block-1', 'comp-1');
+
+      expect(mockBridge.cloneComponent).toHaveBeenCalledWith('page-1', 'block-1', 'comp-1');
+      expect(result).toBe(clonedComp);
+    });
+  });
+
+  describe('updateComponentViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('does nothing when Yjs not enabled', () => {
+      // Should not throw
+      projectManager.updateComponentViaYjs('comp-1', { title: 'Test' });
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.updateComponent = mock(() => undefined);
+      await projectManager.enableYjsMode(123, 'token');
+
+      projectManager.updateComponentViaYjs('comp-1', { title: 'Test' });
+
+      expect(mockBridge.updateComponent).toHaveBeenCalledWith('comp-1', { title: 'Test' });
+    });
+  });
+
+  describe('updateComponentHtmlViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('does nothing when Yjs not enabled', () => {
+      // Should not throw
+      projectManager.updateComponentHtmlViaYjs('page-1', 'block-1', 'comp-1', '<p>Test</p>');
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.setComponentHtml = mock(() => undefined);
+      await projectManager.enableYjsMode(123, 'token');
+
+      projectManager.updateComponentHtmlViaYjs('page-1', 'block-1', 'comp-1', '<p>Test</p>');
+
+      expect(mockBridge.setComponentHtml).toHaveBeenCalledWith(
+        'page-1',
+        'block-1',
+        'comp-1',
+        '<p>Test</p>'
+      );
+    });
+  });
+
+  // ===== Data Retrieval Tests =====
+
+  describe('getPagesFromYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns empty array when Yjs not enabled', () => {
+      const result = projectManager.getPagesFromYjs();
+      expect(result).toEqual([]);
+    });
+
+    it('returns pages from structure binding', async () => {
+      const pages = [{ id: 'page-1', pageName: 'Page 1' }];
+      mockBridge.structureBinding = {
+        getPages: mock(() => pages),
+      };
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.getPagesFromYjs();
+
+      expect(result).toBe(pages);
+    });
+  });
+
+  describe('getBlocksFromYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns empty array when Yjs not enabled', () => {
+      const result = projectManager.getBlocksFromYjs('page-1');
+      expect(result).toEqual([]);
+    });
+
+    it('returns blocks from structure binding', async () => {
+      const blocks = [{ id: 'block-1', blockName: 'Block 1' }];
+      mockBridge.structureBinding = {
+        getBlocks: mock(() => blocks),
+      };
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.getBlocksFromYjs('page-1');
+
+      expect(mockBridge.structureBinding.getBlocks).toHaveBeenCalledWith('page-1');
+      expect(result).toBe(blocks);
+    });
+  });
+
+  describe('getComponentsFromYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns empty array when Yjs not enabled', () => {
+      const result = projectManager.getComponentsFromYjs('page-1', 'block-1');
+      expect(result).toEqual([]);
+    });
+
+    it('returns components from structure binding', async () => {
+      const components = [{ id: 'comp-1', ideviceType: 'FreeTextIdevice' }];
+      mockBridge.structureBinding = {
+        getComponents: mock(() => components),
+      };
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = projectManager.getComponentsFromYjs('page-1', 'block-1');
+
+      expect(mockBridge.structureBinding.getComponents).toHaveBeenCalledWith('page-1', 'block-1');
+      expect(result).toBe(components);
+    });
+  });
+
+  // ===== Events & Observers Tests =====
+
+  describe('onStructureChange', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns no-op when Yjs not enabled', () => {
+      const callback = mock(() => undefined);
+      const unsubscribe = projectManager.onStructureChange(callback);
+
+      expect(typeof unsubscribe).toBe('function');
+      unsubscribe(); // Should not throw
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const unsubFn = () => {};
+      mockBridge.onStructureChange = mock(() => unsubFn);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const callback = mock(() => undefined);
+      const result = projectManager.onStructureChange(callback);
+
+      expect(mockBridge.onStructureChange).toHaveBeenCalledWith(callback);
+      expect(result).toBe(unsubFn);
+    });
+  });
+
+  describe('onSaveStatus', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns no-op when Yjs not enabled', () => {
+      const callback = mock(() => undefined);
+      const unsubscribe = projectManager.onSaveStatus(callback);
+
+      expect(typeof unsubscribe).toBe('function');
+      unsubscribe(); // Should not throw
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const unsubFn = () => {};
+      mockBridge.onSaveStatus = mock(() => unsubFn);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const callback = mock(() => undefined);
+      const result = projectManager.onSaveStatus(callback);
+
+      expect(mockBridge.onSaveStatus).toHaveBeenCalledWith(callback);
+      expect(result).toBe(unsubFn);
+    });
+  });
+
+  describe('observeComponentContent', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns no-op when Yjs not enabled', () => {
+      const callback = mock(() => undefined);
+      const unsubscribe = projectManager.observeComponentContent('comp-1', callback);
+
+      expect(typeof unsubscribe).toBe('function');
+      unsubscribe(); // Should not throw
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const unsubFn = () => {};
+      mockBridge.observeComponentContent = mock(() => unsubFn);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const callback = mock(() => undefined);
+      const result = projectManager.observeComponentContent('comp-1', callback);
+
+      expect(mockBridge.observeComponentContent).toHaveBeenCalledWith('comp-1', callback);
+      expect(result).toBe(unsubFn);
+    });
+  });
+
+  // ===== Undo/Redo Tests =====
+
+  describe('undo', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('does nothing when Yjs not enabled', () => {
+      // Should not throw
+      projectManager.undo();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.undo = mock(() => undefined);
+      await projectManager.enableYjsMode(123, 'token');
+
+      projectManager.undo();
+
+      expect(mockBridge.undo).toHaveBeenCalled();
+    });
+  });
+
+  describe('redo', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('does nothing when Yjs not enabled', () => {
+      // Should not throw
+      projectManager.redo();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.redo = mock(() => undefined);
+      await projectManager.enableYjsMode(123, 'token');
+
+      projectManager.redo();
+
+      expect(mockBridge.redo).toHaveBeenCalled();
+    });
+  });
+
+  // ===== Import/Export Tests =====
+
+  describe('exportToElpxViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('does nothing when Yjs not enabled', async () => {
+      // Should not throw
+      await projectManager.exportToElpxViaYjs();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      mockBridge.exportToElpx = mock(() => undefined).mockResolvedValue();
+      await projectManager.enableYjsMode(123, 'token');
+
+      await projectManager.exportToElpxViaYjs();
+
+      expect(mockBridge.exportToElpx).toHaveBeenCalled();
+    });
+  });
+
+  describe('importFromElpxViaYjs', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', async () => {
+      const file = new File(['test'], 'test.elpx');
+      const result = await projectManager.importFromElpxViaYjs(file);
+      expect(result).toBeNull();
+    });
+
+    it('delegates to bridge when enabled', async () => {
+      const stats = { pages: 1, blocks: 2, components: 3 };
+      mockBridge.importFromElpx = mock(() => undefined).mockResolvedValue(stats);
+      await projectManager.enableYjsMode(123, 'token');
+
+      const file = new File(['test'], 'test.elpx');
+      const result = await projectManager.importFromElpxViaYjs(file, { clearExisting: true });
+
+      expect(mockBridge.importFromElpx).toHaveBeenCalledWith(file, { clearExisting: true });
+      expect(result).toBe(stats);
+    });
+  });
+
+  describe('importConvertedStructure', () => {
+    beforeEach(async () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+    });
+
+    it('returns null when Yjs not enabled', async () => {
+      const result = await projectManager.importConvertedStructure({}, []);
+      expect(result).toBeNull();
+    });
+
+    it('imports structure with pages and blocks', async () => {
+      // Mock Y global
+      class MockYMap {
+        constructor() {
+          this._data = new Map();
+        }
+        get(key) {
+          return this._data.get(key);
+        }
+        set(key, value) {
+          this._data.set(key, value);
+        }
+      }
+
+      class MockYArray {
+        constructor() {
+          this._items = [];
+        }
+        get length() {
+          return this._items.length;
+        }
+        push(items) {
+          this._items.push(...items);
+        }
+        delete() {}
+      }
+
+      global.window.Y = { Map: MockYMap, Array: MockYArray };
+
+      const mockNavigation = new MockYArray();
+      mockBridge.getAssetManager = mock(() => null);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      const structure = {
+        pages: [
+          {
+            id: 'page-1',
+            title: 'Test Page',
+            blocks: [
+              {
+                id: 'block-1',
+                name: 'Block 1',
+                idevices: [
+                  {
+                    id: 'comp-1',
+                    type: 'FreeTextIdevice',
+                    htmlView: '<p>Test</p>',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = await projectManager.importConvertedStructure(structure, []);
+
+      expect(result).toBeDefined();
+      expect(result.pages).toBe(1);
+      expect(result.blocks).toBe(1);
+      expect(result.components).toBe(1);
+    });
+
+    it('handles empty structure', async () => {
+      class MockYMap {
+        constructor() {
+          this._data = new Map();
+        }
+        get(key) {
+          return this._data.get(key);
+        }
+        set(key, value) {
+          this._data.set(key, value);
+        }
+      }
+
+      class MockYArray {
+        constructor() {
+          this._items = [];
+        }
+        get length() {
+          return this._items.length;
+        }
+        push(items) {
+          this._items.push(...items);
+        }
+        delete() {}
+      }
+
+      global.window.Y = { Map: MockYMap, Array: MockYArray };
+
+      const mockNavigation = new MockYArray();
+      mockBridge.getAssetManager = mock(() => null);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      const result = await projectManager.importConvertedStructure({}, []);
+
+      expect(result).toBeDefined();
+      expect(result.pages).toBe(0);
+    });
+
+    it('clears existing navigation when clearExisting is true', async () => {
+      class MockYMap {
+        constructor() {
+          this._data = new Map();
+        }
+        get(key) {
+          return this._data.get(key);
+        }
+        set(key, value) {
+          this._data.set(key, value);
+        }
+      }
+
+      class MockYArray {
+        constructor() {
+          this._items = ['existing'];
+        }
+        get length() {
+          return this._items.length;
+        }
+        push(items) {
+          this._items.push(...items);
+        }
+        delete(index) {
+          this._items.splice(index, 1);
+        }
+      }
+
+      global.window.Y = { Map: MockYMap, Array: MockYArray };
+
+      const mockNavigation = new MockYArray();
+      mockBridge.getAssetManager = mock(() => null);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      await projectManager.importConvertedStructure({ pages: [] }, [], { clearExisting: true });
+
+      // Navigation should have been cleared (delete called)
+      expect(mockNavigation.length).toBe(0);
+    });
+  });
+
+  describe('isApplied', () => {
+    it('returns false before mixin applied', () => {
+      expect(YjsProjectManagerMixin.isApplied(projectManager)).toBe(false);
+    });
+
+    it('returns true after mixin applied', () => {
+      YjsProjectManagerMixin.applyMixin(projectManager);
+      expect(YjsProjectManagerMixin.isApplied(projectManager)).toBe(true);
+    });
+  });
 });

@@ -18,7 +18,7 @@ export default defineConfig({
     setupFiles: ['./public/vitest.setup.js'],
 
     // Only include frontend tests
-    include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js'],
+    include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js'],
 
     // Exclude legacy code
     exclude: [
@@ -36,7 +36,7 @@ export default defineConfig({
       'public/app/common/exe_magnify/**',
       'public/app/common/exe_lightbox/**',
       'public/app/common/exe_highlighter/**',
-      'public/files/perm/**',
+      'public/files/perm/themes/**',
     ],
 
     // Worker isolation - critical for memory management

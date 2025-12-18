@@ -6,37 +6,14 @@
  * Run with: make test-frontend
  */
 
- 
+// Mock Logger BEFORE requiring SaveManager
+global.Logger = { log: vi.fn() };
 
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const SaveManager = require('./SaveManager.js');
 
 describe('SaveManager', () => {
-  let SaveManager;
   let mockBridge;
   let mockFetch;
-
-  beforeAll(() => {
-    // Mock Logger BEFORE executing script
-    global.Logger = { log: vi.fn() };
-
-    // Read and execute the script
-    const scriptPath = join(__dirname, 'SaveManager.js');
-    const scriptContent = readFileSync(scriptPath, 'utf-8');
-
-    // Execute script using new Function() to properly return the class
-     
-    const scriptFn = new Function(scriptContent + '\n; return SaveManager;');
-    SaveManager = scriptFn();
-  });
-
-  afterAll(() => {
-    delete global.Logger;
-  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -669,6 +646,452 @@ describe('SaveManager', () => {
       const status = await manager.getStatus();
 
       expect(status.pendingAssets).toBe(0);
+    });
+  });
+
+  describe('uploadLargeAsset', () => {
+    beforeEach(() => {
+      global.window = { location: { origin: 'http://localhost' } };
+    });
+
+    afterEach(() => {
+      delete global.window;
+    });
+
+    it('throws error when asset has no blob', async () => {
+      const manager = new SaveManager(mockBridge);
+      const asset = { id: 'asset-1', filename: 'test.mp4' };
+
+      await expect(manager.uploadLargeAsset('project-123', asset, () => {}))
+        .rejects.toThrow('Asset has no blob data');
+    });
+
+    it('uploads chunks in sequence', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_SIZE = 5; // Small chunk size for testing
+
+      // Create a small "large" file (15 bytes = 3 chunks of 5 bytes)
+      const blob = new Blob(['123451234512345']); // 15 bytes
+      const asset = { id: 'asset-1', filename: 'test.mp4', mime: 'video/mp4', blob };
+
+      let progressValues = [];
+      const onProgress = (p) => progressValues.push(p);
+
+      // Mock fetch to return complete on last chunk
+      let chunkCount = 0;
+      mockFetch.mockImplementation(() => {
+        chunkCount++;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            success: true,
+            complete: chunkCount >= 3, // Complete after 3 chunks
+          }),
+        });
+      });
+
+      await manager.uploadLargeAsset('project-123', asset, onProgress);
+
+      // Should have uploaded 3 chunks
+      expect(chunkCount).toBe(3);
+      // Progress should increase
+      expect(progressValues.length).toBeGreaterThan(0);
+    });
+
+    it('calls finalize when chunks dont return complete', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_SIZE = 10; // 10 bytes per chunk
+
+      const blob = new Blob(['12345678901234567890']); // 20 bytes = 2 chunks
+      const asset = { id: 'asset-1', filename: 'test.mp4', mime: 'video/mp4', blob };
+
+      let finalizeCallCount = 0;
+      mockFetch.mockImplementation((url) => {
+        if (url.includes('finalize')) {
+          finalizeCallCount++;
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, complete: true }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, complete: false }),
+        });
+      });
+
+      await manager.uploadLargeAsset('project-123', asset, () => {});
+
+      expect(finalizeCallCount).toBeGreaterThan(0);
+    });
+
+    it('throws after max finalize retries', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_SIZE = 10;
+
+      const blob = new Blob(['1234567890']); // 10 bytes = 1 chunk
+      const asset = { id: 'asset-1', filename: 'test.mp4', mime: 'video/mp4', blob };
+
+      // Mock: chunk uploads succeed but finalize always returns incomplete
+      mockFetch.mockImplementation((url) => {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, complete: false, progress: { received: 0 } }),
+        });
+      });
+
+      await expect(manager.uploadLargeAsset('project-123', asset, () => {}))
+        .rejects.toThrow('Chunked upload finished but server did not confirm completion after retries');
+    }, 10000); // Increase timeout for retry loop
+  });
+
+  describe('uploadAssets', () => {
+    beforeEach(() => {
+      global.window = { location: { origin: 'http://localhost' } };
+    });
+
+    afterEach(() => {
+      delete global.window;
+    });
+
+    it('handles empty assets array', async () => {
+      const manager = new SaveManager(mockBridge);
+      const result = await manager.uploadAssets('project-123', mockBridge.assetManager, [], null);
+      expect(result.uploaded).toBe(0);
+      expect(result.failed).toBe(0);
+    });
+
+    it('separates large and small assets', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 1000; // 1KB threshold for testing
+
+      const smallAsset = { id: 'small', blob: new Blob(['small']), filename: 'small.txt', mime: 'text/plain' };
+      const largeAsset = { id: 'large', blob: new Blob(['x'.repeat(2000)]), filename: 'large.bin', mime: 'application/octet-stream' };
+
+      const uploadLargeSpy = vi.spyOn(manager, 'uploadLargeAsset').mockResolvedValue({ success: true });
+      const uploadBatchSpy = vi.spyOn(manager, 'uploadAssetBatch').mockResolvedValue({ success: true });
+
+      await manager.uploadAssets('project-123', mockBridge.assetManager, [smallAsset, largeAsset], null);
+
+      expect(uploadLargeSpy).toHaveBeenCalled();
+      expect(uploadBatchSpy).toHaveBeenCalled();
+    });
+
+    it('continues on batch failure', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+
+      const assets = [
+        { id: 'a1', blob: new Blob(['1']), filename: 'a1.txt' },
+        { id: 'a2', blob: new Blob(['2']), filename: 'a2.txt' },
+      ];
+
+      // First batch fails, second succeeds
+      vi.spyOn(manager, 'uploadAssetBatch')
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({ success: true });
+
+      vi.spyOn(manager, 'createSizeLimitedBatches').mockReturnValue([[assets[0]], [assets[1]]]);
+
+      const result = await manager.uploadAssets('project-123', mockBridge.assetManager, assets, null);
+
+      expect(result.failed).toBe(1);
+      expect(result.uploaded).toBe(1);
+    });
+
+    it('uses priority batches when queue is set', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.priorityQueue = { getPriority: vi.fn().mockReturnValue(0) };
+
+      const spy = vi.spyOn(manager, 'createPriorityBatches').mockReturnValue([]);
+      vi.spyOn(manager, 'uploadAssetBatch').mockResolvedValue({ success: true });
+
+      await manager.uploadAssets('project-123', mockBridge.assetManager, [{ id: 'a', blob: new Blob(['1']) }], null);
+
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('updates toast progress', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      const mockToast = {
+        updateBodyWithProgress: vi.fn(),
+        setProgress: vi.fn(),
+      };
+
+      vi.spyOn(manager, 'uploadAssetBatch').mockResolvedValue({ success: true });
+
+      await manager.uploadAssets('project-123', mockBridge.assetManager, [
+        { id: 'a', blob: new Blob(['1']), filename: 'a.txt' },
+      ], mockToast);
+
+      expect(mockToast.updateBodyWithProgress).toHaveBeenCalled();
+      expect(mockToast.setProgress).toHaveBeenCalled();
+    });
+
+    it('handles large asset upload failure', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.CHUNK_UPLOAD_THRESHOLD = 100;
+
+      const largeAsset = { id: 'large', blob: new Blob(['x'.repeat(200)]), filename: 'large.bin' };
+
+      vi.spyOn(manager, 'uploadLargeAsset').mockRejectedValue(new Error('Upload failed'));
+
+      const result = await manager.uploadAssets('project-123', mockBridge.assetManager, [largeAsset], null);
+
+      expect(result.failed).toBe(1);
+      expect(result.uploaded).toBe(0);
+    });
+  });
+
+  describe('createPriorityBatches - additional tests', () => {
+    beforeEach(() => {
+      global.window = { location: { origin: 'http://localhost' } };
+    });
+
+    afterEach(() => {
+      delete global.window;
+    });
+
+    it('creates individual batches for critical assets', () => {
+      const manager = new SaveManager(mockBridge);
+      global.window.AssetPriorityQueue = {
+        PRIORITY: { CRITICAL: 100, HIGH: 75, MEDIUM: 50, LOW: 25, IDLE: 0 },
+      };
+
+      manager.priorityQueue = {
+        getPriority: vi.fn((id) => {
+          if (id === 'c1' || id === 'c2') return 100; // Critical
+          return 0;
+        }),
+      };
+
+      const assets = [
+        { id: 'c1', blob: { size: 1000 } },
+        { id: 'c2', blob: { size: 1000 } },
+        { id: 'n1', blob: { size: 1000 } },
+      ];
+
+      const batches = manager.createPriorityBatches(assets);
+
+      // Each critical asset should be in its own batch
+      expect(batches[0]).toEqual([{ id: 'c1', blob: { size: 1000 } }]);
+      expect(batches[1]).toEqual([{ id: 'c2', blob: { size: 1000 } }]);
+    });
+
+    it('creates smaller batches for high priority assets', () => {
+      const manager = new SaveManager(mockBridge);
+      global.window.AssetPriorityQueue = {
+        PRIORITY: { CRITICAL: 100, HIGH: 75, MEDIUM: 50, LOW: 25, IDLE: 0 },
+      };
+
+      manager.priorityQueue = {
+        getPriority: vi.fn((id) => {
+          if (id.startsWith('h')) return 80; // High
+          return 0;
+        }),
+      };
+
+      // Create 10 high priority assets
+      const assets = Array(10).fill(null).map((_, i) => ({
+        id: `h${i}`,
+        blob: { size: 1000 },
+      }));
+
+      const batches = manager.createPriorityBatches(assets);
+
+      // High priority batches should have max 5 files
+      expect(batches[0].length).toBeLessThanOrEqual(5);
+    });
+
+    it('uses default PRIORITY when window.AssetPriorityQueue not available', () => {
+      const manager = new SaveManager(mockBridge);
+      manager.priorityQueue = {
+        getPriority: vi.fn().mockReturnValue(100),
+      };
+
+      const assets = [{ id: 'a', blob: { size: 1000 } }];
+      const batches = manager.createPriorityBatches(assets);
+
+      // Should still work with default priority values
+      expect(batches.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('save - additional edge cases', () => {
+    beforeEach(() => {
+      global.window = {
+        location: { origin: 'http://localhost' },
+        Y: {
+          encodeStateAsUpdate: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
+        },
+      };
+    });
+
+    afterEach(() => {
+      delete global.window;
+    });
+
+    it('skips asset upload when assetManager has no projectId', async () => {
+      const manager = new SaveManager(mockBridge);
+      mockBridge.assetManager.projectId = null;
+
+      const uploadSpy = vi.spyOn(manager, 'uploadAssets');
+
+      await manager.save();
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+    });
+
+    it('handles asset upload errors gracefully', async () => {
+      const manager = new SaveManager(mockBridge);
+      // Set up a pending asset that will be uploaded
+      mockBridge.assetManager.getPendingAssets.mockResolvedValue([
+        { id: 'a1', blob: new Blob(['1']), filename: 'a.txt' },
+      ]);
+      // Mock uploadAssetBatch to fail
+      vi.spyOn(manager, 'uploadAssetBatch').mockRejectedValue(new Error('Upload error'));
+
+      const result = await manager.save();
+
+      // Should still succeed overall (asset errors are caught in the try-catch)
+      expect(result.success).toBe(true);
+    });
+
+    it('does not create toast when showProgress is false', async () => {
+      const manager = new SaveManager(mockBridge);
+      const createToastSpy = vi.spyOn(global.eXeLearning.app.toasts, 'createToast');
+
+      await manager.save({ showProgress: false });
+
+      expect(createToastSpy).not.toHaveBeenCalled();
+    });
+
+    it('updates save status on error', async () => {
+      const manager = new SaveManager(mockBridge);
+      vi.spyOn(manager, 'saveYjsState').mockRejectedValue(new Error('Save failed'));
+
+      await manager.save();
+
+      expect(mockBridge.updateSaveStatus).toHaveBeenCalledWith('error', 'Save failed');
+    });
+
+    it('handles missing documentManager', async () => {
+      const manager = new SaveManager(mockBridge);
+      mockBridge.documentManager = null;
+
+      const result = await manager.save();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Project not initialized');
+    });
+  });
+
+  describe('finalizeChunkedUpload - error handling', () => {
+    beforeEach(() => {
+      global.window = { location: { origin: 'http://localhost' } };
+    });
+
+    afterEach(() => {
+      delete global.window;
+    });
+
+    it('throws on finalize error', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve('Server error'),
+      });
+
+      const manager = new SaveManager(mockBridge);
+      const asset = { id: 'a', filename: 'test.mp4', mime: 'video/mp4' };
+
+      await expect(manager.finalizeChunkedUpload('project-123', asset, 'id', 10))
+        .rejects.toThrow('Finalize failed: 500 Server error');
+    });
+
+    it('uses default filename when not provided', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+      const asset = { id: 'asset-123' }; // No filename
+
+      await manager.finalizeChunkedUpload('project-123', asset, 'upload-id', 5);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('asset-asset-123'),
+        })
+      );
+    });
+  });
+
+  describe('uploadChunk - edge cases', () => {
+    beforeEach(() => {
+      global.window = { location: { origin: 'http://localhost' } };
+    });
+
+    afterEach(() => {
+      delete global.window;
+    });
+
+    it('uses default filename when not provided', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const manager = new SaveManager(mockBridge);
+      const asset = { id: 'asset-1' }; // No filename
+      const chunkBlob = new Blob(['test']);
+
+      await manager.uploadChunk('project-123', asset, 'id', 1, 1, chunkBlob);
+
+      // Should not throw
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    it('uses default mime when not provided', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const manager = new SaveManager(mockBridge);
+      const asset = { id: 'asset-1', filename: 'test.bin' }; // No mime
+      const chunkBlob = new Blob(['test']);
+
+      await manager.uploadChunk('project-123', asset, 'id', 1, 1, chunkBlob);
+
+      expect(mockFetch).toHaveBeenCalled();
+    });
+  });
+
+  describe('uploadAssetBatch - edge cases', () => {
+    beforeEach(() => {
+      global.window = { location: { origin: 'http://localhost' } };
+    });
+
+    afterEach(() => {
+      delete global.window;
+    });
+
+    it('uses default values for missing asset properties', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const manager = new SaveManager(mockBridge);
+      const assets = [
+        { id: 'a', blob: new Blob(['test']) }, // No filename, mime, or hash
+      ];
+
+      await manager.uploadAssetBatch('project-123', assets, mockBridge.assetManager);
+
+      expect(mockFetch).toHaveBeenCalled();
     });
   });
 });
