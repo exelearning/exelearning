@@ -798,6 +798,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     deactivate: trans('Deactivate', {}, locale),
                 };
 
+                const defaultQuota = process.env.DEFAULT_QUOTA ? parseInt(process.env.DEFAULT_QUOTA, 10) : 4096;
+
                 const viewModel = {
                     version: getAppVersion(),
                     app_version: getAppVersion(),
@@ -805,6 +807,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     locale,
                     t,
                     basePath: getBasePath(),
+                    defaultQuota,
                 };
 
                 try {

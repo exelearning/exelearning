@@ -897,6 +897,7 @@
                                         {{ t.user or 'User' }} <span class="mi mi-sm sort-icon">unfold_more</span>
                                     </th>
                                     <th>{{ t.roles or 'Roles' }}</th>
+                                    <th>{{ t.quota_mb or 'Quota (MB)' }}</th>
                                     <th>{{ t.status or 'Status' }}</th>
                                     <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
                                 </tr>
@@ -1069,6 +1070,11 @@
                                 <span>ROLE_EDITOR</span>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label>{{ t.quota_mb or 'Quota (MB)' }}</label>
+                            <input type="number" class="admin-input" name="quota_mb" min="0" step="1" value="{{ defaultQuota }}" placeholder="{{ t.unlimited or 'Unlimited' }}">
+                            <small style="display: block; margin-top: 0.25rem; color: var(--admin-text-muted); font-size: 0.75rem;">{{ t.quota_help or 'Leave empty for unlimited quota' }}</small>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn-admin-outline" data-bs-dismiss="modal">{{ t.cancel or 'Cancel' }}</button>
@@ -1115,6 +1121,11 @@
                                 <input type="checkbox" name="roles" value="ROLE_EDITOR" id="editRoleEditor">
                                 <span>ROLE_EDITOR</span>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t.quota_mb or 'Quota (MB)' }}</label>
+                            <input type="number" class="admin-input" name="quota_mb" id="editUserQuota" min="0" step="1" placeholder="{{ t.unlimited or 'Unlimited' }}">
+                            <small style="display: block; margin-top: 0.25rem; color: var(--admin-text-muted); font-size: 0.75rem;">{{ t.quota_help or 'Leave empty for unlimited quota' }}</small>
                         </div>
                         <div class="form-group">
                             <label>{{ t.status or 'Status' }}</label>
@@ -1248,6 +1259,7 @@
                     const statusCls = user.is_active ? 'badge-active' : 'badge-inactive';
                     const statusText = user.is_active ? T.active : T.inactive;
                     const isChecked = selectedUserIds.has(user.id) ? 'checked' : '';
+                    const quotaDisplay = user.quota_mb != null ? user.quota_mb : '-';
 
                     const tr = document.createElement('tr');
                     tr.dataset.userId = user.id;
@@ -1263,6 +1275,7 @@
                             </div>
                         </td>
                         <td>${roles}</td>
+                        <td style="font-weight: 500;">${quotaDisplay}</td>
                         <td><span class="badge-role ${statusCls}">${statusText}</span></td>
                         <td>
                             <button class="btn-admin-outline" onclick="editUser(${user.id})" title="Edit">
@@ -1282,7 +1295,7 @@
                 updatePagination();
             } catch (err) {
                 console.error('Failed to load users:', err);
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
             } finally {
                 loading.classList.remove('active');
             }
@@ -1485,6 +1498,7 @@
                 form.querySelector('[name="email"]').value = user.email;
                 document.getElementById('editRoleAdmin').checked = user.roles.includes('ROLE_ADMIN');
                 document.getElementById('editRoleEditor').checked = user.roles.includes('ROLE_EDITOR');
+                document.getElementById('editUserQuota').value = user.quota_mb != null ? user.quota_mb : '';
                 document.getElementById('editUserActive').checked = user.is_active === 1;
                 document.getElementById('editUserStatusLabel').textContent = user.is_active === 1 ? T.active : T.inactive;
 
@@ -1511,6 +1525,8 @@
             if (document.getElementById('editRoleEditor').checked) roles.push('ROLE_EDITOR');
 
             const isActive = document.getElementById('editUserActive').checked;
+            const quotaValue = document.getElementById('editUserQuota').value;
+            const quota_mb = quotaValue === '' ? null : parseInt(quotaValue, 10);
 
             try {
                 // Update roles
@@ -1537,6 +1553,19 @@
                 if (!res.ok) {
                     const data = await res.json();
                     throw new Error(data.message || 'Failed to update status');
+                }
+
+                // Update quota
+                res = await fetch(`${API_BASE}/users/${userId}/quota`, {
+                    method: 'PATCH',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quota_mb })
+                });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.message || 'Failed to update quota');
                 }
 
                 bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
@@ -1582,6 +1611,9 @@
                 roles.push(cb.value);
             });
 
+            const quotaValue = form.querySelector('[name="quota_mb"]').value;
+            const quota_mb = quotaValue === '' ? null : parseInt(quotaValue, 10);
+
             try {
                 const res = await fetch(`${API_BASE}/users`, {
                     method: 'POST',
@@ -1590,7 +1622,8 @@
                     body: JSON.stringify({
                         email: form.querySelector('[name="email"]').value,
                         password: form.querySelector('[name="password"]').value,
-                        roles
+                        roles,
+                        quota_mb
                     })
                 });
 
