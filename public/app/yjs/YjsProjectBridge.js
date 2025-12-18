@@ -1697,6 +1697,11 @@ class YjsProjectBridge {
    * Filename is automatically generated from project title (sanitized: lowercase, no accents, no special chars)
    */
   async exportToElpx() {
+    // Ensure exelearning_version is set in metadata before export
+    if (this.documentManager?._updateVersionMetadata) {
+      await this.documentManager._updateVersionMetadata();
+    }
+
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {
       try {
