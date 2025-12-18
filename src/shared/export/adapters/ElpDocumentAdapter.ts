@@ -127,7 +127,7 @@ export class ElpDocumentAdapter implements ExportDocument {
             license: meta.license || '',
             keywords: meta.keywords || '',
             theme: meta.theme || 'base',
-            version: meta.exelearning_version || '4.0',
+            exelearningVersion: meta.exelearning_version,
             created: meta.created || new Date().toISOString(),
             modified: meta.modified || new Date().toISOString(),
 

@@ -39,6 +39,7 @@ export {
     updateProject,
     updateProjectByUuid,
     markProjectAsSaved,
+    updateProjectTitleAndSave,
     updateLastAccessed,
     softDeleteProject,
     hardDeleteProject,

@@ -1694,9 +1694,14 @@ class YjsProjectBridge {
   /**
    * Export project to .elpx file
    * Uses SharedExporters (TypeScript unified pipeline) when available
-   * @param {string} filename - Output filename
+   * Filename is automatically generated from project title (sanitized: lowercase, no accents, no special chars)
    */
-  async exportToElpx(filename) {
+  async exportToElpx() {
+    // Ensure exelearning_version is set in metadata before export
+    if (this.documentManager?._updateVersionMetadata) {
+      await this.documentManager._updateVersionMetadata();
+    }
+
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {
       try {
@@ -1709,17 +1714,19 @@ class YjsProjectBridge {
         );
         const result = await exporter.export();
         if (result.success && result.data) {
+          // Use sanitized filename from exporter (lowercase, no accents, no special chars)
+          const exportFilename = result.filename || 'export.elpx';
           // Trigger download
           const blob = new Blob([result.data], { type: 'application/zip' });
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = filename;
+          link.download = exportFilename;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-          Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', filename);
+          Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
         } else {
           throw new Error(result.error || 'Export failed');
         }

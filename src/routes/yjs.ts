@@ -3,7 +3,8 @@
  * Endpoints for saving and loading Yjs document state
  */
 import { Elysia } from 'elysia';
-import { findProjectByUuid, upsertSnapshot, findSnapshotByProjectId, markProjectAsSaved } from '../db/queries';
+import * as Y from 'yjs';
+import { findProjectByUuid, upsertSnapshot, findSnapshotByProjectId, updateProjectTitleAndSave } from '../db/queries';
 import { db } from '../db/client';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
@@ -15,7 +16,7 @@ export interface YjsQueries {
     findProjectByUuid: typeof findProjectByUuid;
     findSnapshotByProjectId: typeof findSnapshotByProjectId;
     upsertSnapshot: typeof upsertSnapshot;
-    markProjectAsSaved: typeof markProjectAsSaved;
+    updateProjectTitleAndSave: typeof updateProjectTitleAndSave;
 }
 
 /**
@@ -35,7 +36,7 @@ const defaultDependencies: YjsDependencies = {
         findProjectByUuid,
         findSnapshotByProjectId,
         upsertSnapshot,
-        markProjectAsSaved,
+        updateProjectTitleAndSave,
     },
 };
 
@@ -78,10 +79,24 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 const binaryData = new Uint8Array(body as ArrayBuffer);
                 const version = Date.now().toString();
 
+                // Extract title from Yjs document metadata
+                let title = project.title;
+                try {
+                    const ydoc = new Y.Doc();
+                    Y.applyUpdate(ydoc, binaryData);
+                    const metadata = ydoc.getMap('metadata');
+                    const metadataTitle = metadata.get('title') as string | undefined;
+                    if (metadataTitle && metadataTitle.trim()) {
+                        title = metadataTitle.trim();
+                    }
+                } catch {
+                    // If we can't decode the document, use the existing project title
+                }
+
                 await queries.upsertSnapshot(database, project.id, binaryData, version);
 
-                // Mark project as saved so it appears in the project list
-                await queries.markProjectAsSaved(database, project.id);
+                // Update project title (from Yjs metadata) and mark as saved
+                await queries.updateProjectTitleAndSave(database, project.id, title);
 
                 return { success: true, message: 'Document saved', version };
             })

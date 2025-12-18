@@ -136,7 +136,7 @@ describe('YjsDocumentAdapter', () => {
                 license: 'CC-BY-SA',
                 keywords: 'test, project',
                 theme: 'blue',
-                version: '4.0',
+                exelearning_version: '4.0',
             });
             adapter = new YjsDocumentAdapter(manager as any);
 
@@ -149,7 +149,7 @@ describe('YjsDocumentAdapter', () => {
             expect(metadata.license).toBe('CC-BY-SA');
             expect(metadata.keywords).toBe('test, project');
             expect(metadata.theme).toBe('blue');
-            expect(metadata.version).toBe('4.0');
+            expect(metadata.exelearningVersion).toBe('4.0');
         });
 
         it('should return defaults for missing metadata', () => {
