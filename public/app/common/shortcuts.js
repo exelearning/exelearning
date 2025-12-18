@@ -126,6 +126,8 @@ getComboRemap() {
     'mod+o'       : off ? 'navbar-button-open-offline'    : 'navbar-button-openuserodefiles',
     'mod+s'       : off ? 'navbar-button-save-offline'    : 'navbar-button-save',
     'mod+shift+s' : off ? 'navbar-button-save-as-offline' : 'navbar-button-save-as',
+    'mod+alt+s'   : 'navbar-button-share',
+    'mod+alt+t'   : 'navbar-button-styles',
     'mod+p'       : 'navbar-button-preview',
   };
 }
@@ -253,4 +255,3 @@ comboFromEvent(e) {
     return !!(target && target.closest?.('.modal.show'));
   }
 }
-
