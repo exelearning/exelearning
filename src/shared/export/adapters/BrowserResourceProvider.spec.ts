@@ -199,16 +199,60 @@ describe('BrowserResourceProvider', () => {
     });
 
     describe('fetchScormFiles', () => {
-        it('should return SCORM files', async () => {
+        it('should return SCORM files for version 1.2', async () => {
             const scormFiles = new Map<string, Blob>();
             scormFiles.set('SCORM_API_wrapper.js', createMockBlob('// SCORM API'));
             scormFiles.set('SCOFunctions.js', createMockBlob('// SCO Functions'));
             mockFetcher.setScormFiles(scormFiles);
 
-            const result = await provider.fetchScormFiles();
+            const result = await provider.fetchScormFiles('1.2');
 
             expect(result.has('SCORM_API_wrapper.js')).toBe(true);
             expect(result.has('SCOFunctions.js')).toBe(true);
+        });
+
+        it('should return SCORM files for version 2004', async () => {
+            const scormFiles = new Map<string, Blob>();
+            scormFiles.set('SCORM_API_wrapper.js', createMockBlob('// SCORM API 2004'));
+            scormFiles.set('SCOFunctions.js', createMockBlob('// SCO Functions 2004'));
+            mockFetcher.setScormFiles(scormFiles);
+
+            const result = await provider.fetchScormFiles('2004');
+
+            expect(result.has('SCORM_API_wrapper.js')).toBe(true);
+            expect(result.has('SCOFunctions.js')).toBe(true);
+        });
+    });
+
+    describe('fetchScormSchemas', () => {
+        it('should return SCORM 1.2 schemas', async () => {
+            const schemas = new Map<string, Blob>();
+            schemas.set('imscp_rootv1p1p2.xsd', createMockBlob('<?xml?>'));
+            schemas.set('adlcp_rootv1p2.xsd', createMockBlob('<?xml?>'));
+            mockFetcher.setSchemas('scorm12', schemas);
+
+            const result = await provider.fetchScormSchemas('1.2');
+
+            expect(result.has('imscp_rootv1p1p2.xsd')).toBe(true);
+            expect(result.has('adlcp_rootv1p2.xsd')).toBe(true);
+        });
+
+        it('should return SCORM 2004 schemas', async () => {
+            const schemas = new Map<string, Blob>();
+            schemas.set('imscp_v1p1.xsd', createMockBlob('<?xml?>'));
+            schemas.set('adlcp_v1p3.xsd', createMockBlob('<?xml?>'));
+            mockFetcher.setSchemas('scorm2004', schemas);
+
+            const result = await provider.fetchScormSchemas('2004');
+
+            expect(result.has('imscp_v1p1.xsd')).toBe(true);
+            expect(result.has('adlcp_v1p3.xsd')).toBe(true);
+        });
+
+        it('should return empty map for missing schemas', async () => {
+            const result = await provider.fetchScormSchemas('1.2');
+
+            expect(result.size).toBe(0);
         });
     });
 

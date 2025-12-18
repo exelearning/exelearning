@@ -25,7 +25,8 @@ describe('FileSystemResourceProvider', () => {
         // Libraries
         await fs.ensureDir(path.join(testDir, 'libs', 'jquery'));
         await fs.ensureDir(path.join(testDir, 'libs', 'bootstrap'));
-        await fs.ensureDir(path.join(testDir, 'libs', 'scorm'));
+        // SCORM files are in app/common/scorm/
+        await fs.ensureDir(path.join(testDir, 'app', 'common', 'scorm'));
         // Common JS files
         await fs.ensureDir(path.join(testDir, 'app', 'common'));
         // Content CSS
@@ -54,8 +55,9 @@ describe('FileSystemResourceProvider', () => {
         await fs.writeFile(path.join(testDir, 'libs', 'jquery', 'jquery.min.js'), '/* jQuery */');
         await fs.writeFile(path.join(testDir, 'libs', 'bootstrap', 'bootstrap.bundle.min.js'), '/* Bootstrap JS */');
         await fs.writeFile(path.join(testDir, 'libs', 'bootstrap', 'bootstrap.min.css'), '/* Bootstrap CSS */');
-        await fs.writeFile(path.join(testDir, 'libs', 'scorm', 'SCORM_API_wrapper.js'), '/* SCORM API */');
-        await fs.writeFile(path.join(testDir, 'libs', 'scorm', 'SCOFunctions.js'), '/* SCO Functions */');
+        // SCORM files in app/common/scorm/
+        await fs.writeFile(path.join(testDir, 'app', 'common', 'scorm', 'SCORM_API_wrapper.js'), '/* SCORM API */');
+        await fs.writeFile(path.join(testDir, 'app', 'common', 'scorm', 'SCOFunctions.js'), '/* SCO Functions */');
         // Common JS files (app/common/)
         await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_export.js'), '/* Export */');
         await fs.writeFile(path.join(testDir, 'app', 'common', 'common.js'), '/* Common */');
@@ -177,11 +179,54 @@ describe('FileSystemResourceProvider', () => {
 
     describe('fetchScormFiles', () => {
         it('should fetch SCORM library files', async () => {
-            const files = await provider.fetchScormFiles();
+            const files = await provider.fetchScormFiles('1.2');
 
             expect(files.size).toBe(2);
-            expect(files.has('libs/scorm/SCORM_API_wrapper.js')).toBe(true);
-            expect(files.has('libs/scorm/SCOFunctions.js')).toBe(true);
+            // Files are returned without prefix (caller adds libs/ prefix)
+            expect(files.has('SCORM_API_wrapper.js')).toBe(true);
+            expect(files.has('SCOFunctions.js')).toBe(true);
+        });
+
+        it('should work with version 2004', async () => {
+            const files = await provider.fetchScormFiles('2004');
+
+            expect(files.size).toBe(2);
+            expect(files.has('SCORM_API_wrapper.js')).toBe(true);
+            expect(files.has('SCOFunctions.js')).toBe(true);
+        });
+    });
+
+    describe('fetchScormSchemas', () => {
+        it('should return empty map when no schemas exist', async () => {
+            // By default test dir doesn't have schemas
+            const files = await provider.fetchScormSchemas('1.2');
+            expect(files.size).toBe(0);
+        });
+
+        it('should fetch schema files when they exist', async () => {
+            // Create schema directory and file
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'scorm12'));
+            await fs.writeFile(
+                path.join(testDir, 'app', 'schemas', 'scorm12', 'imscp_rootv1p1p2.xsd'),
+                '<?xml version="1.0"?>',
+            );
+
+            const files = await provider.fetchScormSchemas('1.2');
+            expect(files.size).toBe(1);
+            expect(files.has('imscp_rootv1p1p2.xsd')).toBe(true);
+        });
+
+        it('should fetch SCORM 2004 schemas', async () => {
+            // Create schema directory and file
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'scorm2004'));
+            await fs.writeFile(
+                path.join(testDir, 'app', 'schemas', 'scorm2004', 'adlcp_v1p3.xsd'),
+                '<?xml version="1.0"?>',
+            );
+
+            const files = await provider.fetchScormSchemas('2004');
+            expect(files.size).toBe(1);
+            expect(files.has('adlcp_v1p3.xsd')).toBe(true);
         });
     });
 
