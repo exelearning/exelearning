@@ -27,13 +27,16 @@ describe('ResourceFetcher', () => {
     const scriptPath = join(__dirname, 'ResourceFetcher.js');
     const scriptContent = readFileSync(scriptPath, 'utf-8');
 
-     
-    const scriptFn = new Function(scriptContent + '\n; return ResourceFetcher;');
-    ResourceFetcher = scriptFn();
+    // Execute script in global context using eval to enable coverage tracking
+    (0, eval)(scriptContent);
+
+    // Access the class via window (where the script exports it)
+    ResourceFetcher = window.ResourceFetcher;
   });
 
   afterAll(() => {
     delete global.Logger;
+    delete window.ResourceFetcher;
   });
 
   beforeEach(() => {

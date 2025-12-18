@@ -27,13 +27,16 @@ describe('AssetPriorityQueue', () => {
     // Mock Logger globally before executing script
     global.Logger = { log: vi.fn() };
 
-    // Execute script in global context using Function constructor
-    const scriptFn = new Function(scriptContent + '\n; return AssetPriorityQueue;');
-    AssetPriorityQueue = scriptFn();
+    // Execute script in global context using eval to enable coverage tracking
+    (0, eval)(scriptContent);
+
+    // Access the class via window (where the script exports it)
+    AssetPriorityQueue = window.AssetPriorityQueue;
   });
 
   afterAll(() => {
     delete global.Logger;
+    delete window.AssetPriorityQueue;
   });
 
   beforeEach(() => {

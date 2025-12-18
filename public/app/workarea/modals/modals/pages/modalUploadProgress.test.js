@@ -61,8 +61,22 @@ describe('ModalUploadProgress', () => {
       
       expect(modalProgress.progressBar.style.width).toBe('50%');
       expect(modalProgress.percentageText.textContent).toBe('50%');
-      // formatFileSize(1024) is "1 KB"
       expect(modalProgress.statusText.textContent).toContain('1 KB');
+    });
+
+    it('should handle zero bytes', () => {
+      modalProgress.show();
+      modalProgress.updateUploadProgress(10);
+      expect(modalProgress.statusText.textContent).toBe('Uploading file...');
+    });
+
+    it('should clamp percentage between 0 and 100', () => {
+      modalProgress.show();
+      modalProgress.updateUploadProgress(-10);
+      expect(modalProgress.progressBar.style.width).toBe('0%');
+      
+      modalProgress.updateUploadProgress(150);
+      expect(modalProgress.progressBar.style.width).toBe('100%');
     });
   });
 
@@ -74,6 +88,57 @@ describe('ModalUploadProgress', () => {
       expect(modalProgress.statusText.textContent).toBe('Extracting files...');
       expect(modalProgress.phaseText.textContent).toContain('Extracting ZIP file contents');
     });
+
+    it('should handle all predefined phases', () => {
+        modalProgress.show();
+        const phases = ['parsing', 'finalizing', 'savingProject', 'uploadingAssets', 'savingComplete'];
+        phases.forEach(phase => {
+            modalProgress.setProcessingPhase(phase);
+            expect(modalProgress.statusText.textContent).not.toBe('Processing...');
+        });
+    });
+
+    it('should handle unknown phase', () => {
+        modalProgress.show();
+        modalProgress.setProcessingPhase('unknown');
+        expect(modalProgress.statusText.textContent).toBe('Processing...');
+    });
+  });
+
+  describe('setAssetUploadProgress', () => {
+      it('should update asset progress', () => {
+          modalProgress.show();
+          modalProgress.setAssetUploadProgress(1, 2, 500, 1000);
+          expect(modalProgress.progressBar.style.width).toBe('50%');
+          expect(modalProgress.statusText.textContent).toContain('1/2');
+          expect(modalProgress.statusText.textContent).toContain('B/');
+      });
+
+      it('should handle zero total assets', () => {
+          modalProgress.show();
+          modalProgress.setAssetUploadProgress(1, 0);
+          expect(modalProgress.progressBar.style.width).toBe('0%');
+      });
+
+      it('should work without bytes info', () => {
+          modalProgress.show();
+          modalProgress.setAssetUploadProgress(1, 1);
+          expect(modalProgress.statusText.textContent).toBe('Uploading asset 1/1');
+      });
+  });
+
+  describe('showSaveMode', () => {
+      it('should create modal in save mode', () => {
+          modalProgress.showSaveMode({ projectTitle: 'My Project' });
+          expect(mockContainer.querySelector('.modal-title').textContent).toContain('Saving project');
+          expect(mockContainer.querySelector('.upload-file-name').textContent).toContain('My Project');
+      });
+
+      it('should cleanup previous modal', () => {
+          modalProgress.show();
+          modalProgress.showSaveMode();
+          expect(mockBootstrapModal.dispose).toHaveBeenCalled();
+      });
   });
 
   describe('setComplete', () => {
@@ -92,6 +157,25 @@ describe('ModalUploadProgress', () => {
       expect(modalProgress.progressBar.classList.contains('bg-danger')).toBe(true);
       expect(modalProgress.statusText.textContent).toBe('Failed');
     });
+
+    it('should autoHide if requested', () => {
+        vi.useFakeTimers();
+        const hideSpy = vi.spyOn(modalProgress, 'hide');
+        modalProgress.show();
+        modalProgress.setComplete(true, 'Done', true);
+        vi.advanceTimersByTime(2000);
+        expect(hideSpy).toHaveBeenCalled();
+        vi.useRealTimers();
+    });
+  });
+
+  describe('showError', () => {
+      it('should call setComplete with false', () => {
+          const spy = vi.spyOn(modalProgress, 'setComplete');
+          modalProgress.show();
+          modalProgress.showError('Boom');
+          expect(spy).toHaveBeenCalledWith(false, 'Boom');
+      });
   });
 
   describe('hide', () => {
@@ -111,5 +195,36 @@ describe('ModalUploadProgress', () => {
       expect(modalProgress.modal).toBeNull();
       expect(modalEl.parentNode).toBeNull();
     });
+
+    it('should handle timeout if hidden event is not fired', async () => {
+        vi.useFakeTimers();
+        modalProgress.show();
+        const hidePromise = modalProgress.hide();
+        vi.advanceTimersByTime(500);
+        await hidePromise;
+        expect(modalProgress.modal).toBeNull();
+        vi.useRealTimers();
+    });
+
+    it('should resolve immediately if no modal', async () => {
+        await modalProgress.hide();
+        expect(modalProgress.modal).toBeNull();
+    });
+
+    it('should cleanup directly if no bootstrap instance', async () => {
+        window.bootstrap.Modal.getInstance = vi.fn(() => null);
+        modalProgress.show();
+        await modalProgress.hide();
+        expect(modalProgress.modal).toBeNull();
+    });
+  });
+
+  describe('formatFileSize', () => {
+      it('should format correctly', () => {
+          expect(modalProgress.formatFileSize(0)).toBe('0 B');
+          expect(modalProgress.formatFileSize(1024)).toBe('1 KB');
+          expect(modalProgress.formatFileSize(1024 * 1024)).toBe('1 MB');
+          expect(modalProgress.formatFileSize(1024 * 1024 * 1024)).toBe('1 GB');
+      });
   });
 });

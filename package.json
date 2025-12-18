@@ -17,7 +17,7 @@
     "build:all": "bun run build && bun run css:node && bun run bundle:app && bun run bundle:exporters",
     "css:node": "bunx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map",
     "sass:watch": "bunx sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map",
-    "bundle:app": "bun build public/app/app.js --outfile public/app/app.bundle.js --minify --target browser",
+    "bundle:app": "bun build public/app/app.js --outfile public/app/app.bundle.js --minify --target browser --format iife",
     "bundle:exporters": "node scripts/build-exporters-bundle.js",
     "predev": "node scripts/setup-local.js && (kill-port 8080 || true)",
     "seed": "bun run src/db/seed.ts",

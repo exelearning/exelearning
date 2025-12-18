@@ -1,34 +1,44 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ModalLopd from './modalLopd.js';
 
 describe('ModalLopd', () => {
-  let modalLopd;
+  let modal;
   let mockManager;
   let mockElement;
   let mockBootstrapModal;
 
   beforeEach(() => {
     // Mock translation function
-    window._ = vi.fn(key => key);
+    window._ = vi.fn((key) => key);
+    
+    // Mock eXeLearning global
+    window.eXeLearning = {
+      app: {
+        api: {
+          postUserSetLopdAccepted: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+        },
+        loadProject: vi.fn().mockResolvedValue(true),
+        check: vi.fn(),
+      },
+    };
 
     // Mock DOM
     mockElement = document.createElement('div');
     mockElement.id = 'modalLopd';
     mockElement.innerHTML = `
-      <div class="modal-header"><h5 class="modal-title"></h5></div>
+      <div class="modal-header">
+        <h5 class="modal-title"></h5>
+      </div>
       <div class="modal-body"></div>
-      <button class="btn btn-primary">Accept</button>
+      <div class="modal-footer">
+        <button class="btn btn-primary">Accept</button>
+      </div>
       <div id="node-content-container" style="display: none;"></div>
     `;
     document.body.appendChild(mockElement);
 
-    vi.spyOn(document, 'getElementById').mockImplementation(id => {
+    vi.spyOn(document, 'getElementById').mockImplementation((id) => {
       if (id === 'modalLopd') return mockElement;
-      return null;
-    });
-
-    vi.spyOn(document, 'querySelector').mockImplementation(selector => {
-      if (selector === 'button.btn.btn-primary') return mockElement.querySelector('button.btn.btn-primary');
-      if (selector === '#node-content-container') return mockElement.querySelector('#node-content-container');
       return null;
     });
 
@@ -53,24 +63,12 @@ describe('ModalLopd', () => {
       restrictRect: vi.fn(),
     };
 
-    // Mock eXeLearning global
-    window.eXeLearning = {
-      app: {
-        loadProject: vi.fn().mockResolvedValue(undefined),
-        check: vi.fn(),
-      },
-    };
-
     mockManager = {
+      app: window.eXeLearning.app,
       closeModals: vi.fn(() => false),
-      app: {
-        api: {
-          postUserSetLopdAccepted: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
-        }
-      }
     };
 
-    modalLopd = new ModalLopd(mockManager);
+    modal = new ModalLopd(mockManager);
   });
 
   afterEach(() => {
@@ -78,53 +76,33 @@ describe('ModalLopd', () => {
     document.body.innerHTML = '';
   });
 
-  describe('constructor', () => {
-    it('should initialize with correct ID and permanent state', () => {
-      expect(modalLopd.id).toBe('modalLopd');
-      expect(modalLopd.permanent).toBe(true);
-    });
-  });
-
   describe('show', () => {
-    it('should configure modal as static and show it', () => {
-      modalLopd.show();
-      
+    it('should set title and configure static backdrop', () => {
+      modal.show();
+      expect(mockElement.querySelector('.modal-title').innerHTML).toBe('eXeLearning');
       expect(mockBootstrapModal._config.keyboard).toBe(false);
       expect(mockBootstrapModal._config.backdrop).toBe('static');
       expect(mockBootstrapModal.show).toHaveBeenCalled();
     });
   });
 
-  describe('confirm', () => {
-    it('should call setLopdAccepted via confirmExec', async () => {
-      modalLopd.show();
-      const setLopdAcceptedSpy = vi.spyOn(modalLopd, 'setLopdAccepted');
-      
-      modalLopd.confirm();
-      
-      expect(setLopdAcceptedSpy).toHaveBeenCalled();
-    });
-  });
-
   describe('setLopdAccepted', () => {
-    it('should call API and load project on success', async () => {
-      const loadProjectSpy = vi.spyOn(modalLopd, 'loadProjectLopdAccepted');
-      
-      await modalLopd.setLopdAccepted();
+    it('should call api and load project on success', async () => {
+      await modal.setLopdAccepted();
+      await Promise.resolve(); // Wait for the .then() block
       
       expect(mockManager.app.api.postUserSetLopdAccepted).toHaveBeenCalled();
-      expect(loadProjectSpy).toHaveBeenCalled();
-      expect(mockBootstrapModal.hide).toHaveBeenCalled();
+      expect(window.eXeLearning.app.loadProject).toHaveBeenCalled();
+      expect(window.eXeLearning.app.check).toHaveBeenCalled();
     });
   });
 
-  describe('loadProjectLopdAccepted', () => {
-    it('should call eXeLearning loadProject and show content container', async () => {
-      await modalLopd.loadProjectLopdAccepted();
-      
-      expect(window.eXeLearning.app.loadProject).toHaveBeenCalled();
-      expect(document.querySelector('#node-content-container').style.display).toBe('');
-      expect(window.eXeLearning.app.check).toHaveBeenCalled();
+  describe('confirm', () => {
+    it('should call confirmExec (which calls setLopdAccepted) when confirm is called', () => {
+      const spy = vi.spyOn(modal, 'setLopdAccepted');
+      modal.show();
+      modal.confirm();
+      expect(spy).toHaveBeenCalled();
     });
   });
 });

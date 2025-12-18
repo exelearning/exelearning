@@ -185,6 +185,134 @@ describe('Modal', () => {
     });
   });
 
+  describe('button event bindings', () => {
+    it('close button click calls close', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const closeSpy = vi.spyOn(modal, 'close');
+      modal.addBehaviourCloseModal();
+      modal.modalElementButtonsClose[0].click();
+      expect(closeSpy).toHaveBeenCalled();
+    });
+
+    it('cancel button click triggers cancel handler', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const cancelSpy = vi
+        .spyOn(modal, 'cancel')
+        .mockImplementation(async () => {});
+      modal.addBehaviourCancelModal();
+      modal.modalElementButtonsCancel[0].click();
+      expect(cancelSpy).toHaveBeenCalled();
+    });
+
+    it('confirm button click triggers confirm handler', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const confirmSpy = vi
+        .spyOn(modal, 'confirm')
+        .mockImplementation(async () => {});
+      modal.addBehaviourButtonConfirm();
+      modal.modalElementButtonsConfirm[0].click();
+      expect(confirmSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('addBehaviourExeTabs', () => {
+    it('switches exe content when content exists', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const tabs = document.createElement('ul');
+      tabs.classList.add('exe-form-tabs');
+      tabs.innerHTML = `
+        <li><a href="#tab-one">Tab 1</a></li>
+        <li><a href="#tab-two">Tab 2</a></li>
+      `;
+      const contentOne = document.createElement('div');
+      contentOne.classList.add('exe-form-content');
+      contentOne.id = 'tab-one';
+      const contentTwo = document.createElement('div');
+      contentTwo.classList.add('exe-form-content');
+      contentTwo.id = 'tab-two';
+      modal.modalElementBody.appendChild(tabs);
+      modal.modalElementBody.appendChild(contentOne);
+      modal.modalElementBody.appendChild(contentTwo);
+
+      const hideSpy = vi.spyOn(modal, 'hideHelpContentAll');
+      modal.addBehaviourExeTabs();
+
+      const firstLink = modal.modalElement.querySelector(
+        '.exe-form-tabs li a[href="#tab-one"]'
+      );
+      firstLink.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(hideSpy).toHaveBeenCalled();
+      expect(firstLink.classList.contains('exe-form-active-tab')).toBe(true);
+      expect(contentOne.classList.contains('exe-form-active-content')).toBe(true);
+      expect(modal.tabSelectedLink).toBe('#tab-one');
+    });
+
+    it('toggles row content when exe-form-content elements are absent', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      modal.modalElementBody.innerHTML += `
+        <ul class="exe-form-tabs">
+          <li><a href="#cat-one">Category 1</a></li>
+        </ul>
+        <div class="exe-form-content-rows">
+          <div class="row-form-content" category="cat-one"></div>
+          <div class="row-form-content" category="cat-two"></div>
+        </div>
+      `;
+
+      modal.addBehaviourExeTabs();
+      const rowLink = modal.modalElement.querySelector('.exe-form-tabs li a');
+      rowLink.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      const rows = modal.modalElement.querySelectorAll('.row-form-content');
+      expect(rows[0].classList.contains('hidden')).toBe(false);
+      expect(rows[1].classList.contains('hidden')).toBe(true);
+    });
+  });
+
+  describe('addBehaviourExeHelp', () => {
+    it('sets up help toggles and shows help content when icon clicked', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const help = document.createElement('div');
+      help.classList.add('exe-form-help');
+      const helpContent = document.createElement('div');
+      helpContent.classList.add('help-content', 'help-hidden');
+      const icon = document.createElement('icon');
+      icon.classList.add('form-help-exe-icon');
+      help.appendChild(helpContent);
+      help.appendChild(icon);
+      modal.modalElementBody.appendChild(help);
+
+      const hideSpy = vi.spyOn(modal, 'hideHelpContentAll');
+      modal.addBehaviourExeHelp();
+
+      icon.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(hideSpy).toHaveBeenCalled();
+      expect(help.getAttribute('title')).toBe('Information');
+      expect(helpContent.classList.contains('help-hidden')).toBe(false);
+      expect(help.classList.contains('help-content-active')).toBe(true);
+      expect(help.classList.contains('help-content-disabled')).toBe(false);
+    });
+  });
+
+  describe('addBehaviourBodyToHideHelpDialogs', () => {
+    it('does not close help when clicking help icon, but hides otherwise', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const hideSpy = vi.spyOn(modal, 'hideHelpContentAll');
+      modal.addBehaviourBodyToHideHelpDialogs();
+
+      const icon = document.createElement('span');
+      icon.classList.add('form-help-exe-icon');
+      modal.modalElement.appendChild(icon);
+      icon.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(hideSpy).not.toHaveBeenCalled();
+
+      modal.modalElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(hideSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('setTitle', () => {
     it('sets modal title innerHTML', () => {
       const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
@@ -652,6 +780,41 @@ describe('Modal', () => {
       const x = { querySelector: () => ({ checked: false }) };
       const y = { querySelector: () => ({ checked: true }) };
       expect(modal.sorTableCheckbox('desc', x, y)).toBe(true);
+    });
+  });
+
+  describe('table sorting fallbacks', () => {
+    it('returns false when type is unsupported', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <tr><th></th></tr>
+        <tr><td>One</td></tr>
+        <tr><td>Two</td></tr>
+      `;
+
+      expect(modal.sorTable(table, 0, 'unknown')).toBe(false);
+    });
+
+    it('returns false when sorTableDate receives invalid sort', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const x = { id: '1' };
+      const y = { id: '2' };
+      expect(modal.sorTableDate('random', x, y)).toBe(false);
+    });
+
+    it('returns false when sorTableFloat receives invalid sort', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const x = { getAttribute: () => '5' };
+      const y = { getAttribute: () => '6' };
+      expect(modal.sorTableFloat('random', x, y)).toBe(false);
+    });
+
+    it('returns false when sorTableCheckbox receives invalid sort', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const x = { querySelector: () => ({ checked: true }) };
+      const y = { querySelector: () => ({ checked: false }) };
+      expect(modal.sorTableCheckbox('random', x, y)).toBe(false);
     });
   });
 

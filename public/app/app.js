@@ -19,7 +19,7 @@ import Actions from './common/app_actions.js';
 import Shortcuts from './common/shortcuts.js';
 import SessionMonitor from './common/sessionMonitor.js';
 
-class App {
+export default class App {
     constructor(eXeLearning) {
         this.eXeLearning = eXeLearning;
         this.parseExelearningSymfonyData();
