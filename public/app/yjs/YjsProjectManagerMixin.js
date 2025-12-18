@@ -363,7 +363,9 @@ const YjsProjectManagerMixin = {
      */
     projectManager.renamePageViaYjs = function (pageId, newName) {
       if (this._yjsEnabled && this._yjsBridge) {
-        this._yjsBridge.updatePage(pageId, { pageName: newName });
+        // Update both pageName and title to ensure Preview and exports show the new name
+        // ELPX imports set both fields, and YjsDocumentAdapter.convertPage() prioritizes 'title'
+        this._yjsBridge.updatePage(pageId, { pageName: newName, title: newName });
         Logger.log('[YjsProjectManager] Renamed page via Yjs:', pageId, newName);
         return true;
       }

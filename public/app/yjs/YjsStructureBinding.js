@@ -450,15 +450,23 @@ class YjsStructureBinding {
 
         // Handle order update - just update the order field, don't move in array
         // Yjs Y.Map items become invalid after deletion, so we use order fields for sorting
+        // IMPORTANT: Only update order for siblings (same parentId) - different groups have independent ordering
         if (newIndex !== null && typeof newIndex === 'number' && isFinite(newIndex) && newIndex >= 0) {
           const currentOrder = pageMap.get('order') ?? currentIndex;
 
           if (newIndex !== currentOrder) {
-            // Update order fields for affected pages
+            // Update order fields for affected pages WITHIN THE SAME PARENT GROUP ONLY
             // If moving down (newIndex > currentOrder), decrement orders in between
             // If moving up (newIndex < currentOrder), increment orders in between
             for (let i = 0; i < navigation.length; i++) {
               const page = navigation.get(i);
+              const pageParentId = page.get('parentId') || null;
+
+              // Skip pages that are not siblings (different parent)
+              if (pageParentId !== normalizedParentId) {
+                continue;
+              }
+
               const pageOrder = page.get('order') ?? i;
 
               if (page === pageMap) {
