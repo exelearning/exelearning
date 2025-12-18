@@ -57,7 +57,7 @@ describe('Yjs Document Routes', () => {
                         version,
                     });
                 },
-                markProjectAsSaved: async (_db: any, _projectId: number) => {
+                updateProjectTitleAndSave: async (_db: any, _projectId: number, _title: string) => {
                     projectSavedFlag = true;
                 },
             },

@@ -1637,29 +1637,11 @@ export default class NavbarFile {
         let toast = eXeLearning.app.toasts.createToast(toastData);
 
         try {
-            // Get project title for filename - try Yjs metadata first, then legacy properties
-            let projectTitle = 'project';
-
-            // Try Yjs metadata (primary source in Yjs mode)
-            if (eXeLearning.app.project?._yjsBridge?.documentManager) {
-                const metadata = eXeLearning.app.project._yjsBridge.documentManager.getMetadata();
-                if (metadata && metadata.get('title')) {
-                    projectTitle = metadata.get('title');
-                }
-            }
-
-            // Fallback to legacy properties if Yjs title not found
-            if (projectTitle === 'project' && eXeLearning.app.project?.properties?.properties?.pp_title?.value) {
-                projectTitle = eXeLearning.app.project.properties.properties.pp_title.value;
-            }
-
-            const filename = `${projectTitle}.elpx`;
-
-            // Export via Yjs
-            await eXeLearning.app.project.exportToElpxViaYjs(filename);
+            // Export via Yjs - filename is auto-generated from project title (sanitized)
+            await eXeLearning.app.project.exportToElpxViaYjs();
 
             toast.toastBody.innerHTML = _('File generated and downloaded.');
-            Logger.log('[NavbarFile] Project exported via Yjs:', filename);
+            Logger.log('[NavbarFile] Project exported via Yjs');
 
         } catch (error) {
             console.error('[NavbarFile] Yjs export error:', error);

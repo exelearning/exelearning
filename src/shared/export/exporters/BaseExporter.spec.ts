@@ -352,6 +352,15 @@ describe('BaseExporter', () => {
             expect(exporter.sanitizeFilename('')).toBe('export');
         });
 
+        it('should sanitize filenames with accent removal', () => {
+            expect(exporter.sanitizeFilename('Documento sin título')).toBe('documento-sin-titulo');
+            expect(exporter.sanitizeFilename('Álgebra Básica')).toBe('algebra-basica');
+            expect(exporter.sanitizeFilename('Educación Física')).toBe('educacion-fisica');
+            expect(exporter.sanitizeFilename('Café & Música')).toBe('cafe-musica');
+            expect(exporter.sanitizeFilename('Résumé')).toBe('resume');
+            expect(exporter.sanitizeFilename('Niño')).toBe('nino');
+        });
+
         it('should sanitize page filenames with accent removal', () => {
             expect(exporter.sanitizePageFilename('Résumé')).toBe('resume');
             expect(exporter.sanitizePageFilename('Niño')).toBe('nino');

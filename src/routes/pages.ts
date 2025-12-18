@@ -8,8 +8,6 @@ import { Elysia } from 'elysia';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
@@ -27,6 +25,7 @@ import { db as dbDefault } from '../db/client';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
+import { getAppVersion } from '../utils/version';
 import {
     createSession as createSessionDefault,
     generateSessionId as generateSessionIdDefault,
@@ -35,14 +34,6 @@ import {
 import { createSessionDirectories as createSessionDirectoriesDefault } from '../services/file-helper';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
 import type { JwtPayload } from './types/request-payloads';
-
-/**
- * Package.json structure (partial)
- */
-interface PackageJson {
-    version: string;
-    name?: string;
-}
 
 /**
  * Login page query parameters
@@ -154,27 +145,6 @@ const defaultDependencies: PagesDependencies = {
     utils: defaultUtils,
 };
 
-// Get app version for cache busting URLs
-const getAppVersion = (): string => {
-    if (process.env.APP_VERSION) {
-        return process.env.APP_VERSION;
-    }
-    // Try to find package.json by searching up the directory tree
-    let currentDir = __dirname;
-    for (let i = 0; i < 10; i++) {
-        const packagePath = join(currentDir, 'package.json');
-        if (existsSync(packagePath)) {
-            try {
-                const pkg = JSON.parse(readFileSync(packagePath, 'utf-8')) as PackageJson;
-                return `v${pkg.version}`;
-            } catch {
-                break;
-            }
-        }
-        currentDir = join(currentDir, '..');
-    }
-    return 'v0.0.0';
-};
 const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
 
 // Get JWT secret
