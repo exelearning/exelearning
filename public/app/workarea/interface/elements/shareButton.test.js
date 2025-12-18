@@ -4,7 +4,6 @@ describe('ShareProjectButton', () => {
   let shareButton;
   let mockButton;
   let mockVisibilityIcon;
-  let mockVisibilityText;
   let mockCheckOpenIdevice;
   let mockShareModal;
 
@@ -14,23 +13,15 @@ describe('ShareProjectButton', () => {
       textContent: '',
     };
 
-    mockVisibilityText = {
-      textContent: '',
-    };
-
     mockButton = {
       addEventListener: vi.fn(),
       querySelector: vi.fn((selector) => {
         if (selector === '.share-visibility-icon') return mockVisibilityIcon;
-        if (selector === '.share-visibility-text') return mockVisibilityText;
         return null;
       }),
     };
 
     vi.spyOn(document, 'querySelector').mockReturnValue(mockButton);
-
-    // Mock translation function
-    window._ = vi.fn((text) => text);
 
     // Mock eXeLearning global
     mockCheckOpenIdevice = vi.fn(() => false);
@@ -74,7 +65,6 @@ describe('ShareProjectButton', () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     delete window.eXeLearning;
-    delete window._;
   });
 
   describe('constructor', () => {
@@ -89,11 +79,6 @@ describe('ShareProjectButton', () => {
     it('should query visibility icon', () => {
       expect(mockButton.querySelector).toHaveBeenCalledWith('.share-visibility-icon');
       expect(shareButton.visibilityIcon).toBe(mockVisibilityIcon);
-    });
-
-    it('should query visibility text', () => {
-      expect(mockButton.querySelector).toHaveBeenCalledWith('.share-visibility-text');
-      expect(shareButton.visibilityText).toBe(mockVisibilityText);
     });
 
     it('should initialize currentVisibility to private', () => {
@@ -175,33 +160,18 @@ describe('ShareProjectButton', () => {
       expect(shareButton.currentVisibility).toBe('public');
     });
 
-    it('should set public icon and text when visibility is public', () => {
+    it('should set public icon when visibility is public', () => {
       shareButton.updateVisibilityPill('public');
       expect(mockVisibilityIcon.textContent).toBe('public');
-      expect(mockVisibilityText.textContent).toBe('Public');
     });
 
-    it('should set lock icon and text when visibility is private', () => {
+    it('should set lock icon when visibility is private', () => {
       shareButton.updateVisibilityPill('private');
       expect(mockVisibilityIcon.textContent).toBe('lock');
-      expect(mockVisibilityText.textContent).toBe('Private');
-    });
-
-    it('should use translation function', () => {
-      shareButton.updateVisibilityPill('public');
-      expect(window._).toHaveBeenCalledWith('Public');
-
-      shareButton.updateVisibilityPill('private');
-      expect(window._).toHaveBeenCalledWith('Private');
     });
 
     it('should return early if visibilityIcon is null', () => {
       shareButton.visibilityIcon = null;
-      expect(() => shareButton.updateVisibilityPill('public')).not.toThrow();
-    });
-
-    it('should return early if visibilityText is null', () => {
-      shareButton.visibilityText = null;
       expect(() => shareButton.updateVisibilityPill('public')).not.toThrow();
     });
   });
@@ -354,7 +324,6 @@ describe('ShareProjectButton', () => {
       await shareButton.loadVisibilityFromProject();
 
       expect(mockVisibilityIcon.textContent).toBe('public');
-      expect(mockVisibilityText.textContent).toBe('Public');
       expect(shareButton.currentVisibility).toBe('public');
     });
   });

@@ -810,5 +810,764 @@ describe('YjsDocumentManager', () => {
       await promise;
       expect(global.indexedDB.deleteDatabase).toHaveBeenCalledWith('exelearning-project-project-123');
     });
+
+    it('handles onblocked event', async () => {
+      const mockRequest = {
+        onsuccess: null,
+        onerror: null,
+        onblocked: null,
+      };
+      global.indexedDB.deleteDatabase = mock(() => mockRequest);
+
+      const promise = YjsDocumentManager.clearProjectIndexedDB('project-456');
+
+      // Simulate blocked (still resolves)
+      mockRequest.onblocked();
+
+      await promise;
+    });
+
+    it('handles onerror event', async () => {
+      const mockRequest = {
+        onsuccess: null,
+        onerror: null,
+        onblocked: null,
+        error: new Error('DB delete failed'),
+      };
+      global.indexedDB.deleteDatabase = mock(() => mockRequest);
+
+      const promise = YjsDocumentManager.clearProjectIndexedDB('project-789');
+
+      // Simulate error
+      mockRequest.onerror();
+
+      await expect(promise).rejects.toThrow();
+    });
+  });
+
+  describe('waitForWebSocketSync', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+    });
+
+    it('returns immediately if skipSyncWait is true', async () => {
+      manager.config.skipSyncWait = true;
+      await manager.waitForWebSocketSync();
+      // Should complete quickly without errors
+    });
+
+    it('returns immediately if wsProvider is already synced', async () => {
+      manager.wsProvider = { synced: true, disconnect: () => {}, destroy: () => {} };
+      await manager.waitForWebSocketSync();
+    });
+
+    it('skips full sync if no other users present', async () => {
+      manager.config.skipSyncWait = false;
+      manager.wsProvider = { synced: false, disconnect: () => {}, destroy: () => {} };
+      manager.awareness = new MockAwareness();
+      manager.config.awarenessCheckTimeout = 10;
+
+      await manager.waitForWebSocketSync();
+      // Should complete without waiting for full sync
+    });
+  });
+
+  describe('_checkForOtherUsers', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+    });
+
+    it('returns false when no wsProvider', async () => {
+      manager.wsProvider = null;
+      manager.awareness = null;
+
+      const result = await manager._checkForOtherUsers();
+      expect(result).toBe(false);
+    });
+
+    it('returns false when no other users found', async () => {
+      manager.awareness = new MockAwareness();
+      manager.config.awarenessCheckTimeout = 10;
+
+      const result = await manager._checkForOtherUsers();
+      expect(result).toBe(false);
+    });
+
+    it('returns true when other users found immediately', async () => {
+      manager.awareness = new MockAwareness();
+      manager.awareness._states.set(1, { user: { id: 'other-user' } });
+      manager.awareness._states.set(2, { user: { id: 'another-user' } });
+      manager.config.awarenessCheckTimeout = 100;
+
+      const result = await manager._checkForOtherUsers();
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('_waitForFullSync', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+    });
+
+    it('resolves immediately if already synced', async () => {
+      manager.wsProvider = { synced: true, disconnect: () => {}, destroy: () => {} };
+
+      await manager._waitForFullSync();
+    });
+
+    it('resolves on sync event', async () => {
+      const mockProvider = {
+        synced: false,
+        once: mock((event, callback) => {
+          if (event === 'sync') {
+            setTimeout(() => callback(true), 10);
+          }
+        }),
+        disconnect: () => {},
+        destroy: () => {},
+      };
+      manager.wsProvider = mockProvider;
+      manager.config.fullSyncTimeout = 1000;
+
+      await manager._waitForFullSync();
+    });
+
+    it('resolves on timeout when no sync event', async () => {
+      manager.wsProvider = {
+        synced: false,
+        once: mock(() => {}),
+        disconnect: () => {},
+        destroy: () => {},
+      };
+      manager.config.fullSyncTimeout = 10;
+
+      await manager._waitForFullSync();
+    });
+
+    it('resolves immediately when no wsProvider', async () => {
+      manager.wsProvider = null;
+      manager.config.fullSyncTimeout = 10;
+
+      await manager._waitForFullSync();
+    });
+  });
+
+  describe('loadFromServer', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('applies server state on successful response', async () => {
+      const mockUpdate = new Uint8Array([1, 2, 3, 4]);
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          arrayBuffer: () => Promise.resolve(mockUpdate.buffer),
+        })
+      );
+
+      await manager.loadFromServer();
+
+      expect(global.window.Y.applyUpdate).toHaveBeenCalled();
+    });
+
+    it('handles 404 response (new project)', async () => {
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          status: 404,
+        })
+      );
+
+      // Should not throw
+      await manager.loadFromServer();
+    });
+
+    it('throws on non-404 error response', async () => {
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+        })
+      );
+
+      // Should warn but not throw (graceful degradation)
+      await manager.loadFromServer();
+      expect(console.warn).toHaveBeenCalled();
+    });
+
+    it('handles network errors gracefully', async () => {
+      global.fetch = mock(() => Promise.reject(new Error('Network error')));
+
+      await manager.loadFromServer();
+      expect(console.warn).toHaveBeenCalled();
+    });
+  });
+
+  describe('connectWebSocket', () => {
+    it('logs error when WebsocketProvider not loaded', async () => {
+      global.window.WebsocketProvider = undefined;
+      await manager.initialize();
+
+      await manager.connectWebSocket();
+
+      expect(console.error).toHaveBeenCalledWith('[YjsDocumentManager] WebsocketProvider not loaded');
+    });
+
+    it('creates wsProvider with correct config', async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+
+      expect(manager.wsProvider).toBeDefined();
+      expect(manager.awareness).toBeDefined();
+    });
+  });
+
+  describe('startWebSocketConnection', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+    });
+
+    it('warns when wsProvider is not initialized', () => {
+      manager.wsProvider = null;
+
+      manager.startWebSocketConnection();
+
+      expect(console.warn).toHaveBeenCalledWith('[YjsDocumentManager] Cannot start connection: wsProvider not initialized');
+    });
+
+    it('does nothing when already connected', () => {
+      manager.wsProvider = {
+        wsconnected: true,
+        connect: mock(() => {}),
+        disconnect: () => {},
+        destroy: () => {},
+      };
+
+      manager.startWebSocketConnection();
+
+      expect(manager.wsProvider.connect).not.toHaveBeenCalled();
+    });
+
+    it('calls connect when not connected', () => {
+      manager.wsProvider = {
+        wsconnected: false,
+        connect: mock(() => {}),
+        disconnect: () => {},
+        destroy: () => {},
+      };
+
+      manager.startWebSocketConnection();
+
+      expect(manager.wsProvider.connect).toHaveBeenCalled();
+    });
+  });
+
+  describe('stopCapturing', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('calls undoManager.stopCapturing', () => {
+      manager.undoManager = {
+        stopCapturing: mock(() => {}),
+        destroy: () => {},
+      };
+
+      manager.stopCapturing();
+
+      expect(manager.undoManager.stopCapturing).toHaveBeenCalled();
+    });
+
+    it('does nothing when undoManager is null', () => {
+      manager.undoManager = null;
+
+      // Should not throw
+      manager.stopCapturing();
+    });
+  });
+
+  describe('clearUndoStack', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('calls undoManager.clear', () => {
+      manager.undoManager = {
+        clear: mock(() => {}),
+        destroy: () => {},
+      };
+
+      manager.clearUndoStack();
+
+      expect(manager.undoManager.clear).toHaveBeenCalled();
+    });
+
+    it('does nothing when undoManager is null', () => {
+      manager.undoManager = null;
+
+      // Should not throw
+      manager.clearUndoStack();
+    });
+  });
+
+  describe('generateGravatarUrl', () => {
+    it('returns null for empty email', () => {
+      expect(manager.generateGravatarUrl('')).toBeNull();
+      expect(manager.generateGravatarUrl(null)).toBeNull();
+    });
+
+    it('returns gravatar URL for valid email', () => {
+      const url = manager.generateGravatarUrl('test@example.com');
+      expect(url).toContain('https://www.gravatar.com/avatar/');
+      expect(url).toContain('d=identicon');
+    });
+  });
+
+  describe('getOtherUsersOnPageAndDescendants', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+    });
+
+    it('returns users on target page', () => {
+      manager.awareness = new MockAwareness();
+      manager.awareness._states.set(1, { user: { id: 'user-1', selectedPageId: 'page-1' } });
+      manager.awareness._states.set(2, { user: { id: 'user-2', selectedPageId: 'page-2' } });
+
+      const structureData = {
+        'page-1': { pageId: 'page-1', parent: null },
+        'page-2': { pageId: 'page-2', parent: null },
+      };
+
+      const result = manager.getOtherUsersOnPageAndDescendants('page-1', structureData);
+
+      expect(result.usersOnTarget.length).toBe(1);
+      expect(result.usersOnTarget[0].id).toBe('user-1');
+    });
+
+    it('returns users on descendant pages', () => {
+      manager.awareness = new MockAwareness();
+      manager.awareness._states.set(1, { user: { id: 'user-1', selectedPageId: 'page-2' } });
+      manager.awareness._states.set(2, { user: { id: 'user-2', selectedPageId: 'page-3' } });
+
+      const structureData = {
+        'page-1': { pageId: 'page-1', parent: null },
+        'page-2': { pageId: 'page-2', parent: 'page-1' },
+        'page-3': { pageId: 'page-3', parent: 'page-1' },
+      };
+
+      const result = manager.getOtherUsersOnPageAndDescendants('page-1', structureData);
+
+      expect(result.usersOnDescendants.length).toBe(2);
+      expect(result.descendantIds).toContain('page-2');
+      expect(result.descendantIds).toContain('page-3');
+    });
+
+    it('returns all affected users without duplicates', () => {
+      manager.awareness = new MockAwareness();
+      manager.awareness._states.set(1, { user: { id: 'user-1', selectedPageId: 'page-1', clientId: 1 } });
+
+      const structureData = {
+        'page-1': { pageId: 'page-1', parent: null },
+      };
+
+      const result = manager.getOtherUsersOnPageAndDescendants('page-1', structureData);
+
+      expect(result.allAffectedUsers.length).toBe(1);
+    });
+  });
+
+  describe('_updateVersionMetadata', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('sets exelearning_version on success', async () => {
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '3.0.0' }),
+        })
+      );
+
+      await manager._updateVersionMetadata();
+
+      const metadata = manager.getMetadata();
+      expect(metadata.get('exelearning_version')).toBe('3.0.0');
+    });
+
+    it('handles fetch errors gracefully', async () => {
+      global.fetch = mock(() => Promise.reject(new Error('Network error')));
+
+      // Should not throw
+      await manager._updateVersionMetadata();
+      expect(console.warn).toHaveBeenCalled();
+    });
+
+    it('handles non-ok response gracefully', async () => {
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+        })
+      );
+
+      // Should not throw
+      await manager._updateVersionMetadata();
+    });
+  });
+
+  describe('_handleBeforeUnload', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('clears awareness on unload', () => {
+      manager.awareness = new MockAwareness();
+      manager._handleBeforeUnload({});
+
+      expect(manager.awareness._localState).toBeNull();
+    });
+
+    it('calls _saveSync when dirty and not offline', () => {
+      manager.config.offline = false;
+      manager.isDirty = true;
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+
+      manager._handleBeforeUnload({});
+
+      expect(global.navigator.sendBeacon).toHaveBeenCalled();
+    });
+
+    it('does not save when offline', () => {
+      manager.config.offline = true;
+      manager.isDirty = true;
+
+      manager._handleBeforeUnload({});
+
+      expect(global.navigator.sendBeacon).not.toHaveBeenCalled();
+    });
+
+    it('does not save when not dirty', () => {
+      manager.config.offline = false;
+      manager.isDirty = false;
+
+      manager._handleBeforeUnload({});
+
+      expect(global.navigator.sendBeacon).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('_clearAwarenessOnUnload', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('sets awareness to null', () => {
+      manager.awareness = new MockAwareness();
+
+      manager._clearAwarenessOnUnload();
+
+      expect(manager.awareness._localState).toBeNull();
+    });
+
+    it('handles errors gracefully', () => {
+      manager.awareness = {
+        setLocalState: mock(() => { throw new Error('Test error'); }),
+      };
+
+      // Should not throw
+      manager._clearAwarenessOnUnload();
+      expect(console.warn).toHaveBeenCalled();
+    });
+
+    it('does nothing when awareness is null', () => {
+      manager.awareness = null;
+
+      // Should not throw
+      manager._clearAwarenessOnUnload();
+    });
+  });
+
+  describe('_saveSync', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('uses sendBeacon when available', () => {
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1, 2, 3])) };
+
+      manager._saveSync();
+
+      expect(global.navigator.sendBeacon).toHaveBeenCalled();
+    });
+
+    it('handles errors gracefully', () => {
+      manager.Y = {
+        encodeStateAsUpdate: mock(() => { throw new Error('Encode error'); }),
+      };
+
+      // Should not throw
+      manager._saveSync();
+      expect(console.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('saveToServer', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+      manager.config.offline = false;
+    });
+
+    it('returns failure when offline', async () => {
+      manager.config.offline = true;
+
+      const result = await manager.saveToServer();
+
+      expect(result.success).toBe(false);
+    });
+
+    it('returns failure when save in progress', async () => {
+      manager.saveInProgress = true;
+
+      const result = await manager.saveToServer();
+
+      expect(result.success).toBe(false);
+    });
+
+    it('saves successfully', async () => {
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1, 2, 3])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      const result = await manager.saveToServer();
+
+      expect(result.success).toBe(true);
+      expect(result.bytes).toBe(3);
+      expect(manager.isDirty).toBe(false);
+    });
+
+    it('emits saveStatus events', async () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      await manager.saveToServer();
+
+      expect(callback).toHaveBeenCalledWith(expect.objectContaining({ status: 'saving' }));
+    });
+
+    it('throws on fetch error', async () => {
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      await expect(manager.saveToServer()).rejects.toThrow('Failed to save: 500 Internal Server Error');
+    });
+
+    it('does not emit events when silent', async () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      await manager.saveToServer({ silent: true });
+
+      // Should only emit 'saved' status from markClean, not 'saving'
+      const savingCalls = callback.mock.calls.filter(c => c[0].status === 'saving');
+      expect(savingCalls.length).toBe(0);
+    });
+  });
+
+  describe('save', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+      manager.config.offline = false;
+    });
+
+    it('returns success message on successful save', async () => {
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1, 2, 3])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      const result = await manager.save();
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Saved successfully');
+    });
+
+    it('returns failure message on error', async () => {
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Error',
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      const result = await manager.save();
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Failed to save');
+    });
+  });
+
+  describe('clearIndexedDB', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+      global.indexedDB = {
+        deleteDatabase: mock(() => ({
+          onsuccess: null,
+          onerror: null,
+          onblocked: null,
+        })),
+      };
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+    });
+
+    it('uses provider.clearData when available', async () => {
+      manager.indexedDBProvider = {
+        clearData: mock(() => Promise.resolve()),
+        destroy: () => {},
+      };
+
+      await manager.clearIndexedDB();
+
+      expect(manager.indexedDBProvider.clearData).toHaveBeenCalled();
+    });
+
+    it('deletes database directly when no provider method', async () => {
+      manager.indexedDBProvider = { destroy: () => {} };
+      const mockRequest = {
+        onsuccess: null,
+        onerror: null,
+        onblocked: null,
+      };
+      global.indexedDB.deleteDatabase = mock(() => mockRequest);
+
+      const promise = manager.clearIndexedDB();
+      mockRequest.onsuccess();
+
+      await promise;
+      expect(global.indexedDB.deleteDatabase).toHaveBeenCalled();
+    });
+
+    it('handles blocked event', async () => {
+      manager.indexedDBProvider = { destroy: () => {} };
+      const mockRequest = {
+        onsuccess: null,
+        onerror: null,
+        onblocked: null,
+      };
+      global.indexedDB.deleteDatabase = mock(() => mockRequest);
+
+      const promise = manager.clearIndexedDB();
+      mockRequest.onblocked();
+
+      await promise;
+    });
+
+    it('rejects on error event', async () => {
+      manager.indexedDBProvider = { destroy: () => {} };
+      const mockRequest = {
+        onsuccess: null,
+        onerror: null,
+        onblocked: null,
+        error: new Error('Delete failed'),
+      };
+      global.indexedDB.deleteDatabase = mock(() => mockRequest);
+
+      const promise = manager.clearIndexedDB();
+      mockRequest.onerror();
+
+      await expect(promise).rejects.toThrow();
+    });
+  });
+
+  describe('destroy with options', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('saves before destroy when saveBeforeDestroy is true and dirty', async () => {
+      manager.config.offline = false;
+      manager.isDirty = true;
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      await manager.destroy({ saveBeforeDestroy: true });
+
+      // Fetch should have been called for save
+      const postCalls = global.fetch.mock.calls.filter(c =>
+        c[1]?.method === 'POST'
+      );
+      expect(postCalls.length).toBeGreaterThan(0);
+    });
+
+    it('does not save when not dirty', async () => {
+      manager.config.offline = false;
+      manager.isDirty = false;
+      global.fetch = mock(() => Promise.resolve({ ok: true }));
+
+      await manager.destroy({ saveBeforeDestroy: true });
+
+      // Only version fetch should happen, not save
+      const postCalls = global.fetch.mock.calls.filter(c =>
+        c[1]?.method === 'POST'
+      );
+      expect(postCalls.length).toBe(0);
+    });
+
+    it('handles save error gracefully', async () => {
+      manager.config.offline = false;
+      manager.isDirty = true;
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+      global.fetch = mock(() => Promise.reject(new Error('Save failed')));
+
+      // Should not throw
+      await manager.destroy({ saveBeforeDestroy: true });
+      expect(console.error).toHaveBeenCalled();
+    });
   });
 });
