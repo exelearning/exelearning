@@ -118,26 +118,8 @@ export default class App {
             const toast = this.toasts.createToast(toastData);
 
             try {
-                // Get project title for filename - try Yjs metadata first, then legacy properties
-                let projectTitle = 'project';
-
-                // Try Yjs metadata (primary source in Yjs mode)
-                if (this.project?._yjsBridge?.documentManager) {
-                    const metadata = this.project._yjsBridge.documentManager.getMetadata();
-                    if (metadata && metadata.get('title')) {
-                        projectTitle = metadata.get('title');
-                    }
-                }
-
-                // Fallback to legacy properties if Yjs title not found
-                if (projectTitle === 'project' && this.project?.properties?.properties?.pp_title?.value) {
-                    projectTitle = this.project.properties.properties.pp_title.value;
-                }
-
-                const filename = `${projectTitle}.elpx`;
-
-                // Export using existing method
-                await this.project.exportToElpxViaYjs(filename);
+                // Export using existing method - filename is auto-generated from project title (sanitized)
+                await this.project.exportToElpxViaYjs();
 
                 // Update toast
                 toast.toastBody.innerHTML = _('File generated and downloaded.');
