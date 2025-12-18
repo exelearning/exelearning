@@ -271,9 +271,7 @@ describe('Scorm12Exporter Integration', () => {
                 const result = await exporter.export();
 
                 const unzipped = fflateUnzipSync(result.data!);
-                const htmlFiles = Object.keys(unzipped).filter(
-                    f => f.endsWith('.html') && !f.includes('idevices/'),
-                );
+                const htmlFiles = Object.keys(unzipped).filter(f => f.endsWith('.html') && !f.includes('idevices/'));
 
                 // Should have index.html and 5 sub-pages
                 expect(htmlFiles).toContain('index.html');

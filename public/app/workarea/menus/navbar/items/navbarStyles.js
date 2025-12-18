@@ -5,6 +5,7 @@ export default class NavbarFile {
     constructor(menu) {
         this.menu = menu;
         this.button = this.menu.navbar.querySelector('#dropdownStyles');
+        this.menuButton = this.menu.navbar.querySelector('#navbar-button-styles');
         this.readers = [];
         this.paramsInfo = JSON.parse(
             JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
@@ -73,9 +74,11 @@ export default class NavbarFile {
      *
      */
     setStyleManagerEvent() {
-        this.button.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.styleManagerEvent();
+        [this.button, this.menuButton].filter(Boolean).forEach((button) => {
+            button.addEventListener('click', () => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.styleManagerEvent();
+            });
         });
     }
 

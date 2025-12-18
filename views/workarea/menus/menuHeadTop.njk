@@ -62,9 +62,15 @@
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-scorm12" href="#">SCORM 1.2</a></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-epub3" href="#">ePub3</a></li>
                     <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-settings" href="#">{{ t.settings or 'Settings' }}</a></li>
+                    <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-share" href="#">{{ t.share or 'Share' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
                     <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.utilities or 'Utilities' }}</small></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-preview" href="#">{{ t.preview or 'Preview' }}</a></li>
                     <li class="d-md-none exe-advanced"><a class="dropdown-item" id="mobile-navbar-button-filemanager" href="#">{{ t.file_manager or 'File manager' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-styles" href="#">{{ t.styles or 'Styles' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-preview" href="#">{{ t.preview or 'Preview' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
                     <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.help or 'Help' }}</small></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-exe-tutorial" href="#">{{ t.user_manual or 'User manual' }}</a></li>
