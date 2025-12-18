@@ -50,20 +50,7 @@ window.MathJax = window.MathJax || (function() {
             load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
         },
         options: {
-            enableMenu: false,
-            menuOptions: {
-                settings: {
-                    enrich: false,      // ← DESACTIVA el semantic enrichment (y el explorer)
-                    speech: false,      // ← Desactiva generación de speech
-                    braille: false,     // ← Desactiva generación de Braille
-                    assistiveMml: false
-                }
-            },
-            renderActions: {
-                addMenu: [],
-                checkLoading: [],
-                assistiveMml: []
-            }
+            // MathJax Configuration Options
         }
     };
 })();
