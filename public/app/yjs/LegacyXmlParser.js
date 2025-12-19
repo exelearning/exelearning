@@ -380,9 +380,12 @@ class LegacyXmlParser {
           const idevices = this.extractIDevicesWithTitles(listEl);
 
           idevices.forEach((idevice, idx) => {
+            // Filter out default "Free Text" title - should show empty block name instead
+            const title = idevice.title || '';
+            const blockName = title === 'Free Text' ? '' : title;
             blocks.push({
               id: `block-${nodeEl.getAttribute('reference')}-${idx}`,
-              name: idevice.title || '',  // Use iDevice title as block name
+              name: blockName,  // Use iDevice title as block name, filtering defaults
               position: idx,
               idevices: [idevice],  // Exactly one iDevice per block
             });
@@ -538,8 +541,11 @@ class LegacyXmlParser {
       if (className === 'exe.engine.jsidevice.JsIdevice' && dict) {
         const iDeviceDir = this.findDictStringValue(dict, '_iDeviceDir');
         if (iDeviceDir) {
-          ideviceType = iDeviceDir;
-          Logger.log(`[LegacyXmlParser] JsIdevice detected with type: ${ideviceType}`);
+          // Extract basename from path (handles both Windows and Unix paths)
+          // e.g., "C:\...\text" or "/path/to/text" -> "text"
+          const parts = iDeviceDir.replace(/\\/g, '/').split('/');
+          ideviceType = parts[parts.length - 1] || iDeviceDir;
+          Logger.log(`[LegacyXmlParser] JsIdevice detected with type: ${ideviceType} (from path: ${iDeviceDir})`);
         } else {
           ideviceType = 'text'; // Fallback for JsIdevice without _iDeviceDir
         }
@@ -618,7 +624,8 @@ class LegacyXmlParser {
           child.getAttribute('role') === 'key' &&
           child.getAttribute('value') === key) {
         const valueEl = children[i + 1];
-        if (valueEl && valueEl.tagName === 'string') {
+        // Handle both <string> and <unicode> value elements
+        if (valueEl && (valueEl.tagName === 'string' || valueEl.tagName === 'unicode')) {
           return valueEl.getAttribute('value') || valueEl.textContent || null;
         }
       }
@@ -739,18 +746,36 @@ class LegacyXmlParser {
     const dict = fieldInst.querySelector(':scope > dictionary');
     if (!dict) return '';
 
-    // TextField stores content in "_content" or "content_w_resourcePaths"
+    // TextField stores content in "content_w_resourcePaths" (preferred) or "_content" (fallback)
+    // IMPORTANT: Prioritize content_w_resourcePaths because it contains the actual HTML with resource paths
+    // The "_content" field may be empty or contain unprocessed content
     const children = Array.from(dict.children);
 
+    // First pass: look for content_w_resourcePaths (has actual HTML with resource paths)
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === 'content_w_resourcePaths') {
+        const valueEl = children[i + 1];
+        if (valueEl && (valueEl.tagName === 'unicode' || valueEl.tagName === 'string')) {
+          const content = this.decodeHtmlContent(valueEl.getAttribute('value') || valueEl.textContent || '');
+          if (content) return content;
+        }
+      }
+    }
+
+    // Second pass: fallback to _content or content
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       if (child.tagName === 'string' &&
           child.getAttribute('role') === 'key') {
         const keyValue = child.getAttribute('value');
-        if (keyValue === '_content' || keyValue === 'content_w_resourcePaths' || keyValue === 'content') {
+        if (keyValue === '_content' || keyValue === 'content') {
           const valueEl = children[i + 1];
           if (valueEl && (valueEl.tagName === 'unicode' || valueEl.tagName === 'string')) {
-            return this.decodeHtmlContent(valueEl.getAttribute('value') || valueEl.textContent || '');
+            const content = this.decodeHtmlContent(valueEl.getAttribute('value') || valueEl.textContent || '');
+            if (content) return content;
           }
         }
       }

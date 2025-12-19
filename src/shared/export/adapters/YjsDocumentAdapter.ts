@@ -183,12 +183,17 @@ export class YjsDocumentAdapter implements ExportDocument {
             });
         }
 
+        // Extract page-level properties (visibility, highlight, etc.)
+        const propsMap = pageMap.get('properties') as YMap | undefined;
+        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
+
         return {
             id: (pageMap.get('id') as string) || (pageMap.get('pageId') as string) || '',
             title: (pageMap.get('title') as string) || (pageMap.get('pageName') as string) || 'Page',
             parentId: (pageMap.get('parentId') as string | null) || null,
             order: (pageMap.get('order') as number) || 0,
             blocks,
+            properties,
         };
     }
 

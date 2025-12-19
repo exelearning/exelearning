@@ -79,6 +79,7 @@ const createMockPage = (
     blocks: unknown[] = [],
     parentId: string | null = null,
     order: number = 0,
+    properties: Record<string, unknown> = {},
 ) => {
     return new MockYMap({
         id,
@@ -88,6 +89,7 @@ const createMockPage = (
         parentId,
         order,
         blocks: new MockYArray(blocks),
+        properties: new MockYMap(properties),
     });
 };
 
@@ -451,6 +453,83 @@ describe('YjsDocumentAdapter', () => {
             const pages = adapter.getNavigation();
 
             expect(pages[0].blocks[0].components[0].type).toBe('FallbackType');
+        });
+    });
+
+    describe('page properties extraction', () => {
+        it('should extract page properties', () => {
+            const page = createMockPage('p1', 'Page', [], null, 0, {
+                visibility: true,
+                highlight: false,
+            });
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].properties).toBeDefined();
+            expect(pages[0].properties?.visibility).toBe(true);
+            expect(pages[0].properties?.highlight).toBe(false);
+        });
+
+        it('should return empty object when no properties', () => {
+            const page = new MockYMap({
+                id: 'p1',
+                title: 'Page',
+                blocks: new MockYArray([]),
+                // No properties Y.Map
+            });
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].properties).toEqual({});
+        });
+
+        it('should extract visibility property as boolean', () => {
+            const page = createMockPage('p1', 'Page', [], null, 0, { visibility: false });
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].properties?.visibility).toBe(false);
+        });
+
+        it('should extract highlight property', () => {
+            const page = createMockPage('p1', 'Page', [], null, 0, { highlight: true });
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].properties?.highlight).toBe(true);
+        });
+
+        it('should extract multiple page properties together', () => {
+            const page = createMockPage('p1', 'Page', [], null, 0, {
+                visibility: true,
+                highlight: true,
+                hidePageTitle: false,
+                editableInPage: true,
+            });
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].properties).toEqual({
+                visibility: true,
+                highlight: true,
+                hidePageTitle: false,
+                editableInPage: true,
+            });
         });
     });
 });

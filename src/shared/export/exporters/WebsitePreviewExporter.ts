@@ -216,7 +216,6 @@ export class WebsitePreviewExporter {
         const author = meta.author || '';
         const license = meta.license || 'CC-BY-SA';
         const themeName = meta.theme || 'base';
-        const totalPages = pages.length;
 
         // Export options (with defaults)
         const addExeLink = meta.addExeLink ?? true;
@@ -224,15 +223,28 @@ export class WebsitePreviewExporter {
         const addSearchBox = meta.addSearchBox ?? false;
         const addAccessibilityToolbar = meta.addAccessibilityToolbar ?? false;
 
-        // Generate search data if search box is enabled
-        const searchDataJson = addSearchBox ? this.generateSearchData(pages, options) : '';
+        // Filter to only visible pages
+        const visiblePages = pages.filter(page => this.isPageVisible(page, pages));
+
+        // Generate search data if search box is enabled (only visible pages)
+        const searchDataJson = addSearchBox ? this.generateSearchData(visiblePages, options) : '';
 
         // Generate all page contents (hidden except first)
+        // Note: Use visiblePages for rendering, but totalPages reflects visible count
+        const totalVisiblePages = visiblePages.length;
         let pagesHtml = '';
-        for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
+        for (let i = 0; i < visiblePages.length; i++) {
+            const page = visiblePages[i];
             const isFirst = i === 0;
-            pagesHtml += this.renderPageArticle(page, isFirst, i, totalPages, projectTitle, options, addPagination);
+            pagesHtml += this.renderPageArticle(
+                page,
+                isFirst,
+                i,
+                totalVisiblePages,
+                projectTitle,
+                options,
+                addPagination,
+            );
         }
 
         // Detect required libraries by scanning all rendered HTML content
@@ -249,18 +261,23 @@ export class WebsitePreviewExporter {
         // Generate inline search data script (avoids bloating HTML with large JSON attributes)
         const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : '';
 
-        // Get first page for initial header content
-        const firstPage = pages[0];
+        // Get first visible page for initial header content
+        const firstPage = visiblePages[0];
         const firstPageIndex = 0;
 
         // Build initial page counter HTML (only if pagination is enabled)
         const initialPageCounterHtml = addPagination
-            ? `<p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${firstPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>`
+            ? `<p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${firstPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalVisiblePages}</strong></span></p>`
             : '';
+
+        // Check if first page title should be hidden and get effective title
+        const firstPageTitle = firstPage ? this.getEffectivePageTitle(firstPage) : '';
+        const hideFirstPageTitle = firstPage ? this.shouldHidePageTitle(firstPage) : false;
+        const pageHeaderStyle = hideFirstPageTitle ? ' style="display:none"' : '';
 
         // Build static header (direct child of .page for CSS selectors to work)
         const staticHeaderHtml = `<header id="page-header" class="main-header">${initialPageCounterHtml}<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
-<div class="page-header"><h2 id="page-title" class="page-title">${this.escapeHtml(firstPage?.title || '')}</h2></div></header>`;
+<div class="page-header"${pageHeaderStyle}><h2 id="page-title" class="page-title">${this.escapeHtml(firstPageTitle)}</h2></div></header>`;
 
         return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -502,10 +519,74 @@ button.toggler span,
     }
 
     /**
+     * Check if a page is visible in export
+     * First page is always visible regardless of visibility setting.
+     * If a parent is hidden, all its children are also hidden.
+     */
+    private isPageVisible(page: ExportPage, allPages: ExportPage[]): boolean {
+        // First page is always visible
+        if (page.id === allPages[0]?.id) {
+            return true;
+        }
+
+        // Check this page's visibility property
+        const visibility = page.properties?.visibility;
+        if (visibility === false || visibility === 'false') {
+            return false;
+        }
+
+        // Check if any ancestor is hidden (recursive)
+        if (page.parentId) {
+            const parent = allPages.find(p => p.id === page.parentId);
+            if (parent && !this.isPageVisible(parent, allPages)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if a page has highlight property enabled
+     */
+    private isPageHighlighted(page: ExportPage): boolean {
+        const highlight = page.properties?.highlight;
+        return highlight === true || highlight === 'true';
+    }
+
+    /**
+     * Check if a page's title should be hidden
+     */
+    private shouldHidePageTitle(page: ExportPage): boolean {
+        const hideTitle = page.properties?.hidePageTitle;
+        return hideTitle === true || hideTitle === 'true';
+    }
+
+    /**
+     * Get effective page title (respects editableInPage + titlePage properties)
+     * If editableInPage is true and titlePage is set, use titlePage
+     * Otherwise use the default page title
+     */
+    private getEffectivePageTitle(page: ExportPage): string {
+        const editableInPage = page.properties?.editableInPage;
+        if (editableInPage === true || editableInPage === 'true') {
+            const titlePage = page.properties?.titlePage as string;
+            if (titlePage) return titlePage;
+        }
+        return page.title;
+    }
+
+    /**
      * Render a navigation item for SPA
      */
     private renderSpaNavItem(page: ExportPage, allPages: ExportPage[], currentPageId?: string): string {
-        const children = allPages.filter(p => p.parentId === page.id);
+        // Skip hidden pages
+        if (!this.isPageVisible(page, allPages)) {
+            return '';
+        }
+
+        // Filter children to only visible ones
+        const children = allPages.filter(p => p.parentId === page.id && this.isPageVisible(p, allPages));
         const hasChildren = children.length > 0;
         const isActive = page.id === currentPageId;
         const isFirstPage = page.id === allPages[0]?.id;
@@ -515,6 +596,11 @@ button.toggler span,
         if (isActive) linkClasses.push('active');
         if (isFirstPage) linkClasses.push('main-node');
         linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
+
+        // Add highlighted-link class if page is highlighted
+        if (this.isPageHighlighted(page)) {
+            linkClasses.push('highlighted-link');
+        }
 
         let html = `<li${isActive ? ' class="active"' : ''}>`;
         const parentAttr = page.parentId ? ` data-parent-id="${page.parentId}"` : '';
@@ -561,8 +647,11 @@ button.toggler span,
         const displayStyle = isFirst ? '' : ' style="display:none"';
         const pageId = page.id;
 
-        // Store page title as data attribute for SPA navigation to update header
-        return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}" data-page-title="${this.escapeAttr(page.title)}">
+        // Store page title properties as data attributes for SPA navigation to update header
+        const effectiveTitle = this.getEffectivePageTitle(page);
+        const hideTitle = this.shouldHidePageTitle(page);
+
+        return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}" data-page-title="${this.escapeAttr(effectiveTitle)}" data-page-hide-title="${hideTitle}">
 <div id="page-content-${pageId}" class="page-content">
 ${blockHtml}
 </div>
@@ -738,6 +827,7 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   var prevBtn = document.querySelector('[data-nav="prev"]');
   var nextBtn = document.querySelector('[data-nav="next"]');
   var pageTitleEl = document.getElementById('page-title');
+  var pageHeaderEl = document.querySelector('.page-header');
   var pageCounterEl = document.querySelector('.page-counter-current-page');
   var currentIndex = 0;
 
@@ -778,6 +868,10 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
       }
     });
     // Update header with current page info
+    var hideTitle = activePage.dataset.pageHideTitle === 'true';
+    if (pageHeaderEl) {
+      pageHeaderEl.style.display = hideTitle ? 'none' : '';
+    }
     if (pageTitleEl && activePage.dataset.pageTitle) {
       pageTitleEl.textContent = activePage.dataset.pageTitle;
     }
