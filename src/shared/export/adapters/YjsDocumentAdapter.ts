@@ -183,12 +183,17 @@ export class YjsDocumentAdapter implements ExportDocument {
             });
         }
 
+        // Extract page-level properties (visibility, highlight, etc.)
+        const propsMap = pageMap.get('properties') as YMap | undefined;
+        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
+
         return {
             id: (pageMap.get('id') as string) || (pageMap.get('pageId') as string) || '',
             title: (pageMap.get('title') as string) || (pageMap.get('pageName') as string) || 'Page',
             parentId: (pageMap.get('parentId') as string | null) || null,
             order: (pageMap.get('order') as number) || 0,
             blocks,
+            properties,
         };
     }
 
@@ -208,11 +213,16 @@ export class YjsDocumentAdapter implements ExportDocument {
             });
         }
 
+        // Extract block properties (teacherOnly, visibility, minimized, cssClass, identifier, etc.)
+        const propsMap = blockMap.get('properties') as YMap | undefined;
+        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
+
         return {
             id: (blockMap.get('id') as string) || `block-${index}`,
             name: (blockMap.get('name') as string) || (blockMap.get('blockName') as string) || '',
             order: (blockMap.get('order') as number) || index,
             components,
+            properties,
         };
     }
 

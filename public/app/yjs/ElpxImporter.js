@@ -1254,22 +1254,46 @@ class ElpxImporter {
     // Assets extracted (50%)
     this._reportProgress('assets', 50, typeof _ === 'function' ? _('Assets extracted') : 'Assets extracted');
 
+    // Helper to escape regex special characters
+    const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     // Helper to replace asset paths in strings
+    // IMPORTANT: Only replaces LOCAL resource references, NOT filenames inside external URLs
+    // This prevents corrupting external URLs like https://example.com/viewer.php?file=https://example.com/file.pdf
     const replaceAssetPaths = (str) => {
       if (str == null || typeof str !== 'string') return '';
       if (!this.assetMap || this.assetMap.size === 0) return str;
 
       for (const [originalPath, assetId] of this.assetMap.entries()) {
         const fileName = originalPath.split('/').pop();
-        // Replace various path formats
-        str = str.split(`resources/${fileName}`).join(`asset://${assetId}`);
+        const escapedFileName = escapeRegex(fileName);
+
+        // 1. Replace {{context_path}}/resources/filename (exact match)
         str = str.split(`{{context_path}}/resources/${fileName}`).join(`asset://${assetId}`);
-        str = str.split(originalPath).join(`asset://${assetId}`);
+        str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}`);
+
+        // 2. Replace resources/filename when preceded by attribute quote or start
+        // This ensures we don't replace filenames inside http:// or https:// URLs
+        // Pattern: ("|'|=)resources/filename -> $1asset://uuid
+        const resourcesPattern = new RegExp(
+          `(["'=])resources/${escapedFileName}`,
+          'g'
+        );
+        str = str.replace(resourcesPattern, `$1asset://${assetId}`);
+
+        // 3. Replace bare filename ONLY in src/href attributes (not inside other URLs)
+        // Pattern: src="filename" or href="filename" (bare filename, not a path with /)
         if (fileName) {
-          // Also replace bare filename references
-          const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          str = str.replace(new RegExp(`src=["']${escapedFileName}["']`, 'g'), `src="asset://${assetId}"`);
+          str = str.replace(
+            new RegExp(`(src|href)=(["'])${escapedFileName}\\2`, 'g'),
+            `$1=$2asset://${assetId}$2`
+          );
         }
+
+        // NOTE: We intentionally DO NOT replace:
+        // - originalPath globally (str.split(originalPath).join(...)) - this corrupts external URLs
+        // - Filenames inside query strings (e.g., ?file=filename.pdf)
+        // - Filenames inside external URLs (https://example.com/.../filename.pdf)
       }
       return str;
     };

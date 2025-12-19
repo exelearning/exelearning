@@ -332,8 +332,9 @@ describe('PageRenderer', () => {
                 addPagination: true,
             });
 
-            expect(html).toContain('class="page-header"');
-            expect(html).toContain('id="header-test-page"');
+            // Use separate <header> elements for exe_export.js teacherMode selectors
+            expect(html).toContain('<header class="package-header');
+            expect(html).toContain('<header class="page-header"');
             expect(html).toContain('class="page-counter"');
             expect(html).toContain('class="page-counter-current-page">3</strong>'); // 2 + 1
             expect(html).toContain('class="page-counter-total">10</strong>');
@@ -782,6 +783,127 @@ describe('PageRenderer', () => {
             const html = renderer.renderPageContent(page, '');
 
             expect(html).toBe('');
+        });
+    });
+
+    describe('page visibility', () => {
+        it('should always show first page regardless of visibility setting', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First', properties: { visibility: false } }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+
+            expect(renderer.isPageVisible(pages[0], pages)).toBe(true);
+        });
+
+        it('should hide page when visibility is false', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second', properties: { visibility: false } }),
+            ];
+
+            expect(renderer.isPageVisible(pages[1], pages)).toBe(false);
+        });
+
+        it('should hide page when visibility is string "false"', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second', properties: { visibility: 'false' } }),
+            ];
+
+            expect(renderer.isPageVisible(pages[1], pages)).toBe(false);
+        });
+
+        it('should show page when visibility is not set', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+
+            expect(renderer.isPageVisible(pages[1], pages)).toBe(true);
+        });
+
+        it('should hide child page when parent is hidden', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Parent', properties: { visibility: false } }),
+                createTestPage({ id: 'page-3', title: 'Child', parentId: 'page-2' }),
+            ];
+
+            expect(renderer.isPageVisible(pages[2], pages)).toBe(false);
+        });
+
+        it('should not show hidden pages in navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Hidden', properties: { visibility: false } }),
+                createTestPage({ id: 'page-3', title: 'Third' }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'page-1', '');
+
+            expect(html).toContain('First');
+            expect(html).not.toContain('Hidden');
+            expect(html).toContain('Third');
+        });
+
+        it('should filter visible pages correctly', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Hidden', properties: { visibility: false } }),
+                createTestPage({ id: 'page-3', title: 'Third' }),
+            ];
+
+            const visible = renderer.getVisiblePages(pages);
+
+            expect(visible.length).toBe(2);
+            expect(visible.map(p => p.id)).toEqual(['page-1', 'page-3']);
+        });
+    });
+
+    describe('page highlight', () => {
+        it('should detect highlighted page with boolean true', () => {
+            const page = createTestPage({ properties: { highlight: true } });
+            expect(renderer.isPageHighlighted(page)).toBe(true);
+        });
+
+        it('should detect highlighted page with string "true"', () => {
+            const page = createTestPage({ properties: { highlight: 'true' } });
+            expect(renderer.isPageHighlighted(page)).toBe(true);
+        });
+
+        it('should not detect highlight when false', () => {
+            const page = createTestPage({ properties: { highlight: false } });
+            expect(renderer.isPageHighlighted(page)).toBe(false);
+        });
+
+        it('should not detect highlight when not set', () => {
+            const page = createTestPage();
+            expect(renderer.isPageHighlighted(page)).toBe(false);
+        });
+
+        it('should add highlighted-link class in navigation for highlighted page', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Important', properties: { highlight: true } }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'page-1', '');
+
+            expect(html).toContain('highlighted-link');
+            // The highlighted class should be in the anchor for page-2
+            expect(html).toMatch(/Important.*highlighted-link|highlighted-link.*Important/s);
+        });
+
+        it('should not add highlighted-link class for non-highlighted page', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Normal' }),
+            ];
+
+            const html = renderer.renderNavigation(pages, 'page-1', '');
+
+            expect(html).not.toContain('highlighted-link');
         });
     });
 });
