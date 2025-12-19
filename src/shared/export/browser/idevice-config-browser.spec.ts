@@ -15,7 +15,7 @@ describe('idevice-config-browser', () => {
         it('returns config for text type', () => {
             const config = getIdeviceConfig('text');
             expect(config.cssClass).toBe('text');
-            expect(config.componentType).toBe('html');
+            expect(config.componentType).toBe('json'); // text uses JSON for feedback toggle
             expect(config.template).toBe('text.html');
         });
 
@@ -136,11 +136,15 @@ describe('idevice-config-browser', () => {
             expect(config.cssClass).toBe('text');
         });
 
-        it('always returns html as componentType', () => {
-            const configs = [getIdeviceConfig('text'), getIdeviceConfig('multi-choice'), getIdeviceConfig('unknown')];
-            configs.forEach(config => {
-                expect(config.componentType).toBe('html');
-            });
+        it('returns correct componentType based on idevice type', () => {
+            // JSON idevices that need JS initialization (feedback toggle, etc.)
+            expect(getIdeviceConfig('text').componentType).toBe('json');
+            expect(getIdeviceConfig('freetext').componentType).toBe('json');
+            expect(getIdeviceConfig('reflection').componentType).toBe('json');
+
+            // HTML idevices (no JS initialization needed)
+            expect(getIdeviceConfig('multi-choice').componentType).toBe('html');
+            expect(getIdeviceConfig('unknown').componentType).toBe('html');
         });
 
         it('generates template name from cssClass', () => {

@@ -74,10 +74,25 @@ const SAMPLE_CONTENT_XML_WITH_EXPORT_SETTINGS = `<?xml version="1.0"?>
   </odeNavStructures>
 </ode>`;
 
-// Mock fflate that returns our sample content
+// Mock fflate that returns our sample content (modern format - content.xml)
 const createMockFflate = (contentXml = SAMPLE_CONTENT_XML) => ({
   unzipSync: (data) => ({
     'content.xml': new TextEncoder().encode(contentXml),
+  }),
+  strToU8: (str) => new TextEncoder().encode(str),
+  strFromU8: (data) => new TextDecoder().decode(data),
+  zip: (files, callback) => {
+    const mockZip = new Uint8Array([80, 75, 3, 4]); // ZIP magic bytes
+    setTimeout(() => callback(null, mockZip), 0);
+  },
+  zipSync: (files) => new Uint8Array([80, 75, 3, 4]),
+});
+
+// Mock fflate that returns legacy format (contentv3.xml)
+// This triggers the importFromLegacyFile code path where external URL preservation fix is applied
+const createMockFflateLegacy = (contentXml) => ({
+  unzipSync: (data) => ({
+    'contentv3.xml': new TextEncoder().encode(contentXml),
   }),
   strToU8: (str) => new TextEncoder().encode(str),
   strFromU8: (data) => new TextDecoder().decode(data),
@@ -575,6 +590,138 @@ describe('ElpxImporter', () => {
 
       expect(importer.parseBooleanProperty(container, 'upper', false)).toBe(true);
       expect(importer.parseBooleanProperty(container, 'mixed', true)).toBe(false);
+    });
+  });
+
+  describe('asset path replacement - external URL preservation', () => {
+    // These tests verify the replaceAssetPaths helper function logic.
+    //
+    // The actual bug fix is in the legacy import code path (importFromLegacyFile)
+    // For full integration testing with real ELP files, see:
+    // - test/integration/external-url-preservation.spec.ts
+    //
+    // These unit tests verify the PATTERN MATCHING LOGIC directly,
+    // ensuring external URLs are preserved while local paths are converted.
+
+    // Simulate the replaceAssetPaths helper from ElpxImporter.js
+    const replaceAssetPaths = (str, assetMap) => {
+      if (str == null || typeof str !== 'string') return '';
+      if (!assetMap || assetMap.size === 0) return str;
+
+      const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      for (const [originalPath, assetId] of assetMap.entries()) {
+        const fileName = originalPath.split('/').pop();
+        const escapedFileName = escapeRegex(fileName);
+
+        // 1. Replace {{context_path}}/resources/filename
+        str = str.split(`{{context_path}}/resources/${fileName}`).join(`asset://${assetId}`);
+        str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}`);
+
+        // 2. Replace resources/filename when preceded by attribute quote
+        const resourcesPattern = new RegExp(`(["'=])resources/${escapedFileName}`, 'g');
+        str = str.replace(resourcesPattern, `$1asset://${assetId}`);
+
+        // 3. Replace bare filename ONLY in src/href attributes
+        if (fileName) {
+          str = str.replace(
+            new RegExp(`(src|href)=(["'])${escapedFileName}\\2`, 'g'),
+            `$1=$2asset://${assetId}$2`
+          );
+        }
+      }
+      return str;
+    };
+
+    it('should NOT replace filename inside external https:// URL', () => {
+      const assetMap = new Map([['cedec-Plantilla.pdf', 'asset-uuid-123']]);
+
+      const html = `<p>Download: <a href="resources/cedec-Plantilla.pdf">local pdf</a></p>
+<iframe src="https://example.com/viewer.php?file=https://example.com/uploads/cedec-Plantilla.pdf"></iframe>`;
+
+      const result = replaceAssetPaths(html, assetMap);
+
+      // Local resource path SHOULD be converted to asset://
+      expect(result).toContain('asset://asset-uuid-123');
+
+      // External URL SHOULD remain unchanged - filename should NOT be replaced
+      expect(result).toContain('https://example.com/viewer.php?file=https://example.com/uploads/cedec-Plantilla.pdf');
+      expect(result).not.toContain('https://example.com/uploads/asset://');
+    });
+
+    it('should replace resources/ local path', () => {
+      const assetMap = new Map([['document.pdf', 'doc-uuid-456']]);
+
+      const html = '<a href="resources/document.pdf">Download</a>';
+      const result = replaceAssetPaths(html, assetMap);
+
+      // Local resource path SHOULD be converted
+      expect(result).toContain('asset://doc-uuid-456');
+      expect(result).not.toContain('resources/document.pdf');
+    });
+
+    it('should replace {{context_path}}/resources/ path', () => {
+      const assetMap = new Map([['image.png', 'img-uuid-789']]);
+
+      const html = '<img src="{{context_path}}/resources/image.png">';
+      const result = replaceAssetPaths(html, assetMap);
+
+      expect(result).toContain('asset://img-uuid-789');
+      expect(result).not.toContain('{{context_path}}');
+    });
+
+    it('should NOT replace filename in query string parameter', () => {
+      const assetMap = new Map([['report.pdf', 'report-uuid-abc']]);
+
+      const html = `<a href="/download.php?file=report.pdf">External download</a>
+<a href="resources/report.pdf">Local download</a>`;
+      const result = replaceAssetPaths(html, assetMap);
+
+      // Query string parameter should NOT be replaced
+      expect(result).toContain('/download.php?file=report.pdf');
+
+      // Local resource path SHOULD be replaced
+      expect(result).toContain('asset://report-uuid-abc');
+    });
+
+    it('should handle multiple assets correctly', () => {
+      const assetMap = new Map([
+        ['file1.pdf', 'uuid-1'],
+        ['file2.png', 'uuid-2'],
+        ['video.mp4', 'uuid-3'],
+      ]);
+
+      const html = `
+<a href="resources/file1.pdf">PDF</a>
+<img src="resources/file2.png">
+<video src="resources/video.mp4"></video>
+<iframe src="https://cdn.example.com/embed?video=video.mp4"></iframe>
+`;
+      const result = replaceAssetPaths(html, assetMap);
+
+      // All local resources should be converted
+      expect(result).toContain('asset://uuid-1');
+      expect(result).toContain('asset://uuid-2');
+      expect(result).toContain('asset://uuid-3');
+
+      // External URL should NOT be modified
+      expect(result).toContain('https://cdn.example.com/embed?video=video.mp4');
+    });
+
+    it('should preserve complete CEDEC PDF viewer iframe', () => {
+      // This is the exact pattern from a_la_romana.elp that caused the bug
+      const assetMap = new Map([['cedec-Plantilla-ideografia-A-la-romana.pdf', 'asset-123']]);
+
+      const html = `<a href="resources/cedec-Plantilla-ideografia-A-la-romana.pdf">pdf</a>
+<iframe src="https://cedec.intef.es/wp-content/plugins/pdfjs-viewer-shortcode/pdfjs/web/viewer.php?file=https://cedec.intef.es/wp-content/uploads/2019/09/cedec-Plantilla-ideografia-A-la-romana.pdf&amp;download=false"></iframe>`;
+
+      const result = replaceAssetPaths(html, assetMap);
+
+      // Local link should be converted
+      expect(result).toContain('asset://asset-123');
+
+      // External iframe URL should be completely preserved
+      expect(result).toContain('https://cedec.intef.es/wp-content/plugins/pdfjs-viewer-shortcode/pdfjs/web/viewer.php?file=https://cedec.intef.es/wp-content/uploads/2019/09/cedec-Plantilla-ideografia-A-la-romana.pdf');
     });
   });
 

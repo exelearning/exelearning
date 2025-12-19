@@ -468,6 +468,8 @@ function extractComponents(
             // This ensures each iDevice is placed in its own box during import,
             // preserving individual iDevice titles.
             const ideviceTitle = extractIdeviceTitle(inst);
+            // Filter out default "Free Text" title - should show empty block name instead
+            const blockName = ideviceTitle === 'Free Text' ? '' : ideviceTitle;
 
             components.push({
                 id: inst['@_reference'] || generateId(),
@@ -475,7 +477,7 @@ function extractComponents(
                 title: ideviceTitle,
                 order: idx,
                 content,
-                blockName: ideviceTitle, // Each iDevice gets its own block with its title
+                blockName, // Each iDevice gets its own block with its filtered title
                 data: {},
             });
         }
