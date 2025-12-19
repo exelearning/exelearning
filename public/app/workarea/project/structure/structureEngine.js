@@ -140,6 +140,7 @@ export default class structureEngine {
                     odeComponentSyncId: comp.id,
                     odeIdeviceTypeName: comp.ideviceType || comp.type,
                     htmlView: comp.htmlContent || '',
+                    jsonProperties: comp.jsonProperties || '{}',
                     order: comp.order,
                     // Include all additional properties
                     ...comp.properties,

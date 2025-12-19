@@ -565,14 +565,30 @@ class LegacyXmlParser {
         title: title,  // Include title for block naming
         position: idevices.length,
         htmlView: '',
+        feedbackHtml: '',      // Feedback content from FeedbackField
+        feedbackButton: '',    // Feedback button caption
       };
 
       // Extract HTML content from iDevice
       if (dict) {
         // Strategy 1: Look for "fields" list (JsIdevice format)
-        const fieldsContent = this.extractFieldsContent(dict);
-        if (fieldsContent) {
-          idevice.htmlView = fieldsContent;
+        // Also extracts feedback content if present (FeedbackField)
+        const fieldsResult = this.extractFieldsContentWithFeedback(dict);
+        if (fieldsResult.content) {
+          idevice.htmlView = fieldsResult.content;
+        }
+        if (fieldsResult.feedbackHtml) {
+          idevice.feedbackHtml = fieldsResult.feedbackHtml;
+          idevice.feedbackButton = fieldsResult.feedbackButton;
+        }
+
+        // Fallback: Check for ReflectionIdevice-style answerTextArea feedback
+        if (!idevice.feedbackHtml) {
+          const answerFeedback = this.extractReflectionFeedback(dict);
+          if (answerFeedback.content) {
+            idevice.feedbackHtml = answerFeedback.content;
+            idevice.feedbackButton = answerFeedback.buttonCaption;
+          }
         }
 
         // Strategy 2: Direct content fields (older formats)
@@ -640,7 +656,20 @@ class LegacyXmlParser {
    * @returns {string} Combined HTML content from all fields
    */
   extractFieldsContent(dict) {
+    const result = this.extractFieldsContentWithFeedback(dict);
+    return result.content;
+  }
+
+  /**
+   * Extract content and feedback from "fields" list in JsIdevice format
+   * Structure: fields -> list -> TextAreaField/FeedbackField instances
+   * @param {Element} dict - Dictionary element of the iDevice
+   * @returns {{content: string, feedbackHtml: string, feedbackButton: string}} Content and feedback
+   */
+  extractFieldsContentWithFeedback(dict) {
     const contents = [];
+    let feedbackHtml = '';
+    let feedbackButton = '';
     const children = Array.from(dict.children);
 
     // Find "fields" key and its list
@@ -662,13 +691,79 @@ class LegacyXmlParser {
                 contents.push(content);
               }
             }
+            // Process FeedbackField
+            if (fieldClass.includes('FeedbackField')) {
+              const feedback = this.extractFeedbackFieldContent(fieldInst);
+              if (feedback.content) {
+                feedbackHtml = feedback.content;
+                feedbackButton = feedback.buttonCaption;
+              }
+            }
           }
         }
         break;
       }
     }
 
-    return contents.join('\n');
+    return {
+      content: contents.join('\n'),
+      feedbackHtml,
+      feedbackButton
+    };
+  }
+
+  /**
+   * Extract content from a FeedbackField instance
+   * @param {Element} fieldInst - FeedbackField instance element
+   * @returns {{content: string, buttonCaption: string}} Feedback content and button caption
+   */
+  extractFeedbackFieldContent(fieldInst) {
+    const dict = fieldInst.querySelector(':scope > dictionary');
+    if (!dict) return { content: '', buttonCaption: '' };
+
+    const children = Array.from(dict.children);
+    let content = '';
+    let buttonCaption = '';
+
+    // Look for feedback content (feedback or content_w_resourcePaths)
+    const contentKeys = ['feedback', 'content_w_resourcePaths', '_content', 'content'];
+    for (const targetKey of contentKeys) {
+      if (content) break;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child.tagName === 'string' &&
+            child.getAttribute('role') === 'key' &&
+            child.getAttribute('value') === targetKey) {
+          const valueEl = children[i + 1];
+          if (valueEl && valueEl.tagName === 'unicode') {
+            const value = valueEl.getAttribute('value') || valueEl.textContent || '';
+            if (value.trim()) {
+              content = this.decodeHtmlContent(value);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Look for button caption (_buttonCaption)
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === '_buttonCaption') {
+        const valueEl = children[i + 1];
+        if (valueEl && (valueEl.tagName === 'unicode' || valueEl.tagName === 'string')) {
+          buttonCaption = valueEl.getAttribute('value') || valueEl.textContent || '';
+          break;
+        }
+      }
+    }
+
+    return {
+      content,
+      buttonCaption: buttonCaption || 'Mostrar retroalimentación'
+    };
   }
 
   /**
@@ -802,6 +897,40 @@ class LegacyXmlParser {
     }
 
     return '';
+  }
+
+  /**
+   * Extract feedback from ReflectionIdevice-style structure
+   * ReflectionIdevice stores feedback in answerTextArea field with buttonCaption
+   * @param {Element} dict - Dictionary element of the iDevice
+   * @returns {{content: string, buttonCaption: string}} Feedback content and button caption
+   */
+  extractReflectionFeedback(dict) {
+    const children = Array.from(dict.children);
+
+    // Look for answerTextArea key (used by ReflectionIdevice)
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === 'answerTextArea') {
+        const valueEl = children[i + 1];
+        if (valueEl && valueEl.tagName === 'instance') {
+          // It's a TextAreaField instance - extract buttonCaption and content
+          const fieldDict = valueEl.querySelector(':scope > dictionary');
+          if (fieldDict) {
+            const buttonCaption = this.findDictStringValue(fieldDict, 'buttonCaption') || '';
+            const content = this.extractTextAreaFieldContent(valueEl);
+
+            if (content && buttonCaption) {
+              return { content, buttonCaption };
+            }
+          }
+        }
+      }
+    }
+
+    return { content: '', buttonCaption: '' };
   }
 
   /**
