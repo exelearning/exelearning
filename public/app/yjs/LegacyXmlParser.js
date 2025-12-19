@@ -20,6 +20,20 @@ class LegacyXmlParser {
   }
 
   /**
+   * LEGACY ICON TO THEME ICON MAPPING CONVENTION
+   * Maps legacy iDevice icon names to modern theme icon names.
+   * Legacy ELP files store icon names like "preknowledge", "reading", "casestudy"
+   * which may differ from the actual theme icon filenames.
+   *
+   * If a legacy icon name is not in this map, it's used as-is (most icons match directly).
+   */
+  static LEGACY_ICON_MAP = {
+    'preknowledge': 'think',      // Legacy "preknowledge" uses think.png
+    'reading': 'book',            // Legacy "reading" uses book.png
+    'casestudy': 'case',          // Legacy "casestudy" uses case.png
+  };
+
+  /**
    * Parse legacy XML content and return normalized structure
    * @param {string} xmlContent - The raw XML content from contentv3.xml
    * @returns {Object} Normalized structure with pages, meta, etc.
@@ -380,9 +394,13 @@ class LegacyXmlParser {
           const idevices = this.extractIDevicesWithTitles(listEl);
 
           idevices.forEach((idevice, idx) => {
+            // Filter out default "Free Text" title - should show empty block name instead
+            const title = idevice.title || '';
+            const blockName = title === 'Free Text' ? '' : title;
             blocks.push({
               id: `block-${nodeEl.getAttribute('reference')}-${idx}`,
-              name: idevice.title || '',  // Use iDevice title as block name
+              name: blockName,  // Use iDevice title as block name, filtering defaults
+              iconName: idevice.icon || '',  // Use iDevice icon as block icon
               position: idx,
               idevices: [idevice],  // Exactly one iDevice per block
             });
@@ -538,8 +556,11 @@ class LegacyXmlParser {
       if (className === 'exe.engine.jsidevice.JsIdevice' && dict) {
         const iDeviceDir = this.findDictStringValue(dict, '_iDeviceDir');
         if (iDeviceDir) {
-          ideviceType = iDeviceDir;
-          Logger.log(`[LegacyXmlParser] JsIdevice detected with type: ${ideviceType}`);
+          // Extract basename from path (handles both Windows and Unix paths)
+          // e.g., "C:\...\text" or "/path/to/text" -> "text"
+          const parts = iDeviceDir.replace(/\\/g, '/').split('/');
+          ideviceType = parts[parts.length - 1] || iDeviceDir;
+          Logger.log(`[LegacyXmlParser] JsIdevice detected with type: ${ideviceType} (from path: ${iDeviceDir})`);
         } else {
           ideviceType = 'text'; // Fallback for JsIdevice without _iDeviceDir
         }
@@ -553,20 +574,49 @@ class LegacyXmlParser {
       // Extract the iDevice title to use as the block name
       const title = this.extractIdeviceTitle(inst);
 
+      // LEGACY ICON EXTRACTION CONVENTION
+      // Extract icon name from the iDevice dictionary and map to theme icon
+      let iconName = '';
+      if (dict) {
+        const rawIcon = this.findDictStringValue(dict, 'icon');
+        if (rawIcon) {
+          // Map legacy icon name to theme icon name
+          iconName = LegacyXmlParser.LEGACY_ICON_MAP[rawIcon] || rawIcon;
+          Logger.log(`[LegacyXmlParser] iDevice icon: ${rawIcon} -> ${iconName}`);
+        }
+      }
+
       const idevice = {
         id: `idevice-${ref}`,
         type: ideviceType,
         title: title,  // Include title for block naming
+        icon: iconName, // Theme icon name for the block
         position: idevices.length,
         htmlView: '',
+        feedbackHtml: '',      // Feedback content from FeedbackField
+        feedbackButton: '',    // Feedback button caption
       };
 
       // Extract HTML content from iDevice
       if (dict) {
         // Strategy 1: Look for "fields" list (JsIdevice format)
-        const fieldsContent = this.extractFieldsContent(dict);
-        if (fieldsContent) {
-          idevice.htmlView = fieldsContent;
+        // Also extracts feedback content if present (FeedbackField)
+        const fieldsResult = this.extractFieldsContentWithFeedback(dict);
+        if (fieldsResult.content) {
+          idevice.htmlView = fieldsResult.content;
+        }
+        if (fieldsResult.feedbackHtml) {
+          idevice.feedbackHtml = fieldsResult.feedbackHtml;
+          idevice.feedbackButton = fieldsResult.feedbackButton;
+        }
+
+        // Fallback: Check for ReflectionIdevice-style answerTextArea feedback
+        if (!idevice.feedbackHtml) {
+          const answerFeedback = this.extractReflectionFeedback(dict);
+          if (answerFeedback.content) {
+            idevice.feedbackHtml = answerFeedback.content;
+            idevice.feedbackButton = answerFeedback.buttonCaption;
+          }
         }
 
         // Strategy 2: Direct content fields (older formats)
@@ -618,7 +668,8 @@ class LegacyXmlParser {
           child.getAttribute('role') === 'key' &&
           child.getAttribute('value') === key) {
         const valueEl = children[i + 1];
-        if (valueEl && valueEl.tagName === 'string') {
+        // Handle both <string> and <unicode> value elements
+        if (valueEl && (valueEl.tagName === 'string' || valueEl.tagName === 'unicode')) {
           return valueEl.getAttribute('value') || valueEl.textContent || null;
         }
       }
@@ -633,7 +684,20 @@ class LegacyXmlParser {
    * @returns {string} Combined HTML content from all fields
    */
   extractFieldsContent(dict) {
+    const result = this.extractFieldsContentWithFeedback(dict);
+    return result.content;
+  }
+
+  /**
+   * Extract content and feedback from "fields" list in JsIdevice format
+   * Structure: fields -> list -> TextAreaField/FeedbackField instances
+   * @param {Element} dict - Dictionary element of the iDevice
+   * @returns {{content: string, feedbackHtml: string, feedbackButton: string}} Content and feedback
+   */
+  extractFieldsContentWithFeedback(dict) {
     const contents = [];
+    let feedbackHtml = '';
+    let feedbackButton = '';
     const children = Array.from(dict.children);
 
     // Find "fields" key and its list
@@ -655,13 +719,79 @@ class LegacyXmlParser {
                 contents.push(content);
               }
             }
+            // Process FeedbackField
+            if (fieldClass.includes('FeedbackField')) {
+              const feedback = this.extractFeedbackFieldContent(fieldInst);
+              if (feedback.content) {
+                feedbackHtml = feedback.content;
+                feedbackButton = feedback.buttonCaption;
+              }
+            }
           }
         }
         break;
       }
     }
 
-    return contents.join('\n');
+    return {
+      content: contents.join('\n'),
+      feedbackHtml,
+      feedbackButton
+    };
+  }
+
+  /**
+   * Extract content from a FeedbackField instance
+   * @param {Element} fieldInst - FeedbackField instance element
+   * @returns {{content: string, buttonCaption: string}} Feedback content and button caption
+   */
+  extractFeedbackFieldContent(fieldInst) {
+    const dict = fieldInst.querySelector(':scope > dictionary');
+    if (!dict) return { content: '', buttonCaption: '' };
+
+    const children = Array.from(dict.children);
+    let content = '';
+    let buttonCaption = '';
+
+    // Look for feedback content (feedback or content_w_resourcePaths)
+    const contentKeys = ['feedback', 'content_w_resourcePaths', '_content', 'content'];
+    for (const targetKey of contentKeys) {
+      if (content) break;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child.tagName === 'string' &&
+            child.getAttribute('role') === 'key' &&
+            child.getAttribute('value') === targetKey) {
+          const valueEl = children[i + 1];
+          if (valueEl && valueEl.tagName === 'unicode') {
+            const value = valueEl.getAttribute('value') || valueEl.textContent || '';
+            if (value.trim()) {
+              content = this.decodeHtmlContent(value);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Look for button caption (_buttonCaption)
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === '_buttonCaption') {
+        const valueEl = children[i + 1];
+        if (valueEl && (valueEl.tagName === 'unicode' || valueEl.tagName === 'string')) {
+          buttonCaption = valueEl.getAttribute('value') || valueEl.textContent || '';
+          break;
+        }
+      }
+    }
+
+    return {
+      content,
+      buttonCaption: buttonCaption || 'Mostrar retroalimentación'
+    };
   }
 
   /**
@@ -739,18 +869,36 @@ class LegacyXmlParser {
     const dict = fieldInst.querySelector(':scope > dictionary');
     if (!dict) return '';
 
-    // TextField stores content in "_content" or "content_w_resourcePaths"
+    // TextField stores content in "content_w_resourcePaths" (preferred) or "_content" (fallback)
+    // IMPORTANT: Prioritize content_w_resourcePaths because it contains the actual HTML with resource paths
+    // The "_content" field may be empty or contain unprocessed content
     const children = Array.from(dict.children);
 
+    // First pass: look for content_w_resourcePaths (has actual HTML with resource paths)
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === 'content_w_resourcePaths') {
+        const valueEl = children[i + 1];
+        if (valueEl && (valueEl.tagName === 'unicode' || valueEl.tagName === 'string')) {
+          const content = this.decodeHtmlContent(valueEl.getAttribute('value') || valueEl.textContent || '');
+          if (content) return content;
+        }
+      }
+    }
+
+    // Second pass: fallback to _content or content
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       if (child.tagName === 'string' &&
           child.getAttribute('role') === 'key') {
         const keyValue = child.getAttribute('value');
-        if (keyValue === '_content' || keyValue === 'content_w_resourcePaths' || keyValue === 'content') {
+        if (keyValue === '_content' || keyValue === 'content') {
           const valueEl = children[i + 1];
           if (valueEl && (valueEl.tagName === 'unicode' || valueEl.tagName === 'string')) {
-            return this.decodeHtmlContent(valueEl.getAttribute('value') || valueEl.textContent || '');
+            const content = this.decodeHtmlContent(valueEl.getAttribute('value') || valueEl.textContent || '');
+            if (content) return content;
           }
         }
       }
@@ -777,6 +925,40 @@ class LegacyXmlParser {
     }
 
     return '';
+  }
+
+  /**
+   * Extract feedback from ReflectionIdevice-style structure
+   * ReflectionIdevice stores feedback in answerTextArea field with buttonCaption
+   * @param {Element} dict - Dictionary element of the iDevice
+   * @returns {{content: string, buttonCaption: string}} Feedback content and button caption
+   */
+  extractReflectionFeedback(dict) {
+    const children = Array.from(dict.children);
+
+    // Look for answerTextArea key (used by ReflectionIdevice)
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === 'answerTextArea') {
+        const valueEl = children[i + 1];
+        if (valueEl && valueEl.tagName === 'instance') {
+          // It's a TextAreaField instance - extract buttonCaption and content
+          const fieldDict = valueEl.querySelector(':scope > dictionary');
+          if (fieldDict) {
+            const buttonCaption = this.findDictStringValue(fieldDict, 'buttonCaption') || '';
+            const content = this.extractTextAreaFieldContent(valueEl);
+
+            if (content && buttonCaption) {
+              return { content, buttonCaption };
+            }
+          }
+        }
+      }
+    }
+
+    return { content: '', buttonCaption: '' };
   }
 
   /**

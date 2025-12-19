@@ -181,7 +181,13 @@ export class YjsDocumentAdapter implements ExportDocument {
             blocksArray.forEach((blockMap, index) => {
                 blocks.push(this.convertBlock(blockMap as YMap, index));
             });
+            // Sort blocks by order property to ensure correct rendering order
+            blocks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         }
+
+        // Extract page-level properties (visibility, highlight, etc.)
+        const propsMap = pageMap.get('properties') as YMap | undefined;
+        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
 
         return {
             id: (pageMap.get('id') as string) || (pageMap.get('pageId') as string) || '',
@@ -189,6 +195,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             parentId: (pageMap.get('parentId') as string | null) || null,
             order: (pageMap.get('order') as number) || 0,
             blocks,
+            properties,
         };
     }
 
@@ -206,13 +213,20 @@ export class YjsDocumentAdapter implements ExportDocument {
             componentsArray.forEach((compMap, compIndex) => {
                 components.push(this.convertComponent(compMap as YMap, compIndex));
             });
+            // Sort components by order property to ensure correct rendering order
+            components.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         }
+
+        // Extract block properties (teacherOnly, visibility, minimized, cssClass, identifier, etc.)
+        const propsMap = blockMap.get('properties') as YMap | undefined;
+        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
 
         return {
             id: (blockMap.get('id') as string) || `block-${index}`,
             name: (blockMap.get('name') as string) || (blockMap.get('blockName') as string) || '',
             order: (blockMap.get('order') as number) || index,
             components,
+            properties,
         };
     }
 

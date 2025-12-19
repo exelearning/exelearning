@@ -1418,6 +1418,77 @@ describe('legacy-xml-parser', () => {
             expect(page?.components[0].blockName).toBe('');
         });
 
+        it('should filter out default "Free Text" title and use empty block name', () => {
+            /**
+             * LEGACY V2.X DEFAULT IDEVICE TITLE FILTERING
+             * The default title "Free Text" from legacy FreeTextIdevice should NOT
+             * be shown as the block name. Only custom, user-defined titles should
+             * appear as block names.
+             */
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.freetextidevice.FreeTextIdevice',
+                                    '@_reference': 'idevice-1',
+                                    dictionary: {
+                                        string: '_title',
+                                        unicode: { '@_value': 'Free Text' }, // Default title
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+
+            const page = result.pages.find(p => p.id === 'node-1');
+            // blockName should be empty for default "Free Text" title
+            expect(page?.components[0].blockName).toBe('');
+            // But the title should still be preserved
+            expect(page?.components[0].title).toBe('Free Text');
+        });
+
+        it('should preserve custom title even if similar to default', () => {
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.freetextidevice.FreeTextIdevice',
+                                    '@_reference': 'idevice-1',
+                                    dictionary: {
+                                        string: '_title',
+                                        unicode: { '@_value': 'Free Text Activity' }, // Custom title
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+
+            const page = result.pages.find(p => p.id === 'node-1');
+            // Custom title should be preserved as block name
+            expect(page?.components[0].blockName).toBe('Free Text Activity');
+            expect(page?.components[0].title).toBe('Free Text Activity');
+        });
+
         it('should preserve iDevice order', () => {
             const parsed: LegacyInstanceXmlDocument = {
                 instance: {

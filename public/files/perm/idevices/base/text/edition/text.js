@@ -381,7 +381,7 @@ var $exeDevice = {
         </legend>
         <div>
           ${content}
-        <div>
+        </div>
       </fieldset>`;
     },
 

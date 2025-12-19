@@ -375,6 +375,117 @@ This transformation ensures that:
 
 ---
 
+## Legacy .elp (v2.x) Import – iDevice Icon Mapping
+
+### Background
+
+Legacy `contentv3.xml` files from eXeLearning 2.x store **icon names** directly in the iDevice dictionary:
+
+```xml
+<string role="key" value="icon"/>
+<unicode value="preknowledge"/>
+```
+
+These icon names correspond to theme icon files (e.g., `think.png`, `objectives.png`).
+
+### The Icon Problem
+
+Some legacy icon names do **not** directly match modern theme icon filenames:
+
+| Legacy Icon Name | Theme Icon File |
+|------------------|-----------------|
+| `preknowledge` | `think.png` |
+| `reading` | `book.png` |
+| `casestudy` | `case.png` |
+
+Without mapping, these icons would not display correctly in the imported content.
+
+### Transformation Rule
+
+When importing a legacy `contentv3.xml`:
+
+1. **Extract the icon name** from the iDevice dictionary (`icon` field)
+2. **Map legacy icon names** to modern theme icon names (if different)
+3. **Assign the icon to the block** (not the iDevice)
+4. **Icons that match directly** (e.g., `objectives`, `reflection`) pass through unchanged
+
+### Icon Mapping Table
+
+| Legacy Icon Name | Theme Icon Name | Theme File |
+|------------------|-----------------|------------|
+| `preknowledge` | `think` | `think.png` |
+| `reading` | `book` | `book.png` |
+| `casestudy` | `case` | `case.png` |
+| `objectives` | `objectives` | `objectives.png` (no change) |
+| `reflection` | `reflection` | `reflection.png` (no change) |
+| `activity` | `activity` | `activity.png` (no change) |
+| `video` | `video` | `video.png` (no change) |
+| `info` | `info` | `info.png` (no change) |
+| `technology` | `technology` | `technology.png` (no change) |
+| `file` | `file` | `file.png` (no change) |
+| `pieces` | `pieces` | `pieces.png` (no change) |
+| `draw` | `draw` | `draw.png` (no change) |
+| `competencies` | `competencies` | `competencies.png` (no change) |
+
+### Theme Icon Availability
+
+Icons are loaded from the theme's `icons/` directory. Available icons in the base theme include:
+
+- `activity`, `agreement`, `alert`, `arts`, `ask`, `book`, `calculate`, `case`
+- `chrono`, `collaborative`, `competencies`, `diary`, `diary_alt`, `discuss`
+- `download`, `draw`, `english`, `experiment`, `explore`, `file`, `gallery`
+- `geography`, `guide`, `history`, `info`, `interactive`, `letters`, `listen`
+- `math`, `music`, `nature`, `objectives`, `observe`, `passport`, `perform`
+- `piece`, `pieces`, `play`, `present`, `reflection`, `roadmap`, `share`
+- `sport`, `start`, `stop`, `suitcase`, `technology`, `think`, `think_alt`, `video`
+
+### Key Points
+
+| Aspect | Behavior |
+|--------|----------|
+| Icon source | iDevice's `icon` field in dictionary |
+| Icon destination | Block's `iconName` property |
+| Missing icons | Empty string (no icon displayed) |
+| Unknown icons | Passed through as-is (may not display if not in theme) |
+
+### When Icon Mapping Applies
+
+Icon mapping is applied **only** when:
+
+- Opening or importing **legacy `.elp` files (v2.x / contentv3.xml)**
+- The iDevice has an `icon` field in its dictionary
+
+### Implementation Details
+
+The icon mapping logic is implemented in:
+
+- **File:** `public/app/yjs/LegacyXmlParser.js`
+- **Static property:** `LegacyXmlParser.LEGACY_ICON_MAP`
+- **Functions:** `extractIDevicesWithTitles()`, `extractNodeBlocks()`
+
+The icon is stored on the block (not the iDevice) because in the modern system, icons are a block-level property.
+
+### Rationale
+
+This transformation ensures that:
+
+1. **Visual appearance is preserved** from legacy content
+2. **Theme icons display correctly** without user intervention
+3. **Semantic meaning** of iDevices (Objectives, Reflection, etc.) is visible via icons
+4. **User experience is consistent** with the original content
+
+### Important Notes
+
+- This behavior is **intentional and by design** – it is not a bug
+- This transformation applies **only to legacy v2.x imports** (`contentv3.xml`)
+- **Modern `.elpx` files are NOT affected** – their icons are preserved as-is
+- Do not change this behavior without updating:
+  - The `LEGACY_ICON_MAP` in `LegacyXmlParser.js`
+  - This documentation
+  - The test suite
+
+---
+
 ## Adding New Conventions
 
 When adding new conventions to this document:

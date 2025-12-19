@@ -62,10 +62,15 @@ export class IdeviceRenderer {
         if (!htmlContent) {
             classes.push('db-no-data');
         }
-        if (properties.visibility === 'false') {
+        // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
+        if (properties.visibility === false || properties.visibility === 'false') {
             classes.push('novisible');
         }
-        if (properties.teacherOnly === 'true' || properties.visibilityType === 'teacher') {
+        if (
+            properties.teacherOnly === true ||
+            properties.teacherOnly === 'true' ||
+            properties.visibilityType === 'teacher'
+        ) {
             classes.push('teacher-only');
         }
         if (properties.cssClass && typeof properties.cssClass === 'string') {
@@ -142,13 +147,18 @@ ${contentHtml}
         if (!hasHeader) {
             classes.push('no-header');
         }
-        if (properties.minimized === 'true') {
+        // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
+        if (properties.minimized === true || properties.minimized === 'true') {
             classes.push('minimized');
         }
-        if (properties.visibility === 'false') {
+        if (properties.visibility === false || properties.visibility === 'false') {
             classes.push('novisible');
         }
-        if (properties.teacherOnly === 'true' || properties.visibilityType === 'teacher') {
+        if (
+            properties.teacherOnly === true ||
+            properties.teacherOnly === 'true' ||
+            properties.visibilityType === 'teacher'
+        ) {
             classes.push('teacher-only');
         }
         if (properties.cssClass) {
@@ -171,7 +181,13 @@ ${contentHtml}
             contentHtml += this.render(component, { basePath, includeDataAttributes });
         }
 
-        return `<article id="${this.escapeAttr(blockId)}" class="${classes.join(' ')}">
+        // Build additional attributes (identifier support)
+        let extraAttrs = '';
+        if (properties.identifier) {
+            extraAttrs += ` identifier="${this.escapeAttr(properties.identifier)}"`;
+        }
+
+        return `<article id="${this.escapeAttr(blockId)}" class="${classes.join(' ')}"${extraAttrs}>
 ${headerHtml}
 <div class="box-content">
 ${contentHtml}
