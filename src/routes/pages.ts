@@ -181,7 +181,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         createProject,
     } = deps.queries ?? defaultQueries;
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
-    const { createSessionDirectories } = deps.fileHelper ?? defaultFileHelper;
     const { renderTemplate } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
 
@@ -485,10 +484,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         // 2. Use project UUID as session ID
                         const newSessionId = projectRecord.uuid;
 
-                        // 3. Create session directories
-                        await createSessionDirectories(newSessionId);
-
-                        // 4. Create session in memory
+                        // 3. Create session in memory (directories created lazily when files are written)
                         createSession({
                             sessionId: newSessionId,
                             fileName: 'New Project.elp',
