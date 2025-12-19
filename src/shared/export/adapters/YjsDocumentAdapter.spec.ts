@@ -112,16 +112,31 @@ const createMockBlock = (
     return new MockYMap(blockData);
 };
 
-const createMockComponent = (id: string, type: string, content: string, properties: Record<string, unknown> = {}) => {
-    return new MockYMap({
+const createMockComponent = (
+    id: string,
+    type: string,
+    content: string,
+    jsonProperties: Record<string, unknown> = {},
+    structureProperties: Record<string, unknown> = {},
+) => {
+    const data: Record<string, unknown> = {
         id,
         type,
         ideviceType: type,
         content,
         htmlContent: content,
         order: 0,
-        properties: new MockYMap(properties),
-    });
+    };
+    // iDevice-specific properties stored as JSON string in jsonProperties
+    // This matches how ElpxImporter stores them
+    if (Object.keys(jsonProperties).length > 0) {
+        data.jsonProperties = JSON.stringify(jsonProperties);
+    }
+    // Structure properties (visibility, teacherOnly, etc.) go in properties
+    if (Object.keys(structureProperties).length > 0) {
+        data.properties = new MockYMap(structureProperties);
+    }
+    return new MockYMap(data);
 };
 
 describe('YjsDocumentAdapter', () => {
@@ -299,6 +314,42 @@ describe('YjsDocumentAdapter', () => {
             expect(comp.type).toBe('FreeTextIdevice');
             expect(comp.content).toBe('<p>Test content</p>');
             expect(comp.properties).toEqual({ setting1: 'value1' });
+        });
+
+        it('should extract text iDevice with feedback properties (jsonProperties format)', () => {
+            // This tests the real-world format used by text iDevice
+            // which stores feedback content in jsonProperties
+            const textIdeviceProps = {
+                textTextarea: '<p>Main content here</p>',
+                textFeedbackInput: 'Show Feedback',
+                textFeedbackTextarea: '<p>Feedback content here</p>',
+                textInfoDurationInput: '00:10',
+                textInfoDurationTextInput: 'Duration:',
+                textInfoParticipantsInput: '2-4',
+                textInfoParticipantsTextInput: 'Grouping:',
+            };
+
+            const component = createMockComponent(
+                'text-idevice-1',
+                'text',
+                '<p>Main content here</p>',
+                textIdeviceProps,
+            );
+            const block = createMockBlock('b1', 'Dos minutos para pensar', [component]);
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+            const comp = pages[0].blocks[0].components[0];
+
+            expect(comp.id).toBe('text-idevice-1');
+            expect(comp.type).toBe('text');
+            expect(comp.properties).toEqual(textIdeviceProps);
+            // Verify feedback properties are preserved
+            expect(comp.properties.textFeedbackInput).toBe('Show Feedback');
+            expect(comp.properties.textFeedbackTextarea).toBe('<p>Feedback content here</p>');
         });
     });
 

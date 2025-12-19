@@ -10,6 +10,34 @@
  *   await importer.importFromFile(file);
  */
 class ElpxImporter {
+  // Default block properties (from ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG)
+  static BLOCK_PROPERTY_DEFAULTS = {
+    visibility: 'true',
+    teacherOnly: 'false',
+    allowToggle: 'true',
+    minimized: 'false',
+    identifier: '',
+    cssClass: ''
+  };
+
+  // Default component properties
+  static COMPONENT_PROPERTY_DEFAULTS = {
+    visibility: 'true',
+    teacherOnly: 'false',
+    identifier: '',
+    cssClass: ''
+  };
+
+  // Default page properties
+  static PAGE_PROPERTY_DEFAULTS = {
+    visibility: 'true',
+    highlight: 'false',
+    hidePageTitle: 'false',
+    editableInPage: 'false',
+    titlePage: '',
+    titleNode: ''
+  };
+
   /**
    * @param {YjsDocumentManager} documentManager - The Yjs document manager
    * @param {AssetManager} assetManager - Asset manager for storing assets
@@ -424,6 +452,9 @@ class ElpxImporter {
     // Use provided order or read from XML (fallback)
     const order = calculatedOrder !== null ? calculatedOrder : this.getNavOrder(navNode);
 
+    // Extract page-level properties (hidePageTitle, editableInPage, titleNode, etc.)
+    const properties = this.getNavStructureProperties(navNode);
+
     const pageData = {
       id: pageId,
       pageId: pageId,
@@ -432,7 +463,8 @@ class ElpxImporter {
       parentId: parentId,
       order: order,
       createdAt: new Date().toISOString(),
-      blocks: []
+      blocks: [],
+      properties: properties
     };
 
     Logger.log(`[ElpxImporter] Building page data: "${pageName}" (${pageId}) parent: ${parentId} order: ${order}`);
@@ -477,6 +509,9 @@ class ElpxImporter {
                      this.getTextContent(pagNode, 'iconName') ||
                      '';
 
+    // Extract block-level properties (visibility, minimized, teacherOnly, cssClass, identifier)
+    const properties = this.getPagStructureProperties(pagNode);
+
     const blockData = {
       id: blockId,
       blockId: blockId,
@@ -484,7 +519,8 @@ class ElpxImporter {
       iconName: iconName,
       order: order,
       createdAt: new Date().toISOString(),
-      components: []
+      components: [],
+      properties: properties
     };
 
     // Extract components (odeComponents)
@@ -583,7 +619,7 @@ class ElpxImporter {
       }
     }
 
-    // Extract component properties (odeComponentProperty)
+    // Extract component properties (odeComponentProperty) - legacy format
     const componentProps = compNode.querySelectorAll('odeComponentProperty');
     for (const propNode of componentProps) {
       const key = propNode.getAttribute('key') || this.getTextContent(propNode, 'key');
@@ -592,6 +628,29 @@ class ElpxImporter {
         compData.componentProps[key] = value;
       }
     }
+
+    // Extract component-level properties (odeComponentsProperties) - visibility, etc.
+    // Start with defaults from getComponentsProperties()
+    const structureProps = this.getComponentsProperties(compNode);
+
+    // Merge properties from jsonProperties that override structure props
+    // Some iDevices store teacherOnly, identifier, cssClass, visibility in jsonProperties
+    if (compData.properties && typeof compData.properties === 'object') {
+      const propsToMerge = ['visibility', 'teacherOnly', 'identifier', 'cssClass'];
+      for (const key of propsToMerge) {
+        if (compData.properties[key] !== undefined) {
+          // Convert boolean to string for consistency ('true'/'false')
+          const value = compData.properties[key];
+          if (typeof value === 'boolean') {
+            structureProps[key] = value ? 'true' : 'false';
+          } else {
+            structureProps[key] = String(value);
+          }
+        }
+      }
+    }
+
+    compData.structureProps = structureProps;
 
     return compData;
   }
@@ -629,6 +688,18 @@ class ElpxImporter {
       safeYOp('pageMap.set(order)', () => pageMap.set('order', pageData.order));
       safeYOp('pageMap.set(createdAt)', () => pageMap.set('createdAt', pageData.createdAt));
       Logger.log('[ElpxImporter] Page basic props set');
+
+      // Create properties Y.Map if page has properties
+      if (pageData.properties && Object.keys(pageData.properties).length > 0) {
+        const propsMap = safeYOp('new Y.Map() for properties', () => new this.Y.Map());
+        for (const [key, value] of Object.entries(pageData.properties)) {
+          if (value !== undefined && value !== null) {
+            safeYOp(`propsMap.set(${key})`, () => propsMap.set(key, value));
+          }
+        }
+        safeYOp('pageMap.set(properties)', () => pageMap.set('properties', propsMap));
+        Logger.log('[ElpxImporter] Page properties set:', Object.keys(pageData.properties));
+      }
 
       // Create blocks array
       const blocksArray = safeYOp('new Y.Array() for blocks', () => new this.Y.Array());
@@ -690,6 +761,18 @@ class ElpxImporter {
       safeYOp('blockMap.set(order)', () => blockMap.set('order', blockData.order));
       safeYOp('blockMap.set(createdAt)', () => blockMap.set('createdAt', blockData.createdAt));
       Logger.log('[ElpxImporter] Block basic props set (including iconName:', blockData.iconName, ')');
+
+      // Create properties Y.Map if block has properties
+      if (blockData.properties && Object.keys(blockData.properties).length > 0) {
+        const propsMap = safeYOp('new Y.Map() for block properties', () => new this.Y.Map());
+        for (const [key, value] of Object.entries(blockData.properties)) {
+          if (value !== undefined && value !== null) {
+            safeYOp(`propsMap.set(${key})`, () => propsMap.set(key, value));
+          }
+        }
+        safeYOp('blockMap.set(properties)', () => blockMap.set('properties', propsMap));
+        Logger.log('[ElpxImporter] Block properties set:', Object.keys(blockData.properties));
+      }
 
       // Create components array
       const componentsArray = safeYOp('new Y.Array() for components', () => new this.Y.Array());
@@ -780,7 +863,7 @@ class ElpxImporter {
       }
     }
 
-    // Set component properties as flat values
+    // Set component properties as flat values (legacy format)
     if (compData.componentProps) {
       Logger.log('[ElpxImporter] Setting component props:', Object.keys(compData.componentProps));
       Object.entries(compData.componentProps).forEach(([key, value]) => {
@@ -788,6 +871,18 @@ class ElpxImporter {
           safeSet(compMap, `prop_${key}`, String(value));
         }
       });
+    }
+
+    // Create properties Y.Map if component has structure properties (visibility, etc.)
+    if (compData.structureProps && Object.keys(compData.structureProps).length > 0) {
+      const propsMap = new this.Y.Map();
+      for (const [key, value] of Object.entries(compData.structureProps)) {
+        if (value !== undefined && value !== null) {
+          propsMap.set(key, value);
+        }
+      }
+      safeSet(compMap, 'properties', propsMap);
+      Logger.log('[ElpxImporter] Component structure properties set:', Object.keys(compData.structureProps));
     }
 
     Logger.log('[ElpxImporter] createComponentYMap END:', compData.id);
@@ -899,6 +994,96 @@ class ElpxImporter {
     if (orderEl) return parseInt(orderEl.textContent, 10) || 0;
 
     return 0;
+  }
+
+  /**
+   * Extract page properties from odeNavStructureProperties
+   * Properties include: hidePageTitle, editableInPage, titleNode, titlePage, etc.
+   * Initializes with defaults and merges XML values.
+   * @param {Element} navNode - The odeNavStructure element
+   * @returns {Object} - Properties object with all default properties
+   */
+  getNavStructureProperties(navNode) {
+    // Start with all defaults
+    const properties = { ...ElpxImporter.PAGE_PROPERTY_DEFAULTS };
+
+    const propsContainer = navNode.querySelector('odeNavStructureProperties');
+    if (!propsContainer) return properties;  // Return defaults if no properties element
+
+    const propNodes = propsContainer.querySelectorAll('odeNavStructureProperty');
+    for (const propNode of propNodes) {
+      const key = this.getTextContent(propNode, 'key');
+      const value = this.getTextContent(propNode, 'value');
+      if (key && value !== null) {
+        // Convert boolean strings to actual booleans
+        if (value === 'true' || value === 'false') {
+          properties[key] = value === 'true';
+        } else {
+          properties[key] = value;
+        }
+      }
+    }
+    return properties;
+  }
+
+  /**
+   * Extract block properties from odePagStructureProperties
+   * Properties include: visibility, minimized, teacherOnly, cssClass, identifier, allowToggle, etc.
+   * Initializes with defaults and merges XML values.
+   * @param {Element} pagNode - The odePagStructure element
+   * @returns {Object} - Properties object with all default properties
+   */
+  getPagStructureProperties(pagNode) {
+    // Start with all defaults
+    const properties = { ...ElpxImporter.BLOCK_PROPERTY_DEFAULTS };
+
+    const propsContainer = pagNode.querySelector('odePagStructureProperties');
+    if (!propsContainer) return properties;  // Return defaults if no properties element
+
+    const propNodes = propsContainer.querySelectorAll('odePagStructureProperty');
+    for (const propNode of propNodes) {
+      const key = this.getTextContent(propNode, 'key');
+      const value = this.getTextContent(propNode, 'value');
+      if (key && value !== null) {
+        // Convert boolean strings to actual booleans
+        if (value === 'true' || value === 'false') {
+          properties[key] = value === 'true';
+        } else {
+          properties[key] = value;
+        }
+      }
+    }
+    return properties;
+  }
+
+  /**
+   * Extract component properties from odeComponentsProperties
+   * Properties include: visibility, teacherOnly, identifier, cssClass, etc.
+   * Initializes with defaults and merges XML values.
+   * @param {Element} compNode - The odeComponent element
+   * @returns {Object} - Properties object with all default properties
+   */
+  getComponentsProperties(compNode) {
+    // Start with all defaults
+    const properties = { ...ElpxImporter.COMPONENT_PROPERTY_DEFAULTS };
+
+    const propsContainer = compNode.querySelector('odeComponentsProperties');
+    if (!propsContainer) return properties;  // Return defaults if no properties element
+
+    const propNodes = propsContainer.querySelectorAll('odeComponentsProperty');
+    for (const propNode of propNodes) {
+      const key = this.getTextContent(propNode, 'key');
+      const value = this.getTextContent(propNode, 'value');
+      if (key && value !== null) {
+        // Convert boolean strings to actual booleans
+        if (value === 'true' || value === 'false') {
+          properties[key] = value === 'true';
+        } else {
+          properties[key] = value;
+        }
+      }
+    }
+    return properties;
   }
 
   /**
