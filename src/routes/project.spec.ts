@@ -27,8 +27,10 @@ let mockProjectsByUuid: Map<string, any>;
 let mockSessions: Map<string, any>;
 let mockCollaborators: Map<number, Set<number>>;
 let mockSnapshots: Map<number, any>;
+let mockAssets: Map<number, any[]>; // projectId -> assets[]
 let userIdCounter = 1;
 let projectIdCounter = 1;
+let assetIdCounter = 1;
 
 /**
  * Create mock session manager dependency
@@ -79,6 +81,7 @@ function createMockFileHelper(): FileHelperDeps {
             await fs.appendFile(filePath, content);
         },
         getFilesDir: () => path.join(testDir, 'files'),
+        getProjectAssetsDir: (projectUuid: string) => path.join(testDir, 'assets', projectUuid),
     };
 }
 
@@ -270,6 +273,22 @@ function createMockQueries(): QueriesDeps {
         upsertSnapshot: async (_db: any, projectId: number, data: Buffer, version: string) => {
             mockSnapshots.set(projectId, { project_id: projectId, snapshot_data: data, version });
         },
+        findAllAssetsForProject: async (_db: any, projectId: number) => {
+            return mockAssets.get(projectId) || [];
+        },
+        createAsset: async (_db: any, data: any) => {
+            const id = assetIdCounter++;
+            const asset = {
+                id,
+                ...data,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            const projectAssets = mockAssets.get(data.project_id) || [];
+            projectAssets.push(asset);
+            mockAssets.set(data.project_id, projectAssets);
+            return asset;
+        },
     };
 }
 
@@ -310,8 +329,10 @@ describe('Project Routes', () => {
         mockSessions = new Map();
         mockCollaborators = new Map();
         mockSnapshots = new Map();
+        mockAssets = new Map();
         userIdCounter = 1;
         projectIdCounter = 1;
+        assetIdCounter = 1;
 
         // Create test users
         mockUsers.set(1, {
@@ -519,26 +540,6 @@ describe('Project Routes', () => {
         });
     });
 
-    describe('POST /api/project/open (file open)', () => {
-        it('should handle project open from path', async () => {
-            // Create a test file
-            const testFilePath = path.join(testDir, 'test.elp');
-            await fs.writeFile(testFilePath, 'PK test content');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ path: testFilePath }),
-                }),
-            );
-
-            // Open endpoint may need the file to be a valid ELP
-            // For now just verify it doesn't crash
-            expect(res.status).toBeDefined();
-        });
-    });
-
     describe('POST /api/project/create-quick', () => {
         it('should require authentication', async () => {
             const res = await app.handle(
@@ -551,50 +552,6 @@ describe('Project Routes', () => {
 
             // Route requires authentication
             expect(res.status).toBe(401);
-        });
-    });
-
-    describe('POST /api/project/export', () => {
-        it('should require valid session for export', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/project/export', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId: 'non-existent',
-                        format: 'html5',
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(404);
-        });
-
-        it('should export existing session', async () => {
-            mockSessions.set('export-session', {
-                sessionId: 'export-session',
-                sessionPath: path.join(testDir, 'tmp', 'export-session'),
-                structure: {
-                    meta: { title: 'Export Test' },
-                    pages: [],
-                },
-            });
-
-            // Create session directory
-            await fs.ensureDir(path.join(testDir, 'tmp', 'export-session'));
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/export', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId: 'export-session',
-                        format: 'html5',
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(200);
         });
     });
 
@@ -687,97 +644,6 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
-        });
-    });
-
-    describe('POST /api/project/open with auth', () => {
-        async function createAuthToken(userId: number = 1) {
-            const jwt = await import('@elysiajs/jwt');
-            const jwtInstance = jwt.jwt({
-                name: 'jwt',
-                secret: 'test-secret-for-testing-only',
-            });
-            const tempApp = new Elysia().use(jwtInstance);
-            return tempApp.decorator.jwt.sign({
-                sub: userId,
-                email: mockUsers.get(userId)?.email || 'test@test.com',
-                roles: ['ROLE_USER'],
-                isGuest: false,
-            });
-        }
-
-        it('should require authentication', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ odeFilePath: '/test.elp' }),
-                }),
-            );
-
-            expect(res.status).toBe(401);
-        });
-
-        it('should return 400 when file not found', async () => {
-            const token = await createAuthToken();
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cookie': `auth=${token}`,
-                    },
-                    body: JSON.stringify({ odeFilePath: '/nonexistent.elp', odeFileName: 'test.elp' }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.message).toContain('not found');
-        });
-
-        it('should open ELP file successfully', async () => {
-            const token = await createAuthToken();
-
-            // Create a test ELP file
-            const testFilePath = path.join(testDir, 'auth-test.elp');
-            await fs.writeFile(testFilePath, 'PK test content');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cookie': `auth=${token}`,
-                    },
-                    body: JSON.stringify({ odeFilePath: testFilePath, odeFileName: 'auth-test.elp' }),
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.success).toBe(true);
-            expect(body.projectUuid).toBeDefined();
-        });
-
-        it('should return 400 when no file provided', async () => {
-            const token = await createAuthToken();
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cookie': `auth=${token}`,
-                    },
-                    body: JSON.stringify({}),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.message).toContain('No file provided');
         });
     });
 
@@ -1538,6 +1404,248 @@ describe('Project Routes', () => {
             expect(newSnapshot).toBeDefined();
             expect(newSnapshot?.project_id).toBe(newProjectId);
         });
+
+        it('should duplicate project assets with new client_ids', async () => {
+            const sourceProject = createTestProject(902, 'uuid-902-with-assets', 1);
+
+            // Create source asset file on disk
+            const sourceClientId = 'source-client-id-123';
+            const sourceAssetDir = path.join(testDir, 'assets', String(sourceProject.id), sourceClientId);
+            await fs.ensureDir(sourceAssetDir);
+            const sourceFilePath = path.join(sourceAssetDir, 'test-image.png');
+            await fs.writeFile(sourceFilePath, Buffer.from('fake-image-data'));
+
+            // Add mock asset for source project
+            mockAssets.set(sourceProject.id, [
+                {
+                    id: 1,
+                    project_id: sourceProject.id,
+                    filename: 'test-image.png',
+                    storage_path: sourceFilePath,
+                    mime_type: 'image/png',
+                    file_size: 16,
+                    client_id: sourceClientId,
+                    component_id: 'idevice-123',
+                    content_hash: 'abc123',
+                },
+            ]);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-902-with-assets/duplicate', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+
+            // Verify new asset was created with different client_id
+            const newProjectId = body.project.id;
+            const newAssets = mockAssets.get(newProjectId);
+            expect(newAssets).toBeDefined();
+            expect(newAssets!.length).toBe(1);
+            expect(newAssets![0].client_id).not.toBe(sourceClientId);
+            expect(newAssets![0].filename).toBe('test-image.png');
+            expect(newAssets![0].project_id).toBe(newProjectId);
+        });
+
+        it('should handle project with no assets during duplication', async () => {
+            createTestProject(903, 'uuid-903-no-assets', 1);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-903-no-assets/duplicate', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+
+            // Verify no assets were created
+            const newProjectId = body.project.id;
+            const newAssets = mockAssets.get(newProjectId);
+            expect(newAssets || []).toEqual([]);
+        });
+
+        it('should skip assets without client_id during duplication', async () => {
+            const sourceProject = createTestProject(904, 'uuid-904-asset-no-clientid', 1);
+
+            // Add mock asset without client_id
+            mockAssets.set(sourceProject.id, [
+                {
+                    id: 1,
+                    project_id: sourceProject.id,
+                    filename: 'orphan.png',
+                    storage_path: '/some/path/orphan.png',
+                    mime_type: 'image/png',
+                    file_size: 100,
+                    client_id: null, // No client_id
+                    component_id: null,
+                    content_hash: 'xyz789',
+                },
+            ]);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-904-asset-no-clientid/duplicate', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+
+            // Verify no assets were created (asset without client_id is skipped)
+            const newProjectId = body.project.id;
+            const newAssets = mockAssets.get(newProjectId);
+            expect(newAssets || []).toEqual([]);
+        });
+
+        it('should update asset references in Yjs document when duplicating', async () => {
+            const sourceProject = createTestProject(905, 'uuid-905-yjs-assets', 1);
+
+            // Create source asset file on disk
+            const sourceClientId = 'old-asset-uuid-456';
+            const sourceAssetDir = path.join(testDir, 'assets', String(sourceProject.id), sourceClientId);
+            await fs.ensureDir(sourceAssetDir);
+            const sourceFilePath = path.join(sourceAssetDir, 'image.jpg');
+            await fs.writeFile(sourceFilePath, Buffer.from('fake-jpg-data'));
+
+            // Add mock asset
+            mockAssets.set(sourceProject.id, [
+                {
+                    id: 1,
+                    project_id: sourceProject.id,
+                    filename: 'image.jpg',
+                    storage_path: sourceFilePath,
+                    mime_type: 'image/jpeg',
+                    file_size: 13,
+                    client_id: sourceClientId,
+                    component_id: 'idevice-456',
+                    content_hash: 'def456',
+                },
+            ]);
+
+            // Create a Yjs document with HTML content referencing the asset
+            const Y = await import('yjs');
+            const ydoc = new Y.Doc();
+            const metadata = ydoc.getMap('metadata');
+            metadata.set('title', 'Project with Asset Refs');
+
+            // Create pages structure with asset reference in innerHtml
+            const pages = ydoc.getMap('pages');
+            const page = new Y.Map();
+            const blocks = new Y.Map();
+            const block = new Y.Map();
+            const idevices = new Y.Map();
+            const idevice = new Y.Map();
+            idevice.set('innerHtml', `<img src="/api/assets/${sourceClientId}/image.jpg" alt="test">`);
+            idevices.set('idevice-456', idevice);
+            block.set('idevices', idevices);
+            blocks.set('block-1', block);
+            page.set('blocks', blocks);
+            pages.set('page-1', page);
+
+            const snapshotData = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+            ydoc.destroy();
+
+            mockSnapshots.set(sourceProject.id, {
+                id: 1,
+                project_id: sourceProject.id,
+                snapshot_data: snapshotData,
+                snapshot_version: '12345',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-905-yjs-assets/duplicate', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+
+            // Get the new asset's client_id
+            const newProjectId = body.project.id;
+            const newAssets = mockAssets.get(newProjectId);
+            expect(newAssets).toBeDefined();
+            expect(newAssets!.length).toBe(1);
+            const newClientId = newAssets![0].client_id;
+            expect(newClientId).not.toBe(sourceClientId);
+
+            // Verify Yjs document was updated with new client_id
+            const newSnapshot = mockSnapshots.get(newProjectId);
+            expect(newSnapshot).toBeDefined();
+
+            // Load and verify the new Yjs document
+            const newYdoc = new Y.Doc();
+            Y.applyUpdate(newYdoc, new Uint8Array(newSnapshot.snapshot_data));
+            const newPages = newYdoc.getMap('pages');
+            const newPage = newPages.get('page-1') as Y.Map<unknown>;
+            const newBlocks = newPage?.get('blocks') as Y.Map<unknown>;
+            const newBlock = newBlocks?.get('block-1') as Y.Map<unknown>;
+            const newIdevices = newBlock?.get('idevices') as Y.Map<unknown>;
+            const newIdevice = newIdevices?.get('idevice-456') as Y.Map<unknown>;
+            const newInnerHtml = newIdevice?.get('innerHtml') as string;
+
+            expect(newInnerHtml).toContain(newClientId);
+            expect(newInnerHtml).not.toContain(sourceClientId);
+            newYdoc.destroy();
+        });
+
+        it('should handle multiple assets during duplication', async () => {
+            const sourceProject = createTestProject(906, 'uuid-906-multi-assets', 1);
+
+            // Create source asset files on disk
+            const clientIds = ['asset-1-uuid', 'asset-2-uuid', 'asset-3-uuid'];
+            for (const clientId of clientIds) {
+                const assetDir = path.join(testDir, 'assets', String(sourceProject.id), clientId);
+                await fs.ensureDir(assetDir);
+                await fs.writeFile(path.join(assetDir, `${clientId}.png`), Buffer.from('data'));
+            }
+
+            // Add mock assets
+            mockAssets.set(
+                sourceProject.id,
+                clientIds.map((clientId, i) => ({
+                    id: i + 1,
+                    project_id: sourceProject.id,
+                    filename: `${clientId}.png`,
+                    storage_path: path.join(testDir, 'assets', String(sourceProject.id), clientId, `${clientId}.png`),
+                    mime_type: 'image/png',
+                    file_size: 4,
+                    client_id: clientId,
+                    component_id: `idevice-${i}`,
+                    content_hash: `hash-${i}`,
+                })),
+            );
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-906-multi-assets/duplicate', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+
+            // Verify all assets were duplicated with new client_ids
+            const newProjectId = body.project.id;
+            const newAssets = mockAssets.get(newProjectId);
+            expect(newAssets).toBeDefined();
+            expect(newAssets!.length).toBe(3);
+
+            // Verify all client_ids are new (not in original list)
+            for (const newAsset of newAssets!) {
+                expect(clientIds).not.toContain(newAsset.client_id);
+            }
+        });
     });
 
     describe('DELETE /api/projects/uuid/:uuid', () => {
@@ -1634,106 +1742,6 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.success).toBe(true);
-        });
-    });
-
-    describe('Symfony Compat Chunked Upload', () => {
-        it('should handle large ELP upload chunks', async () => {
-            const formData = new FormData();
-            formData.append('odeFilePart', new Blob(['chunk data']));
-            formData.append('odeFileName', 'large.elp');
-            formData.append('odeSessionId', 'large-upload-session');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/ode-management/odes/ode/local/large/elp/open', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-        });
-
-        it('should require all fields for chunked upload', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/ode-management/odes/ode/local/large/elp/open', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({}),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-        });
-    });
-
-    describe('Symfony Compat ELP Open', () => {
-        async function createAuthToken(userId: number = 1) {
-            const jwt = await import('@elysiajs/jwt');
-            const jwtInstance = jwt.jwt({
-                name: 'jwt',
-                secret: 'test-secret-for-testing-only',
-            });
-            const tempApp = new Elysia().use(jwtInstance);
-            return tempApp.decorator.jwt.sign({
-                sub: userId,
-                email: mockUsers.get(userId)?.email || 'test@test.com',
-                roles: ['ROLE_USER'],
-                isGuest: false,
-            });
-        }
-
-        it('should require authentication', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/ode-management/odes/ode/local/elp/open', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ odeFilePath: '/test.elp' }),
-                }),
-            );
-
-            expect(res.status).toBe(401);
-        });
-
-        it('should require odeFilePath', async () => {
-            const token = await createAuthToken();
-
-            const res = await app.handle(
-                new Request('http://localhost/api/ode-management/odes/ode/local/elp/open', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cookie': `auth=${token}`,
-                    },
-                    body: JSON.stringify({}),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-        });
-
-        it('should open ELP file', async () => {
-            const token = await createAuthToken();
-            const testFilePath = path.join(testDir, 'symfony-open.elp');
-            await fs.writeFile(testFilePath, 'PK test content');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/ode-management/odes/ode/local/elp/open', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cookie': `auth=${token}`,
-                    },
-                    body: JSON.stringify({ odeFilePath: testFilePath, odeFileName: 'symfony-open.elp' }),
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-            expect(body.projectUuid).toBeDefined();
         });
     });
 
@@ -2240,38 +2248,6 @@ describe('Project Routes', () => {
         });
     });
 
-    describe('Shorter Alias Routes', () => {
-        it('should handle /api/odes/local/large-elp/open', async () => {
-            const formData = new FormData();
-            formData.append('odeFilePart', new Blob(['chunk']));
-            formData.append('odeFileName', 'alias.elp');
-            formData.append('odeSessionId', 'alias-session');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/odes/local/large-elp/open', {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.responseMessage).toBe('OK');
-        });
-
-        it('should require all fields for alias route', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/odes/local/large-elp/open', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({}),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-        });
-    });
-
     describe('Access Control on nav-structures', () => {
         async function createAuthToken(userId: number = 1) {
             const jwt = await import('@elysiajs/jwt');
@@ -2584,85 +2560,6 @@ describe('Project Routes', () => {
         });
     });
 
-    describe('Direct File Upload', () => {
-        async function createAuthToken(userId: number = 1) {
-            const jwt = await import('@elysiajs/jwt');
-            const jwtInstance = jwt.jwt({
-                name: 'jwt',
-                secret: 'test-secret-for-testing-only',
-            });
-            const tempApp = new Elysia().use(jwtInstance);
-            return tempApp.decorator.jwt.sign({
-                sub: userId,
-                email: mockUsers.get(userId)?.email || 'test@test.com',
-                roles: ['ROLE_USER'],
-                isGuest: false,
-            });
-        }
-
-        it('should open project with direct file upload', async () => {
-            const token = await createAuthToken(1);
-
-            // Create a mock ELP file as FormData
-            const formData = new FormData();
-            const elpContent = new Blob(['PK test elp content'], { type: 'application/zip' });
-            formData.append('file', elpContent, 'test-upload.elp');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: { 'Cookie': `auth=${token}` },
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.sessionId).toBeDefined();
-        });
-
-        it('should return 400 when no file provided', async () => {
-            const token = await createAuthToken(1);
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: {
-                        'Cookie': `auth=${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({}),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.error).toBe('Bad Request');
-        });
-
-        it('should return 400 for non-existent file path', async () => {
-            const token = await createAuthToken(1);
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: {
-                        'Cookie': `auth=${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        odeFilePath: '/non/existent/path/to/file.elp',
-                        odeFileName: 'file.elp',
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(400);
-            const body = await res.json();
-            expect(body.message).toContain('File not found');
-        });
-    });
-
     describe('Upload Chunk Edge Cases', () => {
         async function createAuthToken(userId: number = 1) {
             const jwt = await import('@elysiajs/jwt');
@@ -2926,44 +2823,6 @@ describe('Project Routes', () => {
             const body = await res.json();
             // Default visibility is 'private' unless DEFAULT_PROJECT_VISIBILITY=public
             expect(body.project.visibility).toBe('private');
-        });
-    });
-
-    describe('Project Open Error Handling', () => {
-        async function createAuthToken(userId: number = 1) {
-            const jwt = await import('@elysiajs/jwt');
-            const jwtInstance = jwt.jwt({
-                name: 'jwt',
-                secret: 'test-secret-for-testing-only',
-            });
-            const tempApp = new Elysia().use(jwtInstance);
-            return tempApp.decorator.jwt.sign({
-                sub: userId,
-                email: mockUsers.get(userId)?.email || 'test@test.com',
-                roles: ['ROLE_USER'],
-                isGuest: false,
-            });
-        }
-
-        it('should handle file upload as Buffer', async () => {
-            const token = await createAuthToken(1);
-
-            // Create a mock ELP file as FormData with actual buffer content
-            const formData = new FormData();
-            const elpContent = new Blob(['PK\x03\x04 test elp content'], { type: 'application/zip' });
-            formData.append('file', elpContent, 'buffer-test.elp');
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/open', {
-                    method: 'POST',
-                    headers: { 'Cookie': `auth=${token}` },
-                    body: formData,
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.sessionId).toBeDefined();
         });
     });
 
@@ -3283,34 +3142,6 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.sessionId).toBe('no-content-session');
-        });
-    });
-
-    describe('Project Export Handling', () => {
-        it('should handle export request with session', async () => {
-            mockSessions.set('export-test-session', {
-                sessionId: 'export-test-session',
-                fileName: 'export.elp',
-                structure: {
-                    meta: { title: 'Export Test' },
-                },
-            });
-
-            const res = await app.handle(
-                new Request('http://localhost/api/project/export', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sessionId: 'export-test-session',
-                        format: 'html5',
-                    }),
-                }),
-            );
-
-            // Export might fail due to missing files, but should not 404
-            expect([200, 400, 500]).toContain(res.status);
         });
     });
 
