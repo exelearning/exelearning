@@ -850,6 +850,79 @@ describe('NavbarFile', () => {
         });
     });
 
+    describe('exportViaYjs', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: {},
+                assetCache: {},
+                assetManager: {},
+            };
+            window.SharedExporters = {
+                createExporter: vi.fn(() => ({
+                    export: vi.fn().mockResolvedValue({
+                        success: true,
+                        data: new Uint8Array([1, 2, 3]),
+                        filename: 'export.zip',
+                    }),
+                })),
+            };
+            global.URL.createObjectURL = vi.fn(() => 'blob:test');
+            global.URL.revokeObjectURL = vi.fn();
+        });
+
+        it('should return false when Yjs is disabled', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+            expect(result).toBe(false);
+        });
+
+        it('should return false when document manager is missing', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+            expect(result).toBe(false);
+        });
+
+        it('should return false when SharedExporters is missing', async () => {
+            delete window.SharedExporters;
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+            expect(result).toBe(false);
+        });
+
+        it('should return false for unsupported format', async () => {
+            const result = await navbarFile.exportViaYjs('FOO', 'foo');
+            expect(result).toBe(false);
+        });
+
+        it('should export and trigger download on success', async () => {
+            const appendSpy = vi.spyOn(document.body, 'appendChild');
+            const removeSpy = vi.spyOn(document.body, 'removeChild');
+
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+
+            expect(result).toBe(true);
+            expect(window.SharedExporters.createExporter).toHaveBeenCalled();
+            expect(global.URL.createObjectURL).toHaveBeenCalled();
+            expect(appendSpy).toHaveBeenCalled();
+            expect(removeSpy).toHaveBeenCalled();
+        });
+
+        it('should show alert on export error', async () => {
+            window.SharedExporters.createExporter.mockReturnValue({
+                export: vi.fn().mockResolvedValue({
+                    success: false,
+                    error: 'bad',
+                }),
+            });
+
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+
+            expect(result).toBe(true);
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+        });
+    });
+
     describe('exportHTML5Event', () => {
         beforeEach(() => {
             navbarFile = new NavbarFile(mockMenu);
@@ -969,6 +1042,110 @@ describe('NavbarFile', () => {
             const saveHandler = mockButtons.saveButton.addEventListener.mock.calls[0][1];
             saveHandler();
             expect(navbarFile.saveOdeEvent).toHaveBeenCalled();
+        });
+    });
+
+    describe('helper methods', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+            document.body.innerHTML = '';
+        });
+
+        it('should warn when share modal is missing', () => {
+            eXeLearning.app.modals.share = null;
+            expect(() => navbarFile.openShareModalEvent()).not.toThrow();
+        });
+
+        it('should normalize suggested names using project title and suffix', () => {
+            eXeLearning.app.project.properties = {
+                properties: {
+                    pp_title: { value: 'My Project' },
+                },
+            };
+
+            const result = navbarFile.normalizeSuggestedName('document', 'export-html5');
+
+            expect(result).toBe('My Project_web.zip');
+        });
+
+        it('should replace mismatched extensions during normalization', () => {
+            const result = navbarFile.normalizeSuggestedName('project.xml', 'export-html5');
+            expect(result).toBe('project.zip');
+        });
+
+        it('should keep epub extension for epub3', () => {
+            const result = navbarFile.normalizeSuggestedName('book.epub', 'export-epub3');
+            expect(result).toBe('book.epub');
+        });
+
+        it('should apply suffixes based on export type', () => {
+            expect(navbarFile.appendSuffixForType('base', 'html5')).toBe('base_web');
+            expect(navbarFile.appendSuffixForType('base', 'html5-sp')).toBe('base_page');
+            expect(navbarFile.appendSuffixForType('base', 'scorm12')).toBe('base_scorm');
+            expect(navbarFile.appendSuffixForType('base', 'scorm2004')).toBe('base_scorm2004');
+            expect(navbarFile.appendSuffixForType('base', 'ims')).toBe('base_ims');
+        });
+
+        it('should use electron save with normalized name', () => {
+            window.__currentProjectId = 'proj-1';
+            window.electronAPI = { save: vi.fn() };
+
+            navbarFile.electronSave('http://file', 'elpx', 'Doc');
+
+            expect(window.electronAPI.save).toHaveBeenCalledWith(
+                'http://file',
+                'proj-1',
+                'Doc.elpx'
+            );
+        });
+
+        it('should fall back to downloadLink when electron save is missing', () => {
+            window.electronAPI = null;
+            const downloadSpy = vi.spyOn(navbarFile, 'downloadLink').mockImplementation(() => {});
+
+            navbarFile.electronSave('http://file', 'export-html5', 'export-html5.zip');
+
+            expect(downloadSpy).toHaveBeenCalledWith('http://file', 'export-html5.zip_web.zip');
+        });
+
+        it('should use electron save in offline downloadLink', async () => {
+            window.__currentProjectId = 'proj-2';
+            window.electronAPI = { save: vi.fn() };
+            eXeLearning.config.isOfflineInstallation = true;
+            eXeLearning.app.api.getFileResourcesForceDownload.mockResolvedValue({
+                url: 'http://final',
+            });
+
+            await navbarFile.downloadLink('http://file', 'export-html5-sp.zip');
+
+            expect(window.electronAPI.save).toHaveBeenCalledWith(
+                'http://final',
+                'proj-2',
+                expect.stringContaining('.zip')
+            );
+        });
+
+        it('should detect legacy elp format with contentv3.xml', async () => {
+            const xml = '<instance></instance>';
+            window.fflate = {
+                unzipSync: vi.fn(() => ({
+                    'contentv3.xml': new TextEncoder().encode(xml),
+                })),
+            };
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.elp');
+
+            const result = await navbarFile.checkIfLegacyElpFormat(file);
+
+            expect(result).toBe(true);
+        });
+
+        it('should return false when fflate is unavailable', async () => {
+            window.fflate = undefined;
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.elp');
+
+            const result = await navbarFile.checkIfLegacyElpFormat(file);
+
+            expect(result).toBe(false);
         });
     });
 });

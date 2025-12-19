@@ -32,6 +32,7 @@ describe('ModalSessionLogout', () => {
           openuserodefiles: {
             openUserOdeFilesWithOpenSession: vi.fn(),
             openUserLocalOdeFilesWithOpenSession: vi.fn(),
+            largeFilesUpload: vi.fn(),
           },
           alert: {
             show: vi.fn(),
@@ -47,6 +48,9 @@ describe('ModalSessionLogout', () => {
       },
       user: {
         username: 'testuser',
+      },
+      symfony: {
+        basePath: '/base',
       },
     };
 
@@ -124,6 +128,29 @@ describe('ModalSessionLogout', () => {
       expect(window.eXeLearning.app.api.postOdeSave).toHaveBeenCalled();
       expect(window.eXeLearning.app.menus.navbar.file.createSession).toHaveBeenCalled();
     });
+
+    it('should save Yjs project and navigate when openYjsProject is set', async () => {
+      const saveSpy = vi.fn().mockResolvedValue(true);
+      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
+
+      await modal.saveSession({ odeSessionId: 's' }, { openYjsProject: true, projectUuid: 'uuid-1' });
+
+      expect(saveSpy).toHaveBeenCalled();
+      expect(window.location.href).toBe('/base/workarea?project=uuid-1');
+    });
+
+    it('should show alert when Yjs save fails', async () => {
+      const saveSpy = vi.fn().mockRejectedValue(new Error('fail'));
+      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
+
+      await modal.saveSession({ odeSessionId: 's' }, { openYjsProject: true, projectUuid: 'uuid-1' });
+
+      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+        title: 'Error saving',
+        body: 'An error occurred while saving the project',
+        contentId: 'error',
+      });
+    });
   });
 
   describe('buttons functionality', () => {
@@ -135,6 +162,69 @@ describe('ModalSessionLogout', () => {
       const yesButton = mockElement.querySelector('.modal-footer .session-logout-save');
       yesButton.click();
       expect(saveSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('should navigate directly for Yjs project without saving', () => {
+      vi.useFakeTimers();
+      const closeSpy = vi.spyOn(modal, 'close');
+      modal.show({ openYjsProject: true, projectUuid: 'uuid-2' });
+      vi.advanceTimersByTime(500);
+
+      const noButton = mockElement.querySelector('.modal-footer .session-logout-without-save');
+      noButton.click();
+
+      expect(window.location.href).toBe('/base/workarea?project=uuid-2');
+      expect(closeSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('should use large file upload when local large file is provided', () => {
+      vi.useFakeTimers();
+      modal.show({ openOdeFile: true, localOdeFile: true, isLargeFile: true, odeFile: 'file' });
+      vi.advanceTimersByTime(500);
+
+      const noButton = mockElement.querySelector('.modal-footer .session-logout-without-save');
+      noButton.click();
+
+      expect(window.eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledWith(
+        'file',
+        false,
+        false,
+        true,
+        true
+      );
+      vi.useRealTimers();
+    });
+  });
+
+  describe('closeSession', () => {
+    it('should create session when newFile is true', async () => {
+      const closeSpy = vi.spyOn(modal, 'close');
+
+      await modal.closeSession('session-id', { newFile: true });
+
+      expect(window.eXeLearning.app.menus.navbar.file.createSession).toHaveBeenCalledWith({
+        odeSessionId: 'session-id',
+      });
+      expect(closeSpy).toHaveBeenCalled();
+    });
+
+    it('should notify and redirect on successful close', async () => {
+      vi.useFakeTimers();
+      modal.offlineInstallation = false;
+
+      await modal.closeSession('session-id', { newFile: false });
+      vi.advanceTimersByTime(500);
+
+      expect(window.eXeLearning.app.api.postCloseSession).toHaveBeenCalledWith({
+        odeSessionId: 'session-id',
+      });
+      expect(modal.realTimeEventNotifier.notify).toHaveBeenCalledWith('session-id', {
+        name: 'user-exiting',
+        payload: 'testuser',
+      });
+      expect(window.location.href).toBe('http://localhost/logout');
       vi.useRealTimers();
     });
   });

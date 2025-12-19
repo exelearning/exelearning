@@ -84,6 +84,164 @@ describe('ApiCallManager', () => {
     });
   });
 
+  describe('getThirdPartyCodeText / getLicensesList', () => {
+    it('should call func.getText with versioned paths', async () => {
+      global.eXeLearning.version = 'v9.9.9';
+
+      await apiManager.getThirdPartyCodeText();
+      await apiManager.getLicensesList();
+
+      expect(mockFunc.getText).toHaveBeenCalledWith(
+        'http://localhost/exelearning/v9.9.9/libs/README'
+      );
+      expect(mockFunc.getText).toHaveBeenCalledWith(
+        'http://localhost/exelearning/v9.9.9/libs/LICENSES'
+      );
+    });
+  });
+
+  describe('getUploadLimits', () => {
+    it('should call func.get with upload limits endpoint', async () => {
+      await apiManager.getUploadLimits();
+      expect(mockFunc.get).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/config/upload-limits'
+      );
+    });
+  });
+
+  describe('getTemplates', () => {
+    it('should call func.get with locale param', async () => {
+      await apiManager.getTemplates('es');
+      expect(mockFunc.get).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/templates?locale=es'
+      );
+    });
+  });
+
+  describe('getRecentUserOdeFiles', () => {
+    it('should fetch recent projects with auth header', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue([{ id: 'p1' }]),
+      });
+      localStorage.setItem('authToken', 'recent-token');
+
+      const result = await apiManager.getRecentUserOdeFiles();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/projects/user/recent'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer recent-token',
+          }),
+        })
+      );
+      expect(result).toEqual([{ id: 'p1' }]);
+      localStorage.removeItem('authToken');
+    });
+
+    it('should return empty list on fetch error', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+
+      const result = await apiManager.getRecentUserOdeFiles();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getCurrentUserOdeSessionId', () => {
+    it('should return project id from URL', async () => {
+      const oldLocation = window.location;
+      delete window.location;
+      window.location = { search: '?project=proj-123' };
+
+      const result = await apiManager.getCurrentUserOdeSessionId();
+
+      expect(result).toEqual({
+        responseMessage: 'OK',
+        odeSessionId: 'proj-123',
+      });
+
+      window.location = oldLocation;
+    });
+  });
+
+  describe('getIdevicesInstalled / getThemesInstalled', () => {
+    it('should call func.get with endpoints', async () => {
+      apiManager.endpoints.api_idevices_installed = { path: 'http://localhost/idevices' };
+      apiManager.endpoints.api_themes_installed = { path: 'http://localhost/themes' };
+
+      await apiManager.getIdevicesInstalled();
+      await apiManager.getThemesInstalled();
+
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/idevices');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/themes');
+    });
+  });
+
+  describe('upload/import helpers', () => {
+    it('should fall back to default URL when import route is missing', async () => {
+      apiManager.endpoints.api_odes_ode_local_elp_import_root_from_local = null;
+      const payload = { odeSessionId: 's1', odeFileName: 'f', odeFilePath: '/tmp' };
+
+      await apiManager.postImportElpToRootFromLocal(payload);
+
+      expect(mockFunc.post).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/ode-management/odes/ode/import/local/root',
+        payload
+      );
+    });
+
+    it('should fall back and replace nav id for import child', async () => {
+      apiManager.endpoints.api_nav_structures_import_elp_child = null;
+      const payload = { odeSessionId: 's1' };
+
+      await apiManager.postImportElpAsChildFromLocal('nav-123', payload);
+
+      expect(mockFunc.post).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/nav-structure-management/nav-structures/nav-123/import-elp',
+        payload
+      );
+    });
+  });
+
+  describe('theme and idevice helpers', () => {
+    it('should replace theme dir in edit endpoint', async () => {
+      apiManager.endpoints.api_themes_edit = { path: 'http://localhost/themes/{themeDirName}' };
+
+      await apiManager.putEditTheme('theme-1', { name: 'Theme' });
+
+      expect(mockFunc.put).toHaveBeenCalledWith(
+        'http://localhost/themes/theme-1',
+        { name: 'Theme' }
+      );
+    });
+
+    it('should replace params in theme zip download', async () => {
+      apiManager.endpoints.api_themes_download = {
+        path: 'http://localhost/themes/{odeSessionId}/{themeDirName}',
+      };
+
+      await apiManager.getThemeZip('session-1', 'theme-1');
+
+      expect(mockFunc.get).toHaveBeenCalledWith(
+        'http://localhost/themes/session-1/theme-1'
+      );
+    });
+
+    it('should replace params in idevice zip download', async () => {
+      apiManager.endpoints.api_idevices_installed_download = {
+        path: 'http://localhost/idevices/{odeSessionId}/{ideviceDirName}',
+      };
+
+      await apiManager.getIdeviceInstalledZip('session-1', 'idevice-1');
+
+      expect(mockFunc.get).toHaveBeenCalledWith(
+        'http://localhost/idevices/session-1/idevice-1'
+      );
+    });
+  });
+
   describe('getUserOdeFiles', () => {
     it('should fetch user projects with auth header', async () => {
       const mockProjects = { odeFiles: { odeFilesSync: [{ id: 1 }] } };

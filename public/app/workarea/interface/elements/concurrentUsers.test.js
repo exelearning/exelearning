@@ -133,6 +133,11 @@ describe('ConcurrentUsers', () => {
       });
       expect(mockDocumentManager.onUsersChange).toHaveBeenCalled();
     });
+
+    it('should warn when document manager is missing', () => {
+      mockApp.project._yjsBridge.getDocumentManager = vi.fn(() => null);
+      expect(() => concurrentUsers.subscribeToYjsAwareness()).not.toThrow();
+    });
   });
 
   describe('updateUsersDisplay', () => {
@@ -202,6 +207,35 @@ describe('ConcurrentUsers', () => {
       expect(mockApp.modals.info.show).toHaveBeenCalledWith(expect.objectContaining({
         title: expect.stringContaining('Users online'),
       }));
+    });
+  });
+
+  describe('createUserElement', () => {
+    it('should add guest badge when user is guest', () => {
+      avatarUtils.isGuestAccount.mockReturnValue(true);
+
+      const node = concurrentUsers.createUserElement({
+        clientId: 1,
+        name: 'Guest',
+        email: 'guest@example.com',
+      });
+
+      expect(node.querySelector('.guest-badge')?.textContent).toBe('Guest');
+    });
+
+    it('should fallback to initials on image error', () => {
+      const node = concurrentUsers.createUserElement({
+        clientId: 1,
+        name: 'John Doe',
+        email: 'john@example.com',
+      });
+
+      const img = node.querySelector('img');
+      expect(img).not.toBeNull();
+      img.onerror();
+
+      const initials = node.querySelector('.avatar-initials');
+      expect(initials?.textContent).toBe('JD');
     });
   });
 

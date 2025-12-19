@@ -186,6 +186,33 @@ describe('PreviewPanelManager', () => {
     });
   });
 
+  describe('generatePreviewHtml', () => {
+    it('should return null when document manager is missing', async () => {
+      window.eXeLearning.app.project._yjsBridge = null;
+      const result = await manager.generatePreviewHtml();
+      expect(result).toBeNull();
+    });
+
+    it('should return null when SharedExporters is missing', async () => {
+      delete window.SharedExporters;
+      const result = await manager.generatePreviewHtml();
+      expect(result).toBeNull();
+    });
+
+    it('should keep html when resolveAssetUrlsAsync fails', async () => {
+      window.resolveAssetUrlsAsync = vi.fn().mockRejectedValue(new Error('fail'));
+      const result = await manager.generatePreviewHtml();
+      expect(result).toBe('<html><body>Preview</body></html>');
+    });
+  });
+
+  describe('utility methods', () => {
+    it('should escape HTML', () => {
+      const escaped = manager.escapeHtml('<script>alert(1)</script>');
+      expect(escaped).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+    });
+  });
+
   describe('auto-refresh', () => {
     it('should schedule refresh on structure change', () => {
       vi.useFakeTimers();

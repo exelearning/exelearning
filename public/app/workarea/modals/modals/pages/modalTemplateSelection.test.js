@@ -111,12 +111,43 @@ describe('modalTemplateSelection', () => {
     });
   });
 
+  describe('fetchTemplates', () => {
+    it('should handle errors and reset templates', async () => {
+      window.eXeLearning.app.api.getTemplates.mockRejectedValue(new Error('fail'));
+      await modal.fetchTemplates();
+      expect(modal.templates).toEqual([]);
+    });
+  });
+
+  describe('renderTemplateList', () => {
+    it('should render empty state when no templates', () => {
+      modal.templates = [];
+      modal.renderTemplateList();
+
+      const emptyMessage = mockElement.querySelector('.alert.alert-info');
+      expect(emptyMessage).not.toBeNull();
+      expect(emptyMessage.textContent).toBe('No templates available for your language.');
+    });
+  });
+
   describe('selectTemplate', () => {
     it('should enable confirm button when template is selected', () => {
       const template = { name: 'T1', path: 'P1' };
       modal.selectTemplate(template);
       expect(modal.selectedTemplate).toBe(template);
       expect(modal.confirmButton.disabled).toBe(false);
+    });
+  });
+
+  describe('confirm button', () => {
+    it('should call loadTemplate when selectedTemplate exists', () => {
+      const template = { name: 'T1', path: 'P1' };
+      const loadSpy = vi.spyOn(modal, 'loadTemplate').mockResolvedValue();
+
+      modal.selectTemplate(template);
+      modal.confirmButton.click();
+
+      expect(loadSpy).toHaveBeenCalledWith(template);
     });
   });
 
@@ -128,6 +159,36 @@ describe('modalTemplateSelection', () => {
       expect(window.fetch).toHaveBeenCalledWith('P1');
       expect(mockBootstrapModal.hide).toHaveBeenCalled();
       expect(window.eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalled();
+    });
+
+    it('should clear saved path when electron API is available', async () => {
+      vi.useFakeTimers();
+      window.__originalElpPath = '/tmp/original.elpx';
+      window.__currentProjectId = 'project-1';
+      window.electronAPI = {
+        clearSavedPath: vi.fn().mockResolvedValue(true),
+      };
+
+      const template = { name: 'T1', path: 'P1' };
+      const loadPromise = modal.loadTemplate(template);
+      await vi.runAllTimersAsync();
+      await loadPromise;
+
+      expect(window.__originalElpPath).toBeUndefined();
+      expect(window.electronAPI.clearSavedPath).toHaveBeenCalledWith('project-1');
+      vi.useRealTimers();
+    });
+
+    it('should show alert when fetch fails', async () => {
+      window.fetch.mockResolvedValue({ ok: false });
+
+      const template = { name: 'T1', path: 'P1' };
+      await modal.loadTemplate(template);
+
+      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+        title: 'Error',
+        message: 'Failed to load template. Please try again.',
+      });
     });
   });
 });

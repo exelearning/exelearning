@@ -114,4 +114,43 @@ describe('ModalConfirm', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('input behaviour and focus', () => {
+    it('should trigger confirm on Enter for text inputs', () => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      modalConfirm.modalElementBody.appendChild(input);
+
+      const confirmSpy = vi.spyOn(modalConfirm, 'confirm').mockImplementation(() => Promise.resolve());
+      modalConfirm.setConfirmExec(() => {});
+
+      modalConfirm.addBehaviourTextInputs();
+      input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter' }));
+
+      expect(confirmSpy).toHaveBeenCalled();
+    });
+
+    it('should focus cancel button when requested', () => {
+      vi.useFakeTimers();
+      modalConfirm.cancelButton.focus = vi.fn();
+
+      modalConfirm.show({ focusCancelButton: true });
+
+      vi.advanceTimersByTime(550);
+      expect(modalConfirm.cancelButton.focus).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('should preserve input value when focusing text input', () => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = 'Keep me';
+      input.focus = vi.fn();
+
+      modalConfirm.focusTextInput(input);
+
+      expect(input.focus).toHaveBeenCalled();
+      expect(input.value).toBe('Keep me');
+    });
+  });
 });
