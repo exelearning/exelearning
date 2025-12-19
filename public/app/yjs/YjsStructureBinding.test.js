@@ -633,6 +633,165 @@ describe('YjsStructureBinding', () => {
     });
   });
 
+  describe('getBlocks', () => {
+    it('returns blocks sorted by order property', () => {
+      // Create blocks with different order values (not in sequence)
+      const block1 = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        order: 57,
+      });
+      block1.set('components', new MockYArray());
+
+      const block2 = new MockYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+        order: 1,
+      });
+      block2.set('components', new MockYArray());
+
+      const block3 = new MockYMap({
+        id: 'block-3',
+        blockId: 'block-3',
+        blockName: 'Block 3',
+        order: 74,
+      });
+      block3.set('components', new MockYArray());
+
+      // Add blocks in wrong order (57, 1, 74)
+      const blocksArray = new MockYArray([block1, block2, block3]);
+
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', blocksArray);
+
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const blocks = binding.getBlocks('page-1');
+
+      // Should be sorted by order: 1, 57, 74
+      expect(blocks).toHaveLength(3);
+      expect(blocks[0].id).toBe('block-2'); // order: 1
+      expect(blocks[1].id).toBe('block-1'); // order: 57
+      expect(blocks[2].id).toBe('block-3'); // order: 74
+    });
+
+    it('returns blocks in insertion order when all have same order', () => {
+      const block1 = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        order: 0,
+      });
+      block1.set('components', new MockYArray());
+
+      const block2 = new MockYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+        order: 0,
+      });
+      block2.set('components', new MockYArray());
+
+      const blocksArray = new MockYArray([block1, block2]);
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      pageMap.set('blocks', blocksArray);
+
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const blocks = binding.getBlocks('page-1');
+
+      expect(blocks).toHaveLength(2);
+      // Stable sort maintains insertion order for equal values
+      expect(blocks[0].id).toBe('block-1');
+      expect(blocks[1].id).toBe('block-2');
+    });
+
+    it('returns empty array for non-existent page', () => {
+      const blocks = binding.getBlocks('non-existent');
+      expect(blocks).toEqual([]);
+    });
+  });
+
+  describe('getComponents', () => {
+    it('returns components sorted by order property', () => {
+      // Create components with different order values
+      const comp1 = new MockYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 85,
+      });
+
+      const comp2 = new MockYMap({
+        id: 'comp-2',
+        ideviceId: 'comp-2',
+        ideviceType: 'FreeTextIdevice',
+        order: 10,
+      });
+
+      const comp3 = new MockYMap({
+        id: 'comp-3',
+        ideviceId: 'comp-3',
+        ideviceType: 'FreeTextIdevice',
+        order: 50,
+      });
+
+      // Add in wrong order (85, 10, 50)
+      const componentsArray = new MockYArray([comp1, comp2, comp3]);
+
+      const blockMap = new MockYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        order: 0,
+      });
+      blockMap.set('components', componentsArray);
+
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      pageMap.set('blocks', new MockYArray([blockMap]));
+
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const components = binding.getComponents('page-1', 'block-1');
+
+      // Should be sorted by order: 10, 50, 85
+      expect(components).toHaveLength(3);
+      expect(components[0].id).toBe('comp-2'); // order: 10
+      expect(components[1].id).toBe('comp-3'); // order: 50
+      expect(components[2].id).toBe('comp-1'); // order: 85
+    });
+
+    it('returns empty array for non-existent block', () => {
+      const pageMap = new MockYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      pageMap.set('blocks', new MockYArray());
+
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const components = binding.getComponents('page-1', 'non-existent');
+      expect(components).toEqual([]);
+    });
+  });
+
   describe('mapToComponent', () => {
     it('returns jsonProperties as string when stored as Y.Map', () => {
       // Create a component Y.Map with jsonProperties as Y.Map

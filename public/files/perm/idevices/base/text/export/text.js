@@ -179,11 +179,14 @@ var $text = {
      * Add behavior and functionalities
      */
     renderBehaviour(data, accessibility, ideviceId) {
-        const $node = $('#' + data.ideviceId);
+        // Use ideviceId parameter as fallback when data.ideviceId is not set
+        // (e.g., when loading from legacy ELP files via ElpxImporter)
+        const effectiveId = data.ideviceId || ideviceId;
+        const $node = $('#' + effectiveId);
         const isInExe = eXe.app.isInExe();
 
         const $btn = $(
-            `#${data.ideviceId} input.feedbackbutton, #${data.ideviceId} input.feedbacktooglebutton`
+            `#${effectiveId} input.feedbackbutton, #${effectiveId} input.feedbacktooglebutton`
         );
         if ($btn.length !== 1) return;
 
@@ -199,14 +202,19 @@ var $text = {
                 .closest('.feedback-button')
                 .next('.feedback');
 
-            if (feedbackEl.is(':visible')) {
+            // Check visibility - need to consider js-hidden class
+            const isVisible = feedbackEl.is(':visible') && !feedbackEl.hasClass('js-hidden');
+
+            if (isVisible) {
                 btn.val(btn.attr('data-text-a'));
                 feedbackEl.fadeOut(() => {
+                    feedbackEl.addClass('js-hidden');
                     $text.working = false;
                 });
             } else {
                 btn.val(btn.attr('data-text-b'));
-                feedbackEl.fadeIn(() => {
+                // Remove js-hidden class before fadeIn to allow animation
+                feedbackEl.removeClass('js-hidden').hide().fadeIn(() => {
                     $text.working = false;
                 });
             }

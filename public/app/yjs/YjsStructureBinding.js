@@ -991,7 +991,9 @@ class YjsStructureBinding {
     const blocks = pageMap.get('blocks');
     if (!blocks) return [];
 
-    return blocks.toArray().map((blockMap, index) => this.mapToBlock(blockMap, index));
+    const result = blocks.toArray().map((blockMap, index) => this.mapToBlock(blockMap, index));
+    // Sort blocks by order property to ensure correct rendering order
+    return result.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
   /**
@@ -1333,7 +1335,9 @@ class YjsStructureBinding {
     const components = blockMap.get('components');
     if (!components) return [];
 
-    return components.toArray().map((compMap, index) => this.mapToComponent(compMap, index));
+    const result = components.toArray().map((compMap, index) => this.mapToComponent(compMap, index));
+    // Sort components by order property to ensure correct rendering order
+    return result.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
   /**
