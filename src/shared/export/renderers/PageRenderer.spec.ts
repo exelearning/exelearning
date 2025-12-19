@@ -332,8 +332,9 @@ describe('PageRenderer', () => {
                 addPagination: true,
             });
 
-            expect(html).toContain('class="page-header"');
-            expect(html).toContain('id="header-test-page"');
+            // Use separate <header> elements for exe_export.js teacherMode selectors
+            expect(html).toContain('<header class="package-header');
+            expect(html).toContain('<header class="page-header"');
             expect(html).toContain('class="page-counter"');
             expect(html).toContain('class="page-counter-current-page">3</strong>'); // 2 + 1
             expect(html).toContain('class="page-counter-total">10</strong>');

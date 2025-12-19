@@ -189,14 +189,15 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('title="Next"');
         });
 
-        it('should render header with main-header class as direct child of .page', async () => {
+        it('should render header elements as direct children of .page for exe_export.js teacherMode', async () => {
             const result = await exporter.generatePreview();
-            // Header should be a direct child of main.page (not inside articles)
-            // This is critical for Fluxus theme CSS selector: .page > header
-            expect(result.html).toContain('id="page-header" class="main-header"');
-            // Header should be outside articles (inside main.page)
+            // Headers should be direct children of main.page (not inside articles)
+            // exe_export.js teacherMode.init() uses $("header.package-header") and $("header.page-header") selectors
+            expect(result.html).toContain('<header class="package-header');
+            expect(result.html).toContain('<header class="page-header"');
+            // Headers should be outside articles (inside main.page)
             const htmlAfterMain = result.html!.split('<main class="page">')[1];
-            const headerPos = htmlAfterMain.indexOf('id="page-header"');
+            const headerPos = htmlAfterMain.indexOf('<header class="package-header');
             const articlePos = htmlAfterMain.indexOf('<article');
             // Header should come before articles
             expect(headerPos).toBeGreaterThan(-1);
@@ -204,10 +205,11 @@ describe('WebsitePreviewExporter', () => {
             expect(headerPos).toBeLessThan(articlePos);
         });
 
-        it('should render header with package-header and page-header wrappers', async () => {
+        it('should render header elements (not divs) for exe_export.js teacherMode to find', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('<div class="package-header">');
-            expect(result.html).toContain('<div class="page-header">');
+            // Must be <header> elements, NOT <div>, for exe_export.js selectors to work
+            expect(result.html).toContain('<header class="package-header package-node">');
+            expect(result.html).toContain('<header class="page-header"');
             expect(result.html).toContain('class="package-title"');
             expect(result.html).toContain('class="page-title"');
         });
@@ -796,6 +798,29 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).not.toContain('exe_lightbox');
             expect(result.html).not.toContain('exe_magnify');
             expect(result.html).not.toContain('mojomagnify');
+        });
+    });
+
+    describe('visibility CSS rules', () => {
+        it('should include CSS to hide novisible blocks', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.exe-export article.novisible.box');
+            expect(result.html).toContain('display: none !important');
+        });
+
+        it('should include CSS to hide novisible iDevices', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.exe-export article.box .idevice_node.novisible');
+        });
+
+        it('should include CSS to hide minimized block content', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.exe-export article.minimized .box-content');
+        });
+
+        it('should include CSS to hide teacher-only content by default', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('html:not(.mode-teacher) .js .teacher-only');
         });
     });
 });

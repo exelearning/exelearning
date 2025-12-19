@@ -213,11 +213,16 @@ export class YjsDocumentAdapter implements ExportDocument {
             });
         }
 
+        // Extract block properties (teacherOnly, visibility, minimized, cssClass, identifier, etc.)
+        const propsMap = blockMap.get('properties') as YMap | undefined;
+        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
+
         return {
             id: (blockMap.get('id') as string) || `block-${index}`,
             name: (blockMap.get('name') as string) || (blockMap.get('blockName') as string) || '',
             order: (blockMap.get('order') as number) || index,
             components,
+            properties,
         };
     }
 

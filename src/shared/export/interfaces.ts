@@ -93,6 +93,8 @@ export interface ExportBlockProperties {
     teacherOnly?: string;
     visibilityType?: string;
     cssClass?: string;
+    identifier?: string;
+    allowToggle?: string;
 }
 
 /**

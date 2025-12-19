@@ -186,6 +186,35 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('data-idevice-path="/files/perm/idevices/base/crossword/export/"');
         });
+
+        // Tests for boolean values (Yjs stores booleans, not strings)
+        it('should add novisible class when visibility is false (boolean)', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Hidden</p>',
+                properties: { visibility: false },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('novisible');
+        });
+
+        it('should add teacher-only class when teacherOnly is true (boolean)', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Teacher only</p>',
+                properties: { teacherOnly: true },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+        });
     });
 
     describe('renderBlock', () => {
@@ -261,6 +290,179 @@ describe('IdeviceRenderer', () => {
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
 
             expect(html).toContain('minimized');
+        });
+
+        it('should add teacher-only class when block has teacherOnly=true', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Teacher Block',
+                order: 0,
+                components: [],
+                properties: { teacherOnly: 'true' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+        });
+
+        it('should add novisible class when block has visibility=false', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Hidden Block',
+                order: 0,
+                components: [],
+                properties: { visibility: 'false' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('novisible');
+        });
+
+        it('should add identifier attribute when block has identifier property', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Custom ID Block',
+                order: 0,
+                components: [],
+                properties: { identifier: 'my-custom-id' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('identifier="my-custom-id"');
+        });
+
+        it('should add custom cssClass to block', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Styled Block',
+                order: 0,
+                components: [],
+                properties: { cssClass: 'highlight important' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('highlight');
+            expect(html).toContain('important');
+        });
+
+        it('should combine multiple block properties correctly', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Full Block',
+                order: 0,
+                components: [],
+                properties: {
+                    teacherOnly: 'true',
+                    minimized: 'true',
+                    identifier: 'special-block',
+                    cssClass: 'featured',
+                },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+            expect(html).toContain('minimized');
+            expect(html).toContain('identifier="special-block"');
+            expect(html).toContain('featured');
+        });
+
+        it('should not add identifier attribute when not set', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Block',
+                order: 0,
+                components: [],
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('identifier=');
+        });
+
+        it('should not add identifier attribute when empty string', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Block',
+                order: 0,
+                components: [],
+                properties: { identifier: '' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('identifier=');
+        });
+
+        // Tests for boolean values (Yjs stores booleans, not strings)
+        it('should add teacher-only class when block has teacherOnly=true (boolean)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Teacher Block',
+                order: 0,
+                components: [],
+                properties: { teacherOnly: true as unknown as string },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+        });
+
+        it('should add novisible class when block has visibility=false (boolean)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Hidden Block',
+                order: 0,
+                components: [],
+                properties: { visibility: false as unknown as string },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('novisible');
+        });
+
+        it('should add minimized class when block has minimized=true (boolean)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Minimized Block',
+                order: 0,
+                components: [],
+                properties: { minimized: true as unknown as string },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('minimized');
+        });
+
+        it('should combine boolean and string properties correctly', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Mixed Block',
+                order: 0,
+                components: [],
+                properties: {
+                    teacherOnly: true as unknown as string,
+                    visibility: false as unknown as string,
+                    minimized: true as unknown as string,
+                    identifier: 'my-id',
+                    cssClass: 'custom-class',
+                },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+            expect(html).toContain('novisible');
+            expect(html).toContain('minimized');
+            expect(html).toContain('identifier="my-id"');
+            expect(html).toContain('custom-class');
         });
     });
 

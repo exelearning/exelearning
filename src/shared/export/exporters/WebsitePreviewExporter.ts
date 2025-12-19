@@ -275,9 +275,10 @@ export class WebsitePreviewExporter {
         const hideFirstPageTitle = firstPage ? this.shouldHidePageTitle(firstPage) : false;
         const pageHeaderStyle = hideFirstPageTitle ? ' style="display:none"' : '';
 
-        // Build static header (direct child of .page for CSS selectors to work)
-        const staticHeaderHtml = `<header id="page-header" class="main-header">${initialPageCounterHtml}<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
-<div class="page-header"${pageHeaderStyle}><h2 id="page-title" class="page-title">${this.escapeHtml(firstPageTitle)}</h2></div></header>`;
+        // Build static headers (separate header elements for exe_export.js teacherMode to find)
+        // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
+        const staticHeaderHtml = `${initialPageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
+<header class="page-header"${pageHeaderStyle}><h2 id="page-title" class="page-title">${this.escapeHtml(firstPageTitle)}</h2></header>`;
 
         return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -426,6 +427,26 @@ ${this.getWebsitePreviewCss()}
 .js-hidden { display: none; }
 .exe-hidden, .js-required, .js .js-hidden, .exe-mindmap-code { display: none; }
 .js .js-required { display: block; }
+
+/* Teacher mode - hide teacher-only content by default */
+html:not(.mode-teacher) .js .teacher-only {
+    display: none !important;
+}
+
+/* Block minimized - hide content */
+.exe-export article.minimized .box-content {
+    display: none;
+}
+
+/* Block novisible - hide entire block */
+.exe-export article.novisible.box {
+    display: none !important;
+}
+
+/* iDevice novisible - hide iDevice within block */
+.exe-export article.box .idevice_node.novisible {
+    display: none !important;
+}
 
 /* Navigation link fixes (theme fallback) */
 #siteNav a {

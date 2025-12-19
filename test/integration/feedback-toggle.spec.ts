@@ -8,12 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import * as path from 'path';
 import { WebsitePreviewExporter } from '../../src/shared/export/exporters/WebsitePreviewExporter';
-import type {
-    ExportDocument,
-    ExportMetadata,
-    ExportPage,
-    ResourceProvider,
-} from '../../src/shared/export/interfaces';
+import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider } from '../../src/shared/export/interfaces';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../src/services/idevice-config';
 
 // Path to real iDevices

@@ -442,8 +442,10 @@ ${madeWithExeHtml}
         const effectiveTitle = this.getEffectivePageTitle(page);
         const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
 
-        return `<header id="header-${page.id}" class="main-header">${pageCounterHtml}<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
-<div class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></div></header>`;
+        // Use separate header elements so exe_export.js teacherMode can find them
+        // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
+        return `${pageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
+<header class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></header>`;
     }
 
     /**
@@ -703,6 +705,7 @@ ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 <div class="exe-content exe-export pre-js">
 ${this.renderSinglePageNav(allPages)}
 <main class="single-page-content">
+<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
 ${contentHtml}
 </main>
 ${this.renderLicense({ author, license })}

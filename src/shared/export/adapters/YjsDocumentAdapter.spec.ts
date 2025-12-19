@@ -93,14 +93,23 @@ const createMockPage = (
     });
 };
 
-const createMockBlock = (id: string, name: string, components: unknown[] = []) => {
-    return new MockYMap({
+const createMockBlock = (
+    id: string,
+    name: string,
+    components: unknown[] = [],
+    properties: Record<string, unknown> = {},
+) => {
+    const blockData: Record<string, unknown> = {
         id,
         name,
         blockName: name,
         order: 0,
         components: new MockYArray(components),
-    });
+    };
+    if (Object.keys(properties).length > 0) {
+        blockData.properties = new MockYMap(properties);
+    }
+    return new MockYMap(blockData);
 };
 
 const createMockComponent = (id: string, type: string, content: string, properties: Record<string, unknown> = {}) => {
@@ -530,6 +539,118 @@ describe('YjsDocumentAdapter', () => {
                 hidePageTitle: false,
                 editableInPage: true,
             });
+        });
+    });
+
+    describe('block properties extraction', () => {
+        it('should extract teacherOnly property from block', () => {
+            const block = createMockBlock('b1', 'Block 1', [], { teacherOnly: 'true' });
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].properties?.teacherOnly).toBe('true');
+        });
+
+        it('should extract visibility property from block', () => {
+            const block = createMockBlock('b1', 'Block 1', [], { visibility: 'false' });
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].properties?.visibility).toBe('false');
+        });
+
+        it('should extract minimized property from block', () => {
+            const block = createMockBlock('b1', 'Block 1', [], { minimized: 'true' });
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].properties?.minimized).toBe('true');
+        });
+
+        it('should extract identifier property from block', () => {
+            const block = createMockBlock('b1', 'Block 1', [], { identifier: 'custom-block-id' });
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].properties?.identifier).toBe('custom-block-id');
+        });
+
+        it('should extract cssClass property from block', () => {
+            const block = createMockBlock('b1', 'Block 1', [], { cssClass: 'my-custom-class' });
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].properties?.cssClass).toBe('my-custom-class');
+        });
+
+        it('should extract allowToggle property from block', () => {
+            const block = createMockBlock('b1', 'Block 1', [], { allowToggle: 'true' });
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].properties?.allowToggle).toBe('true');
+        });
+
+        it('should extract all properties from block together', () => {
+            const block = createMockBlock('b1', 'Block 1', [], {
+                visibility: 'true',
+                teacherOnly: 'true',
+                allowToggle: 'true',
+                minimized: 'false',
+                identifier: 'my-id',
+                cssClass: 'my-class',
+            });
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].properties).toMatchObject({
+                visibility: 'true',
+                teacherOnly: 'true',
+                allowToggle: 'true',
+                minimized: 'false',
+                identifier: 'my-id',
+                cssClass: 'my-class',
+            });
+        });
+
+        it('should return empty properties object when no properties set', () => {
+            const block = createMockBlock('b1', 'Block 1', []);
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].properties).toEqual({});
         });
     });
 });
