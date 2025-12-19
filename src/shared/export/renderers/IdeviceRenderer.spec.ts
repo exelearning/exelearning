@@ -67,6 +67,24 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('data-idevice-json-data="');
         });
 
+        it('should include data-idevice-component-type="json" for text idevice (feedback toggle support)', () => {
+            // Text iDevice needs componentType="json" so that exe_export.js
+            // calls $text.renderBehaviour() to attach feedback toggle handlers
+            const component: ExportComponent = {
+                id: 'text-feedback-test',
+                type: 'text',
+                order: 0,
+                content: '<p>Content with feedback</p>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('data-idevice-path="idevices/text/"');
+            expect(html).toContain('data-idevice-type="text"');
+            expect(html).toContain('data-idevice-component-type="json"');
+        });
+
         it('should not include data attributes when disabled', () => {
             const component: ExportComponent = {
                 id: 'comp-1',

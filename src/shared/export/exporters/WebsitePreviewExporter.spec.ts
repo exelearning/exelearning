@@ -115,6 +115,14 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('class="exe-web-site exe-preview"');
         });
 
+        it('should include js-hidden CSS rules for feedback toggle support', async () => {
+            // The preview must include CSS to hide .js-hidden elements (feedback content)
+            // and show .js-required elements (feedback buttons) when JS is enabled
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.js-hidden { display: none; }');
+            expect(result.html).toContain('.js .js-required { display: block; }');
+        });
+
         it('should include page counter when addPagination is true', async () => {
             // Create a new exporter with addPagination enabled
             const docWithPagination = createMockDocument(

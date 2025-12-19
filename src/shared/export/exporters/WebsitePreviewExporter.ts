@@ -422,6 +422,11 @@ ${this.getWebsitePreviewCss()}
 .spa-page { display: none; }
 .spa-page.active { display: block; }
 
+/* JavaScript on/off visibility (feedback toggle support) */
+.js-hidden { display: none; }
+.exe-hidden, .js-required, .js .js-hidden, .exe-mindmap-code { display: none; }
+.js .js-required { display: block; }
+
 /* Navigation link fixes (theme fallback) */
 #siteNav a {
     text-decoration: none;

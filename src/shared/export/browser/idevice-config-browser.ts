@@ -47,9 +47,14 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
 
     const cssClass = typeMap[normalized] || normalized || 'text';
 
+    // JSON idevices need JS initialization via renderBehaviour()
+    // These idevices have export JS that attaches event handlers
+    const jsonIdevices = ['text', 'freetext', 'freetextfpd', 'generic', 'reflection', 'reflectionfpd'];
+    const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
+
     return {
         cssClass,
-        componentType: 'html', // Default to HTML for browser rendering
+        componentType: isJson ? 'json' : 'html',
         template: `${cssClass}.html`,
     };
 }
