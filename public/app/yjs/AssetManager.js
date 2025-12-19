@@ -773,8 +773,8 @@ class AssetManager {
       if (relativePath.startsWith('__MACOSX')) continue;
       if (relativePath.endsWith('.xml')) continue;
 
-      // Include images and common media
-      if (/\.(png|jpg|jpeg|gif|svg|webp|mp4|webm|mp3|ogg|wav|pdf)$/i.test(relativePath)) {
+      // Include images, video, audio, documents, 3D models and common media
+      if (/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff?|mp4|m4v|webm|mov|avi|mkv|mp3|m4a|ogg|wav|aac|flac|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|gltf|glb|stl)$/i.test(relativePath)) {
         assetFiles.push({ path: relativePath, fileData });
       }
     }
@@ -1078,18 +1078,48 @@ class AssetManager {
   getMimeType(filename) {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const mimeTypes = {
+      // Images
       png: 'image/png',
       jpg: 'image/jpeg',
       jpeg: 'image/jpeg',
       gif: 'image/gif',
       svg: 'image/svg+xml',
       webp: 'image/webp',
+      bmp: 'image/bmp',
+      ico: 'image/x-icon',
+      tif: 'image/tiff',
+      tiff: 'image/tiff',
+      // Video
       mp4: 'video/mp4',
+      m4v: 'video/mp4',
       webm: 'video/webm',
+      mov: 'video/quicktime',
+      avi: 'video/x-msvideo',
+      mkv: 'video/x-matroska',
       ogg: 'video/ogg',
+      // Audio
       mp3: 'audio/mpeg',
+      m4a: 'audio/mp4',
       wav: 'audio/wav',
+      aac: 'audio/aac',
+      flac: 'audio/flac',
+      // Documents
       pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      // Archives
+      zip: 'application/zip',
+      rar: 'application/vnd.rar',
+      '7z': 'application/x-7z-compressed',
+      // 3D Models
+      gltf: 'model/gltf+json',
+      glb: 'model/gltf-binary',
+      stl: 'model/stl',
+      // Code
       css: 'text/css',
       js: 'application/javascript'
     };

@@ -8,21 +8,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import * as path from 'path';
 import { WebsitePreviewExporter } from '../../src/shared/export/exporters/WebsitePreviewExporter';
 import { PageRenderer } from '../../src/shared/export/renderers/PageRenderer';
-import type {
-    ExportDocument,
-    ExportMetadata,
-    ExportPage,
-    ResourceProvider,
-} from '../../src/shared/export/interfaces';
+import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider } from '../../src/shared/export/interfaces';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../src/services/idevice-config';
 
 // Path to real iDevices
 const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/base');
 
 // Create mock document with page properties
-const createMockDocumentWithPageProperties = (
-    pageProperties: Record<string, unknown>,
-): ExportDocument => ({
+const createMockDocumentWithPageProperties = (pageProperties: Record<string, unknown>): ExportDocument => ({
     getMetadata: (): ExportMetadata => ({
         title: 'Test Project with Page Properties',
         author: 'Test',
@@ -63,12 +56,14 @@ const createMockDocumentWithPageProperties = (
 });
 
 // Create mock document with multiple pages for navigation tests
-const createMockDocumentWithMultiplePages = (pagesConfig: Array<{
-    id: string;
-    title: string;
-    parentId: string | null;
-    properties?: Record<string, unknown>;
-}>): ExportDocument => ({
+const createMockDocumentWithMultiplePages = (
+    pagesConfig: Array<{
+        id: string;
+        title: string;
+        parentId: string | null;
+        properties?: Record<string, unknown>;
+    }>,
+): ExportDocument => ({
     getMetadata: (): ExportMetadata => ({
         title: 'Test Project with Multiple Pages',
         author: 'Test',
