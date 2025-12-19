@@ -15,6 +15,10 @@ export default class NavbarFile {
         this.saveButtonAs = this.menu.navbar.querySelector(
             '#navbar-button-save-as'
         );
+        this.settingsButton = this.menu.navbar.querySelector(
+            '#navbar-button-settings'
+        );
+        this.shareButton = this.menu.navbar.querySelector('#navbar-button-share');
         // Offline-only: dedicated Save As item
         this.saveButtonAsOffline = this.menu.navbar.querySelector(
             '#navbar-button-save-as-offline'
@@ -118,6 +122,8 @@ export default class NavbarFile {
         this.setSaveProjectEvent();
         this.setSaveAsProjectEvent();
         this.setSaveAsProjectOfflineEvent();
+        this.setSettingsEvent();
+        this.setShareEvent();
         /*
         Temporally disabled:
         this.setUploadGoogleDriveEvent();
@@ -226,6 +232,32 @@ export default class NavbarFile {
         this.saveButtonAsOffline.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.saveAsElpOffline();
+        });
+    }
+
+    /**
+     * Project settings
+     * File -> Settings
+     *
+     */
+    setSettingsEvent() {
+        if (!this.settingsButton) return;
+        this.settingsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.openProjectSettingsEvent();
+        });
+    }
+
+    /**
+     * Share project
+     * File -> Share
+     *
+     */
+    setShareEvent() {
+        if (!this.shareButton) return;
+        this.shareButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.openShareModalEvent();
         });
     }
 
@@ -1144,6 +1176,29 @@ export default class NavbarFile {
             odeId: odeId,
         };
         this.currentOdeUsers(params);
+    }
+
+    /**
+     * Open the project settings panel
+     *
+     */
+    openProjectSettingsEvent() {
+        document
+            .querySelector('[nav-id="root"]')
+            ?.querySelectorAll('.nav-element-text')[0]
+            ?.click();
+    }
+
+    /**
+     * Open the share modal
+     *
+     */
+    openShareModalEvent() {
+        if (eXeLearning.app.modals?.share) {
+            eXeLearning.app.modals.share.show();
+        } else {
+            Logger.warn('Share menu: Share modal not available');
+        }
     }
 
     /**

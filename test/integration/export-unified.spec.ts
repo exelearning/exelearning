@@ -299,6 +299,157 @@ describe('Unified Export System Integration', () => {
         });
     });
 
+    describe('SCORM 1.2 Export - Complete Structure', () => {
+        let document: ElpDocumentAdapter;
+        let resources: FileSystemResourceProvider;
+        let assets: FileSystemAssetProvider;
+        let zip: FflateZipProvider;
+
+        beforeEach(async () => {
+            document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+            assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
+            zip = new FflateZipProvider();
+        });
+
+        it('should include SCORM API wrapper files', async () => {
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+
+            expect(zipFile['libs/SCORM_API_wrapper.js']).toBeDefined();
+            expect(zipFile['libs/SCOFunctions.js']).toBeDefined();
+        });
+
+        it('should include XSD schema files', async () => {
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+            const files = Object.keys(zipFile);
+
+            // Check that some XSD files are included
+            const xsdFiles = files.filter(f => f.endsWith('.xsd'));
+            expect(xsdFiles.length).toBeGreaterThan(0);
+
+            // Should have core SCORM 1.2 schemas
+            expect(files.some(f => f.includes('imscp'))).toBe(true);
+        });
+
+        it('should include imslrm.xml (LOM metadata)', async () => {
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+
+            expect(zipFile['imslrm.xml']).toBeDefined();
+        });
+
+        it('should have correct SCORM 1.2 manifest structure', async () => {
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+            const manifest = new TextDecoder().decode(zipFile['imsmanifest.xml']);
+
+            // SCORM 1.2 specific checks
+            expect(manifest).toContain('ADL SCORM');
+            expect(manifest).toContain('<schemaversion>1.2</schemaversion>');
+            expect(manifest).toContain('adlcp:scormtype="sco"');
+            expect(manifest).toContain('COMMON_FILES');
+        });
+
+        it('should include HTML pages for each navigation item', async () => {
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+
+            expect(zipFile['index.html']).toBeDefined();
+
+            // Verify index.html has SCORM body class
+            const indexHtml = new TextDecoder().decode(zipFile['index.html']);
+            expect(indexHtml).toContain('exe-scorm');
+            expect(indexHtml).toContain('exe-scorm12');
+        });
+    });
+
+    describe('SCORM 2004 Export - Complete Structure', () => {
+        let document: ElpDocumentAdapter;
+        let resources: FileSystemResourceProvider;
+        let assets: FileSystemAssetProvider;
+        let zip: FflateZipProvider;
+
+        beforeEach(async () => {
+            document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+            assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
+            zip = new FflateZipProvider();
+        });
+
+        it('should include SCORM API wrapper files', async () => {
+            const exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+
+            expect(zipFile['libs/SCORM_API_wrapper.js']).toBeDefined();
+            expect(zipFile['libs/SCOFunctions.js']).toBeDefined();
+        });
+
+        it('should include XSD schema files for SCORM 2004', async () => {
+            const exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+            const files = Object.keys(zipFile);
+
+            // Check that XSD files are included
+            const xsdFiles = files.filter(f => f.endsWith('.xsd'));
+            expect(xsdFiles.length).toBeGreaterThan(0);
+        });
+
+        it('should have correct SCORM 2004 manifest structure', async () => {
+            const exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+            const manifest = new TextDecoder().decode(zipFile['imsmanifest.xml']);
+
+            // SCORM 2004 specific checks
+            expect(manifest).toContain('ADL SCORM');
+            expect(manifest).toContain('2004');
+            expect(manifest).toContain('adlcp:scormType="sco"'); // Note: capital T in 2004
+            expect(manifest).toContain('imsss:sequencing'); // Sequencing element
+        });
+
+        it('should include sequencing rules in manifest', async () => {
+            const exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+            const manifest = new TextDecoder().decode(zipFile['imsmanifest.xml']);
+
+            // SCORM 2004 sequencing
+            expect(manifest).toContain('controlMode');
+            expect(manifest).toContain('choice="true"');
+        });
+
+        it('should include HTML pages with SCORM 2004 body class', async () => {
+            const exporter = new Scorm2004Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const zipFile = unzipSync(result.data!);
+
+            expect(zipFile['index.html']).toBeDefined();
+
+            const indexHtml = new TextDecoder().decode(zipFile['index.html']);
+            expect(indexHtml).toContain('exe-scorm');
+            expect(indexHtml).toContain('exe-scorm2004');
+        });
+    });
+
     describe('Metadata preservation', () => {
         it('Export preserves project title in metadata', async () => {
             const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));

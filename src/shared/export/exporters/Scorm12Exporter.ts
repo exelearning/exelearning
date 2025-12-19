@@ -145,15 +145,37 @@ export class Scorm12Exporter extends Html5Exporter {
             // 5. Fetch SCORM API wrapper files
             try {
                 const scormFiles = await this.resources.fetchScormFiles('1.2');
-                for (const [path, content] of scormFiles) {
-                    this.zip.addFile(`libs/${path}`, content);
-                    commonFiles.push(`libs/${path}`);
+                for (const [filePath, content] of scormFiles) {
+                    this.zip.addFile(`libs/${filePath}`, content);
+                    commonFiles.push(`libs/${filePath}`);
                 }
             } catch {
                 // Add fallback SCORM files
                 this.zip.addFile('libs/SCORM_API_wrapper.js', this.getScormApiWrapper());
                 this.zip.addFile('libs/SCOFunctions.js', this.getScoFunctions());
                 commonFiles.push('libs/SCORM_API_wrapper.js', 'libs/SCOFunctions.js');
+            }
+
+            // 5b. Fetch SCORM schema XSD files
+            try {
+                const schemaFiles = await this.resources.fetchScormSchemas('1.2');
+                for (const [filePath, content] of schemaFiles) {
+                    this.zip.addFile(filePath, content);
+                    commonFiles.push(filePath);
+                }
+            } catch {
+                // Schema files are optional for package to work
+            }
+
+            // 5c. Copy content.xml (always include for re-editing capability)
+            try {
+                const contentXml = await this.getContentXml();
+                if (contentXml) {
+                    this.zip.addFile('content.xml', contentXml);
+                    commonFiles.push('content.xml');
+                }
+            } catch {
+                // content.xml is optional
             }
 
             // 6. Fetch and add iDevice assets
@@ -400,5 +422,17 @@ function setScore(score, maxScore, minScore) {
   scorm.save();
 }
 `;
+    }
+
+    /**
+     * Get content.xml from the document for inclusion in SCORM package
+     * This allows the package to be re-edited in eXeLearning
+     */
+    protected async getContentXml(): Promise<string | null> {
+        // Try to get content.xml from the document adapter
+        if ('getContentXml' in this.document && typeof this.document.getContentXml === 'function') {
+            return (this.document as { getContentXml: () => Promise<string | null> }).getContentXml();
+        }
+        return null;
     }
 }

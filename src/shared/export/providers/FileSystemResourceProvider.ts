@@ -185,23 +185,39 @@ export class FileSystemResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch SCORM-specific files
+     * Fetch SCORM API wrapper files
+     * @param version - SCORM version: '1.2' or '2004' (files are the same for both)
      * @returns Map of file paths to content
      */
-    async fetchScormFiles(): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(_version: '1.2' | '2004' = '1.2'): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
 
-        const scormFiles = ['libs/scorm/SCORM_API_wrapper.js', 'libs/scorm/SCOFunctions.js'];
+        // SCORM API files are in app/common/scorm/
+        const scormPath = path.join(this.publicDir, 'app', 'common', 'scorm');
+        const scormFileNames = ['SCORM_API_wrapper.js', 'SCOFunctions.js'];
 
-        for (const filePath of scormFiles) {
-            const fullPath = path.join(this.publicDir, filePath);
+        for (const fileName of scormFileNames) {
+            const fullPath = path.join(scormPath, fileName);
             if (await fs.pathExists(fullPath)) {
                 const content = await fs.readFile(fullPath);
-                files.set(filePath, content);
+                // Store with just the filename (caller will add libs/ prefix)
+                files.set(fileName, content);
             }
         }
 
         return files;
+    }
+
+    /**
+     * Fetch SCORM schema XSD files
+     * @param version - SCORM version: '1.2' or '2004'
+     * @returns Map of file paths to content
+     */
+    async fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Buffer>> {
+        // Schema files are in app/schemas/scorm12/ or app/schemas/scorm2004/
+        const schemaDir = version === '1.2' ? 'scorm12' : 'scorm2004';
+        const schemaPath = path.join(this.publicDir, 'app', 'schemas', schemaDir);
+        return this.readDirectoryRecursive(schemaPath, '');
     }
 
     /**
