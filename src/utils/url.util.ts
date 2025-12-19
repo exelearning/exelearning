@@ -160,38 +160,6 @@ export function getOdeComponentsSyncPath(
 }
 
 /**
- * Returns relative URL path for permanent ODE file storage
- *
- * Permanent files are stored differently than temporary session files.
- * Format: files/perm/odes/{odeId}/
- *
- * @param odeId - The permanent ODE ID (from database)
- * @returns Relative path string
- */
-export function getPermanentOdeUrl(odeId: string | number): string {
-    return `files/perm/odes/${odeId}/`;
-}
-
-/**
- * Returns absolute file system path for permanent ODE file storage
- *
- * @param odeId - The permanent ODE ID (from database)
- * @param basePath - Base directory path (defaults to FILES_DIR or './files')
- * @returns Absolute path string
- */
-export function getPermanentOdePath(odeId: string | number, basePath?: string): string {
-    const url = getPermanentOdeUrl(odeId);
-
-    // Use provided basePath or environment variable or default
-    const base = basePath || process.env.FILES_DIR || './files';
-
-    // Remove 'files/' prefix from URL if basePath is provided
-    const relativePath = url.startsWith('files/') ? url.substring(6) : url;
-
-    return `${base}/${relativePath}`;
-}
-
-/**
  * ODE XML context path placeholder constant
  * This placeholder is used in ODE XML files to represent session-relative paths
  */

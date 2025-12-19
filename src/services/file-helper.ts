@@ -14,8 +14,6 @@ export {
     getOdeSessionPath,
     getOdeComponentsSyncUrl,
     getOdeComponentsSyncPath,
-    getPermanentOdeUrl,
-    getPermanentOdePath,
     replaceContextPath,
     unreplaceContextPath,
     ODE_XML_CONTEXT_PATH,
@@ -46,7 +44,7 @@ export interface FileHelper {
     getPreviewExportPath: (sessionId: string, tempPath: string) => string;
     getOdeSessionDistDir: (odeSessionId: string) => string;
     getOdeSessionTempDir: (odeSessionId: string) => string;
-    getPermanentStorageDir: () => string;
+    getProjectAssetsDir: (projectUuid: string) => string;
     getPublicDirectory: () => string;
     getLibsDir: () => string;
     getThemesDir: () => string;
@@ -141,8 +139,8 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
         return path.join(filesDir, 'dist', year, month, day, odeSessionId);
     };
 
-    const getPermanentStorageDir = (): string => {
-        return path.join(getFilesDir(), 'permanent');
+    const getProjectAssetsDir = (projectUuid: string): string => {
+        return path.join(getFilesDir(), 'assets', projectUuid);
     };
 
     const getPublicDirectory = (): string => {
@@ -266,7 +264,7 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
         getPreviewExportPath,
         getOdeSessionDistDir,
         getOdeSessionTempDir,
-        getPermanentStorageDir,
+        getProjectAssetsDir,
         getPublicDirectory,
         getLibsDir,
         getThemesDir,
@@ -301,7 +299,7 @@ export const getTempPath = defaultFileHelper.getTempPath;
 export const getPreviewExportPath = defaultFileHelper.getPreviewExportPath;
 export const getOdeSessionDistDir = defaultFileHelper.getOdeSessionDistDir;
 export const getOdeSessionTempDir = defaultFileHelper.getOdeSessionTempDir;
-export const getPermanentStorageDir = defaultFileHelper.getPermanentStorageDir;
+export const getProjectAssetsDir = defaultFileHelper.getProjectAssetsDir;
 export const getPublicDirectory = defaultFileHelper.getPublicDirectory;
 export const getLibsDir = defaultFileHelper.getLibsDir;
 export const getThemesDir = defaultFileHelper.getThemesDir;
