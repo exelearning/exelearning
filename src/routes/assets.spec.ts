@@ -24,6 +24,7 @@ let mockSessions: Map<string, any>;
 function createMockFileHelper(): AssetsFileHelperDeps {
     return {
         getOdeSessionTempDir: (sessionId: string) => path.join(testDir, 'tmp', sessionId),
+        getProjectAssetsDir: (projectUuid: string) => path.join(testDir, 'assets', projectUuid),
         fileExists: async (filePath: string) => fs.pathExists(filePath),
         readFile: async (filePath: string) => fs.readFile(filePath),
         writeFile: async (filePath: string, data: Buffer) => fs.writeFile(filePath, data),
@@ -166,7 +167,7 @@ describe('Assets Routes', () => {
 
         // Create test directory structure
         await fs.ensureDir(path.join(testDir, 'tmp', testProjectId, 'assets'));
-        await fs.ensureDir(path.join(testDir, 'data', 'assets'));
+        await fs.ensureDir(path.join(testDir, 'assets', testProjectId)); // Project assets directory (using UUID)
     });
 
     afterEach(async () => {

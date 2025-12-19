@@ -4,8 +4,6 @@ import {
     getOdeSessionPath,
     getOdeComponentsSyncUrl,
     getOdeComponentsSyncPath,
-    getPermanentOdeUrl,
-    getPermanentOdePath,
     replaceContextPath,
     unreplaceContextPath,
     ODE_XML_CONTEXT_PATH,
@@ -247,61 +245,6 @@ describe('URL Utilities', () => {
         it('should return false for invalid session ID', () => {
             const ideviceId = '20250116143100XYZABC';
             expect(getOdeComponentsSyncPath('invalid', ideviceId)).toBe(false);
-        });
-    });
-
-    describe('getPermanentOdeUrl', () => {
-        it('should generate correct URL for permanent ODE storage', () => {
-            expect(getPermanentOdeUrl('123')).toBe('files/perm/odes/123/');
-            expect(getPermanentOdeUrl(456)).toBe('files/perm/odes/456/');
-        });
-
-        it('should handle different ID types', () => {
-            expect(getPermanentOdeUrl('abc123')).toBe('files/perm/odes/abc123/');
-            expect(getPermanentOdeUrl(999)).toBe('files/perm/odes/999/');
-        });
-
-        it('should use perm directory instead of tmp', () => {
-            const url = getPermanentOdeUrl('123');
-            expect(url).toContain('/perm/');
-            expect(url).not.toContain('/tmp/');
-        });
-
-        it('should match expected permanent storage format', () => {
-            const url = getPermanentOdeUrl('123');
-            expect(url).toMatch(/^files\/perm\/odes\/\w+\/$/);
-        });
-    });
-
-    describe('getPermanentOdePath', () => {
-        it('should generate absolute path for permanent storage', () => {
-            const path = getPermanentOdePath('123');
-            expect(path).toContain('/perm/odes/123/');
-        });
-
-        it('should use custom base path', () => {
-            const path = getPermanentOdePath('123', '/custom/storage');
-            expect(path).toBe('/custom/storage/perm/odes/123/');
-        });
-
-        it('should handle numeric IDs', () => {
-            const path = getPermanentOdePath(456, '/base');
-            expect(path).toBe('/base/perm/odes/456/');
-        });
-
-        it('should use FILES_DIR environment variable', () => {
-            const originalEnv = process.env.FILES_DIR;
-
-            process.env.FILES_DIR = '/env/files';
-            const path = getPermanentOdePath('123');
-            expect(path).toContain('/env/files/perm/');
-
-            // Restore original
-            if (originalEnv) {
-                process.env.FILES_DIR = originalEnv;
-            } else {
-                delete process.env.FILES_DIR;
-            }
         });
     });
 
