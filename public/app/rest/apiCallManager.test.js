@@ -34,6 +34,7 @@ describe('ApiCallManager', () => {
 
     window.eXeLearning = mockApp.eXeLearning;
     window.eXeLearning.app = mockApp;
+    global.eXeLearning = window.eXeLearning;
 
     apiManager = new ApiCallManager(mockApp);
     mockFunc = apiManager.func;
@@ -41,7 +42,9 @@ describe('ApiCallManager', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    document.body.innerHTML = '';
     delete window.eXeLearning;
+    delete global.eXeLearning;
   });
 
   describe('constructor', () => {
@@ -318,6 +321,121 @@ describe('ApiCallManager', () => {
     });
   });
 
+  describe('getComponentsByPage', () => {
+    it('should remove overlays and use Yjs when enabled', async () => {
+      document.body.innerHTML = `
+        <div class="user-editing-overlay"></div>
+        <div id="editing-node" class="editing-article"></div>
+        <div id="disabled-node" class="article-disabled"></div>
+      `;
+      const getComponentsSpy = vi
+        .spyOn(apiManager, '_getComponentsByPageFromYjs')
+        .mockReturnValue({ responseMessage: 'OK' });
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: {} },
+      };
+
+      await apiManager.getComponentsByPage('page-1');
+
+      expect(getComponentsSpy).toHaveBeenCalledWith('page-1');
+      expect(document.querySelector('.user-editing-overlay')).toBeNull();
+      expect(document.getElementById('editing-node')?.classList.contains('editing-article')).toBe(false);
+      expect(document.getElementById('disabled-node')?.classList.contains('article-disabled')).toBe(false);
+    });
+  });
+
+  describe('_getComponentsByPageFromYjs', () => {
+    it('should return error when structureBinding is missing', () => {
+      mockApp.project = { _yjsEnabled: true, _yjsBridge: {} };
+
+      const result = apiManager._getComponentsByPageFromYjs('page-1');
+
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Yjs not initialized' });
+    });
+
+    it('should return empty root structure when no pages exist', () => {
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding: {
+            getPages: vi.fn(() => []),
+          },
+        },
+      };
+
+      const result = apiManager._getComponentsByPageFromYjs('root');
+
+      expect(result).toEqual({
+        id: 'root',
+        odePageId: 'root',
+        pageName: 'Root',
+        odePagStructureSyncs: [],
+      });
+    });
+
+    it('should return empty structure when page is missing', () => {
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding: {
+            getPageMap: vi.fn(() => null),
+          },
+        },
+      };
+
+      const result = apiManager._getComponentsByPageFromYjs('page-missing');
+
+      expect(result).toEqual({
+        id: 'page-missing',
+        odePageId: 'page-missing',
+        pageName: 'Page',
+        odePagStructureSyncs: [],
+      });
+    });
+
+    it('should build Yjs component structure and resolve assets', () => {
+      const resolveHTMLAssetsSync = vi.fn(() => '<img src="blob://asset.png">');
+      const structureBinding = {
+        getPageMap: vi.fn(
+          () => new Map([['id', 'page-1'], ['pageName', 'Page One'], ['order', 2]])
+        ),
+        getBlocks: vi.fn(() => [
+          {
+            id: 'block-1',
+            blockId: 'block-1',
+            blockName: 'Block',
+            iconName: 'Icon',
+            order: 1,
+            properties: { toJSON: () => ({ visibility: true, cssClass: 'highlight' }) },
+          },
+        ]),
+        getComponents: vi.fn(() => [
+          {
+            id: 'comp-1',
+            ideviceType: 'FreeTextIdevice',
+            order: 1,
+            htmlContent: '<img src="asset://asset.png">',
+            jsonProperties: '{"a":1}',
+          },
+        ]),
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding, assetManager: { resolveHTMLAssetsSync } },
+      };
+
+      const result = apiManager._getComponentsByPageFromYjs('page-1');
+
+      expect(resolveHTMLAssetsSync).toHaveBeenCalledWith(
+        '<img src="asset://asset.png">',
+        { usePlaceholder: true, addTracking: true }
+      );
+      expect(result.odePagStructureSyncs[0].odePagStructureSyncProperties.visibility.value).toBe('true');
+      expect(result.odePagStructureSyncs[0].odeComponentsSyncs[0].htmlView).toBe('<img src="blob://asset.png">');
+    });
+  });
+
   describe('postOdeSave', () => {
     it('should call func.post with correct endpoint', async () => {
       apiManager.endpoints.api_odes_ode_save_manual = { path: 'http://localhost/save' };
@@ -326,6 +444,98 @@ describe('ApiCallManager', () => {
       await apiManager.postOdeSave(params);
       
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/save', params);
+    });
+  });
+
+  describe('putSaveHtmlView', () => {
+    it('should save to Yjs when enabled', async () => {
+      const updateComponent = vi.fn();
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateComponent } },
+      };
+
+      const result = await apiManager.putSaveHtmlView({
+        odeComponentsSyncId: 'comp-1',
+        htmlView: '<p>Test</p>',
+      });
+
+      expect(updateComponent).toHaveBeenCalledWith('comp-1', { htmlContent: '<p>Test</p>' });
+      expect(result).toEqual({ responseMessage: 'OK' });
+      expect(mockFunc.put).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('_saveIdeviceToYjs', () => {
+    it('should return error when structureBinding is missing', () => {
+      mockApp.project = { _yjsEnabled: true, _yjsBridge: {} };
+
+      const result = apiManager._saveIdeviceToYjs({ odeComponentsSyncId: 'comp-1' });
+
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Yjs not initialized' });
+    });
+
+    it('should create a new block and component when missing', () => {
+      const createBlock = vi.fn(() => 'block-new');
+      const createComponent = vi.fn(() => 'comp-new');
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock,
+        createComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'FreeTextIdevice',
+        htmlView: '<p>Hi</p>',
+      });
+
+      expect(createBlock).toHaveBeenCalledWith('page-1', '');
+      expect(createComponent).toHaveBeenCalledWith(
+        'page-1',
+        'block-new',
+        'FreeTextIdevice',
+        expect.objectContaining({ htmlContent: '<p>Hi</p>' })
+      );
+      expect(result.responseMessage).toBe('OK');
+      expect(result.newOdePagStructureSync).toBe(true);
+      expect(result.odeComponentsSyncId).toBe('comp-new');
+    });
+
+    it('should update existing component', () => {
+      const updateComponent = vi.fn();
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'block-1',
+        odeComponentsSyncId: 'comp-1',
+        odeIdeviceTypeName: 'FreeTextIdevice',
+        htmlView: '<p>Updated</p>',
+        jsonProperties: '{"b":2}',
+        order: 3,
+      });
+
+      expect(updateComponent).toHaveBeenCalledWith('comp-1', {
+        htmlContent: '<p>Updated</p>',
+        jsonProperties: '{"b":2}',
+        order: 3,
+      });
+      expect(result.newOdePagStructureSync).toBe(false);
+      expect(result.odeComponentsSyncId).toBe('comp-1');
     });
   });
 

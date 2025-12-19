@@ -27,12 +27,16 @@ describe('modalOpenUserOdeFiles', () => {
               maxFileSize: 1024 * 1024,
               maxFileSizeFormatted: '1 MB'
           }),
-          getOdeUserFiles: vi.fn().mockResolvedValue([])
+          getOdeUserFiles: vi.fn().mockResolvedValue([]),
+          getUserOdeFiles: vi.fn().mockResolvedValue({ odeFiles: { odeFilesSync: {} } }),
+          apiUrlBase: 'http://localhost',
+          apiUrlBasePath: '/exelearning'
         },
         modals: {
           alert: { show: vi.fn() }
         }
-      }
+      },
+      symfony: { basePath: '/exelearning' }
     };
 
     // Mock DOM
@@ -350,6 +354,173 @@ describe('modalOpenUserOdeFiles', () => {
       localStorage.setItem('authToken', 'local-token');
       expect(modal.getAuthToken()).toBe('local-token');
       localStorage.clear();
+    });
+  });
+
+  describe('refreshList', () => {
+    it('should reset selection and update list state', async () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: { odeId: 'a', role: 'owner' },
+        },
+      };
+      const tabs = modal.makeProjectTabs();
+      modal.setBodyElement(tabs);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      modal.selectedProjectUuid = 'a';
+      modal.confirmButton.disabled = false;
+      modal.confirmButton.classList.remove('disabled');
+      modal.odeFiles = ['a'];
+
+      const updateSpy = vi.spyOn(modal, 'updateTabCounts');
+      const switchSpy = vi.spyOn(modal, 'switchTab');
+
+      await modal.refreshList();
+
+      expect(updateSpy).toHaveBeenCalled();
+      expect(switchSpy).toHaveBeenCalledWith('my-projects');
+      expect(modal.selectedProjectUuid).toBe(null);
+      expect(modal.confirmButton.disabled).toBe(true);
+      expect(modal.confirmButton.classList.contains('disabled')).toBe(true);
+      expect(modal.odeFiles).toEqual([]);
+    });
+  });
+
+  describe('selectProjectByUuid', () => {
+    it('should select the project and enable open', () => {
+      const list = document.createElement('div');
+      list.classList.add('ode-files-list-container');
+      list.innerHTML = `
+        <article class="ode-row" ode-id="proj-1">
+          <div class="ode-file-title" id="proj-1"></div>
+        </article>
+      `;
+      modal.setBodyElement(list);
+      const row = list.querySelector('.ode-row');
+      row.scrollIntoView = vi.fn();
+
+      modal.confirmButton.disabled = true;
+      modal.confirmButton.classList.add('disabled');
+
+      modal.selectProjectByUuid('proj-1');
+
+      expect(row.classList.contains('selected')).toBe(true);
+      expect(modal.selectedProjectUuid).toBe('proj-1');
+      expect(modal.confirmButton.disabled).toBe(false);
+      expect(modal.confirmButton.classList.contains('disabled')).toBe(false);
+      expect(row.scrollIntoView).toHaveBeenCalled();
+    });
+  });
+
+  describe('duplicateOdeFileEvent', () => {
+    it('should refresh, switch tab, and select new project on success', async () => {
+      window.eXeLearning.app.project = { _yjsBridge: { authToken: 'token-1' } };
+      global.fetch = vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
+          responseMessage: 'OK',
+          data: { uuid: 'new-uuid' },
+        }),
+      });
+
+      const refreshSpy = vi.spyOn(modal, 'refreshList').mockResolvedValue();
+      const switchSpy = vi.spyOn(modal, 'switchTab');
+      const selectSpy = vi.spyOn(modal, 'selectProjectByUuid');
+      modal.currentTab = 'shared-with-me';
+
+      await modal.duplicateOdeFileEvent('proj-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/uuid/proj-1/duplicate',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer token-1',
+          }),
+        })
+      );
+      expect(refreshSpy).toHaveBeenCalled();
+      expect(switchSpy).toHaveBeenCalledWith('my-projects');
+      expect(selectSpy).toHaveBeenCalledWith('new-uuid');
+    });
+
+    it('should show alert on error response', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
+          responseMessage: 'ERROR',
+          message: 'nope',
+        }),
+      });
+
+      await modal.duplicateOdeFileEvent('proj-1');
+
+      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Error' })
+      );
+    });
+  });
+
+  describe('deleteOdeFileEvent', () => {
+    it('should refresh list after delete', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      });
+      const refreshSpy = vi.spyOn(modal, 'refreshList').mockResolvedValue();
+
+      await modal.deleteOdeFileEvent('proj-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/uuid/proj-1',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      expect(refreshSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('massiveDeleteOdeFileEvent', () => {
+    it('should delete all projects and refresh list', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ json: vi.fn() });
+      const refreshSpy = vi.spyOn(modal, 'refreshList').mockResolvedValue();
+
+      await modal.massiveDeleteOdeFileEvent(['a', 'b']);
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(refreshSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('showInlineDeleteConfirmation', () => {
+    it('should call delete on confirm and refresh on cancel', async () => {
+      const row = document.createElement('article');
+      row.classList.add('ode-row');
+      row.innerHTML = '<div>Row</div>';
+      modal.modalElementBodyContent.appendChild(row);
+
+      const deleteSpy = vi.spyOn(modal, 'deleteOdeFileEvent').mockResolvedValue();
+      const switchSpy = vi.spyOn(modal, 'switchTab');
+
+      modal.showInlineDeleteConfirmation(row, { odeId: 'proj-1' });
+
+      const confirmBtn = row.querySelector('.ode-delete-confirm-yes');
+      const cancelBtn = row.querySelector('.ode-delete-confirm-no');
+
+      await confirmBtn.click();
+      expect(deleteSpy).toHaveBeenCalledWith('proj-1');
+      expect(confirmBtn.disabled).toBe(true);
+
+      cancelBtn.click();
+      expect(switchSpy).toHaveBeenCalledWith('my-projects');
+    });
+  });
+
+  describe('makeProgressBar', () => {
+    it('should set warning and success classes by percentage', () => {
+      const warning = modal.makeProgressBar('100', '60', 60);
+      expect(warning.classList.contains('bg-warning')).toBe(true);
+
+      const success = modal.makeProgressBar('100', '10', 10);
+      expect(success.classList.contains('bg-success')).toBe(true);
     });
   });
 

@@ -88,6 +88,13 @@ jobs:
           fail_ci_if_error: false
           flags: unittests,frontend
 
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          files: ./coverage/bun/junit.xml,./coverage/vitest/junit.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
