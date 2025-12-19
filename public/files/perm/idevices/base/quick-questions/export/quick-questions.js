@@ -1444,7 +1444,7 @@ var $quickquestions = {
         $quickquestions.drawQuestions(instance);
 
         const html = $('#quextMainContainer-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(

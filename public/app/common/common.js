@@ -23,6 +23,38 @@
     2015. Refactored and completed by Ignacio Gros (http://www.gros.es) for http://exelearning.net/
 */
 
+window.MathJax = window.MathJax || (function() {
+    var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
+    var isIndex = document.documentElement.id === 'exe-index';
+    var basePath = isWorkarea ? '/app/common/exe_math' : (isIndex ? './libs/exe_math' : '../libs/exe_math');
+    
+    var externalExtensions = [
+        'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel', 
+        'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose', 
+        'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
+        'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb', 
+        'setoptions',
+        'bbm', 'bboldx', 'begingroup', 'colorv2', 'dsfont', 'texhtml', 'units'
+    ];
+    
+    return {
+        tex: {
+            inlineMath: [["\\(", "\\)"]],
+            displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+            processEscapes: true,
+            tags: 'ams',
+            packages: { '[+]': externalExtensions }
+        },
+        loader: {
+            paths: { mathjax: basePath },
+            load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
+        },
+        options: {
+            // MathJax Configuration Options
+        }
+    };
+})();
+
 var $exe = {
 
     options: {
@@ -69,8 +101,21 @@ var $exe = {
 
     // Math options (MathJax, etc.) - To review (some options might not be needed)
     math: {
-        // MathJax script path
-        engine: $("html").prop("id") == "exe-index" ? "./libs/exe_math/tex-mml-svg.js" : "../libs/exe_math/tex-mml-svg.js",
+        get engine() {
+            return $exeDevices.iDevice.gamification.math.engine;
+        },
+        get engineConfig() {
+            return $exeDevices.iDevice.gamification.math.engineConfig;
+        },
+        loadMathJax: function(callback) {
+            return $exeDevices.iDevice.gamification.math.loadMathJax(callback);
+        },
+        hasLatex: function(text) {
+            return $exeDevices.iDevice.gamification.math.hasLatex(text);
+        },
+        refresh: function(elements) {
+            return $exeDevices.iDevice.gamification.math.updateLatex(elements);
+        },
         // Create links to the code and the image (different possibilities)
         createLinks: function (math) {
             var mathjax = false;
@@ -160,10 +205,10 @@ var $exe = {
                             }
                         }
                     });
-                    if (typeof (window.MathJax) == 'object' && typeof (MathJax.typesetPromise) == 'function') {
+                    $exe.math.loadMathJax(function () {
                         MathJax.typesetPromise();
                         $exe.math.createLinks();
-                    }
+                    });
                 } else {
                     $exe.math.createLinks(math);
                 }
@@ -1231,56 +1276,81 @@ var $exeDevices = {
             },
 
             math: {
-                loadMathJax: function () {
-                    if (!window.MathJax) window.MathJax = $exeDevices.iDevice.gamification.math.engineConfig;
-                    const script = document.createElement('script');
-                    script.src = $exeDevices.iDevice.gamification.math.engine;
-                    script.async = true;
-                    document.head.appendChild(script);
-                },
-                engine: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js",
+                _loading: false,
+                _callbacks: [],
 
-                engineConfig: {
-                    loader: {
-                        load: ['[tex]/ams', '[tex]/amscd', '[tex]/cancel', '[tex]/centernot',
-                            '[tex]/color', '[tex]/colortbl', '[tex]/configmacros', '[tex]/gensymb',
-                            '[tex]/mathtools', '[tex]/mhchem', '[tex]/newcommand', '[tex]/noerrors',
-                            '[tex]/noundefined', '[tex]/physics', '[tex]/textmacros', '[tex]/gensymb',
-                            '[tex]/textcomp', '[tex]/bbox', '[tex]/upgreek', '[tex]/verb'
-                        ]
-                    },
-                    tex: {
-                        inlineMath: [
-                            ["\\(", "\\)"]
-                        ],
-                        displayMath: [
-                            ["\\[", "\\]"]
-                        ],
-                        processEscapes: true,
-                        tags: 'ams',
-                        packages: {
-                            '[+]': ['ams', 'amscd', 'cancel', 'centernot', 'color', 'colortbl',
-                                'configmacros', 'gensymb', 'mathtools', 'mhchem', 'newcommand', 'noerrors',
-                                'noundefined', 'physics', 'textmacros', 'upgreek', 'verb'
-                            ]
-                        },
-                        physics: {
-                            italicdiff: false,
-                            arrowdel: false
-                        },
-                    },
-                    textmacros: {
-                        packages: {
-                            '[+]': ['textcomp', 'bbox']
-                        }
+                engine: $("html").prop("id") == "exe-index" ? "./libs/exe_math/tex-mml-svg.js" : "../libs/exe_math/tex-mml-svg.js",
+
+                engineConfig: window.MathJax,
+
+                loadMathJax: function (callback) {
+                    var self = $exeDevices.iDevice.gamification.math;
+
+                    if (typeof window.MathJax === 'object' && typeof MathJax.typesetPromise === 'function') {
+                        if (callback) callback();
+                        return;
                     }
+
+                    if (callback) {
+                        self._callbacks.push(callback);
+                    }
+
+                    if (self._loading) {
+                        return;
+                    }
+
+                    var existingScript = document.querySelector('script[src*="tex-mml-svg.js"]');
+                    if (existingScript) {
+                        self._loading = true;
+                        var checkMathJax = function () {
+                            if (typeof window.MathJax === 'object' && typeof MathJax.typesetPromise === 'function') {
+                                self._loading = false;
+                                while (self._callbacks.length > 0) {
+                                    var cb = self._callbacks.shift();
+                                    cb();
+                                }
+                            } else {
+                                setTimeout(checkMathJax, 50);
+                            }
+                        };
+                        checkMathJax();
+                        return;
+                    }
+
+                    self._loading = true;
+                    var basePath = $("html").prop("id") == "exe-index" ? "./libs/exe_math" : "../libs/exe_math";
+                    if (!window.MathJax) {
+                        window.MathJax = self.engineConfig;
+                    }
+                    if (!window.MathJax.loader) window.MathJax.loader = {};
+                    if (!window.MathJax.loader.paths) window.MathJax.loader.paths = {};
+                    window.MathJax.loader.paths.mathjax = basePath;
+                    var script = document.createElement('script');
+                    script.src = self.engine;
+                    script.async = true;
+                    script.onload = function () {
+                        var checkReady = function () {
+                            if (typeof window.MathJax === 'object' && typeof MathJax.typesetPromise === 'function') {
+                                self._loading = false;
+                                while (self._callbacks.length > 0) {
+                                    var cb = self._callbacks.shift();
+                                    cb();
+                                }
+                            } else {
+                                setTimeout(checkReady, 50);
+                            }
+                        };
+                        checkReady();
+                    };
+                    document.head.appendChild(script);
                 },
 
                 hasLatex: function (text) {
-                    return /\\\(|\\\[|\\begin\{/.test(text);
+                    return /\\\(|\\\[|\\begin\{|\$\$/.test(text);
                 },
 
                 updateLatex: function (target, opts) {
+                    var self = $exeDevices.iDevice.gamification.math;
                     var options = opts || {};
 
                     function nodesFrom(t) {
@@ -1312,10 +1382,17 @@ var $exeDevices = {
 
                     function typesetNow() {
                         var nodes = nodesFrom(target);
-                        if (!nodes.length || typeof MathJax === 'undefined') return;
+                        if (!nodes.length) return;
 
-                        if (MathJax.typesetPromise || MathJax.startup) return runV3(nodes); // v3
-                        if (MathJax.Hub && typeof MathJax.Hub.Queue === 'function') return runV2(nodes); // v2
+                        if (typeof MathJax === 'undefined') {
+                            self.loadMathJax(function () {
+                                typesetNow();
+                            });
+                            return;
+                        }
+
+                        if (MathJax.typesetPromise || MathJax.startup) return runV3(nodes);
+                        if (MathJax.Hub && typeof MathJax.Hub.Queue === 'function') return runV2(nodes);
                     }
 
                     if (options.defer) {

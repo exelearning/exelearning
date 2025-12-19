@@ -160,7 +160,12 @@ var $eXePuzzle = {
                 node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex('.puzzle-IDevice');
+        const puzzleHtml = $('.puzzle-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(puzzleHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.puzzle-IDevice'
+            );
+        }
     },
 
     getPhraseDefault: function () {

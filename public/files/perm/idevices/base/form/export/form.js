@@ -325,13 +325,7 @@ var $form = {
         }
 
         const dataString = JSON.stringify(ldata);
-        const hasLatex =
-            $exeDevices.iDevice.gamification.math.hasLatex(dataString);
-        if (!hasLatex) return;
-        const mathjaxLoaded = typeof window.MathJax !== 'undefined';
-        if (!mathjaxLoaded) {
-            $exeDevices.iDevice.gamification.math.loadMathJax();
-        } else {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
             $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
         }
     },

@@ -148,7 +148,10 @@ var $eXeSopa = {
             $container.show();
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex('.sopa-IDevice');
+        var sopaHtml = $('.sopa-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(sopaHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('.sopa-IDevice');
+        }
     },
 
     recreatePuzzle: function (instanceId) {
@@ -360,7 +363,7 @@ var $eXeSopa = {
                 </div>
                  <div class="SPP-ResolveDiv ">
                     <button class="btn btn-primary" id="sopaResolve-${instanceId}">${msgs.msgEnd}</button>
-                 </div>                
+                 </div>
                 <div class="SPP-Cubierta" id="sopaCubierta-${instanceId}">
                     <div class="SPP-CodeAccessDiv" id="sopaCodeAccessDiv-${instanceId}">
                         <div class="SPP-MessageCodeAccessE" id="sopaMesajeAccesCodeE-${instanceId}"></div>
@@ -556,9 +559,8 @@ var $eXeSopa = {
             $container.find('#sopaMAuthorPoint-' + instanceId).show();
         }
 
-        const html = $container.find('#sopaFDetails-' + instanceId).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
-        if (latex) {
+        var html = $container.find('#sopaFDetails-' + instanceId).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#sopaFDetails-' + instanceId
             );

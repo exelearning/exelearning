@@ -2018,11 +2018,15 @@ class ExportXmlUtil
         // Package title and subtitle container
         $packageHeaderDiv = null;
         $packageTitleValue = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : '';
+        // The single page export has its own package title
         if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
             $packageTitleValue = '';
-        } // The single page export has its own package title
-        if ('' != $packageTitleValue || (Constants::EXPORT_TYPE_HTML5_SP != $exportType && '' != $subtitle)) {
-            $packageHeaderDiv = $pageHeader->addChild('div');
+        } else {
+            if ('' != $packageTitleValue || '' != $subtitle) {
+                $packageHeaderDiv = $pageHeader->addChild('div');
+            } else {
+                $packageHeaderDiv = $pageHeader->addChild('div', '');
+            }
             $packageHeaderDiv->addAttribute('class', 'package-header');
         }
 
@@ -2600,6 +2604,60 @@ class ExportXmlUtil
 
         if (!is_array($odeNavStructureSyncs)) {
             $odeNavStructureSyncs = [$odeNavStructureSyncs];
+        }
+
+        // LaTeX regex pattern for detection
+        $latexRegex = '/\\\((.*?)\\\)|\\\[(.*?)\\\]/';
+        $mathLibAlreadyIncluded = in_array($commonPath.'exe_math', $librariesToCopy);
+
+        if (!$mathLibAlreadyIncluded) {
+            $packageTitle = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : '';
+            if ('' !== $packageTitle && preg_match($latexRegex, $packageTitle)) {
+                $librariesToCopy[] = $commonPath.'exe_math';
+                $filesToCopy[] = [$dm.'tex-mml-svg.js'];
+                $mathLibAlreadyIncluded = true;
+            }
+        }
+
+        if (!$mathLibAlreadyIncluded) {
+            $packageSubtitle = isset($odeProperties['pp_subtitle']) ? $odeProperties['pp_subtitle']->getValue() : '';
+            if ('' !== $packageSubtitle && preg_match($latexRegex, $packageSubtitle)) {
+                $librariesToCopy[] = $commonPath.'exe_math';
+                $filesToCopy[] = [$dm.'tex-mml-svg.js'];
+                $mathLibAlreadyIncluded = true;
+            }
+        }
+
+        if (!$mathLibAlreadyIncluded) {
+            foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
+                $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
+                foreach ($pageProperties as $property) {
+                    if ('titlePage' === $property->getKey() && null !== $property->getValue()) {
+                        if (preg_match($latexRegex, $property->getValue())) {
+                            $librariesToCopy[] = $commonPath.'exe_math';
+                            $filesToCopy[] = [$dm.'tex-mml-svg.js'];
+                            $mathLibAlreadyIncluded = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!$mathLibAlreadyIncluded) {
+            foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
+                foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+                    $blockName = $odePagStructureSync->getBlockName();
+                    if (null !== $blockName && '' !== $blockName) {
+                        if (preg_match($latexRegex, $blockName)) {
+                            $librariesToCopy[] = $commonPath.'exe_math';
+                            $filesToCopy[] = [$dm.'tex-mml-svg.js'];
+                            $mathLibAlreadyIncluded = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
         }
 
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {

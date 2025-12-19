@@ -196,6 +196,12 @@ export default class MenuStructureCompose {
         dragOverElement.classList.add('drag-over-border');
         textElement.append(dragOverElement);
 
+        setTimeout(() => {
+            if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
+                $exe.math.refresh(spanText);
+            }
+        }, 0);
+
         return textElement;
     }
 

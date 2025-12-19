@@ -1024,7 +1024,7 @@ var $azquizgame = {
                 .fadeIn();
 
         const html = $('#roscoPDefinition-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(

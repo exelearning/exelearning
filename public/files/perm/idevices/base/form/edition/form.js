@@ -654,7 +654,7 @@ var $exeDevice = {
         $exeDevice.hideQuestionsPanel('questionsContainerTop');
         $exeDevice.hideQuestionsPanel('questionsContainerBottom');
         $exeDevice.updateQuestionsNumber();
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
         if ($exeDevice.questionsForm.length > 0) {
             $exeDevice.ideviceBody.querySelector(
                 `#${$exeDevice.msgNoQuestionsId}`

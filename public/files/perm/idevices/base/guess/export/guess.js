@@ -550,7 +550,7 @@ var $guess = {
         }
 
         const html = $('#adivinaDefinition-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#adivinaDefinition-' + instance
