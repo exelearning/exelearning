@@ -25,12 +25,6 @@ describe('ModalProperties', () => {
       },
     };
 
-    // Mock jQuery
-    window.$ = vi.fn(() => ({
-      on: vi.fn().mockReturnThis(),
-      prop: vi.fn().mockReturnThis(),
-    }));
-
     // Mock DOM
     mockElement = document.createElement('div');
     mockElement.id = 'modalProperties';

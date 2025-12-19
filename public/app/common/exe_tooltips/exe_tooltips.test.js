@@ -1,7 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDomJQuery } from '../../test-helpers/createDomJQuery.js';
-
-global.$ = createDomJQuery();
 
 const scriptPath = './exe_tooltips.js';
 const loadScriptMock = vi.fn();
@@ -24,7 +21,7 @@ describe('exe_tooltips (app/common)', () => {
     document.body.innerHTML = '';
     document.body.className = '';
     loadScriptMock.mockClear();
-    exeTooltips.links = createDomJQuery()([]);
+    exeTooltips.links = window.$([]);
     exeTooltips.isAJAXAllowed = undefined;
     window.location.protocol = 'http:';
   });

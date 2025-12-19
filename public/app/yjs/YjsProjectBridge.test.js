@@ -107,23 +107,14 @@ class MockSaveManager {
   async save() { return { success: true, bytes: 100 }; }
 }
 
-// Mock Y.Text for component content tests
-class MockYText {
-  constructor(text = '') {
-    this._text = text;
-    this._observers = [];
+const createYText = (text = '') => {
+  const doc = new window.Y.Doc();
+  const yText = doc.getText('html');
+  if (text) {
+    yText.insert(0, text);
   }
-  toString() { return this._text; }
-  insert(index, text) {
-    this._text = this._text.slice(0, index) + text + this._text.slice(index);
-  }
-  delete(index, length) {
-    this._text = this._text.slice(0, index) + this._text.slice(index + length);
-  }
-  get length() { return this._text.length; }
-  observe(fn) { this._observers.push(fn); }
-  unobserve(fn) { this._observers = this._observers.filter(o => o !== fn); }
-}
+  return yText;
+};
 
 describe('YjsProjectBridge', () => {
   let bridge;
@@ -134,6 +125,7 @@ describe('YjsProjectBridge', () => {
   beforeEach(() => {
     // Setup global mocks
     global.window = {
+      ...(originalWindow || {}),
       YjsDocumentManager: MockYjsDocumentManager,
       YjsStructureBinding: MockYjsStructureBinding,
       AssetCacheManager: MockAssetCacheManager,
@@ -533,13 +525,13 @@ describe('YjsProjectBridge', () => {
         cloneComponent: mock(() => ({ id: 'comp-cloned' })),
         getComponent: mock(() => ({
           get: (key) => {
-            if (key === 'htmlContent') return new MockYText('<p>Test</p>');
+            if (key === 'htmlContent') return createYText('<p>Test</p>');
             return 'test';
           },
         })),
         getComponentMap: mock(() => ({
           get: (key) => {
-            if (key === 'htmlContent') return new MockYText('<p>Test</p>');
+            if (key === 'htmlContent') return createYText('<p>Test</p>');
             return 'test';
           },
         })),
@@ -688,7 +680,7 @@ describe('YjsProjectBridge', () => {
     });
 
     it('getComponentHtml returns content from Y.Text', () => {
-      const mockYText = new MockYText('<p>Hello</p>');
+      const mockYText = createYText('<p>Hello</p>');
       bridge.structureBinding = {
         getComponent: mock(() => ({
           get: (key) => key === 'htmlContent' ? mockYText : null,
@@ -724,7 +716,7 @@ describe('YjsProjectBridge', () => {
     });
 
     it('setComponentHtml updates Y.Text content', () => {
-      const mockYText = new MockYText('<p>Old</p>');
+      const mockYText = createYText('<p>Old</p>');
       bridge.structureBinding = {
         getComponent: mock(() => ({
           get: (key) => key === 'htmlContent' ? mockYText : null,
@@ -750,7 +742,6 @@ describe('YjsProjectBridge', () => {
       bridge.structureBinding = {
         getComponent: mock(() => componentMap),
       };
-      global.window.Y = { Text: MockYText };
       // Disable assetManager to skip prepareHtmlForSync
       bridge.assetManager = null;
 
@@ -759,7 +750,7 @@ describe('YjsProjectBridge', () => {
     });
 
     it('setComponentHtml uses assetManager.prepareHtmlForSync when available', () => {
-      const mockYText = new MockYText('<p>Old</p>');
+      const mockYText = createYText('<p>Old</p>');
       bridge.structureBinding = {
         getComponent: mock(() => ({
           get: (key) => key === 'htmlContent' ? mockYText : null,
@@ -1055,7 +1046,9 @@ describe('YjsProjectBridge', () => {
     });
 
     it('observes Y.Text htmlContent', () => {
-      const mockYText = new MockYText('<p>Test</p>');
+      const mockYText = createYText('<p>Test</p>');
+      const observeSpy = spyOn(mockYText, 'observe');
+      const unobserveSpy = spyOn(mockYText, 'unobserve');
       bridge.structureBinding = {
         getComponentMap: mock(() => ({
           get: (key) => key === 'htmlContent' ? mockYText : null,
@@ -1065,10 +1058,10 @@ describe('YjsProjectBridge', () => {
       const callback = mock(() => {});
       const unsubscribe = bridge.observeComponentContent('comp-1', callback);
 
-      expect(mockYText._observers.length).toBe(1);
+      expect(observeSpy).toHaveBeenCalledWith(expect.any(Function));
 
       unsubscribe();
-      expect(mockYText._observers.length).toBe(0);
+      expect(unobserveSpy).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('returns empty function when htmlContent has no observe method', () => {

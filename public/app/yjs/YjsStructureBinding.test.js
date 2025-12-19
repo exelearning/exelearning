@@ -11,123 +11,35 @@
 
 const YjsStructureBinding = require('./YjsStructureBinding');
 
-// Mock Y.Map
-class MockYMap {
-  constructor(data = {}) {
-    this._data = new Map(Object.entries(data));
-  }
+let testDoc;
+let scratchArray;
 
-  get(key) {
-    return this._data.get(key);
-  }
+const createYMap = (data = {}) => {
+  const map = new window.Y.Map();
+  Object.entries(data).forEach(([key, value]) => map.set(key, value));
+  return map;
+};
 
-  set(key, value) {
-    this._data.set(key, value);
-  }
+const createYArray = (items = []) => {
+  const arr = new window.Y.Array();
+  if (items.length) arr.push(items);
+  return arr;
+};
 
-  has(key) {
-    return this._data.has(key);
-  }
+const createYText = (text = '') => {
+  const ytext = new window.Y.Text();
+  if (text) ytext.insert(0, text);
+  return ytext;
+};
 
-  delete(key) {
-    return this._data.delete(key);
-  }
-
-  forEach(callback) {
-    this._data.forEach((value, key) => callback(value, key));
-  }
-
-  toJSON() {
-    return Object.fromEntries(this._data);
-  }
-}
-
-// Mock Y.Array
-class MockYArray {
-  constructor(items = []) {
-    this._items = items;
-    this._observers = [];
-  }
-
-  get length() {
-    return this._items.length;
-  }
-
-  get(index) {
-    return this._items[index];
-  }
-
-  push(items) {
-    if (Array.isArray(items)) {
-      this._items.push(...items);
-    } else {
-      this._items.push(items);
-    }
-  }
-
-  insert(index, items) {
-    if (Array.isArray(items)) {
-      this._items.splice(index, 0, ...items);
-    } else {
-      this._items.splice(index, 0, items);
-    }
-  }
-
-  delete(index, length = 1) {
-    this._items.splice(index, length);
-  }
-
-  toArray() {
-    return [...this._items];
-  }
-
-  forEach(callback) {
-    this._items.forEach((item, index) => callback(item, index));
-  }
-
-  map(callback) {
-    return this._items.map(callback);
-  }
-
-  observeDeep(callback) {
-    this._observers.push(callback);
-  }
-
-  unobserveDeep(callback) {
-    this._observers = this._observers.filter((cb) => cb !== callback);
-  }
-}
-
-// Mock Y.Doc
-class MockYDoc {
-  constructor() {
-    this.clientID = 12345;
-    this._arrays = {};
-    this._maps = {};
-  }
-
-  getArray(name) {
-    if (!this._arrays[name]) {
-      this._arrays[name] = new MockYArray();
-    }
-    return this._arrays[name];
-  }
-
-  getMap(name) {
-    if (!this._maps[name]) {
-      this._maps[name] = new MockYMap();
-    }
-    return this._maps[name];
-  }
-
-  transact(fn, origin) {
-    fn();
-  }
-}
+const integrateYType = (type) => {
+  scratchArray.push([type]);
+  return type;
+};
 
 // Mock Document Manager
 const createMockDocumentManager = (pages = []) => {
-  const ydoc = new MockYDoc();
+  const ydoc = testDoc;
   const navigation = ydoc.getArray('navigation');
 
   // Add pages
@@ -146,33 +58,8 @@ describe('YjsStructureBinding', () => {
   const originalWindow = global.window;
 
   beforeEach(() => {
-    // Mock Y.Text with full methods
-    class MockYText {
-      constructor(text = '') {
-        this._text = text;
-      }
-      toString() {
-        return this._text;
-      }
-      insert(index, text) {
-        this._text = this._text.slice(0, index) + text + this._text.slice(index);
-      }
-      delete(index, length) {
-        this._text = this._text.slice(0, index) + this._text.slice(index + length);
-      }
-      get length() {
-        return this._text.length;
-      }
-    }
-
-    // Setup global Y
-    global.window = {
-      Y: {
-        Map: MockYMap,
-        Array: MockYArray,
-        Text: MockYText,
-      },
-    };
+    testDoc = new window.Y.Doc();
+    scratchArray = testDoc.getArray('__scratch');
 
     mockDocManager = createMockDocumentManager();
     binding = new YjsStructureBinding(mockDocManager);
@@ -186,6 +73,8 @@ describe('YjsStructureBinding', () => {
     // Cleanup to prevent memory leaks
     binding = null;
     mockDocManager = null;
+    testDoc = null;
+    scratchArray = null;
 
     // Restore original globals instead of deleting
     global.window = originalWindow;
@@ -229,14 +118,14 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns mapped page objects', () => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
         parentId: null,
         order: 0,
       });
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
 
       const navigation = mockDocManager.getNavigation();
       navigation.push([pageMap]);
@@ -256,12 +145,12 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns page by ID', () => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
 
       mockDocManager.getNavigation().push([pageMap]);
 
@@ -312,12 +201,12 @@ describe('YjsStructureBinding', () => {
 
   describe('updatePage', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Original Name',
       });
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
       mockDocManager.getNavigation().push([pageMap]);
     });
 
@@ -346,7 +235,7 @@ describe('YjsStructureBinding', () => {
 
   describe('deletePage', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
@@ -372,7 +261,7 @@ describe('YjsStructureBinding', () => {
   describe('reorderPage', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: `page-${i + 1}`,
           pageId: `page-${i + 1}`,
           pageName: name,
@@ -427,7 +316,7 @@ describe('YjsStructureBinding', () => {
   describe('movePage', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: `page-${i + 1}`,
           pageId: `page-${i + 1}`,
           pageName: name,
@@ -472,7 +361,7 @@ describe('YjsStructureBinding', () => {
 
   describe('clonePage', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Original Page',
@@ -480,13 +369,13 @@ describe('YjsStructureBinding', () => {
         order: 0,
       });
 
-      const blocksArray = new MockYArray();
-      const blockMap = new MockYMap({
+      const blocksArray = createYArray();
+      const blockMap = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
-      blockMap.set('components', new MockYArray());
+      blockMap.set('components', createYArray());
       blocksArray.push([blockMap]);
 
       pageMap.set('blocks', blocksArray);
@@ -519,7 +408,7 @@ describe('YjsStructureBinding', () => {
   describe('getSiblings', () => {
     beforeEach(() => {
       // Root pages
-      const root1 = new MockYMap({
+      const root1 = createYMap({
         id: 'root-1',
         pageId: 'root-1',
         pageName: 'Root 1',
@@ -527,7 +416,7 @@ describe('YjsStructureBinding', () => {
         order: 0,
       });
 
-      const root2 = new MockYMap({
+      const root2 = createYMap({
         id: 'root-2',
         pageId: 'root-2',
         pageName: 'Root 2',
@@ -536,7 +425,7 @@ describe('YjsStructureBinding', () => {
       });
 
       // Child of root-1
-      const child = new MockYMap({
+      const child = createYMap({
         id: 'child-1',
         pageId: 'child-1',
         pageName: 'Child 1',
@@ -574,7 +463,7 @@ describe('YjsStructureBinding', () => {
   describe('canMoveUp / canMoveDown', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: `page-${i + 1}`,
           pageId: `page-${i + 1}`,
           pageName: name,
@@ -622,7 +511,7 @@ describe('YjsStructureBinding', () => {
 
   describe('mapToPage', () => {
     it('maps Y.Map to page object', () => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
@@ -630,7 +519,8 @@ describe('YjsStructureBinding', () => {
         order: 0,
         createdAt: '2024-01-01',
       });
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
+      integrateYType(pageMap);
 
       const page = binding.mapToPage(pageMap, 0);
 
@@ -645,34 +535,34 @@ describe('YjsStructureBinding', () => {
   describe('getBlocks', () => {
     it('returns blocks sorted by order property', () => {
       // Create blocks with different order values (not in sequence)
-      const block1 = new MockYMap({
+      const block1 = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
         order: 57,
       });
-      block1.set('components', new MockYArray());
+      block1.set('components', createYArray());
 
-      const block2 = new MockYMap({
+      const block2 = createYMap({
         id: 'block-2',
         blockId: 'block-2',
         blockName: 'Block 2',
         order: 1,
       });
-      block2.set('components', new MockYArray());
+      block2.set('components', createYArray());
 
-      const block3 = new MockYMap({
+      const block3 = createYMap({
         id: 'block-3',
         blockId: 'block-3',
         blockName: 'Block 3',
         order: 74,
       });
-      block3.set('components', new MockYArray());
+      block3.set('components', createYArray());
 
       // Add blocks in wrong order (57, 1, 74)
-      const blocksArray = new MockYArray([block1, block2, block3]);
+      const blocksArray = createYArray([block1, block2, block3]);
 
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
@@ -693,24 +583,24 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns blocks in insertion order when all have same order', () => {
-      const block1 = new MockYMap({
+      const block1 = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
         order: 0,
       });
-      block1.set('components', new MockYArray());
+      block1.set('components', createYArray());
 
-      const block2 = new MockYMap({
+      const block2 = createYMap({
         id: 'block-2',
         blockId: 'block-2',
         blockName: 'Block 2',
         order: 0,
       });
-      block2.set('components', new MockYArray());
+      block2.set('components', createYArray());
 
-      const blocksArray = new MockYArray([block1, block2]);
-      const pageMap = new MockYMap({
+      const blocksArray = createYArray([block1, block2]);
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
@@ -736,21 +626,21 @@ describe('YjsStructureBinding', () => {
   describe('getComponents', () => {
     it('returns components sorted by order property', () => {
       // Create components with different order values
-      const comp1 = new MockYMap({
+      const comp1 = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
         order: 85,
       });
 
-      const comp2 = new MockYMap({
+      const comp2 = createYMap({
         id: 'comp-2',
         ideviceId: 'comp-2',
         ideviceType: 'FreeTextIdevice',
         order: 10,
       });
 
-      const comp3 = new MockYMap({
+      const comp3 = createYMap({
         id: 'comp-3',
         ideviceId: 'comp-3',
         ideviceType: 'FreeTextIdevice',
@@ -758,9 +648,9 @@ describe('YjsStructureBinding', () => {
       });
 
       // Add in wrong order (85, 10, 50)
-      const componentsArray = new MockYArray([comp1, comp2, comp3]);
+      const componentsArray = createYArray([comp1, comp2, comp3]);
 
-      const blockMap = new MockYMap({
+      const blockMap = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
@@ -768,12 +658,12 @@ describe('YjsStructureBinding', () => {
       });
       blockMap.set('components', componentsArray);
 
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      pageMap.set('blocks', new MockYArray([blockMap]));
+      pageMap.set('blocks', createYArray([blockMap]));
 
       mockDocManager.getNavigation().push([pageMap]);
 
@@ -787,12 +677,12 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns empty array for non-existent block', () => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
 
       mockDocManager.getNavigation().push([pageMap]);
 
@@ -804,7 +694,7 @@ describe('YjsStructureBinding', () => {
   describe('mapToComponent', () => {
     it('returns jsonProperties as string when stored as Y.Map', () => {
       // Create a component Y.Map with jsonProperties as Y.Map
-      const compMap = new MockYMap({
+      const compMap = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'crossword',
@@ -812,12 +702,13 @@ describe('YjsStructureBinding', () => {
       });
 
       // Store jsonProperties as a Y.Map (simulating the old buggy behavior)
-      const jsonPropsMap = new MockYMap({
+      const jsonPropsMap = createYMap({
         title: 'My Crossword',
         difficulty: 'medium',
         words: 5,
       });
       compMap.set('jsonProperties', jsonPropsMap);
+      integrateYType(compMap);
 
       const component = binding.mapToComponent(compMap, 0);
 
@@ -831,13 +722,14 @@ describe('YjsStructureBinding', () => {
 
     it('returns jsonProperties string unchanged when stored as string', () => {
       const originalJson = JSON.stringify({ title: 'Test', count: 10 });
-      const compMap = new MockYMap({
+      const compMap = createYMap({
         id: 'comp-2',
         ideviceId: 'comp-2',
         ideviceType: 'trueorfalse',
         order: 0,
         jsonProperties: originalJson,
       });
+      integrateYType(compMap);
 
       const component = binding.mapToComponent(compMap, 0);
 
@@ -845,12 +737,13 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns "{}" when jsonProperties is missing', () => {
-      const compMap = new MockYMap({
+      const compMap = createYMap({
         id: 'comp-3',
         ideviceId: 'comp-3',
         ideviceType: 'text',
         order: 0,
       });
+      integrateYType(compMap);
 
       const component = binding.mapToComponent(compMap, 0);
 
@@ -858,11 +751,12 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns "{}" when jsonProperties is undefined', () => {
-      const compMap = new MockYMap({
+      const compMap = createYMap({
         id: 'comp-4',
         ideviceType: 'text',
       });
       compMap.set('jsonProperties', undefined);
+      integrateYType(compMap);
 
       const component = binding.mapToComponent(compMap, 0);
 
@@ -870,11 +764,12 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns htmlContent from htmlView fallback', () => {
-      const compMap = new MockYMap({
+      const compMap = createYMap({
         id: 'comp-5',
         ideviceType: 'text',
         htmlView: '<p>Hello World</p>',
       });
+      integrateYType(compMap);
 
       const component = binding.mapToComponent(compMap, 0);
 
@@ -894,6 +789,7 @@ describe('YjsStructureBinding', () => {
       };
 
       const compMap = binding.createComponentMapFromApi(apiComp);
+      integrateYType(compMap);
 
       // jsonProperties should be stored as a string
       const storedJsonProps = compMap.get('jsonProperties');
@@ -913,6 +809,7 @@ describe('YjsStructureBinding', () => {
       };
 
       const compMap = binding.createComponentMapFromApi(apiComp);
+      integrateYType(compMap);
 
       const storedJsonProps = compMap.get('jsonProperties');
       expect(storedJsonProps).toBe(jsonStr);
@@ -928,6 +825,7 @@ describe('YjsStructureBinding', () => {
       };
 
       const compMap = binding.createComponentMapFromApi(apiComp);
+      integrateYType(compMap);
 
       // jsonProperties should not be set (or be undefined)
       const storedJsonProps = compMap.get('jsonProperties');
@@ -944,12 +842,12 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns empty array when page has no blocks', () => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
       mockDocManager.getNavigation().push([pageMap]);
 
       const blocks = binding.getBlocks('page-1');
@@ -957,29 +855,29 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns multiple blocks correctly', () => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
 
-      const blocksArray = new MockYArray();
-      const block1 = new MockYMap({
+      const blocksArray = createYArray();
+      const block1 = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
         order: 0,
       });
-      block1.set('components', new MockYArray());
+      block1.set('components', createYArray());
       blocksArray.push([block1]);
 
-      const block2 = new MockYMap({
+      const block2 = createYMap({
         id: 'block-2',
         blockId: 'block-2',
         blockName: 'Block 2',
         order: 1,
       });
-      block2.set('components', new MockYArray());
+      block2.set('components', createYArray());
       blocksArray.push([block2]);
 
       pageMap.set('blocks', blocksArray);
@@ -994,12 +892,12 @@ describe('YjsStructureBinding', () => {
 
   describe('createBlock', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
       mockDocManager.getNavigation().push([pageMap]);
     });
 
@@ -1040,20 +938,20 @@ describe('YjsStructureBinding', () => {
 
   describe('updateBlock', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
 
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Original Name',
         order: 0,
       });
-      block.set('components', new MockYArray());
+      block.set('components', createYArray());
       blocksArray.push([block]);
 
       pageMap.set('blocks', blocksArray);
@@ -1092,29 +990,29 @@ describe('YjsStructureBinding', () => {
 
   describe('deleteBlock', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
 
-      const blocksArray = new MockYArray();
-      const block1 = new MockYMap({
+      const blocksArray = createYArray();
+      const block1 = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
         order: 0,
       });
-      block1.set('components', new MockYArray());
+      block1.set('components', createYArray());
       blocksArray.push([block1]);
 
-      const block2 = new MockYMap({
+      const block2 = createYMap({
         id: 'block-2',
         blockId: 'block-2',
         blockName: 'Block 2',
         order: 1,
       });
-      block2.set('components', new MockYArray());
+      block2.set('components', createYArray());
       blocksArray.push([block2]);
 
       pageMap.set('blocks', blocksArray);
@@ -1145,21 +1043,21 @@ describe('YjsStructureBinding', () => {
 
   describe('updateBlockOrder', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
 
-      const blocksArray = new MockYArray();
+      const blocksArray = createYArray();
       for (let i = 0; i < 3; i++) {
-        const block = new MockYMap({
+        const block = createYMap({
           id: `block-${i + 1}`,
           blockId: `block-${i + 1}`,
           blockName: `Block ${i + 1}`,
           order: i,
         });
-        block.set('components', new MockYArray());
+        block.set('components', createYArray());
         blocksArray.push([block]);
       }
 
@@ -1186,22 +1084,22 @@ describe('YjsStructureBinding', () => {
 
   describe('cloneBlock', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
 
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Original Block',
         order: 0,
       });
 
-      const componentsArray = new MockYArray();
-      const comp = new MockYMap({
+      const componentsArray = createYArray();
+      const comp = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
@@ -1243,28 +1141,28 @@ describe('YjsStructureBinding', () => {
   describe('moveBlockToPage', () => {
     beforeEach(() => {
       // Create two pages with blocks
-      const page1 = new MockYMap({
+      const page1 = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Page 1',
       });
-      const blocks1 = new MockYArray();
-      const block1 = new MockYMap({
+      const blocks1 = createYArray();
+      const block1 = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
         order: 0,
       });
-      block1.set('components', new MockYArray());
+      block1.set('components', createYArray());
       blocks1.push([block1]);
       page1.set('blocks', blocks1);
 
-      const page2 = new MockYMap({
+      const page2 = createYMap({
         id: 'page-2',
         pageId: 'page-2',
         pageName: 'Page 2',
       });
-      page2.set('blocks', new MockYArray());
+      page2.set('blocks', createYArray());
 
       mockDocManager.getNavigation().push([page1]);
       mockDocManager.getNavigation().push([page2]);
@@ -1303,18 +1201,18 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns empty array when block has no components', () => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
-      block.set('components', new MockYArray());
+      block.set('components', createYArray());
       blocksArray.push([block]);
       pageMap.set('blocks', blocksArray);
       mockDocManager.getNavigation().push([pageMap]);
@@ -1324,26 +1222,26 @@ describe('YjsStructureBinding', () => {
     });
 
     it('returns multiple components correctly', () => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
 
-      const componentsArray = new MockYArray();
-      const comp1 = new MockYMap({
+      const componentsArray = createYArray();
+      const comp1 = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
         order: 0,
       });
-      const comp2 = new MockYMap({
+      const comp2 = createYMap({
         id: 'comp-2',
         ideviceId: 'comp-2',
         ideviceType: 'MultiChoiceIdevice',
@@ -1365,20 +1263,20 @@ describe('YjsStructureBinding', () => {
 
   describe('getComponent', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
 
-      const componentsArray = new MockYArray();
-      const comp = new MockYMap({
+      const componentsArray = createYArray();
+      const comp = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
@@ -1407,18 +1305,18 @@ describe('YjsStructureBinding', () => {
 
   describe('createComponent', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
-      block.set('components', new MockYArray());
+      block.set('components', createYArray());
       blocksArray.push([block]);
       pageMap.set('blocks', blocksArray);
       mockDocManager.getNavigation().push([pageMap]);
@@ -1466,20 +1364,20 @@ describe('YjsStructureBinding', () => {
 
   describe('updateComponent', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
 
-      const componentsArray = new MockYArray();
-      const comp = new MockYMap({
+      const componentsArray = createYArray();
+      const comp = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
@@ -1521,26 +1419,26 @@ describe('YjsStructureBinding', () => {
 
   describe('deleteComponent', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
 
-      const componentsArray = new MockYArray();
-      const comp1 = new MockYMap({
+      const componentsArray = createYArray();
+      const comp1 = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
         order: 0,
       });
-      const comp2 = new MockYMap({
+      const comp2 = createYMap({
         id: 'comp-2',
         ideviceId: 'comp-2',
         ideviceType: 'MultiChoiceIdevice',
@@ -1571,21 +1469,21 @@ describe('YjsStructureBinding', () => {
 
   describe('reorderComponent', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
 
-      const componentsArray = new MockYArray();
+      const componentsArray = createYArray();
       for (let i = 0; i < 3; i++) {
-        const comp = new MockYMap({
+        const comp = createYMap({
           id: `comp-${i + 1}`,
           ideviceId: `comp-${i + 1}`,
           ideviceType: 'FreeTextIdevice',
@@ -1618,20 +1516,20 @@ describe('YjsStructureBinding', () => {
 
   describe('cloneComponent', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
 
-      const componentsArray = new MockYArray();
-      const comp = new MockYMap({
+      const componentsArray = createYArray();
+      const comp = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
@@ -1672,20 +1570,20 @@ describe('YjsStructureBinding', () => {
 
   describe('moveComponentToBlock', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const blocksArray = new MockYArray();
+      const blocksArray = createYArray();
 
-      const block1 = new MockYMap({
+      const block1 = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
-      const components1 = new MockYArray();
-      const comp = new MockYMap({
+      const components1 = createYArray();
+      const comp = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
@@ -1694,12 +1592,12 @@ describe('YjsStructureBinding', () => {
       components1.push([comp]);
       block1.set('components', components1);
 
-      const block2 = new MockYMap({
+      const block2 = createYMap({
         id: 'block-2',
         blockId: 'block-2',
         blockName: 'Block 2',
       });
-      block2.set('components', new MockYArray());
+      block2.set('components', createYArray());
 
       blocksArray.push([block1]);
       blocksArray.push([block2]);
@@ -1733,19 +1631,19 @@ describe('YjsStructureBinding', () => {
 
   describe('moveComponentToPage', () => {
     beforeEach(() => {
-      const page1 = new MockYMap({
+      const page1 = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Page 1',
       });
-      const blocks1 = new MockYArray();
-      const block1 = new MockYMap({
+      const blocks1 = createYArray();
+      const block1 = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
-      const components1 = new MockYArray();
-      const comp = new MockYMap({
+      const components1 = createYArray();
+      const comp = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
@@ -1756,12 +1654,12 @@ describe('YjsStructureBinding', () => {
       blocks1.push([block1]);
       page1.set('blocks', blocks1);
 
-      const page2 = new MockYMap({
+      const page2 = createYMap({
         id: 'page-2',
         pageId: 'page-2',
         pageName: 'Page 2',
       });
-      page2.set('blocks', new MockYArray());
+      page2.set('blocks', createYArray());
 
       mockDocManager.getNavigation().push([page1]);
       mockDocManager.getNavigation().push([page2]);
@@ -1798,14 +1696,14 @@ describe('YjsStructureBinding', () => {
   describe('movePagePrev', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: `page-${i + 1}`,
           pageId: `page-${i + 1}`,
           pageName: name,
           order: i,
           parentId: null,
         });
-        pageMap.set('blocks', new MockYArray());
+        pageMap.set('blocks', createYArray());
         mockDocManager.getNavigation().push([pageMap]);
       });
     });
@@ -1830,14 +1728,14 @@ describe('YjsStructureBinding', () => {
   describe('movePageNext', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: `page-${i + 1}`,
           pageId: `page-${i + 1}`,
           pageName: name,
           order: i,
           parentId: null,
         });
-        pageMap.set('blocks', new MockYArray());
+        pageMap.set('blocks', createYArray());
         mockDocManager.getNavigation().push([pageMap]);
       });
     });
@@ -1862,24 +1760,24 @@ describe('YjsStructureBinding', () => {
   describe('movePageLeft', () => {
     beforeEach(() => {
       // Parent page
-      const parent = new MockYMap({
+      const parent = createYMap({
         id: 'parent',
         pageId: 'parent',
         pageName: 'Parent',
         order: 0,
         parentId: null,
       });
-      parent.set('blocks', new MockYArray());
+      parent.set('blocks', createYArray());
 
       // Child page
-      const child = new MockYMap({
+      const child = createYMap({
         id: 'child',
         pageId: 'child',
         pageName: 'Child',
         order: 0,
         parentId: 'parent',
       });
-      child.set('blocks', new MockYArray());
+      child.set('blocks', createYArray());
 
       mockDocManager.getNavigation().push([parent]);
       mockDocManager.getNavigation().push([child]);
@@ -1907,14 +1805,14 @@ describe('YjsStructureBinding', () => {
   describe('movePageRight', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: `page-${i + 1}`,
           pageId: `page-${i + 1}`,
           pageName: name,
           order: i,
           parentId: null,
         });
-        pageMap.set('blocks', new MockYArray());
+        pageMap.set('blocks', createYArray());
         mockDocManager.getNavigation().push([pageMap]);
       });
     });
@@ -1940,23 +1838,23 @@ describe('YjsStructureBinding', () => {
 
   describe('canMoveLeft', () => {
     beforeEach(() => {
-      const parent = new MockYMap({
+      const parent = createYMap({
         id: 'parent',
         pageId: 'parent',
         pageName: 'Parent',
         order: 0,
         parentId: null,
       });
-      parent.set('blocks', new MockYArray());
+      parent.set('blocks', createYArray());
 
-      const child = new MockYMap({
+      const child = createYMap({
         id: 'child',
         pageId: 'child',
         pageName: 'Child',
         order: 0,
         parentId: 'parent',
       });
-      child.set('blocks', new MockYArray());
+      child.set('blocks', createYArray());
 
       mockDocManager.getNavigation().push([parent]);
       mockDocManager.getNavigation().push([child]);
@@ -1978,14 +1876,14 @@ describe('YjsStructureBinding', () => {
   describe('canMoveRight', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2'].forEach((name, i) => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: `page-${i + 1}`,
           pageId: `page-${i + 1}`,
           pageName: name,
           order: i,
           parentId: null,
         });
-        pageMap.set('blocks', new MockYArray());
+        pageMap.set('blocks', createYArray());
         mockDocManager.getNavigation().push([pageMap]);
       });
     });
@@ -2002,14 +1900,14 @@ describe('YjsStructureBinding', () => {
   describe('movePageToTarget', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: `page-${i + 1}`,
           pageId: `page-${i + 1}`,
           pageName: name,
           order: i,
           parentId: null,
         });
-        pageMap.set('blocks', new MockYArray());
+        pageMap.set('blocks', createYArray());
         mockDocManager.getNavigation().push([pageMap]);
       });
     });
@@ -2037,14 +1935,14 @@ describe('YjsStructureBinding', () => {
 
     it('becomes first child when target has children', () => {
       // Add a child to page-2
-      const child = new MockYMap({
+      const child = createYMap({
         id: 'child',
         pageId: 'child',
         pageName: 'Child',
         order: 0,
         parentId: 'page-2',
       });
-      child.set('blocks', new MockYArray());
+      child.set('blocks', createYArray());
       mockDocManager.getNavigation().push([child]);
 
       const result = binding.movePageToTarget('page-3', 'page-2');
@@ -2058,32 +1956,32 @@ describe('YjsStructureBinding', () => {
   describe('isDescendant', () => {
     beforeEach(() => {
       // Create hierarchy: grandparent > parent > child
-      const grandparent = new MockYMap({
+      const grandparent = createYMap({
         id: 'grandparent',
         pageId: 'grandparent',
         pageName: 'Grandparent',
         order: 0,
         parentId: null,
       });
-      grandparent.set('blocks', new MockYArray());
+      grandparent.set('blocks', createYArray());
 
-      const parent = new MockYMap({
+      const parent = createYMap({
         id: 'parent',
         pageId: 'parent',
         pageName: 'Parent',
         order: 0,
         parentId: 'grandparent',
       });
-      parent.set('blocks', new MockYArray());
+      parent.set('blocks', createYArray());
 
-      const child = new MockYMap({
+      const child = createYMap({
         id: 'child',
         pageId: 'child',
         pageName: 'Child',
         order: 0,
         parentId: 'parent',
       });
-      child.set('blocks', new MockYArray());
+      child.set('blocks', createYArray());
 
       mockDocManager.getNavigation().push([grandparent]);
       mockDocManager.getNavigation().push([parent]);
@@ -2114,33 +2012,33 @@ describe('YjsStructureBinding', () => {
   describe('cloneChildPages', () => {
     beforeEach(() => {
       // Parent page
-      const parent = new MockYMap({
+      const parent = createYMap({
         id: 'parent',
         pageId: 'parent',
         pageName: 'Parent',
         order: 0,
         parentId: null,
       });
-      parent.set('blocks', new MockYArray());
+      parent.set('blocks', createYArray());
 
       // Child pages
-      const child1 = new MockYMap({
+      const child1 = createYMap({
         id: 'child-1',
         pageId: 'child-1',
         pageName: 'Child 1',
         order: 0,
         parentId: 'parent',
       });
-      child1.set('blocks', new MockYArray());
+      child1.set('blocks', createYArray());
 
-      const child2 = new MockYMap({
+      const child2 = createYMap({
         id: 'child-2',
         pageId: 'child-2',
         pageName: 'Child 2',
         order: 1,
         parentId: 'parent',
       });
-      child2.set('blocks', new MockYArray());
+      child2.set('blocks', createYArray());
 
       mockDocManager.getNavigation().push([parent]);
       mockDocManager.getNavigation().push([child1]);
@@ -2307,6 +2205,7 @@ describe('YjsStructureBinding', () => {
       };
 
       const blockMap = binding.createBlockMapFromApi(apiBlock);
+      integrateYType(blockMap);
 
       expect(blockMap.get('id')).toBe('block-1');
       expect(blockMap.get('blockName')).toBe('Test Block');
@@ -2322,6 +2221,7 @@ describe('YjsStructureBinding', () => {
       };
 
       const blockMap = binding.createBlockMapFromApi(apiBlock);
+      integrateYType(blockMap);
 
       expect(blockMap.get('blockName')).toBe('');
     });
@@ -2329,21 +2229,17 @@ describe('YjsStructureBinding', () => {
 
   describe('getPageProperties', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      const propsMap = new MockYMap({
+      const propsMap = createYMap({
         hidePageTitle: true,
         customProp: 'value',
       });
-      // Add toJSON method to MockYMap for this test
-      propsMap.toJSON = function () {
-        return Object.fromEntries(this._data);
-      };
       pageMap.set('properties', propsMap);
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
       mockDocManager.getNavigation().push([pageMap]);
     });
 
@@ -2369,27 +2265,24 @@ describe('YjsStructureBinding', () => {
 
   describe('getBlockProperties', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
 
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
-      const propsMap = new MockYMap({
+      const propsMap = createYMap({
         visibility: true,
         teacherOnly: false,
       });
-      propsMap.toJSON = function () {
-        return Object.fromEntries(this._data);
-      };
       block.set('properties', propsMap);
-      block.set('components', new MockYArray());
+      block.set('components', createYArray());
       blocksArray.push([block]);
 
       pageMap.set('blocks', blocksArray);
@@ -2413,12 +2306,12 @@ describe('YjsStructureBinding', () => {
       // Create a block without properties
       const pageMap = mockDocManager.getNavigation().get(0);
       const blocks = pageMap.get('blocks');
-      const block2 = new MockYMap({
+      const block2 = createYMap({
         id: 'block-2',
         blockId: 'block-2',
         blockName: 'Block 2',
       });
-      block2.set('components', new MockYArray());
+      block2.set('components', createYArray());
       blocks.push([block2]);
 
       const props = binding.getBlockProperties('block-2');
@@ -2428,32 +2321,29 @@ describe('YjsStructureBinding', () => {
 
   describe('getComponentProperties', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
 
-      const blocksArray = new MockYArray();
-      const block = new MockYMap({
+      const blocksArray = createYArray();
+      const block = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Block 1',
       });
 
-      const componentsArray = new MockYArray();
-      const comp = new MockYMap({
+      const componentsArray = createYArray();
+      const comp = createYMap({
         id: 'comp-1',
         ideviceId: 'comp-1',
         ideviceType: 'FreeTextIdevice',
       });
-      const propsMap = new MockYMap({
+      const propsMap = createYMap({
         visibility: true,
         customField: 'test',
       });
-      propsMap.toJSON = function () {
-        return Object.fromEntries(this._data);
-      };
       comp.set('properties', propsMap);
       componentsArray.push([comp]);
 
@@ -2479,12 +2369,12 @@ describe('YjsStructureBinding', () => {
 
   describe('updatePageProperties', () => {
     beforeEach(() => {
-      const pageMap = new MockYMap({
+      const pageMap = createYMap({
         id: 'page-1',
         pageId: 'page-1',
         pageName: 'Test Page',
       });
-      pageMap.set('blocks', new MockYArray());
+      pageMap.set('blocks', createYArray());
       mockDocManager.getNavigation().push([pageMap]);
     });
 
@@ -2516,7 +2406,7 @@ describe('YjsStructureBinding', () => {
 
   describe('mapToBlock', () => {
     it('maps Y.Map to block object', () => {
-      const blockMap = new MockYMap({
+      const blockMap = createYMap({
         id: 'block-1',
         blockId: 'block-1',
         blockName: 'Test Block',
@@ -2525,7 +2415,8 @@ describe('YjsStructureBinding', () => {
         order: 2,
         createdAt: '2024-01-01',
       });
-      blockMap.set('components', new MockYArray());
+      blockMap.set('components', createYArray());
+      integrateYType(blockMap);
 
       const block = binding.mapToBlock(blockMap, 0);
 
@@ -2538,11 +2429,12 @@ describe('YjsStructureBinding', () => {
     });
 
     it('uses index as fallback for order', () => {
-      const blockMap = new MockYMap({
+      const blockMap = createYMap({
         id: 'block-1',
         blockName: 'Test Block',
       });
-      blockMap.set('components', new MockYArray());
+      blockMap.set('components', createYArray());
+      integrateYType(blockMap);
 
       const block = binding.mapToBlock(blockMap, 5);
 
@@ -2578,7 +2470,7 @@ describe('YjsStructureBinding', () => {
   describe('edge cases', () => {
     describe('null navigation handling', () => {
       it('getBlocks returns empty array when page has no blocks property', () => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: 'page-1',
           pageId: 'page-1',
           pageName: 'Test Page',
@@ -2591,13 +2483,13 @@ describe('YjsStructureBinding', () => {
       });
 
       it('getComponents returns empty array when block has no components', () => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: 'page-1',
           pageId: 'page-1',
           pageName: 'Test Page',
         });
-        const blocksArray = new MockYArray();
-        const block = new MockYMap({
+        const blocksArray = createYArray();
+        const block = createYMap({
           id: 'block-1',
           blockId: 'block-1',
           blockName: 'Block 1',
@@ -2614,12 +2506,12 @@ describe('YjsStructureBinding', () => {
 
     describe('empty structures', () => {
       it('handles page with empty blocks array', () => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: 'page-1',
           pageId: 'page-1',
           pageName: 'Test Page',
         });
-        pageMap.set('blocks', new MockYArray());
+        pageMap.set('blocks', createYArray());
         mockDocManager.getNavigation().push([pageMap]);
 
         expect(binding.getBlocks('page-1')).toEqual([]);
@@ -2627,18 +2519,18 @@ describe('YjsStructureBinding', () => {
       });
 
       it('handles block with empty components array', () => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: 'page-1',
           pageId: 'page-1',
           pageName: 'Test Page',
         });
-        const blocksArray = new MockYArray();
-        const block = new MockYMap({
+        const blocksArray = createYArray();
+        const block = createYMap({
           id: 'block-1',
           blockId: 'block-1',
           blockName: 'Block 1',
         });
-        block.set('components', new MockYArray());
+        block.set('components', createYArray());
         blocksArray.push([block]);
         pageMap.set('blocks', blocksArray);
         mockDocManager.getNavigation().push([pageMap]);
@@ -2650,24 +2542,14 @@ describe('YjsStructureBinding', () => {
 
     describe('Y.Text handling', () => {
       it('mapToComponent handles Y.Text htmlContent', () => {
-        // Create a mock Y.Text
-        class MockYText {
-          constructor(text = '') {
-            this._text = text;
-          }
-          toString() {
-            return this._text;
-          }
-        }
-        global.window.Y.Text = MockYText;
-
-        const compMap = new MockYMap({
+        const compMap = createYMap({
           id: 'comp-1',
           ideviceId: 'comp-1',
           ideviceType: 'FreeTextIdevice',
           order: 0,
         });
-        compMap.set('htmlContent', new MockYText('<p>Test Content</p>'));
+        compMap.set('htmlContent', createYText('<p>Test Content</p>'));
+        integrateYType(compMap);
 
         const component = binding.mapToComponent(compMap, 0);
 
@@ -2675,13 +2557,14 @@ describe('YjsStructureBinding', () => {
       });
 
       it('mapToComponent handles null htmlContent', () => {
-        const compMap = new MockYMap({
+        const compMap = createYMap({
           id: 'comp-1',
           ideviceId: 'comp-1',
           ideviceType: 'FreeTextIdevice',
           order: 0,
         });
         // Don't set htmlContent
+        integrateYType(compMap);
 
         const component = binding.mapToComponent(compMap, 0);
 
@@ -2689,13 +2572,14 @@ describe('YjsStructureBinding', () => {
       });
 
       it('mapToComponent handles string htmlContent', () => {
-        const compMap = new MockYMap({
+        const compMap = createYMap({
           id: 'comp-1',
           ideviceId: 'comp-1',
           ideviceType: 'FreeTextIdevice',
           order: 0,
           htmlContent: '<p>Direct string content</p>',
         });
+        integrateYType(compMap);
 
         const component = binding.mapToComponent(compMap, 0);
 
@@ -2715,12 +2599,12 @@ describe('YjsStructureBinding', () => {
       });
 
       it('getBlockMap returns null for non-existent block', () => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: 'page-1',
           pageId: 'page-1',
           pageName: 'Test Page',
         });
-        pageMap.set('blocks', new MockYArray());
+        pageMap.set('blocks', createYArray());
         mockDocManager.getNavigation().push([pageMap]);
 
         const blockMap = binding.getBlockMap('page-1', 'non-existent');
@@ -2735,19 +2619,19 @@ describe('YjsStructureBinding', () => {
       });
 
       it('searches through all pages and blocks', () => {
-        const pageMap = new MockYMap({
+        const pageMap = createYMap({
           id: 'page-1',
           pageId: 'page-1',
           pageName: 'Test Page',
         });
-        const blocksArray = new MockYArray();
-        const block = new MockYMap({
+        const blocksArray = createYArray();
+        const block = createYMap({
           id: 'block-1',
           blockId: 'block-1',
           blockName: 'Block 1',
         });
-        const componentsArray = new MockYArray();
-        const comp = new MockYMap({
+        const componentsArray = createYArray();
+        const comp = createYMap({
           id: 'comp-1',
           ideviceId: 'comp-1',
           ideviceType: 'FreeTextIdevice',
@@ -2779,6 +2663,7 @@ describe('YjsStructureBinding', () => {
         };
 
         const pageMap = binding.createPageMapFromApi(apiPage);
+        integrateYType(pageMap);
 
         const props = pageMap.get('properties');
         expect(props).toBeDefined();
@@ -2795,6 +2680,7 @@ describe('YjsStructureBinding', () => {
         };
 
         const pageMap = binding.createPageMapFromApi(apiPage);
+        integrateYType(pageMap);
 
         expect(pageMap.get('id')).toBeDefined();
         expect(pageMap.get('id')).toContain('page');

@@ -10,12 +10,6 @@ describe('ModalLegalNotes', () => {
   beforeEach(() => {
     // Mock translation function
     window._ = vi.fn((key) => key);
-    
-    // Mock jQuery
-    window.$ = vi.fn(() => ({
-      attr: vi.fn().mockReturnThis(),
-      on: vi.fn().mockReturnThis(),
-    }));
 
     // Mock eXeLearning global
     window.eXeLearning = {

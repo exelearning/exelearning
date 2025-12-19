@@ -194,22 +194,26 @@ describe('flipcards iDevice', () => {
   });
 
   describe('placeImageWindows', () => {
-    // Helper to create a mock image with jQuery-like parent
+    // Helper to create a mock image with real DOM parent dimensions
     const createMockImage = (parentWidth, parentHeight) => {
-      const mockParent = {
-        width: vi.fn(() => parentWidth),
-        height: vi.fn(() => parentHeight),
-      };
-
-      const originalJQuery = global.$;
-      global.$ = vi.fn((element) => ({
-        parent: vi.fn(() => mockParent),
-      }));
-
+      const parent = document.createElement('div');
+      parent.style.width = `${parentWidth}px`;
+      parent.style.height = `${parentHeight}px`;
+      Object.defineProperty(parent, 'offsetWidth', {
+        value: parentWidth,
+        configurable: true,
+      });
+      Object.defineProperty(parent, 'offsetHeight', {
+        value: parentHeight,
+        configurable: true,
+      });
+      const img = document.createElement('img');
+      parent.appendChild(img);
+      document.body.appendChild(parent);
       return {
-        mockImage: {},
+        mockImage: img,
         cleanup: () => {
-          global.$ = originalJQuery;
+          parent.remove();
         },
       };
     };

@@ -13,7 +13,6 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { createDomJQuery } from '../../test-helpers/createDomJQuery.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -47,31 +46,13 @@ global.$exe = {
   },
 };
 
-// Mock jQuery for module load
-const mockJQuery = vi.fn((selector) => {
-  if (typeof selector === 'function') {
-    return { length: 0 };
-  }
-  return {
-    length: 0,
-    after: vi.fn(),
-    prepend: vi.fn(),
-    addClass: vi.fn(),
-    removeClass: vi.fn(),
-    hasClass: vi.fn(() => false),
-    val: vi.fn().mockReturnThis(),
-    trigger: vi.fn().mockReturnThis(),
-    click: vi.fn(),
-    change: vi.fn(),
-    each: vi.fn(),
-    on: vi.fn(),
-    attr: vi.fn(),
-    css: vi.fn(() => '0px'),
-    height: vi.fn(() => 600),
-    width: vi.fn(() => 800),
+// Prevent auto-init on import; tests invoke start() explicitly.
+const originalJQueryReady = global.$?.fn?.ready;
+if (originalJQueryReady) {
+  global.$.fn.ready = function () {
+    return this;
   };
-});
-global.$ = mockJQuery;
+}
 
 // Mock localStorage
 global.localStorage = {
@@ -83,6 +64,12 @@ global.localStorage = {
 
 // Now require the module to get coverage
 const exeAtools = require('./exe_atools.js');
+
+afterAll(() => {
+  if (originalJQueryReady) {
+    global.$.fn.ready = originalJQueryReady;
+  }
+});
 
 describe('exe_atools (app/common)', () => {
   let localStorageData;
@@ -356,10 +343,8 @@ describe('exe_atools (app/common)', () => {
 
   describe('start behavior', () => {
     it('inserts toolbar after skipNav and restores stored settings', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
       const originalSpeech = global.SpeechSynthesisUtterance;
-      global.$ = createDomJQuery();
       global.SpeechSynthesisUtterance = function () {};
       exeAtools.options.draggable = false;
       exeAtools.options.translator = false;
@@ -382,16 +367,13 @@ describe('exe_atools (app/common)', () => {
       expect(document.body.classList.contains('exe-atools-od')).toBe(true);
       expect(document.getElementById('eXeAtools').classList.contains('loading')).toBe(false);
 
-      global.$ = original$;
       global.SpeechSynthesisUtterance = originalSpeech;
       Object.assign(exeAtools.options, originalOptions);
     });
 
     it('restores translator status by toggling widget', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
       const originalAppendChild = document.head.appendChild;
-      global.$ = createDomJQuery();
       document.head.appendChild = vi.fn((node) => node);
       exeAtools.options.draggable = false;
       exeAtools.options.translator = true;
@@ -403,17 +385,14 @@ describe('exe_atools (app/common)', () => {
       expect(localStorageData.exeAtoolsTranslator).toBe('on');
       expect(document.getElementById('google_translate_element')).toBeTruthy();
 
-      global.$ = original$;
       document.head.appendChild = originalAppendChild;
       Object.assign(exeAtools.options, originalOptions);
     });
 
     it('applies saved toolbar styles and uses draggable hooks', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
       const originalDrogOn = exeAtools.Drog.on;
       const originalFixPosition = exeAtools.draggable.fixPosition;
-      global.$ = createDomJQuery();
       exeAtools.options.draggable = true;
       exeAtools.Drog.on = vi.fn();
       exeAtools.draggable.fixPosition = vi.fn();
@@ -427,7 +406,6 @@ describe('exe_atools (app/common)', () => {
       expect(exeAtools.Drog.on).toHaveBeenCalledWith(handler);
       expect(exeAtools.draggable.fixPosition).toHaveBeenCalledWith(handler);
 
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
       exeAtools.Drog.on = originalDrogOn;
       exeAtools.draggable.fixPosition = originalFixPosition;
@@ -436,9 +414,7 @@ describe('exe_atools (app/common)', () => {
 
   describe('setEvents behavior', () => {
     it('toggles toolbar visibility and reminder class', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
-      global.$ = createDomJQuery();
       exeAtools.options.draggable = false;
       exeAtools.options.modeToggler = false;
       exeAtools.options.translator = false;
@@ -462,14 +438,11 @@ describe('exe_atools (app/common)', () => {
       expect(button.classList.contains('eXeAreminder')).toBe(false);
 
       vi.useRealTimers();
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
     });
 
     it('updates font family on selector change', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
-      global.$ = createDomJQuery();
       exeAtools.options.draggable = false;
 
       exeAtools.start();
@@ -481,14 +454,11 @@ describe('exe_atools (app/common)', () => {
       expect(document.body.classList.contains('exe-atools-ah')).toBe(true);
       expect(localStorageData.exeAtoolsFontFamily).toBe('ah');
 
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
     });
 
     it('toggles dark mode via mode toggler', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
-      global.$ = createDomJQuery();
       exeAtools.options.draggable = false;
       exeAtools.options.modeToggler = true;
 
@@ -505,16 +475,13 @@ describe('exe_atools (app/common)', () => {
       expect(document.body.classList.contains('exe-atools-dm')).toBe(false);
       expect(localStorageData.exeAtoolsMode).toBe('');
 
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
     });
 
     it('handles resize by checking draggable position', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
       const originalCheckPosition = exeAtools.draggable.checkPosition;
       const originalFixPosition = exeAtools.draggable.fixPosition;
-      global.$ = createDomJQuery();
       exeAtools.options.draggable = true;
       exeAtools.options.translator = false;
       exeAtools.options.modeToggler = false;
@@ -526,7 +493,6 @@ describe('exe_atools (app/common)', () => {
 
       expect(exeAtools.draggable.checkPosition).toHaveBeenCalled();
 
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
       exeAtools.draggable.checkPosition = originalCheckPosition;
       exeAtools.draggable.fixPosition = originalFixPosition;
@@ -535,11 +501,9 @@ describe('exe_atools (app/common)', () => {
 
   describe('button actions', () => {
     it('invokes font size handlers from toolbar buttons', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
       const originalSetFontSize = exeAtools.setFontSize;
       const originalCheckReset = exeAtools.checkResetBtnStatus;
-      global.$ = createDomJQuery();
       exeAtools.options.draggable = false;
       exeAtools.setFontSize = vi.fn();
       exeAtools.checkResetBtnStatus = vi.fn();
@@ -554,18 +518,15 @@ describe('exe_atools (app/common)', () => {
       expect(exeAtools.setFontSize).toHaveBeenCalledWith(-1);
       expect(exeAtools.checkResetBtnStatus).toHaveBeenCalledTimes(2);
 
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
       exeAtools.setFontSize = originalSetFontSize;
       exeAtools.checkResetBtnStatus = originalCheckReset;
     });
 
     it('invokes translate button toggle and reset status', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
       const originalToggle = exeAtools.toggleGoogleTranslateWidget;
       const originalCheckReset = exeAtools.checkResetBtnStatus;
-      global.$ = createDomJQuery();
       exeAtools.options.translator = true;
       exeAtools.options.draggable = false;
       exeAtools.toggleGoogleTranslateWidget = vi.fn();
@@ -578,17 +539,14 @@ describe('exe_atools (app/common)', () => {
       expect(exeAtools.toggleGoogleTranslateWidget).toHaveBeenCalled();
       expect(exeAtools.checkResetBtnStatus).toHaveBeenCalled();
 
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
       exeAtools.toggleGoogleTranslateWidget = originalToggle;
       exeAtools.checkResetBtnStatus = originalCheckReset;
     });
 
     it('resets styles and toggles translator on reset button click', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
       const originalToggle = exeAtools.toggleGoogleTranslateWidget;
-      global.$ = createDomJQuery();
       exeAtools.options.translator = true;
       exeAtools.options.draggable = false;
       exeAtools.toggleGoogleTranslateWidget = vi.fn();
@@ -609,15 +567,12 @@ describe('exe_atools (app/common)', () => {
       expect(localStorageData.exeAtoolsFontFamily).toBe('');
       expect(exeAtools.toggleGoogleTranslateWidget).toHaveBeenCalled();
 
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
       exeAtools.toggleGoogleTranslateWidget = originalToggle;
     });
 
     it('does nothing when reset button is disabled', () => {
-      const original$ = global.$;
       const originalOptions = { ...exeAtools.options };
-      global.$ = createDomJQuery();
       exeAtools.options.draggable = false;
 
       exeAtools.start();
@@ -630,21 +585,18 @@ describe('exe_atools (app/common)', () => {
 
       expect(document.body.style.fontSize).toBe('19px');
 
-      global.$ = original$;
       Object.assign(exeAtools.options, originalOptions);
     });
   });
 
   describe('reader behavior', () => {
     it('reads selected text and toggles speaking state', () => {
-      const original$ = global.$;
       const originalSelection = window.getSelection;
       const originalSpeech = global.SpeechSynthesisUtterance;
       const originalSpeechSynthesis = global.speechSynthesis;
       const selectedNode = document.createElement('span');
       selectedNode.setAttribute('lang', 'es');
 
-      global.$ = createDomJQuery();
       const readBtn = document.createElement('button');
       readBtn.id = 'eXeAtoolsReadBtn';
       document.body.appendChild(readBtn);
@@ -674,18 +626,15 @@ describe('exe_atools (app/common)', () => {
       expect(exeAtools.reader.isReading).toBe(false);
       expect(global.speechSynthesis.cancel).toHaveBeenCalled();
 
-      global.$ = original$;
       window.getSelection = originalSelection;
       global.SpeechSynthesisUtterance = originalSpeech;
       global.speechSynthesis = originalSpeechSynthesis;
     });
 
     it('uses page text when no selection is present', () => {
-      const original$ = global.$;
       const originalSelection = window.getSelection;
       const originalSpeech = global.SpeechSynthesisUtterance;
       const originalSpeechSynthesis = global.speechSynthesis;
-      global.$ = createDomJQuery();
 
       const page = document.createElement('div');
       page.className = 'page';
@@ -709,7 +658,6 @@ describe('exe_atools (app/common)', () => {
 
       expect(global.speechSynthesis.speak).toHaveBeenCalled();
 
-      global.$ = original$;
       window.getSelection = originalSelection;
       global.SpeechSynthesisUtterance = originalSpeech;
       global.speechSynthesis = originalSpeechSynthesis;
@@ -834,14 +782,6 @@ describe('exe_atools (app/common)', () => {
 
   describe('draggable behavior', () => {
     it('stores constrained position on checkPosition', () => {
-      const original$ = global.$;
-      const dom$ = createDomJQuery();
-      global.$ = vi.fn((selector) => {
-        if (selector === 'body') {
-          return { hasClass: () => true };
-        }
-        return dom$(selector);
-      });
       document.body.classList.add('exe-atools-on');
 
       const handler = document.createElement('div');
@@ -860,18 +800,9 @@ describe('exe_atools (app/common)', () => {
 
       exeAtools.draggable.getTranslation = originalGetTranslation;
       exeAtools.draggable.limit = originalLimit;
-      global.$ = original$;
     });
 
     it('clears toolbar style when position resets to origin', () => {
-      const original$ = global.$;
-      const dom$ = createDomJQuery();
-      global.$ = vi.fn((selector) => {
-        if (selector === 'body') {
-          return { hasClass: () => true };
-        }
-        return dom$(selector);
-      });
       document.body.classList.add('exe-atools-on');
 
       const handler = document.createElement('div');
@@ -890,7 +821,6 @@ describe('exe_atools (app/common)', () => {
 
       exeAtools.draggable.getTranslation = originalGetTranslation;
       exeAtools.draggable.limit = originalLimit;
-      global.$ = original$;
     });
 
     it('calls Drog.move when fixPosition has translation', () => {

@@ -1,16 +1,25 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('custom.js', () => {
+    let originalJQuery;
+    let jquerySpy;
+
     beforeEach(async () => {
         vi.resetModules();
-        global.jQuery = vi.fn((callback) => callback());
+        if (!global.jQuery) {
+            throw new Error('jQuery is not available in the test environment');
+        }
+        originalJQuery = global.jQuery;
+        jquerySpy = vi.fn((...args) => originalJQuery(...args));
+        global.jQuery = jquerySpy;
+        global.$ = originalJQuery;
         delete global.$eXeLearningCustom;
         await import('./custom.js');
     });
 
     afterEach(() => {
         delete global.$eXeLearningCustom;
-        delete global.jQuery;
+        global.jQuery = originalJQuery;
     });
 
     it('should have $eXeLearningCustom object defined', () => {
@@ -33,7 +42,7 @@ describe('custom.js', () => {
     });
 
     it('should execute the jQuery ready handler', () => {
-        expect(global.jQuery).toHaveBeenCalledTimes(1);
-        expect(global.jQuery.mock.calls[0][0]).toBeTypeOf('function');
+        expect(jquerySpy).toHaveBeenCalled();
+        expect(jquerySpy.mock.calls[0][0]).toBeTypeOf('function');
     });
 });

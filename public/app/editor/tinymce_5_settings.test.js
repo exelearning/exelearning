@@ -2,9 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Setup globals needed BEFORE the script is loaded
 globalThis._ = vi.fn((key) => key);
-globalThis.tinymce = {
-  init: vi.fn(),
-};
 globalThis.bootstrap = {
   Modal: {
     getInstance: vi.fn(),
@@ -33,27 +30,6 @@ globalThis.eXeLearning = {
   },
 };
 globalThis.$exeTinyMCEToggler = {}; // Placeholder if needed
-
-// Mock jQuery
-const mockJQuery = vi.fn((selector) => ({
-  parent: vi.fn().mockReturnThis(),
-  attr: vi.fn().mockReturnThis(),
-  css: vi.fn().mockReturnThis(),
-  addClass: vi.fn().mockReturnThis(),
-  removeClass: vi.fn().mockReturnThis(),
-  length: 0,
-  each: vi.fn(),
-  before: vi.fn().mockReturnThis(),
-  show: vi.fn().mockReturnThis(),
-  val: vi.fn(() => ''),
-  html: vi.fn(() => ''),
-  after: vi.fn().mockReturnThis(),
-  hasClass: vi.fn(() => false),
-  eq: vi.fn().mockReturnThis(),
-  prev: vi.fn().mockReturnThis(),
-}));
-globalThis.$ = mockJQuery;
-globalThis.jQuery = mockJQuery;
 
 // Load the module using require() for coverage tracking
 const tinyMCEModule = require('./tinymce_5_settings.js');
@@ -97,11 +73,13 @@ describe('TinyMCE 5 Settings', () => {
     });
 
     it('init calls tinymce.init with configurations', () => {
+      const initSpy = vi.spyOn(globalThis.tinymce, 'init').mockImplementation(() => undefined);
       globalThis.$exeTinyMCE.init('single', '#editor');
-      expect(globalThis.tinymce.init).toHaveBeenCalled();
-      const config = globalThis.tinymce.init.mock.calls[0][0];
+      expect(initSpy).toHaveBeenCalled();
+      const config = initSpy.mock.calls[0][0];
       expect(config.selector).toBe('#editor');
       expect(config.plugins).toBe(globalThis.$exeTinyMCE.plugins);
+      initSpy.mockRestore();
     });
 
     it('lockScreen adds classes to load screen', () => {

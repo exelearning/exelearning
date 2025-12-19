@@ -11,44 +11,14 @@
 
 const YjsTinyMCEBinding = require('./YjsTinyMCEBinding');
 
-// Mock Y.Text
-class MockYText {
-  constructor(content = '') {
-    this._content = content;
-    this._observers = [];
-    this.doc = {
-      transact: (fn) => fn(),
-    };
+const createYText = (content = '') => {
+  const ydoc = new window.Y.Doc();
+  const ytext = ydoc.getText('content');
+  if (content) {
+    ytext.insert(0, content);
   }
-
-  toString() {
-    return this._content;
-  }
-
-  get length() {
-    return this._content.length;
-  }
-
-  insert(index, text) {
-    this._content = this._content.slice(0, index) + text + this._content.slice(index);
-  }
-
-  delete(index, length) {
-    this._content = this._content.slice(0, index) + this._content.slice(index + length);
-  }
-
-  observe(callback) {
-    this._observers.push(callback);
-  }
-
-  unobserve(callback) {
-    this._observers = this._observers.filter((cb) => cb !== callback);
-  }
-
-  _notifyObservers(transaction = { local: false }) {
-    this._observers.forEach((cb) => cb({}, transaction));
-  }
-}
+  return ytext;
+};
 
 // Mock TinyMCE Editor
 const createMockEditor = (content = '') => {
@@ -136,7 +106,7 @@ describe('YjsTinyMCEBinding', () => {
 
   beforeEach(() => {
     mockEditor = createMockEditor('<p>Initial content</p>');
-    mockYText = new MockYText('<p>Initial content</p>');
+    mockYText = createYText('<p>Initial content</p>');
 
     // Suppress console.log during tests
     spyOn(console, 'log').mockImplementation(() => {});
@@ -211,7 +181,8 @@ describe('YjsTinyMCEBinding', () => {
   describe('init', () => {
     it('syncs content to editor when different', () => {
       // Make content different so setContent gets called
-      mockYText._content = '<p>Different content</p>';
+      mockYText.delete(0, mockYText.length);
+      mockYText.insert(0, '<p>Different content</p>');
       binding = new YjsTinyMCEBinding(mockEditor, mockYText);
       expect(mockEditor.setContent).toHaveBeenCalledWith('<p>Different content</p>');
     });
@@ -242,7 +213,8 @@ describe('YjsTinyMCEBinding', () => {
   describe('syncToEditor', () => {
     it('updates editor content from Y.Text', () => {
       binding = new YjsTinyMCEBinding(mockEditor, mockYText);
-      mockYText._content = '<p>Updated content</p>';
+      mockYText.delete(0, mockYText.length);
+      mockYText.insert(0, '<p>Updated content</p>');
 
       binding.syncToEditor();
 
@@ -251,7 +223,8 @@ describe('YjsTinyMCEBinding', () => {
 
     it('saves and restores cursor position', () => {
       binding = new YjsTinyMCEBinding(mockEditor, mockYText);
-      mockYText._content = '<p>New content</p>';
+      mockYText.delete(0, mockYText.length);
+      mockYText.insert(0, '<p>New content</p>');
 
       binding.syncToEditor();
 
@@ -277,7 +250,8 @@ describe('YjsTinyMCEBinding', () => {
         wasUpdating = binding._isUpdating;
       });
 
-      mockYText._content = '<p>New content</p>';
+      mockYText.delete(0, mockYText.length);
+      mockYText.insert(0, '<p>New content</p>');
       binding.syncToEditor();
 
       expect(wasUpdating).toBe(true);

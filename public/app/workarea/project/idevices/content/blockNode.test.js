@@ -83,14 +83,6 @@ global.eXeLearning = {
     },
 };
 
-// Mock jQuery
-global.$ = vi.fn((selector) => ({
-    addClass: vi.fn().mockReturnThis(),
-    removeClass: vi.fn().mockReturnThis(),
-    attr: vi.fn().mockReturnValue('false'),
-    trigger: vi.fn().mockReturnThis(),
-}));
-
 // Import after setting up mocks
 import IdeviceBlockNode from './blockNode.js';
 

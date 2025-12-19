@@ -12,9 +12,6 @@ globalThis.eXe = {
     }
   },
 };
-globalThis.tinymce = {
-  majorVersion: 4,
-};
 globalThis.$exeTinyMCE = {
   init: vi.fn(),
 };
@@ -29,104 +26,6 @@ globalThis.top = {
   translations: {}
 };
 
-// Mock jQuery
-const mockJQuery = vi.fn((selector) => {
-  const elements = {
-    '#exe-submitButton a': {
-      length: 1,
-      attr: vi.fn(() => 'console.log("clicked")'),
-      0: { onclick: null },
-      eq: function() { return this; }
-    },
-    'HTML': {
-      attr: vi.fn(() => 'en')
-    },
-    '.exe-fieldset legend a': {
-      click: vi.fn()
-    },
-    '.exe-info': {
-      each: vi.fn(),
-      html: vi.fn()
-    },
-    'textarea.mceEditor, #node-content .idevice_node[mode=edition]': {
-      val: vi.fn()
-    },
-    '#eXeGameShowClue': {
-      is: vi.fn(() => true),
-      prop: vi.fn()
-    },
-    '#eXeGameClue': {
-      val: vi.fn(() => 'Clue Text'),
-      prop: vi.fn()
-    },
-    '#eXeGamePercentajeClue': {
-      children: vi.fn(() => ({
-        val: vi.fn(() => '40')
-      })),
-      val: vi.fn()
-    },
-    '#eXeGameShowCodeAccess': {
-      is: vi.fn(() => false),
-      prop: vi.fn()
-    },
-    '#eXeGameCodeAccess': {
-      val: vi.fn(() => ''),
-      prop: vi.fn()
-    },
-    '#eXeGameMessageCodeAccess': {
-      val: vi.fn(() => ''),
-      prop: vi.fn()
-    },
-    'input[type=radio][name=\'eXeGameSCORM\']:checked': {
-      val: vi.fn(() => '1')
-    },
-    '#eXeGameSCORMbuttonText': {
-      val: vi.fn(() => 'Save'),
-    },
-    '#eXeGameSCORMWeight': {
-      val: vi.fn(() => '100'),
-    }
-  };
-
-  if (typeof selector === 'string' && elements[selector]) {
-    return elements[selector];
-  }
-
-  return {
-    length: 0,
-    attr: vi.fn(),
-    click: vi.fn(),
-    each: vi.fn(),
-    html: vi.fn(),
-    val: vi.fn(),
-    find: vi.fn().mockReturnThis(),
-    parent: vi.fn().mockReturnThis(),
-    prev: vi.fn().mockReturnThis(),
-    next: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    before: vi.fn().mockReturnThis(),
-    after: vi.fn().mockReturnThis(),
-    addClass: vi.fn().mockReturnThis(),
-    removeClass: vi.fn().mockReturnThis(),
-    toggleClass: vi.fn().mockReturnThis(),
-    css: vi.fn().mockReturnThis(),
-    fadeOut: vi.fn().mockReturnThis(),
-    prop: vi.fn().mockReturnThis(),
-    on: vi.fn().mockReturnThis(),
-    off: vi.fn().mockReturnThis(),
-    is: vi.fn(() => false),
-    children: vi.fn().mockReturnThis(),
-    trigger: vi.fn().mockReturnThis(),
-    removeAttr: vi.fn().mockReturnThis(),
-  };
-});
-
-// Add $.trim
-mockJQuery.trim = (str) => str ? str.trim() : '';
-
-globalThis.$ = mockJQuery;
-globalThis.jQuery = mockJQuery;
-
 // Load the module using require() for coverage tracking
 const $exeDevicesEdition = require('./common_edition.js');
 globalThis.$exeDevicesEdition = $exeDevicesEdition;
@@ -134,6 +33,10 @@ globalThis.$exeDevicesEdition = $exeDevicesEdition;
 describe('common_edition.js', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    if (!globalThis.$ || !globalThis.jQuery) {
+      throw new Error('jQuery is not available in the test environment');
+    }
 
     // Ensure $exeDevice is defined globally before script evaluation in each test
     globalThis.$exeDevice = {
@@ -143,67 +46,27 @@ describe('common_edition.js', () => {
         en: { 'Test': 'Translated Test' }
       }
     };
+    document.documentElement.setAttribute('lang', 'en');
+    document.body.innerHTML = '';
 
-    // Re-mock jQuery to ensure it handles string checks safely
-    mockJQuery.mockImplementation((selector) => {
-      const isString = typeof selector === 'string';
+    const submitWrapper = document.createElement('div');
+    submitWrapper.id = 'exe-submitButton';
+    const submitLink = document.createElement('a');
+    submitLink.setAttribute('onclick', 'console.log("clicked")');
+    submitWrapper.appendChild(submitLink);
+    document.body.appendChild(submitWrapper);
 
-      const elements = {
-        '#exe-submitButton a': {
-          length: 1,
-          attr: vi.fn(() => 'console.log("clicked")'),
-          0: { onclick: null },
-          eq: function() { return this; }
-        },
-        'HTML': {
-          attr: vi.fn(() => 'en')
-        }
-      };
+    const editorTextarea = document.createElement('textarea');
+    editorTextarea.className = 'mceEditor';
+    document.body.appendChild(editorTextarea);
 
-      if (isString && elements[selector]) {
-        return elements[selector];
-      }
-
-      const baseMock = {
-        length: isString && selector.includes('.exe-form-tab') ? 0 : 0,
-        attr: vi.fn(),
-        click: vi.fn(),
-        each: vi.fn(),
-        html: vi.fn(),
-        val: vi.fn(),
-        find: vi.fn().mockReturnThis(),
-        parent: vi.fn().mockReturnThis(),
-        prev: vi.fn().mockReturnThis(),
-        next: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        before: vi.fn().mockReturnThis(),
-        after: vi.fn().mockReturnThis(),
-        addClass: vi.fn().mockReturnThis(),
-        removeClass: vi.fn().mockReturnThis(),
-        toggleClass: vi.fn().mockReturnThis(),
-        css: vi.fn().mockReturnThis(),
-        fadeOut: vi.fn().mockReturnThis(),
-        prop: vi.fn().mockReturnThis(),
-        on: vi.fn().mockReturnThis(),
-        off: vi.fn().mockReturnThis(),
-        is: vi.fn(() => selector === '#eXeGameShowClue'),
-        children: vi.fn().mockReturnThis(),
-        trigger: vi.fn().mockReturnThis(),
-        removeAttr: vi.fn().mockReturnThis(),
-      };
-
-      if (isString) {
-        if (selector === '#eXeGameClue') baseMock.val = vi.fn(() => 'Clue Text');
-        if (selector === '#eXeGameSCORMbuttonText') baseMock.val = vi.fn(() => 'Save');
-        if (selector === '#eXeGameSCORMWeight') baseMock.val = vi.fn(() => '100');
-        if (selector === 'input[type=radio][name=\'eXeGameSCORM\']:checked') baseMock.val = vi.fn(() => '1');
-      }
-
-      return baseMock;
-    });
-    mockJQuery.trim = (str) => str ? str.trim() : '';
-    globalThis.$ = mockJQuery;
-    globalThis.jQuery = mockJQuery;
+    const nodeContent = document.createElement('div');
+    nodeContent.id = 'node-content';
+    const ideviceNode = document.createElement('div');
+    ideviceNode.className = 'idevice_node';
+    ideviceNode.setAttribute('mode', 'edition');
+    nodeContent.appendChild(ideviceNode);
+    document.body.appendChild(nodeContent);
   });
 
   it('defines global $exeDevicesEdition', () => {
@@ -215,7 +78,14 @@ describe('common_edition.js', () => {
     it('calls $exeDevice.init and $exeTinyMCE.init', () => {
       globalThis.$exeDevicesEdition.iDevice.init();
       expect(globalThis.$exeDevice.init).toHaveBeenCalled();
-      expect(globalThis.$exeTinyMCE.init).toHaveBeenCalledWith('multiple-visible', '.exe-html-editor');
+      const majorVersion = Number(globalThis.tinymce?.majorVersion || 0);
+      if (majorVersion === 4) {
+        expect(globalThis.$exeTinyMCE.init).toHaveBeenCalledWith('multiple-visible', '.exe-html-editor');
+      } else if (majorVersion === 3) {
+        expect(globalThis.$exeTinyMCE.init).toHaveBeenCalledWith('specific_textareas', 'exe-html-editor');
+      } else {
+        expect(globalThis.$exeTinyMCE.init).not.toHaveBeenCalled();
+      }
     });
 
     it('shows alert if $exeDevice is not fully defined', () => {
@@ -247,6 +117,25 @@ describe('common_edition.js', () => {
     });
 
     it('itinerary.getValues returns object with values', () => {
+      const clueCheckbox = document.createElement('input');
+      clueCheckbox.id = 'eXeGameShowClue';
+      clueCheckbox.type = 'checkbox';
+      clueCheckbox.checked = true;
+      document.body.appendChild(clueCheckbox);
+
+      const clueInput = document.createElement('input');
+      clueInput.id = 'eXeGameClue';
+      clueInput.value = 'Clue Text';
+      document.body.appendChild(clueInput);
+
+      const percentSelect = document.createElement('select');
+      percentSelect.id = 'eXeGamePercentajeClue';
+      const option = document.createElement('option');
+      option.value = '40';
+      option.selected = true;
+      percentSelect.appendChild(option);
+      document.body.appendChild(percentSelect);
+
       const values = globalThis.$exeDevicesEdition.iDevice.gamification.itinerary.getValues();
       expect(values).toHaveProperty('showClue');
       expect(values).toHaveProperty('clueGame');
@@ -254,6 +143,23 @@ describe('common_edition.js', () => {
     });
 
     it('scorm.getValues returns SCORM values', () => {
+      const scormRadio = document.createElement('input');
+      scormRadio.type = 'radio';
+      scormRadio.name = 'eXeGameSCORM';
+      scormRadio.value = '1';
+      scormRadio.checked = true;
+      document.body.appendChild(scormRadio);
+
+      const scormButtonText = document.createElement('input');
+      scormButtonText.id = 'eXeGameSCORMbuttonText';
+      scormButtonText.value = 'Save';
+      document.body.appendChild(scormButtonText);
+
+      const scormWeight = document.createElement('input');
+      scormWeight.id = 'eXeGameSCORMWeight';
+      scormWeight.value = '100';
+      document.body.appendChild(scormWeight);
+
       const values = globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getValues();
       expect(values.isScorm).toBe(1);
       expect(values.textButtonScorm).toBe('Save');
@@ -262,35 +168,17 @@ describe('common_edition.js', () => {
 
   describe('tabs', () => {
     it('init handles tabs', () => {
-      const mockTabs = {
-        each: vi.fn((callback) => {
-          callback.call({
-            attr: vi.fn((name, val) => {
-              if (name === 'title') return 'Tab Title';
-              return '';
-            }),
-            hide: vi.fn()
-          }, 0);
-        }),
-        eq: vi.fn(() => ({
-          before: vi.fn()
-        }))
-      };
-
-      globalThis.$ = vi.fn((selector) => {
-        if (typeof selector === 'string' && selector.includes('.exe-form-tab')) return mockTabs;
-        return {
-          click: vi.fn(),
-          attr: vi.fn(),
-          addClass: vi.fn(),
-          hide: vi.fn(),
-          trigger: vi.fn(),
-          length: 1
-        };
-      });
+      const container = document.createElement('div');
+      container.id = 'test-id';
+      const tab = document.createElement('div');
+      tab.className = 'exe-form-tab';
+      tab.setAttribute('title', 'Tab Title');
+      container.appendChild(tab);
+      document.body.appendChild(container);
 
       globalThis.$exeDevicesEdition.iDevice.tabs.init('test-id');
-      expect(mockTabs.each).toHaveBeenCalled();
+      const tabList = container.querySelector('.exe-form-tabs');
+      expect(tabList).toBeTruthy();
     });
   });
 });

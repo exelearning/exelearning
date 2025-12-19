@@ -109,42 +109,11 @@ const createMockFile = (name = 'test.elpx') => ({
   arrayBuffer: async () => new Uint8Array([80, 75, 3, 4]).buffer, // Mock ZIP data
 });
 
-// Mock Y.js types
-class MockYMap {
-  constructor() {
-    this.data = {};
-  }
-  set(key, value) {
-    this.data[key] = value;
-  }
-  get(key) {
-    return this.data[key];
-  }
-}
-
-class MockYArray {
-  constructor() {
-    this.items = [];
-  }
-  push(items) {
-    this.items.push(...items);
-  }
-  get(index) {
-    return this.items[index];
-  }
-  get length() {
-    return this.items.length;
-  }
-  delete() {}
-}
-
 // Mock DocumentManager
 const createMockDocumentManager = () => {
-  const ydoc = {
-    transact: (fn) => fn(),
-  };
-  const navigation = new MockYArray();
-  const metadata = new MockYMap();
+  const ydoc = new window.Y.Doc();
+  const navigation = ydoc.getArray('navigation');
+  const metadata = ydoc.getMap('metadata');
 
   return {
     getDoc: () => ydoc,
@@ -166,20 +135,23 @@ describe('ElpxImporter', () => {
   let mockDocManager;
   let mockAssetManager;
   const originalWindow = global.window;
+  let scratchArray;
+  const integrateYType = (type) => {
+    scratchArray.push([type]);
+    return type;
+  };
 
   beforeEach(() => {
     // Setup globals - use fflate instead of JSZip
     global.window = {
+      ...global.window,
       fflate: createMockFflate(),
-      Y: {
-        Map: MockYMap,
-        Array: MockYArray,
-      },
     };
 
     mockDocManager = createMockDocumentManager();
     mockAssetManager = createMockAssetManager();
     importer = new ElpxImporter(mockDocManager, mockAssetManager);
+    scratchArray = mockDocManager.getDoc().getArray('__scratch');
 
     // Suppress console.log during tests
     spyOn(console, 'log').mockImplementation(() => {});
@@ -190,6 +162,7 @@ describe('ElpxImporter', () => {
   afterEach(() => {
     // Restore original globals instead of deleting
     global.window = originalWindow;
+    scratchArray = null;
   });
 
   describe('constructor', () => {
@@ -611,7 +584,7 @@ describe('ElpxImporter', () => {
       if (str == null || typeof str !== 'string') return '';
       if (!assetMap || assetMap.size === 0) return str;
 
-      const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\\]/g, '\\$&');
 
       for (const [originalPath, assetId] of assetMap.entries()) {
         const fileName = originalPath.split('/').pop();
@@ -622,7 +595,7 @@ describe('ElpxImporter', () => {
         str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}`);
 
         // 2. Replace resources/filename when preceded by attribute quote
-        const resourcesPattern = new RegExp(`(["'=])resources/${escapedFileName}`, 'g');
+        const resourcesPattern = new RegExp(`(["'="])resources/${escapedFileName}`, 'g');
         str = str.replace(resourcesPattern, `$1asset://${assetId}`);
 
         // 3. Replace bare filename ONLY in src/href attributes
@@ -1430,6 +1403,7 @@ describe('ElpxImporter', () => {
       const stats = { pages: 0, blocks: 0, components: 0 };
 
       const pageMap = importer.createPageYMap(pageData, stats);
+      integrateYType(pageMap);
 
       expect(pageMap.get('id')).toBe('page-1');
       expect(pageMap.get('pageName')).toBe('Test Page');
@@ -1458,6 +1432,7 @@ describe('ElpxImporter', () => {
       const stats = { pages: 0, blocks: 0, components: 0 };
 
       const pageMap = importer.createPageYMap(pageData, stats);
+      integrateYType(pageMap);
 
       const blocks = pageMap.get('blocks');
       expect(blocks.length).toBe(1);
@@ -1479,6 +1454,7 @@ describe('ElpxImporter', () => {
       const stats = { blocks: 0, components: 0 };
 
       const blockMap = importer.createBlockYMap(blockData, stats);
+      integrateYType(blockMap);
 
       expect(blockMap.get('id')).toBe('block-1');
       expect(blockMap.get('blockName')).toBe('Test Block');
@@ -1509,6 +1485,7 @@ describe('ElpxImporter', () => {
       const stats = { blocks: 0, components: 0 };
 
       const blockMap = importer.createBlockYMap(blockData, stats);
+      integrateYType(blockMap);
 
       const components = blockMap.get('components');
       expect(components.length).toBe(1);
@@ -1531,6 +1508,7 @@ describe('ElpxImporter', () => {
       };
 
       const compMap = importer.createComponentYMap(compData);
+      integrateYType(compMap);
 
       expect(compMap.get('id')).toBe('comp-1');
       expect(compMap.get('ideviceType')).toBe('FreeTextIdevice');
@@ -1552,6 +1530,7 @@ describe('ElpxImporter', () => {
       };
 
       const compMap = importer.createComponentYMap(compData);
+      integrateYType(compMap);
 
       const jsonProps = compMap.get('jsonProperties');
       expect(JSON.parse(jsonProps)).toEqual({ key: 'value', num: 42 });
@@ -1571,6 +1550,7 @@ describe('ElpxImporter', () => {
       };
 
       const compMap = importer.createComponentYMap(compData);
+      integrateYType(compMap);
 
       expect(compMap.get('prop_myProp')).toBe('myValue');
     });
@@ -1589,6 +1569,7 @@ describe('ElpxImporter', () => {
       };
 
       const compMap = importer.createComponentYMap(compData);
+      integrateYType(compMap);
 
       // Should not throw and should not set null values
       expect(compMap.get('htmlView')).toBeUndefined();
@@ -1611,8 +1592,12 @@ describe('ElpxImporter', () => {
       const nav = docManager.getNavigation();
 
       // Add some mock pages
-      nav.push([{ get: (key) => key === 'order' ? 5 : null }]);
-      nav.push([{ get: (key) => key === 'order' ? 3 : null }]);
+      const page1 = new window.Y.Map();
+      page1.set('order', 5);
+      const page2 = new window.Y.Map();
+      page2.set('order', 3);
+      nav.push([page1]);
+      nav.push([page2]);
 
       const importerWithPages = new ElpxImporter(docManager, createMockAssetManager());
       const order = importerWithPages.getNextAvailableOrder(null);

@@ -1,7 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDomJQuery } from '../../test-helpers/createDomJQuery.js';
-
-global.$ = createDomJQuery();
 
 global.$exe_i18n = {
   exeGames: {

@@ -55,6 +55,7 @@ describe('YjsProjectManagerMixin', () => {
 
     // Setup global mocks
     global.window = {
+      ...global.window,
       YjsModules: {
         initializeProject: mock(() => undefined).mockResolvedValue(mockBridge),
         cleanup: mock(() => undefined).mockResolvedValue(),
@@ -1134,35 +1135,7 @@ describe('YjsProjectManagerMixin', () => {
     });
 
     it('imports structure with pages and blocks', async () => {
-      // Mock Y global
-      class MockYMap {
-        constructor() {
-          this._data = new Map();
-        }
-        get(key) {
-          return this._data.get(key);
-        }
-        set(key, value) {
-          this._data.set(key, value);
-        }
-      }
-
-      class MockYArray {
-        constructor() {
-          this._items = [];
-        }
-        get length() {
-          return this._items.length;
-        }
-        push(items) {
-          this._items.push(...items);
-        }
-        delete() {}
-      }
-
-      global.window.Y = { Map: MockYMap, Array: MockYArray };
-
-      const mockNavigation = new MockYArray();
+      const mockNavigation = new global.window.Y.Array();
       mockBridge.getAssetManager = mock(() => null);
       mockBridge.getDocumentManager = mock(() => ({
         getNavigation: () => mockNavigation,
@@ -1201,34 +1174,7 @@ describe('YjsProjectManagerMixin', () => {
     });
 
     it('handles empty structure', async () => {
-      class MockYMap {
-        constructor() {
-          this._data = new Map();
-        }
-        get(key) {
-          return this._data.get(key);
-        }
-        set(key, value) {
-          this._data.set(key, value);
-        }
-      }
-
-      class MockYArray {
-        constructor() {
-          this._items = [];
-        }
-        get length() {
-          return this._items.length;
-        }
-        push(items) {
-          this._items.push(...items);
-        }
-        delete() {}
-      }
-
-      global.window.Y = { Map: MockYMap, Array: MockYArray };
-
-      const mockNavigation = new MockYArray();
+      const mockNavigation = new global.window.Y.Array();
       mockBridge.getAssetManager = mock(() => null);
       mockBridge.getDocumentManager = mock(() => ({
         getNavigation: () => mockNavigation,
@@ -1243,36 +1189,8 @@ describe('YjsProjectManagerMixin', () => {
     });
 
     it('clears existing navigation when clearExisting is true', async () => {
-      class MockYMap {
-        constructor() {
-          this._data = new Map();
-        }
-        get(key) {
-          return this._data.get(key);
-        }
-        set(key, value) {
-          this._data.set(key, value);
-        }
-      }
-
-      class MockYArray {
-        constructor() {
-          this._items = ['existing'];
-        }
-        get length() {
-          return this._items.length;
-        }
-        push(items) {
-          this._items.push(...items);
-        }
-        delete(index) {
-          this._items.splice(index, 1);
-        }
-      }
-
-      global.window.Y = { Map: MockYMap, Array: MockYArray };
-
-      const mockNavigation = new MockYArray();
+      const mockNavigation = new global.window.Y.Array();
+      mockNavigation.push(['existing']);
       mockBridge.getAssetManager = mock(() => null);
       mockBridge.getDocumentManager = mock(() => ({
         getNavigation: () => mockNavigation,

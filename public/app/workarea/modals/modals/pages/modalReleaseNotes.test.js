@@ -10,48 +10,6 @@ describe('ModalReleaseNotes', () => {
   beforeEach(() => {
     // Mock translation function
     window._ = vi.fn((key) => key);
-    
-    // Mock jQuery
-    window.$ = vi.fn((selector, context) => {
-      let elements;
-      if (typeof selector === 'string') {
-        elements = context ? context.querySelectorAll(selector) : document.querySelectorAll(selector);
-      } else if (selector instanceof HTMLElement || selector === window || selector === document) {
-        elements = [selector];
-      } else if (selector && selector.length !== undefined) {
-        elements = selector;
-      } else {
-        elements = [selector];
-      }
-
-      const mockObj = {
-        each: function(callback) {
-          elements.forEach((el, index) => {
-            callback.call(el, index, el);
-          });
-          return this;
-        },
-        attr: vi.fn().mockImplementation(function(name, value) {
-          if (value !== undefined) {
-             elements.forEach(el => {
-                 if (el.setAttribute) el.setAttribute(name, value);
-                 else el[name] = value;
-             });
-             return this;
-          }
-          return elements[0]?.getAttribute ? elements[0].getAttribute(name) : elements[0][name];
-        }),
-        html: vi.fn().mockImplementation(function(val) {
-          if (val !== undefined) {
-            elements.forEach(el => el.innerHTML = val);
-            return this;
-          }
-          return elements[0]?.innerHTML;
-        }),
-        on: vi.fn().mockReturnThis(),
-      };
-      return mockObj;
-    });
 
     // Mock eXeLearning global
     window.eXeLearning = {

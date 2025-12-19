@@ -29,6 +29,7 @@ export default class Theme {
         'linkColor',
         'cssFiles',
         'downloadable',
+        'icons',
     ];
 
     /**
@@ -54,6 +55,7 @@ export default class Theme {
         linkColor: '',
         cssFiles: [],
         type: eXeLearning.symfony.themeBaseType,
+        icons: {},
     };
 
     /**

@@ -12,6 +12,14 @@
 
 describe('YjsModules (index.js)', () => {
   let savedValues;
+  const createYText = (text = '') => {
+    const doc = new window.Y.Doc();
+    const yText = doc.getText('html');
+    if (text) {
+      yText.insert(0, text);
+    }
+    return yText;
+  };
 
   beforeEach(() => {
     // Reset modules first to clear any cached require
@@ -64,12 +72,6 @@ describe('YjsModules (index.js)', () => {
     });
     window.YjsProjectManagerMixin = vi.fn();
     window.YjsPropertiesBinding = vi.fn();
-    window.Y = {
-      Text: vi.fn().mockImplementation(function(content) {
-        this.content = content;
-        return this;
-      })
-    };
     window.eXeLearning = { app: null };
 
     // Suppress console.log during tests
@@ -369,9 +371,7 @@ describe('YjsModules (index.js)', () => {
     });
 
     it('creates TinyMCE binding when component found', () => {
-      const mockYText = {
-        insert: vi.fn(),
-      };
+      const mockYText = createYText();
       const mockComponent = {
         get: vi.fn((key) => {
           if (key === 'htmlContent') return mockYText;
@@ -402,7 +402,7 @@ describe('YjsModules (index.js)', () => {
     });
 
     it('creates new Y.Text when htmlContent is string', () => {
-      let capturedYText;
+      const insertSpy = spyOn(window.Y.Text.prototype, 'insert');
       const mockComponent = {
         get: vi.fn((key) => {
           if (key === 'htmlContent') return '<p>String content</p>';
@@ -421,13 +421,6 @@ describe('YjsModules (index.js)', () => {
       };
       window.YjsModules._bridge = mockBridge;
 
-      window.Y = {
-        Text: vi.fn().mockImplementation(function() {
-          this.insert = vi.fn();
-          capturedYText = this;
-          return this;
-        }),
-      };
       window.YjsTinyMCEBinding = vi.fn().mockImplementation(function() {
         this.binding = true;
         return this;
@@ -436,9 +429,9 @@ describe('YjsModules (index.js)', () => {
       const mockEditor = { on: vi.fn(), off: vi.fn() };
       window.YjsModules.bindTinyMCE(mockEditor, 'page-1', 'block-1', 'comp-1');
 
-      expect(window.Y.Text).toHaveBeenCalled();
-      expect(capturedYText.insert).toHaveBeenCalledWith(0, '<p>String content</p>');
-      expect(mockComponent.set).toHaveBeenCalledWith('htmlContent', capturedYText);
+      const [[, createdYText]] = mockComponent.set.mock.calls;
+      expect(createdYText).toBeInstanceOf(window.Y.Text);
+      expect(insertSpy).toHaveBeenCalledWith(0, '<p>String content</p>');
     });
   });
 });

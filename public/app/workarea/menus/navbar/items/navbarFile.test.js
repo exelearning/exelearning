@@ -14,87 +14,60 @@ describe('NavbarFile', () => {
     let mockMenu;
     let mockButtons;
     let navbarFile;
+    let originalTooltip;
+    let navbarElement;
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        // Create mock buttons
-        mockButtons = {
-            dropdownFile: { addEventListener: vi.fn() },
-            newButton: { addEventListener: vi.fn() },
-            newFromTemplateButton: { addEventListener: vi.fn() },
-            saveButton: { addEventListener: vi.fn() },
-            saveButtonAs: { addEventListener: vi.fn() },
-            saveButtonAsOffline: { addEventListener: vi.fn() },
-            uploadPlatformButton: { addEventListener: vi.fn() },
-            openUserOdeFilesButton: { addEventListener: vi.fn() },
-            openOfflineButton: { addEventListener: vi.fn() },
-            saveOfflineButton: { addEventListener: vi.fn() },
-            recentProjectsButton: { addEventListener: vi.fn() },
-            downloadProjectButton: { addEventListener: vi.fn() },
-            downloadProjectAsButton: { addEventListener: vi.fn() },
-            exportHTML5Button: { addEventListener: vi.fn() },
-            exportHTML5AsButton: { addEventListener: vi.fn() },
-            exportHTML5FolderAsButton: { addEventListener: vi.fn() },
-            exportHTML5SPButton: { addEventListener: vi.fn() },
-            exportHTML5SPAsButton: { addEventListener: vi.fn() },
-            exportPrintButton: { addEventListener: vi.fn() },
-            exportSCORM12Button: { addEventListener: vi.fn() },
-            exportSCORM12AsButton: { addEventListener: vi.fn() },
-            exportSCORM2004Button: { addEventListener: vi.fn() },
-            exportSCORM2004AsButton: { addEventListener: vi.fn() },
-            exportIMSButton: { addEventListener: vi.fn() },
-            exportIMSAsButton: { addEventListener: vi.fn() },
-            exportEPUB3Button: { addEventListener: vi.fn() },
-            exportEPUB3AsButton: { addEventListener: vi.fn() },
-            exportXmlPropertiesButton: { addEventListener: vi.fn() },
-            exportXmlPropertiesAsButton: { addEventListener: vi.fn() },
-            importXmlPropertiesButton: { addEventListener: vi.fn() },
-            importElpButton: { addEventListener: vi.fn() },
-            leftPanelsTogglerButton: { addEventListener: vi.fn() },
+        const createButton = (id) => {
+            const button = document.createElement('button');
+            button.id = id;
+            button.addEventListener = vi.fn();
+            return button;
         };
 
-        // Mock menu with navbar querySelector
+        navbarElement = document.createElement('nav');
+        mockButtons = {
+            dropdownFile: createButton('dropdownFile'),
+            newButton: createButton('navbar-button-new'),
+            newFromTemplateButton: createButton('navbar-button-new-from-template'),
+            saveButton: createButton('navbar-button-save'),
+            saveButtonAs: createButton('navbar-button-save-as'),
+            saveButtonAsOffline: createButton('navbar-button-save-as-offline'),
+            uploadPlatformButton: createButton('navbar-button-uploadtoplatform'),
+            openUserOdeFilesButton: createButton('navbar-button-openuserodefiles'),
+            openOfflineButton: createButton('navbar-button-open-offline'),
+            saveOfflineButton: createButton('navbar-button-save-offline'),
+            recentProjectsButton: createButton('navbar-button-dropdown-recent-projects'),
+            downloadProjectButton: createButton('navbar-button-download-project'),
+            downloadProjectAsButton: createButton('navbar-button-download-project-as'),
+            exportHTML5Button: createButton('navbar-button-export-html5'),
+            exportHTML5AsButton: createButton('navbar-button-exportas-html5'),
+            exportHTML5FolderAsButton: createButton('navbar-button-exportas-html5-folder'),
+            exportHTML5SPButton: createButton('navbar-button-export-html5-sp'),
+            exportHTML5SPAsButton: createButton('navbar-button-exportas-html5-sp'),
+            exportPrintButton: createButton('navbar-button-export-print'),
+            exportSCORM12Button: createButton('navbar-button-export-scorm12'),
+            exportSCORM12AsButton: createButton('navbar-button-exportas-scorm12'),
+            exportSCORM2004Button: createButton('navbar-button-export-scorm2004'),
+            exportSCORM2004AsButton: createButton('navbar-button-exportas-scorm2004'),
+            exportIMSButton: createButton('navbar-button-export-ims'),
+            exportIMSAsButton: createButton('navbar-button-exportas-ims'),
+            exportEPUB3Button: createButton('navbar-button-export-epub3'),
+            exportEPUB3AsButton: createButton('navbar-button-exportas-epub3'),
+            exportXmlPropertiesButton: createButton('navbar-button-export-xml-properties'),
+            exportXmlPropertiesAsButton: createButton('navbar-button-exportas-xml-properties'),
+            importXmlPropertiesButton: createButton('navbar-button-import-xml-properties'),
+            importElpButton: createButton('navbar-button-import-elp'),
+            leftPanelsTogglerButton: createButton('exe-panels-toggler'),
+        };
+
+        Object.values(mockButtons).forEach((button) => navbarElement.appendChild(button));
+        vi.spyOn(navbarElement, 'querySelector');
+
         mockMenu = {
-            navbar: {
-                querySelector: vi.fn((selector) => {
-                    const map = {
-                        '#dropdownFile': mockButtons.dropdownFile,
-                        '#navbar-button-new': mockButtons.newButton,
-                        '#navbar-button-new-from-template': mockButtons.newFromTemplateButton,
-                        '#navbar-button-save': mockButtons.saveButton,
-                        '#navbar-button-save-as': mockButtons.saveButtonAs,
-                        '#navbar-button-save-as-offline': mockButtons.saveButtonAsOffline,
-                        '#navbar-button-uploadtoplatform': mockButtons.uploadPlatformButton,
-                        '#navbar-button-openuserodefiles': mockButtons.openUserOdeFilesButton,
-                        '#navbar-button-open-offline': mockButtons.openOfflineButton,
-                        '#navbar-button-save-offline': mockButtons.saveOfflineButton,
-                        '#navbar-button-dropdown-recent-projects': mockButtons.recentProjectsButton,
-                        '#navbar-button-download-project': mockButtons.downloadProjectButton,
-                        '#navbar-button-download-project-as': mockButtons.downloadProjectAsButton,
-                        '#navbar-button-export-html5': mockButtons.exportHTML5Button,
-                        '#navbar-button-exportas-html5': mockButtons.exportHTML5AsButton,
-                        '#navbar-button-exportas-html5-folder': mockButtons.exportHTML5FolderAsButton,
-                        '#navbar-button-export-html5-sp': mockButtons.exportHTML5SPButton,
-                        '#navbar-button-exportas-html5-sp': mockButtons.exportHTML5SPAsButton,
-                        '#navbar-button-export-print': mockButtons.exportPrintButton,
-                        '#navbar-button-export-scorm12': mockButtons.exportSCORM12Button,
-                        '#navbar-button-exportas-scorm12': mockButtons.exportSCORM12AsButton,
-                        '#navbar-button-export-scorm2004': mockButtons.exportSCORM2004Button,
-                        '#navbar-button-exportas-scorm2004': mockButtons.exportSCORM2004AsButton,
-                        '#navbar-button-export-ims': mockButtons.exportIMSButton,
-                        '#navbar-button-exportas-ims': mockButtons.exportIMSAsButton,
-                        '#navbar-button-export-epub3': mockButtons.exportEPUB3Button,
-                        '#navbar-button-exportas-epub3': mockButtons.exportEPUB3AsButton,
-                        '#navbar-button-export-xml-properties': mockButtons.exportXmlPropertiesButton,
-                        '#navbar-button-exportas-xml-properties': mockButtons.exportXmlPropertiesAsButton,
-                        '#navbar-button-import-xml-properties': mockButtons.importXmlPropertiesButton,
-                        '#navbar-button-import-elp': mockButtons.importElpButton,
-                        '#exe-panels-toggler': mockButtons.leftPanelsTogglerButton,
-                    };
-                    return map[selector] || null;
-                }),
-            },
+            navbar: navbarElement,
         };
 
         // Mock global window
@@ -176,28 +149,11 @@ describe('NavbarFile', () => {
         // Mock i18n
         global._ = vi.fn((str) => str);
 
-        // Mock jQuery
-        const jQueryChainable = {
-            attr: vi.fn().mockReturnThis(),
-            tooltip: vi.fn().mockReturnThis(),
-            on: vi.fn().mockReturnThis(),
-            off: vi.fn().mockReturnThis(),
-            addClass: vi.fn().mockReturnThis(),
-            removeClass: vi.fn().mockReturnThis(),
-            show: vi.fn().mockReturnThis(),
-            hide: vi.fn().mockReturnThis(),
-            val: vi.fn().mockReturnThis(),
-            html: vi.fn().mockReturnThis(),
-            text: vi.fn().mockReturnThis(),
-            find: vi.fn().mockReturnThis(),
-            append: vi.fn().mockReturnThis(),
-            prepend: vi.fn().mockReturnThis(),
-            remove: vi.fn().mockReturnThis(),
-            click: vi.fn().mockReturnThis(),
-            trigger: vi.fn().mockReturnThis(),
-        };
-        global.$ = vi.fn(() => jQueryChainable);
-        global.$.fn = { extend: vi.fn() };
+        if (!global.$ || !global.$.fn) {
+            throw new Error('jQuery is not available in the test environment');
+        }
+        originalTooltip = global.$.fn.tooltip;
+        global.$.fn.tooltip = vi.fn().mockReturnThis();
     });
 
     afterEach(() => {
@@ -205,7 +161,7 @@ describe('NavbarFile', () => {
         delete global.window;
         delete global.eXeLearning;
         delete global._;
-        delete global.$;
+        global.$.fn.tooltip = originalTooltip;
     });
 
     describe('constructor', () => {

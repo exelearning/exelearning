@@ -26,11 +26,6 @@ describe('SaveManager', () => {
     });
     global.fetch = mockFetch;
 
-    // Mock Y (Yjs)
-    global.Y = {
-      encodeStateAsUpdate: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-    };
-
     // Mock eXeLearning global
     global.eXeLearning = {
       app: {
@@ -55,7 +50,7 @@ describe('SaveManager', () => {
       projectId: 'project-123',
       isNewProject: false,
       documentManager: {
-        ydoc: {},
+        ydoc: new window.Y.Doc(),
         getMetadata: vi.fn().mockReturnValue({
           get: vi.fn().mockReturnValue('Test Project'),
         }),
@@ -72,7 +67,6 @@ describe('SaveManager', () => {
 
   afterEach(() => {
     delete global.fetch;
-    delete global.Y;
     delete global.eXeLearning;
     delete global._;
   });
@@ -429,7 +423,13 @@ describe('SaveManager', () => {
     it('encodes Yjs state', async () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token' });
       await manager.saveYjsState('project-123', mockBridge.documentManager);
-      expect(global.Y.encodeStateAsUpdate).toHaveBeenCalledWith(mockBridge.documentManager.ydoc);
+      
+      // Verify that the body sent to fetch is a Uint8Array (result of encoding)
+      const fetchCall = mockFetch.mock.calls.find(call => 
+        call[0].includes('/yjs-document')
+      );
+      expect(fetchCall).toBeTruthy();
+      expect(fetchCall[1].body).toBeInstanceOf(Uint8Array);
     });
 
     it('sends state to server', async () => {
@@ -650,14 +650,6 @@ describe('SaveManager', () => {
   });
 
   describe('uploadLargeAsset', () => {
-    beforeEach(() => {
-      global.window = { location: { origin: 'http://localhost' } };
-    });
-
-    afterEach(() => {
-      delete global.window;
-    });
-
     it('throws error when asset has no blob', async () => {
       const manager = new SaveManager(mockBridge);
       const asset = { id: 'asset-1', filename: 'test.mp4' };
@@ -746,14 +738,6 @@ describe('SaveManager', () => {
   });
 
   describe('uploadAssets', () => {
-    beforeEach(() => {
-      global.window = { location: { origin: 'http://localhost' } };
-    });
-
-    afterEach(() => {
-      delete global.window;
-    });
-
     it('handles empty assets array', async () => {
       const manager = new SaveManager(mockBridge);
       const result = await manager.uploadAssets('project-123', mockBridge.assetManager, [], null);
@@ -843,12 +827,8 @@ describe('SaveManager', () => {
   });
 
   describe('createPriorityBatches - additional tests', () => {
-    beforeEach(() => {
-      global.window = { location: { origin: 'http://localhost' } };
-    });
-
     afterEach(() => {
-      delete global.window;
+      delete global.window.AssetPriorityQueue;
     });
 
     it('creates individual batches for critical assets', () => {
@@ -917,19 +897,6 @@ describe('SaveManager', () => {
   });
 
   describe('save - additional edge cases', () => {
-    beforeEach(() => {
-      global.window = {
-        location: { origin: 'http://localhost' },
-        Y: {
-          encodeStateAsUpdate: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-        },
-      };
-    });
-
-    afterEach(() => {
-      delete global.window;
-    });
-
     it('skips asset upload when assetManager has no projectId', async () => {
       const manager = new SaveManager(mockBridge);
       mockBridge.assetManager.projectId = null;
@@ -986,14 +953,6 @@ describe('SaveManager', () => {
   });
 
   describe('finalizeChunkedUpload - error handling', () => {
-    beforeEach(() => {
-      global.window = { location: { origin: 'http://localhost' } };
-    });
-
-    afterEach(() => {
-      delete global.window;
-    });
-
     it('throws on finalize error', async () => {
       mockFetch.mockResolvedValue({
         ok: false,
@@ -1029,14 +988,6 @@ describe('SaveManager', () => {
   });
 
   describe('uploadChunk - edge cases', () => {
-    beforeEach(() => {
-      global.window = { location: { origin: 'http://localhost' } };
-    });
-
-    afterEach(() => {
-      delete global.window;
-    });
-
     it('uses default filename when not provided', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
@@ -1070,14 +1021,6 @@ describe('SaveManager', () => {
   });
 
   describe('uploadAssetBatch - edge cases', () => {
-    beforeEach(() => {
-      global.window = { location: { origin: 'http://localhost' } };
-    });
-
-    afterEach(() => {
-      delete global.window;
-    });
-
     it('uses default values for missing asset properties', async () => {
       mockFetch.mockResolvedValue({
         ok: true,

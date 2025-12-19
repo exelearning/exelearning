@@ -14,58 +14,58 @@ describe('NavbarUtilities', () => {
     let mockMenu;
     let mockButtons;
     let navbarUtilities;
+    let originalTooltip;
+    let navbarElement;
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        // Create mock buttons
-        mockButtons = {
-            dropdownUtilities: { addEventListener: vi.fn() },
-            preferencesButton: { addEventListener: vi.fn() },
-            ideviceManagerButton: { addEventListener: vi.fn() },
-            brokenLinksButton: { addEventListener: vi.fn() },
-            filemanagerButton: { addEventListener: vi.fn() },
-            usedFilesButton: { addEventListener: vi.fn() },
-            previewButton: { addEventListener: vi.fn() },
-            projectPreferencesButton: { addEventListener: vi.fn() },
+        const createButton = (id) => {
+            const button = document.createElement('button');
+            button.id = id;
+            button.addEventListener = vi.fn();
+            return button;
         };
 
-        // Mock menu with navbar querySelector
+        navbarElement = document.createElement('nav');
+        mockButtons = {
+            dropdownUtilities: createButton('dropdownUtilities'),
+            preferencesButton: createButton('navbar-button-preferences'),
+            ideviceManagerButton: createButton('navbar-button-idevice-manager'),
+            brokenLinksButton: createButton('navbar-button-odebrokenlinks'),
+            filemanagerButton: createButton('navbar-button-filemanager'),
+            usedFilesButton: createButton('navbar-button-odeusedfiles'),
+            previewButton: createButton('navbar-button-preview'),
+            projectPreferencesButton: createButton('head-top-settings-button'),
+        };
+
+        Object.values(mockButtons).forEach((button) => navbarElement.appendChild(button));
+        vi.spyOn(navbarElement, 'querySelector');
+
         mockMenu = {
-            navbar: {
-                querySelector: vi.fn((selector) => {
-                    const map = {
-                        '#dropdownUtilities': mockButtons.dropdownUtilities,
-                        '#navbar-button-idevice-manager': mockButtons.ideviceManagerButton,
-                        '#navbar-button-odebrokenlinks': mockButtons.brokenLinksButton,
-                        '#navbar-button-filemanager': mockButtons.filemanagerButton,
-                        '#navbar-button-odeusedfiles': mockButtons.usedFilesButton,
-                        '#navbar-button-preview': mockButtons.previewButton,
-                    };
-                    return map[selector] || null;
-                }),
-            },
+            navbar: navbarElement,
         };
 
         // Mock document.querySelector
-        global.document = {
-            querySelector: vi.fn((selector) => {
-                const map = {
-                    '#navbar-button-preferences': mockButtons.preferencesButton,
-                    '#head-top-settings-button': mockButtons.projectPreferencesButton,
-                    '[nav-id="root"]': {
-                        querySelectorAll: vi.fn(() => [{ click: vi.fn() }]),
-                    },
-                };
-                return map[selector] || null;
-            }),
-        };
+        const rootNav = document.createElement('div');
+        rootNav.setAttribute('nav-id', 'root');
+        const rootButton = document.createElement('button');
+        rootButton.click = vi.fn();
+        rootNav.appendChild(rootButton);
+        document.body.appendChild(rootNav);
 
-        // Mock jQuery
-        global.$ = vi.fn(() => ({
-            attr: vi.fn().mockReturnThis(),
-            tooltip: vi.fn().mockReturnThis(),
-        }));
+        vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
+            if (selector === '#navbar-button-preferences') return mockButtons.preferencesButton;
+            if (selector === '#head-top-settings-button') return mockButtons.projectPreferencesButton;
+            if (selector === '[nav-id="root"]') return rootNav;
+            return null;
+        });
+
+        if (!global.$ || !global.$.fn) {
+            throw new Error('jQuery is not available in the test environment');
+        }
+        originalTooltip = global.$.fn.tooltip;
+        global.$.fn.tooltip = vi.fn().mockReturnThis();
 
         // Mock window
         global.window = {
@@ -119,8 +119,8 @@ describe('NavbarUtilities', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
-        delete global.document;
-        delete global.$;
+        document.body.innerHTML = '';
+        global.$.fn.tooltip = originalTooltip;
         delete global.window;
         delete global.eXeLearning;
         delete global._;
@@ -206,7 +206,7 @@ describe('NavbarUtilities', () => {
             navbarUtilities = new NavbarFile(mockMenu);
             navbarUtilities.setTooltips();
 
-            expect($).toHaveBeenCalledWith('.main-menu-right > button');
+            expect(global.$.fn.tooltip).toHaveBeenCalled();
         });
     });
 

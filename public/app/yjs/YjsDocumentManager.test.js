@@ -11,115 +11,6 @@
 
 const YjsDocumentManager = require('./YjsDocumentManager');
 
-// Mock Y.js types
-class MockYDoc {
-  constructor() {
-    this.clientID = 12345;
-    this._arrays = {};
-    this._maps = {};
-    this._updateListeners = [];
-  }
-
-  getArray(name) {
-    if (!this._arrays[name]) {
-      this._arrays[name] = new MockYArray();
-    }
-    return this._arrays[name];
-  }
-
-  getMap(name) {
-    if (!this._maps[name]) {
-      this._maps[name] = new MockYMap();
-    }
-    return this._maps[name];
-  }
-
-  transact(fn, origin) {
-    fn();
-  }
-
-  on(event, callback) {
-    if (event === 'update') {
-      this._updateListeners.push(callback);
-    }
-  }
-
-  off(event, callback) {
-    if (event === 'update') {
-      this._updateListeners = this._updateListeners.filter((cb) => cb !== callback);
-    }
-  }
-
-  destroy() {}
-}
-
-class MockYMap {
-  constructor() {
-    this._data = new Map();
-  }
-
-  get(key) {
-    return this._data.get(key);
-  }
-
-  set(key, value) {
-    this._data.set(key, value);
-  }
-
-  has(key) {
-    return this._data.has(key);
-  }
-
-  delete(key) {
-    return this._data.delete(key);
-  }
-}
-
-class MockYArray {
-  constructor() {
-    this._items = [];
-  }
-
-  get length() {
-    return this._items.length;
-  }
-
-  get(index) {
-    return this._items[index];
-  }
-
-  push(items) {
-    this._items.push(...items);
-  }
-
-  insert(index, items) {
-    this._items.splice(index, 0, ...items);
-  }
-
-  delete(index, length = 1) {
-    this._items.splice(index, length);
-  }
-
-  toArray() {
-    return [...this._items];
-  }
-}
-
-class MockUndoManager {
-  constructor() {
-    this.undoStack = [];
-    this.redoStack = [];
-  }
-
-  undo() {}
-  redo() {}
-  clear() {
-    this.undoStack = [];
-    this.redoStack = [];
-  }
-  destroy() {}
-}
-
 class MockIndexeddbPersistence {
   constructor(dbName, ydoc) {
     this.dbName = dbName;
@@ -221,32 +112,40 @@ describe('YjsDocumentManager', () => {
   const originalNavigatorDescriptor = Object.getOwnPropertyDescriptor(global, 'navigator');
   const originalFetch = global.fetch;
   const originalTranslate = global._;
+  let originalWindowY;
+  let originalIndexeddbPersistence;
+  let originalWebsocketProvider;
+  let originalYjsLockManager;
+  let originalExeLearning;
+  let originalLocation;
+  let originalAddEventListener;
+  let originalRemoveEventListener;
 
   beforeEach(() => {
+    originalWindowY = global.window.Y;
+    originalIndexeddbPersistence = global.window.IndexeddbPersistence;
+    originalWebsocketProvider = global.window.WebsocketProvider;
+    originalYjsLockManager = global.window.YjsLockManager;
+    originalExeLearning = global.window.eXeLearning;
+    originalLocation = global.window.location;
+    originalAddEventListener = global.window.addEventListener;
+    originalRemoveEventListener = global.window.removeEventListener;
+
     // Setup global mocks
-    global.window = {
-      Y: {
-        Doc: MockYDoc,
-        Map: MockYMap,
-        Array: MockYArray,
-        UndoManager: MockUndoManager,
-        applyUpdate: mock(() => undefined),
-        encodeStateAsUpdate: mock(() => new Uint8Array([1, 2, 3])),
-      },
-      IndexeddbPersistence: MockIndexeddbPersistence,
-      WebsocketProvider: MockWebsocketProvider,
-      YjsLockManager: null,
-      eXeLearning: {
-        symfony: { basePath: '' },
-      },
-      location: {
-        protocol: 'http:',
-        hostname: 'localhost',
-        port: '3001',
-      },
-      addEventListener: mock(() => undefined),
-      removeEventListener: mock(() => undefined),
+    global.window.Y = global.window.Y || global.Y;
+    global.window.IndexeddbPersistence = MockIndexeddbPersistence;
+    global.window.WebsocketProvider = MockWebsocketProvider;
+    global.window.YjsLockManager = null;
+    global.window.eXeLearning = {
+      symfony: { basePath: '' },
     };
+    global.window.location = {
+      protocol: 'http:',
+      hostname: 'localhost',
+      port: '3001',
+    };
+    global.window.addEventListener = mock(() => undefined);
+    global.window.removeEventListener = mock(() => undefined);
 
     global._ = mock((key) => key);
     Object.defineProperty(global, 'navigator', {
@@ -284,6 +183,14 @@ describe('YjsDocumentManager', () => {
 
     // Restore original globals instead of deleting
     global.window = originalWindow;
+    global.window.Y = originalWindowY;
+    global.window.IndexeddbPersistence = originalIndexeddbPersistence;
+    global.window.WebsocketProvider = originalWebsocketProvider;
+    global.window.YjsLockManager = originalYjsLockManager;
+    global.window.eXeLearning = originalExeLearning;
+    global.window.location = originalLocation;
+    global.window.addEventListener = originalAddEventListener;
+    global.window.removeEventListener = originalRemoveEventListener;
     global._ = originalTranslate;
     if (originalNavigatorDescriptor) {
       Object.defineProperty(global, 'navigator', originalNavigatorDescriptor);
@@ -431,25 +338,25 @@ describe('YjsDocumentManager', () => {
     it('getNavigation returns Y.Array', () => {
       const navigation = manager.getNavigation();
       expect(navigation).toBeDefined();
-      expect(navigation).toBeInstanceOf(MockYArray);
+      expect(navigation).toBeInstanceOf(global.window.Y.Array);
     });
 
     it('getMetadata returns Y.Map', () => {
       const metadata = manager.getMetadata();
       expect(metadata).toBeDefined();
-      expect(metadata).toBeInstanceOf(MockYMap);
+      expect(metadata).toBeInstanceOf(global.window.Y.Map);
     });
 
     it('getLocks returns Y.Map', () => {
       const locks = manager.getLocks();
       expect(locks).toBeDefined();
-      expect(locks).toBeInstanceOf(MockYMap);
+      expect(locks).toBeInstanceOf(global.window.Y.Map);
     });
 
     it('getDoc returns Y.Doc', () => {
       const doc = manager.getDoc();
       expect(doc).toBeDefined();
-      expect(doc).toBeInstanceOf(MockYDoc);
+      expect(doc).toBeInstanceOf(global.window.Y.Doc);
     });
   });
 
@@ -970,9 +877,11 @@ describe('YjsDocumentManager', () => {
         })
       );
 
+      const applyUpdateSpy = mock(() => undefined);
+      manager.Y = { applyUpdate: applyUpdateSpy };
       await manager.loadFromServer();
 
-      expect(global.window.Y.applyUpdate).toHaveBeenCalled();
+      expect(applyUpdateSpy).toHaveBeenCalled();
     });
 
     it('handles 404 response (new project)', async () => {
