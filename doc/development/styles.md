@@ -191,3 +191,30 @@ User-installed styles (both in the online version, if allowed by the administrat
 ```
 /public/files/perm/themes/users/
 ```
+
+### Using custom styles with Docker
+
+To bind a custom style directly in `docker-compose.yml`, add the following volume:
+
+```yaml
+volumes:
+  - ./my-theme:/mnt/data/perm/themes/base/my-theme:ro
+```
+
+Where `./my-theme` is the directory on your host machine containing the style.
+
+This makes the style available to **all users**.
+
+This is required because eXeLearning recreates the entire `/base/` themes directory when restarting the server. Any style not bound as a volume would be overwritten during this process.
+
+### User styles
+
+User styles are those imported through the application interface (**Styles → Imported**).
+
+Their final location on disk is:
+
+```
+/public/files/perm/themes/users/user
+```
+
+These styles are user-specific and are not affected by the regeneration of the base themes directory.
