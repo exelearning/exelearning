@@ -13,6 +13,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { createDomJQuery } from '../../test-helpers/createDomJQuery.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -71,109 +72,6 @@ const mockJQuery = vi.fn((selector) => {
   };
 });
 global.$ = mockJQuery;
-
-const createDomJQuery = () => {
-  return (selector) => {
-    if (typeof selector === 'function') {
-      selector();
-      return { length: 0 };
-    }
-
-    let nodes = [];
-    if (selector === window || selector === document) {
-      nodes = [selector];
-    } else if (typeof selector === 'string') {
-      nodes = Array.from(document.querySelectorAll(selector));
-    } else if (selector) {
-      nodes = [selector];
-    }
-
-    const api = {
-      length: nodes.length,
-      0: nodes[0],
-      after: (html) => {
-        if (nodes[0]) nodes[0].insertAdjacentHTML('afterend', html);
-        return api;
-      },
-      prepend: (html) => {
-        if (nodes[0]) nodes[0].insertAdjacentHTML('afterbegin', html);
-        return api;
-      },
-      addClass: (cls) => {
-        nodes.forEach((node) => node.classList && node.classList.add(cls));
-        return api;
-      },
-      removeClass: (cls) => {
-        nodes.forEach((node) => node.classList && node.classList.remove(cls));
-        return api;
-      },
-      toggleClass: (cls) => {
-        nodes.forEach((node) => node.classList && node.classList.toggle(cls));
-        return api;
-      },
-      hasClass: (cls) => {
-        return nodes[0]?.classList?.contains(cls) || false;
-      },
-      val: (value) => {
-        if (value === undefined) return nodes[0]?.value ?? '';
-        nodes.forEach((node) => {
-          if ('value' in node) node.value = value;
-        });
-        return api;
-      },
-      trigger: (eventName) => {
-        nodes.forEach((node) => node.dispatchEvent(new Event(eventName, { bubbles: true })));
-        return api;
-      },
-      click: (handler) => {
-        if (handler) {
-          nodes.forEach((node) => node.addEventListener('click', handler));
-        } else {
-          nodes.forEach((node) => node.click());
-        }
-        return api;
-      },
-      change: (handler) => {
-        if (handler) {
-          nodes.forEach((node) => node.addEventListener('change', handler));
-        }
-        return api;
-      },
-      each: (handler) => {
-        nodes.forEach((node, index) => handler.call(node, index, node));
-        return api;
-      },
-      on: (event, handler) => {
-        nodes.forEach((node) => node.addEventListener(event, handler));
-        return api;
-      },
-      attr: (name, value) => {
-        if (value === undefined) return nodes[0]?.getAttribute?.(name);
-        nodes.forEach((node) => node.setAttribute?.(name, value));
-        return api;
-      },
-      css: (prop) => {
-        const node = nodes[0];
-        if (!node || node === window || node === document) return '';
-        const computed = window.getComputedStyle(node);
-        return node.style[prop] || computed[prop] || '';
-      },
-      height: () => {
-        if (nodes[0] === window) return window.innerHeight;
-        return nodes[0]?.offsetHeight ?? 0;
-      },
-      width: () => {
-        if (nodes[0] === window) return window.innerWidth;
-        return nodes[0]?.offsetWidth ?? 0;
-      },
-      remove: () => {
-        nodes.forEach((node) => node.remove());
-        return api;
-      },
-    };
-    return api;
-  };
-};
 
 // Mock localStorage
 global.localStorage = {
@@ -842,6 +740,95 @@ describe('exe_atools (app/common)', () => {
       window.getSelection = originalSelection;
       global.SpeechSynthesisUtterance = originalSpeech;
       global.speechSynthesis = originalSpeechSynthesis;
+    });
+  });
+
+  describe('Drog interactions', () => {
+    it('marks element as draggable and ignores repeat init', () => {
+      const element = document.createElement('div');
+      const handler = document.createElement('button');
+      handler.setAttribute('data-drog', '');
+      element.appendChild(handler);
+
+      exeAtools.Drog.on(element);
+      exeAtools.Drog.on(element);
+
+      expect(element['-d']).toBe(true);
+      expect(handler['-f']).toBe(element);
+    });
+
+    it('ignores move when element is not draggable', () => {
+      const element = document.createElement('div');
+
+      exeAtools.Drog.move(element, 10, 5);
+
+      expect(element.style.transform).toBe('');
+    });
+
+    it('moves element when draggable', () => {
+      const element = document.createElement('div');
+      element['-d'] = true;
+
+      exeAtools.Drog.move(element, 12, -7);
+
+      expect(element.style.transform).toBe('translate(12px,-7px)');
+    });
+
+    it('handles drag move and stores toolbar position', () => {
+      const element = document.createElement('div');
+      const handler = document.createElement('button');
+      handler.setAttribute('data-drog', '');
+      element.appendChild(handler);
+
+      const originalLimit = exeAtools.draggable.limit;
+      exeAtools.draggable.limit = vi.fn(() => [10, -5]);
+
+      exeAtools.Drog.on(element);
+      const down = new MouseEvent('mousedown', { clientX: 10, clientY: 10, bubbles: true });
+      Object.defineProperty(down, 'which', { value: 1 });
+      handler.dispatchEvent(down);
+
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 20, clientY: 30, bubbles: true }));
+
+      expect(element.style.transform).toBe('translate(10px,-5px)');
+      expect(localStorageData.exeAtoolsToolbarStyles).toContain('translate(10px,-5px)');
+
+      exeAtools.draggable.limit = originalLimit;
+    });
+
+    it('clears toolbar styles when dragged back to origin', () => {
+      const element = document.createElement('div');
+      const handler = document.createElement('button');
+      handler.setAttribute('data-drog', '');
+      element.appendChild(handler);
+
+      const originalLimit = exeAtools.draggable.limit;
+      exeAtools.draggable.limit = vi.fn(() => [0, 0]);
+
+      exeAtools.Drog.on(element);
+      const down = new MouseEvent('mousedown', { clientX: 10, clientY: 10, bubbles: true });
+      Object.defineProperty(down, 'which', { value: 1 });
+      handler.dispatchEvent(down);
+
+      document.dispatchEvent(new MouseEvent('mousemove', { clientX: 15, clientY: 15, bubbles: true }));
+
+      expect(localStorageData.exeAtoolsToolbarStyles).toBe('');
+
+      exeAtools.draggable.limit = originalLimit;
+    });
+
+    it('ignores middle and right click drag initiation', () => {
+      const element = document.createElement('div');
+      const handler = document.createElement('button');
+      handler.setAttribute('data-drog', '');
+      element.appendChild(handler);
+
+      exeAtools.Drog.on(element);
+      const down = new MouseEvent('mousedown', { clientX: 10, clientY: 10, bubbles: true });
+      Object.defineProperty(down, 'which', { value: 2 });
+      handler.dispatchEvent(down);
+
+      expect(element['-Xi']).toBeUndefined();
     });
   });
 

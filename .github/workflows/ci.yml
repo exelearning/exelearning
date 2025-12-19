@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - tikismaker
-      - 'release/*'
+      - 'release/3.1'
     tags:
       - '*'
   pull_request:
