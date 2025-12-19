@@ -214,7 +214,7 @@ User styles are those imported through the application interface (**Styles → I
 Their final location on disk is:
 
 ```
-/public/files/perm/themes/users/username
+/public/files/perm/themes/users/user
 ```
 
 These styles are user-specific and are not affected by the regeneration of the base themes directory.
