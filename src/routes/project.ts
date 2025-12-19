@@ -19,23 +19,13 @@ import {
 
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
-    getOdeSessionDistDir as getOdeSessionDistDirDefault,
-    createSessionDirectories as createSessionDirectoriesDefault,
-    cleanupSessionDirectories as cleanupSessionDirectoriesDefault,
     getContentXmlPath as getContentXmlPathDefault,
     fileExists as fileExistsDefault,
     readFileAsString as readFileAsStringDefault,
-    writeFile as writeFileDefault,
     appendFile as appendFileDefault,
     getFilesDir as getFilesDirDefault,
+    getProjectAssetsDir as getProjectAssetsDirDefault,
 } from '../services/file-helper';
-
-import {
-    extractZip as extractZipDefault,
-    extractZipFromBuffer as extractZipFromBufferDefault,
-    createZip as createZipDefault,
-    readFileFromZipAsString as readFileFromZipAsStringDefault,
-} from '../services/zip';
 
 // yjs-persistence functions no longer used here - endpoints moved to routes/yjs.ts
 
@@ -48,10 +38,8 @@ import type { Kysely } from 'kysely';
 import type { Database, Project, User } from '../db/types';
 import type {
     ProjectUploadChunkRequest,
-    ProjectOpenRequest,
     ProjectPropertiesRequest,
     UsedFilesRequest,
-    ProjectExportRequest,
     OdeCurrentUserRequest,
     CheckBeforeLeaveRequest,
     CloseSessionRequest,
@@ -83,25 +71,12 @@ export interface SessionManagerDeps {
  */
 export interface FileHelperDeps {
     getOdeSessionTempDir: typeof getOdeSessionTempDirDefault;
-    getOdeSessionDistDir: typeof getOdeSessionDistDirDefault;
-    createSessionDirectories: typeof createSessionDirectoriesDefault;
-    cleanupSessionDirectories: typeof cleanupSessionDirectoriesDefault;
     getContentXmlPath: typeof getContentXmlPathDefault;
     fileExists: typeof fileExistsDefault;
     readFileAsString: typeof readFileAsStringDefault;
-    writeFile: typeof writeFileDefault;
     appendFile: typeof appendFileDefault;
     getFilesDir: typeof getFilesDirDefault;
-}
-
-/**
- * Zip service functions
- */
-export interface ZipDeps {
-    extractZip: typeof extractZipDefault;
-    extractZipFromBuffer: typeof extractZipFromBufferDefault;
-    createZip: typeof createZipDefault;
-    readFileFromZipAsString: typeof readFileFromZipAsStringDefault;
+    getProjectAssetsDir: typeof getProjectAssetsDirDefault;
 }
 
 /**
@@ -131,6 +106,8 @@ export interface QueriesDeps {
     checkProjectAccess: typeof queriesDefault.checkProjectAccess;
     findSnapshotByProjectId?: typeof queriesDefault.findSnapshotByProjectId;
     upsertSnapshot?: typeof queriesDefault.upsertSnapshot;
+    findAllAssetsForProject: typeof queriesDefault.findAllAssetsForProject;
+    createAsset: typeof queriesDefault.createAsset;
 }
 
 /**
@@ -149,7 +126,6 @@ export interface ProjectDependencies {
     path?: typeof pathDefault;
     sessionManager?: SessionManagerDeps;
     fileHelper?: FileHelperDeps;
-    zip?: ZipDeps;
     queries?: QueriesDeps;
     utils?: UtilsDeps;
 }
@@ -166,22 +142,12 @@ const defaultSessionManager: SessionManagerDeps = {
 
 const defaultFileHelper: FileHelperDeps = {
     getOdeSessionTempDir: getOdeSessionTempDirDefault,
-    getOdeSessionDistDir: getOdeSessionDistDirDefault,
-    createSessionDirectories: createSessionDirectoriesDefault,
-    cleanupSessionDirectories: cleanupSessionDirectoriesDefault,
     getContentXmlPath: getContentXmlPathDefault,
     fileExists: fileExistsDefault,
     readFileAsString: readFileAsStringDefault,
-    writeFile: writeFileDefault,
     appendFile: appendFileDefault,
     getFilesDir: getFilesDirDefault,
-};
-
-const defaultZip: ZipDeps = {
-    extractZip: extractZipDefault,
-    extractZipFromBuffer: extractZipFromBufferDefault,
-    createZip: createZipDefault,
-    readFileFromZipAsString: readFileFromZipAsStringDefault,
+    getProjectAssetsDir: getProjectAssetsDirDefault,
 };
 
 const defaultQueries: QueriesDeps = {
@@ -208,6 +174,8 @@ const defaultQueries: QueriesDeps = {
     checkProjectAccess: queriesDefault.checkProjectAccess,
     findSnapshotByProjectId: queriesDefault.findSnapshotByProjectId,
     upsertSnapshot: queriesDefault.upsertSnapshot,
+    findAllAssetsForProject: queriesDefault.findAllAssetsForProject,
+    createAsset: queriesDefault.createAsset,
 };
 
 const defaultUtils: UtilsDeps = {
@@ -220,7 +188,6 @@ const defaultDependencies: ProjectDependencies = {
     path: pathDefault,
     sessionManager: defaultSessionManager,
     fileHelper: defaultFileHelper,
-    zip: defaultZip,
     queries: defaultQueries,
     utils: defaultUtils,
 };
@@ -305,25 +272,11 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
     const db = deps.db; // Shadow global db
 
     // Session manager functions
-    const { createSession, getSession, deleteSession, getAllSessions, generateSessionId } =
-        deps.sessionManager ?? defaultSessionManager;
+    const { createSession, getSession, deleteSession, getAllSessions } = deps.sessionManager ?? defaultSessionManager;
 
     // File helper functions
-    const {
-        getOdeSessionTempDir,
-        getOdeSessionDistDir,
-        createSessionDirectories,
-        cleanupSessionDirectories,
-        getContentXmlPath,
-        fileExists,
-        readFileAsString,
-        writeFile,
-        appendFile,
-        getFilesDir,
-    } = deps.fileHelper ?? defaultFileHelper;
-
-    // Zip functions
-    const { extractZip, createZip } = deps.zip ?? defaultZip;
+    const { getOdeSessionTempDir, getContentXmlPath, fileExists, readFileAsString, appendFile, getFilesDir } =
+        deps.fileHelper ?? defaultFileHelper;
 
     // Query functions
     const { createProject, findSavedProjectsByOwner, findUserById } = deps.queries ?? defaultQueries;
@@ -411,10 +364,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     return { error: 'Not Found', message: 'Session not found' };
                 }
 
-                // Clean up files
-                await cleanupSessionDirectories(params.id);
-
-                // Remove from memory
+                // Remove from memory (no temp directories to clean - Yjs is source of truth)
                 deleteSession(params.id);
 
                 return { message: 'Session deleted successfully' };
@@ -471,139 +421,9 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 }
             })
 
-            // =====================================================
-            // Open ELP File
-            // =====================================================
-
-            // POST /api/project/open - Open an ELP file
-            .post('/open', async ({ body, set, currentUser }) => {
-                try {
-                    // Require authentication
-                    if (!currentUser) {
-                        set.status = 401;
-                        return { error: 'Unauthorized', message: 'Authentication required to open projects' };
-                    }
-
-                    const data = body as ProjectOpenRequest;
-
-                    let filePath: string | undefined;
-                    let fileName: string | undefined;
-                    let shouldCleanup = false;
-
-                    // Mode 1: File path provided (after chunked upload)
-                    if (data.odeFilePath) {
-                        filePath = Array.isArray(data.odeFilePath) ? data.odeFilePath[0] : data.odeFilePath;
-                        fileName = Array.isArray(data.odeFileName) ? data.odeFileName[0] : data.odeFileName;
-
-                        if (!(await fileExists(filePath))) {
-                            set.status = 400;
-                            return { error: 'Bad Request', message: `File not found: ${filePath}` };
-                        }
-                        shouldCleanup = true;
-                    }
-                    // Mode 2: Direct file upload
-                    else if (data.file) {
-                        const file = data.file;
-                        fileName = file.name || 'uploaded.elp';
-
-                        // Save to temp location
-                        const tempDir = path.join(process.cwd(), 'temp');
-                        await fs.ensureDir(tempDir);
-                        filePath = path.join(tempDir, `${Date.now()}-${fileName}`);
-
-                        let fileBuffer: Buffer;
-                        if (file instanceof Blob) {
-                            fileBuffer = Buffer.from(await file.arrayBuffer());
-                        } else if (Buffer.isBuffer(file)) {
-                            fileBuffer = file;
-                        } else {
-                            fileBuffer = Buffer.from(file);
-                        }
-
-                        await writeFile(filePath, fileBuffer);
-                        shouldCleanup = true;
-                    } else {
-                        set.status = 400;
-                        return {
-                            error: 'Bad Request',
-                            message: 'No file provided. Provide either file upload or odeFilePath parameter',
-                        };
-                    }
-
-                    // Generate new session ID
-                    const sessionId = generateSessionId();
-
-                    // Create session directories
-                    await createSessionDirectories(sessionId);
-
-                    // Extract ZIP to session temp directory
-                    const tempDir = getOdeSessionTempDir(sessionId);
-                    await extractZip(filePath!, tempDir);
-
-                    // Find and read content.xml
-                    const contentXmlPath = getContentXmlPath(sessionId);
-                    let structure: { loaded: boolean; path: string } | null = null;
-
-                    if (await fileExists(contentXmlPath)) {
-                        // For now, just mark that we have the file
-                        // XML parsing will be added in next phase
-                        structure = { loaded: true, path: contentXmlPath };
-                    }
-
-                    // Clean up uploaded file if needed
-                    if (shouldCleanup && filePath) {
-                        await fs.remove(filePath).catch(() => {});
-                    }
-
-                    // Create project in database with authenticated user as owner
-                    const userId = currentUser.id;
-                    const projectTitle = fileName?.replace('.elp', '') || 'Sin título';
-
-                    const projectRecord = await createProject(db, {
-                        title: projectTitle,
-                        owner_id: userId,
-                        saved_once: 0,
-                    });
-
-                    // Use project UUID as session ID for consistency
-                    const projectSessionId = projectRecord.uuid;
-
-                    // Create session with project UUID
-                    const session = createSession({
-                        sessionId: projectSessionId,
-                        fileName,
-                        filePath: tempDir,
-                        structure,
-                        userId,
-                    });
-
-                    // Move extracted files to new session directory
-                    const newTempDir = getOdeSessionTempDir(projectSessionId);
-                    if (sessionId !== projectSessionId) {
-                        await fs.ensureDir(newTempDir);
-                        await fs.copy(tempDir, newTempDir);
-                        await fs.remove(tempDir).catch(() => {});
-                    }
-
-                    console.log(`[Project] Created project ${projectRecord.uuid} for file ${fileName}`);
-
-                    return {
-                        success: true,
-                        sessionId: session.sessionId,
-                        fileName: session.fileName,
-                        projectId: projectRecord.id,
-                        projectUuid: projectRecord.uuid,
-                        message: 'Project opened successfully',
-                    };
-                } catch (error: unknown) {
-                    set.status = 500;
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return {
-                        error: 'Internal Server Error',
-                        message: errorMessage,
-                    };
-                }
-            })
+            // NOTE: ELP extraction happens client-side (browser uses JSZip).
+            // Server-side /api/project/open endpoint was removed as dead code.
+            // Projects are created via create-quick and populated from client-side Yjs.
 
             // =====================================================
             // Get Session Structure
@@ -639,50 +459,8 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 };
             })
 
-            // =====================================================
-            // Export Project
-            // =====================================================
-
-            // POST /api/project/export - Export project to format
-            .post('/export', async ({ body, set }) => {
-                const data = body as ProjectExportRequest;
-                const { sessionId, format = 'html5' } = data;
-
-                const session = getSession(sessionId);
-                if (!session) {
-                    set.status = 404;
-                    return { error: 'Not Found', message: 'Session not found' };
-                }
-
-                try {
-                    // Get export directory
-                    const distDir = getOdeSessionDistDir(sessionId);
-                    await fs.ensureDir(distDir);
-
-                    // Copy session files to dist
-                    const tempDir = getOdeSessionTempDir(sessionId);
-                    await fs.copy(tempDir, distDir, { overwrite: true });
-
-                    // Create ZIP of export
-                    const zipPath = path.join(distDir, `export-${format}.zip`);
-                    await createZip(distDir, zipPath);
-
-                    return {
-                        success: true,
-                        sessionId,
-                        format,
-                        exportPath: zipPath,
-                        message: `Project exported as ${format}`,
-                    };
-                } catch (error: unknown) {
-                    set.status = 500;
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return {
-                        error: 'Internal Server Error',
-                        message: errorMessage,
-                    };
-                }
-            })
+            // NOTE: Export is handled by routes/export.ts (ElpDocumentAdapter, Yjs-based).
+            // Old session-based /api/project/export endpoint was removed.
 
             // =====================================================
             // Create Quick Project
@@ -711,35 +489,11 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 // Use project UUID as session ID
                 const sessionId = projectRecord.uuid;
 
-                // Create session directories
-                await createSessionDirectories(sessionId);
-
-                // Create minimal content.xml
-                const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
-<ode xmlns="http://www.exelearning.net/ode/1.0">
-    <properties>
-        <title>${title}</title>
-        <description></description>
-        <author></author>
-        <license></license>
-        <createdAt>${new Date().toISOString()}</createdAt>
-    </properties>
-    <navigation>
-        <page id="page_1" title="Home">
-            <blocks />
-        </page>
-    </navigation>
-</ode>`;
-
-                // Write content.xml
-                const contentXmlPath = getContentXmlPath(sessionId);
-                await writeFile(contentXmlPath, contentXml);
-
-                // Create session
+                // Create session (no temp directory - Yjs is the source of truth)
                 const session = createSession({
                     sessionId,
                     fileName: `${title}.elp`,
-                    filePath: getOdeSessionTempDir(sessionId),
+                    filePath: '', // No temp directory needed - client-side Yjs is source of truth
                     structure: { title, pages: 1 },
                     userId,
                 });
@@ -837,19 +591,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
     const db = deps.db;
 
     // Session manager functions
-    const { createSession, getSession, updateSession, generateSessionId } =
-        deps.sessionManager ?? defaultSessionManager;
+    const { getSession, updateSession, generateSessionId } = deps.sessionManager ?? defaultSessionManager;
 
     // File helper functions
-    const { getOdeSessionTempDir, createSessionDirectories, fileExists, appendFile, getFilesDir } =
-        deps.fileHelper ?? defaultFileHelper;
-
-    // Zip functions
-    const { extractZip } = deps.zip ?? defaultZip;
+    const { getOdeSessionTempDir, getFilesDir, getProjectAssetsDir } = deps.fileHelper ?? defaultFileHelper;
 
     // Query functions
     const {
-        createProject,
         findProjectById,
         findProjectByUuid,
         markProjectAsSaved,
@@ -870,6 +618,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
         checkProjectAccess,
         findSnapshotByProjectId,
         upsertSnapshot,
+        findAllAssetsForProject,
+        createAsset,
     } = deps.queries ?? defaultQueries;
 
     return (
@@ -1257,132 +1007,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     message: 'Properties saved',
                 };
             })
-            // POST /api/ode-management/odes/ode/local/large/elp/open - Chunked upload (Symfony)
-            .post('/api/ode-management/odes/ode/local/large/elp/open', async ({ body, set }) => {
-                // Forward to upload-chunk logic
-                try {
-                    const data = body as ProjectUploadChunkRequest;
-                    const odeFilePart = data.odeFilePart;
-                    const odeFileName = data.odeFileName;
-                    const odeSessionId = data.odeSessionId;
-
-                    if (!odeFilePart || !odeFileName || !odeSessionId) {
-                        set.status = 400;
-                        return {
-                            responseMessage: 'error: odeFilePart, odeFileName, and odeSessionId are required',
-                            success: false,
-                        };
-                    }
-
-                    const tempDir = getOdeSessionTempDir(odeSessionId);
-                    await fs.ensureDir(tempDir);
-
-                    const targetPath = path.join(tempDir, odeFileName);
-
-                    let chunkBuffer: Buffer;
-                    if (odeFilePart instanceof Blob) {
-                        chunkBuffer = Buffer.from(await odeFilePart.arrayBuffer());
-                    } else if (Buffer.isBuffer(odeFilePart)) {
-                        chunkBuffer = odeFilePart;
-                    } else {
-                        chunkBuffer = Buffer.from(odeFilePart);
-                    }
-
-                    await appendFile(targetPath, chunkBuffer);
-
-                    return {
-                        responseMessage: 'OK',
-                        odeFilePath: targetPath,
-                        odeFileName: odeFileName,
-                    };
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return {
-                        responseMessage: `error: ${errorMessage}`,
-                        success: false,
-                    };
-                }
-            })
-
-            // POST /api/ode-management/odes/ode/local/elp/open - Open ELP (Symfony)
-            .post('/api/ode-management/odes/ode/local/elp/open', async ({ body, set, currentUser }) => {
-                try {
-                    // Require authentication
-                    if (!currentUser) {
-                        set.status = 401;
-                        return { responseMessage: 'error: Authentication required' };
-                    }
-
-                    const data = body as ProjectOpenRequest;
-                    const odeFilePath = Array.isArray(data.odeFilePath) ? data.odeFilePath[0] : data.odeFilePath;
-                    const odeFileName = Array.isArray(data.odeFileName) ? data.odeFileName[0] : data.odeFileName;
-
-                    if (!odeFilePath) {
-                        set.status = 400;
-                        return { responseMessage: 'error: odeFilePath is required' };
-                    }
-
-                    if (!(await fileExists(odeFilePath))) {
-                        set.status = 400;
-                        return { responseMessage: `error: File not found: ${odeFilePath}` };
-                    }
-
-                    // Create project in database with authenticated user as owner
-                    const userId = currentUser.id;
-                    const projectTitle = odeFileName?.replace('.elp', '') || 'Sin título';
-
-                    const projectRecord = await createProject(db, {
-                        title: projectTitle,
-                        owner_id: userId,
-                        saved_once: 0,
-                    });
-
-                    // Use project UUID as session ID for consistency
-                    const sessionId = projectRecord.uuid;
-                    await createSessionDirectories(sessionId);
-
-                    // Extract
-                    const tempDir = getOdeSessionTempDir(sessionId);
-                    await extractZip(odeFilePath, tempDir);
-
-                    // Create session in memory
-                    const session = createSession({
-                        sessionId,
-                        fileName: odeFileName,
-                        filePath: tempDir,
-                        userId: currentUser.id,
-                    });
-
-                    // Copy ELP file to temp directory for frontend to fetch (instead of deleting)
-                    // This is needed because frontend's ElpxImporter will fetch and parse the ELP
-                    const importFileName = `${sessionId}.elp`;
-                    const importFilePath = path.join(tempDir, importFileName);
-                    await fs.copy(odeFilePath, importFilePath);
-
-                    // Clean up original uploaded file (the copy remains in tempDir)
-                    await fs.remove(odeFilePath).catch(() => {});
-
-                    console.log(`[Project] Created project ${projectRecord.uuid} for file ${odeFileName}`);
-
-                    // Return the import path for frontend to fetch ELP for ElpxImporter
-                    const elpImportPath = `/files/tmp/${sessionId}/${importFileName}`;
-
-                    return {
-                        responseMessage: 'OK',
-                        odeSessionId: session.sessionId,
-                        odeName: session.fileName,
-                        projectId: projectRecord.id,
-                        projectUuid: projectRecord.uuid,
-                        elpImportPath, // Path for frontend to fetch ELP for import
-                    };
-                } catch (error: unknown) {
-                    console.error('[Project] Failed to open ELP:', error);
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return {
-                        responseMessage: `error: ${errorMessage}`,
-                    };
-                }
-            })
 
             // POST /api/odes/clean-init-autosave - Clean previous autosaves
             .post('/api/odes/clean-init-autosave', () => {
@@ -1614,7 +1238,55 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     license: project.license || undefined,
                 });
 
+                // =====================================================
+                // Duplicate assets (physical files + database records)
+                // Build client_id mapping for Yjs document update
+                // =====================================================
+                const clientIdMapping = new Map<string, string>();
+                const sourceAssets = await findAllAssetsForProject(db, project.id);
+
+                if (sourceAssets.length > 0) {
+                    const targetAssetsDir = getProjectAssetsDir(duplicateProject.uuid);
+
+                    for (const asset of sourceAssets) {
+                        if (!asset.client_id) continue;
+
+                        // Generate new client_id for the duplicated asset
+                        const newClientId = crypto.randomUUID();
+                        clientIdMapping.set(asset.client_id, newClientId);
+
+                        // Copy physical file if it exists
+                        if (asset.storage_path) {
+                            try {
+                                const sourceExists = await fs.pathExists(asset.storage_path);
+                                if (sourceExists) {
+                                    const targetFile = path.join(targetAssetsDir, newClientId, asset.filename);
+                                    await fs.ensureDir(path.dirname(targetFile));
+                                    await fs.copy(asset.storage_path, targetFile);
+
+                                    // Create new asset record with new client_id
+                                    await createAsset(db, {
+                                        project_id: duplicateProject.id,
+                                        filename: asset.filename,
+                                        storage_path: targetFile,
+                                        mime_type: asset.mime_type,
+                                        file_size: asset.file_size,
+                                        client_id: newClientId,
+                                        component_id: asset.component_id,
+                                        content_hash: asset.content_hash,
+                                    });
+                                } else {
+                                    console.warn(`[Project Duplicate] Asset file not found: ${asset.storage_path}`);
+                                }
+                            } catch (err) {
+                                console.warn(`[Project Duplicate] Failed to copy asset ${asset.id}:`, err);
+                            }
+                        }
+                    }
+                }
+
                 // Copy Yjs document state if exists, updating the title in metadata
+                // and replacing old client_ids with new ones
                 const snapshot = findSnapshotByProjectId ? await findSnapshotByProjectId(db, project.id) : null;
                 if (snapshot) {
                     // Import Yjs to modify the document
@@ -1627,6 +1299,60 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     // Update title in metadata
                     const metadata = ydoc.getMap('metadata');
                     metadata.set('title', `${project.title} (copy)`);
+
+                    // Replace old client_ids with new ones in all content
+                    if (clientIdMapping.size > 0) {
+                        const replaceClientIds = (text: string): string => {
+                            let result = text;
+                            for (const [oldId, newId] of clientIdMapping) {
+                                result = result.replaceAll(oldId, newId);
+                            }
+                            return result;
+                        };
+
+                        // Update pages - iterate through the pages map and update HTML content
+                        const pages = ydoc.getMap('pages');
+                        for (const pageId of pages.keys()) {
+                            const page = pages.get(pageId) as Y.Map<unknown> | undefined;
+                            if (page && page instanceof Y.Map) {
+                                const blocks = page.get('blocks') as Y.Map<unknown> | undefined;
+                                if (blocks && blocks instanceof Y.Map) {
+                                    for (const blockId of blocks.keys()) {
+                                        const block = blocks.get(blockId) as Y.Map<unknown> | undefined;
+                                        if (block && block instanceof Y.Map) {
+                                            const idevices = block.get('idevices') as Y.Map<unknown> | undefined;
+                                            if (idevices && idevices instanceof Y.Map) {
+                                                for (const ideviceId of idevices.keys()) {
+                                                    const idevice = idevices.get(ideviceId) as
+                                                        | Y.Map<unknown>
+                                                        | undefined;
+                                                    if (idevice && idevice instanceof Y.Map) {
+                                                        // Update innerHtml if present
+                                                        const innerHtml = idevice.get('innerHtml');
+                                                        if (typeof innerHtml === 'string') {
+                                                            idevice.set('innerHtml', replaceClientIds(innerHtml));
+                                                        }
+                                                        // Update any field values that might contain asset references
+                                                        const fields = idevice.get('fields') as
+                                                            | Y.Map<unknown>
+                                                            | undefined;
+                                                        if (fields && fields instanceof Y.Map) {
+                                                            for (const fieldKey of fields.keys()) {
+                                                                const fieldValue = fields.get(fieldKey);
+                                                                if (typeof fieldValue === 'string') {
+                                                                    fields.set(fieldKey, replaceClientIds(fieldValue));
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // Encode modified state
                     const newState = Y.encodeStateAsUpdate(ydoc);
@@ -1678,52 +1404,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // NOTE: yjs-document endpoints moved to src/new/routes/yjs.ts (database-backed)
-
-            // POST /api/odes/local/large-elp/open - Alias for frontend (shorter path)
-            .post('/api/odes/local/large-elp/open', async ({ body, set }) => {
-                try {
-                    const data = body as ProjectUploadChunkRequest;
-                    const odeFilePart = data.odeFilePart;
-                    const odeFileName = data.odeFileName;
-                    const odeSessionId = data.odeSessionId;
-
-                    if (!odeFilePart || !odeFileName || !odeSessionId) {
-                        set.status = 400;
-                        return {
-                            responseMessage: 'error: odeFilePart, odeFileName, and odeSessionId are required',
-                            success: false,
-                        };
-                    }
-
-                    const tempDir = getOdeSessionTempDir(odeSessionId);
-                    await fs.ensureDir(tempDir);
-
-                    const targetPath = path.join(tempDir, odeFileName);
-
-                    let chunkBuffer: Buffer;
-                    if (odeFilePart instanceof Blob) {
-                        chunkBuffer = Buffer.from(await odeFilePart.arrayBuffer());
-                    } else if (Buffer.isBuffer(odeFilePart)) {
-                        chunkBuffer = odeFilePart;
-                    } else {
-                        chunkBuffer = Buffer.from(odeFilePart);
-                    }
-
-                    await appendFile(targetPath, chunkBuffer);
-
-                    return {
-                        responseMessage: 'OK',
-                        odeFilePath: targetPath,
-                        odeFileName: odeFileName,
-                    };
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return {
-                        responseMessage: `error: ${errorMessage}`,
-                        success: false,
-                    };
-                }
-            })
 
             // GET /api/projects/user/recent - Get user's most recent projects
             .get('/api/projects/user/recent', async ({ currentUser }) => {

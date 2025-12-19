@@ -120,14 +120,6 @@ describe('File Helper Service', () => {
         });
     });
 
-    describe('getPermanentStorageDir', () => {
-        it('should return permanent storage path', () => {
-            const result = fileHelper.getPermanentStorageDir();
-            expect(result).toContain('permanent');
-            expect(result).toBe(path.join(testDir, 'permanent'));
-        });
-    });
-
     describe('getPublicDirectory', () => {
         it('should return public directory path', () => {
             const result = fileHelper.getPublicDirectory();
@@ -160,6 +152,28 @@ describe('File Helper Service', () => {
         it('should return idevices directory path', () => {
             const result = fileHelper.getIdevicesDir();
             expect(result).toContain('idevice');
+        });
+    });
+
+    describe('getProjectAssetsDir', () => {
+        it('should return UUID-based path for project assets', () => {
+            const projectUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            const result = fileHelper.getProjectAssetsDir(projectUuid);
+            expect(result).toContain('assets');
+            expect(result).toContain(projectUuid);
+            expect(result).toBe(path.join(testDir, 'assets', projectUuid));
+        });
+
+        it('should handle different UUID formats', () => {
+            const uuid1 = 'simple-uuid-123';
+            const uuid2 = 'another-project-uuid';
+
+            const result1 = fileHelper.getProjectAssetsDir(uuid1);
+            const result2 = fileHelper.getProjectAssetsDir(uuid2);
+
+            expect(result1).toContain(uuid1);
+            expect(result2).toContain(uuid2);
+            expect(result1).not.toBe(result2);
         });
     });
 

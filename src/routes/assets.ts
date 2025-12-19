@@ -26,6 +26,7 @@ import type { Kysely } from 'kysely';
 
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
+    getProjectAssetsDir as getProjectAssetsDirDefault,
     fileExists as fileExistsDefault,
     readFile as readFileDefault,
     writeFile as writeFileDefault,
@@ -67,6 +68,7 @@ export interface AssetsQueries {
  */
 export interface AssetsFileHelperDeps {
     getOdeSessionTempDir: typeof getOdeSessionTempDirDefault;
+    getProjectAssetsDir: typeof getProjectAssetsDirDefault;
     fileExists: typeof fileExistsDefault;
     readFile: typeof readFileDefault;
     writeFile: typeof writeFileDefault;
@@ -107,6 +109,7 @@ export interface AssetsDependencies {
  */
 const defaultFileHelper: AssetsFileHelperDeps = {
     getOdeSessionTempDir: getOdeSessionTempDirDefault,
+    getProjectAssetsDir: getProjectAssetsDirDefault,
     fileExists: fileExistsDefault,
     readFile: readFileDefault,
     writeFile: writeFileDefault,
@@ -174,11 +177,20 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
     const { db: database, queries } = deps;
 
     // Variable shadowing for file-helper functions
-    const { getOdeSessionTempDir, fileExists, readFile, writeFile, remove, getStats, generateUniqueFilename } =
-        deps.fileHelper ?? defaultFileHelper;
+    const {
+        getOdeSessionTempDir: _getOdeSessionTempDir, // Kept for DI interface, unused for asset storage
+        getProjectAssetsDir,
+        fileExists,
+        readFile,
+        writeFile,
+        remove,
+        getStats,
+        generateUniqueFilename,
+    } = deps.fileHelper ?? defaultFileHelper;
 
     // Variable shadowing for session-manager functions
-    const { getSession } = deps.sessionManager ?? defaultSessionManager;
+    // Note: getSession is kept for DI interface but no longer used for asset storage decisions
+    const { getSession: _getSession } = deps.sessionManager ?? defaultSessionManager;
 
     // Variable shadowing for priority queue
     const serverPriorityQueue = deps.priorityQueue ?? defaultPriorityQueue;
@@ -248,11 +260,8 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         mimetype = data.mimetype || 'application/octet-stream';
                     }
 
-                    // Generate storage path
-                    const session = getSession(projectId);
-                    const storagePath = session
-                        ? path.join(getOdeSessionTempDir(projectId), 'assets')
-                        : path.join(process.cwd(), 'data', 'assets', projectId);
+                    // Generate storage path using project UUID (always use permanent project-scoped storage)
+                    const storagePath = getProjectAssetsDir(projectId);
 
                     await fs.ensureDir(storagePath);
 
@@ -424,11 +433,15 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         };
                     }
 
-                    // Combine chunks
-                    const session = getSession(projectId);
-                    const storagePath = session
-                        ? path.join(getOdeSessionTempDir(projectId), 'assets')
-                        : path.join(process.cwd(), 'data', 'assets', projectId);
+                    // Get numeric project ID (handles both UUID and numeric strings)
+                    const projectIdNum = await getNumericProjectId(projectId);
+                    if (projectIdNum === null) {
+                        set.status = 404;
+                        return { success: false, error: 'Project not found' };
+                    }
+
+                    // Get storage path using project UUID (always use permanent project-scoped storage)
+                    const storagePath = getProjectAssetsDir(projectId);
 
                     await fs.ensureDir(storagePath);
 
@@ -475,13 +488,6 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     // Get file stats
                     const stats = await getStats(finalPath);
                     const mimetype = mimeTypes.lookup(upload.filename) || 'application/octet-stream';
-
-                    // Get numeric project ID (handles both UUID and numeric strings)
-                    const projectIdNum = await getNumericProjectId(projectId);
-                    if (projectIdNum === null) {
-                        set.status = 404;
-                        return { success: false, error: 'Project not found' };
-                    }
 
                     // Check if asset already exists (for retries/re-uploads)
                     const existingAsset = await queries.findAssetByClientId(database, clientId, projectIdNum);
@@ -734,11 +740,8 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         files = Array.isArray(data.files) ? data.files : [data.files];
                     }
 
-                    // Get storage path for project
-                    const session = getSession(projectId);
-                    const storagePath = session
-                        ? path.join(getOdeSessionTempDir(projectId), 'assets')
-                        : path.join(process.cwd(), 'data', 'assets', projectId);
+                    // Get storage path using project UUID (always use permanent project-scoped storage)
+                    const storagePath = getProjectAssetsDir(projectId);
 
                     await fs.ensureDir(storagePath);
 
@@ -944,11 +947,8 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         }
                     }
 
-                    // Get storage path
-                    const session = getSession(projectId);
-                    const storagePath = session
-                        ? path.join(getOdeSessionTempDir(projectId), 'assets')
-                        : path.join(process.cwd(), 'data', 'assets', projectId);
+                    // Get storage path using project UUID (always use permanent project-scoped storage)
+                    const storagePath = getProjectAssetsDir(projectId);
 
                     await fs.ensureDir(storagePath);
 

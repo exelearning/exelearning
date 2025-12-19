@@ -1043,7 +1043,9 @@ describe('Pages Routes', () => {
             expect(location).toContain('project=');
         });
 
-        it('should create session directories for new project', async () => {
+        it('should NOT eagerly create session directories for new project (lazy creation)', async () => {
+            // With lazy directory creation, createSessionDirectories should NOT be called
+            // during project creation - directories are created on-demand when files are written
             let createDirectoriesCalled = false;
             const customFileHelper: PagesFileHelperDeps = {
                 createSessionDirectories: async (_sessionId: string) => {
@@ -1079,10 +1081,13 @@ describe('Pages Routes', () => {
                 }),
             );
 
-            expect(createDirectoriesCalled).toBe(true);
+            // Directories should NOT be created eagerly - they are created on-demand
+            expect(createDirectoriesCalled).toBe(false);
         });
 
-        it('should handle error in project creation gracefully', async () => {
+        it('should still work if createSessionDirectories would throw (since it is not called)', async () => {
+            // Since createSessionDirectories is no longer called during project creation,
+            // even if it would throw, the project creation should succeed
             const customFileHelper: PagesFileHelperDeps = {
                 createSessionDirectories: async (_sessionId: string) => {
                     throw new Error('Failed to create directories');
