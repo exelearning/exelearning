@@ -20,6 +20,20 @@ class LegacyXmlParser {
   }
 
   /**
+   * LEGACY ICON TO THEME ICON MAPPING CONVENTION
+   * Maps legacy iDevice icon names to modern theme icon names.
+   * Legacy ELP files store icon names like "preknowledge", "reading", "casestudy"
+   * which may differ from the actual theme icon filenames.
+   *
+   * If a legacy icon name is not in this map, it's used as-is (most icons match directly).
+   */
+  static LEGACY_ICON_MAP = {
+    'preknowledge': 'think',      // Legacy "preknowledge" uses think.png
+    'reading': 'book',            // Legacy "reading" uses book.png
+    'casestudy': 'case',          // Legacy "casestudy" uses case.png
+  };
+
+  /**
    * Parse legacy XML content and return normalized structure
    * @param {string} xmlContent - The raw XML content from contentv3.xml
    * @returns {Object} Normalized structure with pages, meta, etc.
@@ -386,6 +400,7 @@ class LegacyXmlParser {
             blocks.push({
               id: `block-${nodeEl.getAttribute('reference')}-${idx}`,
               name: blockName,  // Use iDevice title as block name, filtering defaults
+              iconName: idevice.icon || '',  // Use iDevice icon as block icon
               position: idx,
               idevices: [idevice],  // Exactly one iDevice per block
             });
@@ -559,10 +574,23 @@ class LegacyXmlParser {
       // Extract the iDevice title to use as the block name
       const title = this.extractIdeviceTitle(inst);
 
+      // LEGACY ICON EXTRACTION CONVENTION
+      // Extract icon name from the iDevice dictionary and map to theme icon
+      let iconName = '';
+      if (dict) {
+        const rawIcon = this.findDictStringValue(dict, 'icon');
+        if (rawIcon) {
+          // Map legacy icon name to theme icon name
+          iconName = LegacyXmlParser.LEGACY_ICON_MAP[rawIcon] || rawIcon;
+          Logger.log(`[LegacyXmlParser] iDevice icon: ${rawIcon} -> ${iconName}`);
+        }
+      }
+
       const idevice = {
         id: `idevice-${ref}`,
         type: ideviceType,
         title: title,  // Include title for block naming
+        icon: iconName, // Theme icon name for the block
         position: idevices.length,
         htmlView: '',
         feedbackHtml: '',      // Feedback content from FeedbackField

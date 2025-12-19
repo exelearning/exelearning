@@ -1372,4 +1372,238 @@ describe('LegacyXmlParser', () => {
       expect(title).toBe('');
     });
   });
+
+  describe('LEGACY_ICON_MAP', () => {
+    it('has static icon mapping', () => {
+      expect(LegacyXmlParser.LEGACY_ICON_MAP).toBeDefined();
+      expect(typeof LegacyXmlParser.LEGACY_ICON_MAP).toBe('object');
+    });
+
+    it('maps preknowledge to think', () => {
+      expect(LegacyXmlParser.LEGACY_ICON_MAP['preknowledge']).toBe('think');
+    });
+
+    it('maps reading to book', () => {
+      expect(LegacyXmlParser.LEGACY_ICON_MAP['reading']).toBe('book');
+    });
+
+    it('maps casestudy to case', () => {
+      expect(LegacyXmlParser.LEGACY_ICON_MAP['casestudy']).toBe('case');
+    });
+  });
+
+  describe('icon extraction in extractIDevicesWithTitles', () => {
+    it('extracts icon name from iDevice dictionary', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Test iDevice"/>
+              <string role="key" value="icon"/>
+              <unicode value="objectives"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="Test content"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].icon).toBe('objectives');
+    });
+
+    it('maps legacy preknowledge icon to think', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Conocimientos previos"/>
+              <string role="key" value="icon"/>
+              <unicode value="preknowledge"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="Test content"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].icon).toBe('think');  // Mapped from preknowledge
+    });
+
+    it('returns empty string for missing icon', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Test"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="Test"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].icon).toBe('');
+    });
+  });
+
+  describe('icon in extractNodeBlocks', () => {
+    it('passes icon from iDevice to block', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.node.Node" reference="node1">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Test Page"/>
+            <string role="key" value="idevices"/>
+            <list>
+              <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Objetivos"/>
+                  <string role="key" value="icon"/>
+                  <unicode value="objectives"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exe.engine.field.TextAreaField" reference="f1">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Content"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const nodeEl = doc.querySelector('instance[class*="Node"]');
+      const blocks = parser.extractNodeBlocks(nodeEl);
+
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].name).toBe('Objetivos');
+      expect(blocks[0].iconName).toBe('objectives');
+    });
+
+    it('maps preknowledge icon to think in block', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.node.Node" reference="node1">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Test Page"/>
+            <string role="key" value="idevices"/>
+            <list>
+              <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Conocimientos previos"/>
+                  <string role="key" value="icon"/>
+                  <unicode value="preknowledge"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exe.engine.field.TextAreaField" reference="f1">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Content"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const nodeEl = doc.querySelector('instance[class*="Node"]');
+      const blocks = parser.extractNodeBlocks(nodeEl);
+
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].name).toBe('Conocimientos previos');
+      expect(blocks[0].iconName).toBe('think');  // Mapped from preknowledge
+    });
+
+    it('returns empty iconName for iDevice without icon', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.node.Node" reference="node1">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Test Page"/>
+            <string role="key" value="idevices"/>
+            <list>
+              <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="No Icon"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exe.engine.field.TextAreaField" reference="f1">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Content"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const nodeEl = doc.querySelector('instance[class*="Node"]');
+      const blocks = parser.extractNodeBlocks(nodeEl);
+
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].iconName).toBe('');
+    });
+  });
 });
