@@ -1395,9 +1395,13 @@ class ElpxImporter {
 
               // Convert htmlView to jsonProperties for JSON-type iDevices (FreeTextIdevice/TextIdevice)
               // These iDevices expect content in jsonProperties.textTextarea format
+              // Also include feedback content if present (from FeedbackField in legacy files)
               if (ideviceType === 'FreeTextIdevice' || ideviceType.toLowerCase().includes('text')) {
                 const jsonProps = {
-                  textTextarea: transformedHtml || ''
+                  textTextarea: transformedHtml || '',
+                  // Include feedback if present (extracted from FeedbackField by LegacyXmlParser)
+                  textFeedbackInput: ideviceData.feedbackButton || '',
+                  textFeedbackTextarea: ideviceData.feedbackHtml ? replaceAssetPaths(ideviceData.feedbackHtml) : ''
                 };
                 compMap.set('jsonProperties', JSON.stringify(jsonProps));
               } else {

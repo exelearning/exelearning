@@ -361,6 +361,183 @@ describe('LegacyXmlParser', () => {
     });
   });
 
+  describe('extractFeedbackFieldContent', () => {
+    it('extracts feedback content from FeedbackField', () => {
+      // Legacy ELP files use double-encoded HTML entities: &amp;lt; becomes &lt; after XML parsing
+      // Then decodeHtmlContent decodes &lt; to < giving the final HTML
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.field.FeedbackField">
+          <dictionary>
+            <string role="key" value="feedback"/>
+            <unicode value="&amp;lt;p&amp;gt;This is feedback content&amp;lt;/p&amp;gt;"/>
+            <string role="key" value="_buttonCaption"/>
+            <string value="Show Feedback"/>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const fieldInst = doc.querySelector('instance');
+      const result = parser.extractFeedbackFieldContent(fieldInst);
+
+      expect(result.content).toBe('<p>This is feedback content</p>');
+      expect(result.buttonCaption).toBe('Show Feedback');
+    });
+
+    it('extracts feedback from content_w_resourcePaths if feedback not found', () => {
+      // Legacy ELP files use double-encoded HTML entities: &amp;lt; becomes &lt; after XML parsing
+      // Then decodeHtmlContent decodes &lt; to < giving the final HTML
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.field.FeedbackField">
+          <dictionary>
+            <string role="key" value="content_w_resourcePaths"/>
+            <unicode value="&amp;lt;p&amp;gt;Feedback via content_w_resourcePaths&amp;lt;/p&amp;gt;"/>
+            <string role="key" value="_buttonCaption"/>
+            <string value="Ver"/>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const fieldInst = doc.querySelector('instance');
+      const result = parser.extractFeedbackFieldContent(fieldInst);
+
+      expect(result.content).toBe('<p>Feedback via content_w_resourcePaths</p>');
+      expect(result.buttonCaption).toBe('Ver');
+    });
+
+    it('returns default button caption when empty', () => {
+      // Legacy ELP files use double-encoded HTML entities
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.field.FeedbackField">
+          <dictionary>
+            <string role="key" value="feedback"/>
+            <unicode value="&amp;lt;p&amp;gt;Content&amp;lt;/p&amp;gt;"/>
+            <string role="key" value="_buttonCaption"/>
+            <string value=""/>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const fieldInst = doc.querySelector('instance');
+      const result = parser.extractFeedbackFieldContent(fieldInst);
+
+      expect(result.buttonCaption).toBe('Mostrar retroalimentación');
+    });
+
+    it('returns empty when no dictionary', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.field.FeedbackField">
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const fieldInst = doc.querySelector('instance');
+      const result = parser.extractFeedbackFieldContent(fieldInst);
+
+      expect(result.content).toBe('');
+      expect(result.buttonCaption).toBe('');
+    });
+  });
+
+  describe('extractFieldsContentWithFeedback', () => {
+    it('extracts both content and feedback from fields list', () => {
+      // Legacy ELP files use double-encoded HTML entities
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="fields"/>
+          <list>
+            <instance class="exe.engine.field.TextAreaField">
+              <dictionary>
+                <string role="key" value="content_w_resourcePaths"/>
+                <unicode value="&amp;lt;p&amp;gt;Main content&amp;lt;/p&amp;gt;"/>
+              </dictionary>
+            </instance>
+            <instance class="exe.engine.field.FeedbackField">
+              <dictionary>
+                <string role="key" value="feedback"/>
+                <unicode value="&amp;lt;p&amp;gt;Feedback here&amp;lt;/p&amp;gt;"/>
+                <string role="key" value="_buttonCaption"/>
+                <string value="Show"/>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const dict = doc.querySelector('dictionary');
+      const result = parser.extractFieldsContentWithFeedback(dict);
+
+      expect(result.content).toBe('<p>Main content</p>');
+      expect(result.feedbackHtml).toBe('<p>Feedback here</p>');
+      expect(result.feedbackButton).toBe('Show');
+    });
+
+    it('handles fields with only content (no feedback)', () => {
+      // Legacy ELP files use double-encoded HTML entities
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="fields"/>
+          <list>
+            <instance class="exe.engine.field.TextAreaField">
+              <dictionary>
+                <string role="key" value="content_w_resourcePaths"/>
+                <unicode value="&amp;lt;p&amp;gt;Content only&amp;lt;/p&amp;gt;"/>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const dict = doc.querySelector('dictionary');
+      const result = parser.extractFieldsContentWithFeedback(dict);
+
+      expect(result.content).toBe('<p>Content only</p>');
+      expect(result.feedbackHtml).toBe('');
+      expect(result.feedbackButton).toBe('');
+    });
+
+    it('handles multiple TextAreaFields and combines content', () => {
+      // Legacy ELP files use double-encoded HTML entities
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="fields"/>
+          <list>
+            <instance class="exe.engine.field.TextAreaField">
+              <dictionary>
+                <string role="key" value="content_w_resourcePaths"/>
+                <unicode value="&amp;lt;p&amp;gt;First&amp;lt;/p&amp;gt;"/>
+              </dictionary>
+            </instance>
+            <instance class="exe.engine.field.TextAreaField">
+              <dictionary>
+                <string role="key" value="content_w_resourcePaths"/>
+                <unicode value="&amp;lt;p&amp;gt;Second&amp;lt;/p&amp;gt;"/>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const dict = doc.querySelector('dictionary');
+      const result = parser.extractFieldsContentWithFeedback(dict);
+
+      expect(result.content).toContain('<p>First</p>');
+      expect(result.content).toContain('<p>Second</p>');
+    });
+  });
+
   describe('decodeHtmlContent', () => {
     it('decodes HTML entities', () => {
       expect(parser.decodeHtmlContent('&lt;p&gt;Test&lt;/p&gt;')).toBe(
@@ -932,6 +1109,200 @@ describe('LegacyXmlParser', () => {
     });
   });
 
+  describe('extractReflectionFeedback', () => {
+    /**
+     * ReflectionIdevice stores feedback differently from GenericIdevice:
+     * - Uses answerTextArea (TextAreaField) instead of FeedbackField
+     * - buttonCaption in the TextAreaField contains the feedback button text
+     * - content_w_resourcePaths contains the feedback HTML
+     */
+
+    it('extracts feedback content and buttonCaption from answerTextArea', () => {
+      // ReflectionIdevice structure with answerTextArea containing feedback
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="answerTextArea"/>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="buttonCaption"/>
+              <string value="Guía de reflexión"/>
+              <string role="key" value="content_w_resourcePaths"/>
+              <unicode value="&amp;lt;p&amp;gt;¿Qué hemos aprendido?&amp;lt;/p&amp;gt;"/>
+            </dictionary>
+          </instance>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const dict = doc.querySelector('dictionary');
+      const result = parser.extractReflectionFeedback(dict);
+
+      expect(result.buttonCaption).toBe('Guía de reflexión');
+      expect(result.content).toBe('<p>¿Qué hemos aprendido?</p>');
+    });
+
+    it('returns empty when answerTextArea is missing', () => {
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="activityTextArea"/>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"/>
+              <unicode value="&amp;lt;p&amp;gt;Main content&amp;lt;/p&amp;gt;"/>
+            </dictionary>
+          </instance>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const dict = doc.querySelector('dictionary');
+      const result = parser.extractReflectionFeedback(dict);
+
+      expect(result.content).toBe('');
+      expect(result.buttonCaption).toBe('');
+    });
+
+    it('returns empty when buttonCaption is missing', () => {
+      // answerTextArea without buttonCaption should not be treated as feedback
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="answerTextArea"/>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"/>
+              <unicode value="&amp;lt;p&amp;gt;Content without button&amp;lt;/p&amp;gt;"/>
+            </dictionary>
+          </instance>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const dict = doc.querySelector('dictionary');
+      const result = parser.extractReflectionFeedback(dict);
+
+      // Should return empty because both content AND buttonCaption must be present
+      expect(result.content).toBe('');
+      expect(result.buttonCaption).toBe('');
+    });
+
+    it('returns empty when answerTextArea has no content', () => {
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="answerTextArea"/>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="buttonCaption"/>
+              <string value="Click me"/>
+            </dictionary>
+          </instance>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const dict = doc.querySelector('dictionary');
+      const result = parser.extractReflectionFeedback(dict);
+
+      expect(result.content).toBe('');
+      expect(result.buttonCaption).toBe('');
+    });
+  });
+
+  describe('ReflectionIdevice integration', () => {
+    it('extracts feedback from ReflectionIdevice via extractIDevicesWithTitles', () => {
+      // Full ReflectionIdevice structure as found in legacy ELPs
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.reflectionidevice.ReflectionIdevice" reference="idev-reflect">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Dos minutos... para pensar"/>
+              <string role="key" value="activityTextArea"/>
+              <instance class="exe.engine.field.TextAreaField">
+                <dictionary>
+                  <string role="key" value="content_w_resourcePaths"/>
+                  <unicode value="&amp;lt;p&amp;gt;Main activity content&amp;lt;/p&amp;gt;"/>
+                </dictionary>
+              </instance>
+              <string role="key" value="answerTextArea"/>
+              <instance class="exe.engine.field.TextAreaField">
+                <dictionary>
+                  <string role="key" value="buttonCaption"/>
+                  <string value="Guía de reflexión"/>
+                  <string role="key" value="content_w_resourcePaths"/>
+                  <unicode value="&amp;lt;p&amp;gt;¿Qué hemos aprendido?&amp;lt;/p&amp;gt;"/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices).toHaveLength(1);
+      expect(idevices[0].title).toBe('Dos minutos... para pensar');
+      expect(idevices[0].feedbackButton).toBe('Guía de reflexión');
+      expect(idevices[0].feedbackHtml).toBe('<p>¿Qué hemos aprendido?</p>');
+    });
+
+    it('uses FeedbackField first, falls back to answerTextArea', () => {
+      // If an iDevice has both FeedbackField and answerTextArea, FeedbackField wins
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.genericidevice.GenericIdevice" reference="idev-generic">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Test iDevice"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&amp;lt;p&amp;gt;Main content&amp;lt;/p&amp;gt;"/>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.field.FeedbackField">
+                  <dictionary>
+                    <string role="key" value="feedback"/>
+                    <unicode value="&amp;lt;p&amp;gt;Feedback from FeedbackField&amp;lt;/p&amp;gt;"/>
+                    <string role="key" value="_buttonCaption"/>
+                    <string value="Show Feedback"/>
+                  </dictionary>
+                </instance>
+              </list>
+              <string role="key" value="answerTextArea"/>
+              <instance class="exe.engine.field.TextAreaField">
+                <dictionary>
+                  <string role="key" value="buttonCaption"/>
+                  <string value="Answer Button"/>
+                  <string role="key" value="content_w_resourcePaths"/>
+                  <unicode value="&amp;lt;p&amp;gt;Answer from answerTextArea&amp;lt;/p&amp;gt;"/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices).toHaveLength(1);
+      // FeedbackField should be used, not answerTextArea
+      expect(idevices[0].feedbackButton).toBe('Show Feedback');
+      expect(idevices[0].feedbackHtml).toBe('<p>Feedback from FeedbackField</p>');
+    });
+  });
+
   describe('extractIdeviceTitle', () => {
     it('extracts title from dictionary with _title key', () => {
       const xml = `<?xml version="1.0"?>
@@ -999,6 +1370,240 @@ describe('LegacyXmlParser', () => {
       const title = parser.extractIdeviceTitle(inst);
 
       expect(title).toBe('');
+    });
+  });
+
+  describe('LEGACY_ICON_MAP', () => {
+    it('has static icon mapping', () => {
+      expect(LegacyXmlParser.LEGACY_ICON_MAP).toBeDefined();
+      expect(typeof LegacyXmlParser.LEGACY_ICON_MAP).toBe('object');
+    });
+
+    it('maps preknowledge to think', () => {
+      expect(LegacyXmlParser.LEGACY_ICON_MAP['preknowledge']).toBe('think');
+    });
+
+    it('maps reading to book', () => {
+      expect(LegacyXmlParser.LEGACY_ICON_MAP['reading']).toBe('book');
+    });
+
+    it('maps casestudy to case', () => {
+      expect(LegacyXmlParser.LEGACY_ICON_MAP['casestudy']).toBe('case');
+    });
+  });
+
+  describe('icon extraction in extractIDevicesWithTitles', () => {
+    it('extracts icon name from iDevice dictionary', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Test iDevice"/>
+              <string role="key" value="icon"/>
+              <unicode value="objectives"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="Test content"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].icon).toBe('objectives');
+    });
+
+    it('maps legacy preknowledge icon to think', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Conocimientos previos"/>
+              <string role="key" value="icon"/>
+              <unicode value="preknowledge"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="Test content"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].icon).toBe('think');  // Mapped from preknowledge
+    });
+
+    it('returns empty string for missing icon', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Test"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="Test"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].icon).toBe('');
+    });
+  });
+
+  describe('icon in extractNodeBlocks', () => {
+    it('passes icon from iDevice to block', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.node.Node" reference="node1">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Test Page"/>
+            <string role="key" value="idevices"/>
+            <list>
+              <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Objetivos"/>
+                  <string role="key" value="icon"/>
+                  <unicode value="objectives"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exe.engine.field.TextAreaField" reference="f1">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Content"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const nodeEl = doc.querySelector('instance[class*="Node"]');
+      const blocks = parser.extractNodeBlocks(nodeEl);
+
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].name).toBe('Objetivos');
+      expect(blocks[0].iconName).toBe('objectives');
+    });
+
+    it('maps preknowledge icon to think in block', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.node.Node" reference="node1">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Test Page"/>
+            <string role="key" value="idevices"/>
+            <list>
+              <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Conocimientos previos"/>
+                  <string role="key" value="icon"/>
+                  <unicode value="preknowledge"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exe.engine.field.TextAreaField" reference="f1">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Content"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const nodeEl = doc.querySelector('instance[class*="Node"]');
+      const blocks = parser.extractNodeBlocks(nodeEl);
+
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].name).toBe('Conocimientos previos');
+      expect(blocks[0].iconName).toBe('think');  // Mapped from preknowledge
+    });
+
+    it('returns empty iconName for iDevice without icon', () => {
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.node.Node" reference="node1">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Test Page"/>
+            <string role="key" value="idevices"/>
+            <list>
+              <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="No Icon"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exe.engine.field.TextAreaField" reference="f1">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Content"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </dictionary>
+        </instance>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const nodeEl = doc.querySelector('instance[class*="Node"]');
+      const blocks = parser.extractNodeBlocks(nodeEl);
+
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].iconName).toBe('');
     });
   });
 });
