@@ -135,7 +135,7 @@ class OdeComponentsSync extends BaseEntity
 
     public function getJsonProperties(): ?string
     {
-        return $this->jsonProperties;
+        return self::repairJsonQuotes($this->jsonProperties);
     }
 
     public function setJsonProperties(string $jsonProperties): self
@@ -576,5 +576,43 @@ class OdeComponentsSync extends BaseEntity
         $resourcesUrl = $year.Constants::SLASH.$month.Constants::SLASH.$day.Constants::SLASH.$odeSessionId;
 
         return $resourcesUrl;
+    }
+
+    /**
+     * Repairs malformed JSON by escaping unescaped quotes within string values.
+     *
+     * @param $jsonString The potentially malformed JSON string to repair
+     *
+     * @return The repaired JSON string with properly escaped quotes
+     */
+    private function repairJsonQuotes($jsonString)
+    {
+        json_decode($jsonString);
+
+        if (JSON_ERROR_NONE === json_last_error()) {
+            return $jsonString;
+        }
+        $decodedJson = html_entity_decode($jsonString, ENT_QUOTES, 'UTF-8');
+        $attempt = 0;
+        $maxAttempts = 10;
+
+        do {
+            $previousIteration = $decodedJson;
+            $decodedJson = preg_replace_callback(
+                '/("(?:[^"\\\\]|\\\\.)*?")\s*:\s*("[^"]*?"(?:[^",}\]]*?")*[^",}\]]*)/s',
+                function (array $matches): string {
+                    $key = $matches[1]; // Already includes quotes
+                    $fullValue = $matches[2];
+                    $rawValue = trim($fullValue, '"');
+                    $escapedValue = preg_replace('/(?<!\\\\)"/', '\\"', $rawValue);
+
+                    return $key.':"'.$escapedValue.'"';
+                },
+                $decodedJson
+            );
+            ++$attempt;
+        } while ($decodedJson !== $previousIteration && $attempt < $maxAttempts);
+
+        return $decodedJson;
     }
 }
