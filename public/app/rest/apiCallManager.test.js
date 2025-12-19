@@ -179,6 +179,52 @@ describe('ApiCallManager', () => {
     });
   });
 
+  describe('_buildProjectUrl', () => {
+    it('should build URLs for numeric IDs', () => {
+      const url = apiManager._buildProjectUrl(123, '/sharing');
+      expect(url).toBe('http://localhost/exelearning/api/projects/123/sharing');
+    });
+
+    it('should build URLs for UUIDs', () => {
+      const url = apiManager._buildProjectUrl('abc-123', '/visibility');
+      expect(url).toBe('http://localhost/exelearning/api/projects/uuid/abc-123/visibility');
+    });
+  });
+
+  describe('getResourceLockTimeout', () => {
+    it('should return the default lock timeout', async () => {
+      const result = await apiManager.getResourceLockTimeout();
+      expect(result).toBe(900000);
+    });
+  });
+
+  describe('send', () => {
+    it('should call func.do with endpoint method and url', async () => {
+      apiManager.endpoints.api_test = { path: 'http://localhost/test', method: 'POST' };
+      await apiManager.send('api_test', { hello: 'world' });
+
+      expect(mockFunc.do).toHaveBeenCalledWith(
+        'POST',
+        'http://localhost/test',
+        { hello: 'world' }
+      );
+    });
+  });
+
+  describe('getIdevicesBySessionId', () => {
+    it('should replace session id in endpoint path', async () => {
+      apiManager.endpoints.api_games_session_idevices = {
+        path: 'http://localhost/api/games/session/{odeSessionId}/idevices',
+      };
+
+      await apiManager.getIdevicesBySessionId('sess-1');
+
+      expect(mockFunc.get).toHaveBeenCalledWith(
+        'http://localhost/api/games/session/sess-1/idevices'
+      );
+    });
+  });
+
   describe('upload/import helpers', () => {
     it('should fall back to default URL when import route is missing', async () => {
       apiManager.endpoints.api_odes_ode_local_elp_import_root_from_local = null;

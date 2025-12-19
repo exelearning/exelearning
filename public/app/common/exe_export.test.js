@@ -1,613 +1,343 @@
-/**
- * exe_export Tests
- *
- * Unit tests for the $exeExport object that handles export functionality.
- * Tests focus on pure JavaScript functions that don't require jQuery DOM manipulation.
- *
- * Run with: make test-frontend
- */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-/* eslint-disable no-undef */
+const readyCallbacks = [];
 
-describe('$exeExport', () => {
-  let $exeExport;
+function createCollection(elements) {
+  const api = {
+    elements,
+    length: elements.length,
+    on: vi.fn().mockReturnThis(),
+    css: vi.fn().mockReturnThis(),
+    parents: vi.fn(() => createCollection(elements)),
+    hasClass: vi.fn((cls) => elements[0]?.classList?.contains(cls)),
+    addClass: vi.fn((cls) => {
+      elements.forEach((el) => el.classList?.add(cls));
+      return api;
+    }),
+    removeClass: vi.fn((cls) => {
+      elements.forEach((el) => el.classList?.remove(cls));
+      return api;
+    }),
+    slideDown: vi.fn((cb) => {
+      if (cb) cb();
+      return api;
+    }),
+    slideUp: vi.fn((cb) => {
+      if (cb) cb();
+      return api;
+    }),
+    trigger: vi.fn().mockReturnThis(),
+    prepend: vi.fn((html) => {
+      elements.forEach((el) => el.insertAdjacentHTML('afterbegin', html));
+      return api;
+    }),
+    append: vi.fn((html) => {
+      elements.forEach((el) => el.insertAdjacentHTML('beforeend', html));
+      return api;
+    }),
+    html: vi.fn((value) => {
+      if (value === undefined) return elements[0]?.innerHTML ?? '';
+      elements.forEach((el) => {
+        el.innerHTML = value;
+      });
+      return api;
+    }),
+    text: vi.fn(() => elements.map((el) => el.textContent).join('')),
+    show: vi.fn().mockReturnThis(),
+    hide: vi.fn().mockReturnThis(),
+    remove: vi.fn().mockReturnThis(),
+    val: vi.fn((value) => {
+      if (value === undefined) return elements[0]?.value;
+      elements.forEach((el) => {
+        el.value = value;
+      });
+      return api;
+    }),
+    attr: vi.fn((name, value) => {
+      if (value === undefined) return elements[0]?.getAttribute(name);
+      elements.forEach((el) => el.setAttribute(name, value));
+      return api;
+    }),
+  };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
+  return api;
+}
 
-    // Create fresh $exeExport object for each test
-    $exeExport = {
-      isTogglingBox: false,
-      delayLoadingPageTime: 200,
-      delayLoadingIdevicesJson: 50,
-      delayLoadScorm: 50,
-      scormAPIwrapper: 'SCORM_API_wrapper.js',
-      scormFunctions: 'SCOFunctions.js',
+function setupJqueryStub() {
+  const $ = vi.fn((arg) => {
+    if (typeof arg === 'function') {
+      readyCallbacks.push(arg);
+      return undefined;
+    }
 
-      setExe: function () {
-        window.eXe = {};
-        window.eXe.app = window.$exe;
-      },
+    if (typeof arg === 'string' && arg.trim().startsWith('<')) {
+      const container = document.createElement('div');
+      container.innerHTML = arg.trim();
+      const element = container.firstElementChild || document.createElement('div');
+      return createCollection([element]);
+    }
 
-      initExe: function () {
-        window.eXe.app.init();
-      },
+    if (typeof arg === 'string') {
+      return createCollection(Array.from(document.querySelectorAll(arg)));
+    }
 
-      getIdeviceObjectKey: function (ideviceType) {
-        return `$${ideviceType.split('-').join('')}`;
-      },
+    if (arg instanceof HTMLElement) {
+      return createCollection([arg]);
+    }
 
-      getIdeviceObject: function (ideviceType) {
-        let exportIdeviceKey = this.getIdeviceObjectKey(ideviceType);
-        return window[exportIdeviceKey];
-      },
+    return createCollection([]);
+  });
 
-      addClassJsExecutedToExeContent: function () {
-        let eXeContent = document.querySelector('.exe-content');
-        if (eXeContent) {
-          eXeContent.classList.add('post-js');
-          eXeContent.classList.remove('pre-js');
-        }
-      },
+  return $;
+}
 
-      triggerPrintIfRequested: function () {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('print') === '1' && typeof window.print === 'function') {
-          window.print();
-        }
-      },
+function setupLocalStorageStub() {
+  const storage = new Map();
 
-      teacherMode: {
-        STORAGE_KEY: 'exeTeacherMode',
-        isEnabled: function () {
-          try {
-            return localStorage.getItem(this.STORAGE_KEY) === '1';
-          } catch (e) {
-            return false;
-          }
-        },
-      },
+  return {
+    getItem: vi.fn((key) => (storage.has(key) ? storage.get(key) : null)),
+    setItem: vi.fn((key, value) => storage.set(key, value)),
+    removeItem: vi.fn((key) => storage.delete(key)),
+  };
+}
 
-      searchBar: {
-        deepLinking: false,
-        markResults: false,
-        query: '',
-        results: [],
-        data: {},
-        isPreview: false,
-        isIndex: false,
+describe('exe_export.js', () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    readyCallbacks.length = 0;
+    document.body.innerHTML = '';
 
-        normalizeText: function (text) {
-          if (!text) return '';
-          return text
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '');
-        },
-
-        getLink: function (lnk) {
-          if (this.isPreview) return lnk;
-          if (!this.isIndex) {
-            lnk = lnk.replace('html/', '');
-            if (lnk === 'index.html') lnk = '../' + lnk;
-          }
-          return lnk;
-        },
-      },
+    window.$exe = { init: vi.fn(), clearHistory: vi.fn(), _confirmResponses: new Map() };
+    window.$exe_i18n = {
+      teacher_mode: 'Teacher Mode',
+      search: 'Search',
+      hide: 'Hide',
     };
 
-    // Mock $exe
-    window.$exe = {
-      init: vi.fn(),
-    };
+    window.localStorage = setupLocalStorageStub();
+    window.$ = setupJqueryStub();
+
+    await import('./exe_export.js');
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     delete window.$exe;
     delete window.eXe;
+    delete window.$exe_i18n;
+    delete window.$;
+    delete window.$exeExport;
+    delete window.localStorage;
+    vi.useRealTimers();
   });
 
-  describe('constants', () => {
-    it('has delayLoadingPageTime of 200', () => {
-      expect($exeExport.delayLoadingPageTime).toBe(200);
-    });
+  it('sets window.eXe.app to $exe', () => {
+    window.$exeExport.setExe();
 
-    it('has delayLoadingIdevicesJson of 50', () => {
-      expect($exeExport.delayLoadingIdevicesJson).toBe(50);
-    });
-
-    it('has delayLoadScorm of 50', () => {
-      expect($exeExport.delayLoadScorm).toBe(50);
-    });
-
-    it('has scormAPIwrapper filename', () => {
-      expect($exeExport.scormAPIwrapper).toBe('SCORM_API_wrapper.js');
-    });
-
-    it('has scormFunctions filename', () => {
-      expect($exeExport.scormFunctions).toBe('SCOFunctions.js');
-    });
+    expect(window.eXe).toBeDefined();
+    expect(window.eXe.app).toBe(window.$exe);
   });
 
-  describe('setExe', () => {
-    it('creates window.eXe object', () => {
-      $exeExport.setExe();
-      expect(window.eXe).toBeDefined();
-    });
+  it('calls the legacy init on window.eXe.app', () => {
+    window.eXe = { app: { init: vi.fn() } };
 
-    it('sets window.eXe.app to $exe', () => {
-      $exeExport.setExe();
-      expect(window.eXe.app).toBe(window.$exe);
-    });
+    window.$exeExport.initExe();
+
+    expect(window.eXe.app.init).toHaveBeenCalledTimes(1);
   });
 
-  describe('initExe', () => {
-    it('calls window.eXe.app.init()', () => {
-      window.eXe = { app: { init: vi.fn() } };
-      $exeExport.initExe();
-      expect(window.eXe.app.init).toHaveBeenCalled();
-    });
+  it('toggles classes on the exe-content container', () => {
+    const container = document.createElement('div');
+    container.className = 'exe-content pre-js';
+    document.body.appendChild(container);
+
+    window.$exeExport.addClassJsExecutedToExeContent();
+
+    expect(container.classList.contains('post-js')).toBe(true);
+    expect(container.classList.contains('pre-js')).toBe(false);
   });
 
-  describe('getIdeviceObjectKey', () => {
-    it('converts hyphenated name to camelCase with $ prefix', () => {
-      const result = $exeExport.getIdeviceObjectKey('text-idevice');
-      expect(result).toBe('$textidevice');
-    });
+  it('triggers print when requested', () => {
+    window.print = vi.fn();
+    const originalParams = window.URLSearchParams;
+    function MockURLSearchParams() {
+      this.get = () => '1';
+    }
+    window.URLSearchParams = MockURLSearchParams;
 
-    it('handles multiple hyphens', () => {
-      const result = $exeExport.getIdeviceObjectKey('my-custom-idevice');
-      expect(result).toBe('$mycustomidevice');
-    });
+    window.$exeExport.triggerPrintIfRequested();
 
-    it('handles name without hyphens', () => {
-      const result = $exeExport.getIdeviceObjectKey('simpleidevice');
-      expect(result).toBe('$simpleidevice');
-    });
+    expect(window.print).toHaveBeenCalledTimes(1);
+    window.URLSearchParams = originalParams;
   });
 
-  describe('getIdeviceObject', () => {
-    it('returns window object by key', () => {
-      window.$testidevice = { name: 'test' };
-      const result = $exeExport.getIdeviceObject('test-idevice');
-      expect(result).toEqual({ name: 'test' });
-      delete window.$testidevice;
-    });
+  it('initializes JSON idevices by type', () => {
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'type-a');
 
-    it('returns undefined if not found', () => {
-      const result = $exeExport.getIdeviceObject('nonexistent');
-      expect(result).toBeUndefined();
-    });
+    const jsonNodeTwo = document.createElement('div');
+    jsonNodeTwo.className = 'idevice_node';
+    jsonNodeTwo.setAttribute('data-idevice-component-type', 'json');
+    jsonNodeTwo.setAttribute('data-idevice-type', 'type-b');
+
+    const jsNode = document.createElement('div');
+    jsNode.className = 'idevice_node';
+    jsNode.setAttribute('data-idevice-component-type', 'js');
+    jsNode.setAttribute('data-idevice-type', 'ignore');
+
+    document.body.append(jsonNode, jsonNodeTwo, jsNode);
+
+    const spy = vi.spyOn(window.$exeExport, 'initJsonIdeviceInterval');
+
+    window.$exeExport.initJsonIdevices();
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenCalledWith('type-a');
+    expect(spy).toHaveBeenCalledWith('type-b');
   });
 
-  describe('addClassJsExecutedToExeContent', () => {
-    it('adds post-js class to exe-content', () => {
-      const mockElement = {
-        classList: {
-          add: vi.fn(),
-          remove: vi.fn(),
-        },
-      };
-      vi.spyOn(document, 'querySelector').mockReturnValue(mockElement);
+  it('renders JSON idevice content and clears its interval', () => {
+    const exportIdevice = {
+      renderView: vi.fn(() => '<p>Rendered</p>'),
+      renderBehaviour: vi.fn(),
+      init: vi.fn(),
+    };
 
-      $exeExport.addClassJsExecutedToExeContent();
+    window.$testidevice = exportIdevice;
 
-      expect(mockElement.classList.add).toHaveBeenCalledWith('post-js');
+    const node = document.createElement('div');
+    node.id = 'idevice-1';
+    node.className = 'idevice_node test-idevice db-no-data';
+    node.setAttribute('data-idevice-json-data', '{bad json');
+    node.setAttribute('data-idevice-template', 'template');
+
+    document.body.appendChild(node);
+
+    const intervalName = 'interval_test';
+    window[intervalName] = 123;
+    const clearSpy = vi.spyOn(window, 'clearInterval');
+
+    const timeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation((fn) => {
+      fn();
+      return 0;
     });
 
-    it('removes pre-js class from exe-content', () => {
-      const mockElement = {
-        classList: {
-          add: vi.fn(),
-          remove: vi.fn(),
-        },
-      };
-      vi.spyOn(document, 'querySelector').mockReturnValue(mockElement);
+    window.$exeExport.initJsonIdevice('test-idevice', intervalName);
 
-      $exeExport.addClassJsExecutedToExeContent();
-
-      expect(mockElement.classList.remove).toHaveBeenCalledWith('pre-js');
-    });
-
-    it('handles missing exe-content element', () => {
-      vi.spyOn(document, 'querySelector').mockReturnValue(null);
-
-      expect(() => $exeExport.addClassJsExecutedToExeContent()).not.toThrow();
-    });
+    expect(exportIdevice.renderView).toHaveBeenCalled();
+    expect(exportIdevice.renderBehaviour).toHaveBeenCalled();
+    expect(exportIdevice.init).toHaveBeenCalled();
+    expect(node.classList.contains('loaded')).toBe(true);
+    expect(clearSpy).toHaveBeenCalledWith(123);
+    timeoutSpy.mockRestore();
   });
 
-  describe('triggerPrintIfRequested', () => {
-    let originalLocation;
+  it('loads scorm when scorm assets are ready', () => {
+    document.body.classList.add('exe-scorm');
 
-    beforeEach(() => {
-      originalLocation = window.location;
+    window.scorm = {};
+    window.loadPage = vi.fn();
+
+    const spy = vi.spyOn(window.$exeExport, 'initScorm');
+    let intervalCallback = null;
+    const intervalSpy = vi.spyOn(window, 'setInterval').mockImplementation((fn) => {
+      intervalCallback = fn;
+      return 123;
     });
+    const clearSpy = vi.spyOn(window, 'clearInterval');
 
-    afterEach(() => {
-      window.location = originalLocation;
-    });
+    window.$exeExport.loadScorm();
+    intervalCallback();
 
-    it('calls window.print when print=1 in URL', () => {
-      delete window.location;
-      window.location = { search: '?print=1' };
-      window.print = vi.fn();
-
-      $exeExport.triggerPrintIfRequested();
-
-      expect(window.print).toHaveBeenCalled();
-    });
-
-    it('does not call print when print parameter is not 1', () => {
-      delete window.location;
-      window.location = { search: '?print=0' };
-      window.print = vi.fn();
-
-      $exeExport.triggerPrintIfRequested();
-
-      expect(window.print).not.toHaveBeenCalled();
-    });
-
-    it('does not call print when no print parameter', () => {
-      delete window.location;
-      window.location = { search: '' };
-      window.print = vi.fn();
-
-      $exeExport.triggerPrintIfRequested();
-
-      expect(window.print).not.toHaveBeenCalled();
-    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    intervalSpy.mockRestore();
   });
 
-  describe('teacherMode', () => {
-    describe('STORAGE_KEY', () => {
-      it('is set to exeTeacherMode', () => {
-        expect($exeExport.teacherMode.STORAGE_KEY).toBe('exeTeacherMode');
-      });
-    });
+  it('detects scorm data in idevices and wires unload handler', () => {
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
 
-    describe('isEnabled', () => {
-      let mockStorage;
+    window.$testidevice = {
+      options: [{ isScorm: true }],
+    };
 
-      beforeEach(() => {
-        mockStorage = {};
-        // Replace the teacherMode.isEnabled with a version using mock storage
-        $exeExport.teacherMode.isEnabled = function () {
-          try {
-            return mockStorage[this.STORAGE_KEY] === '1';
-          } catch (e) {
-            return false;
-          }
-        };
-      });
+    const jsNode = document.createElement('div');
+    jsNode.className = 'idevice_node';
+    jsNode.setAttribute('data-idevice-component-type', 'js');
+    jsNode.setAttribute('data-idevice-type', 'test-idevice');
 
-      it('returns true when storage has value 1', () => {
-        mockStorage['exeTeacherMode'] = '1';
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'json-idevice');
+    jsonNode.setAttribute(
+      'data-idevice-json-data',
+      JSON.stringify({ exportScorm: { saveScore: true } })
+    );
 
-        const result = $exeExport.teacherMode.isEnabled();
+    document.body.append(jsNode, jsonNode);
 
-        expect(result).toBe(true);
-      });
+    window.$exeExport.initScorm();
+    window.dispatchEvent(new Event('unload'));
 
-      it('returns false when storage has different value', () => {
-        mockStorage['exeTeacherMode'] = '0';
+    expect(window.loadPage).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).toHaveBeenCalledWith(true);
+  });
 
-        const result = $exeExport.teacherMode.isEnabled();
+  it('normalizes search strings', () => {
+    expect(window.$exeExport.searchBar.normalizeText('Árbol')).toBe('arbol');
+  });
 
-        expect(result).toBe(false);
-      });
+  it('builds links based on preview/index state', () => {
+    const searchBar = window.$exeExport.searchBar;
 
-      it('returns false when storage is empty', () => {
-        delete mockStorage['exeTeacherMode'];
+    searchBar.isPreview = true;
+    expect(searchBar.getLink('html/index.html')).toBe('html/index.html');
 
-        const result = $exeExport.teacherMode.isEnabled();
+    searchBar.isPreview = false;
+    searchBar.isIndex = false;
+    expect(searchBar.getLink('html/index.html')).toBe('../index.html');
+  });
 
-        expect(result).toBe(false);
-      });
+  it('searches in blocks and creates links', () => {
+    const searchBar = window.$exeExport.searchBar;
 
-      it('returns false on storage error', () => {
-        // Create a modified teacherMode that throws on getItem
-        const teacherModeWithError = {
-          STORAGE_KEY: 'exeTeacherMode',
-          isEnabled: function () {
-            try {
-              throw new Error('Storage error');
-            } catch (e) {
-              return false;
-            }
+    searchBar.deepLinking = true;
+    searchBar.results = [];
+    searchBar.isPreview = false;
+    searchBar.isIndex = false;
+    searchBar.data = {
+      page1: {
+        name: 'Page One',
+        fileUrl: 'html/index.html',
+        blocks: {
+          block1: {
+            order: 1,
+            name: 'Match',
+            idevices: [],
           },
-        };
-
-        const result = teacherModeWithError.isEnabled();
-
-        expect(result).toBe(false);
-      });
-    });
-  });
-});
-
-describe('$exeExport.searchBar', () => {
-  let searchBar;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Create fresh searchBar for each test
-    searchBar = {
-      deepLinking: false,
-      markResults: false,
-      query: '',
-      results: [],
-      data: {},
-      isPreview: false,
-      isIndex: false,
-
-      normalizeText: function (text) {
-        if (!text) return '';
-        return text
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-      },
-
-      getLink: function (lnk) {
-        if (this.isPreview) return lnk;
-        if (!this.isIndex) {
-          lnk = lnk.replace('html/', '');
-          if (lnk === 'index.html') lnk = '../' + lnk;
-        }
-        return lnk;
-      },
-
-      searchInBlocks: function (i, str, fullLink) {
-        if (this.deepLinking === false && this.results.indexOf(i) !== -1) {
-          return '';
-        }
-        let res = '';
-        const node = this.data[i];
-        if (!node) return res;
-
-        const boxes = node.blocks || {};
-        let boxCounter = Object.keys(boxes).length;
-
-        for (const x in boxes) {
-          const box = boxes[x];
-          const boxOrder = box.order;
-          let boxtitle = this.normalizeText(box.name);
-
-          // Add iDevice content to search
-          const iDevices = box.idevices || {};
-          for (const z in iDevices) {
-            const iDevice = iDevices[z];
-            if (typeof iDevice.htmlView === 'string') {
-              let iDeviceHTML = iDevice.htmlView.replace(/<\/?[^>]+(>|$)/g, '');
-              boxtitle += ' ' + this.normalizeText(iDeviceHTML);
-            }
-          }
-
-          if (boxtitle.indexOf(str) !== -1) {
-            this.results.push(i);
-            let lnk = this.getLink(node.fileUrl);
-            if (fullLink) {
-              if (this.deepLinking) lnk += '#' + x;
-              res += '<li><a href="' + lnk + '">' + node.name + '</a>';
-              if (boxCounter > 1) res += '<span> (bloque ' + boxOrder + ')</span></li>';
-            } else {
-              if (boxCounter > 1)
-                res += ', <a href="' + lnk + '#' + x + '">bloque ' + boxOrder + '</a>';
-            }
-          }
-        }
-        return res;
+        },
       },
     };
+
+    const res = searchBar.searchInBlocks('page1', 'match', true);
+
+    expect(res).toContain('Page One');
+    expect(res).toContain('#block1');
   });
 
-  describe('normalizeText', () => {
-    it('converts text to lowercase', () => {
-      const result = searchBar.normalizeText('HELLO WORLD');
-      expect(result).toBe('hello world');
-    });
+  it('returns early when already matched and deep linking is off', () => {
+    const searchBar = window.$exeExport.searchBar;
 
-    it('removes diacritical marks (accents)', () => {
-      const result = searchBar.normalizeText('café résumé');
-      expect(result).toBe('cafe resume');
-    });
+    searchBar.deepLinking = false;
+    searchBar.results = ['page1'];
+    searchBar.data = { page1: { name: 'Page One', fileUrl: 'html/index.html', blocks: {} } };
 
-    it('handles Spanish characters', () => {
-      const result = searchBar.normalizeText('niño España');
-      expect(result).toBe('nino espana');
-    });
+    const res = searchBar.searchInBlocks('page1', 'page', true);
 
-    it('handles empty string', () => {
-      const result = searchBar.normalizeText('');
-      expect(result).toBe('');
-    });
-
-    it('handles null/undefined', () => {
-      expect(searchBar.normalizeText(null)).toBe('');
-      expect(searchBar.normalizeText(undefined)).toBe('');
-    });
-
-    it('handles mixed case with accents', () => {
-      const result = searchBar.normalizeText('Éducación FRANÇAISE');
-      expect(result).toBe('educacion francaise');
-    });
-
-    it('handles German umlauts', () => {
-      const result = searchBar.normalizeText('München über');
-      expect(result).toBe('munchen uber');
-    });
-
-    it('handles Portuguese cedilla', () => {
-      const result = searchBar.normalizeText('Ação');
-      expect(result).toBe('acao');
-    });
-  });
-
-  describe('getLink', () => {
-    it('returns link unchanged in preview mode', () => {
-      searchBar.isPreview = true;
-      searchBar.isIndex = false;
-
-      const result = searchBar.getLink('html/page1.html');
-
-      expect(result).toBe('html/page1.html');
-    });
-
-    it('removes html/ prefix when not on index', () => {
-      searchBar.isPreview = false;
-      searchBar.isIndex = false;
-
-      const result = searchBar.getLink('html/page1.html');
-
-      expect(result).toBe('page1.html');
-    });
-
-    it('adds ../ prefix for index.html when not on index', () => {
-      searchBar.isPreview = false;
-      searchBar.isIndex = false;
-
-      const result = searchBar.getLink('index.html');
-
-      expect(result).toBe('../index.html');
-    });
-
-    it('returns link unchanged on index page', () => {
-      searchBar.isPreview = false;
-      searchBar.isIndex = true;
-
-      const result = searchBar.getLink('html/page1.html');
-
-      expect(result).toBe('html/page1.html');
-    });
-
-    it('handles index.html on index page', () => {
-      searchBar.isPreview = false;
-      searchBar.isIndex = true;
-
-      const result = searchBar.getLink('index.html');
-
-      expect(result).toBe('index.html');
-    });
-  });
-
-  describe('searchInBlocks', () => {
-    it('returns empty string when result already found and no deep linking', () => {
-      searchBar.deepLinking = false;
-      searchBar.results = ['page1'];
-      searchBar.data = {
-        page1: { name: 'Page 1', blocks: {} },
-      };
-
-      const result = searchBar.searchInBlocks('page1', 'test', true);
-
-      expect(result).toBe('');
-    });
-
-    it('searches in block name', () => {
-      searchBar.deepLinking = false;
-      searchBar.results = [];
-      searchBar.data = {
-        page1: {
-          name: 'Page 1',
-          fileUrl: 'page1.html',
-          blocks: {
-            block1: {
-              order: 1,
-              name: 'Test Block',
-              idevices: {},
-            },
-          },
-        },
-      };
-      searchBar.isPreview = false;
-      searchBar.isIndex = true;
-
-      const result = searchBar.searchInBlocks('page1', 'test', true);
-
-      expect(result).toContain('Page 1');
-      expect(searchBar.results).toContain('page1');
-    });
-
-    it('searches in iDevice HTML content', () => {
-      searchBar.deepLinking = false;
-      searchBar.results = [];
-      searchBar.data = {
-        page1: {
-          name: 'Page 1',
-          fileUrl: 'page1.html',
-          blocks: {
-            block1: {
-              order: 1,
-              name: 'Block',
-              idevices: {
-                idevice1: {
-                  htmlView: '<p>This contains the search term keyword here</p>',
-                },
-              },
-            },
-          },
-        },
-      };
-      searchBar.isPreview = false;
-      searchBar.isIndex = true;
-
-      const result = searchBar.searchInBlocks('page1', 'keyword', true);
-
-      expect(result).toContain('Page 1');
-    });
-
-    it('returns empty string when no match found', () => {
-      searchBar.deepLinking = false;
-      searchBar.results = [];
-      searchBar.data = {
-        page1: {
-          name: 'Page 1',
-          fileUrl: 'page1.html',
-          blocks: {
-            block1: {
-              order: 1,
-              name: 'Something else',
-              idevices: {},
-            },
-          },
-        },
-      };
-
-      const result = searchBar.searchInBlocks('page1', 'notfound', true);
-
-      expect(result).toBe('');
-    });
-
-    it('handles missing node data', () => {
-      searchBar.data = {};
-
-      const result = searchBar.searchInBlocks('nonexistent', 'test', true);
-
-      expect(result).toBe('');
-    });
-
-    it('shows block order when multiple blocks exist', () => {
-      searchBar.deepLinking = false;
-      searchBar.results = [];
-      searchBar.data = {
-        page1: {
-          name: 'Page 1',
-          fileUrl: 'page1.html',
-          blocks: {
-            block1: { order: 1, name: 'First', idevices: {} },
-            block2: { order: 2, name: 'Test Block', idevices: {} },
-          },
-        },
-      };
-      searchBar.isPreview = false;
-      searchBar.isIndex = true;
-
-      const result = searchBar.searchInBlocks('page1', 'test', true);
-
-      expect(result).toContain('bloque 2');
-    });
+    expect(res).toBe('');
   });
 });

@@ -1,13 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('custom.js', () => {
-    beforeEach(() => {
-        // Reset $eXeLearningCustom before each test
-        global.$eXeLearningCustom = {
-            init: function () {
-                // alert("eXeLearning is ready!");
-            },
-        };
+    beforeEach(async () => {
+        vi.resetModules();
+        global.jQuery = vi.fn((callback) => callback());
+        delete global.$eXeLearningCustom;
+        await import('./custom.js');
+    });
+
+    afterEach(() => {
+        delete global.$eXeLearningCustom;
+        delete global.jQuery;
     });
 
     it('should have $eXeLearningCustom object defined', () => {
@@ -27,5 +30,10 @@ describe('custom.js', () => {
         expect(() => {
             global.$eXeLearningCustom.init();
         }).not.toThrow();
+    });
+
+    it('should execute the jQuery ready handler', () => {
+        expect(global.jQuery).toHaveBeenCalledTimes(1);
+        expect(global.jQuery.mock.calls[0][0]).toBeTypeOf('function');
     });
 });

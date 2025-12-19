@@ -524,6 +524,13 @@ var $exe = {
 
 };
 
+if (typeof window !== 'undefined') {
+    window.$exe = $exe;
+}
+if (typeof global !== 'undefined') {
+    global.$exe = $exe;
+}
+
 // iDevices common code - To review (Part of this code should not be exported)
 var $exeDevices = {
     iDevice: {

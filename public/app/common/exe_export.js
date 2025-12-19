@@ -1,4 +1,4 @@
-$exeExport = {
+const $exeExport = window.$exeExport = {
 
     isTogglingBox: false,
     delayLoadingPageTime: 200,

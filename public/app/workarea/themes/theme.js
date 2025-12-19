@@ -14,6 +14,7 @@ export default class Theme {
      * config.xml params
      */
     configParams = [
+        'name',
         'author',
         'authorUrl',
         'description',
@@ -39,6 +40,7 @@ export default class Theme {
      * Default values of config.xml params
      */
     default = {
+        name: '',
         author: '',
         authorUrl: '',
         description: '',

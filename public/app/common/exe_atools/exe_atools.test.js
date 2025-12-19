@@ -72,6 +72,109 @@ const mockJQuery = vi.fn((selector) => {
 });
 global.$ = mockJQuery;
 
+const createDomJQuery = () => {
+  return (selector) => {
+    if (typeof selector === 'function') {
+      selector();
+      return { length: 0 };
+    }
+
+    let nodes = [];
+    if (selector === window || selector === document) {
+      nodes = [selector];
+    } else if (typeof selector === 'string') {
+      nodes = Array.from(document.querySelectorAll(selector));
+    } else if (selector) {
+      nodes = [selector];
+    }
+
+    const api = {
+      length: nodes.length,
+      0: nodes[0],
+      after: (html) => {
+        if (nodes[0]) nodes[0].insertAdjacentHTML('afterend', html);
+        return api;
+      },
+      prepend: (html) => {
+        if (nodes[0]) nodes[0].insertAdjacentHTML('afterbegin', html);
+        return api;
+      },
+      addClass: (cls) => {
+        nodes.forEach((node) => node.classList && node.classList.add(cls));
+        return api;
+      },
+      removeClass: (cls) => {
+        nodes.forEach((node) => node.classList && node.classList.remove(cls));
+        return api;
+      },
+      toggleClass: (cls) => {
+        nodes.forEach((node) => node.classList && node.classList.toggle(cls));
+        return api;
+      },
+      hasClass: (cls) => {
+        return nodes[0]?.classList?.contains(cls) || false;
+      },
+      val: (value) => {
+        if (value === undefined) return nodes[0]?.value ?? '';
+        nodes.forEach((node) => {
+          if ('value' in node) node.value = value;
+        });
+        return api;
+      },
+      trigger: (eventName) => {
+        nodes.forEach((node) => node.dispatchEvent(new Event(eventName, { bubbles: true })));
+        return api;
+      },
+      click: (handler) => {
+        if (handler) {
+          nodes.forEach((node) => node.addEventListener('click', handler));
+        } else {
+          nodes.forEach((node) => node.click());
+        }
+        return api;
+      },
+      change: (handler) => {
+        if (handler) {
+          nodes.forEach((node) => node.addEventListener('change', handler));
+        }
+        return api;
+      },
+      each: (handler) => {
+        nodes.forEach((node, index) => handler.call(node, index, node));
+        return api;
+      },
+      on: (event, handler) => {
+        nodes.forEach((node) => node.addEventListener(event, handler));
+        return api;
+      },
+      attr: (name, value) => {
+        if (value === undefined) return nodes[0]?.getAttribute?.(name);
+        nodes.forEach((node) => node.setAttribute?.(name, value));
+        return api;
+      },
+      css: (prop) => {
+        const node = nodes[0];
+        if (!node || node === window || node === document) return '';
+        const computed = window.getComputedStyle(node);
+        return node.style[prop] || computed[prop] || '';
+      },
+      height: () => {
+        if (nodes[0] === window) return window.innerHeight;
+        return nodes[0]?.offsetHeight ?? 0;
+      },
+      width: () => {
+        if (nodes[0] === window) return window.innerWidth;
+        return nodes[0]?.offsetWidth ?? 0;
+      },
+      remove: () => {
+        nodes.forEach((node) => node.remove());
+        return api;
+      },
+    };
+    return api;
+  };
+};
+
 // Mock localStorage
 global.localStorage = {
   getItem: vi.fn(() => null),
@@ -201,6 +304,621 @@ describe('exe_atools (app/common)', () => {
 
     it('uses exeAtoolsMode key', () => {
       expect(scriptContent).toContain("'exeAtoolsMode'");
+    });
+  });
+
+  describe('storage helpers', () => {
+    it('stores the original font size from computed styles', () => {
+      const original = window.getComputedStyle;
+      window.getComputedStyle = vi.fn(() => ({
+        getPropertyValue: () => '18px',
+      }));
+
+      exeAtools.storage.setOriginalFontSize();
+
+      expect(exeAtools.storage.originalFontSize).toBe(18);
+      window.getComputedStyle = original;
+    });
+
+    it('returns translator status based on options and storage', () => {
+      exeAtools.options.translator = false;
+      localStorageData.exeAtoolsTranslator = 'on';
+      expect(exeAtools.storage.getTranslatorStatus()).toBe('off');
+
+      exeAtools.options.translator = true;
+      localStorageData.exeAtoolsTranslator = 'on';
+      expect(exeAtools.storage.getTranslatorStatus()).toBe('on');
+    });
+
+    it('returns toolbar, font size, font family, and position settings', () => {
+      localStorageData.exeAtoolsStatus = 'on';
+      localStorageData.exeAtoolsFontSize = '20px';
+      localStorageData.exeAtoolsFontFamily = 'od';
+      localStorageData.exeAtoolsToolbarStyles = 'transform: translate(10px, 5px);';
+
+      expect(exeAtools.storage.getToolbarStatus()).toBe('on');
+      expect(exeAtools.storage.getFontSize()).toBe('20px');
+      expect(exeAtools.storage.getFontFamily()).toBe('od');
+      expect(exeAtools.storage.getToolbarPosition()).toBe('transform: translate(10px, 5px);');
+    });
+  });
+
+  describe('font size adjustments', () => {
+    it('increases font size and persists when above original size', () => {
+      exeAtools.storage.originalFontSize = 16;
+      document.body.style.fontSize = '';
+
+      exeAtools.setFontSize(2);
+
+      expect(document.body.style.fontSize).toBe('18px');
+      expect(localStorageData.exeAtoolsFontSize).toBe('18px');
+    });
+
+    it('resets font size when it falls below original size', () => {
+      exeAtools.storage.originalFontSize = 16;
+      document.body.style.fontSize = '16px';
+
+      const result = exeAtools.setFontSize(-1);
+
+      expect(result).toBe(false);
+      expect(document.body.style.fontSize).toBe('');
+      expect(localStorageData.exeAtoolsFontSize).toBe('');
+    });
+  });
+
+  describe('reset button state', () => {
+    it('enables reset button when settings are active', () => {
+      localStorageData.exeAtoolsTranslator = 'on';
+      const resetBtn = {
+        addClass: vi.fn(),
+        removeClass: vi.fn(),
+      };
+      const original$ = global.$;
+      global.$ = vi.fn(() => resetBtn);
+
+      exeAtools.checkResetBtnStatus();
+
+      expect(resetBtn.removeClass).toHaveBeenCalledWith('reset-disabled');
+      global.$ = original$;
+    });
+  });
+
+  describe('google translate toggle', () => {
+    it('adds and removes translator elements and updates storage', () => {
+      exeAtools.options.translator = true;
+      localStorageData.exeAtoolsTranslator = 'off';
+      const originalAppendChild = document.head.appendChild;
+      document.head.appendChild = vi.fn((node) => node);
+
+      exeAtools.toggleGoogleTranslateWidget();
+
+      expect(localStorageData.exeAtoolsTranslator).toBe('on');
+      expect(document.getElementById('google_translate_element')).toBeTruthy();
+
+      const original$ = global.$;
+      global.$ = vi.fn((selector) => ({
+        remove: () => {
+          document.querySelectorAll(selector).forEach((node) => node.remove());
+        },
+      }));
+
+      exeAtools.toggleGoogleTranslateWidget();
+
+      expect(localStorageData.exeAtoolsTranslator).toBe('off');
+      expect(document.getElementById('google_translate_element')).toBeFalsy();
+      global.$ = original$;
+      document.head.appendChild = originalAppendChild;
+    });
+  });
+
+  describe('draggable helpers', () => {
+    it('limits drag position to viewport', () => {
+      const original$ = global.$;
+      global.$ = vi.fn((selector) => {
+        if (selector === '#eXeAtoolsSet') {
+          return { height: () => 100, width: () => 200 };
+        }
+        if (selector === window) {
+          return { height: () => 300, width: () => 400 };
+        }
+        if (selector === 'body') {
+          return { css: () => '0px' };
+        }
+        return original$(selector);
+      });
+
+      const limited = exeAtools.draggable.limit(500, -500);
+
+      expect(limited[0]).toBe(200);
+      expect(limited[1]).toBe(-200);
+      global.$ = original$;
+    });
+
+    it('reads translation from computed matrix', () => {
+      const originalMatrix = global.WebKitCSSMatrix;
+      const originalComputed = window.getComputedStyle;
+      global.WebKitCSSMatrix = function (transform) {
+        const match = /matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*([^,]+),\s*([^,]+)\)/.exec(transform);
+        this.m41 = match ? Number(match[1]) : 0;
+        this.m42 = match ? Number(match[2]) : 0;
+      };
+
+      const element = document.createElement('div');
+      element.style.transform = 'matrix(1, 0, 0, 1, 12, 34)';
+      window.getComputedStyle = vi.fn(() => ({ transform: element.style.transform }));
+
+      const [x, y] = exeAtools.draggable.getTranslation(element);
+
+      expect(x).toBe(12);
+      expect(y).toBe(34);
+      global.WebKitCSSMatrix = originalMatrix;
+      window.getComputedStyle = originalComputed;
+    });
+  });
+
+  describe('start behavior', () => {
+    it('inserts toolbar after skipNav and restores stored settings', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      const originalSpeech = global.SpeechSynthesisUtterance;
+      global.$ = createDomJQuery();
+      global.SpeechSynthesisUtterance = function () {};
+      exeAtools.options.draggable = false;
+      exeAtools.options.translator = false;
+      exeAtools.options.modeToggler = false;
+
+      const skipNav = document.createElement('div');
+      skipNav.id = 'skipNav';
+      document.body.classList.add('exe-web-site');
+      document.body.appendChild(skipNav);
+
+      localStorageData.exeAtoolsStatus = 'on';
+      localStorageData.exeAtoolsFontSize = '18px';
+      localStorageData.exeAtoolsFontFamily = 'od';
+
+      exeAtools.start();
+
+      expect(skipNav.nextElementSibling?.id).toBe('eXeAtools');
+      expect(document.body.classList.contains('exe-atools-on')).toBe(true);
+      expect(document.body.style.fontSize).toBe('18px');
+      expect(document.body.classList.contains('exe-atools-od')).toBe(true);
+      expect(document.getElementById('eXeAtools').classList.contains('loading')).toBe(false);
+
+      global.$ = original$;
+      global.SpeechSynthesisUtterance = originalSpeech;
+      Object.assign(exeAtools.options, originalOptions);
+    });
+
+    it('restores translator status by toggling widget', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      const originalAppendChild = document.head.appendChild;
+      global.$ = createDomJQuery();
+      document.head.appendChild = vi.fn((node) => node);
+      exeAtools.options.draggable = false;
+      exeAtools.options.translator = true;
+
+      localStorageData.exeAtoolsTranslator = 'on';
+
+      exeAtools.start();
+
+      expect(localStorageData.exeAtoolsTranslator).toBe('on');
+      expect(document.getElementById('google_translate_element')).toBeTruthy();
+
+      global.$ = original$;
+      document.head.appendChild = originalAppendChild;
+      Object.assign(exeAtools.options, originalOptions);
+    });
+
+    it('applies saved toolbar styles and uses draggable hooks', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      const originalDrogOn = exeAtools.Drog.on;
+      const originalFixPosition = exeAtools.draggable.fixPosition;
+      global.$ = createDomJQuery();
+      exeAtools.options.draggable = true;
+      exeAtools.Drog.on = vi.fn();
+      exeAtools.draggable.fixPosition = vi.fn();
+
+      localStorageData.exeAtoolsToolbarStyles = 'transform: translate(10px, -5px);';
+
+      exeAtools.start();
+
+      const handler = document.getElementById('eXeAtoolsSet');
+      expect(handler.style.cssText).toContain('translate(10px, -5px)');
+      expect(exeAtools.Drog.on).toHaveBeenCalledWith(handler);
+      expect(exeAtools.draggable.fixPosition).toHaveBeenCalledWith(handler);
+
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+      exeAtools.Drog.on = originalDrogOn;
+      exeAtools.draggable.fixPosition = originalFixPosition;
+    });
+  });
+
+  describe('setEvents behavior', () => {
+    it('toggles toolbar visibility and reminder class', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      global.$ = createDomJQuery();
+      exeAtools.options.draggable = false;
+      exeAtools.options.modeToggler = false;
+      exeAtools.options.translator = false;
+
+      exeAtools.start();
+      vi.useFakeTimers();
+
+      const button = document.getElementById('eXeAtoolsBtn');
+      button.click();
+
+      expect(document.body.classList.contains('exe-atools-on')).toBe(true);
+      expect(localStorageData.exeAtoolsStatus).toBe('on');
+
+      button.click();
+
+      expect(document.body.classList.contains('exe-atools-on')).toBe(false);
+      expect(localStorageData.exeAtoolsStatus).toBe('off');
+      expect(button.classList.contains('eXeAreminder')).toBe(true);
+
+      vi.advanceTimersByTime(1000);
+      expect(button.classList.contains('eXeAreminder')).toBe(false);
+
+      vi.useRealTimers();
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+    });
+
+    it('updates font family on selector change', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      global.$ = createDomJQuery();
+      exeAtools.options.draggable = false;
+
+      exeAtools.start();
+
+      const selector = document.getElementById('eXeAtoolsFont');
+      selector.value = 'ah';
+      selector.dispatchEvent(new Event('change', { bubbles: true }));
+
+      expect(document.body.classList.contains('exe-atools-ah')).toBe(true);
+      expect(localStorageData.exeAtoolsFontFamily).toBe('ah');
+
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+    });
+
+    it('toggles dark mode via mode toggler', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      global.$ = createDomJQuery();
+      exeAtools.options.draggable = false;
+      exeAtools.options.modeToggler = true;
+
+      exeAtools.start();
+
+      const toggler = document.getElementById('eXeAtoolsModeToggler');
+      toggler.click();
+
+      expect(document.body.classList.contains('exe-atools-dm')).toBe(true);
+      expect(localStorageData.exeAtoolsMode).toBe('dark');
+
+      toggler.click();
+
+      expect(document.body.classList.contains('exe-atools-dm')).toBe(false);
+      expect(localStorageData.exeAtoolsMode).toBe('');
+
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+    });
+
+    it('handles resize by checking draggable position', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      const originalCheckPosition = exeAtools.draggable.checkPosition;
+      const originalFixPosition = exeAtools.draggable.fixPosition;
+      global.$ = createDomJQuery();
+      exeAtools.options.draggable = true;
+      exeAtools.options.translator = false;
+      exeAtools.options.modeToggler = false;
+      exeAtools.draggable.checkPosition = vi.fn();
+      exeAtools.draggable.fixPosition = vi.fn();
+
+      exeAtools.start();
+      window.dispatchEvent(new Event('resize'));
+
+      expect(exeAtools.draggable.checkPosition).toHaveBeenCalled();
+
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+      exeAtools.draggable.checkPosition = originalCheckPosition;
+      exeAtools.draggable.fixPosition = originalFixPosition;
+    });
+  });
+
+  describe('button actions', () => {
+    it('invokes font size handlers from toolbar buttons', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      const originalSetFontSize = exeAtools.setFontSize;
+      const originalCheckReset = exeAtools.checkResetBtnStatus;
+      global.$ = createDomJQuery();
+      exeAtools.options.draggable = false;
+      exeAtools.setFontSize = vi.fn();
+      exeAtools.checkResetBtnStatus = vi.fn();
+
+      exeAtools.start();
+      exeAtools.checkResetBtnStatus.mockClear();
+
+      document.getElementById('eXeAtoolsLgTextBtn').click();
+      document.getElementById('eXeAtoolsSmTextBtn').click();
+
+      expect(exeAtools.setFontSize).toHaveBeenCalledWith(1);
+      expect(exeAtools.setFontSize).toHaveBeenCalledWith(-1);
+      expect(exeAtools.checkResetBtnStatus).toHaveBeenCalledTimes(2);
+
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+      exeAtools.setFontSize = originalSetFontSize;
+      exeAtools.checkResetBtnStatus = originalCheckReset;
+    });
+
+    it('invokes translate button toggle and reset status', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      const originalToggle = exeAtools.toggleGoogleTranslateWidget;
+      const originalCheckReset = exeAtools.checkResetBtnStatus;
+      global.$ = createDomJQuery();
+      exeAtools.options.translator = true;
+      exeAtools.options.draggable = false;
+      exeAtools.toggleGoogleTranslateWidget = vi.fn();
+      exeAtools.checkResetBtnStatus = vi.fn();
+
+      exeAtools.start();
+
+      document.getElementById('eXeAtoolsTranslateBtn').click();
+
+      expect(exeAtools.toggleGoogleTranslateWidget).toHaveBeenCalled();
+      expect(exeAtools.checkResetBtnStatus).toHaveBeenCalled();
+
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+      exeAtools.toggleGoogleTranslateWidget = originalToggle;
+      exeAtools.checkResetBtnStatus = originalCheckReset;
+    });
+
+    it('resets styles and toggles translator on reset button click', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      const originalToggle = exeAtools.toggleGoogleTranslateWidget;
+      global.$ = createDomJQuery();
+      exeAtools.options.translator = true;
+      exeAtools.options.draggable = false;
+      exeAtools.toggleGoogleTranslateWidget = vi.fn();
+
+      localStorageData.exeAtoolsTranslator = 'on';
+
+      exeAtools.start();
+
+      const resetBtn = document.getElementById('eXeAtoolsResetBtn');
+      resetBtn.className = '';
+      document.body.style.fontSize = '19px';
+      document.body.classList.add('exe-atools-od');
+
+      resetBtn.click();
+
+      expect(document.body.style.fontSize).toBe('');
+      expect(localStorageData.exeAtoolsFontSize).toBe('');
+      expect(localStorageData.exeAtoolsFontFamily).toBe('');
+      expect(exeAtools.toggleGoogleTranslateWidget).toHaveBeenCalled();
+
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+      exeAtools.toggleGoogleTranslateWidget = originalToggle;
+    });
+
+    it('does nothing when reset button is disabled', () => {
+      const original$ = global.$;
+      const originalOptions = { ...exeAtools.options };
+      global.$ = createDomJQuery();
+      exeAtools.options.draggable = false;
+
+      exeAtools.start();
+
+      const resetBtn = document.getElementById('eXeAtoolsResetBtn');
+      resetBtn.className = 'reset-disabled';
+      document.body.style.fontSize = '19px';
+
+      resetBtn.click();
+
+      expect(document.body.style.fontSize).toBe('19px');
+
+      global.$ = original$;
+      Object.assign(exeAtools.options, originalOptions);
+    });
+  });
+
+  describe('reader behavior', () => {
+    it('reads selected text and toggles speaking state', () => {
+      const original$ = global.$;
+      const originalSelection = window.getSelection;
+      const originalSpeech = global.SpeechSynthesisUtterance;
+      const originalSpeechSynthesis = global.speechSynthesis;
+      const selectedNode = document.createElement('span');
+      selectedNode.setAttribute('lang', 'es');
+
+      global.$ = createDomJQuery();
+      const readBtn = document.createElement('button');
+      readBtn.id = 'eXeAtoolsReadBtn';
+      document.body.appendChild(readBtn);
+
+      window.getSelection = vi.fn(() => ({
+        toString: () => 'Hola',
+        anchorNode: selectedNode,
+      }));
+      global.SpeechSynthesisUtterance = function () {
+        this.addEventListener = vi.fn((event, cb) => {
+          if (event === 'end') this._onEnd = cb;
+        });
+      };
+      global.speechSynthesis = {
+        speak: vi.fn(),
+        cancel: vi.fn(),
+      };
+
+      exeAtools.reader.isReading = false;
+      exeAtools.reader.read();
+
+      expect(exeAtools.reader.isReading).toBe(true);
+      expect(global.speechSynthesis.speak).toHaveBeenCalled();
+
+      exeAtools.reader.read();
+
+      expect(exeAtools.reader.isReading).toBe(false);
+      expect(global.speechSynthesis.cancel).toHaveBeenCalled();
+
+      global.$ = original$;
+      window.getSelection = originalSelection;
+      global.SpeechSynthesisUtterance = originalSpeech;
+      global.speechSynthesis = originalSpeechSynthesis;
+    });
+
+    it('uses page text when no selection is present', () => {
+      const original$ = global.$;
+      const originalSelection = window.getSelection;
+      const originalSpeech = global.SpeechSynthesisUtterance;
+      const originalSpeechSynthesis = global.speechSynthesis;
+      global.$ = createDomJQuery();
+
+      const page = document.createElement('div');
+      page.className = 'page';
+      page.innerText = 'Page content';
+      document.body.appendChild(page);
+
+      window.getSelection = vi.fn(() => ({
+        toString: () => '',
+        anchorNode: null,
+      }));
+      global.SpeechSynthesisUtterance = function () {
+        this.addEventListener = vi.fn();
+      };
+      global.speechSynthesis = {
+        speak: vi.fn(),
+        cancel: vi.fn(),
+      };
+
+      exeAtools.reader.isReading = false;
+      exeAtools.reader.read();
+
+      expect(global.speechSynthesis.speak).toHaveBeenCalled();
+
+      global.$ = original$;
+      window.getSelection = originalSelection;
+      global.SpeechSynthesisUtterance = originalSpeech;
+      global.speechSynthesis = originalSpeechSynthesis;
+    });
+
+    it('returns early when no text is available', () => {
+      const originalSelection = window.getSelection;
+      const originalSpeech = global.SpeechSynthesisUtterance;
+      const originalSpeechSynthesis = global.speechSynthesis;
+
+      window.getSelection = vi.fn(() => ({
+        toString: () => '',
+        anchorNode: null,
+      }));
+      global.SpeechSynthesisUtterance = function () {
+        this.addEventListener = vi.fn();
+      };
+      global.speechSynthesis = {
+        speak: vi.fn(),
+        cancel: vi.fn(),
+      };
+
+      exeAtools.reader.isReading = false;
+      exeAtools.reader.read();
+
+      expect(global.speechSynthesis.speak).not.toHaveBeenCalled();
+
+      window.getSelection = originalSelection;
+      global.SpeechSynthesisUtterance = originalSpeech;
+      global.speechSynthesis = originalSpeechSynthesis;
+    });
+  });
+
+  describe('draggable behavior', () => {
+    it('stores constrained position on checkPosition', () => {
+      const original$ = global.$;
+      const dom$ = createDomJQuery();
+      global.$ = vi.fn((selector) => {
+        if (selector === 'body') {
+          return { hasClass: () => true };
+        }
+        return dom$(selector);
+      });
+      document.body.classList.add('exe-atools-on');
+
+      const handler = document.createElement('div');
+      handler.id = 'eXeAtoolsSet';
+      document.body.appendChild(handler);
+
+      const originalGetTranslation = exeAtools.draggable.getTranslation;
+      const originalLimit = exeAtools.draggable.limit;
+      exeAtools.draggable.getTranslation = vi.fn(() => [20, -10]);
+      exeAtools.draggable.limit = vi.fn(() => [5, -5]);
+
+      exeAtools.draggable.checkPosition();
+
+      expect(handler.style.cssText).toContain('translate(5px, -5px)');
+      expect(localStorageData.exeAtoolsToolbarStyles).toContain('translate(5px, -5px)');
+
+      exeAtools.draggable.getTranslation = originalGetTranslation;
+      exeAtools.draggable.limit = originalLimit;
+      global.$ = original$;
+    });
+
+    it('clears toolbar style when position resets to origin', () => {
+      const original$ = global.$;
+      const dom$ = createDomJQuery();
+      global.$ = vi.fn((selector) => {
+        if (selector === 'body') {
+          return { hasClass: () => true };
+        }
+        return dom$(selector);
+      });
+      document.body.classList.add('exe-atools-on');
+
+      const handler = document.createElement('div');
+      handler.id = 'eXeAtoolsSet';
+      handler.style.transform = 'translate(3px, -3px)';
+      document.body.appendChild(handler);
+
+      const originalGetTranslation = exeAtools.draggable.getTranslation;
+      const originalLimit = exeAtools.draggable.limit;
+      exeAtools.draggable.getTranslation = vi.fn(() => [10, -10]);
+      exeAtools.draggable.limit = vi.fn(() => [0, 0]);
+
+      exeAtools.draggable.checkPosition();
+
+      expect(localStorageData.exeAtoolsToolbarStyles).toBe('');
+
+      exeAtools.draggable.getTranslation = originalGetTranslation;
+      exeAtools.draggable.limit = originalLimit;
+      global.$ = original$;
+    });
+
+    it('calls Drog.move when fixPosition has translation', () => {
+      const originalMove = exeAtools.Drog.move;
+      const originalGetTranslation = exeAtools.draggable.getTranslation;
+      exeAtools.Drog.move = vi.fn();
+      exeAtools.draggable.getTranslation = vi.fn(() => [12, -8]);
+
+      const handler = document.createElement('div');
+      exeAtools.draggable.fixPosition(handler);
+
+      expect(exeAtools.Drog.move).toHaveBeenCalledWith(handler, 12, -8);
+
+      exeAtools.Drog.move = originalMove;
+      exeAtools.draggable.getTranslation = originalGetTranslation;
     });
   });
 
@@ -547,6 +1265,20 @@ describe('exe_atools (app/common)', () => {
 
     it('calls start method', () => {
       expect(scriptContent).toContain('this.start()');
+    });
+
+    it('overrides i18n strings from options', () => {
+      const originalOptions = { ...$exe.options.atools };
+      const originalStart = exeAtools.start;
+      exeAtools.start = vi.fn();
+
+      $exe.options.atools.i18n = { read: 'Leer' };
+      exeAtools.init();
+
+      expect(exeAtools.i18n.read).toBe('Leer');
+
+      exeAtools.start = originalStart;
+      $exe.options.atools = originalOptions;
     });
   });
 
