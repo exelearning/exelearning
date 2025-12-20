@@ -264,16 +264,20 @@ describe('ImportProgress', () => {
     });
 
     it('removes element from DOM after timeout', async () => {
+      vi.useFakeTimers();
+
       importProgress.hide();
 
       // Element should still be in DOM
       expect(document.querySelector('#import-progress-overlay')).not.toBeNull();
 
-      // Wait for timeout
-      await new Promise(resolve => setTimeout(resolve, 350));
+      // Advance timers past the 300ms delay
+      await vi.advanceTimersByTimeAsync(350);
 
       // Element should be removed
       expect(document.querySelector('#import-progress-overlay')).toBeNull();
+
+      vi.useRealTimers();
     });
 
     it('does nothing if element is already null', () => {
@@ -296,6 +300,8 @@ describe('ImportProgress', () => {
 
   describe('integration: full progress cycle', () => {
     it('simulates complete import progress cycle', async () => {
+      vi.useFakeTimers();
+
       // Show
       importProgress.show();
       expect(document.querySelector('#import-progress-overlay')).not.toBeNull();
@@ -331,8 +337,10 @@ describe('ImportProgress', () => {
 
       // Hide
       importProgress.hide();
-      await new Promise(resolve => setTimeout(resolve, 350));
+      await vi.advanceTimersByTimeAsync(350);
       expect(document.querySelector('#import-progress-overlay')).toBeNull();
+
+      vi.useRealTimers();
     });
   });
 
