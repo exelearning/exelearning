@@ -559,7 +559,16 @@ class LegacyXmlParser {
           // Extract basename from path (handles both Windows and Unix paths)
           // e.g., "C:\...\text" or "/path/to/text" -> "text"
           const parts = iDeviceDir.replace(/\\/g, '/').split('/');
-          ideviceType = parts[parts.length - 1] || iDeviceDir;
+          let extractedType = parts[parts.length - 1] || iDeviceDir;
+
+          // Map legacy JsIdevice type names to modern iDevice types
+          // Legacy ELP files may use different naming conventions
+          const jsIdeviceTypeMap = {
+            'listacotejo-activity': 'checklist',
+            'adivina-activity': 'guess',
+            'form-activity': 'form',
+          };
+          ideviceType = jsIdeviceTypeMap[extractedType] || extractedType;
           Logger.log(`[LegacyXmlParser] JsIdevice detected with type: ${ideviceType} (from path: ${iDeviceDir})`);
         } else {
           ideviceType = 'text'; // Fallback for JsIdevice without _iDeviceDir

@@ -3038,6 +3038,18 @@ export default class IdeviceNode {
             return idevice;
         }
 
+        // Fallback: search all installed iDevices by cssClass
+        // This helps find iDevices when the type name doesn't match the id but matches the cssClass
+        const installedNames = Object.keys(idevicesManager.installed || {});
+        for (const name of installedNames) {
+            const installed = idevicesManager.installed[name];
+            if (installed && installed.cssClass === typeName) {
+                console.log(`[IdeviceNode] Found iDevice by cssClass match: ${typeName} -> ${installed.name}`);
+                this.odeIdeviceTypeName = installed.name;
+                return installed;
+            }
+        }
+
         console.warn(`[IdeviceNode] Could not find installed iDevice for type: ${typeName}`);
         return null;
     }
