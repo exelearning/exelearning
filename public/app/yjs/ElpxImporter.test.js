@@ -2068,10 +2068,10 @@ describe('ElpxImporter', () => {
       const navigation = mockDocManagerWithPageProps.getNavigation();
 
       // Should have 3 pages
-      expect(navigation.items.length).toBe(3);
+      expect(navigation.length).toBe(3);
 
       // First page should have hidePageTitle=true, editableInPage=false, titleNode
-      const page1 = navigation.items[0];
+      const page1 = navigation.get(0);
       const page1Props = page1.get('properties');
       expect(page1Props).toBeDefined();
       expect(page1Props.get('hidePageTitle')).toBe(true);
@@ -2086,7 +2086,7 @@ describe('ElpxImporter', () => {
       const navigation = mockDocManagerWithPageProps.getNavigation();
 
       // Second page has editableInPage=true as string in XML
-      const page2 = navigation.items[1];
+      const page2 = navigation.get(1);
       const page2Props = page2.get('properties');
       expect(page2Props).toBeDefined();
       expect(page2Props.get('editableInPage')).toBe(true);
@@ -2100,7 +2100,7 @@ describe('ElpxImporter', () => {
       const navigation = mockDocManagerWithPageProps.getNavigation();
 
       // Third page has no odeNavStructureProperties but should have default properties
-      const page3 = navigation.items[2];
+      const page3 = navigation.get(2);
       const page3Props = page3.get('properties');
       // Should have default properties
       expect(page3Props).toBeDefined();
@@ -2117,7 +2117,7 @@ describe('ElpxImporter', () => {
       const navigation = mockDocManagerWithPageProps.getNavigation();
 
       // First page XML has titlePage and it should be included
-      const page1 = navigation.items[0];
+      const page1 = navigation.get(0);
       const page1Props = page1.get('properties');
       expect(page1Props.get('titlePage')).toBe('Custom Title Page Value');
     });
@@ -2139,12 +2139,12 @@ describe('ElpxImporter', () => {
       await importerWithBlockProps.importFromFile(mockFile);
 
       const navigation = mockDocManagerWithBlockProps.getNavigation();
-      const page1 = navigation.items[0];
+      const page1 = navigation.get(0);
       const blocks = page1.get('blocks');
 
-      expect(blocks.items.length).toBe(1);
+      expect(blocks.length).toBe(1);
 
-      const block1 = blocks.items[0];
+      const block1 = blocks.get(0);
       const blockProps = block1.get('properties');
 
       expect(blockProps).toBeDefined();
@@ -2171,14 +2171,14 @@ describe('ElpxImporter', () => {
       await importerWithCompProps.importFromFile(mockFile);
 
       const navigation = mockDocManagerWithCompProps.getNavigation();
-      const page1 = navigation.items[0];
+      const page1 = navigation.get(0);
       const blocks = page1.get('blocks');
-      const block1 = blocks.items[0];
+      const block1 = blocks.get(0);
       const components = block1.get('components');
 
-      expect(components.items.length).toBe(1);
+      expect(components.length).toBe(1);
 
-      const comp1 = components.items[0];
+      const comp1 = components.get(0);
       const compProps = comp1.get('properties');
 
       expect(compProps).toBeDefined();
