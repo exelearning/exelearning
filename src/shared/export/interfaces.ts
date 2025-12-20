@@ -478,7 +478,10 @@ export interface ComponentRenderOptions {
 /**
  * Block rendering options
  */
-export type BlockRenderOptions = ComponentRenderOptions;
+export interface BlockRenderOptions extends ComponentRenderOptions {
+    /** Base path for theme icons (e.g., '/files/perm/themes/base/base/icons/' for preview) */
+    themeIconBasePath?: string;
+}
 
 // =============================================================================
 // iDevice Configuration
