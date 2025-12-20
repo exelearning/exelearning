@@ -748,7 +748,7 @@ describe('StructureEngine', () => {
       const rootEl = document.createElement('div');
       rootEl.className = 'nav-element';
       rootEl.setAttribute('nav-id', 'root');
-      rootEl.innerHTML = '<span class=\"node-text\"></span>';
+      rootEl.innerHTML = '<span class="node-text"></span>';
       engine.menuNav.appendChild(rootEl);
 
       engine.setTitleToNodeRoot();
@@ -955,7 +955,7 @@ describe('StructureEngine', () => {
       ];
       const list = document.createElement('div');
       list.className = 'nav-list';
-      list.innerHTML = '<div class=\"nav-element\" nav-id=\"page-1\"></div>';
+      list.innerHTML = '<div class="nav-element" nav-id="page-1"></div>';
       engine.menuStructureCompose = { menuNavList: list };
 
       const result = engine.getAllNodesOrderByView();
