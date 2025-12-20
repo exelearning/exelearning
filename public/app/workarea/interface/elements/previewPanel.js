@@ -303,11 +303,25 @@ export default class PreviewPanelManager {
             throw new Error(result.error || 'Failed to generate preview');
         }
 
+        // Add MIME types to media elements BEFORE resolving URLs
+        // (while asset:// URLs still contain filename with extension)
+        let html = typeof window.addMediaTypes === 'function'
+            ? window.addMediaTypes(result.html)
+            : result.html;
+
+        // Simplify MediaElement.js structures to native HTML5 video/audio
+        // (fixes playback issues with large videos)
+        if (typeof window.simplifyMediaElements === 'function') {
+            html = window.simplifyMediaElements(html);
+        }
+
         // Resolve asset URLs to blob URLs
-        let html = result.html;
+        // Note: We keep blob URLs (don't convert to data URLs) because:
+        // 1. The preview iframe is same-origin, so blob URLs work fine
+        // 2. Large videos as data URLs cause memory issues and MediaElement.js problems
         if (typeof window.resolveAssetUrlsAsync === 'function') {
             try {
-                html = await window.resolveAssetUrlsAsync(html);
+                html = await window.resolveAssetUrlsAsync(html, { convertBlobUrls: false });
             } catch (error) {
                 Logger.warn('[PreviewPanel] Failed to resolve asset URLs:', error);
             }

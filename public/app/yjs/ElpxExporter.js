@@ -127,12 +127,22 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
         pp_lang: metadata.get('language') || 'en',
         pp_description: metadata.get('description') || '',
         pp_license: metadata.get('license') || '',
-        pp_createdAt: metadata.get('createdAt') || new Date().toISOString(),
-        pp_exelearning_version: metadata.get('exelearning_version') || '',
+        pp_theme: metadata.get('theme') || 'base',
+        pp_addPagination: metadata.get('addPagination'),
+        pp_addSearchBox: metadata.get('addSearchBox'),
+        pp_addExeLink: metadata.get('addExeLink'),
+        pp_addAccessibilityToolbar: metadata.get('addAccessibilityToolbar'),
+        pp_extraHeadContent: metadata.get('extraHeadContent') || '',
+        footer: metadata.get('footer') || '',
+        exportSource: metadata.get('exportSource'),
+        pp_exelearning_version: metadata.get('exelearning_version') || 'v0.0.0-alpha',
       };
       for (const [key, value] of Object.entries(props)) {
-        if (value) {
-          xml += `  <${key}>${this.escapeXml(value)}</${key}>\n`;
+        if (value !== undefined && value !== null && value !== '') {
+          xml += '  <odeProperty>\n';
+          xml += `    <key>${this.escapeXml(key)}</key>\n`;
+          xml += `    <value>${this.escapeXml(String(value))}</value>\n`;
+          xml += '  </odeProperty>\n';
         }
       }
       xml += '</odeProperties>\n';
@@ -145,67 +155,153 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
       const parentId = pageMap.get('parentId') || '';
       const order = pageMap.get('order') ?? index;
 
-      let xml = `<odeNavStructure odeNavStructureId="${this.escapeXml(pageId)}" `;
-      xml += `odePageName="${this.escapeXml(pageName)}" odeNavStructureOrder="${order}" `;
-      if (parentId) xml += `parentOdeNavStructureId="${this.escapeXml(parentId)}" `;
-      xml += `>\n`;
+      let xml = '<odeNavStructure>\n';
+      xml += `  <odePageId>${this.escapeXml(pageId)}</odePageId>\n`;
+      xml += `  <odeParentPageId>${this.escapeXml(parentId)}</odeParentPageId>\n`;
+      xml += `  <pageName>${this.escapeXml(pageName)}</pageName>\n`;
+      xml += `  <odeNavStructureOrder>${order}</odeNavStructureOrder>\n`;
 
+      // Export page properties (odeNavStructureProperties)
+      xml += this.generatePagePropertiesXml(pageMap);
+
+      xml += '  <odePagStructures>\n';
       const blocks = pageMap.get('blocks');
       if (blocks) {
         for (let i = 0; i < blocks.length; i++) {
-          xml += this.generateBlockXml(blocks.get(i), i);
+          xml += this.generateBlockXml(blocks.get(i), i, pageId);
         }
       }
+      xml += '  </odePagStructures>\n';
       xml += '</odeNavStructure>\n';
       return xml;
     }
 
-    generateBlockXml(blockMap, index) {
-      const blockId = blockMap.get('id') || blockMap.get('blockId');
-      const blockName = blockMap.get('blockName') || '';
-      const order = blockMap.get('order') ?? index;
-
-      let xml = `  <odePagStructure odePagStructureId="${this.escapeXml(blockId)}" `;
-      xml += `blockName="${this.escapeXml(blockName)}" odePagStructureOrder="${order}">\n`;
-
-      const components = blockMap.get('components');
-      if (components) {
-        for (let i = 0; i < components.length; i++) {
-          xml += this.generateComponentXml(components.get(i), i);
+    generatePagePropertiesXml(pageMap) {
+      let xml = '  <odeNavStructureProperties>\n';
+      const properties = pageMap.get('properties');
+      if (properties) {
+        const propsToExport = ['visibility', 'highlight', 'hidePageTitle', 'editableInPage', 'titlePage', 'titleNode'];
+        for (const key of propsToExport) {
+          const value = properties.get ? properties.get(key) : properties[key];
+          if (value !== undefined && value !== null && value !== '') {
+            xml += '    <odeNavStructureProperty>\n';
+            xml += `      <key>${this.escapeXml(key)}</key>\n`;
+            xml += `      <value>${this.escapeXml(String(value))}</value>\n`;
+            xml += '    </odeNavStructureProperty>\n';
+          }
         }
       }
-      xml += '  </odePagStructure>\n';
+      xml += '  </odeNavStructureProperties>\n';
       return xml;
     }
 
-    generateComponentXml(compMap, index) {
+    generateBlockXml(blockMap, index, pageId = '') {
+      const blockId = blockMap.get('id') || blockMap.get('blockId');
+      const blockName = blockMap.get('blockName') || '';
+      const iconName = blockMap.get('iconName') || '';
+      const order = blockMap.get('order') ?? index;
+
+      let xml = '    <odePagStructure>\n';
+      xml += `      <odePageId>${this.escapeXml(pageId)}</odePageId>\n`;
+      xml += `      <odeBlockId>${this.escapeXml(blockId)}</odeBlockId>\n`;
+      xml += `      <blockName>${this.escapeXml(blockName)}</blockName>\n`;
+      xml += `      <iconName>${this.escapeXml(iconName)}</iconName>\n`;
+      xml += `      <odePagStructureOrder>${order}</odePagStructureOrder>\n`;
+
+      // Export block properties (odePagStructureProperties)
+      xml += this.generateBlockPropertiesXml(blockMap);
+
+      xml += '      <odeComponents>\n';
+      const components = blockMap.get('components');
+      if (components) {
+        for (let i = 0; i < components.length; i++) {
+          xml += this.generateComponentXml(components.get(i), i, pageId, blockId);
+        }
+      }
+      xml += '      </odeComponents>\n';
+      xml += '    </odePagStructure>\n';
+      return xml;
+    }
+
+    generateBlockPropertiesXml(blockMap) {
+      let xml = '      <odePagStructureProperties>\n';
+      const properties = blockMap.get('properties');
+      if (properties) {
+        const propsToExport = ['visibility', 'teacherOnly', 'allowToggle', 'minimized', 'identifier', 'cssClass'];
+        for (const key of propsToExport) {
+          const value = properties.get ? properties.get(key) : properties[key];
+          if (value !== undefined && value !== null) {
+            xml += '        <odePagStructureProperty>\n';
+            xml += `          <key>${this.escapeXml(key)}</key>\n`;
+            xml += `          <value>${this.escapeXml(String(value))}</value>\n`;
+            xml += '        </odePagStructureProperty>\n';
+          }
+        }
+      }
+      xml += '      </odePagStructureProperties>\n';
+      return xml;
+    }
+
+    generateComponentXml(compMap, index, pageId = '', blockId = '') {
       const compId = compMap.get('id') || compMap.get('ideviceId');
       const ideviceType = compMap.get('ideviceType') || 'FreeTextIdevice';
       const order = compMap.get('order') ?? index;
 
-      let xml = `    <odeComponent odeComponentId="${this.escapeXml(compId)}" `;
-      xml += `odeIdeviceTypeDirName="${this.escapeXml(ideviceType)}" odeComponentOrder="${order}">\n`;
+      let xml = '        <odeComponent>\n';
+      xml += `          <odePageId>${this.escapeXml(pageId)}</odePageId>\n`;
+      xml += `          <odeBlockId>${this.escapeXml(blockId)}</odeBlockId>\n`;
+      xml += `          <odeIdeviceId>${this.escapeXml(compId)}</odeIdeviceId>\n`;
+      xml += `          <odeIdeviceTypeName>${this.escapeXml(ideviceType)}</odeIdeviceTypeName>\n`;
 
       const htmlContent = compMap.get('htmlContent');
       if (htmlContent) {
         const content = htmlContent.toString ? htmlContent.toString() : String(htmlContent);
-        xml += `      <htmlView><![CDATA[${content}]]></htmlView>\n`;
+        xml += `          <htmlView><![CDATA[${content}]]></htmlView>\n`;
       }
 
-      const properties = compMap.get('properties');
-      if (properties) {
+      // Export jsonProperties (iDevice-specific properties)
+      const ideviceProperties = compMap.get('ideviceProperties');
+      if (ideviceProperties) {
         const propsObj = {};
-        properties.forEach((v, k) => { propsObj[k] = v; });
-        xml += `      <jsonProperties><![CDATA[${JSON.stringify(propsObj)}]]></jsonProperties>\n`;
+        if (ideviceProperties.forEach) {
+          ideviceProperties.forEach((v, k) => { propsObj[k] = v; });
+        }
+        xml += `          <jsonProperties><![CDATA[${JSON.stringify(propsObj)}]]></jsonProperties>\n`;
+      } else {
+        xml += '          <jsonProperties></jsonProperties>\n';
       }
+
+      xml += `          <odeComponentsOrder>${order}</odeComponentsOrder>\n`;
+
+      // Export component structure properties (odeComponentsProperties)
+      xml += this.generateComponentPropertiesXml(compMap);
 
       compMap.forEach((value, key) => {
         if (key.startsWith('prop_')) {
-          xml += `      <odeComponentProperty key="${this.escapeXml(key.substring(5))}">${this.escapeXml(String(value))}</odeComponentProperty>\n`;
+          xml += `          <odeComponentProperty key="${this.escapeXml(key.substring(5))}">${this.escapeXml(String(value))}</odeComponentProperty>\n`;
         }
       });
 
-      xml += '    </odeComponent>\n';
+      xml += '        </odeComponent>\n';
+      return xml;
+    }
+
+    generateComponentPropertiesXml(compMap) {
+      let xml = '          <odeComponentsProperties>\n';
+      const properties = compMap.get('properties');
+      if (properties) {
+        const propsToExport = ['visibility', 'teacherOnly', 'identifier', 'cssClass'];
+        for (const key of propsToExport) {
+          const value = properties.get ? properties.get(key) : properties[key];
+          if (value !== undefined && value !== null) {
+            xml += '            <odeComponentsProperty>\n';
+            xml += `              <key>${this.escapeXml(key)}</key>\n`;
+            xml += `              <value>${this.escapeXml(String(value))}</value>\n`;
+            xml += '            </odeComponentsProperty>\n';
+          }
+        }
+      }
+      xml += '          </odeComponentsProperties>\n';
       return xml;
     }
 

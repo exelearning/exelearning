@@ -15,7 +15,15 @@
  * ```
  */
 
-import type { ExportDocument, ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
+import type {
+    ExportDocument,
+    ExportMetadata,
+    ExportPage,
+    ExportBlock,
+    ExportComponent,
+    ExportBlockProperties,
+    ExportComponentProperties,
+} from '../interfaces';
 
 /**
  * Type definitions for Yjs structures used by YjsDocumentManager
@@ -217,15 +225,29 @@ export class YjsDocumentAdapter implements ExportDocument {
             components.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         }
 
-        // Extract block properties (teacherOnly, visibility, minimized, cssClass, identifier, etc.)
+        // Extract block properties (teacherOnly, visibility, minimized, cssClass, identifier, allowToggle)
         const propsMap = blockMap.get('properties') as YMap | undefined;
-        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
+        const rawProps: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
+
+        // Type the properties correctly
+        const properties: ExportBlockProperties = {
+            visibility: rawProps.visibility as string | undefined,
+            teacherOnly: rawProps.teacherOnly as string | undefined,
+            allowToggle: rawProps.allowToggle as string | undefined,
+            minimized: rawProps.minimized as string | undefined,
+            identifier: rawProps.identifier as string | undefined,
+            cssClass: rawProps.cssClass as string | undefined,
+        };
+
+        // Extract iconName from block
+        const iconName = (blockMap.get('iconName') as string) || '';
 
         return {
-            id: (blockMap.get('id') as string) || `block-${index}`,
+            id: (blockMap.get('id') as string) || (blockMap.get('blockId') as string) || `block-${index}`,
             name: (blockMap.get('name') as string) || (blockMap.get('blockName') as string) || '',
             order: (blockMap.get('order') as number) || index,
             components,
+            iconName,
             properties,
         };
     }
@@ -249,16 +271,50 @@ export class YjsDocumentAdapter implements ExportDocument {
             content = content.toString();
         }
 
-        // Get properties as plain object
-        const propsMap = compMap.get('properties') as YMap | undefined;
-        const properties: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
+        // Get iDevice-specific properties (jsonProperties) as plain object
+        // jsonProperties can be stored as:
+        // 1. JSON string (from ElpxImporter, most common)
+        // 2. Y.Map (from some code paths)
+        // 3. Plain object
+        const rawJsonProps = compMap.get('jsonProperties');
+        let properties: Record<string, unknown> = {};
+
+        if (rawJsonProps) {
+            if (typeof rawJsonProps === 'string') {
+                // Parse JSON string
+                try {
+                    properties = JSON.parse(rawJsonProps) as Record<string, unknown>;
+                } catch {
+                    // Invalid JSON, leave as empty object
+                }
+            } else if (typeof rawJsonProps === 'object' && 'toJSON' in rawJsonProps) {
+                // Y.Map - convert to plain object
+                properties = (rawJsonProps as YMap).toJSON();
+            } else if (typeof rawJsonProps === 'object') {
+                // Plain object
+                properties = rawJsonProps as Record<string, unknown>;
+            }
+        }
+
+        // Get structure properties (visibility, teacherOnly, identifier, cssClass)
+        // These are stored in the component's 'properties' Y.Map
+        const structPropsMap = compMap.get('properties') as YMap | undefined;
+        const rawStructProps: Record<string, unknown> = structPropsMap ? structPropsMap.toJSON() : {};
+
+        const structureProperties: ExportComponentProperties = {
+            visibility: rawStructProps.visibility as string | undefined,
+            teacherOnly: rawStructProps.teacherOnly as string | undefined,
+            identifier: rawStructProps.identifier as string | undefined,
+            cssClass: rawStructProps.cssClass as string | undefined,
+        };
 
         return {
-            id: (compMap.get('id') as string) || `comp-${index}`,
+            id: (compMap.get('id') as string) || (compMap.get('ideviceId') as string) || `comp-${index}`,
             type: (compMap.get('type') as string) || (compMap.get('ideviceType') as string) || 'FreeTextIdevice',
             order: (compMap.get('order') as number) || index,
             content,
             properties,
+            structureProperties,
         };
     }
 

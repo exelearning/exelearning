@@ -262,29 +262,34 @@ function generatePageContent(page: NormalizedPage, resourcesPrefix: string = '')
 }
 
 /**
+ * Block type for grouping components
+ */
+interface RenderBlock {
+    name: string | null;
+    id: string;
+    iconName?: string;
+    properties?: Record<string, unknown>;
+    components: NormalizedComponent[];
+}
+
+/**
  * Group components by block name
  */
-function groupComponentsByBlock(
-    components: NormalizedComponent[],
-): Array<{ name: string | null; id: string; components: NormalizedComponent[] }> {
-    const blocks: Array<{
-        name: string | null;
-        id: string;
-        components: NormalizedComponent[];
-    }> = [];
-    let currentBlock: {
-        name: string | null;
-        id: string;
-        components: NormalizedComponent[];
-    } | null = null;
+function groupComponentsByBlock(components: NormalizedComponent[]): RenderBlock[] {
+    const blocks: RenderBlock[] = [];
+    let currentBlock: RenderBlock | null = null;
 
     for (const component of components) {
         const blockName = component.blockName || null;
+        const blockId = component.blockId || `block-${component.id}`;
 
-        if (!currentBlock || currentBlock.name !== blockName) {
+        // Start a new block if blockName or blockId changes
+        if (!currentBlock || currentBlock.name !== blockName || currentBlock.id !== blockId) {
             currentBlock = {
                 name: blockName,
-                id: `block-${component.id}`,
+                id: blockId,
+                iconName: component.blockIconName || undefined,
+                properties: component.blockProperties || undefined,
                 components: [],
             };
             blocks.push(currentBlock);
@@ -299,29 +304,75 @@ function groupComponentsByBlock(
 /**
  * Render a block with its iDevices
  */
-function renderBlock(
-    block: { name: string | null; id: string; components: NormalizedComponent[] },
-    resourcesPrefix: string,
-): string {
+function renderBlock(block: RenderBlock, resourcesPrefix: string): string {
     const hasHeader = block.name && block.name.trim() !== '';
     const classes = ['box'];
+    const properties = block.properties || {};
 
     if (!hasHeader) {
         classes.push('no-header');
     }
+    // Handle block visibility and teacher-only classes
+    if (properties.minimized === true || properties.minimized === 'true') {
+        classes.push('minimized');
+    }
+    if (properties.visibility === false || properties.visibility === 'false') {
+        classes.push('novisible');
+    }
+    if (
+        properties.teacherOnly === true ||
+        properties.teacherOnly === 'true' ||
+        properties.visibilityType === 'teacher'
+    ) {
+        classes.push('teacher-only');
+    }
+    if (properties.cssClass) {
+        classes.push(String(properties.cssClass));
+    }
 
     let headerHtml = '';
     if (hasHeader) {
-        headerHtml = `<header class="box-head no-icon">
-<h1 class="box-title">${escapeHtml(block.name || '')}</h1>
-</header>`;
+        const hasIcon = block.iconName && block.iconName.trim() !== '';
+        const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
+
+        // Build icon HTML if iconName exists
+        let iconHtml = '';
+        if (hasIcon) {
+            const iconPath = `${resourcesPrefix}theme/icons/${block.iconName}.png`;
+            iconHtml = `<div class="box-icon exe-icon">
+<img src="${escapeAttr(iconPath)}" alt="">
+</div>
+`;
+        }
+
+        // Build toggle button if allowToggle is enabled
+        let toggleHtml = '';
+        if (properties.allowToggle === true || properties.allowToggle === 'true') {
+            const toggleClass =
+                properties.minimized === true || properties.minimized === 'true'
+                    ? 'box-toggle box-toggle-off'
+                    : 'box-toggle box-toggle-on';
+            toggleHtml = `<button class="${toggleClass}" title="Toggle content">
+<span>Toggle content</span>
+</button>`;
+        }
+
+        headerHtml = `<header class="${headerClass}">
+${iconHtml}<h1 class="box-title">${escapeHtml(block.name || '')}</h1>
+${toggleHtml}</header>`;
     } else {
         headerHtml = '<div class="box-head"></div>';
     }
 
     const contentHtml = block.components.map(component => renderIdevice(component, resourcesPrefix)).join('\n');
 
-    return `<article id="${escapeAttr(block.id)}" class="${classes.join(' ')}">
+    // Build additional attributes (identifier support)
+    let extraAttrs = '';
+    if (properties.identifier) {
+        extraAttrs += ` identifier="${escapeAttr(String(properties.identifier))}"`;
+    }
+
+    return `<article id="${escapeAttr(block.id)}" class="${classes.join(' ')}"${extraAttrs}>
 ${headerHtml}
 <div class="box-content">
 ${contentHtml}

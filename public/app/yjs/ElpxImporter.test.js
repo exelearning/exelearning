@@ -33,6 +33,103 @@ const SAMPLE_CONTENT_XML = `<?xml version="1.0"?>
   </odeNavStructures>
 </ode>`;
 
+// Sample content.xml with ALL property types (page, block, component)
+const SAMPLE_CONTENT_XML_WITH_ALL_PROPERTIES = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <odeProperty><key>pp_title</key><value>Test Project With All Properties</value></odeProperty>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure>
+      <odePageId>page1</odePageId>
+      <pageName>Page With Hidden Title</pageName>
+      <odeNavStructureOrder>0</odeNavStructureOrder>
+      <odeNavStructureProperties>
+        <odeNavStructureProperty>
+          <key>titlePage</key>
+          <value>Custom Title Page Value</value>
+        </odeNavStructureProperty>
+        <odeNavStructureProperty>
+          <key>hidePageTitle</key>
+          <value>true</value>
+        </odeNavStructureProperty>
+        <odeNavStructureProperty>
+          <key>editableInPage</key>
+          <value>false</value>
+        </odeNavStructureProperty>
+        <odeNavStructureProperty>
+          <key>titleNode</key>
+          <value>Custom Title Node</value>
+        </odeNavStructureProperty>
+      </odeNavStructureProperties>
+      <odePagStructures>
+        <odePagStructure>
+          <odeBlockId>block1</odeBlockId>
+          <blockName>Block With Properties</blockName>
+          <odePagStructureOrder>0</odePagStructureOrder>
+          <odePagStructureProperties>
+            <odePagStructureProperty>
+              <key>visibility</key>
+              <value>true</value>
+            </odePagStructureProperty>
+            <odePagStructureProperty>
+              <key>minimized</key>
+              <value>false</value>
+            </odePagStructureProperty>
+            <odePagStructureProperty>
+              <key>teacherOnly</key>
+              <value>true</value>
+            </odePagStructureProperty>
+            <odePagStructureProperty>
+              <key>cssClass</key>
+              <value>custom-block-class</value>
+            </odePagStructureProperty>
+          </odePagStructureProperties>
+          <odeComponents>
+            <odeComponent>
+              <odeIdeviceId>comp1</odeIdeviceId>
+              <odeIdeviceTypeName>text</odeIdeviceTypeName>
+              <htmlView>&lt;p&gt;Test content&lt;/p&gt;</htmlView>
+              <odeComponentsOrder>0</odeComponentsOrder>
+              <odeComponentsProperties>
+                <odeComponentsProperty>
+                  <key>visibility</key>
+                  <value>true</value>
+                </odeComponentsProperty>
+              </odeComponentsProperties>
+            </odeComponent>
+          </odeComponents>
+        </odePagStructure>
+      </odePagStructures>
+    </odeNavStructure>
+    <odeNavStructure>
+      <odePageId>page2</odePageId>
+      <pageName>Page With Editable Title</pageName>
+      <odeNavStructureOrder>1</odeNavStructureOrder>
+      <odeNavStructureProperties>
+        <odeNavStructureProperty>
+          <key>titlePage</key>
+          <value>Custom Editable Title</value>
+        </odeNavStructureProperty>
+        <odeNavStructureProperty>
+          <key>editableInPage</key>
+          <value>true</value>
+        </odeNavStructureProperty>
+      </odeNavStructureProperties>
+      <odePagStructures></odePagStructures>
+    </odeNavStructure>
+    <odeNavStructure>
+      <odePageId>page3</odePageId>
+      <pageName>Page Without Properties</pageName>
+      <odeNavStructureOrder>2</odeNavStructureOrder>
+      <odePagStructures></odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
+
+// Alias for backward compatibility with existing tests
+const SAMPLE_CONTENT_XML_WITH_PAGE_PROPERTIES = SAMPLE_CONTENT_XML_WITH_ALL_PROPERTIES;
+
 // Sample content.xml with export settings
 const SAMPLE_CONTENT_XML_WITH_EXPORT_SETTINGS = `<?xml version="1.0"?>
 <ode>
@@ -786,6 +883,692 @@ describe('ElpxImporter', () => {
 
       // With basic XML (old format), values should use defaults
       // The test just verifies no errors are thrown
+    });
+  });
+
+  describe('page properties extraction', () => {
+    let importerWithPageProps;
+    let mockDocManagerWithPageProps;
+
+    beforeEach(() => {
+      // Setup with page properties XML
+      global.window.fflate = createMockFflate(SAMPLE_CONTENT_XML_WITH_PAGE_PROPERTIES);
+      mockDocManagerWithPageProps = createMockDocumentManager();
+      importerWithPageProps = new ElpxImporter(mockDocManagerWithPageProps, createMockAssetManager());
+    });
+
+    it('extracts page properties from odeNavStructureProperties', async () => {
+      const mockFile = createMockFile();
+      await importerWithPageProps.importFromFile(mockFile);
+
+      const navigation = mockDocManagerWithPageProps.getNavigation();
+
+      // Should have 3 pages
+      expect(navigation.items.length).toBe(3);
+
+      // First page should have hidePageTitle=true, editableInPage=false, titleNode
+      const page1 = navigation.items[0];
+      const page1Props = page1.get('properties');
+      expect(page1Props).toBeDefined();
+      expect(page1Props.get('hidePageTitle')).toBe(true);
+      expect(page1Props.get('editableInPage')).toBe(false);
+      expect(page1Props.get('titleNode')).toBe('Custom Title Node');
+    });
+
+    it('converts boolean string values to actual booleans', async () => {
+      const mockFile = createMockFile();
+      await importerWithPageProps.importFromFile(mockFile);
+
+      const navigation = mockDocManagerWithPageProps.getNavigation();
+
+      // Second page has editableInPage=true as string in XML
+      const page2 = navigation.items[1];
+      const page2Props = page2.get('properties');
+      expect(page2Props).toBeDefined();
+      expect(page2Props.get('editableInPage')).toBe(true);
+      expect(typeof page2Props.get('editableInPage')).toBe('boolean');
+    });
+
+    it('handles pages without properties - should have defaults', async () => {
+      const mockFile = createMockFile();
+      await importerWithPageProps.importFromFile(mockFile);
+
+      const navigation = mockDocManagerWithPageProps.getNavigation();
+
+      // Third page has no odeNavStructureProperties but should have default properties
+      const page3 = navigation.items[2];
+      const page3Props = page3.get('properties');
+      // Should have default properties
+      expect(page3Props).toBeDefined();
+      expect(page3Props.get('visibility')).toBe('true');
+      expect(page3Props.get('highlight')).toBe('false');
+      expect(page3Props.get('hidePageTitle')).toBe('false');
+      expect(page3Props.get('editableInPage')).toBe('false');
+    });
+
+    it('includes titlePage property', async () => {
+      const mockFile = createMockFile();
+      await importerWithPageProps.importFromFile(mockFile);
+
+      const navigation = mockDocManagerWithPageProps.getNavigation();
+
+      // First page XML has titlePage and it should be included
+      const page1 = navigation.items[0];
+      const page1Props = page1.get('properties');
+      expect(page1Props.get('titlePage')).toBe('Custom Title Page Value');
+    });
+  });
+
+  describe('block properties extraction', () => {
+    let importerWithBlockProps;
+    let mockDocManagerWithBlockProps;
+
+    beforeEach(() => {
+      // Setup with XML that has block properties
+      global.window.fflate = createMockFflate(SAMPLE_CONTENT_XML_WITH_ALL_PROPERTIES);
+      mockDocManagerWithBlockProps = createMockDocumentManager();
+      importerWithBlockProps = new ElpxImporter(mockDocManagerWithBlockProps, createMockAssetManager());
+    });
+
+    it('extracts block properties from odePagStructureProperties', async () => {
+      const mockFile = createMockFile();
+      await importerWithBlockProps.importFromFile(mockFile);
+
+      const navigation = mockDocManagerWithBlockProps.getNavigation();
+      const page1 = navigation.items[0];
+      const blocks = page1.get('blocks');
+
+      expect(blocks.items.length).toBe(1);
+
+      const block1 = blocks.items[0];
+      const blockProps = block1.get('properties');
+
+      expect(blockProps).toBeDefined();
+      expect(blockProps.get('visibility')).toBe(true);
+      expect(blockProps.get('minimized')).toBe(false);
+      expect(blockProps.get('teacherOnly')).toBe(true);
+      expect(blockProps.get('cssClass')).toBe('custom-block-class');
+    });
+  });
+
+  describe('component properties extraction', () => {
+    let importerWithCompProps;
+    let mockDocManagerWithCompProps;
+
+    beforeEach(() => {
+      // Setup with XML that has component properties
+      global.window.fflate = createMockFflate(SAMPLE_CONTENT_XML_WITH_ALL_PROPERTIES);
+      mockDocManagerWithCompProps = createMockDocumentManager();
+      importerWithCompProps = new ElpxImporter(mockDocManagerWithCompProps, createMockAssetManager());
+    });
+
+    it('extracts component properties from odeComponentsProperties', async () => {
+      const mockFile = createMockFile();
+      await importerWithCompProps.importFromFile(mockFile);
+
+      const navigation = mockDocManagerWithCompProps.getNavigation();
+      const page1 = navigation.items[0];
+      const blocks = page1.get('blocks');
+      const block1 = blocks.items[0];
+      const components = block1.get('components');
+
+      expect(components.items.length).toBe(1);
+
+      const comp1 = components.items[0];
+      const compProps = comp1.get('properties');
+
+      expect(compProps).toBeDefined();
+      expect(compProps.get('visibility')).toBe(true);
+    });
+  });
+
+  describe('getNavStructureProperties method', () => {
+    it('returns default properties when no odeNavStructureProperties element', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odeNavStructure>
+          <odePageId>page1</odePageId>
+          <pageName>Test Page</pageName>
+        </odeNavStructure>
+      `, 'text/xml');
+
+      const navNode = xmlDoc.querySelector('odeNavStructure');
+      const props = importer.getNavStructureProperties(navNode);
+
+      // Should return default properties
+      expect(props.visibility).toBe('true');
+      expect(props.highlight).toBe('false');
+      expect(props.hidePageTitle).toBe('false');
+      expect(props.editableInPage).toBe('false');
+      expect(props.titlePage).toBe('');
+      expect(props.titleNode).toBe('');
+    });
+
+    it('extracts all properties from odeNavStructureProperties', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odeNavStructure>
+          <odePageId>page1</odePageId>
+          <odeNavStructureProperties>
+            <odeNavStructureProperty>
+              <key>hidePageTitle</key>
+              <value>true</value>
+            </odeNavStructureProperty>
+            <odeNavStructureProperty>
+              <key>customProp</key>
+              <value>custom value</value>
+            </odeNavStructureProperty>
+          </odeNavStructureProperties>
+        </odeNavStructure>
+      `, 'text/xml');
+
+      const navNode = xmlDoc.querySelector('odeNavStructure');
+      const props = importer.getNavStructureProperties(navNode);
+
+      expect(props.hidePageTitle).toBe(true);
+      expect(props.customProp).toBe('custom value');
+    });
+
+    it('converts "true" and "false" strings to booleans', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odeNavStructure>
+          <odeNavStructureProperties>
+            <odeNavStructureProperty>
+              <key>boolTrue</key>
+              <value>true</value>
+            </odeNavStructureProperty>
+            <odeNavStructureProperty>
+              <key>boolFalse</key>
+              <value>false</value>
+            </odeNavStructureProperty>
+            <odeNavStructureProperty>
+              <key>notBool</key>
+              <value>something</value>
+            </odeNavStructureProperty>
+          </odeNavStructureProperties>
+        </odeNavStructure>
+      `, 'text/xml');
+
+      const navNode = xmlDoc.querySelector('odeNavStructure');
+      const props = importer.getNavStructureProperties(navNode);
+
+      expect(props.boolTrue).toBe(true);
+      expect(typeof props.boolTrue).toBe('boolean');
+      expect(props.boolFalse).toBe(false);
+      expect(typeof props.boolFalse).toBe('boolean');
+      expect(props.notBool).toBe('something');
+      expect(typeof props.notBool).toBe('string');
+    });
+
+    it('includes titlePage property (not skipped)', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odeNavStructure>
+          <odeNavStructureProperties>
+            <odeNavStructureProperty>
+              <key>titlePage</key>
+              <value>My Custom Title</value>
+            </odeNavStructureProperty>
+          </odeNavStructureProperties>
+        </odeNavStructure>
+      `, 'text/xml');
+
+      const navNode = xmlDoc.querySelector('odeNavStructure');
+      const props = importer.getNavStructureProperties(navNode);
+
+      expect(props.titlePage).toBe('My Custom Title');
+    });
+  });
+
+  describe('getPagStructureProperties method', () => {
+    it('returns default properties when no odePagStructureProperties element', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odePagStructure>
+          <odeBlockId>block1</odeBlockId>
+          <blockName>Test Block</blockName>
+        </odePagStructure>
+      `, 'text/xml');
+
+      const pagNode = xmlDoc.querySelector('odePagStructure');
+      const props = importer.getPagStructureProperties(pagNode);
+
+      // Should return default properties
+      expect(props.visibility).toBe('true');
+      expect(props.teacherOnly).toBe('false');
+      expect(props.allowToggle).toBe('true');
+      expect(props.minimized).toBe('false');
+      expect(props.identifier).toBe('');
+      expect(props.cssClass).toBe('');
+    });
+
+    it('extracts all properties from odePagStructureProperties', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odePagStructure>
+          <odeBlockId>block1</odeBlockId>
+          <odePagStructureProperties>
+            <odePagStructureProperty>
+              <key>visibility</key>
+              <value>true</value>
+            </odePagStructureProperty>
+            <odePagStructureProperty>
+              <key>minimized</key>
+              <value>false</value>
+            </odePagStructureProperty>
+            <odePagStructureProperty>
+              <key>teacherOnly</key>
+              <value>true</value>
+            </odePagStructureProperty>
+            <odePagStructureProperty>
+              <key>cssClass</key>
+              <value>my-custom-class</value>
+            </odePagStructureProperty>
+            <odePagStructureProperty>
+              <key>identifier</key>
+              <value>block-identifier-123</value>
+            </odePagStructureProperty>
+          </odePagStructureProperties>
+        </odePagStructure>
+      `, 'text/xml');
+
+      const pagNode = xmlDoc.querySelector('odePagStructure');
+      const props = importer.getPagStructureProperties(pagNode);
+
+      expect(props.visibility).toBe(true);
+      expect(props.minimized).toBe(false);
+      expect(props.teacherOnly).toBe(true);
+      expect(props.cssClass).toBe('my-custom-class');
+      expect(props.identifier).toBe('block-identifier-123');
+    });
+  });
+
+  describe('getComponentsProperties method', () => {
+    it('returns default properties when no odeComponentsProperties element', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odeComponent>
+          <odeIdeviceId>comp1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        </odeComponent>
+      `, 'text/xml');
+
+      const compNode = xmlDoc.querySelector('odeComponent');
+      const props = importer.getComponentsProperties(compNode);
+
+      // Should return default properties
+      expect(props.visibility).toBe('true');
+      expect(props.teacherOnly).toBe('false');
+      expect(props.identifier).toBe('');
+      expect(props.cssClass).toBe('');
+    });
+
+    it('extracts all properties from odeComponentsProperties', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odeComponent>
+          <odeIdeviceId>comp1</odeIdeviceId>
+          <odeComponentsProperties>
+            <odeComponentsProperty>
+              <key>visibility</key>
+              <value>true</value>
+            </odeComponentsProperty>
+            <odeComponentsProperty>
+              <key>customProp</key>
+              <value>custom value</value>
+            </odeComponentsProperty>
+          </odeComponentsProperties>
+        </odeComponent>
+      `, 'text/xml');
+
+      const compNode = xmlDoc.querySelector('odeComponent');
+      const props = importer.getComponentsProperties(compNode);
+
+      expect(props.visibility).toBe(true);
+      expect(props.customProp).toBe('custom value');
+    });
+
+    it('converts boolean strings to actual booleans', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(`
+        <odeComponent>
+          <odeComponentsProperties>
+            <odeComponentsProperty>
+              <key>boolTrue</key>
+              <value>true</value>
+            </odeComponentsProperty>
+            <odeComponentsProperty>
+              <key>boolFalse</key>
+              <value>false</value>
+            </odeComponentsProperty>
+          </odeComponentsProperties>
+        </odeComponent>
+      `, 'text/xml');
+
+      const compNode = xmlDoc.querySelector('odeComponent');
+      const props = importer.getComponentsProperties(compNode);
+
+      expect(props.boolTrue).toBe(true);
+      expect(typeof props.boolTrue).toBe('boolean');
+      expect(props.boolFalse).toBe(false);
+      expect(typeof props.boolFalse).toBe('boolean');
+    });
+  });
+
+  describe('Property defaults initialization', () => {
+    describe('Static default constants', () => {
+      it('should have all required block property defaults', () => {
+        const blockDefaults = ElpxImporter.BLOCK_PROPERTY_DEFAULTS;
+        expect(blockDefaults).toBeDefined();
+        expect(blockDefaults.visibility).toBe('true');
+        expect(blockDefaults.teacherOnly).toBe('false');
+        expect(blockDefaults.allowToggle).toBe('true');
+        expect(blockDefaults.minimized).toBe('false');
+        expect(blockDefaults.identifier).toBe('');
+        expect(blockDefaults.cssClass).toBe('');
+      });
+
+      it('should have all required component property defaults', () => {
+        const compDefaults = ElpxImporter.COMPONENT_PROPERTY_DEFAULTS;
+        expect(compDefaults).toBeDefined();
+        expect(compDefaults.visibility).toBe('true');
+        expect(compDefaults.teacherOnly).toBe('false');
+        expect(compDefaults.identifier).toBe('');
+        expect(compDefaults.cssClass).toBe('');
+      });
+
+      it('should have all required page property defaults', () => {
+        const pageDefaults = ElpxImporter.PAGE_PROPERTY_DEFAULTS;
+        expect(pageDefaults).toBeDefined();
+        expect(pageDefaults.visibility).toBe('true');
+        expect(pageDefaults.highlight).toBe('false');
+        expect(pageDefaults.hidePageTitle).toBe('false');
+        expect(pageDefaults.editableInPage).toBe('false');
+        expect(pageDefaults.titlePage).toBe('');
+        expect(pageDefaults.titleNode).toBe('');
+      });
+    });
+
+    describe('Block properties with empty XML', () => {
+      it('should initialize all block properties with defaults when XML has empty odePagStructureProperties', () => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odePagStructure>
+            <odeBlockId>block1</odeBlockId>
+            <odePagStructureProperties>
+            </odePagStructureProperties>
+          </odePagStructure>
+        `, 'text/xml');
+
+        const pagNode = xmlDoc.querySelector('odePagStructure');
+        const props = importer.getPagStructureProperties(pagNode);
+
+        expect(props.visibility).toBe('true');
+        expect(props.teacherOnly).toBe('false');
+        expect(props.allowToggle).toBe('true');
+        expect(props.minimized).toBe('false');
+        expect(props.identifier).toBe('');
+        expect(props.cssClass).toBe('');
+      });
+
+      it('should preserve XML values and fill missing with defaults', () => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odePagStructure>
+            <odeBlockId>block1</odeBlockId>
+            <odePagStructureProperties>
+              <odePagStructureProperty>
+                <key>teacherOnly</key>
+                <value>true</value>
+              </odePagStructureProperty>
+              <odePagStructureProperty>
+                <key>cssClass</key>
+                <value>my-class</value>
+              </odePagStructureProperty>
+            </odePagStructureProperties>
+          </odePagStructure>
+        `, 'text/xml');
+
+        const pagNode = xmlDoc.querySelector('odePagStructure');
+        const props = importer.getPagStructureProperties(pagNode);
+
+        // XML values should override defaults
+        expect(props.teacherOnly).toBe(true);
+        expect(props.cssClass).toBe('my-class');
+        // Missing values should use defaults
+        expect(props.visibility).toBe('true');
+        expect(props.allowToggle).toBe('true');
+        expect(props.minimized).toBe('false');
+        expect(props.identifier).toBe('');
+      });
+
+      it('should have all required property keys regardless of XML content', () => {
+        const requiredKeys = ['visibility', 'teacherOnly', 'allowToggle', 'minimized', 'identifier', 'cssClass'];
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odePagStructure>
+            <odeBlockId>block1</odeBlockId>
+            <odePagStructureProperties>
+            </odePagStructureProperties>
+          </odePagStructure>
+        `, 'text/xml');
+
+        const pagNode = xmlDoc.querySelector('odePagStructure');
+        const props = importer.getPagStructureProperties(pagNode);
+
+        for (const key of requiredKeys) {
+          expect(props).toHaveProperty(key);
+          expect(props[key]).not.toBeUndefined();
+        }
+      });
+    });
+
+    describe('Component properties with empty XML', () => {
+      it('should initialize all component properties with defaults when XML has empty odeComponentsProperties', () => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odeComponent>
+            <odeIdeviceId>comp1</odeIdeviceId>
+            <odeComponentsProperties>
+            </odeComponentsProperties>
+          </odeComponent>
+        `, 'text/xml');
+
+        const compNode = xmlDoc.querySelector('odeComponent');
+        const props = importer.getComponentsProperties(compNode);
+
+        expect(props.visibility).toBe('true');
+        expect(props.teacherOnly).toBe('false');
+        expect(props.identifier).toBe('');
+        expect(props.cssClass).toBe('');
+      });
+
+      it('should have all required component property keys', () => {
+        const requiredKeys = ['visibility', 'teacherOnly', 'identifier', 'cssClass'];
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odeComponent>
+            <odeIdeviceId>comp1</odeIdeviceId>
+          </odeComponent>
+        `, 'text/xml');
+
+        const compNode = xmlDoc.querySelector('odeComponent');
+        const props = importer.getComponentsProperties(compNode);
+
+        for (const key of requiredKeys) {
+          expect(props).toHaveProperty(key);
+          expect(props[key]).not.toBeUndefined();
+        }
+      });
+    });
+
+    describe('Page properties with empty XML', () => {
+      it('should initialize all page properties with defaults when XML has empty odeNavStructureProperties', () => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odeNavStructure>
+            <odePageId>page1</odePageId>
+            <odeNavStructureProperties>
+            </odeNavStructureProperties>
+          </odeNavStructure>
+        `, 'text/xml');
+
+        const navNode = xmlDoc.querySelector('odeNavStructure');
+        const props = importer.getNavStructureProperties(navNode);
+
+        expect(props.visibility).toBe('true');
+        expect(props.highlight).toBe('false');
+        expect(props.hidePageTitle).toBe('false');
+        expect(props.editableInPage).toBe('false');
+        expect(props.titlePage).toBe('');
+        expect(props.titleNode).toBe('');
+      });
+
+      it('should preserve XML values and fill missing with defaults', () => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odeNavStructure>
+            <odePageId>page1</odePageId>
+            <odeNavStructureProperties>
+              <odeNavStructureProperty>
+                <key>hidePageTitle</key>
+                <value>true</value>
+              </odeNavStructureProperty>
+              <odeNavStructureProperty>
+                <key>titlePage</key>
+                <value>My Custom Title</value>
+              </odeNavStructureProperty>
+            </odeNavStructureProperties>
+          </odeNavStructure>
+        `, 'text/xml');
+
+        const navNode = xmlDoc.querySelector('odeNavStructure');
+        const props = importer.getNavStructureProperties(navNode);
+
+        // XML values should override defaults
+        expect(props.hidePageTitle).toBe(true);
+        expect(props.titlePage).toBe('My Custom Title');
+        // Missing values should use defaults
+        expect(props.visibility).toBe('true');
+        expect(props.highlight).toBe('false');
+        expect(props.editableInPage).toBe('false');
+        expect(props.titleNode).toBe('');
+      });
+
+      it('should have all required page property keys', () => {
+        const requiredKeys = ['visibility', 'highlight', 'hidePageTitle', 'editableInPage', 'titlePage', 'titleNode'];
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odeNavStructure>
+            <odePageId>page1</odePageId>
+          </odeNavStructure>
+        `, 'text/xml');
+
+        const navNode = xmlDoc.querySelector('odeNavStructure');
+        const props = importer.getNavStructureProperties(navNode);
+
+        for (const key of requiredKeys) {
+          expect(props).toHaveProperty(key);
+          expect(props[key]).not.toBeUndefined();
+        }
+      });
+    });
+
+    describe('Component properties from jsonProperties merge', () => {
+      it('should merge jsonProperties into structureProps during buildComponentData', async () => {
+        // Create importer with minimal mocking
+        const mockManager = {
+          projectId: 'test-project'
+        };
+        const testImporter = new ElpxImporter(mockManager, null);
+
+        // Build XML without CDATA (CDATA can be problematic in jsdom DOMParser)
+        // Instead, use entity-escaped JSON string which is equivalent
+        const jsonPropsValue = '{"visibility":true,"teacherOnly":true,"identifier":"8","cssClass":"9"}';
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odeComponent>
+            <odeIdeviceId>comp1</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView>&lt;p&gt;Test content&lt;/p&gt;</htmlView>
+            <jsonProperties>${jsonPropsValue}</jsonProperties>
+            <odeComponentsProperties>
+              <odeComponentsProperty>
+                <key>visibility</key>
+                <value>false</value>
+              </odeComponentsProperty>
+            </odeComponentsProperties>
+          </odeComponent>
+        `, 'text/xml');
+
+        const compNode = xmlDoc.querySelector('odeComponent');
+        const compData = testImporter.buildComponentData(compNode, {});
+
+        // First verify that compData.properties was parsed correctly from jsonProperties
+        expect(compData.properties).toBeDefined();
+        expect(compData.properties).not.toBeNull();
+        expect(compData.properties.visibility).toBe(true);
+        expect(compData.properties.teacherOnly).toBe(true);
+        expect(compData.properties.identifier).toBe('8');
+        expect(compData.properties.cssClass).toBe('9');
+
+        // jsonProperties should override odeComponentsProperties for common keys
+        expect(compData.structureProps.visibility).toBe('true');  // from jsonProperties (boolean true → 'true')
+        expect(compData.structureProps.teacherOnly).toBe('true'); // from jsonProperties
+        expect(compData.structureProps.identifier).toBe('8');     // from jsonProperties
+        expect(compData.structureProps.cssClass).toBe('9');       // from jsonProperties
+      });
+
+      it('should use defaults when neither jsonProperties nor XML provides values', async () => {
+        const mockManager = {
+          projectId: 'test-project'
+        };
+        const testImporter = new ElpxImporter(mockManager, null);
+
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odeComponent>
+            <odeIdeviceId>comp1</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p>Test content</p>]]></htmlView>
+            <jsonProperties><![CDATA[{}]]></jsonProperties>
+          </odeComponent>
+        `, 'text/xml');
+
+        const compNode = xmlDoc.querySelector('odeComponent');
+        const compData = testImporter.buildComponentData(compNode, {});
+
+        // Should have defaults
+        expect(compData.structureProps.visibility).toBe('true');
+        expect(compData.structureProps.teacherOnly).toBe('false');
+        expect(compData.structureProps.identifier).toBe('');
+        expect(compData.structureProps.cssClass).toBe('');
+      });
+
+      it('should convert boolean jsonProperties values to string', async () => {
+        const mockManager = {
+          projectId: 'test-project'
+        };
+        const testImporter = new ElpxImporter(mockManager, null);
+
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+          <odeComponent>
+            <odeIdeviceId>comp1</odeIdeviceId>
+            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+            <htmlView><![CDATA[<p>Test</p>]]></htmlView>
+            <jsonProperties><![CDATA[{"teacherOnly":false,"visibility":true}]]></jsonProperties>
+          </odeComponent>
+        `, 'text/xml');
+
+        const compNode = xmlDoc.querySelector('odeComponent');
+        const compData = testImporter.buildComponentData(compNode, {});
+
+        // Booleans from jsonProperties should be converted to string
+        expect(compData.structureProps.teacherOnly).toBe('false');
+        expect(compData.structureProps.visibility).toBe('true');
+      });
     });
   });
 
