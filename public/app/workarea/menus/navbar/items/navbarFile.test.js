@@ -889,7 +889,7 @@ describe('NavbarFile', () => {
             const confirmArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
             confirmArgs.confirmExec();
 
-            const input = document.querySelector('input[type=\"file\"]');
+            const input = document.querySelector('input[type="file"]');
             const file = new File([new Uint8Array([1, 2, 3])], 'import.elpx');
             Object.defineProperty(input, 'files', {
                 value: [file],
@@ -929,7 +929,7 @@ describe('NavbarFile', () => {
             const confirmArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
             confirmArgs.confirmExec();
 
-            const input = document.querySelector('input[type=\"file\"]');
+            const input = document.querySelector('input[type="file"]');
             const file = new File([new Uint8Array([1, 2, 3])], 'import.elpx');
             Object.defineProperty(input, 'files', {
                 value: [file],

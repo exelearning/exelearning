@@ -395,8 +395,8 @@ describe('NavbarStyles', () => {
         const theme = { id: 'user-1', primaryColor: '#ff0000', title: 'Title' };
         const table = navbarStyles.makeElementEditThemeTable(theme);
         document.body.appendChild(table);
-        const colorInput = table.querySelector('[data-role=\"color-input\"]');
-        const hexInput = table.querySelector('[data-role=\"color-hex\"]');
+        const colorInput = table.querySelector('[data-role="color-input"]');
+        const hexInput = table.querySelector('[data-role="color-hex"]');
         colorInput.value = '#00ff00';
         colorInput.dispatchEvent(new Event('input'));
         expect(hexInput.value).toBe('#00ff00');
@@ -409,7 +409,7 @@ describe('NavbarStyles', () => {
         const readSpy = vi.spyOn(navbarStyles, 'readFile').mockResolvedValue('data:image/png;base64,abc');
         const img = navbarStyles.makeElementEditThemeImg('');
         document.body.appendChild(img);
-        const fileInput = img.querySelector('input[type=\"file\"]');
+        const fileInput = img.querySelector('input[type="file"]');
         const file = new File(['x'], 'image.png', { type: 'image/png' });
         Object.defineProperty(fileInput, 'files', { value: [file] });
         fileInput.dispatchEvent(new Event('change'));
@@ -445,7 +445,7 @@ describe('NavbarStyles', () => {
 
     it('collects form values and submits edit actions', async () => {
         document.body.innerHTML += `
-            <input class=\"theme-edit-value-field\" field=\"title\" value=\"Title\" />
+            <input class="theme-edit-value-field" field="title" value="Title" />
         `;
         const values = navbarStyles.getFormEditThemeValues();
         expect(values.data.title).toBe('Title');

@@ -1836,4 +1836,605 @@ describe('IdevicesEngine', () => {
             expect(() => engine.initPagePropertiesObserver('page-1')).not.toThrow();
         });
     });
+
+    describe('addIdeviceNodeToContainer', () => {
+        let mockIdeviceNode;
+
+        beforeEach(() => {
+            mockIdeviceNode = {
+                ideviceContent: document.createElement('div'),
+                ideviceButtons: document.createElement('div'),
+                idevice: { title: 'Test' },
+                mode: 'export',
+                blockId: null,
+                odePagStructureSyncId: null,
+                odeNavStructureSyncId: null,
+                block: null,
+                makeIdeviceButtonsElement: vi.fn(() => document.createElement('div')),
+                makeIdeviceContentNode: vi.fn(() => document.createElement('div')),
+                goWindowToIdevice: vi.fn(),
+                loadInitScriptIdevice: vi.fn(),
+            };
+            vi.spyOn(engine, 'syncNewIdeviceToYjs').mockImplementation(() => {});
+        });
+
+        it('prepends buttons when ideviceContent already exists', () => {
+            const prependSpy = vi.spyOn(mockIdeviceNode.ideviceContent, 'prepend');
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, engine.nodeContentElement);
+
+            expect(mockIdeviceNode.makeIdeviceButtonsElement).toHaveBeenCalled();
+        });
+
+        it('calls makeIdeviceContentNode when ideviceContent is null', () => {
+            mockIdeviceNode.ideviceContent = null;
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, engine.nodeContentElement);
+
+            expect(mockIdeviceNode.makeIdeviceContentNode).toHaveBeenCalledWith(true);
+        });
+
+        it('creates new block when container is node-content', () => {
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, engine.nodeContentElement);
+
+            expect(engine.components.blocks.length).toBe(1);
+        });
+
+        it('syncs idevice to Yjs', () => {
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, engine.nodeContentElement);
+
+            expect(engine.syncNewIdeviceToYjs).toHaveBeenCalledWith(mockIdeviceNode);
+        });
+
+        it('calls changeUserFlagOnEdit when idevice is in edition mode', () => {
+            mockIdeviceNode.mode = 'edition';
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, engine.nodeContentElement);
+
+            expect(eXeLearning.app.project.changeUserFlagOnEdit).toHaveBeenCalled();
+        });
+
+        it('goes to idevice window when in edition mode', () => {
+            mockIdeviceNode.mode = 'edition';
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, engine.nodeContentElement);
+
+            expect(mockIdeviceNode.goWindowToIdevice).toHaveBeenCalled();
+        });
+    });
+
+    describe('dropIdeviceMenuInContent', () => {
+        beforeEach(() => {
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.id = 'text';
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'createIdeviceInContent').mockResolvedValue({});
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+        });
+
+        it('creates idevice when container is valid', async () => {
+            await engine.dropIdeviceMenuInContent(engine.nodeContentElement);
+
+            expect(engine.createIdeviceInContent).toHaveBeenCalled();
+        });
+
+        it('resets drag element after drop', async () => {
+            await engine.dropIdeviceMenuInContent(engine.nodeContentElement);
+
+            expect(engine.resetDragElement).toHaveBeenCalledWith(true);
+            expect(engine.resetDragOverClasses).toHaveBeenCalled();
+        });
+
+        it('does not create idevice when container is invalid', async () => {
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(false);
+
+            await engine.dropIdeviceMenuInContent(engine.nodeContentElement);
+
+            expect(engine.createIdeviceInContent).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('dropIdeviceContentInContent', () => {
+        beforeEach(() => {
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('idevice-id', 'idevice-1');
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+            // Mock non-root page
+            eXeLearning.app.project.structure.nodeSelected.getAttribute = vi.fn((attr) => {
+                if (attr === 'nav-id') return 'page-1';
+                return null;
+            });
+        });
+
+        it('returns false when page is root', async () => {
+            eXeLearning.app.project.structure.nodeSelected.getAttribute = vi.fn(() => 'root');
+
+            const result = await engine.dropIdeviceContentInContent(engine.nodeContentElement);
+
+            expect(result).toBe(false);
+        });
+
+        it('does nothing when idevice not found', async () => {
+            engine.components.idevices = [];
+
+            await engine.dropIdeviceContentInContent(engine.nodeContentElement);
+
+            expect(engine.resetDragElement).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('dropBlockContentInContent', () => {
+        beforeEach(() => {
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('block-id', 'block-1');
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+        });
+
+        it('does not throw when block not found', async () => {
+            engine.components.blocks = [];
+
+            await expect(engine.dropBlockContentInContent(engine.nodeContentElement)).resolves.not.toThrow();
+        });
+    });
+
+    describe('dragEndIdeviceOutOffContainer', () => {
+        beforeEach(() => {
+            const mockIdevice = {
+                odeIdeviceId: 'idevice-1',
+                ideviceContent: document.createElement('div'),
+                makeIdeviceContentNode: vi.fn(),
+            };
+            engine.components.idevices = [mockIdevice];
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('idevice-id', 'idevice-1');
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+        });
+
+        it('resets drag element', () => {
+            engine.dragEndIdeviceOutOffContainer();
+
+            expect(engine.resetDragElement).toHaveBeenCalledWith(true);
+        });
+
+        it('resets drag over classes', () => {
+            engine.dragEndIdeviceOutOffContainer();
+
+            expect(engine.resetDragOverClasses).toHaveBeenCalled();
+        });
+
+        it('calls makeIdeviceContentNode on idevice', () => {
+            engine.dragEndIdeviceOutOffContainer();
+
+            expect(engine.components.idevices[0].makeIdeviceContentNode).toHaveBeenCalledWith(false);
+        });
+    });
+
+    describe('dragEndBlockOutOffContainer', () => {
+        let mockBlock;
+
+        beforeEach(() => {
+            mockBlock = {
+                blockId: 'block-1',
+                blockContent: document.createElement('div'),
+                headElement: document.createElement('div'),
+                apiUpdateOrder: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+                toggleOn: vi.fn(),
+            };
+            mockBlock.blockContent.appendChild(mockBlock.headElement);
+            engine.components.blocks = [mockBlock];
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('block-id', 'block-1');
+            engine.draggedElement.toggle = false;
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+        });
+
+        it('does nothing when block not found', () => {
+            engine.components.blocks = [];
+
+            expect(() => engine.dragEndBlockOutOffContainer()).not.toThrow();
+        });
+
+        it('resets drag element and classes', () => {
+            engine.dragEndBlockOutOffContainer();
+
+            expect(engine.resetDragElement).toHaveBeenCalled();
+            expect(engine.resetDragOverClasses).toHaveBeenCalled();
+        });
+
+        it('calls apiUpdateOrder on block', () => {
+            engine.dragEndBlockOutOffContainer();
+
+            expect(mockBlock.apiUpdateOrder).toHaveBeenCalledWith(true);
+        });
+
+        it('toggles on block when toggle flag is set', () => {
+            engine.draggedElement.toggle = true;
+
+            engine.dragEndBlockOutOffContainer();
+
+            expect(mockBlock.toggleOn).toHaveBeenCalled();
+        });
+    });
+
+    describe('createIdeviceInContent', () => {
+        beforeEach(() => {
+            vi.spyOn(engine, 'newIdeviceNode').mockResolvedValue({
+                mode: 'export',
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            });
+            vi.spyOn(engine, 'addIdeviceNodeToContainer').mockImplementation(() => {});
+        });
+
+        it('returns false when container is root', async () => {
+            const container = document.createElement('div');
+            container.setAttribute('node-selected', 'root');
+
+            const result = await engine.createIdeviceInContent({}, container);
+
+            expect(result).toBe(false);
+        });
+
+        it('returns false when another idevice is in edition', async () => {
+            const container = document.createElement('div');
+            const editionIdevice = document.createElement('div');
+            editionIdevice.classList.add('idevice_node');
+            editionIdevice.setAttribute('mode', 'edition');
+            container.appendChild(editionIdevice);
+
+            const result = await engine.createIdeviceInContent({}, container);
+
+            expect(result).toBe(false);
+        });
+
+        it('creates new idevice node when container is valid', async () => {
+            const container = document.createElement('div');
+
+            await engine.createIdeviceInContent({ odeIdeviceTypeName: 'text' }, container);
+
+            expect(engine.newIdeviceNode).toHaveBeenCalled();
+        });
+    });
+
+    describe('newIdeviceNode', () => {
+        beforeEach(() => {
+            vi.spyOn(engine, 'appendNewIdeviceProcess').mockResolvedValue(true);
+        });
+
+        it('returns idevice node when appendNewIdeviceProcess succeeds', async () => {
+            const result = await engine.newIdeviceNode({ odeIdeviceTypeName: 'text' });
+
+            expect(result).toBeDefined();
+        });
+
+        it('returns false when appendNewIdeviceProcess fails', async () => {
+            vi.spyOn(engine, 'appendNewIdeviceProcess').mockResolvedValue(false);
+            vi.useFakeTimers();
+
+            const resultPromise = engine.newIdeviceNode({ odeIdeviceTypeName: 'text' });
+            vi.advanceTimersByTime(600);
+            const result = await resultPromise;
+
+            expect(result).toBe(false);
+            vi.useRealTimers();
+        });
+    });
+
+    describe('cloneBlockInContent', () => {
+        beforeEach(() => {
+            vi.spyOn(engine, 'loadApiIdevicesInPage').mockResolvedValue(true);
+        });
+
+        it('reloads page when loadApiIdevicesInPage succeeds', async () => {
+            const mockBlock = {
+                blockId: 'clone-block-1',
+                blockContent: document.createElement('div'),
+                goWindowToBlock: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+
+            await engine.cloneBlockInContent({}, { blockId: 'clone-block-1' });
+
+            expect(engine.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+        });
+
+        it('scrolls to cloned block', async () => {
+            const mockBlock = {
+                blockId: 'clone-block-1',
+                blockContent: document.createElement('div'),
+                goWindowToBlock: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+
+            await engine.cloneBlockInContent({}, { blockId: 'clone-block-1' });
+
+            expect(mockBlock.goWindowToBlock).toHaveBeenCalledWith(100);
+        });
+    });
+
+    describe('cloneIdeviceInContent', () => {
+        beforeEach(() => {
+            const mockBlock = {
+                blockId: 'block-1',
+                blockContent: document.createElement('div'),
+            };
+            engine.components.blocks = [mockBlock];
+            vi.spyOn(engine, 'createIdeviceInContent').mockResolvedValue({
+                ideviceContent: document.createElement('div'),
+                resetWindowHash: vi.fn(),
+                goWindowToIdevice: vi.fn(),
+            });
+            vi.spyOn(engine, 'resetCurrentIdevicesExportView').mockImplementation(() => {});
+        });
+
+        it('creates clone idevice in block', async () => {
+            const originalIdevice = { ideviceContent: document.createElement('div') };
+
+            await engine.cloneIdeviceInContent(originalIdevice, { blockId: 'block-1' });
+
+            expect(engine.createIdeviceInContent).toHaveBeenCalled();
+        });
+    });
+
+    describe('loadComponentsPage', () => {
+        beforeEach(() => {
+            vi.spyOn(engine, 'newBlockNode').mockReturnValue({
+                blockContent: document.createElement('div'),
+            });
+            vi.spyOn(engine, 'createIdeviceInContent').mockResolvedValue({});
+        });
+
+        it('creates blocks from pagStructure', async () => {
+            const pagStructure = [
+                { blockId: 'block-1', odeComponentsSyncs: [] },
+                { blockId: 'block-2', odeComponentsSyncs: [] },
+            ];
+
+            await engine.loadComponentsPage(pagStructure);
+
+            expect(engine.newBlockNode).toHaveBeenCalledTimes(2);
+        });
+
+        it('appends blocks to nodeContentElement', async () => {
+            const pagStructure = [{ blockId: 'block-1', odeComponentsSyncs: [] }];
+
+            await engine.loadComponentsPage(pagStructure);
+
+            // Block should be appended
+            expect(engine.nodeContentElement.children.length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('getAndLoadComponentsPageNode', () => {
+        beforeEach(() => {
+            // Setup required DOM elements
+            const pageTitle = document.createElement('div');
+            pageTitle.id = 'page-title-node-content';
+            engine.nodeContainerElement.appendChild(pageTitle);
+
+            const header = document.createElement('div');
+            header.id = 'header-node-content';
+            engine.nodeContainerElement.appendChild(header);
+
+            eXeLearning.app.api.getComponentsByPage = vi.fn().mockResolvedValue({
+                odePagStructureSyncs: [],
+            });
+            vi.spyOn(engine, 'loadComponentsPage').mockResolvedValue(undefined);
+            vi.spyOn(engine, 'loadIdevicesExportStyles').mockResolvedValue(undefined);
+            vi.spyOn(engine, 'loadIdevicesExportScripts').mockImplementation(() => {});
+            vi.spyOn(engine, 'setParentsAndChildrenIdevicesBlocks').mockImplementation(() => {});
+            vi.spyOn(engine, 'hideNodeContainerLoadScreen').mockImplementation(() => {});
+            vi.spyOn(engine, 'removeClassLoadingBlocks').mockImplementation(() => {});
+            vi.spyOn(engine, 'loadLegacyExeFunctionalitiesExport').mockImplementation(() => {});
+            vi.spyOn(engine, 'enableInternalLinks').mockImplementation(() => {});
+            vi.spyOn(engine, 'setNodeContentHeader').mockImplementation(() => {});
+            vi.spyOn(engine, 'setNodeContentPageTitle').mockImplementation(() => {});
+            vi.spyOn(engine, 'removeNodeContentFormProperties').mockImplementation(() => {});
+        });
+
+        it('returns false when data is null', async () => {
+            eXeLearning.app.api.getComponentsByPage = vi.fn().mockResolvedValue(null);
+
+            const result = await engine.getAndLoadComponentsPageNode('page-1');
+
+            expect(result).toBe(false);
+        });
+
+        it('loads components when data is valid', async () => {
+            const result = await engine.getAndLoadComponentsPageNode('page-1');
+
+            expect(engine.loadComponentsPage).toHaveBeenCalled();
+        });
+    });
+
+    describe('setParentsAndChildrenIdevicesBlocks with checkEmptyBlock', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('removes empty blocks when removeIfEmpty is true', () => {
+            const mockBlock = {
+                blockId: 'block-1',
+                idevices: [],
+                removeIfEmpty: true,
+                askForRemoveIfEmpty: false,
+                remove: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+            engine.components.idevices = [];
+
+            engine.setParentsAndChildrenIdevicesBlocks(true);
+
+            expect(mockBlock.remove).toHaveBeenCalledWith(true);
+        });
+
+        it('shows confirm modal for empty blocks when askForRemoveIfEmpty is true', () => {
+            const mockBlock = {
+                blockId: 'block-1',
+                idevices: [],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: true,
+                remove: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+            engine.components.idevices = [];
+
+            engine.setParentsAndChildrenIdevicesBlocks(true);
+            vi.advanceTimersByTime(400);
+
+            expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+        });
+    });
+
+    describe('syncNewIdeviceToYjs with valid bridge', () => {
+        let mockBridge;
+
+        beforeEach(() => {
+            mockBridge = {
+                structureBinding: {
+                    getBlocks: vi.fn().mockReturnValue([]),
+                    getPage: vi.fn().mockReturnValue({ id: 'page-1' }),
+                    getComponents: vi.fn().mockReturnValue([]),
+                },
+                addBlock: vi.fn().mockReturnValue('new-block-id'),
+                addComponent: vi.fn().mockReturnValue('new-comp-id'),
+            };
+            mockProject._yjsBridge = mockBridge;
+            eXeLearning.app.project.structure.nodeSelected.getAttribute = vi.fn(() => 'page-1');
+        });
+
+        it('creates block in Yjs when it does not exist', () => {
+            const ideviceNode = {
+                odeIdeviceId: 'idevice-1',
+                blockId: 'block-1',
+                fromYjs: false,
+                yjsComponentId: null,
+                idevice: { id: 'text', title: 'Text' },
+                htmlView: '<p>Content</p>',
+                jsonProperties: {},
+                order: 0,
+            };
+            engine.components.blocks = [];
+
+            engine.syncNewIdeviceToYjs(ideviceNode);
+
+            expect(mockBridge.addBlock).toHaveBeenCalled();
+        });
+
+        it('adds component to Yjs', () => {
+            const ideviceNode = {
+                odeIdeviceId: 'idevice-1',
+                blockId: 'block-1',
+                fromYjs: false,
+                yjsComponentId: null,
+                idevice: { id: 'text', title: 'Text' },
+                htmlView: '<p>Content</p>',
+                jsonProperties: {},
+                order: 0,
+            };
+
+            engine.syncNewIdeviceToYjs(ideviceNode);
+
+            expect(mockBridge.addComponent).toHaveBeenCalled();
+        });
+
+        it('sets yjsComponentId on idevice node', () => {
+            const ideviceNode = {
+                odeIdeviceId: 'idevice-1',
+                blockId: 'block-1',
+                fromYjs: false,
+                yjsComponentId: null,
+                idevice: { id: 'text', title: 'Text' },
+                htmlView: '<p>Content</p>',
+                jsonProperties: {},
+                order: 0,
+            };
+
+            engine.syncNewIdeviceToYjs(ideviceNode);
+
+            expect(ideviceNode.yjsComponentId).toBe('new-comp-id');
+        });
+    });
+
+    describe('renderRemoteIdevice with block creation', () => {
+        beforeEach(() => {
+            eXeLearning.app.project.structure.nodeSelected.getAttribute = vi.fn(() => 'page-1');
+            eXeLearning.app.idevices = {
+                getIdeviceInstalled: vi.fn(() => ({
+                    id: 'text',
+                    name: 'text',
+                    title: 'Text',
+                    cssClass: 'text',
+                })),
+            };
+            vi.spyOn(engine, 'newBlockNode').mockReturnValue({
+                blockContent: document.createElement('article'),
+                blockId: 'new-block',
+            });
+            vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
+        });
+
+        it('creates new block when block container not found', async () => {
+            await engine.renderRemoteIdevice(
+                { id: 'comp-1', ideviceType: 'text', htmlContent: '<p>Test</p>' },
+                'page-1',
+                'nonexistent-block'
+            );
+
+            expect(engine.newBlockNode).toHaveBeenCalled();
+        });
+    });
+
+    describe('updateRemoteIdeviceContent with ideviceBody', () => {
+        it('updates idevice body innerHTML', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: 'old',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                lockedByRemote: true,
+                lockUserName: 'User',
+                lockUserColor: '#fff',
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({ id: 'comp-1', htmlContent: '<p>New</p>' });
+
+            expect(mockIdevice.ideviceBody.innerHTML).toBe('<p>New</p>');
+        });
+
+        it('removes placeholder from idevice body', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: 'old',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                lockedByRemote: false,
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            const placeholder = document.createElement('div');
+            placeholder.classList.add('idevice-locked-placeholder');
+            mockIdevice.ideviceBody.appendChild(placeholder);
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({ id: 'comp-1', htmlContent: '<p>New</p>' });
+
+            expect(mockIdevice.ideviceBody.querySelector('.idevice-locked-placeholder')).toBeNull();
+        });
+    });
 });
