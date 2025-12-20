@@ -80,6 +80,9 @@ export interface ExportBlock {
     order: number;
     components: ExportComponent[];
 
+    // Block icon name (for themed icons)
+    iconName?: string;
+
     // Block-level properties
     properties?: ExportBlockProperties;
 }
@@ -106,6 +109,19 @@ export interface ExportComponent {
     order: number;
     content: string; // HTML content
     properties: Record<string, unknown>;
+
+    // Component-level structure properties (visibility, teacherOnly, identifier, cssClass)
+    structureProperties?: ExportComponentProperties;
+}
+
+/**
+ * Component structure properties
+ */
+export interface ExportComponentProperties {
+    visibility?: string;
+    teacherOnly?: string;
+    identifier?: string;
+    cssClass?: string;
 }
 
 // =============================================================================
@@ -462,7 +478,10 @@ export interface ComponentRenderOptions {
 /**
  * Block rendering options
  */
-export type BlockRenderOptions = ComponentRenderOptions;
+export interface BlockRenderOptions extends ComponentRenderOptions {
+    /** Base path for theme icons (e.g., '/files/perm/themes/base/base/icons/' for preview) */
+    themeIconBasePath?: string;
+}
 
 // =============================================================================
 // iDevice Configuration

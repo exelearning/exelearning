@@ -244,6 +244,7 @@ export class WebsitePreviewExporter {
                 projectTitle,
                 options,
                 addPagination,
+                themeName,
             );
         }
 
@@ -656,17 +657,24 @@ button.toggler span,
         _projectTitle: string,
         options: PreviewOptions,
         _addPagination: boolean = false,
+        themeName: string = 'base',
     ): string {
         let blockHtml = '';
 
         // Use versioned path for iDevice resources
         const ideviceBasePath = this.getVersionedPath('/files/perm/idevices/base/', options);
 
+        // Build theme icon path for preview
+        // Theme icons are at /files/perm/themes/{themeBase}/{themeVariant}/icons/
+        // For now, use base theme with same variant name (e.g., base/base, base/flux)
+        const themeIconBasePath = this.getVersionedPath(`/files/perm/themes/base/${themeName}/icons/`, options);
+
         // Render blocks and components
         for (const block of page.blocks || []) {
             blockHtml += this.ideviceRenderer.renderBlock(block, {
                 basePath: ideviceBasePath,
                 includeDataAttributes: true,
+                themeIconBasePath,
             });
         }
 

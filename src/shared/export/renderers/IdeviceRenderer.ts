@@ -133,12 +133,13 @@ ${contentHtml}
         block: ExportBlock,
         options: BlockRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true } = options;
+        const { basePath = '', includeDataAttributes = true, themeIconBasePath } = options;
 
         const blockId = block.id;
         const blockName = block.name || '';
         const components = block.components || [];
         const properties: ExportBlockProperties = block.properties || {};
+        const iconName = block.iconName || '';
 
         // Build CSS classes for block
         const classes = ['box'];
@@ -168,9 +169,37 @@ ${contentHtml}
         // Build block header
         let headerHtml = '';
         if (hasHeader) {
-            headerHtml = `<header class="box-head no-icon">
-<h1 class="box-title">${this.escapeHtml(blockName)}</h1>
-</header>`;
+            const hasIcon = iconName && iconName.trim() !== '';
+            const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
+
+            // Build icon HTML if iconName exists
+            let iconHtml = '';
+            if (hasIcon) {
+                // Icon path: use themeIconBasePath if provided (for preview), otherwise use basePath + theme/icons/
+                const iconPath = themeIconBasePath
+                    ? `${themeIconBasePath}${iconName}.png`
+                    : `${basePath}theme/icons/${iconName}.png`;
+                iconHtml = `<div class="box-icon exe-icon">
+<img src="${this.escapeAttr(iconPath)}" alt="">
+</div>
+`;
+            }
+
+            // Build toggle button if allowToggle is enabled
+            let toggleHtml = '';
+            if (properties.allowToggle === true || properties.allowToggle === 'true') {
+                const toggleClass =
+                    properties.minimized === true || properties.minimized === 'true'
+                        ? 'box-toggle box-toggle-off'
+                        : 'box-toggle box-toggle-on';
+                toggleHtml = `<button class="${toggleClass}" title="Toggle content">
+<span>Toggle content</span>
+</button>`;
+            }
+
+            headerHtml = `<header class="${headerClass}">
+${iconHtml}<h1 class="box-title">${this.escapeHtml(blockName)}</h1>
+${toggleHtml}</header>`;
         } else {
             headerHtml = '<div class="box-head"></div>';
         }
