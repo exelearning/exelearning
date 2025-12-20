@@ -2067,6 +2067,168 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 /**
+ * Global helper to add MIME type attributes to media elements.
+ * Must be called BEFORE resolving asset URLs (while extensions are still in URLs).
+ * Handles elements with missing, empty, or invalid type attributes.
+ *
+ * @param {string} html - HTML content with asset:// URLs (containing filenames)
+ * @returns {string} - HTML with type attributes added to source/video/audio elements
+ */
+window.addMediaTypes = function(html) {
+  if (!html) return html;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const mimeTypes = {
+    // Video
+    mp4: 'video/mp4',
+    m4v: 'video/mp4',
+    webm: 'video/webm',
+    ogg: 'video/ogg',
+    ogv: 'video/ogg',
+    mov: 'video/quicktime',
+    avi: 'video/x-msvideo',
+    mkv: 'video/x-matroska',
+    // Audio
+    mp3: 'audio/mpeg',
+    m4a: 'audio/mp4',
+    wav: 'audio/wav',
+    oga: 'audio/ogg',
+    aac: 'audio/aac',
+    flac: 'audio/flac',
+  };
+
+  // Extract file extension from URL
+  const getExtension = (url) => {
+    if (!url) return null;
+    let path = url.split('?')[0]; // Remove query string
+    const lastSlash = path.lastIndexOf('/');
+    if (lastSlash !== -1) path = path.substring(lastSlash + 1);
+    const dotIndex = path.lastIndexOf('.');
+    return dotIndex !== -1 && dotIndex < path.length - 1
+      ? path.substring(dotIndex + 1).toLowerCase()
+      : null;
+  };
+
+  // Check if element needs a type attribute
+  // Returns true if type is missing, empty, or invalid (doesn't contain /)
+  const needsType = (el) => {
+    const currentType = el.getAttribute('type') || '';
+    return !currentType || !currentType.includes('/');
+  };
+
+  let modified = 0;
+
+  // Process all source, video[src], audio[src] elements
+  doc.querySelectorAll('source, video[src], audio[src]').forEach((el) => {
+    if (!needsType(el)) return;
+
+    const src = el.getAttribute('src') || '';
+    const ext = getExtension(src);
+    if (ext && mimeTypes[ext]) {
+      el.setAttribute('type', mimeTypes[ext]);
+      modified++;
+    }
+  });
+
+  if (modified > 0) {
+    Logger.log(`[addMediaTypes] Added MIME types to ${modified} media element(s)`);
+  }
+
+  return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+};
+
+/**
+ * Global helper to simplify MediaElement.js video structures to native HTML5 video.
+ * Converts complex <video class="mediaelement"><source src="..."></video> structures
+ * to simple <video src="..." controls> that browsers handle natively.
+ * This fixes playback issues with large videos and certain formats.
+ *
+ * @param {string} html - HTML content
+ * @returns {string} - HTML with simplified video elements
+ */
+window.simplifyMediaElements = function(html) {
+  if (!html) return html;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  let modified = 0;
+
+  // Find all video elements with class "mediaelement" or with source children
+  doc.querySelectorAll('video.mediaelement, video:has(source)').forEach((video) => {
+    // Get the source URL - either from <source> child or from video.src
+    let src = video.getAttribute('src') || '';
+    const sourceEl = video.querySelector('source');
+    if (sourceEl) {
+      src = sourceEl.getAttribute('src') || src;
+    }
+
+    // Skip if no source found
+    if (!src) return;
+
+    // Get type from source if available
+    const type = sourceEl?.getAttribute('type') || '';
+
+    // Preserve important attributes
+    const width = video.getAttribute('width') || '';
+    const height = video.getAttribute('height') || '';
+    const poster = video.getAttribute('poster') || '';
+    const className = video.className.replace('mediaelement', '').trim();
+
+    // Create simple video element
+    const newVideo = doc.createElement('video');
+    newVideo.setAttribute('src', src);
+    newVideo.setAttribute('controls', '');
+
+    if (type) newVideo.setAttribute('type', type);
+    if (width) newVideo.setAttribute('width', width);
+    if (height) newVideo.setAttribute('height', height);
+    if (poster) newVideo.setAttribute('poster', poster);
+    if (className) newVideo.className = className;
+
+    // Style for responsive sizing
+    newVideo.style.maxWidth = '100%';
+    newVideo.style.height = 'auto';
+
+    // Replace the old video with the new simple one
+    video.parentNode.replaceChild(newVideo, video);
+    modified++;
+  });
+
+  // Also simplify audio elements with source children
+  doc.querySelectorAll('audio:has(source)').forEach((audio) => {
+    let src = audio.getAttribute('src') || '';
+    const sourceEl = audio.querySelector('source');
+    if (sourceEl) {
+      src = sourceEl.getAttribute('src') || src;
+    }
+
+    if (!src) return;
+
+    const type = sourceEl?.getAttribute('type') || '';
+    const className = audio.className;
+
+    const newAudio = doc.createElement('audio');
+    newAudio.setAttribute('src', src);
+    newAudio.setAttribute('controls', '');
+
+    if (type) newAudio.setAttribute('type', type);
+    if (className) newAudio.className = className;
+
+    audio.parentNode.replaceChild(newAudio, audio);
+    modified++;
+  });
+
+  if (modified > 0) {
+    Logger.log(`[simplifyMediaElements] Simplified ${modified} media element(s)`);
+  }
+
+  return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+};
+
+/**
  * Global helper function to resolve asset:// URLs
  * Searches for active AssetManager and resolves
  *

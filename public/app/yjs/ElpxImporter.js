@@ -1446,8 +1446,9 @@ class ElpxImporter {
         const escapedFileName = escapeRegex(fileName);
 
         // 1. Replace {{context_path}}/resources/filename (exact match)
-        str = str.split(`{{context_path}}/resources/${fileName}`).join(`asset://${assetId}`);
-        str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}`);
+        // Include filename in asset:// URL so extension can be detected for type attributes
+        str = str.split(`{{context_path}}/resources/${fileName}`).join(`asset://${assetId}/${fileName}`);
+        str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}/${fileName}`);
 
         // 2. Replace resources/filename when preceded by attribute quote or start
         // This ensures we don't replace filenames inside http:// or https:// URLs
@@ -1456,14 +1457,14 @@ class ElpxImporter {
           `(["'=])resources/${escapedFileName}`,
           'g'
         );
-        str = str.replace(resourcesPattern, `$1asset://${assetId}`);
+        str = str.replace(resourcesPattern, `$1asset://${assetId}/${fileName}`);
 
         // 3. Replace bare filename ONLY in src/href attributes (not inside other URLs)
         // Pattern: src="filename" or href="filename" (bare filename, not a path with /)
         if (fileName) {
           str = str.replace(
             new RegExp(`(src|href)=(["'])${escapedFileName}\\2`, 'g'),
-            `$1=$2asset://${assetId}$2`
+            `$1=$2asset://${assetId}/${fileName}$2`
           );
         }
 

@@ -1532,7 +1532,19 @@ export default class IdeviceNode {
             html = this.htmlView;
         }
 
-        // Resolve {{context_path}} URLs to blob URLs from cache
+        // Add MIME types to media elements BEFORE resolving URLs
+        // (while asset:// URLs still contain filename with extension)
+        if (typeof window.addMediaTypes === 'function') {
+            html = window.addMediaTypes(html);
+        }
+
+        // Simplify MediaElement.js structures to native HTML5 video/audio
+        // (fixes playback issues with large videos)
+        if (typeof window.simplifyMediaElements === 'function') {
+            html = window.simplifyMediaElements(html);
+        }
+
+        // Resolve asset:// URLs to blob URLs from cache
         if (typeof window.resolveAssetUrls === 'function') {
             html = window.resolveAssetUrls(html);
         }
