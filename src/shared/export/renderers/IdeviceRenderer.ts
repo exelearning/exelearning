@@ -16,7 +16,7 @@ import type {
     BlockRenderOptions,
     ExportBlockProperties,
 } from '../interfaces';
-import { getIdeviceConfig } from '../../../services/idevice-config';
+import { getIdeviceConfig, getIdeviceExportFiles } from '../../../services/idevice-config';
 
 /**
  * CSS link for an iDevice
@@ -374,7 +374,11 @@ ${contentHtml}
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                scripts.push(`<script src="${basePath}idevices/${typeName}/${typeName}.js"></script>`);
+                // Get ALL JS files from export folder (main file first, then dependencies)
+                const jsFiles = getIdeviceExportFiles(typeName, '.js');
+                for (const jsFile of jsFiles) {
+                    scripts.push(`<script src="${basePath}idevices/${typeName}/${jsFile}"></script>`);
+                }
             }
         }
 
@@ -398,11 +402,15 @@ ${contentHtml}
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                const href = `${basePath}idevices/${typeName}/${typeName}.css`;
-                links.push({
-                    href,
-                    tag: `<link rel="stylesheet" href="${href}">`,
-                });
+                // Get ALL CSS files from export folder
+                const cssFiles = getIdeviceExportFiles(typeName, '.css');
+                for (const cssFile of cssFiles) {
+                    const href = `${basePath}idevices/${typeName}/${cssFile}`;
+                    links.push({
+                        href,
+                        tag: `<link rel="stylesheet" href="${href}">`,
+                    });
+                }
             }
         }
 
@@ -426,11 +434,15 @@ ${contentHtml}
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                const src = `${basePath}idevices/${typeName}/${typeName}.js`;
-                scripts.push({
-                    src,
-                    tag: `<script src="${src}"></script>`,
-                });
+                // Get ALL JS files from export folder (main file first, then dependencies)
+                const jsFiles = getIdeviceExportFiles(typeName, '.js');
+                for (const jsFile of jsFiles) {
+                    const src = `${basePath}idevices/${typeName}/${jsFile}`;
+                    scripts.push({
+                        src,
+                        tag: `<script src="${src}"></script>`,
+                    });
+                }
             }
         }
 

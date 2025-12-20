@@ -14,6 +14,7 @@ import type { ExportDocument, ExportPage, ResourceProvider } from '../interfaces
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { getIdeviceExportFiles } from '../../../services/idevice-config';
 
 /**
  * Options for preview generation
@@ -385,17 +386,22 @@ ${this.getWebsitePreviewCss()}
 <link rel="stylesheet" href="${themeCss}" onerror="this.href='${fallbackCss}'">`;
 
         // iDevice CSS from server
+        // Scan export folder for ALL CSS files to include any additional styles
         const seen = new Set<string>();
         for (const idevice of usedIdevices) {
             const typeName = normalizeIdeviceType(idevice);
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                const ideviceCss = this.getVersionedPath(
-                    `/files/perm/idevices/base/${typeName}/export/${typeName}.css`,
-                    options,
-                );
-                head += `\n<link rel="stylesheet" href="${ideviceCss}" onerror="this.remove()">`;
+                // Get ALL CSS files from export folder
+                const cssFiles = getIdeviceExportFiles(typeName, '.css');
+                for (const cssFile of cssFiles) {
+                    const ideviceCss = this.getVersionedPath(
+                        `/files/perm/idevices/base/${typeName}/export/${cssFile}`,
+                        options,
+                    );
+                    head += `\n<link rel="stylesheet" href="${ideviceCss}" onerror="this.remove()">`;
+                }
             }
         }
 
@@ -813,6 +819,7 @@ ${blockHtml}
         }
 
         // iDevice scripts
+        // Scan export folder for ALL JS files to include dependencies like html2canvas.js
         let ideviceScripts = '';
         const seenJs = new Set<string>();
         for (const idevice of usedIdevices) {
@@ -820,11 +827,15 @@ ${blockHtml}
 
             if (!seenJs.has(typeName)) {
                 seenJs.add(typeName);
-                const ideviceJs = this.getVersionedPath(
-                    `/files/perm/idevices/base/${typeName}/export/${typeName}.js`,
-                    options,
-                );
-                ideviceScripts += `\n<script src="${ideviceJs}" onerror="this.remove()"></script>`;
+                // Get ALL JS files from export folder (main file first, then dependencies)
+                const jsFiles = getIdeviceExportFiles(typeName, '.js');
+                for (const jsFile of jsFiles) {
+                    const ideviceJs = this.getVersionedPath(
+                        `/files/perm/idevices/base/${typeName}/export/${jsFile}`,
+                        options,
+                    );
+                    ideviceScripts += `\n<script src="${ideviceJs}" onerror="this.remove()"></script>`;
+                }
             }
         }
 
@@ -842,6 +853,57 @@ ${blockHtml}
 <script src="${exeExportJs}"></script>${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"></script>
 <script>
+// Polyfill for confirm/alert/prompt in sandboxed iframes (preview mode)
+// These are blocked by default in blob: URLs, so we provide custom implementations
+(function() {
+    if (typeof window.confirm === 'undefined' || window.confirm.toString().includes('native code')) {
+        var originalConfirm = window.confirm;
+        window.confirm = function(message) {
+            try {
+                return originalConfirm.call(window, message);
+            } catch (e) {
+                // Sandboxed - show Bootstrap modal if available, otherwise return true
+                if (typeof $ !== 'undefined' && $.fn.modal) {
+                    return new Promise(function(resolve) {
+                        var modalId = 'exeConfirmModal';
+                        var $modal = $('#' + modalId);
+                        if (!$modal.length) {
+                            $modal = $('<div class="modal fade" id="' + modalId + '" tabindex="-1">' +
+                                '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
+                                '<div class="modal-body text-center py-4"></div>' +
+                                '<div class="modal-footer justify-content-center">' +
+                                '<button type="button" class="btn btn-secondary" data-result="false">Cancelar</button>' +
+                                '<button type="button" class="btn btn-primary" data-result="true">Aceptar</button>' +
+                                '</div></div></div></div>');
+                            $('body').append($modal);
+                        }
+                        $modal.find('.modal-body').text(message);
+                        $modal.find('button').off('click').on('click', function() {
+                            var result = $(this).data('result');
+                            $modal.modal('hide');
+                            resolve(result);
+                        });
+                        $modal.modal('show');
+                    });
+                }
+                // Fallback: just return true in preview mode
+                console.log('[Preview] confirm() blocked by sandbox, returning true:', message);
+                return true;
+            }
+        };
+    }
+    if (typeof window.alert === 'undefined' || window.alert.toString().includes('native code')) {
+        var originalAlert = window.alert;
+        window.alert = function(message) {
+            try {
+                return originalAlert.call(window, message);
+            } catch (e) {
+                console.log('[Preview] alert():', message);
+            }
+        };
+    }
+})();
+
 ${this.getSpaNavigationScript()}
 // Initialize iDevices after DOM is ready
 if (typeof $exeExport !== 'undefined' && $exeExport.init) {

@@ -13,6 +13,7 @@ import {
     resetIdeviceConfigCache,
     setIdevicesBasePath,
     getAllIdeviceConfigs,
+    getIdeviceExportFiles,
 } from './idevice-config';
 
 describe('IdeviceConfig Service', () => {
@@ -354,6 +355,85 @@ describe('IdeviceConfig Service', () => {
 
             const crosswordConfig = getIdeviceConfig('crossword');
             expect(crosswordConfig.componentType).toBe('html');
+        });
+    });
+
+    describe('getIdeviceExportFiles', () => {
+        beforeEach(async () => {
+            // Create test iDevice with export folder
+            const checklistDir = path.join(idevicesDir, 'checklist', 'export');
+            await fs.ensureDir(checklistDir);
+            // Create multiple JS files
+            await fs.writeFile(path.join(checklistDir, 'checklist.js'), '// main');
+            await fs.writeFile(path.join(checklistDir, 'html2canvas.js'), '// dependency');
+            await fs.writeFile(path.join(checklistDir, 'checklist.css'), '/* main css */');
+
+            // Set the base path
+            setIdevicesBasePath(idevicesDir);
+        });
+
+        it('should return all JS files from export folder', () => {
+            const files = getIdeviceExportFiles('checklist', '.js');
+            expect(files).toContain('checklist.js');
+            expect(files).toContain('html2canvas.js');
+            expect(files.length).toBe(2);
+        });
+
+        it('should return main file first', () => {
+            const files = getIdeviceExportFiles('checklist', '.js');
+            expect(files[0]).toBe('checklist.js');
+        });
+
+        it('should return all CSS files from export folder', () => {
+            const files = getIdeviceExportFiles('checklist', '.css');
+            expect(files).toContain('checklist.css');
+            expect(files.length).toBe(1);
+        });
+
+        it('should return fallback for non-existent iDevice', () => {
+            const files = getIdeviceExportFiles('nonexistent', '.js');
+            expect(files).toEqual(['nonexistent.js']);
+        });
+
+        it('should return fallback for empty export folder', async () => {
+            // Create empty export folder
+            const emptyDir = path.join(idevicesDir, 'empty', 'export');
+            await fs.ensureDir(emptyDir);
+
+            const files = getIdeviceExportFiles('empty', '.js');
+            expect(files).toEqual(['empty.js']);
+        });
+
+        it('should sort alphabetically after main file', async () => {
+            // Create iDevice with multiple dependencies
+            const multiDir = path.join(idevicesDir, 'multi', 'export');
+            await fs.ensureDir(multiDir);
+            await fs.writeFile(path.join(multiDir, 'multi.js'), '// main');
+            await fs.writeFile(path.join(multiDir, 'zebra.js'), '// z');
+            await fs.writeFile(path.join(multiDir, 'alpha.js'), '// a');
+            await fs.writeFile(path.join(multiDir, 'beta.js'), '// b');
+
+            const files = getIdeviceExportFiles('multi', '.js');
+            expect(files[0]).toBe('multi.js'); // main first
+            expect(files[1]).toBe('alpha.js'); // then alphabetically
+            expect(files[2]).toBe('beta.js');
+            expect(files[3]).toBe('zebra.js');
+        });
+
+        it('should work with real checklist iDevice if available', () => {
+            const realIdevicesPath = path.join(process.cwd(), 'public/files/perm/idevices/base');
+            if (!fs.existsSync(path.join(realIdevicesPath, 'checklist', 'export'))) {
+                console.log('Skipping real checklist test - path not found');
+                return;
+            }
+
+            setIdevicesBasePath(realIdevicesPath);
+            const files = getIdeviceExportFiles('checklist', '.js');
+
+            // Should contain both checklist.js and html2canvas.js
+            expect(files).toContain('checklist.js');
+            expect(files).toContain('html2canvas.js');
+            expect(files[0]).toBe('checklist.js'); // main first
         });
     });
 });
