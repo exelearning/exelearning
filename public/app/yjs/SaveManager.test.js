@@ -718,6 +718,9 @@ describe('SaveManager', () => {
     });
 
     it('throws after max finalize retries', async () => {
+      // Use fake timers to speed up the 10 retries × 300ms delays
+      vi.useFakeTimers();
+
       const manager = new SaveManager(mockBridge, { token: 'test-token' });
       manager.CHUNK_SIZE = 10;
 
@@ -732,9 +735,23 @@ describe('SaveManager', () => {
         });
       });
 
-      await expect(manager.uploadLargeAsset('project-123', asset, () => {}))
-        .rejects.toThrow('Chunked upload finished but server did not confirm completion after retries');
-    }, 10000); // Increase timeout for retry loop
+      // Start the upload and capture error (don't re-throw to avoid unhandled rejection)
+      let caughtError = null;
+      const uploadPromise = manager.uploadLargeAsset('project-123', asset, () => {})
+        .catch((err) => { caughtError = err; });
+
+      // Advance timers to complete all 10 retries (10 × 300ms = 3000ms)
+      await vi.runAllTimersAsync();
+
+      // Wait for promise to settle
+      await uploadPromise;
+
+      // Verify the error was caught with correct message
+      expect(caughtError).not.toBeNull();
+      expect(caughtError.message).toBe('Chunked upload finished but server did not confirm completion after retries');
+
+      vi.useRealTimers();
+    });
   });
 
   describe('uploadAssets', () => {
