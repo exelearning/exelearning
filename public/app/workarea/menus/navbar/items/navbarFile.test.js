@@ -35,6 +35,8 @@ describe('NavbarFile', () => {
             saveButton: createButton('navbar-button-save'),
             saveButtonAs: createButton('navbar-button-save-as'),
             saveButtonAsOffline: createButton('navbar-button-save-as-offline'),
+            settingsButton: createButton('navbar-button-settings'),
+            shareButton: createButton('navbar-button-share'),
             uploadPlatformButton: createButton('navbar-button-uploadtoplatform'),
             openUserOdeFilesButton: createButton('navbar-button-openuserodefiles'),
             openOfflineButton: createButton('navbar-button-open-offline'),
@@ -64,6 +66,9 @@ describe('NavbarFile', () => {
         };
 
         Object.values(mockButtons).forEach((button) => navbarElement.appendChild(button));
+        const recentProjectsDropdown = document.createElement('ul');
+        recentProjectsDropdown.id = 'navbar-dropdown-menu-recent-projects';
+        navbarElement.appendChild(recentProjectsDropdown);
         vi.spyOn(navbarElement, 'querySelector');
 
         mockMenu = {
@@ -76,7 +81,9 @@ describe('NavbarFile', () => {
             open: vi.fn(),
             location: {
                 origin: 'http://localhost:8080',
-                href: ''
+                href: '',
+                replace: vi.fn(),
+                search: '',
             },
             onbeforeunload: null,
             electronAPI: null,
@@ -84,6 +91,11 @@ describe('NavbarFile', () => {
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
             innerWidth: 1024,
+        };
+        global.eXe = {
+            app: {
+                alert: vi.fn(),
+            },
         };
 
         // Mock eXeLearning
@@ -100,17 +112,29 @@ describe('NavbarFile', () => {
                     reinitializeWithProject: null,
                     exportToElpxViaYjs: null,
                     importFromElpxViaYjs: null,
+                    openLoad: vi.fn(),
+                    showModalSaveOk: vi.fn(),
+                    showModalSaveError: vi.fn(),
                 },
                 modals: {
                     templateselection: { show: vi.fn() },
                     sessionlogout: { show: vi.fn() },
                     confirm: { show: vi.fn() },
                     alert: { show: vi.fn() },
+                    share: { show: vi.fn() },
+                    uploadtodrive: { show: vi.fn() },
+                    uploadtodropbox: { show: vi.fn() },
+                    openuserodefiles: {
+                        show: vi.fn(),
+                        largeFilesUpload: vi.fn(),
+                    },
                     uploadprogress: {
                         show: vi.fn(),
                         setProcessingPhase: vi.fn(),
                         setComplete: vi.fn(),
                         hide: vi.fn(),
+                        updateUploadProgress: vi.fn(),
+                        showError: vi.fn(),
                     },
                 },
                 toasts: {
@@ -126,9 +150,22 @@ describe('NavbarFile', () => {
                     postCheckCurrentOdeUsers: vi.fn().mockResolvedValue({ leaveEmptySession: false }),
                     postCloseSession: vi.fn().mockResolvedValue({}),
                     postOdeSaveAs: vi.fn().mockResolvedValue({}),
+                    postFirstTypePlatformIntegrationElpUpload: vi.fn(),
                     getOdeExportDownload: vi.fn().mockResolvedValue({ url: 'http://test.com/file.zip' }),
                     getOdePreviewUrl: vi.fn(),
                     getFileResourcesForceDownload: vi.fn().mockResolvedValue({ url: 'http://test.com/file.zip' }),
+                    getRecentUserOdeFiles: vi.fn().mockResolvedValue([]),
+                    getUserOdeFiles: vi.fn().mockResolvedValue([]),
+                    getOdeConcurrentUsers: vi.fn().mockResolvedValue({ currentUsers: [] }),
+                    postLocalLargeOdeFile: vi.fn(),
+                    postImportElpToRootFromLocal: vi.fn(),
+                    getFoldersGoogleDrive: vi.fn(),
+                    getUrlLoginGoogleDrive: vi.fn(),
+                    getFoldersDropbox: vi.fn(),
+                    getUrlLoginDropbox: vi.fn(),
+                },
+                actions: {
+                    authorizeAddActions: false,
                 },
                 interface: {
                     connectionTime: {
@@ -138,6 +175,7 @@ describe('NavbarFile', () => {
             },
             config: {
                 isOfflineInstallation: false,
+                platformUrlSet: 'http://platform',
             },
             symfony: {
                 baseURL: '',
@@ -161,6 +199,7 @@ describe('NavbarFile', () => {
         delete global.window;
         delete global.eXeLearning;
         delete global._;
+        delete global.eXe;
         global.$.fn.tooltip = originalTooltip;
     });
 
@@ -179,6 +218,8 @@ describe('NavbarFile', () => {
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-save');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-save-as');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-save-as-offline');
+            expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-settings');
+            expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-share');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-uploadtoplatform');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-openuserodefiles');
             expect(mockMenu.navbar.querySelector).toHaveBeenCalledWith('#navbar-button-open-offline');
@@ -216,6 +257,8 @@ describe('NavbarFile', () => {
             expect(navbarFile.saveButton).toBe(mockButtons.saveButton);
             expect(navbarFile.saveButtonAs).toBe(mockButtons.saveButtonAs);
             expect(navbarFile.saveButtonAsOffline).toBe(mockButtons.saveButtonAsOffline);
+            expect(navbarFile.settingsButton).toBe(mockButtons.settingsButton);
+            expect(navbarFile.shareButton).toBe(mockButtons.shareButton);
             expect(navbarFile.uploadPlatformButton).toBe(mockButtons.uploadPlatformButton);
             expect(navbarFile.openUserOdeFilesButton).toBe(mockButtons.openUserOdeFilesButton);
             expect(navbarFile.openOfflineButton).toBe(mockButtons.openOfflineButton);
@@ -318,6 +361,16 @@ describe('NavbarFile', () => {
             expect(mockButtons.saveButtonAs.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
         });
 
+        it('setSettingsEvent should add click listener when button exists', () => {
+            navbarFile.setSettingsEvent();
+            expect(mockButtons.settingsButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+        });
+
+        it('setShareEvent should add click listener when button exists', () => {
+            navbarFile.setShareEvent();
+            expect(mockButtons.shareButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+        });
+
         it('setSaveAsProjectOfflineEvent should add click listener when button exists', () => {
             navbarFile.setSaveAsProjectOfflineEvent();
             expect(mockButtons.saveButtonAsOffline.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
@@ -352,6 +405,11 @@ describe('NavbarFile', () => {
         it('setDownloadProjectEvent should add click listener', () => {
             navbarFile.setDownloadProjectEvent();
             expect(mockButtons.downloadProjectButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+        });
+
+        it('setDownloadProjectAsEvent should add click listener when button exists', () => {
+            navbarFile.setDownloadProjectAsEvent();
+            expect(mockButtons.downloadProjectAsButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
         });
 
         it('setSaveProjectOfflineEvent should add click listener when button exists', () => {
@@ -452,6 +510,19 @@ describe('NavbarFile', () => {
             expect(navbarFile.downloadProjectEvent).toHaveBeenCalled();
         });
 
+        it('setSaveAsProjectEvent should call saveAsElpOffline in offline mode', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            eXeLearning.config.isOfflineInstallation = true;
+            window.electronAPI = {};
+            vi.spyOn(navbarFile, 'saveAsElpOffline');
+            navbarFile.setSaveAsProjectEvent();
+
+            const clickHandler = mockButtons.saveButtonAs.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.saveAsElpOffline).toHaveBeenCalled();
+        });
+
         it('setSaveAsProjectEvent should return early if idevice is open', () => {
             eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
             vi.spyOn(navbarFile, 'saveAsOdeEvent');
@@ -488,6 +559,28 @@ describe('NavbarFile', () => {
             expect(eXeLearning.app.project.checkOpenIdevice).toHaveBeenCalled();
             expect(navbarFile.exportHTML5Event).not.toHaveBeenCalled();
         });
+
+        it('setSettingsEvent should call openProjectSettingsEvent', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            vi.spyOn(navbarFile, 'openProjectSettingsEvent');
+            navbarFile.setSettingsEvent();
+
+            const clickHandler = mockButtons.settingsButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.openProjectSettingsEvent).toHaveBeenCalled();
+        });
+
+        it('setShareEvent should call openShareModalEvent', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            vi.spyOn(navbarFile, 'openShareModalEvent');
+            navbarFile.setShareEvent();
+
+            const clickHandler = mockButtons.shareButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.openShareModalEvent).toHaveBeenCalled();
+        });
     });
 
     describe('action methods', () => {
@@ -512,11 +605,81 @@ describe('NavbarFile', () => {
             });
         });
 
+        describe('openProjectSettingsEvent', () => {
+            it('should click the root node', () => {
+                const root = document.createElement('div');
+                root.setAttribute('nav-id', 'root');
+                const nodeText = document.createElement('span');
+                nodeText.classList.add('nav-element-text');
+                nodeText.click = vi.fn();
+                root.appendChild(nodeText);
+                document.body.appendChild(root);
+
+                navbarFile.openProjectSettingsEvent();
+
+                expect(nodeText.click).toHaveBeenCalled();
+            });
+        });
+
+        describe('openShareModalEvent', () => {
+            it('should show share modal when available', () => {
+                navbarFile.openShareModalEvent();
+                expect(eXeLearning.app.modals.share.show).toHaveBeenCalled();
+            });
+        });
+
         describe('saveOdeEvent', () => {
             it('should call project save method', () => {
                 navbarFile.saveOdeEvent();
 
                 expect(eXeLearning.app.project.save).toHaveBeenCalled();
+            });
+        });
+
+        describe('saveAs', () => {
+            it('should update project on successful save', async () => {
+                eXeLearning.app.api.postOdeSaveAs.mockResolvedValue({
+                    responseMessage: 'OK',
+                    odeId: 'new-ode',
+                    odeVersionId: 'new-version',
+                    newSessionId: 'new-session',
+                });
+
+                await navbarFile.saveAs('Title');
+
+                expect(eXeLearning.app.project.odeId).toBe('new-ode');
+                expect(eXeLearning.app.project.odeVersion).toBe('new-version');
+                expect(eXeLearning.app.project.odeSession).toBe('new-session');
+                expect(eXeLearning.app.project.openLoad).toHaveBeenCalled();
+                expect(eXeLearning.app.project.showModalSaveOk).toHaveBeenCalled();
+            });
+
+            it('should show error modal on failed save', async () => {
+                eXeLearning.app.api.postOdeSaveAs.mockResolvedValue({
+                    responseMessage: 'ERR',
+                });
+
+                await navbarFile.saveAs('Title');
+
+                expect(eXeLearning.app.project.showModalSaveError).toHaveBeenCalled();
+            });
+        });
+
+        describe('makeConfirmTitleInputModal', () => {
+            it('should call saveAs with modal input value', () => {
+                document.body.innerHTML = `
+                    <div class="modal-confirm">
+                        <input class="properties-title-input" value="Modal Title">
+                    </div>
+                `;
+                vi.spyOn(navbarFile, 'saveAs');
+
+                navbarFile.makeConfirmTitleInputModal();
+
+                const confirmArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+                confirmArgs.confirmExec();
+
+                expect(navbarFile.saveAs).toHaveBeenCalledWith('Modal Title');
             });
         });
 
@@ -530,6 +693,38 @@ describe('NavbarFile', () => {
                     odeVersionId: 'v1',
                     odeId: 'test-ode-id',
                 });
+            });
+        });
+
+        describe('currentOdeUsers', () => {
+            it('should prompt for save when only one user is connected', async () => {
+                eXeLearning.app.api.getOdeConcurrentUsers.mockResolvedValue({
+                    currentUsers: [{}],
+                });
+                vi.spyOn(navbarFile, 'makeConfirmTitleInputModal');
+
+                await navbarFile.currentOdeUsers({
+                    odeSessionId: 'session-1',
+                    odeVersionId: 'version-1',
+                    odeId: 'ode-1',
+                });
+
+                expect(navbarFile.makeConfirmTitleInputModal).toHaveBeenCalled();
+            });
+
+            it('should show error when multiple users are connected', async () => {
+                eXeLearning.app.api.getOdeConcurrentUsers.mockResolvedValue({
+                    currentUsers: [{}, {}],
+                });
+                const errorSpy = vi.spyOn(eXeLearning.app.project, 'showModalSaveError');
+
+                await navbarFile.currentOdeUsers({
+                    odeSessionId: 'session-1',
+                    odeVersionId: 'version-1',
+                    odeId: 'ode-1',
+                });
+
+                expect(errorSpy).toHaveBeenCalled();
             });
         });
     });
@@ -635,6 +830,238 @@ describe('NavbarFile', () => {
             await navbarFile.createSession({ odeSessionId: 'session-123' });
 
             expect(eXeLearning.app.api.postCloseSession).toHaveBeenCalled();
+        });
+    });
+
+    describe('input helpers', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('createIdevicesUploadInput should upload selected file', () => {
+            const input = navbarFile.createIdevicesUploadInput();
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.elpx');
+            Object.defineProperty(input, 'files', {
+                value: [file],
+            });
+
+            input.dispatchEvent(new Event('change'));
+
+            expect(eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledWith(file);
+            expect(navbarElement.querySelectorAll('.local-ode-file-upload-input').length).toBeGreaterThan(0);
+        });
+
+        it('createPropertiesUploadInput should upload selected properties file', () => {
+            const input = navbarFile.createPropertiesUploadInput();
+            const file = new File([new Uint8Array([1, 2, 3])], 'props.xml');
+            Object.defineProperty(input, 'files', {
+                value: [file],
+            });
+
+            input.dispatchEvent(new Event('change'));
+
+            expect(eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledWith(
+                file,
+                false,
+                true
+            );
+        });
+    });
+
+    describe('importElpEvent', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+            eXeLearning.app.project._yjsEnabled = false;
+            eXeLearning.app.project.importFromElpxViaYjs = null;
+        });
+
+        it('should import via Yjs and update progress modal', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project.importFromElpxViaYjs = vi.fn().mockResolvedValue({
+                pages: 2,
+            });
+            vi.useFakeTimers();
+            navbarFile.setImportElpEvent();
+
+            const clickHandler = mockButtons.importElpButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            const confirmArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            confirmArgs.confirmExec();
+
+            const input = document.querySelector('input[type=\"file\"]');
+            const file = new File([new Uint8Array([1, 2, 3])], 'import.elpx');
+            Object.defineProperty(input, 'files', {
+                value: [file],
+            });
+
+            input.dispatchEvent(new Event('change'));
+            await Promise.resolve();
+            await vi.runAllTimersAsync();
+
+            expect(eXeLearning.app.project.importFromElpxViaYjs).toHaveBeenCalledWith(file, {
+                clearExisting: false,
+            });
+            expect(eXeLearning.app.modals.uploadprogress.setProcessingPhase).toHaveBeenCalledWith('extracting');
+            expect(eXeLearning.app.modals.uploadprogress.setComplete).toHaveBeenCalled();
+            vi.useRealTimers();
+        });
+
+        it('should import via legacy upload flow', async () => {
+            vi.useFakeTimers();
+            eXeLearning.app.api.postLocalLargeOdeFile.mockResolvedValue({
+                responseMessage: 'OK',
+                odeFileName: 'file.elpx',
+                odeFilePath: '/tmp/file.elpx',
+            });
+            eXeLearning.app.api.postImportElpToRootFromLocal.mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            eXeLearning.app.project.structure = {
+                getSelectNodeNavId: vi.fn().mockReturnValue('root'),
+                resetDataAndStructureData: vi.fn(),
+            };
+
+            navbarFile.setImportElpEvent();
+            const clickHandler = mockButtons.importElpButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            const confirmArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            confirmArgs.confirmExec();
+
+            const input = document.querySelector('input[type=\"file\"]');
+            const file = new File([new Uint8Array([1, 2, 3])], 'import.elpx');
+            Object.defineProperty(input, 'files', {
+                value: [file],
+            });
+
+            input.dispatchEvent(new Event('change'));
+            await Promise.resolve();
+            await vi.runAllTimersAsync();
+
+            expect(eXeLearning.app.api.postLocalLargeOdeFile).toHaveBeenCalled();
+            expect(eXeLearning.app.api.postImportElpToRootFromLocal).toHaveBeenCalledWith({
+                odeSessionId: 'test-session-123',
+                odeFileName: 'file.elpx',
+                odeFilePath: '/tmp/file.elpx',
+            });
+            expect(eXeLearning.app.project.structure.resetDataAndStructureData).toHaveBeenCalledWith('root');
+            vi.useRealTimers();
+        });
+    });
+
+    describe('openUserOdeFilesEvent', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should open offline file via electron API', async () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            window.electronAPI = {
+                openElp: vi.fn().mockResolvedValue('/tmp/test.elpx'),
+                readFile: vi.fn().mockResolvedValue({
+                    ok: true,
+                    base64: Buffer.from('test').toString('base64'),
+                }),
+            };
+            global.atob = (value) => Buffer.from(value, 'base64').toString('binary');
+
+            navbarFile.openUserOdeFilesEvent();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(window.electronAPI.openElp).toHaveBeenCalled();
+            expect(eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalled();
+            expect(window.__originalElpPath).toBe('/tmp/test.elpx');
+        });
+
+        it('should show alert when offline file read fails', async () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            window.electronAPI = {
+                openElp: vi.fn().mockResolvedValue('/tmp/test.elpx'),
+                readFile: vi.fn().mockResolvedValue({
+                    ok: false,
+                    error: 'Read failed',
+                }),
+            };
+
+            navbarFile.openUserOdeFilesEvent();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'Error opening',
+                body: 'Read failed',
+                contentId: 'error',
+            });
+        });
+
+        it('should open online file list when not offline', async () => {
+            eXeLearning.config.isOfflineInstallation = false;
+            eXeLearning.app.api.getUserOdeFiles.mockResolvedValue([{ odeId: '1' }]);
+
+            navbarFile.openUserOdeFilesEvent();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(eXeLearning.app.modals.openuserodefiles.show).toHaveBeenCalledWith([{ odeId: '1' }]);
+        });
+    });
+
+    describe('recent projects', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('showMostRecentProjectsEvent should render recent projects list', async () => {
+            eXeLearning.app.api.getRecentUserOdeFiles.mockResolvedValue([
+                { odeId: 'proj-1', title: 'Project 1' },
+            ]);
+
+            navbarFile.showMostRecentProjectsEvent();
+            await Promise.resolve();
+
+            const list = navbarElement.querySelector('#navbar-dropdown-menu-recent-projects');
+            expect(list.querySelectorAll('a').length).toBe(1);
+        });
+
+        it('makeRecentProjecList should prompt when unsaved changes exist', () => {
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: {
+                    hasUnsavedChanges: vi.fn(() => true),
+                },
+            };
+
+            const list = navbarFile.makeRecentProjecList([
+                { odeId: 'proj-2', title: 'Project 2' },
+            ]);
+            const link = list.querySelector('a');
+            link.click();
+
+            expect(eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith({
+                title: 'Open project',
+                forceOpen: 'Open without saving',
+                openYjsProject: true,
+                projectUuid: 'proj-2',
+            });
+        });
+
+        it('makeRecentProjecList should navigate when no unsaved changes', () => {
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: {
+                    hasUnsavedChanges: vi.fn(() => false),
+                },
+            };
+
+            const list = navbarFile.makeRecentProjecList([
+                { odeId: 'proj-3', title: 'Project 3' },
+            ]);
+            const link = list.querySelector('a');
+            link.click();
+
+            expect(window.location.href).toBe('/workarea?project=proj-3');
+        });
+
+        it('makeRecentProjecList should show empty message when list is empty', () => {
+            const list = navbarFile.makeRecentProjecList([]);
+            expect(list.textContent).toContain('No recent projects');
         });
     });
 
@@ -806,6 +1233,29 @@ describe('NavbarFile', () => {
         });
     });
 
+    describe('downloadProjectViaYjs', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should export via Yjs and update UI on success', async () => {
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue();
+
+            await navbarFile.downloadProjectViaYjs();
+
+            expect(eXeLearning.app.project.exportToElpxViaYjs).toHaveBeenCalled();
+            expect(eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface).toHaveBeenCalled();
+        });
+
+        it('should show alert on Yjs export error', async () => {
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockRejectedValue(new Error('boom'));
+
+            await navbarFile.downloadProjectViaYjs();
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+        });
+    });
+
     describe('exportViaYjs', () => {
         beforeEach(() => {
             navbarFile = new NavbarFile(mockMenu);
@@ -879,6 +1329,131 @@ describe('NavbarFile', () => {
         });
     });
 
+    describe('export As flows', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+            window.electronAPI = { saveAs: vi.fn() };
+        });
+
+        it('exportHTML5AsEvent should use electron save as', async () => {
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Project',
+            });
+
+            await navbarFile.exportHTML5AsEvent();
+
+            expect(window.electronAPI.saveAs).toHaveBeenCalled();
+        });
+
+        it('exportHTML5SPAsEvent should fall back to server export', async () => {
+            vi.spyOn(navbarFile, 'exportViaYjs').mockResolvedValue(false);
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Project',
+            });
+
+            await navbarFile.exportHTML5SPAsEvent();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'html5-sp'
+            );
+            expect(window.electronAPI.saveAs).toHaveBeenCalled();
+        });
+
+        it('exportSCORM2004AsEvent should fall back to server export', async () => {
+            vi.spyOn(navbarFile, 'exportViaYjs').mockResolvedValue(false);
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Project',
+            });
+
+            await navbarFile.exportSCORM2004AsEvent();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'scorm2004'
+            );
+            expect(window.electronAPI.saveAs).toHaveBeenCalled();
+        });
+
+        it('exportIMSAsEvent should fall back to server export', async () => {
+            vi.spyOn(navbarFile, 'exportViaYjs').mockResolvedValue(false);
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Project',
+            });
+
+            await navbarFile.exportIMSAsEvent();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'ims'
+            );
+            expect(window.electronAPI.saveAs).toHaveBeenCalled();
+        });
+
+        it('exportEPUB3AsEvent should fall back to server export', async () => {
+            vi.spyOn(navbarFile, 'exportViaYjs').mockResolvedValue(false);
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Book',
+            });
+
+            await navbarFile.exportEPUB3AsEvent();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'epub3'
+            );
+            expect(window.electronAPI.saveAs).toHaveBeenCalled();
+        });
+
+        it('exportXmlPropertiesAsEvent should save xml properties', async () => {
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'props',
+            });
+
+            await navbarFile.exportXmlPropertiesAsEvent();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'properties'
+            );
+            expect(window.electronAPI.saveAs).toHaveBeenCalled();
+        });
+    });
+
+    describe('exportHTML5FolderAsEvent', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should export to folder in offline mode', async () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            window.electronAPI = {
+                exportToFolder: vi.fn().mockResolvedValue({ ok: true }),
+            };
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Project',
+            });
+
+            await navbarFile.exportHTML5FolderAsEvent();
+
+            expect(window.electronAPI.exportToFolder).toHaveBeenCalled();
+        });
+    });
+
     describe('exportHTML5Event', () => {
         beforeEach(() => {
             navbarFile = new NavbarFile(mockMenu);
@@ -903,6 +1478,28 @@ describe('NavbarFile', () => {
 
             expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalled();
             expect(eXeLearning.app.toasts.createToast).toHaveBeenCalled();
+        });
+    });
+
+    describe('exportHTML5SPEvent', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should fall back to server export when Yjs not available', async () => {
+            vi.spyOn(navbarFile, 'exportViaYjs').mockResolvedValue(false);
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Project',
+            });
+
+            await navbarFile.exportHTML5SPEvent();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'html5-sp'
+            );
         });
     });
 
@@ -932,6 +1529,73 @@ describe('NavbarFile', () => {
         });
     });
 
+    describe('exportSCORM2004Event', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should fall back to server export when Yjs not available', async () => {
+            vi.spyOn(navbarFile, 'exportViaYjs').mockResolvedValue(false);
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Project',
+            });
+
+            await navbarFile.exportSCORM2004Event();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'scorm2004'
+            );
+        });
+    });
+
+    describe('exportIMSEvent', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should fall back to server export when Yjs not available', async () => {
+            vi.spyOn(navbarFile, 'exportViaYjs').mockResolvedValue(false);
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Project',
+            });
+
+            await navbarFile.exportIMSEvent();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'ims'
+            );
+        });
+    });
+
+    describe('exportXmlPropertiesEvent', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should export properties via server download', async () => {
+            const downloadSpy = vi.spyOn(navbarFile, 'downloadLink').mockImplementation(() => {});
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'props.xml',
+            });
+
+            await navbarFile.exportXmlPropertiesEvent();
+
+            expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalledWith(
+                'test-session-123',
+                'properties'
+            );
+            expect(downloadSpy).toHaveBeenCalled();
+        });
+    });
+
     describe('exportEPUB3Event', () => {
         beforeEach(() => {
             navbarFile = new NavbarFile(mockMenu);
@@ -955,6 +1619,218 @@ describe('NavbarFile', () => {
             await navbarFile.exportEPUB3Event();
 
             expect(eXeLearning.app.api.getOdeExportDownload).toHaveBeenCalled();
+        });
+    });
+
+    describe('saveAsElpOffline', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('should use electron saveAs when available', async () => {
+            window.electronAPI = { saveAs: vi.fn() };
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'OK',
+                urlZipFile: 'http://file',
+                exportProjectName: 'Doc',
+            });
+
+            await navbarFile.saveAsElpOffline();
+
+            expect(window.electronAPI.saveAs).toHaveBeenCalled();
+        });
+
+        it('should show alert on export error', async () => {
+            eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
+                responseMessage: 'ERR',
+            });
+
+            await navbarFile.saveAsElpOffline();
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+        });
+    });
+
+    describe('cloud upload helpers', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('getFoldersGoogleDrive should return files when available', async () => {
+            eXeLearning.app.api.getFoldersGoogleDrive.mockResolvedValue({
+                folders: { files: [] },
+            });
+
+            const result = await navbarFile.getFoldersGoogleDrive();
+
+            expect(result).toEqual({ error: false, files: { files: [] } });
+        });
+
+        it('getFoldersGoogleDrive should return unknown when missing data', async () => {
+            eXeLearning.app.api.getFoldersGoogleDrive.mockResolvedValue(null);
+
+            const result = await navbarFile.getFoldersGoogleDrive();
+
+            expect(result).toEqual({ error: 'Unknown', files: [] });
+        });
+
+        it('uploadToGoogleDriveEvent should open Google Drive modal', async () => {
+            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
+                error: false,
+                files: { files: [] },
+            });
+
+            navbarFile.uploadToGoogleDriveEvent();
+            await Promise.resolve();
+
+            expect(eXeLearning.app.modals.uploadtodrive.show).toHaveBeenCalledWith({ files: [] });
+        });
+
+        it('uploadToGoogleDriveEvent should show alert when error and no auth', async () => {
+            eXeLearning.app.actions.authorizeAddActions = false;
+            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
+                error: 'bad',
+                files: [],
+            });
+
+            navbarFile.uploadToGoogleDriveEvent();
+            await Promise.resolve();
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'Google Drive error',
+                body: 'bad',
+                contentId: 'error',
+            });
+        });
+
+        it('uploadToGoogleDriveEvent should open login when auth is enabled', async () => {
+            eXeLearning.app.actions.authorizeAddActions = true;
+            vi.spyOn(navbarFile, 'getFoldersGoogleDrive').mockResolvedValue({
+                error: 'bad',
+                files: [],
+            });
+            const loginSpy = vi.spyOn(navbarFile, 'openWindowLoginGoogleDrive').mockResolvedValue();
+
+            navbarFile.uploadToGoogleDriveEvent();
+            await Promise.resolve();
+
+            expect(loginSpy).toHaveBeenCalled();
+        });
+
+        it('openWindowLoginGoogleDrive should open login popup', async () => {
+            eXeLearning.app.api.getUrlLoginGoogleDrive.mockResolvedValue({
+                url: 'http://drive-login',
+            });
+
+            await navbarFile.openWindowLoginGoogleDrive();
+
+            expect(window.open).toHaveBeenCalledWith(
+                'http://drive-login',
+                'drive',
+                expect.any(String)
+            );
+        });
+
+        it('getFoldersDropbox should return files when available', async () => {
+            eXeLearning.app.api.getFoldersDropbox.mockResolvedValue({
+                folders: { files: [] },
+            });
+
+            const result = await navbarFile.getFoldersDropbox();
+
+            expect(result).toEqual({ error: false, files: { files: [] } });
+        });
+
+        it('uploadToDropboxEvent should show alert when error and no auth', async () => {
+            eXeLearning.app.actions.authorizeAddActions = false;
+            vi.spyOn(navbarFile, 'getFoldersDropbox').mockResolvedValue({
+                error: 'bad',
+                files: [],
+            });
+
+            navbarFile.uploadToDropboxEvent();
+            await Promise.resolve();
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'Dropbox error',
+                body: 'bad',
+                contentId: 'error',
+            });
+        });
+
+        it('uploadToDropboxEvent should open Dropbox modal', async () => {
+            vi.spyOn(navbarFile, 'getFoldersDropbox').mockResolvedValue({
+                error: false,
+                files: { files: [] },
+            });
+
+            navbarFile.uploadToDropboxEvent();
+            await Promise.resolve();
+
+            expect(eXeLearning.app.modals.uploadtodropbox.show).toHaveBeenCalledWith({ files: [] });
+        });
+
+        it('openWindowLoginDropbox should open login popup', async () => {
+            eXeLearning.app.api.getUrlLoginDropbox.mockResolvedValue({
+                url: 'http://dropbox-login',
+            });
+
+            await navbarFile.openWindowLoginDropbox();
+
+            expect(window.open).toHaveBeenCalledWith(
+                'http://dropbox-login',
+                'dropbox',
+                expect.any(String)
+            );
+        });
+    });
+
+    describe('platform upload', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('uploadPlatformEvent should redirect on success', async () => {
+            window.location.search = '?jwt_token=abc';
+            eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mockResolvedValue({
+                responseMessage: 'OK',
+                returnUrl: 'http://return',
+            });
+
+            await navbarFile.uploadPlatformEvent();
+
+            expect(window.location.replace).toHaveBeenCalledWith('http://return');
+        });
+
+        it('uploadPlatformEvent should alert on error', async () => {
+            window.location.search = '?jwt_token=abc';
+            eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload.mockResolvedValue({
+                responseMessage: 'ERR',
+            });
+
+            await navbarFile.uploadPlatformEvent();
+
+            expect(global.eXe.app.alert).toHaveBeenCalled();
+        });
+    });
+
+    describe('importXmlPropertiesEvent', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should click the properties upload input', () => {
+            const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+
+            navbarFile.importXmlPropertiesEvent();
+
+            expect(clickSpy).toHaveBeenCalled();
+            clickSpy.mockRestore();
         });
     });
 
@@ -998,6 +1874,54 @@ describe('NavbarFile', () => {
             const saveHandler = mockButtons.saveButton.addEventListener.mock.calls[0][1];
             saveHandler();
             expect(navbarFile.saveOdeEvent).toHaveBeenCalled();
+        });
+    });
+
+    describe('mobile layout helpers', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+            document.body.classList.remove('left-column-hidden');
+        });
+
+        it('initMobileLayout should collapse on small screens', () => {
+            window.innerWidth = 500;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+        });
+
+        it('handleResponsiveLayout should toggle state on resize', () => {
+            window.innerWidth = 500;
+            navbarFile.handleResponsiveLayout();
+            expect(navbarFile._wasResizedToMobile).toBe(true);
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+
+            window.innerWidth = 900;
+            navbarFile.handleResponsiveLayout();
+            expect(navbarFile._wasResizedToMobile).toBe(false);
+        });
+
+        it('initMobileBackdropClose should hide sidebar on outside click', () => {
+            window.innerWidth = 500;
+            const sidebar = document.createElement('div');
+            sidebar.classList.add('asideleft');
+            sidebar.getBoundingClientRect = () => ({
+                left: 0,
+                right: 100,
+                top: 0,
+                bottom: 100,
+            });
+            document.body.appendChild(sidebar);
+
+            const toggler = document.createElement('button');
+            toggler.id = 'exe-panels-toggler';
+            document.body.appendChild(toggler);
+
+            navbarFile.initMobileBackdropClose();
+            document.dispatchEvent(
+                new MouseEvent('click', { clientX: 200, clientY: 200 })
+            );
+
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
         });
     });
 
@@ -1081,6 +2005,49 @@ describe('NavbarFile', () => {
             );
         });
 
+        it('should infer export types when downloading offline', async () => {
+            window.__currentProjectId = 'proj-3';
+            window.electronAPI = { save: vi.fn() };
+            eXeLearning.config.isOfflineInstallation = true;
+            eXeLearning.app.api.getFileResourcesForceDownload.mockResolvedValue({
+                url: 'http://final',
+            });
+
+            const names = [
+                'export-html5.zip',
+                'export-scorm2004.zip',
+                'export-scorm12.zip',
+                'export-ims.zip',
+                'export-epub3.zip',
+                'export-xml-properties.xml',
+                'bundle.zip',
+            ];
+
+            for (const name of names) {
+                await navbarFile.downloadLink('http://file', name);
+            }
+
+            expect(window.electronAPI.save).toHaveBeenCalled();
+        });
+
+        it('should create a browser download link when not offline', async () => {
+            window.electronAPI = null;
+            eXeLearning.config.isOfflineInstallation = false;
+            eXeLearning.app.api.getFileResourcesForceDownload.mockResolvedValue({
+                url: 'http://final',
+            });
+            const appendSpy = vi.spyOn(document.body, 'appendChild');
+            const removeSpy = vi.spyOn(document.body, 'removeChild');
+            const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+            await navbarFile.downloadLink('http://file', 'export.zip');
+
+            expect(appendSpy).toHaveBeenCalled();
+            expect(removeSpy).toHaveBeenCalled();
+            expect(clickSpy).toHaveBeenCalled();
+            clickSpy.mockRestore();
+        });
+
         it('should detect legacy elp format with contentv3.xml', async () => {
             const xml = '<instance></instance>';
             window.fflate = {
@@ -1102,6 +2069,63 @@ describe('NavbarFile', () => {
             const result = await navbarFile.checkIfLegacyElpFormat(file);
 
             expect(result).toBe(false);
+        });
+
+        it('should return false when contentv3.xml is non-legacy', async () => {
+            const xml = '<root></root>';
+            window.fflate = {
+                unzipSync: vi.fn(() => ({
+                    'contentv3.xml': new TextEncoder().encode(xml),
+                })),
+            };
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.elp');
+
+            const result = await navbarFile.checkIfLegacyElpFormat(file);
+
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('convertLegacyElpViaBackend', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should return converted structure on success', async () => {
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({
+                    structure: { id: 'root' },
+                    assets: ['asset-1'],
+                }),
+            });
+
+            const result = await navbarFile.convertLegacyElpViaBackend(
+                new File([new Uint8Array([1])], 'legacy.elp'),
+                {}
+            );
+
+            expect(result).toEqual({
+                success: true,
+                structure: { id: 'root' },
+                assets: ['asset-1'],
+            });
+        });
+
+        it('should return error details on failure', async () => {
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                json: async () => ({ message: 'bad' }),
+            });
+
+            const result = await navbarFile.convertLegacyElpViaBackend(
+                new File([new Uint8Array([1])], 'legacy.elp'),
+                {}
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('bad');
         });
     });
 });

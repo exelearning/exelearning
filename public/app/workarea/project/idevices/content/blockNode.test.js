@@ -728,4 +728,211 @@ describe('IdeviceBlockNode', () => {
             expect(global.Logger.log).toHaveBeenCalledWith('click');
         });
     });
+
+    describe('toggleOff', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
+            block.toggleElement.classList.add('box-toggle-on');
+        });
+
+        it('adds hidden-idevices class to blockContent', () => {
+            block.toggleOff();
+            expect(block.blockContent.classList.contains('hidden-idevices')).toBe(true);
+        });
+
+        it('removes dropdown-menu-on class from blockContent', () => {
+            block.blockContent.classList.add('dropdown-menu-on');
+            block.toggleOff();
+            expect(block.blockContent.classList.contains('dropdown-menu-on')).toBe(false);
+        });
+
+        it('toggles toggle element classes', () => {
+            block.toggleOff();
+            expect(block.toggleElement.classList.contains('box-toggle-off')).toBe(true);
+            expect(block.toggleElement.classList.contains('box-toggle-on')).toBe(false);
+        });
+
+        it('updates toggle element title and icon', () => {
+            block.toggleOff();
+            expect(block.toggleElement.getAttribute('title')).toBe('Show');
+            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_up');
+        });
+    });
+
+    describe('toggleOn', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+            block.blockContent.classList.add('hidden-idevices');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_up</span>';
+            block.toggleElement.classList.add('box-toggle-off');
+        });
+
+        it('removes hidden-idevices class from blockContent', () => {
+            block.toggleOn();
+            expect(block.blockContent.classList.contains('hidden-idevices')).toBe(false);
+        });
+
+        it('toggles toggle element classes', () => {
+            block.toggleOn();
+            expect(block.toggleElement.classList.contains('box-toggle-on')).toBe(true);
+            expect(block.toggleElement.classList.contains('box-toggle-off')).toBe(false);
+        });
+
+        it('updates toggle element title and icon', () => {
+            block.toggleOn();
+            expect(block.toggleElement.getAttribute('title')).toBe('Hide');
+            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_down');
+        });
+    });
+
+    describe('generateModalMoveToPageBody', () => {
+        it('creates body with text and select elements', () => {
+            const body = block.generateModalMoveToPageBody();
+
+            expect(body.querySelector('.text-info-move-to-page')).not.toBeNull();
+            expect(body.querySelector('.select-move-to-page')).not.toBeNull();
+        });
+
+        it('adds pages as options', () => {
+            eXeLearning.app.project.structure.getAllNodesOrderByView = vi.fn().mockReturnValue([
+                { id: 'page-1', deep: 0, pageName: 'Home' },
+                { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
+            ]);
+
+            const body = block.generateModalMoveToPageBody();
+            const options = body.querySelectorAll('option');
+
+            expect(options.length).toBe(2);
+            expect(options[0].value).toBe('page-1');
+            expect(options[1].value).toBe('page-2');
+        });
+
+        it('marks current page as selected', () => {
+            block.odeNavStructureSyncId = 'page-2';
+            eXeLearning.app.project.structure.getAllNodesOrderByView = vi.fn().mockReturnValue([
+                { id: 'page-1', deep: 0, pageName: 'Home' },
+                { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
+            ]);
+
+            const body = block.generateModalMoveToPageBody();
+            const selectedOption = body.querySelector('option[selected]');
+
+            expect(selectedOption.value).toBe('page-2');
+        });
+    });
+
+    describe('saveIconAction', () => {
+        beforeEach(() => {
+            const modalBody = document.createElement('div');
+            const iconElement = document.createElement('div');
+            iconElement.classList.add('option-block-icon');
+            iconElement.setAttribute('selected', 'true');
+            iconElement.setAttribute('icon-id', 'test-icon');
+            modalBody.appendChild(iconElement);
+            eXeLearning.app.modals.confirm.modalElementBody = modalBody;
+
+            block.apiUpdateIcon = vi.fn();
+        });
+
+        it('gets icon value from selected element', () => {
+            block.saveIconAction();
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith('test-icon');
+        });
+
+        it('uses empty string when icon is 0', () => {
+            const modalBody = eXeLearning.app.modals.confirm.modalElementBody;
+            modalBody.querySelector('.option-block-icon').setAttribute('icon-id', '0');
+
+            block.saveIconAction();
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith('');
+        });
+
+        it('syncs to Yjs when binding available', () => {
+            const mockUpdateBlock = vi.fn();
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { updateBlock: mockUpdateBlock },
+            };
+
+            block.saveIconAction();
+
+            expect(mockUpdateBlock).toHaveBeenCalledWith(block.blockId, { iconName: 'test-icon' });
+        });
+    });
+
+    describe('goWindowToBlock', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            window.location.hash = '';
+        });
+
+        it('sets window location hash after delay', () => {
+            block.goWindowToBlock(100);
+            vi.advanceTimersByTime(100);
+            // In JSDOM, window.location.hash may not include the #
+            expect(window.location.hash).toContain(block.blockId);
+        });
+    });
+
+    describe('makeEmptyIcon', () => {
+        it('creates empty icon element', () => {
+            const emptyIcon = block.makeEmptyIcon();
+            expect(emptyIcon.classList.contains('empty-block-icon')).toBe(true);
+        });
+    });
+
+    describe('generateBlockContentNode', () => {
+        it('returns blockContent element when creating new node', () => {
+            // Set newNode=true to create a new block content node
+            const content = block.generateBlockContentNode(true);
+            expect(content).toBeDefined();
+            expect(content.classList.contains('box')).toBe(true);
+        });
+
+        it('adds draggable class when draggable is true', () => {
+            const content = block.generateBlockContentNode(true);
+            expect(content.classList.contains('draggable')).toBe(true);
+        });
+    });
+
+    describe('setProperties', () => {
+        it('updates properties.value from data object', () => {
+            const props = {
+                identifier: { value: 'test-id' },
+                visibility: { value: 'true' },
+                cssClass: { value: 'custom-class' },
+            };
+
+            block.setProperties(props);
+
+            expect(block.properties.identifier.value).toBe('test-id');
+            expect(block.properties.visibility.value).toBe('true');
+            expect(block.properties.cssClass.value).toBe('custom-class');
+        });
+
+        it('handles onlyHeritable flag', () => {
+            const props = {
+                identifier: { value: 'test-id', heritable: true },
+                visibility: { value: 'true', heritable: false },
+            };
+
+            block.setProperties(props, true);
+
+            expect(block.properties.identifier.value).toBe('test-id');
+            // visibility should not be updated since heritable is false
+        });
+    });
+
+    describe('updateParam', () => {
+        it('updates parameter value', () => {
+            block.updateParam('blockName', 'New Name');
+            expect(block.blockName).toBe('New Name');
+        });
+    });
 });

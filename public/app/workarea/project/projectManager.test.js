@@ -1362,5 +1362,1176 @@ describe('ProjectManager', () => {
             expect(mockApp.api.postOdeSave).toHaveBeenCalled();
             vi.useRealTimers();
         });
+
+        it('handles save error in Yjs mode', async () => {
+            vi.useFakeTimers();
+            projectManager._yjsEnabled = true;
+            projectManager._yjsBridge = {
+                getDocumentManager: vi.fn().mockReturnValue({
+                    save: vi.fn().mockResolvedValue({ success: false, message: 'error' }),
+                }),
+            };
+            const mockToast = {
+                toastBody: { innerHTML: '', classList: { add: vi.fn() } },
+                remove: vi.fn(),
+            };
+            mockApp.toasts = { createToast: vi.fn().mockReturnValue(mockToast) };
+
+            await projectManager.save();
+            vi.advanceTimersByTime(2000);
+
+            expect(mockToast.toastBody.classList.add).toHaveBeenCalledWith('error');
+            vi.useRealTimers();
+        });
+
+        it('handles missing document manager in Yjs mode', async () => {
+            vi.useFakeTimers();
+            projectManager._yjsEnabled = true;
+            projectManager._yjsBridge = {
+                getDocumentManager: vi.fn().mockReturnValue(null),
+            };
+            const mockToast = {
+                toastBody: { innerHTML: '', classList: { add: vi.fn() } },
+                remove: vi.fn(),
+            };
+            mockApp.toasts = { createToast: vi.fn().mockReturnValue(mockToast) };
+
+            await projectManager.save();
+            vi.advanceTimersByTime(2000);
+
+            expect(mockToast.toastBody.classList.add).toHaveBeenCalledWith('error');
+            vi.useRealTimers();
+        });
+
+        it('handles legacy API error', async () => {
+            vi.useFakeTimers();
+            projectManager._yjsEnabled = false;
+            projectManager.odeSession = 'test';
+            projectManager.odeVersion = '1';
+            projectManager.odeId = 'proj-1';
+            mockApp.api.postOdeSave = vi.fn().mockResolvedValue({ responseMessage: 'ERROR' });
+            const mockToast = {
+                toastBody: { innerHTML: '', classList: { add: vi.fn() } },
+                remove: vi.fn(),
+            };
+            mockApp.toasts = { createToast: vi.fn().mockReturnValue(mockToast) };
+            const showModalSpy = vi.spyOn(projectManager, 'showModalSaveError');
+
+            await projectManager.save();
+            vi.advanceTimersByTime(2000);
+
+            expect(showModalSpy).toHaveBeenCalled();
+            vi.useRealTimers();
+        });
+
+        it('handles exception during save', async () => {
+            vi.useFakeTimers();
+            projectManager._yjsEnabled = true;
+            projectManager._yjsBridge = {
+                getDocumentManager: vi.fn().mockImplementation(() => {
+                    throw new Error('Bridge error');
+                }),
+            };
+            const mockToast = {
+                toastBody: { innerHTML: '', classList: { add: vi.fn() } },
+                remove: vi.fn(),
+            };
+            mockApp.toasts = { createToast: vi.fn().mockReturnValue(mockToast) };
+
+            await projectManager.save();
+            vi.advanceTimersByTime(2000);
+
+            expect(mockToast.toastBody.classList.add).toHaveBeenCalledWith('error');
+            vi.useRealTimers();
+        });
+    });
+
+    // ===========================================
+    // Grupo 9: Load and Open Methods
+    // ===========================================
+
+    describe('load', () => {
+        beforeEach(() => {
+            projectManager.loadCurrentProject = vi.fn().mockResolvedValue();
+            projectManager.loadProjectProperties = vi.fn().mockResolvedValue();
+            projectManager.loadInterface = vi.fn().mockResolvedValue();
+            projectManager.initializeYjs = vi.fn().mockResolvedValue();
+            projectManager.loadStructureData = vi.fn().mockResolvedValue();
+            projectManager.loadMenus = vi.fn().mockResolvedValue();
+            projectManager.loadModalsContent = vi.fn().mockResolvedValue();
+            projectManager.ideviceEngineBehaviour = vi.fn();
+            projectManager.compatibilityLegacy = vi.fn();
+            projectManager.initialiceProject = vi.fn().mockResolvedValue();
+            projectManager.showScreen = vi.fn();
+            projectManager.setInstallationTypeAttribute = vi.fn();
+            projectManager.generateIntervalAutosave = vi.fn();
+            projectManager.cleanPreviousAutosaves = vi.fn();
+            projectManager.subscribeToSessionAndNotify = vi.fn().mockResolvedValue();
+            projectManager.properties = {
+                properties: { pp_lang: { value: 'en' } },
+                load: vi.fn(),
+                loadPropertiesFromYjs: vi.fn(),
+            };
+            mockApp.locale = { loadContentTranslationsStrings: vi.fn() };
+            mockApp.interface.shareButton = { loadVisibilityFromProject: vi.fn() };
+            projectManager.structure = { subscribeToYjsChanges: vi.fn() };
+        });
+
+        it('calls all initialization methods in order', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+
+            await projectManager.load();
+
+            expect(projectManager.loadCurrentProject).toHaveBeenCalled();
+            expect(projectManager.loadProjectProperties).toHaveBeenCalled();
+            expect(projectManager.loadInterface).toHaveBeenCalled();
+            expect(projectManager.initializeYjs).toHaveBeenCalled();
+            expect(projectManager.loadStructureData).toHaveBeenCalled();
+            expect(projectManager.loadMenus).toHaveBeenCalled();
+            expect(projectManager.loadModalsContent).toHaveBeenCalled();
+            expect(projectManager.ideviceEngineBehaviour).toHaveBeenCalled();
+            expect(projectManager.compatibilityLegacy).toHaveBeenCalled();
+            expect(projectManager.initialiceProject).toHaveBeenCalled();
+            expect(projectManager.showScreen).toHaveBeenCalled();
+            expect(projectManager.setInstallationTypeAttribute).toHaveBeenCalled();
+        });
+
+        it('generates autosave interval when Yjs not enabled', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+
+            await projectManager.load();
+
+            expect(projectManager.generateIntervalAutosave).toHaveBeenCalled();
+        });
+
+        it('skips autosave when Yjs is enabled', async () => {
+            projectManager._yjsEnabled = true;
+            projectManager.offlineInstallation = true;
+
+            await projectManager.load();
+
+            expect(projectManager.generateIntervalAutosave).not.toHaveBeenCalled();
+        });
+
+        it('subscribes to Yjs changes when enabled', async () => {
+            projectManager._yjsEnabled = true;
+            projectManager.offlineInstallation = true;
+
+            await projectManager.load();
+
+            expect(projectManager.structure.subscribeToYjsChanges).toHaveBeenCalled();
+        });
+
+        it('calls subscribeToSessionAndNotify when online', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = false;
+
+            await projectManager.load();
+
+            expect(projectManager.subscribeToSessionAndNotify).toHaveBeenCalled();
+        });
+
+        it('loads share button visibility when available', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+
+            await projectManager.load();
+
+            expect(mockApp.interface.shareButton.loadVisibilityFromProject).toHaveBeenCalled();
+        });
+    });
+
+    describe('openLoad', () => {
+        beforeEach(() => {
+            projectManager.resetProject = vi.fn();
+            projectManager.loadUser = vi.fn().mockResolvedValue();
+            projectManager.loadProjectProperties = vi.fn().mockResolvedValue();
+            projectManager.loadStructureData = vi.fn().mockResolvedValue();
+            projectManager.loadModalsContent = vi.fn().mockResolvedValue();
+            projectManager.initialiceProject = vi.fn().mockResolvedValue();
+            projectManager.showScreen = vi.fn();
+            projectManager.setInstallationTypeAttribute = vi.fn();
+            projectManager.generateIntervalAutosave = vi.fn();
+            projectManager.subscribeToSessionAndNotify = vi.fn().mockResolvedValue();
+            projectManager.properties = {
+                formProperties: { remove: vi.fn() },
+            };
+            projectManager.structure = {
+                reloadStructureMenu: vi.fn().mockResolvedValue(),
+            };
+            mockApp.interface.loadingScreen = { show: vi.fn(), hide: vi.fn() };
+            mockApp.interface.odeTitleElement = { setTitle: vi.fn() };
+            window.eXeLearning.app.modals.openuserodefiles = { close: vi.fn() };
+        });
+
+        it('calls resetProject first', async () => {
+            projectManager.offlineInstallation = true;
+            await projectManager.openLoad();
+            expect(projectManager.resetProject).toHaveBeenCalled();
+        });
+
+        it('closes openuserodefiles modal', async () => {
+            projectManager.offlineInstallation = true;
+            await projectManager.openLoad();
+            expect(window.eXeLearning.app.modals.openuserodefiles.close).toHaveBeenCalled();
+        });
+
+        it('shows loading screen', async () => {
+            projectManager.offlineInstallation = true;
+            await projectManager.openLoad();
+            expect(mockApp.interface.loadingScreen.show).toHaveBeenCalled();
+        });
+
+        it('calls all load methods', async () => {
+            projectManager.offlineInstallation = true;
+
+            await projectManager.openLoad();
+
+            expect(projectManager.loadUser).toHaveBeenCalled();
+            expect(projectManager.loadProjectProperties).toHaveBeenCalled();
+            expect(projectManager.loadStructureData).toHaveBeenCalled();
+            expect(projectManager.loadModalsContent).toHaveBeenCalled();
+            expect(projectManager.initialiceProject).toHaveBeenCalled();
+        });
+    });
+
+    describe('updateUserPage', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div class="template-page" style="overflow: auto;"></div>
+                <div id="node-content-container"></div>
+            `;
+            projectManager.loadStructureData = vi.fn().mockResolvedValue();
+            projectManager.loadModalsContent = vi.fn().mockResolvedValue();
+            projectManager.initialiceProject = vi.fn().mockResolvedValue();
+            projectManager.structure = {
+                reloadStructureMenu: vi.fn().mockResolvedValue(),
+            };
+        });
+
+        it('preserves scroll position when template-page exists', async () => {
+            const templatePage = document.querySelector('.template-page');
+            Object.defineProperty(templatePage, 'scrollTop', { value: 100, writable: true });
+            templatePage.scrollTo = vi.fn();
+
+            await projectManager.updateUserPage('page-123', false);
+
+            expect(templatePage.scrollTo).toHaveBeenCalledWith(0, 100);
+        });
+
+        it('uses node-content-container when template-page not exists', async () => {
+            document.body.innerHTML = '<div id="node-content-container"></div>';
+            const container = document.querySelector('#node-content-container');
+            Object.defineProperty(container, 'scrollTop', { value: 50, writable: true });
+            container.scrollTo = vi.fn();
+
+            await projectManager.updateUserPage('page-123', false);
+
+            expect(container.scrollTo).toHaveBeenCalledWith(0, 50);
+        });
+
+        it('resets nodeSelected when forceLoad is true', async () => {
+            projectManager.updateUserPage('page-123', true);
+            // forceLoad sets nodeSelected to null (falsy)
+            expect(mockApp.menus.menuStructure.menuStructureBehaviour.nodeSelected).toBeFalsy();
+        });
+    });
+
+    // ===========================================
+    // Grupo 10: Collaborative Editing Methods
+    // ===========================================
+
+    describe('collaborativePageLock', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="idevices-bottom">
+                    <div class="idevice_item"></div>
+                    <div class="idevice_category"></div>
+                </div>
+                <div id="list_menu_idevices"></div>
+                <div page-id="page-123">
+                    <button>
+                        <span class="node-text-span">Page Title</span>
+                        <span class="node-menu-button"></span>
+                    </button>
+                    <div class="nav-element-text">
+                        <span class="node-text-span">Page Title</span>
+                        <span class="node-menu-button"></span>
+                    </div>
+                    <div class="drag-over-border"></div>
+                </div>
+            `;
+            // Create a real DOM element for cloneNode to return
+            const gravatarClone = document.createElement('div');
+            gravatarClone.innerHTML = '<span class="exe-gravatar" width="30px"></span>';
+
+            // The code uses eXeLearning.app.interface.concurrentUsers
+            const mockConcurrentUsers = {
+                getConcurrentUsersElementsList: vi.fn().mockReturnValue([
+                    {
+                        dataset: { username: 'user@test.com' },
+                        classList: { add: vi.fn() },
+                        querySelector: vi.fn().mockReturnValue({ remove: vi.fn() }),
+                        cloneNode: vi.fn().mockReturnValue(gravatarClone),
+                    },
+                ]),
+            };
+            mockApp.interface.concurrentUsers = mockConcurrentUsers;
+            window.eXeLearning.app.interface = {
+                concurrentUsers: mockConcurrentUsers,
+            };
+            projectManager.clearUserLocks = vi.fn();
+            projectManager.lockPageContent = vi.fn();
+        });
+
+        it('clears user locks first', () => {
+            projectManager.collaborativePageLock('user@test.com', 'page-123', 'page');
+            expect(projectManager.clearUserLocks).toHaveBeenCalledWith('user@test.com');
+        });
+
+        it('returns early when page element not found', () => {
+            projectManager.collaborativePageLock('user@test.com', 'non-existent', 'page');
+            // Should not throw
+        });
+
+        it('disables buttons when mode is page', () => {
+            projectManager.collaborativePageLock('user@test.com', 'page-123', 'page');
+            const button = document.querySelector('[page-id="page-123"] button');
+            expect(button.disabled).toBe(true);
+        });
+
+        it('calls lockPageContent when mode is page', () => {
+            projectManager.collaborativePageLock('user@test.com', 'page-123', 'page', Date.now());
+            expect(projectManager.lockPageContent).toHaveBeenCalled();
+        });
+    });
+
+    describe('handleBlockEditingOverlay', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="test-block">
+                    <div class="content"></div>
+                </div>
+            `;
+            projectManager.collaborativePageLock = vi.fn();
+            projectManager.clearPageLock = vi.fn();
+            projectManager.updateUserPage = vi.fn();
+            projectManager.cleanupCurrentIdeviceTimer = vi.fn();
+            projectManager.idevices = {
+                ideviceActive: { timeIdeviceEditing: Date.now() },
+            };
+        });
+
+        it('parses message parameters correctly', () => {
+            projectManager.handleBlockEditingOverlay(
+                'user:other@test.com,pageId:page-123,actionType:EDIT,blockId:test-block',
+                'current@test.com'
+            );
+            expect(projectManager.collaborativePageLock).toHaveBeenCalled();
+        });
+
+        it('calls clearPageLock on UNDO_IDEVICE action', () => {
+            projectManager.handleBlockEditingOverlay(
+                'user:other@test.com,pageId:page-123,actionType:UNDO_IDEVICE,blockId:test-block',
+                'current@test.com'
+            );
+            expect(projectManager.clearPageLock).toHaveBeenCalledWith('page-123');
+        });
+
+        it('calls clearPageLock on SAVE_BLOCK action', () => {
+            projectManager.handleBlockEditingOverlay(
+                'user:other@test.com,pageId:page-123,actionType:SAVE_BLOCK,blockId:test-block',
+                'current@test.com'
+            );
+            expect(projectManager.clearPageLock).toHaveBeenCalledWith('page-123');
+        });
+
+        it('returns early when same user', () => {
+            projectManager.handleBlockEditingOverlay(
+                'user:current@test.com,pageId:page-123,actionType:EDIT,blockId:test-block',
+                'current@test.com'
+            );
+            expect(projectManager.collaborativePageLock).not.toHaveBeenCalled();
+        });
+
+        it('returns early when no pageId', () => {
+            projectManager.handleBlockEditingOverlay(
+                'user:other@test.com,actionType:EDIT,blockId:test-block',
+                'current@test.com'
+            );
+            expect(projectManager.collaborativePageLock).not.toHaveBeenCalled();
+        });
+
+        it('handles collaborative-page-lock action type', () => {
+            projectManager.handleBlockEditingOverlay(
+                'user:other@test.com,pageId:page-123,actionType:collaborative-page-lock,collaborativeMode:page,blockId:test-block',
+                'current@test.com'
+            );
+            expect(projectManager.collaborativePageLock).toHaveBeenCalledWith(
+                'other@test.com',
+                'page-123',
+                'page'
+            );
+        });
+    });
+
+    describe('unlockResource', () => {
+        beforeEach(() => {
+            projectManager.odeSession = 'test-session';
+            // The code uses this.app.project.structure not projectManager.structure
+            const mockStructure = {
+                nodeSelected: {
+                    getAttribute: vi.fn().mockReturnValue('nav-123'),
+                },
+            };
+            mockApp.project = {
+                structure: mockStructure,
+            };
+            projectManager.structure = mockStructure;
+            projectManager.showUnlockSuccess = vi.fn();
+            projectManager.showForceUnlockOption = vi.fn();
+        });
+
+        it('calls postEditIdevice with correct params', async () => {
+            mockApp.api.postEditIdevice = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            projectManager.unlockResource('block-123', 'idevice-123');
+
+            expect(mockApp.api.postEditIdevice).toHaveBeenCalledWith({
+                odeSessionId: 'test-session',
+                odeNavStructureSyncId: 'nav-123',
+                blockId: 'block-123',
+                odeIdeviceId: 'idevice-123',
+                actionType: 'UNLOCK_RESOURCE',
+                odeComponentFlag: false,
+                timeIdeviceEditing: null,
+            });
+        });
+    });
+
+    // ===========================================
+    // Grupo 11: Platform and Session Methods
+    // ===========================================
+
+    describe('loadPlatformProject', () => {
+        beforeEach(() => {
+            window.eXeLearning.user = { odePlatformId: 'platform-123' };
+            window.eXeLearning.config.platformUrlGet = 'http://platform.test';
+            // Mock URL params
+            Object.defineProperty(window, 'location', {
+                value: {
+                    search: '?jwt_token=test-token',
+                    replace: vi.fn(),
+                },
+                writable: true,
+            });
+        });
+
+        it('calls platformIntegrationOpenElp with correct params', async () => {
+            mockApp.api.platformIntegrationOpenElp = vi.fn().mockResolvedValue({
+                responseMessage: 'FAIL',
+            });
+
+            await projectManager.loadPlatformProject('session-123');
+
+            expect(mockApp.api.platformIntegrationOpenElp).toHaveBeenCalledWith({
+                odePlatformId: 'platform-123',
+                odeSessionId: 'session-123',
+                platformUrlGet: 'http://platform.test',
+                jwt_token: 'test-token',
+            });
+        });
+    });
+
+    describe('createSession', () => {
+        it('reloads project on success', async () => {
+            mockApp.api.postCloseSession = vi.fn().mockResolvedValue({
+                responseMessage: 'OK',
+            });
+            // The code uses this.app.project.loadCurrentProject/openLoad
+            mockApp.project = {
+                loadCurrentProject: vi.fn(),
+                openLoad: vi.fn(),
+            };
+
+            await projectManager.createSession({ odeSessionId: 'session-123' });
+
+            expect(mockApp.project.loadCurrentProject).toHaveBeenCalled();
+            expect(mockApp.project.openLoad).toHaveBeenCalled();
+        });
+    });
+
+    // ===========================================
+    // Grupo 12: Sync Replace Methods
+    // ===========================================
+
+    describe('replaceOdeComponent', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `
+                <div id="main">
+                    <div id="workarea">
+                        <div id="node-content-container">
+                            <div id="node-content" mode="view">
+                                <div id="old-idevice-123" class="idevice_node"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            window.eXeLearning.app.menus = {
+                menuStructure: {
+                    menuStructureBehaviour: {
+                        nodeSelected: {
+                            getAttribute: vi.fn().mockReturnValue('page-123'),
+                        },
+                    },
+                },
+            };
+            projectManager.idevices = {
+                getBlockById: vi.fn().mockReturnValue({
+                    blockContent: document.createElement('div'),
+                }),
+                createIdeviceInContent: vi.fn().mockResolvedValue({
+                    ideviceContent: document.createElement('div'),
+                    order: 0,
+                }),
+                resetCurrentIdevicesExportView: vi.fn(),
+            };
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('removes old component when exists', async () => {
+            const newOdeComponentSync = {
+                odeIdeviceId: 'old-idevice-123',
+                blockId: 'block-123',
+            };
+
+            await projectManager.replaceOdeComponent(newOdeComponentSync);
+
+            expect(document.getElementById('old-idevice-123')).toBeNull();
+        });
+
+        it('creates new idevice in content', async () => {
+            const newOdeComponentSync = {
+                odeIdeviceId: 'new-idevice-123',
+                blockId: 'block-123',
+            };
+
+            await projectManager.replaceOdeComponent(newOdeComponentSync);
+
+            expect(projectManager.idevices.createIdeviceInContent).toHaveBeenCalled();
+        });
+    });
+
+    describe('replaceOdeBlock', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="main">
+                    <div id="workarea">
+                        <div id="node-content-container">
+                            <div id="node-content" mode="view">
+                                <div id="old-block-123"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            projectManager.idevices = {
+                newBlockNode: vi.fn().mockResolvedValue({
+                    blockContent: document.createElement('div'),
+                    order: 0,
+                }),
+                createIdeviceInContent: vi.fn().mockResolvedValue({
+                    ideviceContent: document.createElement('div'),
+                }),
+            };
+        });
+
+        it('removes old block when exists', async () => {
+            const newOdeBlockSync = {
+                blockId: 'old-block-123',
+                odeComponentsSyncs: [],
+            };
+
+            await projectManager.replaceOdeBlock(newOdeBlockSync);
+
+            expect(document.getElementById('old-block-123')).toBeNull();
+        });
+
+        it('creates new block node', async () => {
+            const newOdeBlockSync = {
+                blockId: 'new-block-123',
+                odeComponentsSyncs: [],
+            };
+
+            await projectManager.replaceOdeBlock(newOdeBlockSync);
+
+            expect(projectManager.idevices.newBlockNode).toHaveBeenCalled();
+        });
+
+        it('loads idevices in block', async () => {
+            const newOdeBlockSync = {
+                blockId: 'new-block-123',
+                odeComponentsSyncs: [{ id: 'idevice-1' }],
+            };
+
+            await projectManager.replaceOdeBlock(newOdeBlockSync);
+
+            expect(projectManager.idevices.createIdeviceInContent).toHaveBeenCalled();
+        });
+    });
+
+    describe('replaceOdePage', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="exe-title"><span class="exe-title content"></span></div>
+            `;
+            // The code uses this.app.project.properties, not projectManager.properties
+            const mockProperties = {
+                properties: { pp_title: { value: 'Test Title' } },
+                loadPropertiesFromYjs: vi.fn(),
+                formProperties: { reloadValues: vi.fn() },
+            };
+            mockApp.project = {
+                properties: mockProperties,
+            };
+            projectManager.properties = mockProperties;
+            projectManager.structure = { data: [] };
+            projectManager.idevices = { setNodeContentPageTitle: vi.fn() };
+            mockApp.menus.menuStructure.menuStructureBehaviour = {
+                nodeSelected: {
+                    getAttribute: vi.fn().mockReturnValue('nav-123'),
+                },
+            };
+            mockApp.menus.menuStructure.menuStructureCompose = {
+                structureEngine: {
+                    cloneNodeNav: vi.fn().mockResolvedValue(),
+                    resetDataAndStructureData: vi.fn().mockResolvedValue(),
+                },
+            };
+        });
+
+        it('synchronizes properties from Yjs', async () => {
+            // Pass a page object that triggers the else branch (page exists but doesn't match)
+            const pageSync = { id: 'page-123', pageId: 'page-123', odeNavStructureSyncProperties: {} };
+            await projectManager.replaceOdePage(pageSync);
+
+            expect(mockApp.project.properties.loadPropertiesFromYjs).toHaveBeenCalled();
+        });
+
+        it('updates title in menu head', async () => {
+            const pageSync = { id: 'page-123', pageId: 'page-123', odeNavStructureSyncProperties: {} };
+            await projectManager.replaceOdePage(pageSync);
+
+            const titleElement = document.querySelector('#exe-title > .exe-title.content');
+            expect(titleElement.innerHTML).toBe('Test Title');
+        });
+    });
+
+    // ===========================================
+    // Grupo 13: Add/Move/Delete Methods
+    // ===========================================
+
+    describe('addOdeComponent', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="main">
+                    <div id="workarea">
+                        <div id="node-content-container">
+                            <div id="node-content" mode="view"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            projectManager.idevices = {
+                getBlockById: vi.fn().mockReturnValue({
+                    blockContent: document.createElement('div'),
+                }),
+                createIdeviceInContent: vi.fn().mockResolvedValue({
+                    ideviceContent: document.createElement('div'),
+                    order: 0,
+                }),
+            };
+        });
+
+        it('creates idevice in block content', async () => {
+            const newOdeComponentSync = {
+                blockId: 'block-123',
+                odeIdeviceId: 'idevice-123',
+            };
+
+            await projectManager.addOdeComponent(newOdeComponentSync);
+
+            expect(projectManager.idevices.createIdeviceInContent).toHaveBeenCalled();
+        });
+
+        it('sets mode to export', async () => {
+            const newOdeComponentSync = {
+                blockId: 'block-123',
+                odeIdeviceId: 'idevice-123',
+            };
+
+            await projectManager.addOdeComponent(newOdeComponentSync);
+
+            expect(newOdeComponentSync.mode).toBe('export');
+        });
+    });
+
+    describe('addOdeBlock', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+            // The code uses `.nav-element .selected` - a selected element inside nav-element
+            document.body.innerHTML = `
+                <div id="main">
+                    <div id="workarea">
+                        <div id="node-content-container">
+                            <div id="node-content" mode="view">
+                                <div class="nav-element">
+                                    <div class="selected" nav-id="nav-123"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            window.eXeLearning.app.menus = {
+                menuStructure: {
+                    menuStructureBehaviour: {
+                        nodeSelected: {
+                            getAttribute: vi.fn().mockReturnValue('page-123'),
+                        },
+                    },
+                },
+            };
+            projectManager.idevices = {
+                newBlockNode: vi.fn().mockResolvedValue({
+                    blockContent: document.createElement('div'),
+                    order: 0,
+                }),
+                createIdeviceInContent: vi.fn().mockResolvedValue({
+                    ideviceContent: document.createElement('div'),
+                }),
+                resetCurrentIdevicesExportView: vi.fn(),
+            };
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('creates new block node', async () => {
+            const newOdeBlockSync = {
+                blockId: 'block-123',
+                odeComponentsSyncs: [],
+            };
+
+            await projectManager.addOdeBlock(newOdeBlockSync);
+
+            expect(projectManager.idevices.newBlockNode).toHaveBeenCalled();
+        });
+
+        it('sets mode to export', async () => {
+            const newOdeBlockSync = {
+                blockId: 'block-123',
+                odeComponentsSyncs: [],
+            };
+
+            await projectManager.addOdeBlock(newOdeBlockSync);
+
+            expect(newOdeBlockSync.mode).toBe('export');
+        });
+    });
+
+    describe('addOdePage', () => {
+        beforeEach(() => {
+            // The code uses eXeLearning.app.menus, not mockApp.menus directly
+            const menuStructureCompose = {
+                structureEngine: {
+                    cloneNodeNav: vi.fn().mockResolvedValue(),
+                    resetStructureData: vi.fn().mockResolvedValue(),
+                },
+            };
+            const menuStructureBehaviour = {
+                nodeSelected: {
+                    getAttribute: vi.fn().mockReturnValue('nav-123'),
+                },
+                menuNavList: {
+                    getElementsByClassName: vi.fn().mockReturnValue([]),
+                },
+            };
+            mockApp.menus.menuStructure = {
+                menuStructureCompose,
+                menuStructureBehaviour,
+            };
+            // Also set on eXeLearning.app
+            window.eXeLearning.app.menus = {
+                menuStructure: {
+                    menuStructureCompose,
+                    menuStructureBehaviour,
+                },
+            };
+        });
+
+        it('clones nav node', async () => {
+            const newOdePageSync = { id: 'page-123' };
+
+            await projectManager.addOdePage(newOdePageSync);
+
+            expect(mockApp.menus.menuStructure.menuStructureCompose.structureEngine.cloneNodeNav).toHaveBeenCalledWith(newOdePageSync);
+        });
+
+        it('resets structure data', async () => {
+            const newOdePageSync = { id: 'page-123' };
+
+            await projectManager.addOdePage(newOdePageSync);
+
+            expect(mockApp.menus.menuStructure.menuStructureCompose.structureEngine.resetStructureData).toHaveBeenCalled();
+        });
+    });
+
+    describe('deleteOdePage', () => {
+        beforeEach(() => {
+            projectManager.structure = { data: [{ pageId: 'page-123' }, { pageId: 'page-456' }] };
+            mockApp.menus.menuStructure.menuStructureCompose = {
+                structureEngine: {
+                    resetStructureData: vi.fn().mockResolvedValue(),
+                },
+            };
+            mockApp.menus.menuStructure.menuStructureBehaviour = {
+                nodeSelected: {
+                    getAttribute: vi.fn()
+                        .mockReturnValueOnce('nav-123')
+                        .mockReturnValueOnce('page-456'),
+                },
+            };
+        });
+
+        it('removes page from structure data', async () => {
+            await projectManager.deleteOdePage('page-123');
+
+            expect(projectManager.structure.data.length).toBe(1);
+            expect(projectManager.structure.data[0].pageId).toBe('page-456');
+        });
+    });
+
+    describe('moveOdeBlock', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div class="idevice-element-in-content" block-id="block-123"></div>
+            `;
+            projectManager.deleteOdeBlock = vi.fn();
+            projectManager.addOdeBlock = vi.fn();
+        });
+
+        it('deletes block when found in page', async () => {
+            const OdeBlockSync = { blockId: 'block-123' };
+
+            await projectManager.moveOdeBlock(OdeBlockSync);
+
+            expect(projectManager.deleteOdeBlock).toHaveBeenCalledWith('block-123');
+        });
+
+        it('adds block when not found in page', async () => {
+            const OdeBlockSync = { blockId: 'block-999', id: 'block-999' };
+
+            await projectManager.moveOdeBlock(OdeBlockSync);
+
+            expect(projectManager.addOdeBlock).toHaveBeenCalled();
+        });
+    });
+
+    describe('moveOdeComponent', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div class="idevice_node">
+                    <div class="idevice-element-in-content" idevice-id="idevice-123"></div>
+                </div>
+            `;
+            projectManager.deleteOdeComponent = vi.fn();
+            projectManager.deleteOdeBlock = vi.fn();
+            projectManager.replaceOdeComponent = vi.fn();
+        });
+
+        it('deletes component when found', async () => {
+            const odeComponentSync = { odeIdeviceId: 'idevice-123' };
+
+            await projectManager.moveOdeComponent(odeComponentSync);
+
+            expect(projectManager.deleteOdeComponent).toHaveBeenCalledWith('idevice-123');
+        });
+
+        it('replaces component when not found', async () => {
+            const odeComponentSync = { odeIdeviceId: 'idevice-999' };
+
+            await projectManager.moveOdeComponent(odeComponentSync);
+
+            expect(projectManager.replaceOdeComponent).toHaveBeenCalled();
+        });
+
+        it('deletes previous block when isUndoMoveTo', async () => {
+            const odeComponentSync = {
+                odeIdeviceId: 'idevice-123',
+                previousBlockId: 'prev-block-123',
+            };
+
+            await projectManager.moveOdeComponent(odeComponentSync, true);
+
+            expect(projectManager.deleteOdeBlock).toHaveBeenCalledWith('prev-block-123');
+        });
+    });
+
+    // ===========================================
+    // Grupo 14: Move on Same Page Methods
+    // ===========================================
+
+    describe('moveOdeBlockOnSamePage', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `
+                <div id="main">
+                    <div id="workarea">
+                        <div id="node-content-container">
+                            <div id="node-content" mode="view">
+                                <div id="old-block-123"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            projectManager.idevices = {
+                newBlockNode: vi.fn().mockResolvedValue({
+                    blockContent: document.createElement('div'),
+                    order: 0,
+                }),
+                createIdeviceInContent: vi.fn().mockResolvedValue({
+                    ideviceContent: document.createElement('div'),
+                }),
+            };
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('removes old block', async () => {
+            const odeBlockSync = {
+                blockId: 'old-block-123',
+                odeComponentsSyncs: [],
+            };
+
+            await projectManager.moveOdeBlockOnSamePage(odeBlockSync);
+
+            expect(document.getElementById('old-block-123')).toBeNull();
+        });
+
+        it('creates new block node', async () => {
+            const odeBlockSync = {
+                blockId: 'block-123',
+                odeComponentsSyncs: [],
+            };
+
+            await projectManager.moveOdeBlockOnSamePage(odeBlockSync);
+
+            expect(projectManager.idevices.newBlockNode).toHaveBeenCalled();
+        });
+    });
+
+    describe('moveOdeComponentOnSamePage', () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div id="main">
+                    <div id="workarea">
+                        <div id="node-content-container">
+                            <div id="node-content" mode="view">
+                                <div id="old-idevice-123"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            projectManager.idevices = {
+                getBlockById: vi.fn().mockReturnValue({
+                    blockContent: document.createElement('div'),
+                }),
+                createIdeviceInContent: vi.fn().mockResolvedValue({
+                    ideviceContent: document.createElement('div'),
+                    order: 0,
+                }),
+                newBlockNode: vi.fn().mockResolvedValue({
+                    blockContent: document.createElement('div'),
+                    order: 0,
+                }),
+            };
+            mockApp.api.postObtainOdeBlockSync = vi.fn().mockResolvedValue({});
+        });
+
+        it('removes old idevice', async () => {
+            const odeIdeviceSync = {
+                odeIdeviceId: 'old-idevice-123',
+                blockId: 'block-123',
+            };
+
+            await projectManager.moveOdeComponentOnSamePage(odeIdeviceSync);
+
+            expect(document.getElementById('old-idevice-123')).toBeNull();
+        });
+
+        it('creates idevice in block content', async () => {
+            const odeIdeviceSync = {
+                odeIdeviceId: 'idevice-123',
+                blockId: 'block-123',
+            };
+
+            await projectManager.moveOdeComponentOnSamePage(odeIdeviceSync);
+
+            expect(projectManager.idevices.createIdeviceInContent).toHaveBeenCalled();
+        });
+
+        it('creates new block when block not found', async () => {
+            projectManager.idevices.getBlockById = vi.fn().mockReturnValue(null);
+            const odeIdeviceSync = {
+                odeIdeviceId: 'idevice-123',
+                blockId: 'new-block-123',
+            };
+
+            await projectManager.moveOdeComponentOnSamePage(odeIdeviceSync);
+
+            expect(mockApp.api.postObtainOdeBlockSync).toHaveBeenCalled();
+        });
+    });
+
+    // ===========================================
+    // Grupo 15: User Flag and Order Map Methods
+    // ===========================================
+
+    describe('changeUserFlagOnEdit', () => {
+        beforeEach(() => {
+            projectManager.odeSession = 'test-session';
+            projectManager.offlineInstallation = true;
+            mockApp.api.postEditIdevice = vi.fn().mockResolvedValue({});
+        });
+
+        it('calls postEditIdevice with correct params', async () => {
+            await projectManager.changeUserFlagOnEdit(
+                true,
+                'nav-123',
+                'block-123',
+                'idevice-123',
+                false,
+                Date.now(),
+                'EDIT',
+                'page-123'
+            );
+
+            expect(mockApp.api.postEditIdevice).toHaveBeenCalledWith({
+                odeSessionId: 'test-session',
+                odeIdeviceId: 'idevice-123',
+                blockId: 'block-123',
+                odeNavStructureSyncId: 'nav-123',
+                odeComponentFlag: true,
+                timeIdeviceEditing: expect.any(Number),
+                actionType: 'EDIT',
+                pageId: 'page-123',
+            });
+        });
+    });
+
+    describe('updateOrderNavMap', () => {
+        beforeEach(() => {
+            mockApp.menus.menuStructure.menuStructureBehaviour = {
+                nodeSelected: {
+                    getAttribute: vi.fn().mockReturnValue('nav-123'),
+                },
+            };
+            mockApp.menus.menuStructure.menuStructureCompose = {
+                structureEngine: {
+                    resetDataAndStructureData: vi.fn(),
+                },
+            };
+            // The code uses eXeLearning.app.user.preferences, not mockApp.user
+            window.eXeLearning.app.user = {
+                preferences: {
+                    preferences: {
+                        theme: { value: 'base' },
+                    },
+                },
+            };
+            mockApp.modals.confirm = { show: vi.fn() };
+        });
+
+        it('resets data and structure', async () => {
+            await projectManager.updateOrderNavMap({ styleThemeValueId: 'base' });
+
+            expect(mockApp.menus.menuStructure.menuStructureCompose.structureEngine.resetDataAndStructureData).toHaveBeenCalledWith('nav-123');
+        });
+
+        it('shows confirm dialog when theme changed', async () => {
+            await projectManager.updateOrderNavMap({ styleThemeValueId: 'new-theme' });
+
+            expect(mockApp.modals.confirm.show).toHaveBeenCalled();
+        });
+
+        it('does not show dialog when same theme', async () => {
+            await projectManager.updateOrderNavMap({ styleThemeValueId: 'base' });
+
+            expect(mockApp.modals.confirm.show).not.toHaveBeenCalled();
+        });
+    });
+
+    // ===========================================
+    // Grupo 16: Refresh After Import
+    // ===========================================
+
+    describe('refreshAfterDirectImport', () => {
+        beforeEach(() => {
+            window.eXeLearning.app.modals = {
+                openuserodefiles: { close: vi.fn() },
+                alert: { show: vi.fn() },
+            };
+            projectManager.structure = {
+                isYjsEnabled: vi.fn().mockReturnValue(true),
+                getStructureFromYjs: vi.fn().mockReturnValue([]),
+                processStructureData: vi.fn(),
+                reloadStructureMenu: vi.fn().mockResolvedValue(),
+            };
+            projectManager.properties = {
+                loadPropertiesFromYjs: vi.fn(),
+            };
+            projectManager.initialiceProject = vi.fn().mockResolvedValue();
+            projectManager.showScreen = vi.fn();
+            mockApp.interface.odeTitleElement = { setTitle: vi.fn() };
+        });
+
+        it('closes openuserodefiles modal', async () => {
+            await projectManager.refreshAfterDirectImport();
+
+            expect(window.eXeLearning.app.modals.openuserodefiles.close).toHaveBeenCalled();
+        });
+
+        it('reloads structure from Yjs', async () => {
+            await projectManager.refreshAfterDirectImport();
+
+            expect(projectManager.structure.getStructureFromYjs).toHaveBeenCalled();
+            expect(projectManager.structure.processStructureData).toHaveBeenCalled();
+        });
+
+        it('sets title when odeTitleElement available', async () => {
+            await projectManager.refreshAfterDirectImport();
+
+            expect(mockApp.interface.odeTitleElement.setTitle).toHaveBeenCalled();
+        });
+
+        it('calls initialiceProject and showScreen', async () => {
+            await projectManager.refreshAfterDirectImport();
+
+            expect(projectManager.initialiceProject).toHaveBeenCalled();
+            expect(projectManager.showScreen).toHaveBeenCalled();
+        });
     });
 });
