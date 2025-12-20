@@ -8,6 +8,9 @@
  */
 
 const { createAndUploadReport } = require('@codecov/bundle-analyzer');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 async function uploadBundles() {
     const token = process.env.CODECOV_TOKEN;
@@ -17,35 +20,51 @@ async function uploadBundles() {
         return;
     }
 
-    // Upload app bundle (analyze public/app/, include only app.bundle.js)
-    console.log('Uploading app-bundle analysis...');
-    await createAndUploadReport(
-        ['./public/app'],
-        {
-            uploadToken: token,
-            bundleName: 'app-bundle',
-            enableBundleAnalysis: true,
-        },
-        {
-            ignorePatterns: ['**/*', '!app.bundle.js'],
-        },
+    // Create temp directories for clean bundle analysis
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bundle-analysis-'));
+    const appBundleDir = path.join(tempDir, 'app-bundle');
+    const exportersBundleDir = path.join(tempDir, 'exporters-bundle');
+
+    fs.mkdirSync(appBundleDir);
+    fs.mkdirSync(exportersBundleDir);
+
+    // Copy bundle files to temp directories
+    fs.copyFileSync('./public/app/app.bundle.js', path.join(appBundleDir, 'app.bundle.js'));
+    fs.copyFileSync(
+        './public/app/yjs/exporters.bundle.js',
+        path.join(exportersBundleDir, 'exporters.bundle.js'),
     );
 
-    // Upload exporters bundle (analyze public/app/yjs/, include only exporters.bundle.js)
-    console.log('Uploading exporters-bundle analysis...');
-    await createAndUploadReport(
-        ['./public/app/yjs'],
-        {
-            uploadToken: token,
-            bundleName: 'exporters-bundle',
-            enableBundleAnalysis: true,
-        },
-        {
-            ignorePatterns: ['**/*', '!exporters.bundle.js'],
-        },
-    );
+    try {
+        // Upload app bundle
+        console.log('Uploading app-bundle analysis...');
+        await createAndUploadReport(
+            [appBundleDir],
+            {
+                uploadToken: token,
+                bundleName: 'app-bundle',
+                enableBundleAnalysis: true,
+            },
+            {},
+        );
 
-    console.log('Bundle analysis upload complete!');
+        // Upload exporters bundle
+        console.log('Uploading exporters-bundle analysis...');
+        await createAndUploadReport(
+            [exportersBundleDir],
+            {
+                uploadToken: token,
+                bundleName: 'exporters-bundle',
+                enableBundleAnalysis: true,
+            },
+            {},
+        );
+
+        console.log('Bundle analysis upload complete!');
+    } finally {
+        // Cleanup temp directories
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    }
 }
 
 uploadBundles().catch((error) => {
