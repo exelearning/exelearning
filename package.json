@@ -19,6 +19,7 @@
     "sass:watch": "bunx sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map",
     "bundle:app": "bun build public/app/app.js --outfile public/app/app.bundle.js --minify --target browser --format iife",
     "bundle:exporters": "node scripts/build-exporters-bundle.js",
+    "upload:bundles": "node scripts/upload-bundle-analysis.js",
     "predev": "node scripts/setup-local.js && (kill-port 8080 || true)",
     "seed": "bun run src/db/seed.ts",
     "cli": "bun run dist/cli.js",
@@ -95,6 +96,7 @@
   "devDependencies": {
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
+    "@codecov/bundle-analyzer": "^1.9.1",
     "@electron/notarize": "^3.1.1",
     "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.57.0",
