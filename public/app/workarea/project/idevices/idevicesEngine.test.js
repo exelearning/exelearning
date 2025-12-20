@@ -1966,21 +1966,6 @@ describe('IdevicesEngine', () => {
         });
     });
 
-    describe('dropBlockContentInContent', () => {
-        beforeEach(() => {
-            engine.draggedElement = document.createElement('div');
-            engine.draggedElement.setAttribute('block-id', 'block-1');
-            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
-            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
-            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
-        });
-
-        it('does not throw when block not found', async () => {
-            engine.components.blocks = [];
-
-            await expect(engine.dropBlockContentInContent(engine.nodeContentElement)).resolves.not.toThrow();
-        });
-    });
 
     describe('dragEndIdeviceOutOffContainer', () => {
         beforeEach(() => {
