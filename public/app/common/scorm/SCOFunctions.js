@@ -62,6 +62,12 @@ var exitPageStatus;
 // creating shortcut for less verbose code
 var scorm = pipwerks.SCORM;
 
+// Test helpers for accessing internal state
+function _getStartDate() { return startDate; }
+function _setStartDate(value) { startDate = value; }
+function _getExitPageStatus() { return exitPageStatus; }
+function _setExitPageStatus(value) { exitPageStatus = value; }
+
 /**
  *
  */
@@ -223,4 +229,24 @@ function goBack() {
  */
 function goForward() {
   pipwerks.nav.goForward();
+}
+
+// Export for Node.js/CommonJS (tests)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        loadPage,
+        startTimer,
+        computeTime,
+        doBack,
+        doContinue,
+        doQuit,
+        unloadPage,
+        goBack,
+        goForward,
+        // Test helpers for internal state access
+        _getStartDate,
+        _setStartDate,
+        _getExitPageStatus,
+        _setExitPageStatus,
+    };
 }

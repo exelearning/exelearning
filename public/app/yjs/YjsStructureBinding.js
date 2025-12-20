@@ -283,8 +283,9 @@ class YjsStructureBinding {
     // Use transaction with clientID origin for UndoManager tracking
     this.manager.getDoc().transact(() => {
       const pageMap = navigation.get(fromIndex);
+      const clonedPage = this.clonePageMapForMove(pageMap);
       navigation.delete(fromIndex, 1);
-      navigation.insert(toIndex, [pageMap]);
+      navigation.insert(toIndex, [clonedPage]);
 
       // Update order fields
       for (let i = 0; i < navigation.length; i++) {
@@ -863,6 +864,47 @@ class YjsStructureBinding {
 
     newBlock.set('components', newComponents);
     return newBlock;
+  }
+
+  /**
+   * Clone a page Y.Map for move operation (preserves original IDs)
+   * @private
+   */
+  clonePageMapForMove(sourcePage) {
+    const newPage = new this.Y.Map();
+
+    // Copy all properties from source page generically
+    sourcePage.forEach((value, key) => {
+      if (key === 'blocks') {
+        return;
+      } else if (key === 'properties' && value && typeof value.forEach === 'function') {
+        const newProps = new this.Y.Map();
+        value.forEach((v, k) => newProps.set(k, v));
+        newPage.set(key, newProps);
+      } else if (value !== null && value !== undefined) {
+        newPage.set(key, value);
+      }
+    });
+
+    // Ensure essential properties exist
+    if (!newPage.has('id')) newPage.set('id', sourcePage.get('id'));
+    if (!newPage.has('pageId')) newPage.set('pageId', sourcePage.get('pageId'));
+    if (!newPage.has('pageName')) newPage.set('pageName', sourcePage.get('pageName'));
+
+    // Clone blocks
+    const sourceBlocks = sourcePage.get('blocks');
+    const newBlocks = new this.Y.Array();
+
+    if (sourceBlocks && sourceBlocks.length > 0) {
+      for (let i = 0; i < sourceBlocks.length; i++) {
+        const sourceBlock = sourceBlocks.get(i);
+        const clonedBlock = this.cloneBlockMapForMove(sourceBlock);
+        newBlocks.push([clonedBlock]);
+      }
+    }
+
+    newPage.set('blocks', newBlocks);
+    return newPage;
   }
 
   /**

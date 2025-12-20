@@ -1,5 +1,20 @@
 {
   "general": {
     "previewFeatures": true
+  },
+  "mcpServers": {
+    "playwright-docker": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--init",
+        "mcp/playwright"
+      ],
+      "env": {
+        "PLAYWRIGHT_BROWSERS_PATH": "/ms-playwright"
+      }
+    }
   }
 }

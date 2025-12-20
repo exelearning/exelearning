@@ -11,72 +11,9 @@
 
 const YjsPropertiesBinding = require('./YjsPropertiesBinding');
 
-// Mock Y.Map
-class MockYMap {
-  constructor() {
-    this._data = new Map();
-    this._observers = [];
-  }
-
-  get(key) {
-    return this._data.get(key);
-  }
-
-  set(key, value) {
-    this._data.set(key, value);
-    // Simulate observer notification
-    this._notifyObservers(key, 'update');
-  }
-
-  has(key) {
-    return this._data.has(key);
-  }
-
-  delete(key) {
-    return this._data.delete(key);
-  }
-
-  observe(callback) {
-    this._observers.push(callback);
-  }
-
-  unobserve(callback) {
-    this._observers = this._observers.filter((cb) => cb !== callback);
-  }
-
-  _notifyObservers(key, action) {
-    const event = {
-      changes: {
-        keys: new Map([[key, { action }]]),
-      },
-      transaction: { origin: 'remote' },
-    };
-    this._observers.forEach((cb) => cb(event));
-  }
-}
-
-// Mock Y.Doc
-class MockYDoc {
-  constructor() {
-    this.clientID = 12345;
-    this._maps = {};
-  }
-
-  getMap(name) {
-    if (!this._maps[name]) {
-      this._maps[name] = new MockYMap();
-    }
-    return this._maps[name];
-  }
-
-  transact(fn, origin) {
-    fn();
-  }
-}
-
 // Mock Document Manager
 const createMockDocumentManager = () => {
-  const ydoc = new MockYDoc();
+  const ydoc = new window.Y.Doc();
   const metadata = ydoc.getMap('metadata');
 
   return {

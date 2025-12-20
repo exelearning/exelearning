@@ -13,7 +13,7 @@ export default class MenuStructureCompose {
     constructor(structureEngine) {
         this.structureEngine = structureEngine;
         this.menuNav = document.querySelector('#main #menu_nav');
-        this.menuNavList = this.menuNav.querySelector('#main #nav_list');
+        this.menuNavList = this.menuNav.querySelector('#nav_list');
         // Add object to engine
         this.structureEngine.menuStructureCompose = this;
 

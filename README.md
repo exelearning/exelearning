@@ -17,6 +17,12 @@
   </p>
 </div>
 
+<p align="center">
+  <a href="https://codecov.io/gh/exelearning/exelearning">
+    <img src="https://codecov.io/gh/exelearning/exelearning/graph/badge.svg" alt="codecov" />
+  </a>
+</p>
+
 ## About the Project
 
 eXeLearning 3.0 is a modern re-implementation of the original eXeLearning authoring tool, initially created in the eXeLearning.org project in New Zealand and subsequently continued by eXeLearning.net project by the Spanish Ministry of Education, Vocational Training and Sports (MEFPD) through Cedec-INTEF.

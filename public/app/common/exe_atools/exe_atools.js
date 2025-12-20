@@ -516,3 +516,8 @@ $(function(){
     }
 
 })(window, document);
+
+// Export for Node.js/CommonJS (tests)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = $exe.atools;
+}

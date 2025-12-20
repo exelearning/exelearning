@@ -4,1071 +4,1263 @@
  * Unit tests for IdeviceBlockNode class methods.
  * Tests core functionality like parameter handling, properties, toggle, order calculation, etc.
  *
- * Run with: make test-frontend
+ * Run with: bun test:frontend:ci
  */
 
- 
-
-// Setup global mocks before tests
-beforeEach(() => {
-  // Mock eXeLearning global object
-  global.eXeLearning = {
-    app: {
-      api: {
-        parameters: {
-          generateNewItemKey: 'generated-key-123',
-          odePagStructureSyncPropertiesConfig: {
-            identifier: { value: '' },
-            visibility: { value: 'false' },
-            cssClass: { value: '' },
-            allowToggle: { value: 'true' },
-            minimized: { value: 'false' },
-          },
-        },
-      },
-      project: {
-        _yjsEnabled: false,
-        _yjsBridge: null,
-        odeVersion: 'v1',
-        odeSession: 'session-123',
-        structure: {
-          getSelectNodeNavId: vi.fn(() => 'nav-id-1'),
-          getSelectNodePageId: vi.fn(() => 'page-id-1'),
-          getAllNodesOrderByView: vi.fn(() => [
-            { id: 'page-1', deep: 0, pageName: 'Home' },
-            { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
-          ]),
-        },
-      },
-      themes: {
-        getThemeIcons: vi.fn(() => ({
-          icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
-          icon2: { id: 'icon2', value: '/path/to/icon2.svg', title: 'Icon 2' },
-        })),
-      },
-      modals: {
-        alert: { show: vi.fn() },
-        confirm: {
-          show: vi.fn(),
-          close: vi.fn(),
-          modalElementBody: null,
-        },
-        properties: { show: vi.fn() },
-      },
-      common: {
-        initTooltips: vi.fn(),
-      },
-      menus: {
-        menuStructure: {
-          menuStructureBehaviour: {
-            checkIfEmptyNode: vi.fn(),
-          },
-        },
-      },
-    },
-    config: {
-      isOfflineInstallation: false,
-    },
-  };
-
-  // Reset window.AppLogger
-  global.window = global.window || {};
-  global.window.AppLogger = {
+// Setup global mocks BEFORE importing the module
+global.window = global.window || {};
+window.AppLogger = {
     log: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-  };
-});
+};
 
-afterEach(() => {
-  vi.clearAllMocks();
-});
+// Mock eXeLearning global object
+global.eXeLearning = {
+    app: {
+        api: {
+            parameters: {
+                generateNewItemKey: 'generated-key-123',
+                odePagStructureSyncPropertiesConfig: {
+                    identifier: { value: '' },
+                    visibility: { value: 'false' },
+                    cssClass: { value: '' },
+                    allowToggle: { value: 'true' },
+                    minimized: { value: 'false' },
+                },
+            },
+            putSaveBlock: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+            putSavePropertiesBlock: vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' }),
+        },
+        project: {
+            _yjsEnabled: false,
+            _yjsBridge: null,
+            odeVersion: 'v1',
+            odeSession: 'session-123',
+            checkOpenIdevice: vi.fn(() => false),
+            isAvalaibleOdeComponent: vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' }),
+            structure: {
+                getSelectNodeNavId: vi.fn(() => 'nav-id-1'),
+                getSelectNodePageId: vi.fn(() => 'page-id-1'),
+                getAllNodesOrderByView: vi.fn(() => [
+                    { id: 'page-1', deep: 0, pageName: 'Home' },
+                    { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
+                ]),
+            },
+        },
+        themes: {
+            getThemeIcons: vi.fn(() => ({
+                icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
+                icon2: { id: 'icon2', value: '/path/to/icon2.svg', title: 'Icon 2' },
+            })),
+        },
+        modals: {
+            alert: { show: vi.fn() },
+            confirm: {
+                show: vi.fn(),
+                close: vi.fn(),
+                modalElementBody: null,
+            },
+            properties: { show: vi.fn() },
+        },
+        common: {
+            initTooltips: vi.fn(),
+        },
+        menus: {
+            menuStructure: {
+                menuStructureBehaviour: {
+                    checkIfEmptyNode: vi.fn(),
+                },
+            },
+        },
+    },
+    config: {
+        isOfflineInstallation: false,
+    },
+};
 
-/**
- * Mock IdeviceBlockNode class for testing
- * We create a minimal mock since full class has many dependencies
- */
-class MockIdeviceBlockNode {
-  constructor(parent, data) {
-    this.engine = parent || {
-      generateId: () => `engine-id-${Date.now()}`,
-      movingClassDuration: 300,
-      nodeContentElement: document.createElement('div'),
-      addEventDragStartToContentBlock: vi.fn(),
-      addEventDragEndToContentBlock: vi.fn(),
-      components: { blocks: [], idevices: [] },
-    };
-
-    this.id = data?.id || eXeLearning.app.api.parameters.generateNewItemKey;
-
-    const yjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
-    this.blockId = data?.blockId
-      ? data.blockId
-      : yjsEnabled
-        ? `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-        : this.engine.generateId();
-
-    this.setParams(data || {});
-
-    this.idevices = [];
-    this.removeIfEmpty = false;
-    this.askForRemoveIfEmpty = true;
-    this.canHaveHeirs = true;
-
-    this.blockContent = null;
-    this.headElement = null;
-    this.idevicesContainerElement = null;
-    this.iconElement = null;
-    this.blockNameElementText = null;
-    this.toggleElement = null;
-    this.blockButtons = null;
-    this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
-  }
-
-  emptyIcon = 'block';
-
-  properties = JSON.parse(
-    JSON.stringify(eXeLearning.app.api.parameters.odePagStructureSyncPropertiesConfig)
-  );
-
-  params = [
-    'odeNavStructureSyncId',
-    'odeSessionId',
-    'odeVersionId',
-    'pageId',
-    'mode',
-    'blockName',
-    'iconName',
-    'order',
-  ];
-
-  default = {
-    mode: 'export',
-    blockName: '',
-    iconName: '',
-    order: 0,
-  };
-
-  setParams(data) {
-    for (let [i, param] of Object.entries(this.params)) {
-      let defaultValue = this.default[param] ? this.default[param] : null;
-      this[param] = data[param] ? data[param] : defaultValue;
-    }
-    if (data.odePagStructureSyncProperties) {
-      this.setProperties(data.odePagStructureSyncProperties);
-    }
-  }
-
-  isYjsEnabled() {
-    return eXeLearning.app?.project?._yjsEnabled === true;
-  }
-
-  loadPropertiesFromYjs() {
-    if (!this.isYjsEnabled()) return;
-
-    const project = eXeLearning.app.project;
-    const bridge = project._yjsBridge;
-
-    if (!bridge || !bridge.structureBinding) return;
-
-    const yjsProperties = bridge.structureBinding.getBlockProperties(this.blockId);
-    if (yjsProperties) {
-      for (let [key, value] of Object.entries(yjsProperties)) {
-        if (this.properties[key]) {
-          if (typeof value === 'boolean') {
-            this.properties[key].value = value ? 'true' : 'false';
-          } else {
-            this.properties[key].value = value;
-          }
-        }
-      }
-    }
-  }
-
-  setProperties(properties, onlyHeritable) {
-    for (let [key, value] of Object.entries(this.properties)) {
-      if (!properties || !properties[key]) {
-        continue;
-      }
-
-      if (onlyHeritable) {
-        if (properties[key].heritable) value.value = properties[key].value;
-      } else {
-        value.value = properties[key].value;
-      }
-    }
-    if (this.blockContent) this.setPropertiesClassesToElement();
-  }
-
-  setPropertiesClassesToElement() {
-    if (!this.blockContent) return;
-
-    if (this.properties.identifier.value != '') {
-      this.blockContent.setAttribute('identifier', this.properties.identifier.value);
-    }
-    if (this.properties.visibility.value == 'true') {
-      this.blockContent.setAttribute('export-view', this.properties.visibility.value);
-    }
-    if (this.properties.cssClass.value != '') {
-      let cssClasses = this.properties.cssClass.value
-        ? this.properties.cssClass.value.split(' ')
-        : [];
-      cssClasses.forEach((cls) => {
-        this.blockContent.classList.add(cls);
-      });
-    }
-    if (this.properties.minimized.value == 'true') {
-      this.toggleOff();
-    }
-  }
-
-  generateBlockContentNode(newNode) {
-    if (newNode) {
-      this.blockContent = document.createElement('article');
-    } else {
-      this.blockContent.classList.remove(...this.blockContent.classList);
-      while (this.blockContent.attributes.length > 0) {
-        this.blockContent.removeAttribute(this.blockContent.attributes[0].name);
-      }
-      if (this.toggleElement) {
-        this.toggleElement.removeAttribute('disabled');
-      }
-    }
-    this.blockContent.id = this.blockId;
-    this.blockContent.classList.add('box');
-    this.blockContent.classList.add('idevice-element-in-content');
-    this.blockContent.classList.add('draggable');
-    if (this.id) this.blockContent.setAttribute('sym-id', this.id);
-    this.blockContent.setAttribute('order', this.order);
-    this.blockContent.setAttribute('drag', 'box');
-    this.blockContent.setAttribute('drop', '["idevice"]');
-
-    this.setPropertiesClassesToElement();
-    this.updateMode();
-    return this.blockContent;
-  }
-
-  toggleOff() {
-    if (!this.blockContent || !this.toggleElement) return;
-    this.blockContent.classList.add('hidden-idevices');
-    this.blockContent.classList.remove('dropdown-menu-on');
-    this.toggleElement.classList.add('box-toggle-off');
-    this.toggleElement.classList.remove('box-toggle-on');
-    this.toggleElement.setAttribute('title', _('Show'));
-    const span = this.toggleElement.querySelector('span');
-    if (span) span.innerHTML = 'keyboard_arrow_up';
-  }
-
-  toggleOn() {
-    if (!this.blockContent || !this.toggleElement) return;
-    this.blockContent.classList.remove('hidden-idevices');
-    this.toggleElement.classList.remove('box-toggle-off');
-    this.toggleElement.classList.add('box-toggle-on');
-    this.toggleElement.setAttribute('title', _('Hide'));
-    const span = this.toggleElement.querySelector('span');
-    if (span) span.innerHTML = 'keyboard_arrow_down';
-  }
-
-  getCurrentOrder() {
-    let previousBlock, nextBlock;
-    if ((previousBlock = this.getContentPrevBlock())) {
-      this.order = parseInt(previousBlock.getAttribute('order')) + 1;
-      return this.order;
-    } else if ((nextBlock = this.getContentNextBlock())) {
-      this.order = parseInt(nextBlock.getAttribute('order')) - 1;
-      return this.order;
-    }
-    return -1;
-  }
-
-  getContentPrevBlock() {
-    if (!this.blockContent) return false;
-    let previousBlock = this.blockContent.previousElementSibling;
-    if (previousBlock && previousBlock.classList && previousBlock.classList.contains('box')) {
-      return previousBlock;
-    }
-    return false;
-  }
-
-  getContentNextBlock() {
-    if (!this.blockContent) return false;
-    let nextBlock = this.blockContent.nextSibling;
-    if (nextBlock && nextBlock.classList && nextBlock.classList.contains('box')) {
-      return nextBlock;
-    }
-    return false;
-  }
-
-  generateDataObject(params) {
-    let baseDataDict = this.getDictBaseValuesData();
-    let data = {};
-    params.forEach((param) => {
-      data[param] = baseDataDict[param];
-    });
-    return data;
-  }
-
-  getDictBaseValuesData() {
-    let defaultVersion = eXeLearning.app.project.odeVersion;
-    let defaultSession = eXeLearning.app.project.odeSession;
-    let defaultOdeNavStructureSyncId = eXeLearning.app.project.structure.getSelectNodeNavId();
-    let defaultOdePageId = eXeLearning.app.project.structure.getSelectNodePageId();
-    return {
-      odePagStructureSyncId: this.id,
-      odeVersionId: defaultVersion,
-      odeSessionId: defaultSession,
-      odeNavStructureSyncId: this.odeNavStructureSyncId
-        ? this.odeNavStructureSyncId
-        : defaultOdeNavStructureSyncId,
-      odePageId: this.pageId ? this.pageId : defaultOdePageId,
-      iconName: this.iconName,
-      blockName: this.blockName,
-      order: this.order,
-    };
-  }
-
-  updateParam(param, newValue) {
-    this[param] = newValue;
-    switch (param) {
-      case 'order':
-        if (this.blockContent) this.blockContent.setAttribute('order', this.order);
-        break;
-      case 'id':
-        if (this.blockContent) this.blockContent.setAttribute('sym-id', this.id);
-        break;
-    }
-  }
-
-  updateMode(mode) {
-    if (mode) this.mode = mode;
-    if (this.blockContent) {
-      this.blockContent.setAttribute('mode', this.mode);
-    }
-    if (this.headElement) {
-      switch (this.mode) {
-        case 'edition':
-          this.headElement.setAttribute('draggable', false);
-          this.headElement.classList.remove('draggable');
-          break;
-        case 'export':
-          this.headElement.setAttribute('draggable', true);
-          this.headElement.classList.add('draggable');
-          break;
-      }
-    }
-  }
-
-  getFallbackPageOrder() {
-    try {
-      const currentPageId =
-        this.pageId ||
-        (this.engine &&
-        this.engine.project &&
-        this.engine.project.app &&
-        this.engine.project.app.project &&
-        this.engine.project.app.project.structure &&
-        this.engine.project.app.project.structure.getSelectNodePageId
-          ? this.engine.project.app.project.structure.getSelectNodePageId()
-          : null);
-
-      const list =
-        this.engine && this.engine.components && Array.isArray(this.engine.components.blocks)
-          ? this.engine.components.blocks
-          : [];
-
-      const orders = list
-        .filter((blk) => {
-          if (!blk) return false;
-          const blkPageId = blk.pageId || null;
-          return blkPageId && currentPageId ? String(blkPageId) === String(currentPageId) : false;
-        })
-        .map((blk) => {
-          const v1 =
-            blk.order !== undefined && blk.order !== null ? parseInt(blk.order) : NaN;
-          const v2 =
-            blk.blockContent && blk.blockContent.getAttribute
-              ? parseInt(blk.blockContent.getAttribute('order'))
-              : NaN;
-          return !isNaN(v1) ? v1 : !isNaN(v2) ? v2 : NaN;
-        })
-        .filter((n) => !isNaN(n));
-
-      if (orders.length) return Math.max(...orders) + 1;
-
-      return 1;
-    } catch (_) {
-      /* Silently fall back to default order */
-    }
-
-    return 1;
-  }
-
-  generateModalMoveToPageBody() {
-    let bodyElement = document.createElement('div');
-    let textElement = document.createElement('p');
-    let selectElement = document.createElement('select');
-    textElement.innerHTML = _(
-      'Select the page you want to move the block to. This will be at the end of it.'
-    );
-    textElement.classList.add('text-info-move-to-page');
-    selectElement.classList.add('select-move-to-page');
-    bodyElement.append(textElement);
-    bodyElement.append(selectElement);
-
-    let pages = eXeLearning.app.project.structure.getAllNodesOrderByView();
-    pages.forEach((page) => {
-      let option = document.createElement('option');
-      option.value = page.id;
-      option.innerHTML = `${'&nbsp;&nbsp;'.repeat(page.deep)} ${page.pageName}`;
-      if (page.id == this.odeNavStructureSyncId) option.setAttribute('selected', 'selected');
-      selectElement.append(option);
-    });
-    return bodyElement;
-  }
-
-  makeEmptyIcon() {
-    let emptyIconElement = document.createElement('div');
-    let emptyIconValue = this.emptyIcon;
-    let emptyIconTitle = _('Empty');
-    emptyIconElement.classList.add('exe-icon');
-    emptyIconElement.classList.add('option-block-icon');
-    emptyIconElement.classList.add('empty-block-icon');
-    emptyIconElement.setAttribute('tabindex', 0);
-    emptyIconElement.setAttribute('icon-id', 0);
-    emptyIconElement.title = emptyIconTitle;
-    emptyIconElement.innerHTML = emptyIconValue;
-    emptyIconElement.setAttribute('selected', !this.iconName);
-    return emptyIconElement;
-  }
-
-  makeIconValueElement(icon) {
-    let iconValue = document.createElement('img');
-    iconValue.setAttribute('src', icon.value);
-    iconValue.setAttribute('alt', icon.title);
-    return iconValue;
-  }
-
-  focusTextInput(input) {
-    input.focus();
-    let inputElementValue = input.value;
-    input.value = '';
-    input.value = inputElementValue;
-  }
-}
+// Import after setting up mocks
+import IdeviceBlockNode from './blockNode.js';
 
 describe('IdeviceBlockNode', () => {
-  let block;
+    let block;
+    let mockEngine;
 
-  beforeEach(() => {
-    block = new MockIdeviceBlockNode(null, {
-      id: 'block-1',
-      blockId: 'block-id-1',
-      blockName: 'Test Block',
-      iconName: 'icon1',
-      order: 1,
-      pageId: 'page-1',
-    });
-  });
-
-  afterEach(() => {
-    block = null;
-  });
-
-  describe('constructor', () => {
-    it('initializes with provided data', () => {
-      expect(block.id).toBe('block-1');
-      expect(block.blockId).toBe('block-id-1');
-      expect(block.blockName).toBe('Test Block');
-      expect(block.iconName).toBe('icon1');
-      expect(block.order).toBe(1);
-    });
-
-    it('uses default values when data is missing', () => {
-      const emptyBlock = new MockIdeviceBlockNode(null, {});
-      expect(emptyBlock.mode).toBe('export');
-      // Note: blockName, iconName default to '' which is falsy, so setParams returns null
-      expect(emptyBlock.blockName).toBeNull();
-      expect(emptyBlock.iconName).toBeNull();
-      // order defaults to 0 which is also falsy, so setParams returns null
-      expect(emptyBlock.order).toBeNull();
-    });
-
-    it('generates id when not provided', () => {
-      const newBlock = new MockIdeviceBlockNode(null, {});
-      expect(newBlock.id).toBe('generated-key-123');
-    });
-
-    it('initializes empty idevices array', () => {
-      expect(block.idevices).toEqual([]);
-    });
-
-    it('initializes control parameters', () => {
-      expect(block.removeIfEmpty).toBe(false);
-      expect(block.askForRemoveIfEmpty).toBe(true);
-      expect(block.canHaveHeirs).toBe(true);
-    });
-  });
-
-  describe('setParams', () => {
-    it('sets all params from data object', () => {
-      block.setParams({
-        odeNavStructureSyncId: 'nav-123',
-        odeSessionId: 'session-456',
-        odeVersionId: 'v2',
-        pageId: 'page-2',
-        mode: 'edition',
-        blockName: 'Updated Block',
-        iconName: 'icon2',
-        order: 5,
-      });
-
-      expect(block.odeNavStructureSyncId).toBe('nav-123');
-      expect(block.odeSessionId).toBe('session-456');
-      expect(block.odeVersionId).toBe('v2');
-      expect(block.pageId).toBe('page-2');
-      expect(block.mode).toBe('edition');
-      expect(block.blockName).toBe('Updated Block');
-      expect(block.iconName).toBe('icon2');
-      expect(block.order).toBe(5);
-    });
-
-    it('uses default values for missing params', () => {
-      block.setParams({});
-      expect(block.mode).toBe('export');
-      // Note: blockName defaults to '' which is falsy, so null is returned
-      expect(block.blockName).toBeNull();
-      // order defaults to 0 which is also falsy, so null is returned
-      expect(block.order).toBeNull();
-    });
-
-    it('calls setProperties when odePagStructureSyncProperties provided', () => {
-      const spy = vi.spyOn(block, 'setProperties');
-      block.setParams({
-        odePagStructureSyncProperties: {
-          identifier: { value: 'my-id' },
-        },
-      });
-      expect(spy).toHaveBeenCalledWith({ identifier: { value: 'my-id' } });
-    });
-  });
-
-  describe('setProperties', () => {
-    it('sets property values from data', () => {
-      block.setProperties({
-        identifier: { value: 'custom-id' },
-        visibility: { value: 'true' },
-        cssClass: { value: 'my-class' },
-      });
-
-      expect(block.properties.identifier.value).toBe('custom-id');
-      expect(block.properties.visibility.value).toBe('true');
-      expect(block.properties.cssClass.value).toBe('my-class');
-    });
-
-    it('only sets heritable properties when onlyHeritable is true', () => {
-      block.setProperties(
-        {
-          identifier: { value: 'inherited-id', heritable: true },
-          visibility: { value: 'true', heritable: false },
-        },
-        true
-      );
-
-      expect(block.properties.identifier.value).toBe('inherited-id');
-      // visibility should remain default since heritable is false
-      expect(block.properties.visibility.value).toBe('false');
-    });
-
-    it('handles missing properties gracefully', () => {
-      expect(() => {
-        block.setProperties(null);
-      }).not.toThrow();
-
-      expect(() => {
-        block.setProperties({});
-      }).not.toThrow();
-    });
-  });
-
-  describe('isYjsEnabled', () => {
-    it('returns false when Yjs is not enabled', () => {
-      eXeLearning.app.project._yjsEnabled = false;
-      expect(block.isYjsEnabled()).toBe(false);
-    });
-
-    it('returns true when Yjs is enabled', () => {
-      eXeLearning.app.project._yjsEnabled = true;
-      expect(block.isYjsEnabled()).toBe(true);
-    });
-
-    it('returns false when project is undefined', () => {
-      eXeLearning.app.project = undefined;
-      expect(block.isYjsEnabled()).toBe(false);
-    });
-  });
-
-  describe('loadPropertiesFromYjs', () => {
-    it('does nothing when Yjs is not enabled', () => {
-      eXeLearning.app.project._yjsEnabled = false;
-      block.loadPropertiesFromYjs();
-      // Properties should remain unchanged
-      expect(block.properties.identifier.value).toBe('');
-    });
-
-    it('loads properties from Yjs when enabled', () => {
-      eXeLearning.app.project._yjsEnabled = true;
-      eXeLearning.app.project._yjsBridge = {
-        structureBinding: {
-          getBlockProperties: vi.fn(() => ({
-            identifier: 'yjs-id',
-            visibility: true,
-            cssClass: 'yjs-class',
-          })),
-        },
-      };
-
-      block.loadPropertiesFromYjs();
-
-      expect(block.properties.identifier.value).toBe('yjs-id');
-      expect(block.properties.visibility.value).toBe('true');
-      expect(block.properties.cssClass.value).toBe('yjs-class');
-    });
-
-    it('converts boolean values to strings', () => {
-      eXeLearning.app.project._yjsEnabled = true;
-      eXeLearning.app.project._yjsBridge = {
-        structureBinding: {
-          getBlockProperties: vi.fn(() => ({
-            minimized: true,
-            allowToggle: false,
-          })),
-        },
-      };
-
-      block.loadPropertiesFromYjs();
-
-      expect(block.properties.minimized.value).toBe('true');
-      expect(block.properties.allowToggle.value).toBe('false');
-    });
-  });
-
-  describe('generateBlockContentNode', () => {
-    it('creates new article element when newNode is true', () => {
-      const node = block.generateBlockContentNode(true);
-
-      expect(node.tagName).toBe('ARTICLE');
-      expect(node.id).toBe('block-id-1');
-      expect(node.classList.contains('box')).toBe(true);
-      expect(node.classList.contains('idevice-element-in-content')).toBe(true);
-      expect(node.classList.contains('draggable')).toBe(true);
-    });
-
-    it('sets correct attributes', () => {
-      const node = block.generateBlockContentNode(true);
-
-      expect(node.getAttribute('sym-id')).toBe('block-1');
-      expect(node.getAttribute('order')).toBe('1');
-      expect(node.getAttribute('drag')).toBe('box');
-      expect(node.getAttribute('drop')).toBe('["idevice"]');
-    });
-
-    it('reuses existing element when newNode is false', () => {
-      block.blockContent = document.createElement('article');
-      block.blockContent.classList.add('old-class');
-      block.toggleElement = document.createElement('button');
-      block.toggleElement.setAttribute('disabled', 'true');
-
-      const node = block.generateBlockContentNode(false);
-
-      expect(node.classList.contains('old-class')).toBe(false);
-      expect(node.classList.contains('box')).toBe(true);
-      expect(block.toggleElement.hasAttribute('disabled')).toBe(false);
-    });
-
-    it('applies CSS classes from properties', () => {
-      block.properties.cssClass.value = 'custom-class another-class';
-      const node = block.generateBlockContentNode(true);
-
-      expect(node.classList.contains('custom-class')).toBe(true);
-      expect(node.classList.contains('another-class')).toBe(true);
-    });
-  });
-
-  describe('setPropertiesClassesToElement', () => {
     beforeEach(() => {
-      block.blockContent = document.createElement('article');
-      block.toggleElement = document.createElement('button');
-      const span = document.createElement('span');
-      block.toggleElement.appendChild(span);
+        // Reset mocks
+        vi.clearAllMocks();
+
+        // Reset eXeLearning config
+        eXeLearning.app.project._yjsEnabled = false;
+        eXeLearning.app.project._yjsBridge = null;
+
+        // Create mock engine
+        mockEngine = {
+            generateId: vi.fn(() => `engine-id-${Date.now()}`),
+            movingClassDuration: 300,
+            nodeContentElement: document.createElement('div'),
+            addEventDragStartToContentBlock: vi.fn(),
+            addEventDragEndToContentBlock: vi.fn(),
+            components: { blocks: [], idevices: [] },
+            getIdeviceById: vi.fn(),
+        };
+
+        // Create block with test data
+        block = new IdeviceBlockNode(mockEngine, {
+            id: 'block-1',
+            blockId: 'block-id-1',
+            blockName: 'Test Block',
+            iconName: 'icon1',
+            order: 1,
+            pageId: 'page-1',
+        });
     });
 
-    it('sets identifier attribute', () => {
-      block.properties.identifier.value = 'my-block-id';
-      block.setPropertiesClassesToElement();
-
-      expect(block.blockContent.getAttribute('identifier')).toBe('my-block-id');
+    afterEach(() => {
+        block = null;
     });
 
-    it('sets export-view attribute when visibility is true', () => {
-      block.properties.visibility.value = 'true';
-      block.setPropertiesClassesToElement();
+    describe('constructor', () => {
+        it('initializes with provided data', () => {
+            expect(block.id).toBe('block-1');
+            expect(block.blockId).toBe('block-id-1');
+            expect(block.blockName).toBe('Test Block');
+            expect(block.iconName).toBe('icon1');
+            expect(block.order).toBe(1);
+        });
 
-      expect(block.blockContent.getAttribute('export-view')).toBe('true');
+        it('uses default values when data is missing', () => {
+            const emptyBlock = new IdeviceBlockNode(mockEngine, {});
+            expect(emptyBlock.mode).toBe('export');
+            expect(emptyBlock.blockName).toBeNull();
+            expect(emptyBlock.iconName).toBeNull();
+        });
+
+        it('generates id when not provided', () => {
+            const newBlock = new IdeviceBlockNode(mockEngine, {});
+            expect(newBlock.id).toBe('generated-key-123');
+        });
+
+        it('initializes empty idevices array', () => {
+            expect(block.idevices).toEqual([]);
+        });
+
+        it('initializes control parameters', () => {
+            expect(block.removeIfEmpty).toBe(false);
+            expect(block.askForRemoveIfEmpty).toBe(true);
+            expect(block.canHaveHeirs).toBe(true);
+        });
+
+        it('stores engine reference', () => {
+            expect(block.engine).toBe(mockEngine);
+        });
+
+        it('uses engine.generateId when Yjs not enabled', () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            mockEngine.generateId.mockReturnValue('engine-generated-id');
+            const newBlock = new IdeviceBlockNode(mockEngine, {});
+            expect(mockEngine.generateId).toHaveBeenCalled();
+        });
     });
 
-    it('adds CSS classes', () => {
-      block.properties.cssClass.value = 'class1 class2 class3';
-      block.setPropertiesClassesToElement();
+    describe('setParams', () => {
+        it('sets all params from data object', () => {
+            block.setParams({
+                odeNavStructureSyncId: 'nav-123',
+                odeSessionId: 'session-456',
+                odeVersionId: 'v2',
+                pageId: 'page-2',
+                mode: 'edition',
+                blockName: 'Updated Block',
+                iconName: 'icon2',
+                order: 5,
+            });
 
-      expect(block.blockContent.classList.contains('class1')).toBe(true);
-      expect(block.blockContent.classList.contains('class2')).toBe(true);
-      expect(block.blockContent.classList.contains('class3')).toBe(true);
+            expect(block.odeNavStructureSyncId).toBe('nav-123');
+            expect(block.odeSessionId).toBe('session-456');
+            expect(block.odeVersionId).toBe('v2');
+            expect(block.pageId).toBe('page-2');
+            expect(block.mode).toBe('edition');
+            expect(block.blockName).toBe('Updated Block');
+            expect(block.iconName).toBe('icon2');
+            expect(block.order).toBe(5);
+        });
+
+        it('uses default values for missing params', () => {
+            block.setParams({});
+            expect(block.mode).toBe('export');
+        });
+
+        it('calls setProperties when odePagStructureSyncProperties provided', () => {
+            const spy = vi.spyOn(block, 'setProperties');
+            block.setParams({
+                odePagStructureSyncProperties: {
+                    identifier: { value: 'my-id' },
+                },
+            });
+            expect(spy).toHaveBeenCalledWith({ identifier: { value: 'my-id' } });
+        });
     });
 
-    it('calls toggleOff when minimized is true', () => {
-      const spy = vi.spyOn(block, 'toggleOff');
-      block.properties.minimized.value = 'true';
-      block.setPropertiesClassesToElement();
+    describe('setProperties', () => {
+        it('sets property values from data', () => {
+            block.setProperties({
+                identifier: { value: 'custom-id' },
+                visibility: { value: 'true' },
+                cssClass: { value: 'my-class' },
+            });
 
-      expect(spy).toHaveBeenCalled();
-    });
-  });
+            expect(block.properties.identifier.value).toBe('custom-id');
+            expect(block.properties.visibility.value).toBe('true');
+            expect(block.properties.cssClass.value).toBe('my-class');
+        });
 
-  describe('toggleOff / toggleOn', () => {
-    beforeEach(() => {
-      block.blockContent = document.createElement('article');
-      block.toggleElement = document.createElement('button');
-      block.toggleElement.classList.add('box-toggle-on');
-      const span = document.createElement('span');
-      span.innerHTML = 'keyboard_arrow_down';
-      block.toggleElement.appendChild(span);
-    });
+        it('only sets heritable properties when onlyHeritable is true', () => {
+            block.setProperties(
+                {
+                    identifier: { value: 'inherited-id', heritable: true },
+                    visibility: { value: 'true', heritable: false },
+                },
+                true,
+            );
 
-    it('toggleOff adds hidden-idevices class', () => {
-      block.toggleOff();
+            expect(block.properties.identifier.value).toBe('inherited-id');
+            expect(block.properties.visibility.value).toBe('false');
+        });
 
-      expect(block.blockContent.classList.contains('hidden-idevices')).toBe(true);
-      expect(block.toggleElement.classList.contains('box-toggle-off')).toBe(true);
-      expect(block.toggleElement.classList.contains('box-toggle-on')).toBe(false);
-    });
+        it('handles missing properties gracefully', () => {
+            expect(() => {
+                block.setProperties(null);
+            }).not.toThrow();
 
-    it('toggleOn removes hidden-idevices class', () => {
-      block.blockContent.classList.add('hidden-idevices');
-      block.toggleElement.classList.add('box-toggle-off');
-      block.toggleElement.classList.remove('box-toggle-on');
-
-      block.toggleOn();
-
-      expect(block.blockContent.classList.contains('hidden-idevices')).toBe(false);
-      expect(block.toggleElement.classList.contains('box-toggle-on')).toBe(true);
-      expect(block.toggleElement.classList.contains('box-toggle-off')).toBe(false);
-    });
-  });
-
-  describe('getCurrentOrder', () => {
-    beforeEach(() => {
-      const container = document.createElement('div');
-
-      const prevBlock = document.createElement('article');
-      prevBlock.classList.add('box');
-      prevBlock.setAttribute('order', '5');
-
-      block.blockContent = document.createElement('article');
-      block.blockContent.classList.add('box');
-
-      const nextBlock = document.createElement('article');
-      nextBlock.classList.add('box');
-      nextBlock.setAttribute('order', '10');
-
-      container.appendChild(prevBlock);
-      container.appendChild(block.blockContent);
-      container.appendChild(nextBlock);
+            expect(() => {
+                block.setProperties({});
+            }).not.toThrow();
+        });
     });
 
-    it('returns order based on previous block', () => {
-      const order = block.getCurrentOrder();
-      expect(order).toBe(6); // previous block order (5) + 1
+    describe('isYjsEnabled', () => {
+        it('returns false when Yjs is not enabled', () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            expect(block.isYjsEnabled()).toBe(false);
+        });
+
+        it('returns true when Yjs is enabled', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            expect(block.isYjsEnabled()).toBe(true);
+        });
+
+        it('returns false when project is undefined', () => {
+            const originalProject = eXeLearning.app.project;
+            eXeLearning.app.project = undefined;
+            expect(block.isYjsEnabled()).toBe(false);
+            eXeLearning.app.project = originalProject;
+        });
     });
 
-    it('returns -1 when no adjacent blocks exist', () => {
-      const container = document.createElement('div');
-      block.blockContent = document.createElement('article');
-      block.blockContent.classList.add('box');
-      container.appendChild(block.blockContent);
+    describe('loadPropertiesFromYjs', () => {
+        it('does nothing when Yjs is not enabled', () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            block.loadPropertiesFromYjs();
+            expect(block.properties.identifier.value).toBe('');
+        });
 
-      const order = block.getCurrentOrder();
-      expect(order).toBe(-1);
-    });
-  });
+        it('loads properties from Yjs when enabled', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getBlockProperties: vi.fn(() => ({
+                        identifier: 'yjs-id',
+                        visibility: true,
+                        cssClass: 'yjs-class',
+                    })),
+                },
+            };
 
-  describe('getContentPrevBlock / getContentNextBlock', () => {
-    it('returns previous block when exists', () => {
-      const container = document.createElement('div');
-      const prevBlock = document.createElement('article');
-      prevBlock.classList.add('box');
-      block.blockContent = document.createElement('article');
+            block.loadPropertiesFromYjs();
 
-      container.appendChild(prevBlock);
-      container.appendChild(block.blockContent);
+            expect(block.properties.identifier.value).toBe('yjs-id');
+            expect(block.properties.visibility.value).toBe('true');
+            expect(block.properties.cssClass.value).toBe('yjs-class');
+        });
 
-      expect(block.getContentPrevBlock()).toBe(prevBlock);
-    });
+        it('converts boolean values to strings', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getBlockProperties: vi.fn(() => ({
+                        minimized: true,
+                        allowToggle: false,
+                    })),
+                },
+            };
 
-    it('returns false when no previous block', () => {
-      const container = document.createElement('div');
-      block.blockContent = document.createElement('article');
-      container.appendChild(block.blockContent);
+            block.loadPropertiesFromYjs();
 
-      expect(block.getContentPrevBlock()).toBe(false);
-    });
+            expect(block.properties.minimized.value).toBe('true');
+            expect(block.properties.allowToggle.value).toBe('false');
+        });
 
-    it('returns next block when exists', () => {
-      const container = document.createElement('div');
-      block.blockContent = document.createElement('article');
-      const nextBlock = document.createElement('article');
-      nextBlock.classList.add('box');
-
-      container.appendChild(block.blockContent);
-      container.appendChild(nextBlock);
-
-      expect(block.getContentNextBlock()).toBe(nextBlock);
-    });
-
-    it('returns false when no next block', () => {
-      const container = document.createElement('div');
-      block.blockContent = document.createElement('article');
-      container.appendChild(block.blockContent);
-
-      expect(block.getContentNextBlock()).toBe(false);
-    });
-  });
-
-  describe('generateDataObject', () => {
-    it('generates data object with specified params', () => {
-      const data = block.generateDataObject(['odePagStructureSyncId', 'blockName', 'order']);
-
-      expect(data.odePagStructureSyncId).toBe('block-1');
-      expect(data.blockName).toBe('Test Block');
-      expect(data.order).toBe(1);
-      expect(data.iconName).toBeUndefined();
+        it('does nothing when bridge not available', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = null;
+            block.loadPropertiesFromYjs();
+            expect(block.properties.identifier.value).toBe('');
+        });
     });
 
-    it('includes all requested params', () => {
-      const data = block.generateDataObject([
-        'odePagStructureSyncId',
-        'odeVersionId',
-        'odeSessionId',
-        'iconName',
-      ]);
+    describe('generateBlockContentNode', () => {
+        it('creates new article element when newNode is true', () => {
+            const node = block.generateBlockContentNode(true);
 
-      expect(Object.keys(data)).toHaveLength(4);
-    });
-  });
+            expect(node.tagName).toBe('ARTICLE');
+            expect(node.id).toBe('block-id-1');
+            expect(node.classList.contains('box')).toBe(true);
+            expect(node.classList.contains('idevice-element-in-content')).toBe(true);
+            expect(node.classList.contains('draggable')).toBe(true);
+        });
 
-  describe('getDictBaseValuesData', () => {
-    it('returns complete data dictionary', () => {
-      const dict = block.getDictBaseValuesData();
+        it('sets correct attributes', () => {
+            const node = block.generateBlockContentNode(true);
 
-      expect(dict.odePagStructureSyncId).toBe('block-1');
-      expect(dict.odeVersionId).toBe('v1');
-      expect(dict.odeSessionId).toBe('session-123');
-      expect(dict.iconName).toBe('icon1');
-      expect(dict.blockName).toBe('Test Block');
-      expect(dict.order).toBe(1);
-    });
+            expect(node.getAttribute('sym-id')).toBe('block-1');
+            expect(node.getAttribute('order')).toBe('1');
+            expect(node.getAttribute('drag')).toBe('box');
+            expect(node.getAttribute('drop')).toBe('["idevice"]');
+        });
 
-    it('uses default values from project structure when block values missing', () => {
-      block.odeNavStructureSyncId = null;
-      block.pageId = null;
+        it('reuses existing element when newNode is false', () => {
+            block.blockContent = document.createElement('article');
+            block.blockContent.classList.add('old-class');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.setAttribute('disabled', 'true');
+            // headElement is required for updateMode() to work
+            block.headElement = document.createElement('header');
 
-      const dict = block.getDictBaseValuesData();
+            const node = block.generateBlockContentNode(false);
 
-      expect(dict.odeNavStructureSyncId).toBe('nav-id-1');
-      expect(dict.odePageId).toBe('page-id-1');
-    });
-  });
+            expect(node.classList.contains('old-class')).toBe(false);
+            expect(node.classList.contains('box')).toBe(true);
+            expect(block.toggleElement.hasAttribute('disabled')).toBe(false);
+        });
 
-  describe('updateParam', () => {
-    beforeEach(() => {
-      block.blockContent = document.createElement('article');
-    });
+        it('applies CSS classes from properties', () => {
+            block.properties.cssClass.value = 'custom-class another-class';
+            const node = block.generateBlockContentNode(true);
 
-    it('updates order param and attribute', () => {
-      block.updateParam('order', 10);
-
-      expect(block.order).toBe(10);
-      expect(block.blockContent.getAttribute('order')).toBe('10');
+            expect(node.classList.contains('custom-class')).toBe(true);
+            expect(node.classList.contains('another-class')).toBe(true);
+        });
     });
 
-    it('updates id param and sym-id attribute', () => {
-      block.updateParam('id', 'new-block-id');
+    describe('setPropertiesClassesToElement', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            block.toggleElement = document.createElement('button');
+            const span = document.createElement('span');
+            block.toggleElement.appendChild(span);
+        });
 
-      expect(block.id).toBe('new-block-id');
-      expect(block.blockContent.getAttribute('sym-id')).toBe('new-block-id');
+        it('sets identifier attribute', () => {
+            block.properties.identifier.value = 'my-block-id';
+            block.setPropertiesClassesToElement();
+
+            expect(block.blockContent.getAttribute('identifier')).toBe('my-block-id');
+        });
+
+        it('sets export-view attribute when visibility is true', () => {
+            block.properties.visibility.value = 'true';
+            block.setPropertiesClassesToElement();
+
+            expect(block.blockContent.getAttribute('export-view')).toBe('true');
+        });
+
+        it('adds CSS classes', () => {
+            block.properties.cssClass.value = 'class1 class2 class3';
+            block.setPropertiesClassesToElement();
+
+            expect(block.blockContent.classList.contains('class1')).toBe(true);
+            expect(block.blockContent.classList.contains('class2')).toBe(true);
+            expect(block.blockContent.classList.contains('class3')).toBe(true);
+        });
+
+        it('calls toggleOff when minimized is true', () => {
+            const spy = vi.spyOn(block, 'toggleOff');
+            block.properties.minimized.value = 'true';
+            block.setPropertiesClassesToElement();
+
+            expect(spy).toHaveBeenCalled();
+        });
+
+        it('does not set identifier when value is empty', () => {
+            block.properties.identifier.value = '';
+            block.setPropertiesClassesToElement();
+
+            expect(block.blockContent.hasAttribute('identifier')).toBe(false);
+        });
     });
 
-    it('updates other params without side effects', () => {
-      block.updateParam('blockName', 'New Name');
+    describe('toggleOff / toggleOn', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('article');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.classList.add('box-toggle-on');
+            const span = document.createElement('span');
+            span.innerHTML = 'keyboard_arrow_down';
+            block.toggleElement.appendChild(span);
+        });
 
-      expect(block.blockName).toBe('New Name');
-    });
-  });
+        it('toggleOff adds hidden-idevices class', () => {
+            block.toggleOff();
 
-  describe('updateMode', () => {
-    beforeEach(() => {
-      block.blockContent = document.createElement('article');
-      block.headElement = document.createElement('header');
-      block.headElement.classList.add('draggable');
-    });
+            expect(block.blockContent.classList.contains('hidden-idevices')).toBe(
+                true,
+            );
+            expect(block.toggleElement.classList.contains('box-toggle-off')).toBe(
+                true,
+            );
+            expect(block.toggleElement.classList.contains('box-toggle-on')).toBe(
+                false,
+            );
+        });
 
-    it('sets mode to edition', () => {
-      block.updateMode('edition');
+        it('toggleOn removes hidden-idevices class', () => {
+            block.blockContent.classList.add('hidden-idevices');
+            block.toggleElement.classList.add('box-toggle-off');
+            block.toggleElement.classList.remove('box-toggle-on');
 
-      expect(block.mode).toBe('edition');
-      expect(block.blockContent.getAttribute('mode')).toBe('edition');
-      expect(block.headElement.getAttribute('draggable')).toBe('false');
-      expect(block.headElement.classList.contains('draggable')).toBe(false);
-    });
+            block.toggleOn();
 
-    it('sets mode to export', () => {
-      block.updateMode('export');
-
-      expect(block.mode).toBe('export');
-      expect(block.blockContent.getAttribute('mode')).toBe('export');
-      expect(block.headElement.getAttribute('draggable')).toBe('true');
-      expect(block.headElement.classList.contains('draggable')).toBe(true);
-    });
-
-    it('uses existing mode when no parameter provided', () => {
-      block.mode = 'edition';
-      block.updateMode();
-
-      expect(block.blockContent.getAttribute('mode')).toBe('edition');
-    });
-  });
-
-  describe('getFallbackPageOrder', () => {
-    it('returns 1 when no blocks exist', () => {
-      block.engine.components.blocks = [];
-      expect(block.getFallbackPageOrder()).toBe(1);
+            expect(block.blockContent.classList.contains('hidden-idevices')).toBe(
+                false,
+            );
+            expect(block.toggleElement.classList.contains('box-toggle-on')).toBe(
+                true,
+            );
+            expect(block.toggleElement.classList.contains('box-toggle-off')).toBe(
+                false,
+            );
+        });
     });
 
-    it('returns max order + 1 when blocks exist on same page', () => {
-      block.pageId = 'page-1';
-      block.engine.components.blocks = [
-        { pageId: 'page-1', order: 3 },
-        { pageId: 'page-1', order: 7 },
-        { pageId: 'page-1', order: 2 },
-      ];
+    describe('getCurrentOrder', () => {
+        beforeEach(() => {
+            const container = document.createElement('div');
 
-      expect(block.getFallbackPageOrder()).toBe(8);
+            const prevBlock = document.createElement('article');
+            prevBlock.classList.add('box');
+            prevBlock.setAttribute('order', '5');
+
+            block.blockContent = document.createElement('article');
+            block.blockContent.classList.add('box');
+
+            const nextBlock = document.createElement('article');
+            nextBlock.classList.add('box');
+            nextBlock.setAttribute('order', '10');
+
+            container.appendChild(prevBlock);
+            container.appendChild(block.blockContent);
+            container.appendChild(nextBlock);
+        });
+
+        it('returns order based on previous block', () => {
+            const order = block.getCurrentOrder();
+            expect(order).toBe(6);
+        });
+
+        it('returns -1 when no adjacent blocks exist', () => {
+            const container = document.createElement('div');
+            block.blockContent = document.createElement('article');
+            block.blockContent.classList.add('box');
+            container.appendChild(block.blockContent);
+
+            const order = block.getCurrentOrder();
+            expect(order).toBe(-1);
+        });
     });
 
-    it('ignores blocks on different pages', () => {
-      block.pageId = 'page-1';
-      block.engine.components.blocks = [
-        { pageId: 'page-1', order: 3 },
-        { pageId: 'page-2', order: 100 },
-        { pageId: 'page-1', order: 5 },
-      ];
+    describe('getContentPrevBlock / getContentNextBlock', () => {
+        it('returns previous block when exists', () => {
+            const container = document.createElement('div');
+            const prevBlock = document.createElement('article');
+            prevBlock.classList.add('box');
+            block.blockContent = document.createElement('article');
 
-      expect(block.getFallbackPageOrder()).toBe(6);
+            container.appendChild(prevBlock);
+            container.appendChild(block.blockContent);
+
+            expect(block.getContentPrevBlock()).toBe(prevBlock);
+        });
+
+        it('returns false when no previous block', () => {
+            const container = document.createElement('div');
+            block.blockContent = document.createElement('article');
+            container.appendChild(block.blockContent);
+
+            expect(block.getContentPrevBlock()).toBe(false);
+        });
+
+        it('returns next block when exists', () => {
+            const container = document.createElement('div');
+            block.blockContent = document.createElement('article');
+            const nextBlock = document.createElement('article');
+            nextBlock.classList.add('box');
+
+            container.appendChild(block.blockContent);
+            container.appendChild(nextBlock);
+
+            expect(block.getContentNextBlock()).toBe(nextBlock);
+        });
+
+        it('returns false when no next block', () => {
+            const container = document.createElement('div');
+            block.blockContent = document.createElement('article');
+            container.appendChild(block.blockContent);
+
+            expect(block.getContentNextBlock()).toBe(false);
+        });
     });
 
-    it('reads order from blockContent attribute as fallback', () => {
-      block.pageId = 'page-1';
-      const mockBlockContent = {
-        getAttribute: vi.fn(() => '10'),
-      };
-      block.engine.components.blocks = [
-        { pageId: 'page-1', order: undefined, blockContent: mockBlockContent },
-      ];
+    describe('generateModalMoveToPageBody', () => {
+        it('creates modal body with select element', () => {
+            const body = block.generateModalMoveToPageBody();
 
-      expect(block.getFallbackPageOrder()).toBe(11);
-    });
-  });
+            expect(body.querySelector('.text-info-move-to-page')).not.toBeNull();
+            expect(body.querySelector('.select-move-to-page')).not.toBeNull();
+        });
 
-  describe('generateModalMoveToPageBody', () => {
-    it('creates modal body with select element', () => {
-      const body = block.generateModalMoveToPageBody();
+        it('populates select with pages', () => {
+            const body = block.generateModalMoveToPageBody();
+            const options = body.querySelectorAll('option');
 
-      expect(body.querySelector('.text-info-move-to-page')).not.toBeNull();
-      expect(body.querySelector('.select-move-to-page')).not.toBeNull();
-    });
+            expect(options.length).toBe(2);
+            expect(options[0].value).toBe('page-1');
+            expect(options[1].value).toBe('page-2');
+        });
 
-    it('populates select with pages', () => {
-      const body = block.generateModalMoveToPageBody();
-      const options = body.querySelectorAll('option');
+        it('marks current page as selected', () => {
+            block.odeNavStructureSyncId = 'page-1';
+            const body = block.generateModalMoveToPageBody();
+            const selectedOption = body.querySelector('option[selected]');
 
-      expect(options.length).toBe(2);
-      expect(options[0].value).toBe('page-1');
-      expect(options[1].value).toBe('page-2');
+            expect(selectedOption.value).toBe('page-1');
+        });
     });
 
-    it('marks current page as selected', () => {
-      block.odeNavStructureSyncId = 'page-1';
-      const body = block.generateModalMoveToPageBody();
-      const selectedOption = body.querySelector('option[selected]');
+    describe('makeEmptyIcon', () => {
+        it('creates empty icon element with correct classes', () => {
+            const icon = block.makeEmptyIcon();
 
-      expect(selectedOption.value).toBe('page-1');
+            expect(icon.classList.contains('exe-icon')).toBe(true);
+            expect(icon.classList.contains('option-block-icon')).toBe(true);
+            expect(icon.classList.contains('empty-block-icon')).toBe(true);
+        });
+
+        it('sets correct attributes', () => {
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.getAttribute('tabindex')).toBe('0');
+            expect(icon.getAttribute('icon-id')).toBe('0');
+            expect(icon.title).toBe('Empty');
+        });
+
+        it('sets selected to true when no iconName', () => {
+            block.iconName = '';
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.getAttribute('selected')).toBe('true');
+        });
+
+        it('sets selected to false when iconName exists', () => {
+            block.iconName = 'icon1';
+            const icon = block.makeEmptyIcon();
+
+            expect(icon.getAttribute('selected')).toBe('false');
+        });
     });
-  });
 
-  describe('makeEmptyIcon', () => {
-    it('creates empty icon element with correct classes', () => {
-      const icon = block.makeEmptyIcon();
+    describe('makeIconValueElement', () => {
+        it('creates img element with correct src and alt', () => {
+            const icon = { value: '/path/to/icon.svg', title: 'My Icon' };
+            const img = block.makeIconValueElement(icon);
 
-      expect(icon.classList.contains('exe-icon')).toBe(true);
-      expect(icon.classList.contains('option-block-icon')).toBe(true);
-      expect(icon.classList.contains('empty-block-icon')).toBe(true);
+            expect(img.tagName).toBe('IMG');
+            expect(img.getAttribute('src')).toBe('/path/to/icon.svg');
+            expect(img.getAttribute('alt')).toBe('My Icon');
+        });
     });
 
-    it('sets correct attributes', () => {
-      const icon = block.makeEmptyIcon();
+    describe('apiUpdateIcon', () => {
+        it('updates iconName property', () => {
+            block.apiUpdateIcon('new-icon');
+            expect(block.iconName).toBe('new-icon');
+        });
 
-      expect(icon.getAttribute('tabindex')).toBe('0');
-      expect(icon.getAttribute('icon-id')).toBe('0');
-      expect(icon.title).toBe('Empty');
+        it('calls apiSendDataService when id exists', async () => {
+            const spy = vi
+                .spyOn(block, 'apiSendDataService')
+                .mockResolvedValue({ responseMessage: 'OK' });
+            await block.apiUpdateIcon('new-icon');
+            expect(spy).toHaveBeenCalledWith('putSaveBlock', [
+                'odePagStructureSyncId',
+                'iconName',
+            ]);
+        });
     });
 
-    it('sets selected to true when no iconName', () => {
-      block.iconName = '';
-      const icon = block.makeEmptyIcon();
+    describe('apiUpdateTitle', () => {
+        beforeEach(() => {
+            block.blockNameElementText = document.createElement('h1');
+        });
 
-      expect(icon.getAttribute('selected')).toBe('true');
+        it('updates blockName property', () => {
+            block.apiUpdateTitle('New Title');
+            expect(block.blockName).toBe('New Title');
+        });
+
+        it('updates blockNameElementText innerHTML', () => {
+            block.apiUpdateTitle('New Title');
+            expect(block.blockNameElementText.innerHTML).toBe('New Title');
+        });
+
+        it('syncs to Yjs when bridge available', () => {
+            const mockUpdateBlock = vi.fn();
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    updateBlock: mockUpdateBlock,
+                },
+            };
+            block.apiUpdateTitle('New Title');
+            expect(mockUpdateBlock).toHaveBeenCalledWith('block-id-1', {
+                blockName: 'New Title',
+            });
+        });
     });
 
-    it('sets selected to false when iconName exists', () => {
-      block.iconName = 'icon1';
-      const icon = block.makeEmptyIcon();
+    describe('makeModalChangeIconBody', () => {
+        it('creates modal body with icons', () => {
+            const body = block.makeModalChangeIconBody();
 
-      expect(icon.getAttribute('selected')).toBe('false');
+            expect(body.id).toBe('change-block-icon-modal-content');
+            expect(body.querySelector('.empty-block-icon')).not.toBeNull();
+        });
+
+        it('includes theme icons', () => {
+            const body = block.makeModalChangeIconBody();
+            const icons = body.querySelectorAll('.option-block-icon');
+
+            expect(icons.length).toBeGreaterThan(1);
+        });
     });
-  });
 
-  describe('makeIconValueElement', () => {
-    it('creates img element with correct src and alt', () => {
-      const icon = { value: '/path/to/icon.svg', title: 'My Icon' };
-      const img = block.makeIconValueElement(icon);
+    describe('showModalChangeIcon', () => {
+        it('calls confirm modal show with correct params', () => {
+            block.showModalChangeIcon();
 
-      expect(img.tagName).toBe('IMG');
-      expect(img.getAttribute('src')).toBe('/path/to/icon.svg');
-      expect(img.getAttribute('alt')).toBe('My Icon');
+            expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            const callArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            expect(callArgs.title).toBe('Select icon');
+            expect(callArgs.confirmButtonText).toBe('Save');
+            expect(callArgs.cancelButtonText).toBe('Cancel');
+        });
     });
-  });
 
-  describe('focusTextInput', () => {
-    it('focuses input and preserves value', () => {
-      const input = document.createElement('input');
-      input.value = 'test value';
-      document.body.appendChild(input);
+    describe('moveToPageViaYjs', () => {
+        it('returns ERROR when structureBinding not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            const result = await block.moveToPageViaYjs('target-page');
+            expect(result.responseMessage).toBe('ERROR');
+        });
 
-      block.focusTextInput(input);
+        it('calls moveBlockToPage when structureBinding available', async () => {
+            const mockMoveBlock = vi.fn().mockReturnValue(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveBlockToPage: mockMoveBlock,
+                },
+            };
 
-      expect(input.value).toBe('test value');
-      expect(document.activeElement).toBe(input);
+            const spy = vi.spyOn(block, 'remove').mockImplementation(() => {});
+            const result = await block.moveToPageViaYjs('target-page');
 
-      document.body.removeChild(input);
+            expect(mockMoveBlock).toHaveBeenCalledWith('block-id-1', 'target-page');
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('updates internal references on success', async () => {
+            const mockMoveBlock = vi.fn().mockReturnValue(true);
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveBlockToPage: mockMoveBlock,
+                },
+            };
+
+            vi.spyOn(block, 'remove').mockImplementation(() => {});
+            await block.moveToPageViaYjs('new-target-page');
+
+            expect(block.odeNavStructureSyncId).toBe('new-target-page');
+            expect(block.pageId).toBe('new-target-page');
+        });
     });
-  });
+
+    describe('downloadBlockSelected', () => {
+        it('throws error when Yjs bridge not initialized', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            await block.downloadBlockSelected('block-1');
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Download error',
+                }),
+            );
+        });
+    });
+
+    describe('test method', () => {
+        it('logs click message', () => {
+            // Logger is bound at module import time to window.AppLogger from vitest.setup.js
+            // (since ES6 imports are hoisted before test file code runs)
+            // vitest.setup.js sets global.Logger = mockLogger with log: vi.fn()
+            block.test();
+            expect(global.Logger.log).toHaveBeenCalledWith('click');
+        });
+    });
+
+    describe('toggleOff', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
+            block.toggleElement.classList.add('box-toggle-on');
+        });
+
+        it('adds hidden-idevices class to blockContent', () => {
+            block.toggleOff();
+            expect(block.blockContent.classList.contains('hidden-idevices')).toBe(true);
+        });
+
+        it('removes dropdown-menu-on class from blockContent', () => {
+            block.blockContent.classList.add('dropdown-menu-on');
+            block.toggleOff();
+            expect(block.blockContent.classList.contains('dropdown-menu-on')).toBe(false);
+        });
+
+        it('toggles toggle element classes', () => {
+            block.toggleOff();
+            expect(block.toggleElement.classList.contains('box-toggle-off')).toBe(true);
+            expect(block.toggleElement.classList.contains('box-toggle-on')).toBe(false);
+        });
+
+        it('updates toggle element title and icon', () => {
+            block.toggleOff();
+            expect(block.toggleElement.getAttribute('title')).toBe('Show');
+            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_up');
+        });
+    });
+
+    describe('toggleOn', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+            block.blockContent.classList.add('hidden-idevices');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_up</span>';
+            block.toggleElement.classList.add('box-toggle-off');
+        });
+
+        it('removes hidden-idevices class from blockContent', () => {
+            block.toggleOn();
+            expect(block.blockContent.classList.contains('hidden-idevices')).toBe(false);
+        });
+
+        it('toggles toggle element classes', () => {
+            block.toggleOn();
+            expect(block.toggleElement.classList.contains('box-toggle-on')).toBe(true);
+            expect(block.toggleElement.classList.contains('box-toggle-off')).toBe(false);
+        });
+
+        it('updates toggle element title and icon', () => {
+            block.toggleOn();
+            expect(block.toggleElement.getAttribute('title')).toBe('Hide');
+            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_down');
+        });
+    });
+
+    describe('generateModalMoveToPageBody', () => {
+        it('creates body with text and select elements', () => {
+            const body = block.generateModalMoveToPageBody();
+
+            expect(body.querySelector('.text-info-move-to-page')).not.toBeNull();
+            expect(body.querySelector('.select-move-to-page')).not.toBeNull();
+        });
+
+        it('adds pages as options', () => {
+            eXeLearning.app.project.structure.getAllNodesOrderByView = vi.fn().mockReturnValue([
+                { id: 'page-1', deep: 0, pageName: 'Home' },
+                { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
+            ]);
+
+            const body = block.generateModalMoveToPageBody();
+            const options = body.querySelectorAll('option');
+
+            expect(options.length).toBe(2);
+            expect(options[0].value).toBe('page-1');
+            expect(options[1].value).toBe('page-2');
+        });
+
+        it('marks current page as selected', () => {
+            block.odeNavStructureSyncId = 'page-2';
+            eXeLearning.app.project.structure.getAllNodesOrderByView = vi.fn().mockReturnValue([
+                { id: 'page-1', deep: 0, pageName: 'Home' },
+                { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
+            ]);
+
+            const body = block.generateModalMoveToPageBody();
+            const selectedOption = body.querySelector('option[selected]');
+
+            expect(selectedOption.value).toBe('page-2');
+        });
+    });
+
+    describe('saveIconAction', () => {
+        beforeEach(() => {
+            const modalBody = document.createElement('div');
+            const iconElement = document.createElement('div');
+            iconElement.classList.add('option-block-icon');
+            iconElement.setAttribute('selected', 'true');
+            iconElement.setAttribute('icon-id', 'test-icon');
+            modalBody.appendChild(iconElement);
+            eXeLearning.app.modals.confirm.modalElementBody = modalBody;
+
+            block.apiUpdateIcon = vi.fn();
+        });
+
+        it('gets icon value from selected element', () => {
+            block.saveIconAction();
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith('test-icon');
+        });
+
+        it('uses empty string when icon is 0', () => {
+            const modalBody = eXeLearning.app.modals.confirm.modalElementBody;
+            modalBody.querySelector('.option-block-icon').setAttribute('icon-id', '0');
+
+            block.saveIconAction();
+            expect(block.apiUpdateIcon).toHaveBeenCalledWith('');
+        });
+
+        it('syncs to Yjs when binding available', () => {
+            const mockUpdateBlock = vi.fn();
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { updateBlock: mockUpdateBlock },
+            };
+
+            block.saveIconAction();
+
+            expect(mockUpdateBlock).toHaveBeenCalledWith(block.blockId, { iconName: 'test-icon' });
+        });
+    });
+
+    describe('goWindowToBlock', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            window.location.hash = '';
+        });
+
+        it('sets window location hash after delay', () => {
+            block.goWindowToBlock(100);
+            vi.advanceTimersByTime(100);
+            // In JSDOM, window.location.hash may not include the #
+            expect(window.location.hash).toContain(block.blockId);
+        });
+    });
+
+    describe('makeEmptyIcon', () => {
+        it('creates empty icon element', () => {
+            const emptyIcon = block.makeEmptyIcon();
+            expect(emptyIcon.classList.contains('empty-block-icon')).toBe(true);
+        });
+    });
+
+    describe('generateBlockContentNode', () => {
+        it('returns blockContent element when creating new node', () => {
+            // Set newNode=true to create a new block content node
+            const content = block.generateBlockContentNode(true);
+            expect(content).toBeDefined();
+            expect(content.classList.contains('box')).toBe(true);
+        });
+
+        it('adds draggable class when draggable is true', () => {
+            const content = block.generateBlockContentNode(true);
+            expect(content.classList.contains('draggable')).toBe(true);
+        });
+    });
+
+    describe('setProperties', () => {
+        it('updates properties.value from data object', () => {
+            const props = {
+                identifier: { value: 'test-id' },
+                visibility: { value: 'true' },
+                cssClass: { value: 'custom-class' },
+            };
+
+            block.setProperties(props);
+
+            expect(block.properties.identifier.value).toBe('test-id');
+            expect(block.properties.visibility.value).toBe('true');
+            expect(block.properties.cssClass.value).toBe('custom-class');
+        });
+
+        it('handles onlyHeritable flag', () => {
+            const props = {
+                identifier: { value: 'test-id', heritable: true },
+                visibility: { value: 'true', heritable: false },
+            };
+
+            block.setProperties(props, true);
+
+            expect(block.properties.identifier.value).toBe('test-id');
+            // visibility should not be updated since heritable is false
+        });
+    });
+
+    describe('updateParam', () => {
+        it('updates parameter value', () => {
+            block.updateParam('blockName', 'New Name');
+            expect(block.blockName).toBe('New Name');
+        });
+    });
+
+    describe('setPropertiesClassesToElement', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
+        });
+
+        it('sets identifier attribute when value exists', () => {
+            block.properties.identifier.value = 'my-block-id';
+            block.setPropertiesClassesToElement();
+            expect(block.blockContent.getAttribute('identifier')).toBe('my-block-id');
+        });
+
+        it('sets export-view attribute when visibility is true', () => {
+            block.properties.visibility.value = 'true';
+            block.setPropertiesClassesToElement();
+            expect(block.blockContent.getAttribute('export-view')).toBe('true');
+        });
+
+        it('adds css classes when cssClass has value', () => {
+            block.properties.cssClass.value = 'class1 class2';
+            block.setPropertiesClassesToElement();
+            expect(block.blockContent.classList.contains('class1')).toBe(true);
+            expect(block.blockContent.classList.contains('class2')).toBe(true);
+        });
+
+        it('calls toggleOff when minimized is true', () => {
+            const toggleOffSpy = vi.spyOn(block, 'toggleOff').mockImplementation(() => {});
+            block.properties.minimized.value = 'true';
+            block.setPropertiesClassesToElement();
+            expect(toggleOffSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('makeIconNameElement', () => {
+        beforeEach(() => {
+            block.iconElement = null;
+        });
+
+        it('creates icon element', () => {
+            const iconEl = block.makeIconNameElement();
+            expect(iconEl).toBeDefined();
+            expect(iconEl.classList.contains('exe-icon')).toBe(true);
+            expect(iconEl.classList.contains('box-icon')).toBe(true);
+        });
+
+        it('shows empty icon when no iconName set', () => {
+            block.iconName = null;
+            const iconEl = block.makeIconNameElement();
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(true);
+        });
+
+        it('uses theme icon when iconName exists', () => {
+            block.iconName = 'icon1';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
+            }));
+            const iconEl = block.makeIconNameElement();
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
+        });
+    });
+
+    describe('makeIconValueElement', () => {
+        it('creates img element with src and alt', () => {
+            const icon = { value: '/path/to/icon.svg', title: 'Test Icon' };
+            const iconValue = block.makeIconValueElement(icon);
+            expect(iconValue.tagName).toBe('IMG');
+            expect(iconValue.getAttribute('src')).toBe('/path/to/icon.svg');
+            expect(iconValue.getAttribute('alt')).toBe('Test Icon');
+        });
+    });
+
+    describe('makeBlockHeadElement', () => {
+        beforeEach(() => {
+            block.blockId = 'test-block-id';
+            block.blockName = 'Test Block';
+            vi.spyOn(block, 'addBehaviourChangeIcon').mockImplementation(() => {});
+        });
+
+        it('creates header element', () => {
+            const header = block.makeBlockHeadElement();
+            expect(header.tagName).toBe('HEADER');
+            expect(header.classList.contains('box-head')).toBe(true);
+        });
+
+        it('includes toggle button', () => {
+            const header = block.makeBlockHeadElement();
+            const toggleBtn = header.querySelector('.box-toggler');
+            expect(toggleBtn).not.toBeNull();
+        });
+
+        it('sets drag attributes', () => {
+            const header = block.makeBlockHeadElement();
+            expect(header.getAttribute('draggable')).toBe('true');
+            expect(header.getAttribute('drag')).toBe('box');
+        });
+    });
+
+    describe('makeBlockTitleElementText', () => {
+        beforeEach(() => {
+            block.blockId = 'test-block-id';
+            block.blockName = 'Test Block';
+            vi.spyOn(block, 'addBehaviourChangeIcon').mockImplementation(() => {});
+        });
+
+        it('creates title container element', () => {
+            const titleContainer = block.makeBlockTitleElementText();
+            expect(titleContainer.classList.contains('content-editable-title')).toBe(true);
+        });
+
+        it('includes h1 element with blockName', () => {
+            const titleContainer = block.makeBlockTitleElementText();
+            const h1 = titleContainer.querySelector('h1');
+            expect(h1).not.toBeNull();
+            expect(h1.innerHTML).toBe('Test Block');
+        });
+
+        it('includes edit button', () => {
+            const titleContainer = block.makeBlockTitleElementText();
+            const editBtn = titleContainer.querySelector('.btn-edit-title');
+            expect(editBtn).not.toBeNull();
+        });
+    });
+
+    describe('makeBlockButtonsElement', () => {
+        beforeEach(() => {
+            block.blockId = 'test-block-id';
+            vi.spyOn(block, 'addBehaviourButtonDropDown').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonMoveUpBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonMoveDownBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonDeleteBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonPropertiesBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonCloneBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourMoveToPageBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourExportBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourToggleBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addTooltips').mockImplementation(() => {});
+            vi.spyOn(block, 'addNoTranslateForGoogle').mockImplementation(() => {});
+        });
+
+        it('creates buttons container', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.classList.contains('box_actions')).toBe(true);
+        });
+
+        it('includes move up button', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.querySelector('.btn-move-up')).not.toBeNull();
+        });
+
+        it('includes move down button', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.querySelector('.btn-move-down')).not.toBeNull();
+        });
+
+        it('includes dropdown menu', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.querySelector('.dropdown-menu')).not.toBeNull();
+        });
+
+        it('calls all behaviour methods', () => {
+            block.makeBlockButtonsElement();
+            expect(block.addBehaviourButtonDropDown).toHaveBeenCalled();
+            expect(block.addBehaviourButtonMoveUpBlock).toHaveBeenCalled();
+            expect(block.addBehaviourButtonMoveDownBlock).toHaveBeenCalled();
+            expect(block.addBehaviourButtonDeleteBlock).toHaveBeenCalled();
+        });
+    });
+
+    describe('getCurrentOrder', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+        });
+
+        it('returns order from previous block when exists', () => {
+            const prevBlock = document.createElement('div');
+            prevBlock.classList.add('box');
+            prevBlock.setAttribute('order', '5');
+
+            const container = document.createElement('div');
+            container.appendChild(prevBlock);
+            container.appendChild(block.blockContent);
+
+            const order = block.getCurrentOrder();
+            expect(order).toBe(6);
+        });
+
+        it('returns order from next block when previous does not exist', () => {
+            const nextBlock = document.createElement('div');
+            nextBlock.classList.add('box');
+            nextBlock.setAttribute('order', '10');
+
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            container.appendChild(nextBlock);
+
+            const order = block.getCurrentOrder();
+            expect(order).toBe(9);
+        });
+
+        it('returns -1 when no adjacent blocks', () => {
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+
+            const order = block.getCurrentOrder();
+            expect(order).toBe(-1);
+        });
+    });
+
+    describe('getContentPrevBlock', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+        });
+
+        it('returns previous element when it has box class', () => {
+            const prevBlock = document.createElement('div');
+            prevBlock.classList.add('box');
+
+            const container = document.createElement('div');
+            container.appendChild(prevBlock);
+            container.appendChild(block.blockContent);
+
+            const result = block.getContentPrevBlock();
+            expect(result).toBe(prevBlock);
+        });
+
+        it('returns false when previous element does not have box class', () => {
+            const prevElement = document.createElement('div');
+
+            const container = document.createElement('div');
+            container.appendChild(prevElement);
+            container.appendChild(block.blockContent);
+
+            const result = block.getContentPrevBlock();
+            expect(result).toBe(false);
+        });
+
+        it('returns false when no previous element', () => {
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+
+            const result = block.getContentPrevBlock();
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('getContentNextBlock', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+        });
+
+        it('returns next element when it has box class', () => {
+            const nextBlock = document.createElement('div');
+            nextBlock.classList.add('box');
+
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            container.appendChild(nextBlock);
+
+            const result = block.getContentNextBlock();
+            expect(result).toBe(nextBlock);
+        });
+
+        it('returns false when next element does not have box class', () => {
+            const nextElement = document.createElement('div');
+
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            container.appendChild(nextElement);
+
+            const result = block.getContentNextBlock();
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('apiUpdateTitle', () => {
+        beforeEach(() => {
+            block.id = 'server-id-123';
+            block.blockNameElementText = document.createElement('h1');
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        it('updates blockName property', () => {
+            block.apiUpdateTitle('New Title');
+            expect(block.blockName).toBe('New Title');
+        });
+
+        it('updates blockNameElementText innerHTML', () => {
+            block.apiUpdateTitle('New Title');
+            expect(block.blockNameElementText.innerHTML).toBe('New Title');
+        });
+
+        it('syncs to Yjs when binding available', () => {
+            const mockUpdateBlock = vi.fn();
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { updateBlock: mockUpdateBlock },
+            };
+
+            block.apiUpdateTitle('New Title');
+
+            expect(mockUpdateBlock).toHaveBeenCalledWith(block.blockId, { blockName: 'New Title' });
+        });
+
+        it('calls apiSendDataService when id exists', () => {
+            block.apiUpdateTitle('New Title');
+            expect(block.apiSendDataService).toHaveBeenCalledWith('putSaveBlock', ['odePagStructureSyncId', 'blockName']);
+        });
+    });
+
+    describe('apiUpdateIcon', () => {
+        beforeEach(() => {
+            block.id = 'server-id-123';
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue({ responseMessage: 'OK' });
+            vi.spyOn(block, 'makeIconNameElement').mockImplementation(() => {});
+        });
+
+        it('updates iconName property', () => {
+            block.apiUpdateIcon('new-icon');
+            expect(block.iconName).toBe('new-icon');
+        });
+
+        it('calls apiSendDataService when id exists', () => {
+            block.apiUpdateIcon('new-icon');
+            expect(block.apiSendDataService).toHaveBeenCalled();
+        });
+    });
+
 });
