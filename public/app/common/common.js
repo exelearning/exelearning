@@ -531,6 +531,8 @@ if (typeof global !== 'undefined') {
     global.$exe = $exe;
 }
 
+// Export $exeDevices to global for Node.js environments (testing)
+
 // iDevices common code - To review (Part of this code should not be exported)
 var $exeDevices = {
     iDevice: {
@@ -1854,4 +1856,8 @@ var $exeDevices = {
         },
 
     }
+}
+
+if (typeof global !== 'undefined') {
+    global.$exeDevices = $exeDevices;
 }

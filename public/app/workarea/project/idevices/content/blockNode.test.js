@@ -935,4 +935,332 @@ describe('IdeviceBlockNode', () => {
             expect(block.blockName).toBe('New Name');
         });
     });
+
+    describe('setPropertiesClassesToElement', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+            block.toggleElement = document.createElement('button');
+            block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
+        });
+
+        it('sets identifier attribute when value exists', () => {
+            block.properties.identifier.value = 'my-block-id';
+            block.setPropertiesClassesToElement();
+            expect(block.blockContent.getAttribute('identifier')).toBe('my-block-id');
+        });
+
+        it('sets export-view attribute when visibility is true', () => {
+            block.properties.visibility.value = 'true';
+            block.setPropertiesClassesToElement();
+            expect(block.blockContent.getAttribute('export-view')).toBe('true');
+        });
+
+        it('adds css classes when cssClass has value', () => {
+            block.properties.cssClass.value = 'class1 class2';
+            block.setPropertiesClassesToElement();
+            expect(block.blockContent.classList.contains('class1')).toBe(true);
+            expect(block.blockContent.classList.contains('class2')).toBe(true);
+        });
+
+        it('calls toggleOff when minimized is true', () => {
+            const toggleOffSpy = vi.spyOn(block, 'toggleOff').mockImplementation(() => {});
+            block.properties.minimized.value = 'true';
+            block.setPropertiesClassesToElement();
+            expect(toggleOffSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('makeIconNameElement', () => {
+        beforeEach(() => {
+            block.iconElement = null;
+        });
+
+        it('creates icon element', () => {
+            const iconEl = block.makeIconNameElement();
+            expect(iconEl).toBeDefined();
+            expect(iconEl.classList.contains('exe-icon')).toBe(true);
+            expect(iconEl.classList.contains('box-icon')).toBe(true);
+        });
+
+        it('shows empty icon when no iconName set', () => {
+            block.iconName = null;
+            const iconEl = block.makeIconNameElement();
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(true);
+        });
+
+        it('uses theme icon when iconName exists', () => {
+            block.iconName = 'icon1';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
+            }));
+            const iconEl = block.makeIconNameElement();
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
+        });
+    });
+
+    describe('makeIconValueElement', () => {
+        it('creates img element with src and alt', () => {
+            const icon = { value: '/path/to/icon.svg', title: 'Test Icon' };
+            const iconValue = block.makeIconValueElement(icon);
+            expect(iconValue.tagName).toBe('IMG');
+            expect(iconValue.getAttribute('src')).toBe('/path/to/icon.svg');
+            expect(iconValue.getAttribute('alt')).toBe('Test Icon');
+        });
+    });
+
+    describe('makeBlockHeadElement', () => {
+        beforeEach(() => {
+            block.blockId = 'test-block-id';
+            block.blockName = 'Test Block';
+            vi.spyOn(block, 'addBehaviourChangeIcon').mockImplementation(() => {});
+        });
+
+        it('creates header element', () => {
+            const header = block.makeBlockHeadElement();
+            expect(header.tagName).toBe('HEADER');
+            expect(header.classList.contains('box-head')).toBe(true);
+        });
+
+        it('includes toggle button', () => {
+            const header = block.makeBlockHeadElement();
+            const toggleBtn = header.querySelector('.box-toggler');
+            expect(toggleBtn).not.toBeNull();
+        });
+
+        it('sets drag attributes', () => {
+            const header = block.makeBlockHeadElement();
+            expect(header.getAttribute('draggable')).toBe('true');
+            expect(header.getAttribute('drag')).toBe('box');
+        });
+    });
+
+    describe('makeBlockTitleElementText', () => {
+        beforeEach(() => {
+            block.blockId = 'test-block-id';
+            block.blockName = 'Test Block';
+            vi.spyOn(block, 'addBehaviourChangeIcon').mockImplementation(() => {});
+        });
+
+        it('creates title container element', () => {
+            const titleContainer = block.makeBlockTitleElementText();
+            expect(titleContainer.classList.contains('content-editable-title')).toBe(true);
+        });
+
+        it('includes h1 element with blockName', () => {
+            const titleContainer = block.makeBlockTitleElementText();
+            const h1 = titleContainer.querySelector('h1');
+            expect(h1).not.toBeNull();
+            expect(h1.innerHTML).toBe('Test Block');
+        });
+
+        it('includes edit button', () => {
+            const titleContainer = block.makeBlockTitleElementText();
+            const editBtn = titleContainer.querySelector('.btn-edit-title');
+            expect(editBtn).not.toBeNull();
+        });
+    });
+
+    describe('makeBlockButtonsElement', () => {
+        beforeEach(() => {
+            block.blockId = 'test-block-id';
+            vi.spyOn(block, 'addBehaviourButtonDropDown').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonMoveUpBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonMoveDownBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonDeleteBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonPropertiesBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonCloneBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourMoveToPageBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourExportBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourToggleBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addTooltips').mockImplementation(() => {});
+            vi.spyOn(block, 'addNoTranslateForGoogle').mockImplementation(() => {});
+        });
+
+        it('creates buttons container', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.classList.contains('box_actions')).toBe(true);
+        });
+
+        it('includes move up button', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.querySelector('.btn-move-up')).not.toBeNull();
+        });
+
+        it('includes move down button', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.querySelector('.btn-move-down')).not.toBeNull();
+        });
+
+        it('includes dropdown menu', () => {
+            const buttons = block.makeBlockButtonsElement();
+            expect(buttons.querySelector('.dropdown-menu')).not.toBeNull();
+        });
+
+        it('calls all behaviour methods', () => {
+            block.makeBlockButtonsElement();
+            expect(block.addBehaviourButtonDropDown).toHaveBeenCalled();
+            expect(block.addBehaviourButtonMoveUpBlock).toHaveBeenCalled();
+            expect(block.addBehaviourButtonMoveDownBlock).toHaveBeenCalled();
+            expect(block.addBehaviourButtonDeleteBlock).toHaveBeenCalled();
+        });
+    });
+
+    describe('getCurrentOrder', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+        });
+
+        it('returns order from previous block when exists', () => {
+            const prevBlock = document.createElement('div');
+            prevBlock.classList.add('box');
+            prevBlock.setAttribute('order', '5');
+
+            const container = document.createElement('div');
+            container.appendChild(prevBlock);
+            container.appendChild(block.blockContent);
+
+            const order = block.getCurrentOrder();
+            expect(order).toBe(6);
+        });
+
+        it('returns order from next block when previous does not exist', () => {
+            const nextBlock = document.createElement('div');
+            nextBlock.classList.add('box');
+            nextBlock.setAttribute('order', '10');
+
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            container.appendChild(nextBlock);
+
+            const order = block.getCurrentOrder();
+            expect(order).toBe(9);
+        });
+
+        it('returns -1 when no adjacent blocks', () => {
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+
+            const order = block.getCurrentOrder();
+            expect(order).toBe(-1);
+        });
+    });
+
+    describe('getContentPrevBlock', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+        });
+
+        it('returns previous element when it has box class', () => {
+            const prevBlock = document.createElement('div');
+            prevBlock.classList.add('box');
+
+            const container = document.createElement('div');
+            container.appendChild(prevBlock);
+            container.appendChild(block.blockContent);
+
+            const result = block.getContentPrevBlock();
+            expect(result).toBe(prevBlock);
+        });
+
+        it('returns false when previous element does not have box class', () => {
+            const prevElement = document.createElement('div');
+
+            const container = document.createElement('div');
+            container.appendChild(prevElement);
+            container.appendChild(block.blockContent);
+
+            const result = block.getContentPrevBlock();
+            expect(result).toBe(false);
+        });
+
+        it('returns false when no previous element', () => {
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+
+            const result = block.getContentPrevBlock();
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('getContentNextBlock', () => {
+        beforeEach(() => {
+            block.blockContent = document.createElement('div');
+        });
+
+        it('returns next element when it has box class', () => {
+            const nextBlock = document.createElement('div');
+            nextBlock.classList.add('box');
+
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            container.appendChild(nextBlock);
+
+            const result = block.getContentNextBlock();
+            expect(result).toBe(nextBlock);
+        });
+
+        it('returns false when next element does not have box class', () => {
+            const nextElement = document.createElement('div');
+
+            const container = document.createElement('div');
+            container.appendChild(block.blockContent);
+            container.appendChild(nextElement);
+
+            const result = block.getContentNextBlock();
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('apiUpdateTitle', () => {
+        beforeEach(() => {
+            block.id = 'server-id-123';
+            block.blockNameElementText = document.createElement('h1');
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        it('updates blockName property', () => {
+            block.apiUpdateTitle('New Title');
+            expect(block.blockName).toBe('New Title');
+        });
+
+        it('updates blockNameElementText innerHTML', () => {
+            block.apiUpdateTitle('New Title');
+            expect(block.blockNameElementText.innerHTML).toBe('New Title');
+        });
+
+        it('syncs to Yjs when binding available', () => {
+            const mockUpdateBlock = vi.fn();
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: { updateBlock: mockUpdateBlock },
+            };
+
+            block.apiUpdateTitle('New Title');
+
+            expect(mockUpdateBlock).toHaveBeenCalledWith(block.blockId, { blockName: 'New Title' });
+        });
+
+        it('calls apiSendDataService when id exists', () => {
+            block.apiUpdateTitle('New Title');
+            expect(block.apiSendDataService).toHaveBeenCalledWith('putSaveBlock', ['odePagStructureSyncId', 'blockName']);
+        });
+    });
+
+    describe('apiUpdateIcon', () => {
+        beforeEach(() => {
+            block.id = 'server-id-123';
+            vi.spyOn(block, 'apiSendDataService').mockResolvedValue({ responseMessage: 'OK' });
+            vi.spyOn(block, 'makeIconNameElement').mockImplementation(() => {});
+        });
+
+        it('updates iconName property', () => {
+            block.apiUpdateIcon('new-icon');
+            expect(block.iconName).toBe('new-icon');
+        });
+
+        it('calls apiSendDataService when id exists', () => {
+            block.apiUpdateIcon('new-icon');
+            expect(block.apiSendDataService).toHaveBeenCalled();
+        });
+    });
+
 });

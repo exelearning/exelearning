@@ -1675,4 +1675,180 @@ describe('IdeviceNode', () => {
             expect(spy).toHaveBeenCalled();
         });
     });
+
+    describe('getContentPrevIdevice', () => {
+        beforeEach(() => {
+            idevice.ideviceContent = document.createElement('div');
+        });
+
+        it('returns previous element when it has idevice_node class', () => {
+            const prevIdevice = document.createElement('div');
+            prevIdevice.classList.add('idevice_node');
+
+            const container = document.createElement('div');
+            container.appendChild(prevIdevice);
+            container.appendChild(idevice.ideviceContent);
+
+            const result = idevice.getContentPrevIdevice();
+            expect(result).toBe(prevIdevice);
+        });
+
+        it('returns false when previous element does not have idevice_node class', () => {
+            const prevElement = document.createElement('div');
+
+            const container = document.createElement('div');
+            container.appendChild(prevElement);
+            container.appendChild(idevice.ideviceContent);
+
+            const result = idevice.getContentPrevIdevice();
+            expect(result).toBe(false);
+        });
+
+        it('returns false when no previous element', () => {
+            const container = document.createElement('div');
+            container.appendChild(idevice.ideviceContent);
+
+            const result = idevice.getContentPrevIdevice();
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('getContentNextIdevice', () => {
+        beforeEach(() => {
+            idevice.ideviceContent = document.createElement('div');
+        });
+
+        it('returns next element when it has idevice_node class', () => {
+            const nextIdevice = document.createElement('div');
+            nextIdevice.classList.add('idevice_node');
+
+            const container = document.createElement('div');
+            container.appendChild(idevice.ideviceContent);
+            container.appendChild(nextIdevice);
+
+            const result = idevice.getContentNextIdevice();
+            expect(result).toBe(nextIdevice);
+        });
+
+        it('returns false when next element does not have idevice_node class', () => {
+            const nextElement = document.createElement('div');
+
+            const container = document.createElement('div');
+            container.appendChild(idevice.ideviceContent);
+            container.appendChild(nextElement);
+
+            const result = idevice.getContentNextIdevice();
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('getCurrentOrder', () => {
+        beforeEach(() => {
+            idevice.ideviceContent = document.createElement('div');
+        });
+
+        it('returns order from previous idevice when exists', () => {
+            const prevIdevice = document.createElement('div');
+            prevIdevice.classList.add('idevice_node');
+            prevIdevice.setAttribute('order', '5');
+
+            const container = document.createElement('div');
+            container.appendChild(prevIdevice);
+            container.appendChild(idevice.ideviceContent);
+
+            const order = idevice.getCurrentOrder();
+            expect(order).toBe(6);
+        });
+
+        it('returns order from next idevice when previous does not exist', () => {
+            const nextIdevice = document.createElement('div');
+            nextIdevice.classList.add('idevice_node');
+            nextIdevice.setAttribute('order', '10');
+
+            const container = document.createElement('div');
+            container.appendChild(idevice.ideviceContent);
+            container.appendChild(nextIdevice);
+
+            const order = idevice.getCurrentOrder();
+            expect(order).toBe(9);
+        });
+
+        it('returns -1 when no adjacent idevices', () => {
+            const container = document.createElement('div');
+            container.appendChild(idevice.ideviceContent);
+
+            const order = idevice.getCurrentOrder();
+            expect(order).toBe(-1);
+        });
+    });
+
+    describe('setPropertiesClassesToElement', () => {
+        beforeEach(() => {
+            idevice.ideviceContent = document.createElement('div');
+        });
+
+        it('sets identifier attribute when value exists', () => {
+            idevice.properties.identifier.value = 'my-idevice-id';
+            idevice.setPropertiesClassesToElement();
+            expect(idevice.ideviceContent.getAttribute('identifier')).toBe('my-idevice-id');
+        });
+
+        it('sets export-view attribute when visibility is true', () => {
+            idevice.properties.visibility.value = 'true';
+            idevice.setPropertiesClassesToElement();
+            expect(idevice.ideviceContent.getAttribute('export-view')).toBe('true');
+        });
+
+        it('adds css classes when cssClass has value', () => {
+            idevice.properties.cssClass.value = 'class1 class2';
+            idevice.setPropertiesClassesToElement();
+            expect(idevice.ideviceContent.classList.contains('class1')).toBe(true);
+            expect(idevice.ideviceContent.classList.contains('class2')).toBe(true);
+        });
+    });
+
+    describe('isYjsEnabled', () => {
+        it('returns true when Yjs is enabled', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+
+            expect(idevice.isYjsEnabled()).toBe(true);
+        });
+
+        it('returns false when Yjs is disabled', () => {
+            eXeLearning.app.project._yjsEnabled = false;
+
+            expect(idevice.isYjsEnabled()).toBe(false);
+        });
+    });
+
+    describe('loadPropertiesFromYjs', () => {
+        beforeEach(() => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponentProperties: vi.fn().mockReturnValue({
+                        identifier: 'yjs-id',
+                        visibility: true,
+                    }),
+                },
+            };
+            idevice.yjsComponentId = 'yjs-comp-id';
+        });
+
+        it('loads properties from Yjs when enabled', () => {
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.identifier.value).toBe('yjs-id');
+            expect(idevice.properties.visibility.value).toBe('true');
+        });
+
+        it('does nothing when Yjs is disabled', () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const originalValue = idevice.properties.identifier.value;
+
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.identifier.value).toBe(originalValue);
+        });
+    });
 });

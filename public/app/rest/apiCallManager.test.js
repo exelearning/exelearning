@@ -343,6 +343,19 @@ describe('ApiCallManager', () => {
       expect(document.getElementById('editing-node')?.classList.contains('editing-article')).toBe(false);
       expect(document.getElementById('disabled-node')?.classList.contains('article-disabled')).toBe(false);
     });
+
+    it('should call api when Yjs is disabled', async () => {
+      apiManager.endpoints.api_idevices_list_by_page = {
+        path: 'http://localhost/idevices/{odeNavStructureSyncId}',
+      };
+      mockApp.project = { _yjsEnabled: false };
+
+      await apiManager.getComponentsByPage('page-1');
+
+      expect(mockFunc.get).toHaveBeenCalledWith(
+        'http://localhost/idevices/page-1'
+      );
+    });
   });
 
   describe('_getComponentsByPageFromYjs', () => {
@@ -434,6 +447,23 @@ describe('ApiCallManager', () => {
       expect(result.odePagStructureSyncs[0].odePagStructureSyncProperties.visibility.value).toBe('true');
       expect(result.odePagStructureSyncs[0].odeComponentsSyncs[0].htmlView).toBe('<img src="blob://asset.png">');
     });
+
+    it('should resolve root to first page when available', () => {
+      const structureBinding = {
+        getPages: vi.fn(() => [{ id: 'page-1' }]),
+        getPageMap: vi.fn(() => new Map([['id', 'page-1'], ['pageName', 'Page One']])),
+        getBlocks: vi.fn(() => []),
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._getComponentsByPageFromYjs('root');
+
+      expect(result.odePageId).toBe('page-1');
+      expect(result.pageName).toBe('Page One');
+    });
   });
 
   describe('postOdeSave', () => {
@@ -463,6 +493,18 @@ describe('ApiCallManager', () => {
       expect(updateComponent).toHaveBeenCalledWith('comp-1', { htmlContent: '<p>Test</p>' });
       expect(result).toEqual({ responseMessage: 'OK' });
       expect(mockFunc.put).not.toHaveBeenCalled();
+    });
+
+    it('should call api when Yjs is disabled', async () => {
+      apiManager.endpoints.api_idevices_html_view_save = { path: 'http://localhost/html/save' };
+      mockApp.project = { _yjsEnabled: false };
+
+      await apiManager.putSaveHtmlView({ odeComponentsSyncId: 'c1', htmlView: '<p>Ok</p>' });
+
+      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/html/save', {
+        odeComponentsSyncId: 'c1',
+        htmlView: '<p>Ok</p>',
+      });
     });
   });
 
@@ -539,6 +581,105 @@ describe('ApiCallManager', () => {
     });
   });
 
+  describe('putSavePropertiesIdevice', () => {
+    it('should save properties to Yjs when enabled', async () => {
+      const updateComponent = vi.fn();
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateComponent } },
+      };
+
+      const result = await apiManager.putSavePropertiesIdevice({
+        odeComponentsSyncId: 'comp-1',
+        visibility: 'true',
+        cssClass: 'note',
+        ignored: 'skip',
+      });
+
+      expect(updateComponent).toHaveBeenCalledWith('comp-1', {
+        properties: { visibility: 'true', cssClass: 'note' },
+      });
+      expect(result).toEqual({ responseMessage: 'OK' });
+    });
+  });
+
+  describe('putSaveBlock', () => {
+    it('should update block via Yjs when enabled', async () => {
+      const updateBlock = vi.fn();
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock } },
+      };
+
+      const result = await apiManager.putSaveBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Title',
+        iconName: 'Icon',
+        order: 2,
+      });
+
+      expect(updateBlock).toHaveBeenCalledWith('block-1', {
+        blockName: 'Title',
+        iconName: 'Icon',
+        order: 2,
+      });
+      expect(result.responseMessage).toBe('OK');
+    });
+  });
+
+  describe('putSavePropertiesBlock', () => {
+    it('should update block properties via Yjs', async () => {
+      const updateBlock = vi.fn();
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock } },
+      };
+
+      const result = await apiManager.putSavePropertiesBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Block',
+        iconName: 'Icon',
+        visibility: 'true',
+        cssClass: 'hl',
+      });
+
+      expect(updateBlock).toHaveBeenCalledWith('block-1', {
+        properties: { visibility: 'true', cssClass: 'hl' },
+      });
+      expect(updateBlock).toHaveBeenCalledWith('block-1', { blockName: 'Block' });
+      expect(updateBlock).toHaveBeenCalledWith('block-1', { iconName: 'Icon' });
+      expect(result.responseMessage).toBe('OK');
+    });
+  });
+
+  describe('putSavePropertiesPage', () => {
+    it('should update page properties via Yjs', async () => {
+      const updatePage = vi.fn();
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updatePage } },
+      };
+
+      const result = await apiManager.putSavePropertiesPage({
+        odeNavStructureSyncId: 'page-1',
+        titleNode: 'Page Title',
+        order: 3,
+        customField: 'custom',
+      });
+
+      expect(updatePage).toHaveBeenCalledWith('page-1', {
+        pageName: 'Page Title',
+        order: 3,
+        properties: {
+          titleNode: 'Page Title',
+          order: 3,
+          customField: 'custom',
+        },
+      });
+      expect(result.responseMessage).toBe('OK');
+    });
+  });
+
   describe('deleteIdevice', () => {
     it('should call func.delete when Yjs not enabled', async () => {
       apiManager.endpoints.api_idevices_idevice_delete = { path: 'http://localhost/delete/{odeComponentsSyncId}' };
@@ -594,6 +735,450 @@ describe('ApiCallManager', () => {
         'http://localhost/exelearning/api/projects/uuid/uuid-123/sharing',
         expect.any(Object)
       );
+    });
+  });
+
+  describe('getOdeExportDownload', () => {
+    it('should post structure for Yjs sessions', async () => {
+      apiManager.endpoints.api_ode_export_download = {
+        path: 'http://localhost/export/{odeSessionId}/{exportType}',
+      };
+      vi.spyOn(apiManager, 'buildStructureFromYjs').mockReturnValue({ pages: [] });
+
+      await apiManager.getOdeExportDownload('yjs-123', 'html5');
+
+      expect(mockFunc.post).toHaveBeenCalledWith(
+        'http://localhost/export/yjs-123/html5',
+        { structure: { pages: [] } }
+      );
+    });
+
+    it('should fallback to get when structure is unavailable', async () => {
+      apiManager.endpoints.api_ode_export_download = {
+        path: 'http://localhost/export/{odeSessionId}/{exportType}',
+      };
+      vi.spyOn(apiManager, 'buildStructureFromYjs').mockReturnValue(null);
+
+      await apiManager.getOdeExportDownload('yjs-456', 'html5');
+
+      expect(mockFunc.get).toHaveBeenCalledWith(
+        'http://localhost/export/yjs-456/html5'
+      );
+    });
+  });
+
+  describe('buildStructureFromYjs', () => {
+    it('should return null when manager is unavailable', () => {
+      mockApp.project = { _yjsBridge: { getDocumentManager: vi.fn(() => null) } };
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = apiManager.buildStructureFromYjs();
+
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('should build structure with pages, blocks, and components', () => {
+      const navigation = {
+        length: 1,
+        get: vi.fn(() => new Map([
+          ['id', 'page-1'],
+          ['pageName', 'Page One'],
+          ['parentId', null],
+          ['blocks', {
+            length: 1,
+            get: vi.fn(() => new Map([
+              ['id', 'block-1'],
+              ['blockName', 'Block One'],
+              ['iconName', 'Icon'],
+              ['components', {
+                length: 1,
+                get: vi.fn(() => new Map([
+                  ['id', 'comp-1'],
+                  ['ideviceType', 'FreeTextIdevice'],
+                  ['htmlContent', { toString: () => '<p>Hi</p>' }],
+                  ['properties', { toJSON: () => ({ visibility: 'true' }) }],
+                ])),
+              }],
+            ])),
+          }],
+        ])),
+      };
+      const manager = {
+        getMetadata: vi.fn(() => new Map([
+          ['title', 'Title'],
+          ['author', 'Author'],
+          ['language', 'es'],
+          ['description', 'Desc'],
+          ['license', 'MIT'],
+          ['theme', 'base'],
+        ])),
+        getNavigation: vi.fn(() => navigation),
+      };
+      mockApp.project = { _yjsBridge: { getDocumentManager: vi.fn(() => manager) } };
+
+      const result = apiManager.buildStructureFromYjs();
+
+      expect(result.pages[0].blocks[0].components[0].properties).toEqual({ visibility: 'true' });
+      expect(result.navigation[0].navText).toBe('Page One');
+    });
+  });
+
+  describe('getOdeIdevicesDownload', () => {
+    it('should build download response and call getText', async () => {
+      apiManager.endpoints.api_idevices_download_ode_components = {
+        path: 'http://localhost/idevices/{odeSessionId}/{odeBlockId}/{odeIdeviceId}',
+      };
+      mockFunc.getText.mockResolvedValue('payload');
+
+      const result = await apiManager.getOdeIdevicesDownload('s1', 'b1', 'i1');
+
+      expect(mockFunc.getText).toHaveBeenCalledWith(
+        'http://localhost/idevices/s1/b1/i1'
+      );
+      expect(result.url).toBe('http://localhost/idevices/s1/b1/i1');
+      expect(result.response).toBe('payload');
+    });
+  });
+
+  describe('getFileResourcesForceDownload', () => {
+    it('should return url with resource param', async () => {
+      apiManager.endpoints.api_idevices_force_download_file_resources = {
+        path: 'http://localhost/resource',
+      };
+
+      const result = await apiManager.getFileResourcesForceDownload('file.xml');
+
+      expect(result.url).toBe('http://localhost/resource?resource=file.xml');
+    });
+  });
+
+  describe('postOdeAutosave', () => {
+    it('should call post for autosave', async () => {
+      apiManager.endpoints.api_odes_ode_save_auto = { path: 'http://localhost/autosave' };
+
+      await apiManager.postOdeAutosave({ data: 'autosave' });
+
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/autosave', { data: 'autosave' });
+    });
+  });
+
+  describe('deprecated sync helpers', () => {
+    it('should return OK flags for updates', async () => {
+      const result = await apiManager.postCheckUserOdeUpdates({});
+
+      expect(result).toEqual({
+        responseMessage: 'OK',
+        hasUpdates: false,
+        syncNavStructureFlag: false,
+        syncPagStructureFlag: false,
+        syncComponentsFlag: false,
+      });
+    });
+
+    it('should return OK for page users', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await apiManager.postCheckUsersOdePage({});
+
+      expect(result).toEqual({ responseMessage: 'OK', usersOnPage: [] });
+      warnSpy.mockRestore();
+    });
+
+    it('should return OK for edit and flags', async () => {
+      const editResult = await apiManager.postEditIdevice({});
+      const activateResult = await apiManager.postActivateCurrentOdeUsersUpdateFlag({});
+      const componentResult = await apiManager.checkCurrentOdeUsersComponentFlag({});
+
+      expect(editResult).toEqual({ responseMessage: 'OK' });
+      expect(activateResult).toEqual({ responseMessage: 'OK' });
+      expect(componentResult).toEqual({ responseMessage: 'OK', isAvailable: true });
+    });
+  });
+
+  describe('project sharing api', () => {
+    it('should return error on visibility update failure', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: vi.fn().mockResolvedValue({ message: 'bad' }),
+      });
+
+      const result = await apiManager.updateProjectVisibility(1, 'public');
+
+      expect(result.responseMessage).toBe('ERROR');
+    });
+
+    it('should map collaborator errors', async () => {
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          json: vi.fn().mockResolvedValue({ message: 'not found' }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: vi.fn().mockResolvedValue({ message: 'already collaborator' }),
+        });
+
+      const notFound = await apiManager.addProjectCollaborator(1, 'a@b.com');
+      const already = await apiManager.addProjectCollaborator(1, 'a@b.com');
+
+      expect(notFound.responseMessage).toBe('USER_NOT_FOUND');
+      expect(already.responseMessage).toBe('ALREADY_COLLABORATOR');
+    });
+
+    it('should handle collaborator removal and transfer', async () => {
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ ok: true }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ ok: true }),
+        });
+
+      const removeResult = await apiManager.removeProjectCollaborator(1, 2);
+      const transferResult = await apiManager.transferProjectOwnership(1, 99);
+
+      expect(removeResult).toEqual({ ok: true });
+      expect(transferResult).toEqual({ ok: true });
+    });
+  });
+
+  describe('api wrapper calls', () => {
+    it('should call legacy session endpoints', async () => {
+      apiManager.endpoints.check_current_users_ode_session_id = { path: 'http://localhost/join' };
+      apiManager.endpoints.api_odes_ode_elp_open = { path: 'http://localhost/open' };
+      apiManager.endpoints.api_odes_ode_local_large_elp_open = { path: 'http://localhost/large' };
+      apiManager.endpoints.api_odes_ode_local_elp_open = { path: 'http://localhost/local' };
+      apiManager.endpoints.api_odes_ode_local_xml_properties_open = { path: 'http://localhost/xml' };
+      apiManager.endpoints.api_odes_ode_local_elp_import_root = { path: 'http://localhost/import-root' };
+      apiManager.endpoints.api_odes_ode_local_idevices_open = { path: 'http://localhost/idevices' };
+      apiManager.endpoints.api_odes_ode_multiple_local_elp_open = { path: 'http://localhost/multi' };
+      apiManager.endpoints.api_odes_remove_ode_file = { path: 'http://localhost/remove' };
+      apiManager.endpoints.api_odes_remove_date_ode_files = { path: 'http://localhost/remove-date' };
+      apiManager.endpoints.api_odes_check_before_leave_ode_session = { path: 'http://localhost/check' };
+      apiManager.endpoints.api_odes_clean_init_autosave_elp = { path: 'http://localhost/clean' };
+      apiManager.endpoints.api_odes_ode_session_close = { path: 'http://localhost/close' };
+
+      await apiManager.postJoinCurrentOdeSessionId({ id: 1 });
+      await apiManager.postSelectedOdeFile({ name: 'file' });
+      await apiManager.postLocalLargeOdeFile({ data: 'big' });
+      await apiManager.postLocalOdeFile({ data: 'small' });
+      await apiManager.postLocalXmlPropertiesFile({ data: 'xml' });
+      await apiManager.postImportElpToRoot({ data: 'root' });
+      await apiManager.postLocalOdeComponents({ data: 'components' });
+      await apiManager.postMultipleLocalOdeFiles({ data: 'multi' });
+      await apiManager.postDeleteOdeFile({ id: 1 });
+      await apiManager.postDeleteOdeFilesByDate({ from: '2020' });
+      await apiManager.postCheckCurrentOdeUsers({ id: 1 });
+      await apiManager.postCleanAutosavesByUser({ id: 1 });
+      await apiManager.postCloseSession({ id: 1 });
+
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/join', { id: 1 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/open', { name: 'file' });
+      expect(mockFunc.fileSendPost).toHaveBeenCalledWith('http://localhost/large', { data: 'big' });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/local', { data: 'small' });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/xml', { data: 'xml' });
+      expect(mockFunc.fileSendPost).toHaveBeenCalledWith('http://localhost/import-root', { data: 'root' });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevices', { data: 'components' });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/multi', { data: 'multi' });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/remove', { id: 1 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/remove-date', { from: '2020' });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/check', { id: 1 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/clean', { id: 1 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/close', { id: 1 });
+    });
+
+    it('should call theme, idevice, and preference endpoints', async () => {
+      apiManager.endpoints.api_themes_upload = { path: 'http://localhost/theme/upload' };
+      apiManager.endpoints.api_ode_theme_import = { path: 'http://localhost/theme/import' };
+      apiManager.endpoints.api_themes_installed_delete = { path: 'http://localhost/theme/delete' };
+      apiManager.endpoints.api_themes_new = { path: 'http://localhost/theme/new' };
+      apiManager.endpoints.api_idevices_upload = { path: 'http://localhost/idevices/upload' };
+      apiManager.endpoints.api_idevices_installed_delete = { path: 'http://localhost/idevices/delete' };
+      apiManager.endpoints.api_user_set_lopd_accepted = { path: 'http://localhost/lopd' };
+      apiManager.endpoints.api_user_preferences_get = { path: 'http://localhost/prefs' };
+      apiManager.endpoints.api_user_preferences_save = { path: 'http://localhost/prefs/save' };
+
+      await apiManager.postUploadTheme({ data: 'theme' });
+      await apiManager.postOdeImportTheme({ data: 'theme' });
+      await apiManager.deleteTheme({ id: 1 });
+      await apiManager.postNewTheme({ name: 'new' });
+      await apiManager.postUploadIdevice({ data: 'idevice' });
+      await apiManager.deleteIdeviceInstalled({ id: 2 });
+      await apiManager.postUserSetLopdAccepted();
+      await apiManager.getUserPreferences();
+      await apiManager.putSaveUserPreferences({ mode: 'dark' });
+
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/upload', { data: 'theme' });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/import', { data: 'theme' });
+      expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/theme/delete', { id: 1 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/new', { name: 'new' });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevices/upload', { data: 'idevice' });
+      expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/idevices/delete', { id: 2 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/lopd');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/prefs');
+      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
+    });
+
+    it('should call structure and diagnostics endpoints', async () => {
+      apiManager.endpoints.api_odes_last_updated = { path: 'http://localhost/last/{odeId}' };
+      apiManager.endpoints.api_odes_current_users = {
+        path: 'http://localhost/users/{odeId}/{odeVersionId}/{odeSessionId}',
+      };
+      apiManager.endpoints.api_nav_structures_nav_structure_get = {
+        path: 'http://localhost/structure/{odeVersionId}/{odeSessionId}',
+      };
+      apiManager.endpoints.api_odes_session_get_broken_links = { path: 'http://localhost/broken/session' };
+      apiManager.endpoints.api_odes_pag_get_broken_links = { path: 'http://localhost/broken/page/{odePageId}' };
+      apiManager.endpoints.api_odes_block_get_broken_links = { path: 'http://localhost/broken/block/{odeBlockId}' };
+      apiManager.endpoints.api_odes_idevice_get_broken_links = { path: 'http://localhost/broken/idevice/{odeIdeviceId}' };
+      apiManager.endpoints.api_odes_properties_get = { path: 'http://localhost/properties/{odeSessionId}' };
+      apiManager.endpoints.api_odes_properties_save = { path: 'http://localhost/properties/save' };
+      apiManager.endpoints.api_odes_session_get_used_files = { path: 'http://localhost/used-files' };
+
+      await apiManager.getOdeLastUpdated('ode-1');
+      await apiManager.getOdeConcurrentUsers('ode-1', 'v1', 's1');
+      await apiManager.getOdeStructure('v1', 's1');
+      await apiManager.getOdeSessionBrokenLinks({ id: 1 });
+      await apiManager.getOdePageBrokenLinks('page-1');
+      await apiManager.getOdeBlockBrokenLinks('block-1');
+      await apiManager.getOdeIdeviceBrokenLinks('idev-1');
+      await apiManager.getOdeProperties('s1');
+      await apiManager.putSaveOdeProperties({ id: 1 });
+      await apiManager.getOdeSessionUsedFiles({ id: 1 });
+
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/last/ode-1');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/users/ode-1/v1/s1', null, false);
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/structure/v1/s1');
+      expect(mockFunc.postJson).toHaveBeenCalledWith('http://localhost/broken/session', { id: 1 });
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/broken/page/page-1');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/broken/block/block-1');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/broken/idevice/idev-1');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/properties/s1');
+      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/properties/save', { id: 1 });
+      expect(mockFunc.postJson).toHaveBeenCalledWith('http://localhost/used-files', { id: 1 });
+    });
+
+    it('should call page, block, and file endpoints', async () => {
+      apiManager.endpoints.api_pag_structures_pag_structure_reorder = { path: 'http://localhost/block/reorder' };
+      apiManager.endpoints.api_pag_structures_pag_structure_duplicate = { path: 'http://localhost/block/clone' };
+      apiManager.endpoints.api_pag_structures_pag_structure_delete = {
+        path: 'http://localhost/block/delete/{odePagStructureSyncId}',
+      };
+      apiManager.endpoints.api_nav_structures_nav_structure_data_save = { path: 'http://localhost/page/save' };
+      apiManager.endpoints.api_nav_structures_nav_structure_reorder = { path: 'http://localhost/page/reorder' };
+      apiManager.endpoints.api_nav_structures_nav_structure_duplicate = { path: 'http://localhost/page/clone' };
+      apiManager.endpoints.api_nav_structures_nav_structure_delete = {
+        path: 'http://localhost/page/delete/{odeNavStructureSyncId}',
+      };
+      apiManager.endpoints.api_idevices_upload_file_resources = { path: 'http://localhost/file/upload' };
+      apiManager.endpoints.api_idevices_upload_large_file_resources = { path: 'http://localhost/file/large' };
+
+      await apiManager.putReorderBlock({ id: 1 });
+      await apiManager.postCloneBlock({ id: 1 });
+      await apiManager.deleteBlock('block-1');
+      await apiManager.putSavePage({ id: 1 });
+      await apiManager.putReorderPage({ id: 1 });
+      await apiManager.postClonePage({ id: 1 });
+      await apiManager.deletePage('page-1');
+      await apiManager.postUploadFileResource({ file: 'a' });
+      await apiManager.postUploadLargeFileResource({ file: 'b' });
+
+      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/block/reorder', { id: 1 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/block/clone', { id: 1 });
+      expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/block/delete/block-1');
+      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/page/save', { id: 1 });
+      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/page/reorder', { id: 1 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/page/clone', { id: 1 });
+      expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/page/delete/page-1');
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/file/upload', { file: 'a' });
+      expect(mockFunc.fileSendPost).toHaveBeenCalledWith('http://localhost/file/large', { file: 'b' });
+    });
+
+    it('should call translation and cloud endpoints', async () => {
+      apiManager.endpoints.api_translations_lists = { path: 'http://localhost/i18n' };
+      apiManager.endpoints.api_translations_list_by_locale = { path: 'http://localhost/i18n/{locale}' };
+      apiManager.endpoints.api_google_oauth_login_url_get = { path: 'http://localhost/google/login' };
+      apiManager.endpoints.api_google_drive_folders_list = { path: 'http://localhost/google/folders' };
+      apiManager.endpoints.api_google_drive_file_upload = { path: 'http://localhost/google/upload' };
+      apiManager.endpoints.api_dropbox_oauth_login_url_get = { path: 'http://localhost/dropbox/login' };
+      apiManager.endpoints.api_dropbox_folders_list = { path: 'http://localhost/dropbox/folders' };
+      apiManager.endpoints.api_dropbox_file_upload = { path: 'http://localhost/dropbox/upload' };
+
+      await apiManager.getTranslationsAll();
+      await apiManager.getTranslations('es');
+      await apiManager.getUrlLoginGoogleDrive();
+      await apiManager.getFoldersGoogleDrive();
+      await apiManager.uploadFileGoogleDrive({ file: 'a' });
+      await apiManager.getUrlLoginDropbox();
+      await apiManager.getFoldersDropbox();
+      await apiManager.uploadFileDropbox({ file: 'b' });
+
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/i18n');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/i18n/es');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/google/login');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/google/folders');
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/google/upload', { file: 'a' });
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/dropbox/login');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/dropbox/folders');
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/dropbox/upload', { file: 'b' });
+    });
+
+    it('should call component html endpoints', async () => {
+      apiManager.endpoints.api_idevices_html_template_get = {
+        path: 'http://localhost/html/{odeComponentsSyncId}',
+      };
+      apiManager.endpoints.api_idevices_html_view_get = {
+        path: 'http://localhost/html/view/{odeComponentsSyncId}',
+      };
+
+      await apiManager.getComponentHtmlTemplate('comp-1');
+      await apiManager.getSaveHtmlView('comp-2');
+
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/html/comp-1');
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/html/view/{odeComponentsSyncId}');
+    });
+
+    it('should call idevice save and reorder endpoints', async () => {
+      apiManager.endpoints.api_idevices_idevice_data_save = { path: 'http://localhost/idevice/save' };
+      apiManager.endpoints.api_idevices_idevice_reorder = { path: 'http://localhost/idevice/reorder' };
+      apiManager.endpoints.api_idevices_idevice_duplicate = { path: 'http://localhost/idevice/clone' };
+      apiManager.endpoints.api_ode_export_preview = { path: 'http://localhost/preview/{odeSessionId}' };
+
+      await apiManager.putSaveIdevice({ id: 1 });
+      await apiManager.putReorderIdevice({ id: 1 });
+      await apiManager.postCloneIdevice({ id: 1 });
+      await apiManager.getOdePreviewUrl('sess-1');
+
+      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/save', { id: 1 });
+      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/reorder', { id: 1 });
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevice/clone', { id: 1 });
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/preview/sess-1');
+    });
+
+    it('should call block sync endpoint', async () => {
+      apiManager.endpoints.get_current_block_update = { path: 'http://localhost/block/sync' };
+
+      await apiManager.postObtainOdeBlockSync({ id: 1 });
+
+      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/block/sync', { id: 1 });
+    });
+
+    it('should call export download shortcut', async () => {
+      apiManager.endpoints.api_ode_export_download = {
+        path: 'http://localhost/export/{odeSessionId}/{exportType}',
+      };
+      global.eXeLearning.extension = 'html5';
+
+      await apiManager.getOdeDownload('sess-1');
+
+      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/export/sess-1/html5');
     });
   });
 });

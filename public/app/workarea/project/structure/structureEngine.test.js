@@ -22,7 +22,9 @@ global.eXeLearning = {
       putSavePage: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
       deletePage: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
       parameters: {
-        odeNavStructureSyncPropertiesConfig: {}
+        odeNavStructureSyncPropertiesConfig: {
+          titleNode: { value: '' }
+        }
       }
     },
     common: {
@@ -551,6 +553,463 @@ describe('StructureEngine', () => {
       engine.project._yjsBridge = {};
 
       expect(engine.getYjsBinding()).toBe(null);
+    });
+  });
+
+  describe('setDataFromYjs', () => {
+    it('processes data and reloads menu with selection', () => {
+      const navElement = document.createElement('div');
+      navElement.className = 'nav-element';
+      navElement.setAttribute('nav-id', 'page-1');
+      engine.menuStructureBehaviour = {
+        nodeSelected: navElement
+      };
+      engine.menuStructureCompose = {
+        compose: vi.fn()
+      };
+
+      const processSpy = vi.spyOn(engine, 'processStructureData').mockImplementation(() => {});
+      const reloadSpy = vi.spyOn(engine, 'reloadStructureMenu').mockResolvedValue();
+
+      engine.setDataFromYjs([{ id: 'page-1', pageName: 'Page 1' }]);
+
+      expect(processSpy).toHaveBeenCalled();
+      expect(reloadSpy).toHaveBeenCalledWith('page-1');
+    });
+  });
+
+  describe('updateDataFromApi', () => {
+    it('updates nodes and clears moving flag', async () => {
+      const node = {
+        id: 'page-1',
+        updateParam: vi.fn()
+      };
+      engine.data = [node];
+      vi.spyOn(engine, 'getOdeStructure').mockResolvedValue([
+        { id: 'page-1', order: 2, parent: 'root' }
+      ]);
+
+      const result = await engine.updateDataFromApi();
+
+      expect(node.updateParam).toHaveBeenCalledWith('order', 2);
+      expect(node.updateParam).toHaveBeenCalledWith('parent', 'root');
+      expect(engine.movingNode).toBe(false);
+      expect(result).toBe(engine.data);
+    });
+  });
+
+  describe('subscribeToYjsChanges', () => {
+    it('loads initial data from Yjs when empty', () => {
+      engine.project._yjsEnabled = true;
+      engine.data = [];
+      engine.menuStructureCompose = { compose: vi.fn() };
+      engine.menuStructureBehaviour = {
+        behaviour: vi.fn(),
+        selectFirst: vi.fn()
+      };
+      engine.project._yjsBridge = {
+        onStructureChange: vi.fn()
+      };
+      vi.spyOn(engine, 'getStructureFromYjs').mockReturnValue([
+        { id: 'page-1', pageName: 'Page 1', parent: 'root', order: 1, odePagStructureSyncs: [] }
+      ]);
+      vi.spyOn(engine, 'processStructureData').mockImplementation(() => {
+        engine.data = [{ id: 'page-1', parent: 'root', children: [] }];
+      });
+
+      engine.subscribeToYjsChanges();
+
+      expect(engine.menuStructureCompose.compose).toHaveBeenCalled();
+      expect(engine.menuStructureBehaviour.selectFirst).toHaveBeenCalled();
+    });
+
+    it('handles remote structure changes and reloads page content', async () => {
+      engine.project._yjsEnabled = true;
+      engine.project._yjsBridge = {
+        onStructureChange: vi.fn()
+      };
+      engine.menuStructureCompose = { compose: vi.fn() };
+      engine.menuStructureBehaviour = {
+        behaviour: vi.fn(),
+        selectFirst: vi.fn(),
+        menuNav: document.querySelector('#main'),
+        nodeSelected: (() => {
+          const el = document.createElement('div');
+          el.className = 'nav-element';
+          el.setAttribute('nav-id', 'page-1');
+          return el;
+        })()
+      };
+      document.querySelector('#main').appendChild(engine.menuStructureBehaviour.nodeSelected);
+      vi.spyOn(engine, 'getStructureFromYjs').mockReturnValue([
+        { id: 'page-1', pageName: 'Page 1', parent: 'root', order: 1, odePagStructureSyncs: [] }
+      ]);
+      vi.spyOn(engine, 'processStructureData').mockImplementation(() => {
+        engine.data = [{ id: 'page-1', parent: 'root', children: [] }];
+      });
+      const selectSpy = vi.spyOn(engine, 'selectNode').mockResolvedValue();
+
+      engine.subscribeToYjsChanges();
+      const callback = engine.project._yjsBridge.onStructureChange.mock.calls[0][0];
+      await callback([], { local: false });
+
+      expect(selectSpy).toHaveBeenCalledWith('page-1');
+      expect(engine.menuStructureCompose.compose).toHaveBeenCalled();
+      expect(mockProject.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalled();
+    });
+  });
+
+  describe('resetStructureData', () => {
+    it('reloads from Yjs when enabled', async () => {
+      engine.project._yjsEnabled = true;
+      vi.spyOn(engine, 'getStructureFromYjs').mockReturnValue([]);
+      vi.spyOn(engine, 'processStructureData').mockImplementation(() => {});
+      vi.spyOn(engine, 'openNode').mockImplementation(() => {});
+      vi.spyOn(engine, 'reloadStructureMenu').mockResolvedValue();
+
+      await engine.resetStructureData('page-1');
+
+      expect(engine.getStructureFromYjs).toHaveBeenCalled();
+      expect(engine.reloadStructureMenu).toHaveBeenCalledWith('page-1');
+    });
+
+    it('reloads from API when Yjs disabled', async () => {
+      engine.project._yjsEnabled = false;
+      vi.spyOn(engine, 'updateDataFromApi').mockResolvedValue([
+        { id: 'root', children: [] }
+      ]);
+      vi.spyOn(engine, 'openNode').mockImplementation(() => {});
+      vi.spyOn(engine, 'reloadStructureMenu').mockResolvedValue();
+
+      await engine.resetStructureData('page-1');
+
+      expect(engine.updateDataFromApi).toHaveBeenCalled();
+      expect(engine.reloadStructureMenu).toHaveBeenCalledWith('page-1');
+    });
+  });
+
+  describe('resetDataAndStructureData', () => {
+    it('reloads from Yjs when enabled', async () => {
+      engine.project._yjsEnabled = true;
+      vi.spyOn(engine, 'getStructureFromYjs').mockReturnValue([]);
+      vi.spyOn(engine, 'processStructureData').mockImplementation(() => {});
+      vi.spyOn(engine, 'openNode').mockImplementation(() => {});
+      vi.spyOn(engine, 'reloadStructureMenu').mockResolvedValue();
+
+      await engine.resetDataAndStructureData('page-1');
+
+      expect(engine.getStructureFromYjs).toHaveBeenCalled();
+      expect(engine.reloadStructureMenu).toHaveBeenCalledWith('page-1');
+    });
+  });
+
+  describe('reloadStructureMenu', () => {
+    it('selects specific node when id is provided', async () => {
+      engine.menuStructureCompose = { compose: vi.fn() };
+      engine.menuStructureBehaviour = { behaviour: vi.fn(), selectFirst: vi.fn() };
+      const selectSpy = vi.spyOn(engine, 'selectNode').mockResolvedValue();
+
+      await engine.reloadStructureMenu('page-1');
+
+      expect(selectSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('selects first node when no id provided', async () => {
+      engine.menuStructureCompose = { compose: vi.fn() };
+      engine.menuStructureBehaviour = { behaviour: vi.fn(), selectFirst: vi.fn() };
+      const firstSpy = vi.spyOn(engine, 'selectFirst').mockResolvedValue();
+
+      await engine.reloadStructureMenu(null);
+
+      expect(firstSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('processStructureData', () => {
+    it('adds root node and orders structure', () => {
+      const data = [
+        { id: 'page-1', pageId: 'page-1', pageName: 'Page 1', parent: 'root', order: 1, odePagStructureSyncs: [] },
+        { id: 'page-2', pageId: 'page-2', pageName: 'Page 2', parent: 'page-1', order: 1, odePagStructureSyncs: [] }
+      ];
+
+      engine.processStructureData(data);
+
+      const root = engine.data.find((node) => node.id === 'root');
+      const page1 = engine.data.find((node) => node.id === 'page-1');
+      expect(root.pageName).toBe('Test Document');
+      expect(page1.open).toBe(true);
+    });
+  });
+
+  describe('setTitleToNodeRoot', () => {
+    it('updates root node text in DOM', () => {
+      engine.data = [{ id: 'root', pageName: '', children: [] }];
+      engine.menuNav = document.querySelector('#main');
+      const rootEl = document.createElement('div');
+      rootEl.className = 'nav-element';
+      rootEl.setAttribute('nav-id', 'root');
+      rootEl.innerHTML = '<span class=\"node-text\"></span>';
+      engine.menuNav.appendChild(rootEl);
+
+      engine.setTitleToNodeRoot();
+
+      expect(rootEl.querySelector('.node-text').textContent).toBe('Test Document');
+    });
+  });
+
+  describe('movement methods', () => {
+    it('moves node using binding and resets structure', () => {
+      engine.project._yjsBridge = {
+        structureBinding: {
+          movePagePrev: vi.fn(() => true),
+          movePageNext: vi.fn(() => true),
+          movePageLeft: vi.fn(() => true),
+          movePageRight: vi.fn(() => true),
+          movePageToTarget: vi.fn(() => true)
+        }
+      };
+      const resetSpy = vi.spyOn(engine, 'resetStructureData').mockResolvedValue();
+
+      engine.moveNodePrev('a');
+      engine.moveNodeNext('a');
+      engine.moveNodeUp('a');
+      engine.moveNodeDown('a');
+      engine.moveNodeToNode('a', 'b');
+
+      expect(resetSpy).toHaveBeenCalledTimes(5);
+    });
+  });
+
+  describe('createNodeAndReload', () => {
+    it('resets structure on successful create', async () => {
+      vi.spyOn(engine, 'createNode').mockResolvedValue({
+        responseMessage: 'OK',
+        odeNavStructureSyncId: 'page-1'
+      });
+      const resetSpy = vi.spyOn(engine, 'resetStructureData').mockResolvedValue();
+
+      engine.createNodeAndReload('root', 'Title');
+      await Promise.resolve();
+
+      expect(resetSpy).toHaveBeenCalledWith('page-1');
+    });
+  });
+
+  describe('createNode', () => {
+    it('creates a StructureNode and calls create', async () => {
+      const createSpy = vi.spyOn(StructureNode.prototype, 'create').mockResolvedValue({ responseMessage: 'OK' });
+      const result = await engine.createNode('root', 'Title');
+      expect(createSpy).toHaveBeenCalled();
+      expect(result.responseMessage).toBe('OK');
+      createSpy.mockRestore();
+    });
+  });
+
+  describe('cloneNodeAndReload', () => {
+    it('clones node and reloads structure', async () => {
+      vi.spyOn(engine, 'cloneNode').mockResolvedValue({ id: 'clone-1' });
+      const resetSpy = vi.spyOn(engine, 'resetStructureData').mockResolvedValue();
+
+      await engine.cloneNodeAndReload('page-1');
+
+      expect(resetSpy).toHaveBeenCalledWith('clone-1');
+    });
+  });
+
+  describe('cloneNode', () => {
+    it('clones node and adds to data', async () => {
+      const node = {
+        clone: vi.fn().mockResolvedValue({
+          odeNavStructureSync: { id: 'clone-1', pageId: 'clone-1', pageName: 'Clone', parent: 'root' }
+        })
+      };
+      engine.data = [];
+      vi.spyOn(engine, 'getNode').mockReturnValue(node);
+
+      const clone = await engine.cloneNode('page-1');
+
+      expect(clone.id).toBe('clone-1');
+      expect(engine.data).toHaveLength(1);
+    });
+  });
+
+  describe('cloneNodeNav', () => {
+    it('adds cloned node to data', async () => {
+      engine.data = [];
+      const clone = await engine.cloneNodeNav({ id: 'clone-2', pageId: 'clone-2', pageName: 'Clone', parent: 'root' });
+      expect(clone.id).toBe('clone-2');
+      expect(engine.data).toHaveLength(1);
+    });
+  });
+
+  describe('updateNodesStructure', () => {
+    it('updates params on existing nodes', () => {
+      const node = { id: 'page-1', updateParam: vi.fn() };
+      engine.data = [node];
+      engine.updateNodesStructure({ a: { id: 'page-1', order: 2 } }, ['order']);
+      expect(node.updateParam).toHaveBeenCalledWith('order', 2);
+    });
+  });
+
+  describe('renameNodeAndReload', () => {
+    it('renames node and resets structure', () => {
+      const renameSpy = vi.spyOn(engine, 'renameNode').mockImplementation(() => {});
+      const resetSpy = vi.spyOn(engine, 'resetStructureData').mockResolvedValue();
+      engine.renameNodeAndReload('page-1', 'New');
+      expect(renameSpy).toHaveBeenCalledWith('page-1', 'New');
+      expect(resetSpy).toHaveBeenCalledWith('page-1');
+    });
+  });
+
+  describe('removeNodeCompleteAndReload', () => {
+    it('ignores empty id', () => {
+      const resetSpy = vi.spyOn(engine, 'resetStructureData').mockResolvedValue();
+      engine.removeNodeCompleteAndReload(null);
+      expect(resetSpy).not.toHaveBeenCalled();
+    });
+
+    it('removes node when possible and reloads', () => {
+      const node = { remove: vi.fn() };
+      vi.spyOn(engine, 'getNode').mockReturnValue(node);
+      const removeSpy = vi.spyOn(engine, 'removeNode').mockReturnValue(true);
+      const resetSpy = vi.spyOn(engine, 'resetStructureData').mockResolvedValue();
+      engine.removeNodeCompleteAndReload('page-1');
+      expect(removeSpy).toHaveBeenCalledWith('page-1');
+      expect(resetSpy).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('removeNode', () => {
+    it('returns false when node missing', () => {
+      vi.spyOn(engine, 'getNode').mockReturnValue(null);
+      expect(engine.removeNode('missing')).toBe(false);
+    });
+  });
+
+  describe('removeChildren', () => {
+    it('removes nodes by parent id', () => {
+      engine.data = [
+        { id: 'a', parent: 'root' },
+        { id: 'b', parent: 'a' }
+      ];
+      engine.removeChildren('a');
+      expect(engine.data).toHaveLength(1);
+    });
+  });
+
+  describe('removeDecendents', () => {
+    it('removes descendant nodes', () => {
+      const removeSpy = vi.spyOn(engine, 'removeNodes').mockImplementation(() => {});
+      vi.spyOn(engine, 'getDecendents').mockReturnValue([{ id: 'a' }]);
+      engine.removeDecendents('root');
+      expect(removeSpy).toHaveBeenCalledWith(['a']);
+    });
+  });
+
+  describe('cleanOrphans', () => {
+    it('removes nodes whose parent is missing', () => {
+      engine.data = [
+        { id: 'root', parent: null },
+        { id: 'orphan', parent: 'missing' }
+      ];
+      const removeSpy = vi.spyOn(engine, 'removeNode').mockImplementation((id) => {
+        engine.data = engine.data.filter((node) => node.id !== id);
+        return true;
+      });
+      engine.cleanOrphans();
+      expect(removeSpy).toHaveBeenCalledWith('orphan');
+      expect(engine.data).toHaveLength(1);
+    });
+  });
+
+  describe('openNode', () => {
+    it('opens ancestors for a node', () => {
+      engine.data = [
+        { id: 'root', parent: null, children: [{ id: 'a' }], open: false },
+        { id: 'a', parent: 'root', children: [{ id: 'b' }], open: false },
+        { id: 'b', parent: 'a', children: [], open: false }
+      ];
+      engine.openNode('b');
+      expect(engine.data.find((n) => n.id === 'a').open).toBe(true);
+    });
+  });
+
+  describe('getChildren/getDecendents/getAncestors', () => {
+    it('returns expected nodes', () => {
+      engine.data = [
+        { id: 'root', parent: null },
+        { id: 'a', parent: 'root' },
+        { id: 'b', parent: 'a' }
+      ];
+      expect(engine.getChildren('root').map((n) => n.id)).toEqual(['a']);
+      expect(engine.getDecendents('root').map((n) => n.id)).toEqual(['a', 'b']);
+      expect(engine.getAncestors('b')).toEqual(['a', 'root', null]);
+    });
+  });
+
+  describe('getAllNodesOrderByView', () => {
+    it('returns nodes ordered by view', () => {
+      engine.data = [
+        { id: 'root' },
+        { id: 'page-1' }
+      ];
+      const list = document.createElement('div');
+      list.className = 'nav-list';
+      list.innerHTML = '<div class=\"nav-element\" nav-id=\"page-1\"></div>';
+      engine.menuStructureCompose = { menuNavList: list };
+
+      const result = engine.getAllNodesOrderByView();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('page-1');
+    });
+  });
+
+  describe('getPosInNodesOrderByView', () => {
+    it('returns false when nodesOrderByView missing', () => {
+      engine.nodesOrderByView = null;
+      expect(engine.getPosInNodesOrderByView('page-1')).toBe(false);
+    });
+  });
+
+  describe('selectNode/selectFirst', () => {
+    it('selects node when element exists', async () => {
+      const nav = document.createElement('div');
+      nav.className = 'nav-element';
+      nav.setAttribute('nav-id', 'page-1');
+      const menuNav = document.createElement('div');
+      menuNav.appendChild(nav);
+      engine.menuStructureCompose = { menuNav };
+      engine.menuStructureBehaviour = { selectNode: vi.fn() };
+
+      await engine.selectNode('page-1');
+      expect(engine.menuStructureBehaviour.selectNode).toHaveBeenCalledWith(nav);
+    });
+
+    it('calls selectFirst when node is missing', async () => {
+      engine.menuStructureCompose = { menuNav: document.createElement('div') };
+      engine.menuStructureBehaviour = { selectNode: vi.fn(), selectFirst: vi.fn() };
+      await engine.selectNode('missing');
+      expect(engine.menuStructureBehaviour.selectFirst).toHaveBeenCalled();
+    });
+  });
+
+  describe('getSelectedNode helpers', () => {
+    it('returns selected node ids', () => {
+      engine.data = [
+        { id: 'page-1', pageId: 'page-1' }
+      ];
+      const element = document.createElement('div');
+      element.setAttribute('nav-id', 'page-1');
+      engine.menuStructureBehaviour = { nodeSelected: element };
+
+      expect(engine.getSelectNodeNavId()).toBe('page-1');
+      expect(engine.getSelectNodePageId()).toBe('page-1');
+    });
+
+    it('returns false when no selection', () => {
+      engine.menuStructureBehaviour = { nodeSelected: null };
+      expect(engine.getSelectedNode()).toBe(false);
     });
   });
 });

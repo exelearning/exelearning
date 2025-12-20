@@ -2422,4 +2422,126 @@ describe('IdevicesEngine', () => {
             expect(mockIdevice.ideviceBody.querySelector('.idevice-locked-placeholder')).toBeNull();
         });
     });
+
+    describe('loadLegacyExeFunctionalitiesExport', () => {
+        beforeEach(() => {
+            global.$exeFX = { init: vi.fn() };
+            global.$exeGames = { init: vi.fn() };
+            global.$exeHighlighter = { init: vi.fn() };
+            global.$exeABCmusic = { init: vi.fn() };
+            global.$exe = { init: vi.fn() };
+        });
+
+        it('initializes $exeFX', () => {
+            engine.loadLegacyExeFunctionalitiesExport();
+            expect($exeFX.init).toHaveBeenCalled();
+        });
+
+        it('initializes $exeGames', () => {
+            engine.loadLegacyExeFunctionalitiesExport();
+            expect($exeGames.init).toHaveBeenCalled();
+        });
+
+        it('initializes $exeHighlighter', () => {
+            engine.loadLegacyExeFunctionalitiesExport();
+            expect($exeHighlighter.init).toHaveBeenCalled();
+        });
+
+        it('initializes $exeABCmusic', () => {
+            engine.loadLegacyExeFunctionalitiesExport();
+            expect($exeABCmusic.init).toHaveBeenCalled();
+        });
+
+        it('initializes $exe', () => {
+            engine.loadLegacyExeFunctionalitiesExport();
+            expect($exe.init).toHaveBeenCalled();
+        });
+    });
+
+    describe('enableInternalLinks', () => {
+        it('does nothing when no internal links found', () => {
+            expect(() => engine.enableInternalLinks()).not.toThrow();
+        });
+
+        it('processes internal links when found', () => {
+            // Create mock internal link
+            const link = document.createElement('a');
+            link.href = 'exe-node:page-1';
+            document.body.appendChild(link);
+
+            // Setup mock structure
+            eXeLearning.app.project.structure.data = [
+                { pageId: 'page-1', pageName: 'Home' },
+            ];
+
+            expect(() => engine.enableInternalLinks()).not.toThrow();
+
+            document.body.removeChild(link);
+        });
+    });
+
+    describe('loadScript with CSS extension', () => {
+        it('creates link element for CSS files', () => {
+            const initialHeadCount = document.head.children.length;
+
+            engine.loadScript('http://localhost/style.css', vi.fn());
+
+            expect(document.head.children.length).toBeGreaterThan(initialHeadCount);
+        });
+
+        it('adds CSS element to ideviceScriptsElements', () => {
+            engine.ideviceScriptsElements = [];
+
+            engine.loadScript('http://localhost/style.css', vi.fn());
+
+            expect(engine.ideviceScriptsElements.length).toBe(1);
+        });
+    });
+
+    describe('clearIdevicesScripts with actual elements', () => {
+        it('removes all script elements', () => {
+            const script1 = document.createElement('script');
+            const script2 = document.createElement('script');
+            document.head.appendChild(script1);
+            document.head.appendChild(script2);
+
+            engine.ideviceScriptsElements = [script1, script2];
+
+            engine.clearIdevicesScripts();
+
+            expect(engine.ideviceScriptsElements.length).toBe(0);
+        });
+    });
+
+    describe('loadIdevicesExportScripts with idevices', () => {
+        it('calls loadScriptsExport on unique idevices', () => {
+            const mockLoadScripts = vi.fn();
+            engine.components.idevices = [
+                { idevice: { id: 'text', loadScriptsExport: mockLoadScripts } },
+                { idevice: { id: 'text', loadScriptsExport: mockLoadScripts } },
+                { idevice: { id: 'image', loadScriptsExport: mockLoadScripts } },
+            ];
+
+            engine.loadIdevicesExportScripts();
+
+            // Should be called twice (once for 'text', once for 'image')
+            expect(mockLoadScripts).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('loadIdevicesExportStyles with idevices', () => {
+        it('calls loadStylesExport on unique idevices', async () => {
+            const mockLoadStyles = vi.fn().mockResolvedValue(undefined);
+            engine.components.idevices = [
+                { idevice: { id: 'text', loadStylesExport: mockLoadStyles } },
+                { idevice: { id: 'text', loadStylesExport: mockLoadStyles } },
+            ];
+
+            await engine.loadIdevicesExportStyles();
+
+            // Should be called once (only unique idevices)
+            expect(mockLoadStyles).toHaveBeenCalledTimes(1);
+        });
+    });
+
 });
