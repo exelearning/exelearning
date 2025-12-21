@@ -39,7 +39,7 @@ describe('ModalFilemanager', () => {
     mockElement.id = 'modalFileManager';
     mockElement.innerHTML = `
       <div class="media-library-grid"></div>
-      <table class="media-library-list"><thead><th data-sort="name"></th></thead><tbody></tbody></table>
+      <div class="media-library-list-container" style="display:none;"><table class="media-library-list"><thead><th data-sort="name"></th></thead><tbody></tbody></table></div>
       <div class="media-library-sidebar">
         <div class="media-library-sidebar-empty"></div>
         <div class="media-library-sidebar-content"></div>
@@ -54,6 +54,11 @@ describe('ModalFilemanager', () => {
       <select class="media-library-sort">
         <option value="name-asc">name-asc</option>
         <option value="size-asc">size-asc</option>
+        <option value="type-asc">type-asc</option>
+        <option value="type-desc">type-desc</option>
+      </select>
+      <select class="media-library-filter">
+        <option value="">All</option>
       </select>
       <div class="media-library-page-info"></div>
       <button class="media-library-page-btn" data-action="prev"></button>
@@ -236,7 +241,7 @@ describe('ModalFilemanager', () => {
     it('should switch to list view', () => {
       modal.setViewMode('list');
       expect(modal.grid.style.display).toBe('none');
-      expect(modal.listTable.style.display).toBe('table');
+      expect(modal.listContainer.style.display).toBe('flex');
     });
   });
 
@@ -411,6 +416,169 @@ describe('ModalFilemanager', () => {
       expect(modal.acceptFilter).toBeNull();
       expect(modal.searchInput.value).toBe('');
       expect(modal.currentPage).toBe(1);
+    });
+
+    it('should reset typeFilter and filterSelect', () => {
+      modal.typeFilter = 'image';
+      modal.filterSelect.value = 'image';
+      modal.close();
+      expect(modal.typeFilter).toBe('');
+      expect(modal.filterSelect.value).toBe('');
+    });
+  });
+
+  describe('getAssetTypeCategory', () => {
+    it('should return image for image mime types', () => {
+      expect(modal.getAssetTypeCategory('image/png')).toBe('image');
+      expect(modal.getAssetTypeCategory('image/jpeg')).toBe('image');
+      expect(modal.getAssetTypeCategory('image/gif')).toBe('image');
+    });
+
+    it('should return video for video mime types', () => {
+      expect(modal.getAssetTypeCategory('video/mp4')).toBe('video');
+      expect(modal.getAssetTypeCategory('video/webm')).toBe('video');
+    });
+
+    it('should return audio for audio mime types', () => {
+      expect(modal.getAssetTypeCategory('audio/mpeg')).toBe('audio');
+      expect(modal.getAssetTypeCategory('audio/wav')).toBe('audio');
+    });
+
+    it('should return pdf for application/pdf', () => {
+      expect(modal.getAssetTypeCategory('application/pdf')).toBe('pdf');
+    });
+
+    it('should return other for unknown types', () => {
+      expect(modal.getAssetTypeCategory('application/json')).toBe('other');
+      expect(modal.getAssetTypeCategory('text/plain')).toBe('other');
+      expect(modal.getAssetTypeCategory('')).toBe('other');
+      expect(modal.getAssetTypeCategory(null)).toBe('other');
+      expect(modal.getAssetTypeCategory(undefined)).toBe('other');
+    });
+  });
+
+  describe('updateFilterOptions', () => {
+    it('should populate filter options based on available asset types', () => {
+      modal.assets = [
+        { id: '1', filename: 'a.png', mime: 'image/png' },
+        { id: '2', filename: 'b.mp4', mime: 'video/mp4' },
+        { id: '3', filename: 'c.pdf', mime: 'application/pdf' },
+      ];
+      modal.updateFilterOptions();
+
+      const options = modal.filterSelect.querySelectorAll('option');
+      expect(options.length).toBe(4); // All + image + video + pdf
+      expect(options[0].value).toBe('');
+      expect(options[1].value).toBe('image');
+      expect(options[2].value).toBe('video');
+      expect(options[3].value).toBe('pdf');
+    });
+
+    it('should only show types that exist', () => {
+      modal.assets = [
+        { id: '1', filename: 'a.png', mime: 'image/png' },
+      ];
+      modal.updateFilterOptions();
+
+      const options = modal.filterSelect.querySelectorAll('option');
+      expect(options.length).toBe(2); // All + image
+      expect(options[1].value).toBe('image');
+    });
+
+    it('should reset typeFilter if current filter type no longer exists', () => {
+      modal.typeFilter = 'video';
+      modal.assets = [
+        { id: '1', filename: 'a.png', mime: 'image/png' },
+      ];
+      modal.updateFilterOptions();
+
+      expect(modal.typeFilter).toBe('');
+      expect(modal.filterSelect.value).toBe('');
+    });
+  });
+
+  describe('type filtering', () => {
+    it('should filter assets by type', () => {
+      modal.assets = [
+        { id: '1', filename: 'a.png', mime: 'image/png' },
+        { id: '2', filename: 'b.mp4', mime: 'video/mp4' },
+        { id: '3', filename: 'c.mp3', mime: 'audio/mpeg' },
+      ];
+      modal.typeFilter = 'image';
+      const renderSpy = vi.spyOn(modal, 'renderCurrentView');
+      modal.applyFiltersAndRender();
+
+      expect(modal.filteredAssets.length).toBe(1);
+      expect(modal.filteredAssets[0].mime).toBe('image/png');
+      expect(renderSpy).toHaveBeenCalled();
+    });
+
+    it('should show all when typeFilter is empty', () => {
+      modal.assets = [
+        { id: '1', filename: 'a.png', mime: 'image/png' },
+        { id: '2', filename: 'b.mp4', mime: 'video/mp4' },
+      ];
+      modal.typeFilter = '';
+      modal.applyFiltersAndRender();
+
+      expect(modal.filteredAssets.length).toBe(2);
+    });
+
+    it('should combine typeFilter with search', () => {
+      modal.assets = [
+        { id: '1', filename: 'cat.png', mime: 'image/png' },
+        { id: '2', filename: 'dog.png', mime: 'image/png' },
+        { id: '3', filename: 'cat.mp4', mime: 'video/mp4' },
+      ];
+      modal.typeFilter = 'image';
+      modal.searchInput.value = 'cat';
+      modal.applyFiltersAndRender();
+
+      expect(modal.filteredAssets.length).toBe(1);
+      expect(modal.filteredAssets[0].filename).toBe('cat.png');
+    });
+
+    it('should update filter on select change', () => {
+      // Add image option to filter select (simulating updateFilterOptions)
+      const option = document.createElement('option');
+      option.value = 'image';
+      option.textContent = 'Images';
+      modal.filterSelect.appendChild(option);
+
+      const applySpy = vi.spyOn(modal, 'applyFiltersAndRender');
+      modal.filterSelect.value = 'image';
+      modal.filterSelect.dispatchEvent(new Event('change'));
+      expect(modal.typeFilter).toBe('image');
+      expect(modal.currentPage).toBe(1);
+      expect(applySpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('type sorting', () => {
+    it('should sort by type ascending', () => {
+      modal.sortBy = 'type-asc';
+      modal.filteredAssets = [
+        { filename: 'a', mime: 'video/mp4' },
+        { filename: 'b', mime: 'audio/mpeg' },
+        { filename: 'c', mime: 'image/png' },
+      ];
+      modal.sortAssets();
+      expect(modal.filteredAssets[0].mime).toBe('audio/mpeg');
+      expect(modal.filteredAssets[1].mime).toBe('image/png');
+      expect(modal.filteredAssets[2].mime).toBe('video/mp4');
+    });
+
+    it('should sort by type descending', () => {
+      modal.sortBy = 'type-desc';
+      modal.filteredAssets = [
+        { filename: 'a', mime: 'audio/mpeg' },
+        { filename: 'b', mime: 'video/mp4' },
+        { filename: 'c', mime: 'image/png' },
+      ];
+      modal.sortAssets();
+      expect(modal.filteredAssets[0].mime).toBe('video/mp4');
+      expect(modal.filteredAssets[1].mime).toBe('image/png');
+      expect(modal.filteredAssets[2].mime).toBe('audio/mpeg');
     });
   });
 });

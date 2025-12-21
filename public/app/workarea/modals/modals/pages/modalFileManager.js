@@ -22,6 +22,7 @@ export default class ModalFilemanager extends Modal {
         this.selectedAsset = null;
         this.onSelectCallback = null;
         this.acceptFilter = null; // 'image', 'audio', 'video', or null for all
+        this.typeFilter = ''; // User-selected type filter from dropdown
         this.assetManager = null;
 
         // View state
@@ -54,6 +55,7 @@ export default class ModalFilemanager extends Modal {
      */
     initElements() {
         this.grid = this.modalElement.querySelector('.media-library-grid');
+        this.listContainer = this.modalElement.querySelector('.media-library-list-container');
         this.listTable = this.modalElement.querySelector('.media-library-list');
         this.listTbody = this.listTable?.querySelector('tbody');
         this.sidebar = this.modalElement.querySelector('.media-library-sidebar');
@@ -68,6 +70,7 @@ export default class ModalFilemanager extends Modal {
         // View controls
         this.viewBtns = this.modalElement.querySelectorAll('.media-library-view-btn');
         this.sortSelect = this.modalElement.querySelector('.media-library-sort');
+        this.filterSelect = this.modalElement.querySelector('.media-library-filter');
 
         // Pagination
         this.paginationInfo = this.modalElement.querySelector('.media-library-page-info');
@@ -153,6 +156,15 @@ export default class ModalFilemanager extends Modal {
             });
         }
 
+        // Filter select
+        if (this.filterSelect) {
+            this.filterSelect.addEventListener('change', (e) => {
+                this.typeFilter = e.target.value;
+                this.currentPage = 1;
+                this.applyFiltersAndRender();
+            });
+        }
+
         // Pagination buttons
         if (this.prevBtn) {
             this.prevBtn.addEventListener('click', () => {
@@ -223,10 +235,10 @@ export default class ModalFilemanager extends Modal {
         // Show/hide appropriate view
         if (mode === 'grid') {
             if (this.grid) this.grid.style.display = 'grid';
-            if (this.listTable) this.listTable.style.display = 'none';
+            if (this.listContainer) this.listContainer.style.display = 'none';
         } else {
             if (this.grid) this.grid.style.display = 'none';
-            if (this.listTable) this.listTable.style.display = 'table';
+            if (this.listContainer) this.listContainer.style.display = 'flex';
         }
 
         this.renderCurrentView();
@@ -288,6 +300,7 @@ export default class ModalFilemanager extends Modal {
             this.assets = await this.assetManager.getProjectAssets();
             Logger.log(`[MediaLibrary] Loaded ${this.assets.length} assets`);
             this.currentPage = 1;
+            this.updateFilterOptions();
             this.applyFiltersAndRender();
         } catch (err) {
             console.error('[MediaLibrary] Failed to load assets:', err);
@@ -303,12 +316,17 @@ export default class ModalFilemanager extends Modal {
 
         // Filter
         this.filteredAssets = this.assets.filter(asset => {
-            // Filter by file type (accept filter)
+            // Filter by file type (accept filter - programmatic)
             if (this.acceptFilter) {
                 const mime = asset.mime || '';
                 if (this.acceptFilter === 'image' && !mime.startsWith('image/')) return false;
                 if (this.acceptFilter === 'audio' && !mime.startsWith('audio/')) return false;
                 if (this.acceptFilter === 'video' && !mime.startsWith('video/')) return false;
+            }
+            // Filter by type (user-selected filter)
+            if (this.typeFilter) {
+                const category = this.getAssetTypeCategory(asset.mime);
+                if (category !== this.typeFilter) return false;
             }
             // Filter by search term
             if (!searchTerm) return true;
@@ -516,6 +534,63 @@ export default class ModalFilemanager extends Modal {
         if (mime.startsWith('audio/')) return 'Audio';
         if (mime.includes('pdf')) return 'PDF';
         return 'File';
+    }
+
+    /**
+     * Get asset type category for filtering
+     */
+    getAssetTypeCategory(mime) {
+        if (!mime) return 'other';
+        if (mime.startsWith('image/')) return 'image';
+        if (mime.startsWith('video/')) return 'video';
+        if (mime.startsWith('audio/')) return 'audio';
+        if (mime === 'application/pdf') return 'pdf';
+        return 'other';
+    }
+
+    /**
+     * Update filter dropdown options based on available file types
+     */
+    updateFilterOptions() {
+        if (!this.filterSelect) return;
+
+        // Get unique type categories from assets
+        const typeCategories = new Set();
+        for (const asset of this.assets) {
+            const category = this.getAssetTypeCategory(asset.mime);
+            typeCategories.add(category);
+        }
+
+        // Clear existing options except "All"
+        this.filterSelect.innerHTML = `<option value="">${_('All')}</option>`;
+
+        // Type labels mapping
+        const typeLabels = {
+            image: _('Images'),
+            video: _('Videos'),
+            audio: _('Audio'),
+            pdf: _('PDF'),
+            other: _('Other')
+        };
+
+        // Type order for consistent display
+        const typeOrder = ['image', 'video', 'audio', 'pdf', 'other'];
+
+        // Add options for existing types
+        for (const type of typeOrder) {
+            if (typeCategories.has(type)) {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = typeLabels[type] || type;
+                this.filterSelect.appendChild(option);
+            }
+        }
+
+        // Reset filter if current filter type no longer exists
+        if (this.typeFilter && !typeCategories.has(this.typeFilter)) {
+            this.typeFilter = '';
+            this.filterSelect.value = '';
+        }
     }
 
     /**
@@ -844,10 +919,14 @@ export default class ModalFilemanager extends Modal {
         this.selectedAsset = null;
         this.onSelectCallback = null;
         this.acceptFilter = null;
+        this.typeFilter = '';
 
         // Reset search and view state
         if (this.searchInput) {
             this.searchInput.value = '';
+        }
+        if (this.filterSelect) {
+            this.filterSelect.value = '';
         }
         this.currentPage = 1;
 
