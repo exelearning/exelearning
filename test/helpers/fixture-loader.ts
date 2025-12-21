@@ -44,7 +44,7 @@ export const FIXTURES: Record<string, Omit<FixtureInfo, 'path' | 'size'>> = {
         category: 'small',
         format: 'elp',
         isLegacy: true,
-    },make
+    },
     'latex.elp': {
         name: 'latex.elp',
         category: 'small',
