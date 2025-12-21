@@ -266,8 +266,13 @@ $exe.tooltips = {
 						$exe.tooltips.enableGlossaryTooltip(c,a);
 					}
 				}				
-				
+
 			}
 		});
 	}
+}
+
+// Export for Node.js/CommonJS (tests)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = $exe.tooltips;
 }

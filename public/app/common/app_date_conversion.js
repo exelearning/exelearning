@@ -22,7 +22,7 @@ export default class DateConversion {
   getDateMonth(date) {
     let month = date.getMonth() + 1;
     if (month < 10) month = "0" + month;
-    return month;
+    return String(month);
   }
 
   /**
@@ -33,7 +33,7 @@ export default class DateConversion {
   getDateDay(date) {
     let day = date.getDate();
     if (day < 10) day = "0" + day;
-    return day;
+    return String(day);
   }
 
   /**
@@ -44,7 +44,7 @@ export default class DateConversion {
   getDateHour(date) {
     let hour = date.getHours();
     if (hour < 10) hour = "0" + hour;
-    return hour;
+    return String(hour);
   }
 
   /**
@@ -55,7 +55,7 @@ export default class DateConversion {
   getDateMinutes(date) {
     let minutes = date.getMinutes();
     if (minutes < 10) minutes = "0" + minutes;
-    return minutes;
+    return String(minutes);
   }
 
   /**
@@ -66,7 +66,7 @@ export default class DateConversion {
   getDateSeconds(date) {
     let seconds = date.getSeconds();
     if (seconds < 10) seconds = "0" + seconds;
-    return seconds;
+    return String(seconds);
   }
 
   /**
@@ -77,8 +77,8 @@ export default class DateConversion {
   getDateMilliseconds(date) {
     let miliseconds = date.getMilliseconds();
     if (miliseconds < 10) miliseconds = "0" + miliseconds;
-    if (miliseconds < 100 || miliseconds.length < 3) miliseconds = "0" + miliseconds;
-    return miliseconds;
+    if (miliseconds < 100 || String(miliseconds).length < 3) miliseconds = "0" + miliseconds;
+    return String(miliseconds);
   }
 
 }

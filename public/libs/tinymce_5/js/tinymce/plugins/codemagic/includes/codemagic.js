@@ -81,8 +81,8 @@ jQuery(document).ready(function($) {
 	});
 	// Insert button
 	$('#codemagic_insert').click(function() {
-		
-		window_content = myCodeMirror.doc.getValue();  // Get codemirror html
+
+		var window_content = myCodeMirror.doc.getValue();  // Get codemirror html
 		editor.setContent(window_content);  // Set editor content to codermirror content
 		// The New eXeLearning
 		editor.undoManager.add();
@@ -97,7 +97,7 @@ jQuery(document).ready(function($) {
 		if($(this).attr('class') != 'disabled') {
 		
 			// Check if undo button is disabled
-			className = $('#undo').attr('class');
+			var className = $('#undo').attr('class');
 			if(className == 'disabled') return;
 			
 			// Undo step
@@ -130,7 +130,7 @@ jQuery(document).ready(function($) {
 		if($(this).attr('class') != 'disabled') {
 		
 			// Re-beautify html in window manager
-			window_html = myCodeMirror.doc.getValue();
+			var window_html = myCodeMirror.doc.getValue();
 			myCodeMirror.doc.setValue( 
 		
 				style_html(window_html, 4)
@@ -492,9 +492,9 @@ jQuery(document).ready(function($) {
 		function close_autocomplete() { complete.remove(); }
 		
 		// Grab select option (tag) and run insert() function.
-		function pick() {  
-		
-			html_tag = $('#completions_options').find(":selected").text();
+		function pick() {
+
+			var html_tag = $('#completions_options').find(":selected").text();
 			
 			insert(html_tag);
 			close_autocomplete();

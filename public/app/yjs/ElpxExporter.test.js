@@ -26,8 +26,57 @@ const createMockFflate = () => ({
   unzipSync: (data) => ({ 'content.xml': new TextEncoder().encode('<?xml?>') }),
 });
 
-// Mock document manager
+// Mock document manager with full properties support
 const createMockDocumentManager = () => {
+  // Mock Y.Map-like properties for page
+  const pageProperties = {
+    get: mock((key) => {
+      const props = {
+        visibility: 'true',
+        highlight: 'false',
+        hidePageTitle: 'true',
+        editableInPage: 'false',
+        titlePage: 'Custom Page Title',
+        titleNode: 'Custom Title Node',
+      };
+      return props[key];
+    }),
+  };
+
+  // Mock Y.Map-like properties for block
+  const blockProperties = {
+    get: mock((key) => {
+      const props = {
+        visibility: 'true',
+        teacherOnly: 'false',
+        allowToggle: 'true',
+        minimized: 'false',
+        identifier: 'my-block-id',
+        cssClass: 'custom-class',
+      };
+      return props[key];
+    }),
+  };
+
+  // Mock Y.Map-like properties for component
+  const componentProperties = {
+    get: mock((key) => {
+      const props = {
+        visibility: 'true',
+        teacherOnly: 'true',
+        identifier: 'my-comp-id',
+        cssClass: 'comp-class',
+      };
+      return props[key];
+    }),
+    forEach: mock((cb) => {
+      cb('true', 'visibility');
+      cb('true', 'teacherOnly');
+      cb('my-comp-id', 'identifier');
+      cb('comp-class', 'cssClass');
+    }),
+  };
+
   const navigation = {
     length: 2,
     get: mock((index) => {
@@ -40,6 +89,7 @@ const createMockDocumentManager = () => {
               pageName: 'Introduction',
               parentId: null,
               order: 0,
+              properties: pageProperties,
               blocks: {
                 length: 1,
                 get: mock((i) => ({
@@ -48,7 +98,9 @@ const createMockDocumentManager = () => {
                       id: 'block-1',
                       blockId: 'block-1',
                       blockName: 'Main Block',
+                      iconName: 'objectives',
                       order: 0,
+                      properties: blockProperties,
                       components: {
                         length: 1,
                         get: mock((j) => ({
@@ -61,11 +113,8 @@ const createMockDocumentManager = () => {
                               htmlContent: {
                                 toString: () => '<p>Hello World</p>',
                               },
-                              properties: {
-                                forEach: mock((cb) => {
-                                  cb('value1', 'prop1');
-                                }),
-                              },
+                              properties: componentProperties,
+                              ideviceProperties: null,
                             };
                             return compData[ck];
                           }),
@@ -91,6 +140,7 @@ const createMockDocumentManager = () => {
               pageName: 'Chapter 1',
               parentId: 'page-1',
               order: 1,
+              properties: null,
               blocks: { length: 0, get: mock(() => undefined) },
             };
             return data[key];
@@ -109,6 +159,15 @@ const createMockDocumentManager = () => {
         language: 'es',
         description: 'Test description',
         license: 'CC BY-SA 4.0',
+        theme: 'base',
+        addPagination: 'true',
+        addSearchBox: 'true',
+        addExeLink: 'false',
+        addAccessibilityToolbar: 'true',
+        extraHeadContent: '<meta name="test">',
+        footer: '<footer>Test</footer>',
+        exportSource: 'false',
+        exelearning_version: 'v4.0-test',
         createdAt: '2024-01-01T00:00:00.000Z',
       };
       return data[key];
@@ -331,13 +390,13 @@ describe('ElpxExporter', () => {
       expect(xml).toContain('</ode>');
     });
 
-    it('includes odeProperties', () => {
+    it('includes odeProperties with element format', () => {
       const xml = exporter.generateContentXml();
 
       expect(xml).toContain('<odeProperties>');
-      expect(xml).toContain('<pp_title>Test Project</pp_title>');
-      expect(xml).toContain('<pp_author>Test Author</pp_author>');
-      expect(xml).toContain('<pp_lang>es</pp_lang>');
+      expect(xml).toContain('<odeProperty>');
+      expect(xml).toContain('<key>pp_title</key>');
+      expect(xml).toContain('<value>Test Project</value>');
       expect(xml).toContain('</odeProperties>');
     });
 
@@ -348,45 +407,74 @@ describe('ElpxExporter', () => {
       expect(xml).toContain('</odeNavStructures>');
     });
 
-    it('includes pages from navigation', () => {
+    it('includes pages from navigation with element format', () => {
       const xml = exporter.generateContentXml();
 
-      expect(xml).toContain('odeNavStructureId="page-1"');
-      expect(xml).toContain('odePageName="Introduction"');
+      expect(xml).toContain('<odePageId>page-1</odePageId>');
+      expect(xml).toContain('<pageName>Introduction</pageName>');
+    });
+
+    it('includes all page, block, and component properties', () => {
+      const xml = exporter.generateContentXml();
+
+      // Page properties
+      expect(xml).toContain('<odeNavStructureProperties>');
+      expect(xml).toContain('<odeNavStructureProperty>');
+
+      // Block properties
+      expect(xml).toContain('<odePagStructureProperties>');
+      expect(xml).toContain('<odePagStructureProperty>');
+      expect(xml).toContain('<iconName>');
+
+      // Component properties
+      expect(xml).toContain('<odeComponentsProperties>');
+      expect(xml).toContain('<odeComponentsProperty>');
     });
   });
 
   describe('generatePropertiesXml', () => {
-    it('generates properties XML', () => {
+    it('generates properties XML with element format', () => {
       const metadata = mockDocManager.getMetadata();
       const xml = exporter.generatePropertiesXml(metadata);
 
       expect(xml).toContain('<odeProperties>');
-      expect(xml).toContain('<pp_title>Test Project</pp_title>');
-      expect(xml).toContain('<pp_author>Test Author</pp_author>');
-      expect(xml).toContain('<pp_lang>es</pp_lang>');
-      expect(xml).toContain('<pp_description>Test description</pp_description>');
-      expect(xml).toContain('<pp_license>CC BY-SA 4.0</pp_license>');
+      expect(xml).toContain('<odeProperty>');
+      expect(xml).toContain('<key>pp_title</key>');
+      expect(xml).toContain('<value>Test Project</value>');
+      expect(xml).toContain('<key>pp_author</key>');
+      expect(xml).toContain('<value>Test Author</value>');
+      expect(xml).toContain('<key>pp_lang</key>');
+      expect(xml).toContain('<value>es</value>');
       expect(xml).toContain('</odeProperties>');
+    });
+
+    it('includes export settings', () => {
+      const metadata = mockDocManager.getMetadata();
+      const xml = exporter.generatePropertiesXml(metadata);
+
+      expect(xml).toContain('<key>pp_addPagination</key>');
+      expect(xml).toContain('<key>pp_addSearchBox</key>');
+      expect(xml).toContain('<key>pp_addAccessibilityToolbar</key>');
     });
 
     it('uses defaults for missing values', () => {
       const emptyMetadata = { get: mock(() => null) };
       const xml = exporter.generatePropertiesXml(emptyMetadata);
 
-      expect(xml).toContain('<pp_title>Untitled</pp_title>');
-      expect(xml).toContain('<pp_lang>en</pp_lang>');
+      expect(xml).toContain('<value>Untitled</value>');
+      expect(xml).toContain('<value>en</value>');
     });
   });
 
   describe('generatePageXml', () => {
-    it('generates page XML with blocks', () => {
+    it('generates page XML with element format', () => {
       const pageMap = mockDocManager.getNavigation().get(0);
       const xml = exporter.generatePageXml(pageMap, 0);
 
-      expect(xml).toContain('odeNavStructureId="page-1"');
-      expect(xml).toContain('odePageName="Introduction"');
-      expect(xml).toContain('odeNavStructureOrder="0"');
+      expect(xml).toContain('<odeNavStructure>');
+      expect(xml).toContain('<odePageId>page-1</odePageId>');
+      expect(xml).toContain('<pageName>Introduction</pageName>');
+      expect(xml).toContain('<odeNavStructureOrder>0</odeNavStructureOrder>');
       expect(xml).toContain('</odeNavStructure>');
     });
 
@@ -394,49 +482,132 @@ describe('ElpxExporter', () => {
       const pageMap = mockDocManager.getNavigation().get(1);
       const xml = exporter.generatePageXml(pageMap, 1);
 
-      expect(xml).toContain('parentOdeNavStructureId="page-1"');
+      expect(xml).toContain('<odeParentPageId>page-1</odeParentPageId>');
+    });
+
+    it('includes page properties (odeNavStructureProperties)', () => {
+      const pageMap = mockDocManager.getNavigation().get(0);
+      const xml = exporter.generatePageXml(pageMap, 0);
+
+      expect(xml).toContain('<odeNavStructureProperties>');
+      expect(xml).toContain('<odeNavStructureProperty>');
+      expect(xml).toContain('<key>hidePageTitle</key>');
+      expect(xml).toContain('<value>true</value>');
+      expect(xml).toContain('<key>titlePage</key>');
+      expect(xml).toContain('<value>Custom Page Title</value>');
+      expect(xml).toContain('</odeNavStructureProperties>');
+    });
+
+    it('handles pages without properties', () => {
+      const pageMap = mockDocManager.getNavigation().get(1);
+      const xml = exporter.generatePageXml(pageMap, 1);
+
+      // Should still have the properties element, just empty
+      expect(xml).toContain('<odeNavStructureProperties>');
+      expect(xml).toContain('</odeNavStructureProperties>');
     });
   });
 
   describe('generateBlockXml', () => {
-    it('generates block XML with components', () => {
+    it('generates block XML with element format', () => {
       const pageMap = mockDocManager.getNavigation().get(0);
       const blockMap = pageMap.get('blocks').get(0);
-      const xml = exporter.generateBlockXml(blockMap, 0);
+      const xml = exporter.generateBlockXml(blockMap, 0, 'page-1');
 
-      expect(xml).toContain('odePagStructureId="block-1"');
-      expect(xml).toContain('blockName="Main Block"');
+      expect(xml).toContain('<odePagStructure>');
+      expect(xml).toContain('<odeBlockId>block-1</odeBlockId>');
+      expect(xml).toContain('<blockName>Main Block</blockName>');
       expect(xml).toContain('</odePagStructure>');
+    });
+
+    it('exports iconName', () => {
+      const pageMap = mockDocManager.getNavigation().get(0);
+      const blockMap = pageMap.get('blocks').get(0);
+      const xml = exporter.generateBlockXml(blockMap, 0, 'page-1');
+
+      expect(xml).toContain('<iconName>objectives</iconName>');
+    });
+
+    it('includes block properties (odePagStructureProperties)', () => {
+      const pageMap = mockDocManager.getNavigation().get(0);
+      const blockMap = pageMap.get('blocks').get(0);
+      const xml = exporter.generateBlockXml(blockMap, 0, 'page-1');
+
+      expect(xml).toContain('<odePagStructureProperties>');
+      expect(xml).toContain('<odePagStructureProperty>');
+      expect(xml).toContain('<key>identifier</key>');
+      expect(xml).toContain('<value>my-block-id</value>');
+      expect(xml).toContain('<key>allowToggle</key>');
+      expect(xml).toContain('<value>true</value>');
+      expect(xml).toContain('<key>cssClass</key>');
+      expect(xml).toContain('<value>custom-class</value>');
+      expect(xml).toContain('</odePagStructureProperties>');
+    });
+
+    it('exports all required block properties', () => {
+      const pageMap = mockDocManager.getNavigation().get(0);
+      const blockMap = pageMap.get('blocks').get(0);
+      const xml = exporter.generateBlockXml(blockMap, 0, 'page-1');
+
+      // All 6 block properties should be exported
+      expect(xml).toContain('<key>visibility</key>');
+      expect(xml).toContain('<key>teacherOnly</key>');
+      expect(xml).toContain('<key>allowToggle</key>');
+      expect(xml).toContain('<key>minimized</key>');
+      expect(xml).toContain('<key>identifier</key>');
+      expect(xml).toContain('<key>cssClass</key>');
     });
   });
 
   describe('generateComponentXml', () => {
-    it('generates component XML', () => {
+    it('generates component XML with element format', () => {
       const pageMap = mockDocManager.getNavigation().get(0);
       const blockMap = pageMap.get('blocks').get(0);
       const compMap = blockMap.get('components').get(0);
-      const xml = exporter.generateComponentXml(compMap, 0);
+      const xml = exporter.generateComponentXml(compMap, 0, 'page-1', 'block-1');
 
-      expect(xml).toContain('odeComponentId="comp-1"');
-      expect(xml).toContain('odeIdeviceTypeDirName="FreeTextIdevice"');
+      expect(xml).toContain('<odeComponent>');
+      expect(xml).toContain('<odeIdeviceId>comp-1</odeIdeviceId>');
+      expect(xml).toContain('<odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>');
       expect(xml).toContain('<htmlView><![CDATA[<p>Hello World</p>]]></htmlView>');
       expect(xml).toContain('</odeComponent>');
     });
 
-    it('includes properties when present', () => {
+    it('includes component structure properties (odeComponentsProperties)', () => {
       const pageMap = mockDocManager.getNavigation().get(0);
       const blockMap = pageMap.get('blocks').get(0);
       const compMap = blockMap.get('components').get(0);
-      const xml = exporter.generateComponentXml(compMap, 0);
+      const xml = exporter.generateComponentXml(compMap, 0, 'page-1', 'block-1');
 
-      expect(xml).toContain('<jsonProperties>');
+      expect(xml).toContain('<odeComponentsProperties>');
+      expect(xml).toContain('<odeComponentsProperty>');
+      expect(xml).toContain('<key>identifier</key>');
+      expect(xml).toContain('<value>my-comp-id</value>');
+      expect(xml).toContain('<key>teacherOnly</key>');
+      expect(xml).toContain('<value>true</value>');
+      expect(xml).toContain('<key>cssClass</key>');
+      expect(xml).toContain('<value>comp-class</value>');
+      expect(xml).toContain('</odeComponentsProperties>');
+    });
+
+    it('exports all required component properties', () => {
+      const pageMap = mockDocManager.getNavigation().get(0);
+      const blockMap = pageMap.get('blocks').get(0);
+      const compMap = blockMap.get('components').get(0);
+      const xml = exporter.generateComponentXml(compMap, 0, 'page-1', 'block-1');
+
+      // All 4 component properties should be exported
+      expect(xml).toContain('<key>visibility</key>');
+      expect(xml).toContain('<key>teacherOnly</key>');
+      expect(xml).toContain('<key>identifier</key>');
+      expect(xml).toContain('<key>cssClass</key>');
     });
 
     it('includes prop_ prefixed properties', () => {
       const pageMap = mockDocManager.getNavigation().get(0);
       const blockMap = pageMap.get('blocks').get(0);
       const compMap = blockMap.get('components').get(0);
-      const xml = exporter.generateComponentXml(compMap, 0);
+      const xml = exporter.generateComponentXml(compMap, 0, 'page-1', 'block-1');
 
       expect(xml).toContain('<odeComponentProperty key="custom">');
     });

@@ -660,38 +660,26 @@ describe('exe_atools', () => {
         atools: undefined,
       };
 
-      // Mock jQuery
-      const mockJQuery = vi.fn((selector) => {
-        if (typeof selector === 'function') {
-          // Document ready callback - don't execute to avoid full init
-          return { length: 0 };
-        }
-        return {
-          length: 0,
-          after: vi.fn(),
-          prepend: vi.fn(),
-          addClass: vi.fn(),
-          removeClass: vi.fn(),
-          hasClass: vi.fn(() => false),
-          val: vi.fn().mockReturnThis(),
-          trigger: vi.fn().mockReturnThis(),
-          click: vi.fn(),
-          change: vi.fn(),
-          each: vi.fn(),
-          on: vi.fn(),
-          attr: vi.fn(),
-          css: vi.fn(() => '0px'),
-          height: vi.fn(() => 600),
-          width: vi.fn(() => 800),
+      const readyCallbacks = [];
+      const originalReady = global.$?.fn?.ready;
+      if (global.$?.fn?.ready) {
+        global.$.fn.ready = function (fn) {
+          readyCallbacks.push(fn);
+          return this;
         };
-      });
-      global.$ = mockJQuery;
+      }
 
       // Execute script (but don't run document ready)
-      expect(() => {
-        // eslint-disable-next-line no-eval
-        eval(scriptContent);
-      }).not.toThrow();
+      try {
+        expect(() => {
+          // eslint-disable-next-line no-eval
+          eval(scriptContent);
+        }).not.toThrow();
+      } finally {
+        if (global.$?.fn?.ready) {
+          global.$.fn.ready = originalReady;
+        }
+      }
 
       // Verify $exe.atools was created
       expect(global.$exe.atools).toBeDefined();

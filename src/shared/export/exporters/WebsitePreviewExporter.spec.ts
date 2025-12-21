@@ -115,6 +115,14 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('class="exe-web-site exe-preview"');
         });
 
+        it('should include js-hidden CSS rules for feedback toggle support', async () => {
+            // The preview must include CSS to hide .js-hidden elements (feedback content)
+            // and show .js-required elements (feedback buttons) when JS is enabled
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.js-hidden { display: none; }');
+            expect(result.html).toContain('.js .js-required { display: block; }');
+        });
+
         it('should include page counter when addPagination is true', async () => {
             // Create a new exporter with addPagination enabled
             const docWithPagination = createMockDocument(
@@ -181,14 +189,15 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('title="Next"');
         });
 
-        it('should render header with main-header class as direct child of .page', async () => {
+        it('should render header elements as direct children of .page for exe_export.js teacherMode', async () => {
             const result = await exporter.generatePreview();
-            // Header should be a direct child of main.page (not inside articles)
-            // This is critical for Fluxus theme CSS selector: .page > header
-            expect(result.html).toContain('id="page-header" class="main-header"');
-            // Header should be outside articles (inside main.page)
+            // Headers should be direct children of main.page (not inside articles)
+            // exe_export.js teacherMode.init() uses $("header.package-header") and $("header.page-header") selectors
+            expect(result.html).toContain('<header class="package-header');
+            expect(result.html).toContain('<header class="page-header"');
+            // Headers should be outside articles (inside main.page)
             const htmlAfterMain = result.html!.split('<main class="page">')[1];
-            const headerPos = htmlAfterMain.indexOf('id="page-header"');
+            const headerPos = htmlAfterMain.indexOf('<header class="package-header');
             const articlePos = htmlAfterMain.indexOf('<article');
             // Header should come before articles
             expect(headerPos).toBeGreaterThan(-1);
@@ -196,10 +205,11 @@ describe('WebsitePreviewExporter', () => {
             expect(headerPos).toBeLessThan(articlePos);
         });
 
-        it('should render header with package-header and page-header wrappers', async () => {
+        it('should render header elements (not divs) for exe_export.js teacherMode to find', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('<div class="package-header">');
-            expect(result.html).toContain('<div class="page-header">');
+            // Must be <header> elements, NOT <div>, for exe_export.js selectors to work
+            expect(result.html).toContain('<header class="package-header package-node">');
+            expect(result.html).toContain('<header class="page-header"');
             expect(result.html).toContain('class="package-title"');
             expect(result.html).toContain('class="page-title"');
         });
@@ -326,14 +336,35 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('.my-class { color: red; }');
         });
 
-        it('should include author in footer', async () => {
+        it('should include proper footer structure with license', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('Test Author');
+            // Footer should have the correct structure matching PageRenderer
+            expect(result.html).toContain('<footer id="siteFooter">');
+            expect(result.html).toContain('<div id="siteFooterContent">');
+            expect(result.html).toContain('id="packageLicense"');
+            expect(result.html).toContain('class="license-label">Licencia: </span>');
+            expect(result.html).toContain('class="license">CC-BY-SA</a>');
         });
 
-        it('should include license in footer', async () => {
+        it('should include user footer content when provided', async () => {
+            const docWithFooter = createMockDocument([{ id: 'page-1', title: 'Home', blocks: [] }]);
+            // Override getMetadata to include footer
+            docWithFooter.getMetadata = () => ({
+                title: 'Test',
+                author: 'Author',
+                license: 'CC-BY-SA',
+                footer: '<p>Custom footer content</p>',
+            });
+            const exp = new WebsitePreviewExporter(docWithFooter, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.html).toContain('id="siteUserFooter"');
+            expect(result.html).toContain('<p>Custom footer content</p>');
+        });
+
+        it('should not include siteUserFooter when no custom footer content', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('CC-BY-SA');
+            expect(result.html).not.toContain('id="siteUserFooter"');
         });
     });
 
@@ -788,6 +819,82 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).not.toContain('exe_lightbox');
             expect(result.html).not.toContain('exe_magnify');
             expect(result.html).not.toContain('mojomagnify');
+        });
+    });
+
+    describe('visibility CSS rules', () => {
+        it('should include CSS to hide novisible blocks', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.exe-export article.novisible.box');
+            expect(result.html).toContain('display: none !important');
+        });
+
+        it('should include CSS to hide novisible iDevices', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.exe-export article.box .idevice_node.novisible');
+        });
+
+        it('should include CSS to hide minimized block content', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('.exe-export article.minimized .box-content');
+        });
+
+        it('should include CSS to hide teacher-only content by default', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('html:not(.mode-teacher) .js .teacher-only');
+        });
+    });
+
+    describe('LaTeX rendering support', () => {
+        it('should include hasLatex helper function in SPA script', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('function hasLatex(text)');
+            // Verify the regex pattern is in the output (checks for \\begin part)
+            expect(result.html).toContain('begin');
+            expect(result.html).toContain('.test(text)');
+        });
+
+        it('should include typesetLatex helper function in SPA script', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('function typesetLatex(element)');
+            expect(result.html).toContain('MathJax.typesetPromise');
+        });
+
+        it('should call typesetLatex on page title when LaTeX detected', async () => {
+            const result = await exporter.generatePreview();
+            // Check that showPage calls typesetLatex for page title
+            expect(result.html).toContain('if (hasLatex(title))');
+            expect(result.html).toContain('typesetLatex(pageTitleEl)');
+        });
+
+        it('should typeset LaTeX in navigation on initial load', async () => {
+            const result = await exporter.generatePreview();
+            // Check for navigation LaTeX typesetting
+            expect(result.html).toContain('Typeset LaTeX in navigation sidebar');
+            expect(result.html).toContain("var navContainer = document.querySelector('nav')");
+            expect(result.html).toContain('typesetLatex(navContainer)');
+        });
+
+        it('should typeset LaTeX in initial page title on load', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('Typeset LaTeX in initial page title');
+            expect(result.html).toContain('hasLatex(pageTitleEl.textContent)');
+        });
+
+        it('should preserve LaTeX delimiters in page title data attribute', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Fórmulas con \\(\\LaTeX\\)',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ]);
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+            // LaTeX delimiters should be preserved in data-page-title attribute
+            expect(result.html).toContain('data-page-title="Fórmulas con \\(\\LaTeX\\)"');
         });
     });
 });

@@ -16,6 +16,7 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
+import { LIBRARY_PATTERNS } from '../constants';
 
 /**
  * PageRenderer class
@@ -71,6 +72,10 @@ export class PageRenderer {
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
 
+        // Detect content-based libraries from page content
+        const pageContent = this.renderPageContent(page, basePath);
+        const detectedLibraries = this.detectContentLibraries(pageContent);
+
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
         const currentIdx = currentPageIndex ?? allPages.findIndex(p => p.id === page.id);
@@ -101,13 +106,13 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, extraHeadContent, addSearchBox })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, extraHeadContent, addSearchBox, detectedLibraries })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
-${this.renderPageContent(page, basePath)}
+${pageContent}
 </div></main>${this.renderNavButtons(page, allPages, basePath)}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
@@ -135,6 +140,7 @@ ${madeWithExeHtml}
         addAccessibilityToolbar?: boolean;
         extraHeadContent?: string;
         addSearchBox?: boolean;
+        detectedLibraries?: string[];
     }): string {
         const {
             pageTitle,
@@ -148,6 +154,7 @@ ${madeWithExeHtml}
             addAccessibilityToolbar = false,
             extraHeadContent = '',
             addSearchBox = false,
+            detectedLibraries = [],
         } = options;
 
         // Meta tags
@@ -191,6 +198,27 @@ ${madeWithExeHtml}
             head += `\n${jsScripts[i]}`;
             if (cssLinks[i]) {
                 head += cssLinks[i];
+            }
+        }
+
+        // Content-detected libraries (e.g., exe_highlighter for highlighted-code class)
+        // Skip libraries already included above (exe_lightbox is hardcoded)
+        const alreadyIncluded = new Set(['exe_lightbox', 'exe_lightbox_gallery']);
+        for (const libName of detectedLibraries) {
+            if (alreadyIncluded.has(libName)) continue;
+
+            const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
+            if (!libPattern) continue;
+
+            // Add JS files first, then CSS files (legacy order)
+            const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
+            const cssFiles = libPattern.files.filter(f => f.endsWith('.css'));
+
+            for (const jsFile of jsFiles) {
+                head += `\n<script src="${basePath}libs/${jsFile}"> </script>`;
+            }
+            for (const cssFile of cssFiles) {
+                head += `\n<link rel="stylesheet" href="${basePath}libs/${cssFile}">`;
             }
         }
 
@@ -251,14 +279,20 @@ ${madeWithExeHtml}
      * @returns Navigation item HTML
      */
     renderNavItem(page: ExportPage, allPages: ExportPage[], currentPageId: string, basePath: string): string {
-        const children = allPages.filter(p => p.parentId === page.id);
+        // Skip hidden pages (except we check at parent level to preserve hierarchy)
+        if (!this.isPageVisible(page, allPages)) {
+            return '';
+        }
+
+        // Filter children to only visible ones
+        const children = allPages.filter(p => p.parentId === page.id && this.isPageVisible(p, allPages));
         const isCurrent = page.id === currentPageId;
         const hasChildren = children.length > 0;
         const isAncestor = this.isAncestorOf(page.id, currentPageId, allPages);
         const isFirstPage = page.id === allPages[0]?.id;
 
         // Build li class attribute
-        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
+        const liClass = isCurrent ? ' id="active" class="active"' : isAncestor ? ' class="current-page-parent"' : '';
         const link = this.getPageLink(page, allPages, basePath);
 
         // Build link classes: main-node for first page, daddy/no-ch for children, active if current
@@ -266,6 +300,11 @@ ${madeWithExeHtml}
         if (isCurrent) linkClasses.push('active');
         if (isFirstPage) linkClasses.push('main-node');
         linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
+
+        // Add highlighted-link class if page is highlighted
+        if (this.isPageHighlighted(page)) {
+            linkClasses.push('highlighted-link');
+        }
 
         let html = `<li${liClass}>`;
         html += ` <a href="${link}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
@@ -294,6 +333,82 @@ ${madeWithExeHtml}
         if (!child || !child.parentId) return false;
         if (child.parentId === ancestorId) return true;
         return this.isAncestorOf(ancestorId, child.parentId, allPages);
+    }
+
+    /**
+     * Check if a page is visible in export
+     * First page is always visible regardless of visibility setting.
+     * If a parent is hidden, all its children are also hidden.
+     * @param page - Page to check
+     * @param allPages - All pages
+     * @returns True if page should be visible
+     */
+    isPageVisible(page: ExportPage, allPages: ExportPage[]): boolean {
+        // First page is always visible
+        if (page.id === allPages[0]?.id) {
+            return true;
+        }
+
+        // Check this page's visibility property
+        const visibility = page.properties?.visibility;
+        if (visibility === false || visibility === 'false') {
+            return false;
+        }
+
+        // Check if any ancestor is hidden (recursive)
+        if (page.parentId) {
+            const parent = allPages.find(p => p.id === page.parentId);
+            if (parent && !this.isPageVisible(parent, allPages)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Filter pages to only include visible ones
+     * @param pages - All pages
+     * @returns Pages that should be visible in navigation and exports
+     */
+    getVisiblePages(pages: ExportPage[]): ExportPage[] {
+        return pages.filter(page => this.isPageVisible(page, pages));
+    }
+
+    /**
+     * Check if a page has highlight property enabled
+     * @param page - Page to check
+     * @returns True if page should be highlighted in navigation
+     */
+    isPageHighlighted(page: ExportPage): boolean {
+        const highlight = page.properties?.highlight;
+        return highlight === true || highlight === 'true';
+    }
+
+    /**
+     * Check if a page's title should be hidden
+     * @param page - Page to check
+     * @returns True if page title should be hidden
+     */
+    shouldHidePageTitle(page: ExportPage): boolean {
+        const hideTitle = page.properties?.hidePageTitle;
+        return hideTitle === true || hideTitle === 'true';
+    }
+
+    /**
+     * Get effective page title (respects editableInPage + titlePage properties)
+     * If editableInPage is true and titlePage is set, use titlePage
+     * Otherwise use the default page title
+     * @param page - Page to get title for
+     * @returns Effective title string
+     */
+    getEffectivePageTitle(page: ExportPage): string {
+        const editableInPage = page.properties?.editableInPage;
+        if (editableInPage === true || editableInPage === 'true') {
+            const titlePage = page.properties?.titlePage as string;
+            if (titlePage) return titlePage;
+        }
+        return page.title;
     }
 
     /**
@@ -350,8 +465,15 @@ ${madeWithExeHtml}
             ? ` <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
             : '';
 
-        return `<header id="header-${page.id}" class="main-header">${pageCounterHtml}<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
-<div class="page-header"><h2 class="page-title">${this.escapeHtml(page.title)}</h2></div></header>`;
+        // Check if page title should be hidden and get effective title
+        const hideTitle = this.shouldHidePageTitle(page);
+        const effectiveTitle = this.getEffectivePageTitle(page);
+        const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
+
+        // Use separate header elements so exe_export.js teacherMode can find them
+        // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
+        return `${pageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
+<header class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></header>`;
     }
 
     /**
@@ -558,9 +680,14 @@ ${userFooterHtml}</div></footer>`;
 
         let contentHtml = '';
         for (const page of allPages) {
+            // Check if page title should be hidden and get effective title
+            const hideTitle = this.shouldHidePageTitle(page);
+            const effectiveTitle = this.getEffectivePageTitle(page);
+            const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
+
             contentHtml += `<section id="section-${page.id}" class="single-page-section">
-<header class="page-header">
-<h2 class="page-title">${this.escapeHtml(page.title)}</h2>
+<header class="page-header"${pageHeaderStyle}>
+<h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2>
 </header>
 <div class="page-content">
 ${this.renderPageContent(page, '')}
@@ -606,6 +733,7 @@ ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 <div class="exe-content exe-export pre-js">
 ${this.renderSinglePageNav(allPages)}
 <main class="single-page-content">
+<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
 ${contentHtml}
 </main>
 ${this.renderLicense({ author, license })}
@@ -638,11 +766,26 @@ ${this.renderLicense({ author, license })}
      * @returns Navigation item HTML
      */
     renderSinglePageNavItem(page: ExportPage, allPages: ExportPage[]): string {
-        const children = allPages.filter(p => p.parentId === page.id);
+        // Skip hidden pages
+        if (!this.isPageVisible(page, allPages)) {
+            return '';
+        }
+
+        // Filter children to only visible ones
+        const children = allPages.filter(p => p.parentId === page.id && this.isPageVisible(p, allPages));
         const hasChildren = children.length > 0;
 
+        // Build link classes
+        const linkClasses: string[] = [];
+        linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
+
+        // Add highlighted-link class if page is highlighted
+        if (this.isPageHighlighted(page)) {
+            linkClasses.push('highlighted-link');
+        }
+
         let html = '<li>';
-        html += ` <a href="#section-${page.id}" class="${hasChildren ? 'daddy' : 'no-ch'}">${this.escapeHtml(page.title)}</a>\n`;
+        html += ` <a href="#section-${page.id}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
 
         if (hasChildren) {
             html += '<ul class="other-section">\n';
@@ -654,6 +797,47 @@ ${this.renderLicense({ author, license })}
 
         html += '</li>\n';
         return html;
+    }
+
+    /**
+     * Detect content-based libraries from HTML content
+     * Scans the content for patterns that indicate specific libraries are needed
+     * @param html - HTML content to scan
+     * @returns Array of library names detected
+     */
+    detectContentLibraries(html: string): string[] {
+        const detectedLibs: Set<string> = new Set();
+
+        for (const lib of LIBRARY_PATTERNS) {
+            let found = false;
+
+            switch (lib.type) {
+                case 'class':
+                    // Look for class="...pattern..." or class='...pattern...'
+                    found =
+                        html.includes(`class="${lib.pattern}"`) ||
+                        html.includes(`class='${lib.pattern}'`) ||
+                        new RegExp(`class="[^"]*\\b${lib.pattern}\\b[^"]*"`, 'i').test(html) ||
+                        new RegExp(`class='[^']*\\b${lib.pattern}\\b[^']*'`, 'i').test(html);
+                    break;
+
+                case 'rel':
+                    // Look for rel="pattern"
+                    found = html.includes(`rel="${lib.pattern}"`) || html.includes(`rel='${lib.pattern}'`);
+                    break;
+
+                case 'data':
+                    // Look for data-pattern or data-pattern="..."
+                    found = html.includes(`data-${lib.pattern}`) || html.includes(`data-${lib.pattern}=`);
+                    break;
+            }
+
+            if (found) {
+                detectedLibs.add(lib.name);
+            }
+        }
+
+        return Array.from(detectedLibs);
     }
 
     /**

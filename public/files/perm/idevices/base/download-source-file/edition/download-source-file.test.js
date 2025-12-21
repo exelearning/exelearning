@@ -33,10 +33,6 @@ describe('download-source-file iDevice (edition)', () => {
       license: { value: 'creative commons: attribution 4.0' },
     }));
 
-    // Reset TinyMCE mock
-    if (global.tinyMCE && global.tinyMCE._reset) {
-      global.tinyMCE._reset();
-    }
   });
 
   afterEach(() => {
@@ -358,7 +354,7 @@ describe('download-source-file iDevice (edition)', () => {
   describe('save', () => {
     let container;
 
-    beforeEach(() => {
+    beforeEach(async () => {
       container = document.createElement('div');
       container.innerHTML = `
         <textarea id="dpiDescription"></textarea>
@@ -372,14 +368,9 @@ describe('download-source-file iDevice (edition)', () => {
       `;
       document.body.appendChild(container);
 
-      // Setup TinyMCE mock with content
-      const mockEditor = {
-        id: 'dpiDescription',
-        getContent: vi.fn(() => '<p>Test instructions</p>'),
-      };
-      global.tinymce = {
-        editors: [mockEditor],
-      };
+      await createTinyMCEEditor('dpiDescription', {
+        content: '<p>Test instructions</p>',
+      });
     });
 
     afterEach(() => {
@@ -387,7 +378,9 @@ describe('download-source-file iDevice (edition)', () => {
     });
 
     it('returns warning message when no TinyMCE editors', () => {
-      global.tinymce.editors = [];
+      if (global.tinymce && typeof global.tinymce.remove === 'function') {
+        global.tinymce.remove();
+      }
 
       const result = $exeDevice.save();
 
@@ -395,7 +388,8 @@ describe('download-source-file iDevice (edition)', () => {
     });
 
     it('returns false and shows alert when description is empty', () => {
-      global.tinymce.editors[0].getContent = vi.fn(() => '');
+      const editor = global.tinymce.get('dpiDescription');
+      editor.setContent('');
 
       const result = $exeDevice.save();
 

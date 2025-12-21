@@ -67,6 +67,24 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('data-idevice-json-data="');
         });
 
+        it('should include data-idevice-component-type="json" for text idevice (feedback toggle support)', () => {
+            // Text iDevice needs componentType="json" so that exe_export.js
+            // calls $text.renderBehaviour() to attach feedback toggle handlers
+            const component: ExportComponent = {
+                id: 'text-feedback-test',
+                type: 'text',
+                order: 0,
+                content: '<p>Content with feedback</p>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('data-idevice-path="idevices/text/"');
+            expect(html).toContain('data-idevice-type="text"');
+            expect(html).toContain('data-idevice-component-type="json"');
+        });
+
         it('should not include data attributes when disabled', () => {
             const component: ExportComponent = {
                 id: 'comp-1',
@@ -168,6 +186,35 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('data-idevice-path="/files/perm/idevices/base/crossword/export/"');
         });
+
+        // Tests for boolean values (Yjs stores booleans, not strings)
+        it('should add novisible class when visibility is false (boolean)', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Hidden</p>',
+                properties: { visibility: false },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('novisible');
+        });
+
+        it('should add teacher-only class when teacherOnly is true (boolean)', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Teacher only</p>',
+                properties: { teacherOnly: true },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+        });
     });
 
     describe('renderBlock', () => {
@@ -243,6 +290,179 @@ describe('IdeviceRenderer', () => {
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
 
             expect(html).toContain('minimized');
+        });
+
+        it('should add teacher-only class when block has teacherOnly=true', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Teacher Block',
+                order: 0,
+                components: [],
+                properties: { teacherOnly: 'true' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+        });
+
+        it('should add novisible class when block has visibility=false', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Hidden Block',
+                order: 0,
+                components: [],
+                properties: { visibility: 'false' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('novisible');
+        });
+
+        it('should add identifier attribute when block has identifier property', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Custom ID Block',
+                order: 0,
+                components: [],
+                properties: { identifier: 'my-custom-id' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('identifier="my-custom-id"');
+        });
+
+        it('should add custom cssClass to block', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Styled Block',
+                order: 0,
+                components: [],
+                properties: { cssClass: 'highlight important' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('highlight');
+            expect(html).toContain('important');
+        });
+
+        it('should combine multiple block properties correctly', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Full Block',
+                order: 0,
+                components: [],
+                properties: {
+                    teacherOnly: 'true',
+                    minimized: 'true',
+                    identifier: 'special-block',
+                    cssClass: 'featured',
+                },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+            expect(html).toContain('minimized');
+            expect(html).toContain('identifier="special-block"');
+            expect(html).toContain('featured');
+        });
+
+        it('should not add identifier attribute when not set', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Block',
+                order: 0,
+                components: [],
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('identifier=');
+        });
+
+        it('should not add identifier attribute when empty string', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Block',
+                order: 0,
+                components: [],
+                properties: { identifier: '' },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('identifier=');
+        });
+
+        // Tests for boolean values (Yjs stores booleans, not strings)
+        it('should add teacher-only class when block has teacherOnly=true (boolean)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Teacher Block',
+                order: 0,
+                components: [],
+                properties: { teacherOnly: true as unknown as string },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+        });
+
+        it('should add novisible class when block has visibility=false (boolean)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Hidden Block',
+                order: 0,
+                components: [],
+                properties: { visibility: false as unknown as string },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('novisible');
+        });
+
+        it('should add minimized class when block has minimized=true (boolean)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Minimized Block',
+                order: 0,
+                components: [],
+                properties: { minimized: true as unknown as string },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('minimized');
+        });
+
+        it('should combine boolean and string properties correctly', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Mixed Block',
+                order: 0,
+                components: [],
+                properties: {
+                    teacherOnly: true as unknown as string,
+                    visibility: false as unknown as string,
+                    minimized: true as unknown as string,
+                    identifier: 'my-id',
+                    cssClass: 'custom-class',
+                },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+            expect(html).toContain('novisible');
+            expect(html).toContain('minimized');
+            expect(html).toContain('identifier="my-id"');
+            expect(html).toContain('custom-class');
         });
     });
 
@@ -434,6 +654,156 @@ describe('IdeviceRenderer', () => {
             expect(scripts).toHaveLength(1);
             expect(scripts[0].src).toBe('idevices/crossword/crossword.js');
             expect(scripts[0].tag).toBe('<script src="idevices/crossword/crossword.js"></script>');
+        });
+    });
+
+    describe('unescapeHtml', () => {
+        it('should unescape HTML entities', () => {
+            expect(renderer.unescapeHtml('&lt;script&gt;')).toBe('<script>');
+            expect(renderer.unescapeHtml('&amp;')).toBe('&');
+            expect(renderer.unescapeHtml('&quot;')).toBe('"');
+            expect(renderer.unescapeHtml('&#039;')).toBe("'");
+            expect(renderer.unescapeHtml('&#39;')).toBe("'");
+        });
+
+        it('should handle multiple entities in one string', () => {
+            expect(renderer.unescapeHtml('&lt;div class=&quot;test&quot;&gt;')).toBe('<div class="test">');
+        });
+
+        it('should handle empty string', () => {
+            expect(renderer.unescapeHtml('')).toBe('');
+        });
+
+        it('should handle null/undefined safely', () => {
+            expect(renderer.unescapeHtml(null as unknown as string)).toBe('');
+            expect(renderer.unescapeHtml(undefined as unknown as string)).toBe('');
+        });
+
+        it('should preserve unknown entities', () => {
+            expect(renderer.unescapeHtml('&nbsp;')).toBe('&nbsp;');
+            expect(renderer.unescapeHtml('&copy;')).toBe('&copy;');
+        });
+
+        it('should handle mixed content', () => {
+            expect(renderer.unescapeHtml('Hello &lt;world&gt; &amp; friends')).toBe('Hello <world> & friends');
+        });
+    });
+
+    describe('escapePreCodeContent', () => {
+        it('should escape script tags inside pre>code blocks', () => {
+            const input = '<pre><code><script src="test.js"></script></code></pre>';
+            const expected = '<pre><code>&lt;script src=&quot;test.js&quot;&gt;&lt;/script&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should NOT escape content outside pre>code blocks', () => {
+            const input = '<p>Hello <strong>world</strong></p><pre><code><div>test</div></code></pre>';
+            const expected = '<p>Hello <strong>world</strong></p><pre><code>&lt;div&gt;test&lt;/div&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should NOT escape inline code tags (without pre)', () => {
+            const input = '<p>Use <code><script></code> tag</p>';
+            expect(renderer.escapePreCodeContent(input)).toBe(input);
+        });
+
+        it('should handle multiple pre>code blocks', () => {
+            const input = '<pre><code><a></code></pre><p>text</p><pre><code><b></code></pre>';
+            const expected = '<pre><code>&lt;a&gt;</code></pre><p>text</p><pre><code>&lt;b&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle attributes on pre and code tags', () => {
+            const input = '<pre class="highlighted"><code class="lang-js"><script></script></code></pre>';
+            const expected =
+                '<pre class="highlighted"><code class="lang-js">&lt;script&gt;&lt;/script&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle whitespace between tags', () => {
+            const input = '<pre>\n  <code>\n    <div>\n  </code>\n</pre>';
+            const expected = '<pre>\n  <code>\n    &lt;div&gt;\n  </code>\n</pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle empty pre>code blocks', () => {
+            const input = '<pre><code></code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(input);
+        });
+
+        it('should handle pre>code blocks with only whitespace', () => {
+            const input = '<pre><code>   </code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(input);
+        });
+
+        it('should not double-escape already escaped content', () => {
+            const input = '<pre><code>&lt;script&gt;</code></pre>';
+            const expected = '<pre><code>&lt;script&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle ampersands correctly', () => {
+            const input = '<pre><code>a & b && c</code></pre>';
+            const expected = '<pre><code>a &amp; b &amp;&amp; c</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle quotes correctly', () => {
+            const input = '<pre><code>let x = "hello";</code></pre>';
+            const expected = '<pre><code>let x = &quot;hello&quot;;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle tikzjax example from bug report', () => {
+            const input = '<pre><code>\n<script src="https://tikzjax.com/v1/tikzjax.js"></script>\n</code></pre>';
+            const expected =
+                '<pre><code>\n&lt;script src=&quot;https://tikzjax.com/v1/tikzjax.js&quot;&gt;&lt;/script&gt;\n</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle empty content', () => {
+            expect(renderer.escapePreCodeContent('')).toBe('');
+        });
+
+        it('should handle null/undefined safely', () => {
+            expect(renderer.escapePreCodeContent(null as unknown as string)).toBe('');
+            expect(renderer.escapePreCodeContent(undefined as unknown as string)).toBe('');
+        });
+
+        it('should handle content with no pre>code blocks', () => {
+            const input = '<p>Just some <em>normal</em> HTML</p>';
+            expect(renderer.escapePreCodeContent(input)).toBe(input);
+        });
+
+        it('should handle complex nested HTML in code blocks', () => {
+            const input = '<pre><code><div class="container"><p id="test">Hello</p></div></code></pre>';
+            const expected =
+                '<pre><code>&lt;div class=&quot;container&quot;&gt;&lt;p id=&quot;test&quot;&gt;Hello&lt;/p&gt;&lt;/div&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should preserve content between multiple code blocks', () => {
+            const input = '<pre><code><a></code></pre><script>alert("real")</script><pre><code><b></code></pre>';
+            const expected =
+                '<pre><code>&lt;a&gt;</code></pre><script>alert("real")</script><pre><code>&lt;b&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+    });
+
+    describe('render with pre>code escaping', () => {
+        it('should escape pre>code content in rendered output', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Example:</p><pre><code><script src="test.js"></script></code></pre>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('&lt;script src=&quot;test.js&quot;&gt;&lt;/script&gt;');
+            expect(html).not.toContain('<script src="test.js">');
         });
     });
 });

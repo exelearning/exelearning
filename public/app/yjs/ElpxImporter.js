@@ -10,6 +10,34 @@
  *   await importer.importFromFile(file);
  */
 class ElpxImporter {
+  // Default block properties (from ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG)
+  static BLOCK_PROPERTY_DEFAULTS = {
+    visibility: 'true',
+    teacherOnly: 'false',
+    allowToggle: 'true',
+    minimized: 'false',
+    identifier: '',
+    cssClass: ''
+  };
+
+  // Default component properties
+  static COMPONENT_PROPERTY_DEFAULTS = {
+    visibility: 'true',
+    teacherOnly: 'false',
+    identifier: '',
+    cssClass: ''
+  };
+
+  // Default page properties
+  static PAGE_PROPERTY_DEFAULTS = {
+    visibility: 'true',
+    highlight: 'false',
+    hidePageTitle: 'false',
+    editableInPage: 'false',
+    titlePage: '',
+    titleNode: ''
+  };
+
   /**
    * @param {YjsDocumentManager} documentManager - The Yjs document manager
    * @param {AssetManager} assetManager - Asset manager for storing assets
@@ -117,8 +145,8 @@ class ElpxImporter {
     // Check if it's Python pickle format (legacy .elp with contentv3.xml)
     const rootElement = xmlDoc.documentElement?.tagName;
     if (rootElement === 'instance' || rootElement === 'dictionary') {
-      Logger.log('[ElpxImporter] Legacy Python pickle format detected, converting via backend...');
-      return await this.importLegacyViaBackend(file, { clearExisting, parentId });
+      Logger.log('[ElpxImporter] Legacy Python pickle format detected, importing legacy format...');
+      return await this.importLegacyFormat(file, { clearExisting, parentId });
     }
 
     // Extract and import structure
@@ -424,6 +452,9 @@ class ElpxImporter {
     // Use provided order or read from XML (fallback)
     const order = calculatedOrder !== null ? calculatedOrder : this.getNavOrder(navNode);
 
+    // Extract page-level properties (hidePageTitle, editableInPage, titleNode, etc.)
+    const properties = this.getNavStructureProperties(navNode);
+
     const pageData = {
       id: pageId,
       pageId: pageId,
@@ -432,7 +463,8 @@ class ElpxImporter {
       parentId: parentId,
       order: order,
       createdAt: new Date().toISOString(),
-      blocks: []
+      blocks: [],
+      properties: properties
     };
 
     Logger.log(`[ElpxImporter] Building page data: "${pageName}" (${pageId}) parent: ${parentId} order: ${order}`);
@@ -477,6 +509,9 @@ class ElpxImporter {
                      this.getTextContent(pagNode, 'iconName') ||
                      '';
 
+    // Extract block-level properties (visibility, minimized, teacherOnly, cssClass, identifier)
+    const properties = this.getPagStructureProperties(pagNode);
+
     const blockData = {
       id: blockId,
       blockId: blockId,
@@ -484,7 +519,8 @@ class ElpxImporter {
       iconName: iconName,
       order: order,
       createdAt: new Date().toISOString(),
-      components: []
+      components: [],
+      properties: properties
     };
 
     // Extract components (odeComponents)
@@ -583,7 +619,7 @@ class ElpxImporter {
       }
     }
 
-    // Extract component properties (odeComponentProperty)
+    // Extract component properties (odeComponentProperty) - legacy format
     const componentProps = compNode.querySelectorAll('odeComponentProperty');
     for (const propNode of componentProps) {
       const key = propNode.getAttribute('key') || this.getTextContent(propNode, 'key');
@@ -592,6 +628,29 @@ class ElpxImporter {
         compData.componentProps[key] = value;
       }
     }
+
+    // Extract component-level properties (odeComponentsProperties) - visibility, etc.
+    // Start with defaults from getComponentsProperties()
+    const structureProps = this.getComponentsProperties(compNode);
+
+    // Merge properties from jsonProperties that override structure props
+    // Some iDevices store teacherOnly, identifier, cssClass, visibility in jsonProperties
+    if (compData.properties && typeof compData.properties === 'object') {
+      const propsToMerge = ['visibility', 'teacherOnly', 'identifier', 'cssClass'];
+      for (const key of propsToMerge) {
+        if (compData.properties[key] !== undefined) {
+          // Convert boolean to string for consistency ('true'/'false')
+          const value = compData.properties[key];
+          if (typeof value === 'boolean') {
+            structureProps[key] = value ? 'true' : 'false';
+          } else {
+            structureProps[key] = String(value);
+          }
+        }
+      }
+    }
+
+    compData.structureProps = structureProps;
 
     return compData;
   }
@@ -629,6 +688,18 @@ class ElpxImporter {
       safeYOp('pageMap.set(order)', () => pageMap.set('order', pageData.order));
       safeYOp('pageMap.set(createdAt)', () => pageMap.set('createdAt', pageData.createdAt));
       Logger.log('[ElpxImporter] Page basic props set');
+
+      // Create properties Y.Map if page has properties
+      if (pageData.properties && Object.keys(pageData.properties).length > 0) {
+        const propsMap = safeYOp('new Y.Map() for properties', () => new this.Y.Map());
+        for (const [key, value] of Object.entries(pageData.properties)) {
+          if (value !== undefined && value !== null) {
+            safeYOp(`propsMap.set(${key})`, () => propsMap.set(key, value));
+          }
+        }
+        safeYOp('pageMap.set(properties)', () => pageMap.set('properties', propsMap));
+        Logger.log('[ElpxImporter] Page properties set:', Object.keys(pageData.properties));
+      }
 
       // Create blocks array
       const blocksArray = safeYOp('new Y.Array() for blocks', () => new this.Y.Array());
@@ -690,6 +761,18 @@ class ElpxImporter {
       safeYOp('blockMap.set(order)', () => blockMap.set('order', blockData.order));
       safeYOp('blockMap.set(createdAt)', () => blockMap.set('createdAt', blockData.createdAt));
       Logger.log('[ElpxImporter] Block basic props set (including iconName:', blockData.iconName, ')');
+
+      // Create properties Y.Map if block has properties
+      if (blockData.properties && Object.keys(blockData.properties).length > 0) {
+        const propsMap = safeYOp('new Y.Map() for block properties', () => new this.Y.Map());
+        for (const [key, value] of Object.entries(blockData.properties)) {
+          if (value !== undefined && value !== null) {
+            safeYOp(`propsMap.set(${key})`, () => propsMap.set(key, value));
+          }
+        }
+        safeYOp('blockMap.set(properties)', () => blockMap.set('properties', propsMap));
+        Logger.log('[ElpxImporter] Block properties set:', Object.keys(blockData.properties));
+      }
 
       // Create components array
       const componentsArray = safeYOp('new Y.Array() for components', () => new this.Y.Array());
@@ -780,7 +863,7 @@ class ElpxImporter {
       }
     }
 
-    // Set component properties as flat values
+    // Set component properties as flat values (legacy format)
     if (compData.componentProps) {
       Logger.log('[ElpxImporter] Setting component props:', Object.keys(compData.componentProps));
       Object.entries(compData.componentProps).forEach(([key, value]) => {
@@ -788,6 +871,18 @@ class ElpxImporter {
           safeSet(compMap, `prop_${key}`, String(value));
         }
       });
+    }
+
+    // Create properties Y.Map if component has structure properties (visibility, etc.)
+    if (compData.structureProps && Object.keys(compData.structureProps).length > 0) {
+      const propsMap = new this.Y.Map();
+      for (const [key, value] of Object.entries(compData.structureProps)) {
+        if (value !== undefined && value !== null) {
+          propsMap.set(key, value);
+        }
+      }
+      safeSet(compMap, 'properties', propsMap);
+      Logger.log('[ElpxImporter] Component structure properties set:', Object.keys(compData.structureProps));
     }
 
     Logger.log('[ElpxImporter] createComponentYMap END:', compData.id);
@@ -899,6 +994,96 @@ class ElpxImporter {
     if (orderEl) return parseInt(orderEl.textContent, 10) || 0;
 
     return 0;
+  }
+
+  /**
+   * Extract page properties from odeNavStructureProperties
+   * Properties include: hidePageTitle, editableInPage, titleNode, titlePage, etc.
+   * Initializes with defaults and merges XML values.
+   * @param {Element} navNode - The odeNavStructure element
+   * @returns {Object} - Properties object with all default properties
+   */
+  getNavStructureProperties(navNode) {
+    // Start with all defaults
+    const properties = { ...ElpxImporter.PAGE_PROPERTY_DEFAULTS };
+
+    const propsContainer = navNode.querySelector('odeNavStructureProperties');
+    if (!propsContainer) return properties;  // Return defaults if no properties element
+
+    const propNodes = propsContainer.querySelectorAll('odeNavStructureProperty');
+    for (const propNode of propNodes) {
+      const key = this.getTextContent(propNode, 'key');
+      const value = this.getTextContent(propNode, 'value');
+      if (key && value !== null) {
+        // Convert boolean strings to actual booleans
+        if (value === 'true' || value === 'false') {
+          properties[key] = value === 'true';
+        } else {
+          properties[key] = value;
+        }
+      }
+    }
+    return properties;
+  }
+
+  /**
+   * Extract block properties from odePagStructureProperties
+   * Properties include: visibility, minimized, teacherOnly, cssClass, identifier, allowToggle, etc.
+   * Initializes with defaults and merges XML values.
+   * @param {Element} pagNode - The odePagStructure element
+   * @returns {Object} - Properties object with all default properties
+   */
+  getPagStructureProperties(pagNode) {
+    // Start with all defaults
+    const properties = { ...ElpxImporter.BLOCK_PROPERTY_DEFAULTS };
+
+    const propsContainer = pagNode.querySelector('odePagStructureProperties');
+    if (!propsContainer) return properties;  // Return defaults if no properties element
+
+    const propNodes = propsContainer.querySelectorAll('odePagStructureProperty');
+    for (const propNode of propNodes) {
+      const key = this.getTextContent(propNode, 'key');
+      const value = this.getTextContent(propNode, 'value');
+      if (key && value !== null) {
+        // Convert boolean strings to actual booleans
+        if (value === 'true' || value === 'false') {
+          properties[key] = value === 'true';
+        } else {
+          properties[key] = value;
+        }
+      }
+    }
+    return properties;
+  }
+
+  /**
+   * Extract component properties from odeComponentsProperties
+   * Properties include: visibility, teacherOnly, identifier, cssClass, etc.
+   * Initializes with defaults and merges XML values.
+   * @param {Element} compNode - The odeComponent element
+   * @returns {Object} - Properties object with all default properties
+   */
+  getComponentsProperties(compNode) {
+    // Start with all defaults
+    const properties = { ...ElpxImporter.COMPONENT_PROPERTY_DEFAULTS };
+
+    const propsContainer = compNode.querySelector('odeComponentsProperties');
+    if (!propsContainer) return properties;  // Return defaults if no properties element
+
+    const propNodes = propsContainer.querySelectorAll('odeComponentsProperty');
+    for (const propNode of propNodes) {
+      const key = this.getTextContent(propNode, 'key');
+      const value = this.getTextContent(propNode, 'value');
+      if (key && value !== null) {
+        // Convert boolean strings to actual booleans
+        if (value === 'true' || value === 'false') {
+          properties[key] = value === 'true';
+        } else {
+          properties[key] = value;
+        }
+      }
+    }
+    return properties;
   }
 
   /**
@@ -1178,12 +1363,20 @@ class ElpxImporter {
   }
 
   /**
-   * Import a legacy .elp file (Python pickle format) using client-side parser
-   * @param {File} file - The legacy .elp file
+   * Import a legacy .elp file (pre-v3.0 eXeLearning, Python pickle format).
+   *
+   * This method handles .elp files with contentv3.xml containing XML in Python pickle format
+   * (root element is 'instance' or 'dictionary'). Despite the previous name "ViaBackend",
+   * this is entirely client-side using LegacyXmlParser.js.
+   *
+   * @param {File} file - The legacy .elp file to import
    * @param {Object} options - Import options
-   * @returns {Promise<Object>} Import statistics
+   * @param {boolean} [options.clearExisting=true] - Whether to clear existing content
+   * @param {string|null} [options.parentId=null] - Parent page ID for nested import
+   * @param {Function|null} [options.onProgress=null] - Progress callback
+   * @returns {Promise<Object>} Import statistics { pages, blocks, components, assets }
    */
-  async importLegacyViaBackend(file, options = {}) {
+  async importLegacyFormat(file, options = {}) {
     const { clearExisting = true, parentId = null, onProgress = null } = options;
 
     // Store progress callback if provided
@@ -1246,24 +1439,69 @@ class ElpxImporter {
     // Assets extracted (50%)
     this._reportProgress('assets', 50, typeof _ === 'function' ? _('Assets extracted') : 'Assets extracted');
 
+    // Helper to escape regex special characters
+    const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     // Helper to replace asset paths in strings
+    // IMPORTANT: Only replaces LOCAL resource references, NOT filenames inside external URLs
+    // This prevents corrupting external URLs like https://example.com/viewer.php?file=https://example.com/file.pdf
     const replaceAssetPaths = (str) => {
       if (str == null || typeof str !== 'string') return '';
       if (!this.assetMap || this.assetMap.size === 0) return str;
 
       for (const [originalPath, assetId] of this.assetMap.entries()) {
         const fileName = originalPath.split('/').pop();
-        // Replace various path formats
-        str = str.split(`resources/${fileName}`).join(`asset://${assetId}`);
-        str = str.split(`{{context_path}}/resources/${fileName}`).join(`asset://${assetId}`);
-        str = str.split(originalPath).join(`asset://${assetId}`);
+        const escapedFileName = escapeRegex(fileName);
+
+        // 1. Replace {{context_path}}/resources/filename (exact match)
+        // Include filename in asset:// URL so extension can be detected for type attributes
+        str = str.split(`{{context_path}}/resources/${fileName}`).join(`asset://${assetId}/${fileName}`);
+        str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}/${fileName}`);
+
+        // 2. Replace resources/filename when preceded by attribute quote or start
+        // This ensures we don't replace filenames inside http:// or https:// URLs
+        // Pattern: ("|'|=)resources/filename -> $1asset://uuid
+        const resourcesPattern = new RegExp(
+          `(["'=])resources/${escapedFileName}`,
+          'g'
+        );
+        str = str.replace(resourcesPattern, `$1asset://${assetId}/${fileName}`);
+
+        // 3. Replace bare filename ONLY in src/href attributes (not inside other URLs)
+        // Pattern: src="filename" or href="filename" (bare filename, not a path with /)
         if (fileName) {
-          // Also replace bare filename references
-          const escapedFileName = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          str = str.replace(new RegExp(`src=["']${escapedFileName}["']`, 'g'), `src="asset://${assetId}"`);
+          str = str.replace(
+            new RegExp(`(src|href)=(["'])${escapedFileName}\\2`, 'g'),
+            `$1=$2asset://${assetId}/${fileName}$2`
+          );
         }
+
+        // NOTE: We intentionally DO NOT replace:
+        // - originalPath globally (str.split(originalPath).join(...)) - this corrupts external URLs
+        // - Filenames inside query strings (e.g., ?file=filename.pdf)
+        // - Filenames inside external URLs (https://example.com/.../filename.pdf)
       }
       return str;
+    };
+
+    // Helper to transform asset paths in properties object (recursive)
+    // This handles questionsData arrays where question/answer HTML may contain images
+    const transformPropertiesAssets = (obj, transformFn) => {
+      if (obj == null) return obj;
+      if (typeof obj === 'string') {
+        return transformFn(obj);
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(item => transformPropertiesAssets(item, transformFn));
+      }
+      if (typeof obj === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(obj)) {
+          result[key] = transformPropertiesAssets(value, transformFn);
+        }
+        return result;
+      }
+      return obj;
     };
 
     // 4. Import structure into Yjs
@@ -1363,14 +1601,36 @@ class ElpxImporter {
 
               // Convert htmlView to jsonProperties for JSON-type iDevices (FreeTextIdevice/TextIdevice)
               // These iDevices expect content in jsonProperties.textTextarea format
+              // Also include feedback content if present (from FeedbackField in legacy files)
               if (ideviceType === 'FreeTextIdevice' || ideviceType.toLowerCase().includes('text')) {
                 const jsonProps = {
-                  textTextarea: transformedHtml || ''
+                  textTextarea: transformedHtml || '',
+                  // Include feedback if present (extracted from FeedbackField by LegacyXmlParser)
+                  textFeedbackInput: ideviceData.feedbackButton || '',
+                  textFeedbackTextarea: ideviceData.feedbackHtml ? replaceAssetPaths(ideviceData.feedbackHtml) : ''
                 };
                 compMap.set('jsonProperties', JSON.stringify(jsonProps));
               } else {
-                // For other iDevices, set empty jsonProperties
-                compMap.set('jsonProperties', '{}');
+                // For other iDevices (form, etc.), use properties from LegacyXmlParser if available
+                // The properties object may contain questionsData for form iDevices
+                if (ideviceData.properties && typeof ideviceData.properties === 'object' && Object.keys(ideviceData.properties).length > 0) {
+                  // Apply asset path transformation to any HTML content in properties
+                  const transformedProps = transformPropertiesAssets(ideviceData.properties, replaceAssetPaths);
+                  compMap.set('jsonProperties', JSON.stringify(transformedProps));
+                } else {
+                  compMap.set('jsonProperties', '{}');
+                }
+              }
+
+              // Set structure properties for rubric iDevices (cssClass is needed for rubricIdevice wrapper class)
+              // The cssClass is set by LegacyXmlParser when detecting rubric content
+              if (ideviceData.cssClass) {
+                const propsMap = new Y.Map();
+                propsMap.set('cssClass', ideviceData.cssClass);
+                propsMap.set('visibility', 'true');
+                propsMap.set('teacherOnly', 'false');
+                propsMap.set('identifier', '');
+                compMap.set('properties', propsMap);
               }
 
               componentsArray.push([compMap]);
@@ -1403,6 +1663,32 @@ class ElpxImporter {
           metadata.set('title', parsedData.meta.title || 'Legacy Project');
           metadata.set('author', parsedData.meta.author || '');
           metadata.set('description', parsedData.meta.description || '');
+          // Set custom footer content if present in legacy file
+          if (parsedData.meta.footer) {
+            metadata.set('footer', parsedData.meta.footer);
+          }
+          // Set custom head content if present in legacy file
+          if (parsedData.meta.extraHeadContent) {
+            metadata.set('extraHeadContent', parsedData.meta.extraHeadContent);
+          }
+          // Set export options if present in legacy file
+          // Use metadata keys WITHOUT pp_ prefix to match YjsPropertiesBinding.propertyKeyMap
+          // (LegacyXmlParser returns pp_ prefixed keys, but metadata uses non-prefixed keys)
+          if (parsedData.meta.exportSource !== undefined) {
+            metadata.set('exportSource', parsedData.meta.exportSource);
+          }
+          if (parsedData.meta.pp_addPagination !== undefined) {
+            metadata.set('addPagination', parsedData.meta.pp_addPagination);
+          }
+          if (parsedData.meta.pp_addSearchBox !== undefined) {
+            metadata.set('addSearchBox', parsedData.meta.pp_addSearchBox);
+          }
+          if (parsedData.meta.pp_addExeLink !== undefined) {
+            metadata.set('addExeLink', parsedData.meta.pp_addExeLink);
+          }
+          if (parsedData.meta.pp_addAccessibilityToolbar !== undefined) {
+            metadata.set('addAccessibilityToolbar', parsedData.meta.pp_addAccessibilityToolbar);
+          }
         }
       }
 

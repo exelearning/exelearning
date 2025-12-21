@@ -1,0 +1,158 @@
+/**
+ * Legacy iDevice Handler Registry
+ *
+ * Maps legacy iDevice class names to their handlers.
+ * Handlers are checked in order - first match wins.
+ *
+ * DefaultHandler is always last as fallback.
+ *
+ * Requires these files to be loaded first:
+ * - BaseLegacyHandler.js
+ * - handlers/MultichoiceHandler.js
+ * - handlers/TrueFalseHandler.js
+ * - handlers/FreeTextHandler.js
+ * - handlers/CaseStudyHandler.js
+ * - handlers/FillHandler.js
+ * - handlers/DropdownHandler.js
+ * - handlers/GalleryHandler.js
+ * - handlers/ExternalUrlHandler.js
+ * - handlers/FileAttachHandler.js
+ * - handlers/ImageMagnifierHandler.js
+ * - handlers/DefaultHandler.js
+ */
+
+/**
+ * Registered handlers in priority order
+ * More specific handlers should come before generic ones
+ */
+const LegacyHandlerRegistry = {
+  handlers: null,
+
+  /**
+   * Initialize handlers (called once when needed)
+   */
+  init() {
+    if (this.handlers) return;
+
+    this.handlers = [
+      new MultichoiceHandler(),      // MultichoiceIdevice, MultiSelectIdevice → form
+      new TrueFalseHandler(),        // TrueFalseIdevice → form (true-false questions)
+      new FillHandler(),             // ClozeIdevice → form (fill-in-blanks)
+      new DropdownHandler(),         // ListaIdevice → form (dropdown questions)
+      new CaseStudyHandler(),        // CaseStudyIdevice → casestudy
+      new GalleryHandler(),          // ImageGalleryIdevice, GalleryIdevice → image-gallery
+      new ExternalUrlHandler(),      // ExternalUrlIdevice → external-website
+      new FileAttachHandler(),       // FileAttachIdevice, AttachmentIdevice → download-source-file
+      new ImageMagnifierHandler(),   // ImageMagnifierIdevice → magnifier
+      new FreeTextHandler(),         // FreeTextIdevice, ReflectionIdevice, GenericIdevice → text
+      new DefaultHandler(),          // Fallback for unknown types (must be last)
+    ];
+  },
+
+  /**
+   * Get the appropriate handler for a legacy iDevice class
+   * @param {string} className - Legacy class name (e.g., 'exe.engine.multichoiceidevice.MultichoiceIdevice')
+   * @returns {BaseLegacyHandler} Handler instance
+   */
+  getHandler(className) {
+    this.init();
+    for (const handler of this.handlers) {
+      if (handler.canHandle(className)) {
+        return handler;
+      }
+    }
+    // Should never reach here since DefaultHandler.canHandle() returns true
+    return this.handlers[this.handlers.length - 1];
+  },
+
+  /**
+   * Get all registered handlers (for debugging/testing)
+   * @returns {Array<BaseLegacyHandler>} Array of handler instances
+   */
+  getAllHandlers() {
+    this.init();
+    return [...this.handlers];
+  }
+};
+
+/**
+ * Legacy type name to modern type name mapping
+ * This is used for type normalization when handlers don't provide specific mapping
+ */
+const LEGACY_TYPE_MAP = {
+  // Text/Content iDevices → text
+  'FreeTextIdevice': 'text',
+  'FreeTextfpdIdevice': 'text',
+  'ReflectionIdevice': 'text',
+  'ReflectionfpdIdevice': 'text',
+  'GenericIdevice': 'text',
+
+  // Quiz/Form iDevices → form
+  'MultichoiceIdevice': 'form',
+  'MultiSelectIdevice': 'form',
+  'TrueFalseIdevice': 'form',
+  'VerdaderoFalsoFPDIdevice': 'form',
+  'ListaIdevice': 'form',
+  'ClozeIdevice': 'form',
+  'ClozeActivityIdevice': 'form',
+
+  // Case Study
+  'CaseStudyIdevice': 'casestudy',
+
+  // Media iDevices
+  'ImageGalleryIdevice': 'image-gallery',
+  'ImageMagnifierIdevice': 'magnifier',
+  'GalleryIdevice': 'image-gallery',
+
+  // File iDevices
+  'FileAttachIdevice': 'download-source-file',
+  'AttachmentIdevice': 'download-source-file',
+
+  // External content
+  'ExternalUrlIdevice': 'external-website',
+  'WikipediaIdevice': 'wikipedia',
+  'RssIdevice': 'rss',
+  'GeogebraIdevice': 'geogebra',
+  'JavaAppIdevice': 'java-app',
+
+  // Games (placeholder)
+  'ScormTestIdevice': 'scorm-test',
+};
+
+/**
+ * Get modern type name from legacy class name
+ * Falls back to extracting type from class name
+ * @param {string} className - Legacy class name
+ * @returns {string} Modern type name
+ */
+function getLegacyTypeName(className) {
+  if (!className) return 'text';
+
+  // Extract the iDevice name from class (e.g., 'exe.engine.freetextidevice.FreeTextIdevice' → 'FreeTextIdevice')
+  const parts = className.split('.');
+  const ideviceName = parts[parts.length - 1];
+
+  // Check mapping
+  if (LEGACY_TYPE_MAP[ideviceName]) {
+    return LEGACY_TYPE_MAP[ideviceName];
+  }
+
+  // Fallback: normalize the iDevice name
+  // Remove 'Idevice' suffix and convert to kebab-case
+  const normalized = ideviceName
+    .replace(/Idevice$/i, '')
+    .replace(/fpd$/i, '')  // Remove FPD suffix
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .toLowerCase();
+
+  return normalized || 'text';
+}
+
+// Export
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { LegacyHandlerRegistry, LEGACY_TYPE_MAP, getLegacyTypeName };
+} else {
+  window.LegacyHandlerRegistry = LegacyHandlerRegistry;
+  window.LEGACY_TYPE_MAP = LEGACY_TYPE_MAP;
+  window.getLegacyTypeName = getLegacyTypeName;
+}

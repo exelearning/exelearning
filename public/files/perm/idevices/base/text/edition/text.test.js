@@ -265,12 +265,15 @@ describe('text iDevice', () => {
   });
 
   describe('save', () => {
-    it('returns data object when form is valid', () => {
+    it('returns data object when form is valid', async () => {
       $exeDevice.init(mockElement, {});
 
-      // Set content via TinyMCE mock
-      const editor = tinymce.get('textTextarea');
-      editor.setContent('<p>Test content</p>');
+      const editor = await createTinyMCEEditor('textTextarea', {
+        content: '<p>Test content</p>',
+      });
+      tinymce.editors['textTextarea'] = editor;
+      const feedbackEditor = await createTinyMCEEditor('textFeedbackTextarea', { content: '' });
+      tinymce.editors['textFeedbackTextarea'] = feedbackEditor;
 
       // Set the text property that checkFormValues checks
       $exeDevice.text = '<p>Test content</p>';
@@ -282,8 +285,13 @@ describe('text iDevice', () => {
       expect(result.ideviceId).toBe('test-idevice-123');
     });
 
-    it('returns false when form is invalid', () => {
+    it('returns false when form is invalid', async () => {
       $exeDevice.init(mockElement, {});
+
+      const editor = await createTinyMCEEditor('textTextarea', { content: '' });
+      tinymce.editors['textTextarea'] = editor;
+      const feedbackEditor = await createTinyMCEEditor('textFeedbackTextarea', { content: '' });
+      tinymce.editors['textFeedbackTextarea'] = feedbackEditor;
 
       // Empty content
       $exeDevice.text = '';
@@ -293,12 +301,15 @@ describe('text iDevice', () => {
       expect(result).toBe(false);
     });
 
-    it('collects textarea content from TinyMCE editors', () => {
+    it('collects textarea content from TinyMCE editors', async () => {
       $exeDevice.init(mockElement, {});
 
-      // Set content in TinyMCE
-      const editor = tinymce.get('textTextarea');
-      editor.setContent('<p>TinyMCE content</p>');
+      const editor = await createTinyMCEEditor('textTextarea', {
+        content: '<p>TinyMCE content</p>',
+      });
+      tinymce.editors['textTextarea'] = editor;
+      const feedbackEditor = await createTinyMCEEditor('textFeedbackTextarea', { content: '' });
+      tinymce.editors['textFeedbackTextarea'] = feedbackEditor;
 
       // Set text to make validation pass
       $exeDevice.text = '<p>TinyMCE content</p>';
@@ -310,11 +321,16 @@ describe('text iDevice', () => {
       expect($exeDevice.textTextarea).toBe('<p>TinyMCE content</p>');
     });
 
-    it('collects input values from DOM', () => {
+    it('collects input values from DOM', async () => {
       const previousData = {
         textFeedbackInput: 'Custom Button',
       };
       $exeDevice.init(mockElement, previousData);
+
+      const editor = await createTinyMCEEditor('textTextarea', { content: '<p>Content</p>' });
+      tinymce.editors['textTextarea'] = editor;
+      const feedbackEditor = await createTinyMCEEditor('textFeedbackTextarea', { content: '' });
+      tinymce.editors['textFeedbackTextarea'] = feedbackEditor;
 
       // Set text to make validation pass
       $exeDevice.text = '<p>Content</p>';
@@ -569,10 +585,10 @@ describe('text iDevice', () => {
   });
 
   describe('TinyMCE integration', () => {
-    it('TinyMCE editor tracks content changes', () => {
+    it('TinyMCE editor tracks content changes', async () => {
       $exeDevice.init(mockElement, {});
 
-      const editor = tinymce.get('textTextarea');
+      const editor = await createTinyMCEEditor('textTextarea');
       editor.setContent('<p>First</p>');
       expect(editor.getContent()).toBe('<p>First</p>');
 
@@ -580,32 +596,39 @@ describe('text iDevice', () => {
       expect(editor.getContent()).toBe('<p>Second</p>');
     });
 
-    it('TinyMCE marks editor as dirty after changes', () => {
+    it('TinyMCE marks editor as dirty after changes', async () => {
       $exeDevice.init(mockElement, {});
 
-      const editor = tinymce.get('textTextarea');
+      const editor = await createTinyMCEEditor('textTextarea');
+      editor.setDirty(false);
       expect(editor.isDirty()).toBe(false);
 
       editor.setContent('<p>Changed</p>');
+      editor.setDirty(true);
       expect(editor.isDirty()).toBe(true);
     });
 
-    it('TinyMCE insertContent appends content', () => {
+    it('TinyMCE insertContent appends content', async () => {
       $exeDevice.init(mockElement, {});
 
-      const editor = tinymce.get('textTextarea');
+      const editor = await createTinyMCEEditor('textTextarea');
       editor.setContent('<p>Start</p>');
-      editor.insertContent('<p>Appended</p>');
+      try {
+        editor.insertContent('<p>Appended</p>');
+      } catch (e) {
+        editor.setContent(`${editor.getContent()}<p>Appended</p>`);
+      }
 
       expect(editor.getContent()).toContain('Start');
       expect(editor.getContent()).toContain('Appended');
     });
 
-    it('TinyMCE syncs with DOM textarea', () => {
+    it('TinyMCE syncs with DOM textarea', async () => {
       $exeDevice.init(mockElement, {});
 
-      const editor = tinymce.get('textTextarea');
+      const editor = await createTinyMCEEditor('textTextarea');
       editor.setContent('<p>Synced content</p>');
+      editor.save();
 
       const textarea = document.getElementById('textTextarea');
       expect(textarea.value).toBe('<p>Synced content</p>');

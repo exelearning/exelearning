@@ -162,9 +162,12 @@ make test-coverage
 
 ### Coverage Requirements
 
-- **Minimum Coverage: 90%** for all new code
+- **Minimum Coverage: 90%** for all new backend TypeScript code (`src/`)
+- **Minimum Coverage: 80%** for all frontend JavaScript files (`public/app/`)
+- **Every `.js` file in `public/app/` MUST have a corresponding `.test.js` file**
 - Check coverage with `make test-coverage`
-- Files below 90% coverage should be prioritized for improvement
+- Files below coverage threshold should be prioritized for improvement
+- When creating new `.js` files, always create accompanying unit tests
 
 ### Test Patterns - Dependency Injection
 
@@ -380,6 +383,12 @@ export const myFeatureRoutes = new Elysia({ prefix: '/api/my-feature' })
 // Register in src/index.ts
 app.use(myFeatureRoutes);
 ```
+
+## Legacy File Support
+
+The application MUST support importing legacy .elp files from pre-v3.0 eXeLearning. These files use a Python pickle XML format with `contentv3.xml`. This is handled client-side by `ElpxImporter.importLegacyFormat()` using `LegacyXmlParser.js`.
+
+**Important**: Do not remove legacy import support - backwards compatibility with old .elp files is required.
 
 ## Known Issues & Best Practices
 

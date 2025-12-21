@@ -6,57 +6,14 @@
  * Run with: make test-frontend
  */
 
- 
+// Mock Logger BEFORE requiring AssetPriorityQueue
+global.Logger = { log: vi.fn() };
 
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const AssetPriorityQueue = require('./AssetPriorityQueue.js');
 
 describe('AssetPriorityQueue', () => {
-  let scriptContent;
-  let AssetPriorityQueue;
-
-  beforeAll(() => {
-    // Read script content
-    const scriptPath = join(__dirname, 'AssetPriorityQueue.js');
-    scriptContent = readFileSync(scriptPath, 'utf-8');
-
-    // Mock Logger globally before executing script
-    global.Logger = { log: vi.fn() };
-
-    // Execute script in global context using Function constructor
-    const scriptFn = new Function(scriptContent + '\n; return AssetPriorityQueue;');
-    AssetPriorityQueue = scriptFn();
-  });
-
-  afterAll(() => {
-    delete global.Logger;
-  });
-
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  describe('script structure', () => {
-    it('defines AssetPriorityQueue class', () => {
-      expect(scriptContent).toContain('class AssetPriorityQueue');
-    });
-
-    it('defines static PRIORITY object', () => {
-      expect(scriptContent).toContain('static PRIORITY = {');
-      expect(scriptContent).toContain('CRITICAL: 100');
-      expect(scriptContent).toContain('HIGH: 75');
-      expect(scriptContent).toContain('MEDIUM: 50');
-      expect(scriptContent).toContain('LOW: 25');
-      expect(scriptContent).toContain('IDLE: 0');
-    });
-
-    it('exports via window.AssetPriorityQueue', () => {
-      expect(scriptContent).toContain('window.AssetPriorityQueue = AssetPriorityQueue');
-    });
   });
 
   describe('static PRIORITY', () => {

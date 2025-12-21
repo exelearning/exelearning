@@ -12,6 +12,7 @@ import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
 
 describe('ApiCallBaseFunctions', () => {
   let mockAjax;
+  let originalAjax;
   let mockBody;
 
   beforeEach(() => {
@@ -27,11 +28,10 @@ describe('ApiCallBaseFunctions', () => {
     };
     vi.spyOn(document, 'querySelector').mockReturnValue(mockBody);
 
-    // Mock jQuery ajax
+    // Stub jQuery ajax
+    originalAjax = global.$.ajax;
     mockAjax = vi.fn().mockResolvedValue({ success: true });
-    global.$ = {
-      ajax: mockAjax,
-    };
+    global.$.ajax = mockAjax;
 
     // Mock eXeLearning global
     global.eXeLearning = {
@@ -56,7 +56,7 @@ describe('ApiCallBaseFunctions', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    delete global.$;
+    global.$.ajax = originalAjax;
     delete global.eXeLearning;
     delete global._;
   });

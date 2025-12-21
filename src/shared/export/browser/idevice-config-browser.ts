@@ -47,9 +47,14 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
 
     const cssClass = typeMap[normalized] || normalized || 'text';
 
+    // JSON idevices need JS initialization via renderBehaviour()
+    // These idevices have export JS that attaches event handlers
+    const jsonIdevices = ['text', 'freetext', 'freetextfpd', 'generic', 'reflection', 'reflectionfpd'];
+    const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
+
     return {
         cssClass,
-        componentType: 'html', // Default to HTML for browser rendering
+        componentType: isJson ? 'json' : 'html',
         template: `${cssClass}.html`,
     };
 }
@@ -92,4 +97,36 @@ export function resetIdeviceConfigCache(): void {
 
 export function setIdevicesBasePath(): void {
     // No-op in browser
+}
+
+/**
+ * Known iDevice dependencies that need to be loaded alongside the main file.
+ * This is a static mapping for browser context where we can't scan the filesystem.
+ * Key is the iDevice type name, value is array of additional JS files.
+ */
+const IDEVICE_JS_DEPENDENCIES: Record<string, string[]> = {
+    checklist: ['html2canvas.js'],
+    'progress-report': ['html2canvas.js'],
+    'select-media-files': ['mansory-jq.js'],
+    'image-gallery': ['simple-lightbox.min.js'],
+};
+
+/**
+ * Get all export files for an iDevice type (JS or CSS)
+ * In browser context, we use a static mapping of known dependencies.
+ *
+ * @param typeName - The iDevice type name (e.g., 'checklist')
+ * @param extension - The file extension ('.js' or '.css')
+ * @returns Array of filenames (e.g., ['checklist.js', 'html2canvas.js'])
+ */
+export function getIdeviceExportFiles(typeName: string, extension: '.js' | '.css'): string[] {
+    const mainFile = `${typeName}${extension}`;
+
+    if (extension === '.js') {
+        const dependencies = IDEVICE_JS_DEPENDENCIES[typeName] || [];
+        return [mainFile, ...dependencies];
+    }
+
+    // For CSS, just return the main file (no known CSS dependencies)
+    return [mainFile];
 }

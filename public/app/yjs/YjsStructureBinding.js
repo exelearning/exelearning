@@ -283,8 +283,9 @@ class YjsStructureBinding {
     // Use transaction with clientID origin for UndoManager tracking
     this.manager.getDoc().transact(() => {
       const pageMap = navigation.get(fromIndex);
+      const clonedPage = this.clonePageMapForMove(pageMap);
       navigation.delete(fromIndex, 1);
-      navigation.insert(toIndex, [pageMap]);
+      navigation.insert(toIndex, [clonedPage]);
 
       // Update order fields
       for (let i = 0; i < navigation.length; i++) {
@@ -866,6 +867,47 @@ class YjsStructureBinding {
   }
 
   /**
+   * Clone a page Y.Map for move operation (preserves original IDs)
+   * @private
+   */
+  clonePageMapForMove(sourcePage) {
+    const newPage = new this.Y.Map();
+
+    // Copy all properties from source page generically
+    sourcePage.forEach((value, key) => {
+      if (key === 'blocks') {
+        return;
+      } else if (key === 'properties' && value && typeof value.forEach === 'function') {
+        const newProps = new this.Y.Map();
+        value.forEach((v, k) => newProps.set(k, v));
+        newPage.set(key, newProps);
+      } else if (value !== null && value !== undefined) {
+        newPage.set(key, value);
+      }
+    });
+
+    // Ensure essential properties exist
+    if (!newPage.has('id')) newPage.set('id', sourcePage.get('id'));
+    if (!newPage.has('pageId')) newPage.set('pageId', sourcePage.get('pageId'));
+    if (!newPage.has('pageName')) newPage.set('pageName', sourcePage.get('pageName'));
+
+    // Clone blocks
+    const sourceBlocks = sourcePage.get('blocks');
+    const newBlocks = new this.Y.Array();
+
+    if (sourceBlocks && sourceBlocks.length > 0) {
+      for (let i = 0; i < sourceBlocks.length; i++) {
+        const sourceBlock = sourceBlocks.get(i);
+        const clonedBlock = this.cloneBlockMapForMove(sourceBlock);
+        newBlocks.push([clonedBlock]);
+      }
+    }
+
+    newPage.set('blocks', newBlocks);
+    return newPage;
+  }
+
+  /**
    * Clone a component Y.Map for move operation (preserves original IDs)
    * @private
    */
@@ -991,7 +1033,9 @@ class YjsStructureBinding {
     const blocks = pageMap.get('blocks');
     if (!blocks) return [];
 
-    return blocks.toArray().map((blockMap, index) => this.mapToBlock(blockMap, index));
+    const result = blocks.toArray().map((blockMap, index) => this.mapToBlock(blockMap, index));
+    // Sort blocks by order property to ensure correct rendering order
+    return result.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
   /**
@@ -1333,7 +1377,9 @@ class YjsStructureBinding {
     const components = blockMap.get('components');
     if (!components) return [];
 
-    return components.toArray().map((compMap, index) => this.mapToComponent(compMap, index));
+    const result = components.toArray().map((compMap, index) => this.mapToComponent(compMap, index));
+    // Sort components by order property to ensure correct rendering order
+    return result.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
   /**

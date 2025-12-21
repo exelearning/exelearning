@@ -80,6 +80,9 @@ export interface ExportBlock {
     order: number;
     components: ExportComponent[];
 
+    // Block icon name (for themed icons)
+    iconName?: string;
+
     // Block-level properties
     properties?: ExportBlockProperties;
 }
@@ -93,6 +96,8 @@ export interface ExportBlockProperties {
     teacherOnly?: string;
     visibilityType?: string;
     cssClass?: string;
+    identifier?: string;
+    allowToggle?: string;
 }
 
 /**
@@ -104,6 +109,19 @@ export interface ExportComponent {
     order: number;
     content: string; // HTML content
     properties: Record<string, unknown>;
+
+    // Component-level structure properties (visibility, teacherOnly, identifier, cssClass)
+    structureProperties?: ExportComponentProperties;
+}
+
+/**
+ * Component structure properties
+ */
+export interface ExportComponentProperties {
+    visibility?: string;
+    teacherOnly?: string;
+    identifier?: string;
+    cssClass?: string;
 }
 
 // =============================================================================
@@ -280,6 +298,13 @@ export interface ExportOptions {
 
     /** Theme name to use for export */
     theme?: string;
+
+    /**
+     * Optional hook to pre-render LaTeX expressions to SVG+MathML.
+     * When provided and successful, MathJax library will NOT be included in the output.
+     * This reduces export size by ~1MB and provides instant math rendering.
+     */
+    preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
 }
 
 /**
@@ -447,6 +472,9 @@ export interface PageRenderOptions {
     extraHeadScripts?: string;
     onLoadScript?: string;
     onUnloadScript?: string;
+
+    // Detected libraries from content scanning (MathJax, Mermaid, etc.)
+    detectedLibraries?: LibraryDetectionResult;
 }
 
 /**
@@ -460,7 +488,10 @@ export interface ComponentRenderOptions {
 /**
  * Block rendering options
  */
-export type BlockRenderOptions = ComponentRenderOptions;
+export interface BlockRenderOptions extends ComponentRenderOptions {
+    /** Base path for theme icons (e.g., '/files/perm/themes/base/base/icons/' for preview) */
+    themeIconBasePath?: string;
+}
 
 // =============================================================================
 // iDevice Configuration
@@ -505,6 +536,22 @@ export interface LibraryDetectionResult {
 export interface LibraryDetectionOptions {
     includeScorm?: boolean;
     includeAccessibilityToolbar?: boolean;
+    /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
+    skipMathJax?: boolean;
+}
+
+/**
+ * LaTeX pre-render result
+ */
+export interface LatexPreRenderResult {
+    /** Processed HTML with LaTeX rendered to SVG+MathML */
+    html: string;
+    /** Whether the original HTML contained LaTeX expressions */
+    hasLatex: boolean;
+    /** Whether LaTeX was successfully pre-rendered */
+    latexRendered: boolean;
+    /** Number of expressions rendered */
+    count: number;
 }
 
 // =============================================================================

@@ -161,7 +161,10 @@ var $exe = {
                         }
                     });
                     if (typeof (window.MathJax) == 'object' && typeof (MathJax.typesetPromise) == 'function') {
-                        MathJax.typesetPromise();
+                        // Note: Do NOT call texReset() here - labels must persist for \ref{} to resolve
+                        MathJax.typesetPromise().catch(function(err) {
+                            console.warn('[MathJax] Typeset error:', err.message);
+                        });
                         $exe.math.createLinks();
                     }
                 } else {
@@ -523,6 +526,15 @@ var $exe = {
     }
 
 };
+
+if (typeof window !== 'undefined') {
+    window.$exe = $exe;
+}
+if (typeof global !== 'undefined') {
+    global.$exe = $exe;
+}
+
+// Export $exeDevices to global for Node.js environments (testing)
 
 // iDevices common code - To review (Part of this code should not be exported)
 var $exeDevices = {
@@ -1247,6 +1259,7 @@ var $exeDevices = {
                         var start = (MathJax.startup && MathJax.startup.promise) ? MathJax.startup.promise : Promise.resolve();
                         return start.then(function () {
                             if (typeof MathJax.typesetClear === 'function') MathJax.typesetClear(nodes);
+                            // Note: Do NOT call texReset() here - labels must persist for \ref{} to resolve
                             return (MathJax.typesetPromise ? MathJax.typesetPromise(nodes) : MathJax.typeset(nodes));
                         }).catch(function (e) { console.error('MathJax v3 typeset error:', e); });
                     }
@@ -1847,4 +1860,8 @@ var $exeDevices = {
         },
 
     }
+}
+
+if (typeof global !== 'undefined') {
+    global.$exeDevices = $exeDevices;
 }

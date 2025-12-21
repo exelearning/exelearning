@@ -10,49 +10,6 @@
 
 const YjsLockManager = require('./YjsLockManager');
 
-// Mock Y.Map
-class MockYMap {
-  constructor() {
-    this._data = new Map();
-    this._listeners = [];
-  }
-
-  get(key) {
-    return this._data.get(key);
-  }
-
-  set(key, value) {
-    this._data.set(key, value);
-  }
-
-  has(key) {
-    return this._data.has(key);
-  }
-
-  delete(key) {
-    return this._data.delete(key);
-  }
-
-  forEach(callback) {
-    this._data.forEach((value, key) => callback(value, key));
-  }
-}
-
-// Mock Y.Doc
-class MockYDoc {
-  constructor() {
-    this.clientID = 12345;
-    this._maps = {};
-  }
-
-  getMap(name) {
-    if (!this._maps[name]) {
-      this._maps[name] = new MockYMap();
-    }
-    return this._maps[name];
-  }
-}
-
 // Mock Awareness
 class MockAwareness {
   constructor() {
@@ -92,7 +49,7 @@ describe('YjsLockManager', () => {
   beforeEach(() => {
     vi.useFakeTimers();
 
-    mockYDoc = new MockYDoc();
+    mockYDoc = new window.Y.Doc();
     mockAwareness = new MockAwareness();
     lockManager = new YjsLockManager(mockYDoc, mockAwareness);
 
@@ -116,7 +73,7 @@ describe('YjsLockManager', () => {
     });
 
     test('initializes locks map from ydoc', () => {
-      expect(lockManager.locks).toBeInstanceOf(MockYMap);
+      expect(lockManager.locks).toBeInstanceOf(window.Y.Map);
     });
 
     test('initializes empty myLocks set', () => {
@@ -138,7 +95,7 @@ describe('YjsLockManager', () => {
   describe('getClientId', () => {
     test('returns client ID as string', () => {
       const clientId = lockManager.getClientId();
-      expect(clientId).toBe('12345');
+      expect(clientId).toBe(String(mockYDoc.clientID));
       expect(typeof clientId).toBe('string');
     });
   });
@@ -176,7 +133,7 @@ describe('YjsLockManager', () => {
       const lock = lockManager.locks.get('component-123');
       expect(lock).toBeDefined();
       expect(lock.componentId).toBe('component-123');
-      expect(lock.clientId).toBe('12345');
+      expect(lock.clientId).toBe(String(mockYDoc.clientID));
       expect(lock.user.name).toBe('Test User');
       expect(lock.timestamp).toBeDefined();
     });
@@ -359,7 +316,7 @@ describe('YjsLockManager', () => {
 
       expect(info).toBeDefined();
       expect(info.componentId).toBe('component-123');
-      expect(info.clientId).toBe('12345');
+      expect(info.clientId).toBe(String(mockYDoc.clientID));
     });
 
     test('returns null for stale lock', () => {

@@ -1,7 +1,7 @@
 import ThemeList from './themeList.js';
 
 // Use global AppLogger for debug-controlled logging
-const Logger = window.AppLogger || console;
+const getLogger = () => window.AppLogger || console;
 
 export default class ThemesManager {
     constructor(app) {
@@ -29,7 +29,7 @@ export default class ThemesManager {
                 const initialTheme = metadata.get('theme');
                 if (initialTheme && initialTheme !== this.selected?.id) {
                     this.selectTheme(initialTheme, false, false, false);
-                    Logger.log('[ThemesManager] Loaded initial theme from Yjs:', initialTheme);
+                    getLogger().log('[ThemesManager] Loaded initial theme from Yjs:', initialTheme);
                 }
 
                 // Observe metadata changes for remote theme updates
@@ -48,7 +48,7 @@ export default class ThemesManager {
                 };
 
                 metadata.observe(this.metadataObserver);
-                Logger.log('[ThemesManager] Yjs theme binding initialized');
+                getLogger().log('[ThemesManager] Yjs theme binding initialized');
             }
         }
     }
@@ -58,7 +58,7 @@ export default class ThemesManager {
      * @param {string} themeId - The new theme ID
      */
     async onRemoteThemeChange(themeId) {
-        Logger.log('[ThemesManager] Remote theme change:', themeId);
+        getLogger().log('[ThemesManager] Remote theme change:', themeId);
         this.isApplyingRemoteTheme = true;
         try {
             await this.selectTheme(themeId, false, false, true);
@@ -88,7 +88,7 @@ export default class ThemesManager {
                     metadata.set('modifiedAt', Date.now());
                 }, ydoc.clientID);
 
-                Logger.log('[ThemesManager] Saved theme to Yjs:', themeId);
+                getLogger().log('[ThemesManager] Saved theme to Yjs:', themeId);
             }
         }
     }

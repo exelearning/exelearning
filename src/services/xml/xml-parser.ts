@@ -348,6 +348,31 @@ function normalizePagesFromNavigation(navigation: OdeXmlNavigation): NormalizedP
 }
 
 /**
+ * Parse block-level properties from odePagStructureProperties
+ */
+function parseBlockProperties(props?: {
+    odeProperty?: Array<{ key: string; value: string }>;
+}): Record<string, string | boolean> {
+    const result: Record<string, string | boolean> = {};
+    if (!props?.odeProperty) return result;
+
+    const propArray = Array.isArray(props.odeProperty) ? props.odeProperty : [props.odeProperty];
+    for (const prop of propArray) {
+        if (!prop || !prop.key) continue;
+        const key = prop.key;
+        const value = prop.value;
+
+        // Parse boolean values
+        if (value === 'true' || value === 'false') {
+            result[key] = value === 'true';
+        } else {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+
+/**
  * Normalize pages from OdeNavStructures
  */
 function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]): NormalizedPage[] {
@@ -389,6 +414,9 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
                 if (odeComponents) {
                     const compArray = Array.isArray(odeComponents) ? odeComponents : [odeComponents];
 
+                    // Extract block-level properties
+                    const blockProperties = parseBlockProperties(pag.odePagStructureProperties);
+
                     for (const comp of compArray) {
                         const type = comp.odeIdeviceTypeName || 'unknown';
                         const isJson = isJsonIdevice(type);
@@ -403,6 +431,12 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
                             data: isJson && comp.jsonProperties ? JSON.parse(comp.jsonProperties) : {},
                             // Include blockName from parent pagStructure for proper block grouping
                             blockName: pag.blockName || '',
+                            // Include block icon name for export rendering
+                            blockIconName: pag.iconName || '',
+                            // Include block ID for proper grouping
+                            blockId: pag.odeBlockId || '',
+                            // Include block-level properties
+                            blockProperties,
                         });
                     }
                 }

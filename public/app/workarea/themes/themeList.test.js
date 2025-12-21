@@ -1,0 +1,397 @@
+import ThemeList from './themeList.js';
+import Theme from './theme.js';
+
+// Mock Theme class
+vi.mock('./theme.js', () => {
+  return {
+    default: vi.fn().mockImplementation(function(manager, data) {
+      this.manager = manager;
+      this.id = data.name || data.dirName;
+      this.title = data.title || 'Unknown';
+      this.valid = data.valid !== false;
+    })
+  };
+});
+
+describe('ThemeList', () => {
+  let themeList;
+  let mockManager;
+  let mockApi;
+
+  beforeEach(() => {
+    // Mock API
+    mockApi = {
+      getThemesInstalled: vi.fn().mockResolvedValue({
+        themes: [
+          { name: 'theme-a', title: 'Theme A', valid: true, dirName: 'theme-a' },
+          { name: 'theme-c', title: 'Theme C', valid: true, dirName: 'theme-c' },
+          { name: 'theme-b', title: 'Theme B', valid: true, dirName: 'theme-b' },
+        ],
+      }),
+    };
+
+    // Mock manager
+    mockManager = {
+      app: {
+        api: mockApi,
+      },
+      selected: { id: 'theme-a' },
+      selectTheme: vi.fn(),
+    };
+
+    // Mock eXeLearning global
+    window.eXeLearning = {
+      config: {
+        defaultTheme: 'default-theme',
+      },
+    };
+
+    themeList = new ThemeList(mockManager);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    delete window.eXeLearning;
+  });
+
+  describe('constructor', () => {
+    it('should store manager reference', () => {
+      expect(themeList.manager).toBe(mockManager);
+    });
+
+    it('should initialize installed as empty object', () => {
+      expect(themeList.installed).toEqual({});
+    });
+  });
+
+  describe('load', () => {
+    it('should call loadThemesInstalled', async () => {
+      const spy = vi.spyOn(themeList, 'loadThemesInstalled');
+      await themeList.load();
+
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
+  describe('loadThemesInstalled', () => {
+    it('should fetch themes from API', async () => {
+      await themeList.loadThemesInstalled();
+
+      expect(mockApi.getThemesInstalled).toHaveBeenCalled();
+    });
+
+    it('should create Theme instances for each theme', async () => {
+      await themeList.loadThemesInstalled();
+
+      expect(Theme).toHaveBeenCalledTimes(3);
+    });
+
+    it('should store themes in installed object', async () => {
+      await themeList.loadThemesInstalled();
+
+      expect(themeList.installed['theme-a']).toBeDefined();
+      expect(themeList.installed['theme-b']).toBeDefined();
+      expect(themeList.installed['theme-c']).toBeDefined();
+    });
+
+    it('should order themes alphabetically', async () => {
+      await themeList.loadThemesInstalled();
+
+      const keys = Object.keys(themeList.installed);
+      expect(keys).toEqual(['theme-a', 'theme-b', 'theme-c']);
+    });
+
+    it('should clear installed object before loading', async () => {
+      themeList.installed = { 'old-theme': {} };
+
+      await themeList.loadThemesInstalled();
+
+      expect(themeList.installed['old-theme']).toBeUndefined();
+    });
+
+    it('should return installed themes', async () => {
+      const result = await themeList.loadThemesInstalled();
+
+      expect(result).toBe(themeList.installed);
+    });
+
+    it('should handle null API response', async () => {
+      mockApi.getThemesInstalled.mockResolvedValue(null);
+
+      await themeList.loadThemesInstalled();
+
+      expect(themeList.installed).toEqual({});
+    });
+
+    it('should handle missing themes property', async () => {
+      mockApi.getThemesInstalled.mockResolvedValue({});
+
+      await themeList.loadThemesInstalled();
+
+      expect(themeList.installed).toEqual({});
+    });
+  });
+
+  describe('loadThemeInstalled', () => {
+    it('should fetch themes from API', async () => {
+      await themeList.loadThemeInstalled('theme-b');
+
+      expect(mockApi.getThemesInstalled).toHaveBeenCalled();
+    });
+
+    it('should load only the specified theme', async () => {
+      await themeList.loadThemeInstalled('theme-b');
+
+      expect(themeList.installed['theme-b']).toBeDefined();
+      expect(themeList.installed['theme-a']).toBeUndefined();
+      expect(themeList.installed['theme-c']).toBeUndefined();
+    });
+
+    it('should create Theme instance for matching theme', async () => {
+      vi.clearAllMocks();
+      await themeList.loadThemeInstalled('theme-b');
+
+      expect(Theme).toHaveBeenCalledTimes(1);
+      expect(Theme).toHaveBeenCalledWith(
+        mockManager,
+        expect.objectContaining({ name: 'theme-b' })
+      );
+    });
+
+    it('should order themes after loading', async () => {
+      const spy = vi.spyOn(themeList, 'orderThemesInstalled');
+      await themeList.loadThemeInstalled('theme-b');
+
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should return installed themes', async () => {
+      const result = await themeList.loadThemeInstalled('theme-b');
+
+      expect(result).toBe(themeList.installed);
+    });
+
+    it('should handle theme not found', async () => {
+      await themeList.loadThemeInstalled('non-existent-theme');
+
+      expect(Object.keys(themeList.installed)).toHaveLength(0);
+    });
+  });
+
+  describe('loadThemes', () => {
+    it('should clear installed object', () => {
+      themeList.installed = { 'old-theme': {} };
+
+      themeList.loadThemes([
+        { name: 'new-theme', title: 'New Theme' },
+      ]);
+
+      expect(themeList.installed['old-theme']).toBeUndefined();
+    });
+
+    it('should create Theme instances for all themes', () => {
+      vi.clearAllMocks();
+
+      themeList.loadThemes([
+        { name: 'theme-1', title: 'Theme 1' },
+        { name: 'theme-2', title: 'Theme 2' },
+      ]);
+
+      expect(Theme).toHaveBeenCalledTimes(2);
+    });
+
+    it('should store themes in installed object', () => {
+      themeList.loadThemes([
+        { name: 'theme-1', title: 'Theme 1' },
+        { name: 'theme-2', title: 'Theme 2' },
+      ]);
+
+      expect(themeList.installed['theme-1']).toBeDefined();
+      expect(themeList.installed['theme-2']).toBeDefined();
+    });
+
+    it('should order themes alphabetically', () => {
+      themeList.loadThemes([
+        { name: 'zebra', title: 'Zebra' },
+        { name: 'apple', title: 'Apple' },
+        { name: 'mango', title: 'Mango' },
+      ]);
+
+      const keys = Object.keys(themeList.installed);
+      expect(keys).toEqual(['apple', 'mango', 'zebra']);
+    });
+  });
+
+  describe('loadTheme', () => {
+    it('should create new Theme instance', () => {
+      vi.clearAllMocks();
+
+      themeList.loadTheme({ name: 'test-theme', title: 'Test' });
+
+      expect(Theme).toHaveBeenCalledWith(
+        mockManager,
+        expect.objectContaining({ name: 'test-theme' })
+      );
+    });
+
+    it('should store theme in installed object', () => {
+      themeList.loadTheme({ name: 'test-theme', title: 'Test' });
+
+      expect(themeList.installed['test-theme']).toBeDefined();
+    });
+  });
+
+  describe('newTheme', () => {
+    it('should create and return Theme instance', () => {
+      vi.clearAllMocks();
+
+      const themeData = { name: 'new-theme', title: 'New Theme' };
+      const result = themeList.newTheme(themeData);
+
+      expect(Theme).toHaveBeenCalledWith(mockManager, themeData);
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('getThemeInstalled', () => {
+    beforeEach(() => {
+      themeList.installed = {
+        'theme-a': { id: 'theme-a', title: 'Theme A' },
+        'theme-b': { id: 'theme-b', title: 'Theme B' },
+      };
+    });
+
+    it('should return theme by id', () => {
+      const result = themeList.getThemeInstalled('theme-a');
+
+      expect(result).toBe(themeList.installed['theme-a']);
+    });
+
+    it('should return null if theme not found', () => {
+      const result = themeList.getThemeInstalled('non-existent');
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle exact id match', () => {
+      const result = themeList.getThemeInstalled('theme-b');
+
+      expect(result.id).toBe('theme-b');
+    });
+  });
+
+  describe('orderThemesInstalled', () => {
+    it('should sort themes alphabetically by key', () => {
+      themeList.installed = {
+        'zebra': { id: 'zebra' },
+        'apple': { id: 'apple' },
+        'mango': { id: 'mango' },
+      };
+
+      themeList.orderThemesInstalled();
+
+      const keys = Object.keys(themeList.installed);
+      expect(keys).toEqual(['apple', 'mango', 'zebra']);
+    });
+
+    it('should preserve theme objects', () => {
+      const appleTheme = { id: 'apple', title: 'Apple' };
+      const zebraTheme = { id: 'zebra', title: 'Zebra' };
+
+      themeList.installed = {
+        'zebra': zebraTheme,
+        'apple': appleTheme,
+      };
+
+      themeList.orderThemesInstalled();
+
+      expect(themeList.installed['apple']).toBe(appleTheme);
+      expect(themeList.installed['zebra']).toBe(zebraTheme);
+    });
+
+    it('should handle empty installed object', () => {
+      themeList.installed = {};
+
+      expect(() => themeList.orderThemesInstalled()).not.toThrow();
+      expect(themeList.installed).toEqual({});
+    });
+
+    it('should handle single theme', () => {
+      themeList.installed = {
+        'solo': { id: 'solo' },
+      };
+
+      themeList.orderThemesInstalled();
+
+      expect(Object.keys(themeList.installed)).toEqual(['solo']);
+    });
+  });
+
+  describe('removeTheme', () => {
+    beforeEach(() => {
+      themeList.installed = {
+        'theme-a': { id: 'theme-a' },
+        'theme-b': { id: 'theme-b' },
+        'theme-c': { id: 'theme-c' },
+      };
+    });
+
+    it('should remove theme from installed', async () => {
+      await themeList.removeTheme('theme-b');
+
+      expect(themeList.installed['theme-b']).toBeUndefined();
+      expect(themeList.installed['theme-a']).toBeDefined();
+      expect(themeList.installed['theme-c']).toBeDefined();
+    });
+
+    it('should select default theme if removing currently selected theme', async () => {
+      mockManager.selected = { id: 'theme-a' };
+
+      await themeList.removeTheme('theme-a');
+
+      expect(mockManager.selectTheme).toHaveBeenCalledWith('default-theme', true);
+    });
+
+    it('should not change selection if removing non-selected theme', async () => {
+      mockManager.selected = { id: 'theme-a' };
+
+      await themeList.removeTheme('theme-b');
+
+      expect(mockManager.selectTheme).not.toHaveBeenCalled();
+    });
+
+    it('should handle removing non-existent theme', async () => {
+      await themeList.removeTheme('non-existent');
+
+      expect(Object.keys(themeList.installed)).toHaveLength(3);
+    });
+  });
+
+  describe('integration', () => {
+    it('should load and order themes from API', async () => {
+      await themeList.load();
+
+      const keys = Object.keys(themeList.installed);
+      expect(keys).toEqual(['theme-a', 'theme-b', 'theme-c']);
+      expect(themeList.installed['theme-a']).toBeDefined();
+      expect(themeList.installed['theme-b']).toBeDefined();
+      expect(themeList.installed['theme-c']).toBeDefined();
+    });
+
+    it('should reload and replace themes', async () => {
+      await themeList.load();
+      expect(Object.keys(themeList.installed)).toHaveLength(3);
+
+      mockApi.getThemesInstalled.mockResolvedValue({
+        themes: [
+          { name: 'new-theme', title: 'New Theme', valid: true, dirName: 'new-theme' },
+        ],
+      });
+
+      await themeList.load();
+
+      expect(Object.keys(themeList.installed)).toHaveLength(1);
+      expect(themeList.installed['new-theme']).toBeDefined();
+    });
+  });
+});

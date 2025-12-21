@@ -10,13 +10,19 @@
 /* eslint-disable no-undef */
 
 import { vi, expect, afterEach, describe, it, beforeEach, beforeAll, afterAll } from 'vitest';
-import { readFileSync } from 'fs';
+import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 // Get directory path for loading local files (jQuery, etc.)
 const __vitest_setup_filename = fileURLToPath(import.meta.url);
 const __vitest_setup_dirname = dirname(__vitest_setup_filename);
+
+try {
+  mkdirSync('coverage/vitest/.tmp', { recursive: true });
+} catch {
+  // Coverage directory creation is best-effort; ignore failures when it already exists or cannot be created.
+}
 
 // ============================================================================
 // Bun:test Compatibility Layer
@@ -924,268 +930,102 @@ try {
 }
 
 // ============================================================================
-// Mock TinyMCE for iDevice tests (Improved with state tracking)
+// Load Real TinyMCE for iDevice tests
 // ============================================================================
 
-/**
- * Mock TinyMCE implementation with state tracking and DOM synchronization.
- * This mock:
- * - Maintains content state per editor
- * - Syncs with DOM textareas when available
- * - Tracks dirty state
- * - Supports event handlers
- */
-const mockTinyMCEEditors = new Map();
+// TinyMCE requires standards mode (CSS1Compat)
+if (typeof document !== 'undefined' && document.compatMode !== 'CSS1Compat') {
+  try {
+    Object.defineProperty(document, 'compatMode', {
+      value: 'CSS1Compat',
+      configurable: true,
+    });
+  } catch (e) {
+    // Ignore if compatMode is not configurable in the environment
+  }
+}
 
 /**
- * Creates a mock TinyMCE editor instance with full state tracking.
- * @param {string} id - The editor ID (usually textarea id)
- * @param {string} initialContent - Initial content for the editor
- * @returns {Object} Mock editor instance
+ * Load TinyMCE 5 from local libs and register default theme/icons.
+ * This avoids network fetches during tests.
  */
-const createMockTinyMCEEditor = (id, initialContent = '') => {
-  let content = initialContent;
-  let dirty = false;
-  const eventHandlers = new Map();
+const tinymceBasePath = join(__vitest_setup_dirname, 'libs/tinymce_5/js/tinymce');
+const tinymceCoreCode = readFileSync(join(tinymceBasePath, 'tinymce.min.js'), 'utf-8');
+const tinymceThemeCode = readFileSync(join(tinymceBasePath, 'themes/silver/theme.min.js'), 'utf-8');
+const tinymceIconsCode = readFileSync(join(tinymceBasePath, 'icons/default/icons.min.js'), 'utf-8');
 
-  const editor = {
-    id,
-
-    // Content management with DOM sync
-    getContent: vi.fn(function (options) {
-      return content;
-    }),
-
-    setContent: vi.fn(function (newContent, options) {
-      content = newContent;
-      dirty = true;
-      // Sync with DOM textarea if it exists
-      if (typeof document !== 'undefined') {
-        const textarea = document.getElementById(id);
-        if (textarea) textarea.value = content;
-      }
-    }),
-
-    // Get body element (for DOM operations)
-    getBody: vi.fn(function () {
-      const div = document.createElement('div');
-      div.innerHTML = content;
-      return div;
-    }),
-
-    // Dirty state tracking
-    isDirty: vi.fn(function () {
-      return dirty;
-    }),
-
-    save: vi.fn(function () {
-      dirty = false;
-      // Sync to textarea
-      if (typeof document !== 'undefined') {
-        const textarea = document.getElementById(id);
-        if (textarea) textarea.value = content;
-      }
-    }),
-
-    // Event handling
-    on: vi.fn(function (event, handler) {
-      if (!eventHandlers.has(event)) eventHandlers.set(event, []);
-      eventHandlers.get(event).push(handler);
-      return this;
-    }),
-
-    off: vi.fn(function (event, handler) {
-      if (handler) {
-        const handlers = eventHandlers.get(event) || [];
-        const index = handlers.indexOf(handler);
-        if (index > -1) handlers.splice(index, 1);
-      } else {
-        eventHandlers.delete(event);
-      }
-      return this;
-    }),
-
-    fire: vi.fn(function (event, data) {
-      const handlers = eventHandlers.get(event) || [];
-      handlers.forEach((h) => h({ ...data, target: this }));
-      return this;
-    }),
-
-    // Focus management
-    focus: vi.fn(function () {
-      mockTinyMCE.activeEditor = this;
-    }),
-    blur: vi.fn(),
-    hasFocus: vi.fn(() => mockTinyMCE.activeEditor === editor),
-
-    // Lifecycle
-    destroy: vi.fn(function () {
-      mockTinyMCEEditors.delete(id);
-      delete mockTinyMCE.editors[id];
-    }),
-    remove: vi.fn(function () {
-      this.destroy();
-    }),
-
-    // Visibility
-    hide: vi.fn(),
-    show: vi.fn(),
-
-    // Commands
-    execCommand: vi.fn(function (cmd, ui, value) {
-      if (cmd === 'mceInsertContent') {
-        content += value;
-        dirty = true;
-      }
-      return true;
-    }),
-
-    insertContent: vi.fn(function (html) {
-      content += html;
-      dirty = true;
-    }),
-
-    // Selection
-    selection: {
-      getContent: vi.fn(() => ''),
-      setContent: vi.fn(),
-      getRng: vi.fn(() => ({})),
-      setRng: vi.fn(),
-      getNode: vi.fn(() => document.createElement('div')),
-      collapse: vi.fn(),
-      select: vi.fn(),
-    },
-
-    // Additional properties used by iDevices
-    getDoc: vi.fn(() => document),
-    getWin: vi.fn(() => window),
-    getContainer: vi.fn(() => document.createElement('div')),
-    getElement: vi.fn(function () {
-      return document.getElementById(id);
-    }),
-    initialized: true,
-    settings: {},
-    theme: {},
-    formatter: {
-      apply: vi.fn(),
-      remove: vi.fn(),
-      toggle: vi.fn(),
-    },
-  };
-
-  return editor;
-};
-
-// Create a Proxy for editors that auto-creates editors on access
-const editorsProxy = new Proxy(
-  {},
-  {
+const wrapTinyMCEEditors = () => {
+  if (!Array.isArray(window.tinymce?.editors)) return;
+  if (window.tinymce.editors.__exeProxy) return;
+  const editorsArray = window.tinymce.editors;
+  editorsArray.__exeProxy = true;
+  window.tinymce.editors = new Proxy(editorsArray, {
     get(target, prop) {
-      if (typeof prop === 'string' && prop !== 'then') {
-        // Auto-create editor if it doesn't exist
-        if (!mockTinyMCEEditors.has(prop)) {
-          let initialContent = '';
-          if (typeof document !== 'undefined') {
-            const textarea = document.getElementById(prop);
-            if (textarea) initialContent = textarea.value || '';
-          }
-          const editor = createMockTinyMCEEditor(prop, initialContent);
-          mockTinyMCEEditors.set(prop, editor);
-          target[prop] = editor;
-        }
-        return mockTinyMCEEditors.get(prop);
+      if (typeof prop === 'string' && !(prop in target)) {
+        const editor = window.tinymce.get(prop);
+        if (editor) target[prop] = editor;
       }
       return target[prop];
     },
-    set(target, prop, value) {
-      target[prop] = value;
-      return true;
-    },
-  }
-);
-
-const mockTinyMCE = {
-  editors: editorsProxy,
-  activeEditor: null,
-
-  // Get or create an editor by ID
-  get: vi.fn(function (id) {
-    if (!mockTinyMCEEditors.has(id)) {
-      // Check if there's a textarea with initial content
-      let initialContent = '';
-      if (typeof document !== 'undefined') {
-        const textarea = document.getElementById(id);
-        if (textarea) initialContent = textarea.value || '';
-      }
-      const editor = createMockTinyMCEEditor(id, initialContent);
-      mockTinyMCEEditors.set(id, editor);
-    }
-    return mockTinyMCEEditors.get(id);
-  }),
-
-  // Initialize TinyMCE on elements matching selector
-  init: vi.fn(function (config) {
-    const selector = config.selector || config.target;
-    const editors = [];
-
-    if (typeof document !== 'undefined' && selector) {
-      const elements = document.querySelectorAll(selector);
-      elements.forEach((el) => {
-        const id = el.id;
-        if (id) {
-          const initialContent = el.value || el.innerHTML || '';
-          const editor = createMockTinyMCEEditor(id, initialContent);
-          mockTinyMCEEditors.set(id, editor);
-          this.editors[id] = editor;
-          editors.push(editor);
-
-          // Call init callback if provided
-          if (config.init_instance_callback) {
-            config.init_instance_callback(editor);
-          }
-        }
-      });
-    }
-
-    return Promise.resolve(editors);
-  }),
-
-  // Remove editors
-  remove: vi.fn(function (selector) {
-    if (typeof selector === 'string' && typeof document !== 'undefined') {
-      document.querySelectorAll(selector).forEach((el) => {
-        const id = el.id;
-        if (id) {
-          mockTinyMCEEditors.delete(id);
-          delete this.editors[id];
-        }
-      });
-    }
-  }),
-
-  execCommand: vi.fn(),
-
-  EditorManager: {
-    get: vi.fn((id) => mockTinyMCE.get(id)),
-  },
-
-  // Helper: Reset all editors (for testing)
-  _reset: function () {
-    mockTinyMCEEditors.clear();
-    // Clear the proxy target by deleting all keys
-    for (const key of Object.keys(editorsProxy)) {
-      delete editorsProxy[key];
-    }
-    this.activeEditor = null;
-  },
+  });
 };
 
-global.tinyMCE = mockTinyMCE;
-global.tinymce = mockTinyMCE;
-if (typeof window !== 'undefined') {
-  window.tinyMCE = mockTinyMCE;
-  window.tinymce = mockTinyMCE;
+try {
+  (0, eval)(tinymceCoreCode);
+  (0, eval)(tinymceThemeCode);
+  (0, eval)(tinymceIconsCode);
+
+  if (typeof window !== 'undefined' && window.tinymce) {
+    window.tinymce.baseURL = '/libs/tinymce_5/js/tinymce';
+    window.tinymce.suffix = '.min';
+    global.tinymce = window.tinymce;
+    global.tinyMCE = window.tinymce;
+    wrapTinyMCEEditors();
+  }
+} catch (e) {
+  throw new Error(`TinyMCE failed to load: ${e.message}`);
 }
+
+global.createTinyMCEEditor = async (id, options = {}) => {
+  if (!global.tinymce) {
+    throw new Error('TinyMCE is not available');
+  }
+
+  const { content = '', setup } = options;
+  let target = document.getElementById(id);
+
+  if (!target) {
+    target = document.createElement('textarea');
+    target.id = id;
+    document.body.appendChild(target);
+  }
+
+  await global.tinymce.init({
+    target,
+    menubar: false,
+    toolbar: false,
+    statusbar: false,
+    branding: false,
+    plugins: '',
+    skin: false,
+    content_css: false,
+    setup: (editor) => {
+      if (typeof setup === 'function') setup(editor);
+    },
+  });
+
+  wrapTinyMCEEditors();
+
+  const editor = global.tinymce.get(id);
+  if (!editor) {
+    throw new Error(`TinyMCE editor failed to initialize: ${id}`);
+  }
+  if (editor && global.tinymce.editors) {
+    global.tinymce.editors[id] = editor;
+  }
+  if (content) editor.setContent(content);
+  return editor;
+};
 
 // ============================================================================
 // Mock c_() translation function for iDevice export strings
@@ -1194,6 +1034,21 @@ if (typeof window !== 'undefined') {
 global.c_ = vi.fn((key) => key);
 if (typeof window !== 'undefined') {
   window.c_ = global.c_;
+}
+
+// ============================================================================
+// Load Real Yjs for frontend tests
+// ============================================================================
+
+try {
+  const yjsPath = join(__vitest_setup_dirname, 'libs/yjs/yjs.min.js');
+  const yjsCode = readFileSync(yjsPath, 'utf-8');
+  (0, eval)(yjsCode);
+  if (typeof window !== 'undefined' && window.Y) {
+    global.Y = window.Y;
+  }
+} catch (e) {
+  throw new Error(`Yjs failed to load: ${e.message}`);
 }
 
 // ============================================================================
@@ -1373,8 +1228,10 @@ afterEach(() => {
     global.eXeLearning.project.theme = defaultProjectState.theme;
   }
 
-  // Clear TinyMCE mock editors and reset state
-  mockTinyMCE._reset();
+  // Clear TinyMCE editors between tests
+  if (global.tinymce && typeof global.tinymce.remove === 'function') {
+    global.tinymce.remove();
+  }
 
   // Clear eXe.app history
   if (global.eXe && global.eXe.app) {

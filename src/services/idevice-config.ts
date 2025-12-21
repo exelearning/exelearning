@@ -176,3 +176,45 @@ export function resetIdeviceConfigCache(): void {
 export function getAllIdeviceConfigs(): Map<string, IdeviceConfigCache> | null {
     return configCache;
 }
+
+/**
+ * Get all export files for an iDevice type (JS or CSS)
+ * Scans the export folder and returns all files matching the extension,
+ * with the main iDevice file first.
+ *
+ * This ensures dependencies like html2canvas.js are included.
+ *
+ * @param typeName - The iDevice type name (e.g., 'checklist')
+ * @param extension - The file extension to look for ('.js' or '.css')
+ * @returns Array of filenames (e.g., ['checklist.js', 'html2canvas.js'])
+ */
+export function getIdeviceExportFiles(typeName: string, extension: '.js' | '.css'): string[] {
+    const basePath = getBasePath();
+    const exportPath = path.join(basePath, typeName, 'export');
+
+    if (!fs.existsSync(exportPath)) {
+        // Fallback: return just the main file
+        return [`${typeName}${extension}`];
+    }
+
+    try {
+        const files = fs
+            .readdirSync(exportPath)
+            .filter(file => {
+                // Include files with matching extension, but exclude test files
+                if (!file.endsWith(extension)) return false;
+                if (file.endsWith('.test.js') || file.endsWith('.spec.js')) return false;
+                return true;
+            })
+            .sort((a, b) => {
+                // Main file first, then alphabetically
+                if (a === `${typeName}${extension}`) return -1;
+                if (b === `${typeName}${extension}`) return 1;
+                return a.localeCompare(b);
+            });
+
+        return files.length > 0 ? files : [`${typeName}${extension}`];
+    } catch {
+        return [`${typeName}${extension}`];
+    }
+}

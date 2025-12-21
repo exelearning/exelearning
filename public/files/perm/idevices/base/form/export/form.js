@@ -190,6 +190,7 @@ var $form = {
             ? data.questionsData.length
             : 0;
         data.eXeIdeviceTextAfter = data.eXeIdeviceTextAfter ?? '';
+        data.eXeFormInstructions = data.eXeFormInstructions ?? '';
         data.totalQuestions = 0;
         data.rightQuestions = 0;
         data.wrongQuestions = 0;

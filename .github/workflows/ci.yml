@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - tikismaker
-      - 'release/*'
+      - 'release/3.1'
     tags:
       - '*'
   pull_request:
@@ -87,6 +87,18 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
           flags: unittests,frontend
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          files: ./coverage/bun/junit.xml,./coverage/vitest/junit.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload bundle analysis to Codecov
+        run: node scripts/upload-bundle-analysis.js
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium

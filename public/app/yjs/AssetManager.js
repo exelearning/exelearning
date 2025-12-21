@@ -773,8 +773,8 @@ class AssetManager {
       if (relativePath.startsWith('__MACOSX')) continue;
       if (relativePath.endsWith('.xml')) continue;
 
-      // Include images and common media
-      if (/\.(png|jpg|jpeg|gif|svg|webp|mp4|webm|mp3|ogg|wav|pdf)$/i.test(relativePath)) {
+      // Include images, video, audio, documents, 3D models and common media
+      if (/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff?|mp4|m4v|webm|mov|avi|mkv|mp3|m4a|ogg|wav|aac|flac|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|gltf|glb|stl)$/i.test(relativePath)) {
         assetFiles.push({ path: relativePath, fileData });
       }
     }
@@ -1078,18 +1078,48 @@ class AssetManager {
   getMimeType(filename) {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const mimeTypes = {
+      // Images
       png: 'image/png',
       jpg: 'image/jpeg',
       jpeg: 'image/jpeg',
       gif: 'image/gif',
       svg: 'image/svg+xml',
       webp: 'image/webp',
+      bmp: 'image/bmp',
+      ico: 'image/x-icon',
+      tif: 'image/tiff',
+      tiff: 'image/tiff',
+      // Video
       mp4: 'video/mp4',
+      m4v: 'video/mp4',
       webm: 'video/webm',
+      mov: 'video/quicktime',
+      avi: 'video/x-msvideo',
+      mkv: 'video/x-matroska',
       ogg: 'video/ogg',
+      // Audio
       mp3: 'audio/mpeg',
+      m4a: 'audio/mp4',
       wav: 'audio/wav',
+      aac: 'audio/aac',
+      flac: 'audio/flac',
+      // Documents
       pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      // Archives
+      zip: 'application/zip',
+      rar: 'application/vnd.rar',
+      '7z': 'application/x-7z-compressed',
+      // 3D Models
+      gltf: 'model/gltf+json',
+      glb: 'model/gltf-binary',
+      stl: 'model/stl',
+      // Code
       css: 'text/css',
       js: 'application/javascript'
     };
@@ -2035,6 +2065,231 @@ if (typeof module !== 'undefined' && module.exports) {
 } else {
   window.AssetManager = AssetManager;
 }
+
+/**
+ * Global helper to add MIME type attributes to media elements.
+ * Must be called BEFORE resolving asset URLs (while extensions are still in URLs).
+ * Handles elements with missing, empty, or invalid type attributes.
+ *
+ * @param {string} html - HTML content with asset:// URLs (containing filenames)
+ * @returns {string} - HTML with type attributes added to source/video/audio elements
+ */
+window.addMediaTypes = function(html) {
+  if (!html) return html;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const mimeTypes = {
+    // Video
+    mp4: 'video/mp4',
+    m4v: 'video/mp4',
+    webm: 'video/webm',
+    ogg: 'video/ogg',
+    ogv: 'video/ogg',
+    mov: 'video/quicktime',
+    avi: 'video/x-msvideo',
+    mkv: 'video/x-matroska',
+    // Audio
+    mp3: 'audio/mpeg',
+    m4a: 'audio/mp4',
+    wav: 'audio/wav',
+    oga: 'audio/ogg',
+    aac: 'audio/aac',
+    flac: 'audio/flac',
+  };
+
+  // Extract file extension from URL
+  const getExtension = (url) => {
+    if (!url) return null;
+    let path = url.split('?')[0]; // Remove query string
+    const lastSlash = path.lastIndexOf('/');
+    if (lastSlash !== -1) path = path.substring(lastSlash + 1);
+    const dotIndex = path.lastIndexOf('.');
+    return dotIndex !== -1 && dotIndex < path.length - 1
+      ? path.substring(dotIndex + 1).toLowerCase()
+      : null;
+  };
+
+  // Check if element needs a type attribute
+  // Returns true if type is missing, empty, or invalid (doesn't contain /)
+  const needsType = (el) => {
+    const currentType = el.getAttribute('type') || '';
+    return !currentType || !currentType.includes('/');
+  };
+
+  let modified = 0;
+
+  // Process all source, video[src], audio[src] elements
+  doc.querySelectorAll('source, video[src], audio[src]').forEach((el) => {
+    if (!needsType(el)) return;
+
+    const src = el.getAttribute('src') || '';
+    const ext = getExtension(src);
+    if (ext && mimeTypes[ext]) {
+      el.setAttribute('type', mimeTypes[ext]);
+      modified++;
+    }
+  });
+
+  if (modified > 0) {
+    Logger.log(`[addMediaTypes] Added MIME types to ${modified} media element(s)`);
+  }
+
+  return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+};
+
+/**
+ * Global helper to simplify MediaElement.js video structures to native HTML5 video.
+ * Converts complex <video class="mediaelement"><source src="..."></video> structures
+ * to simple <video src="..." controls> that browsers handle natively.
+ * This fixes playback issues with large videos and certain formats.
+ *
+ * @param {string} html - HTML content
+ * @returns {string} - HTML with simplified video elements
+ */
+window.simplifyMediaElements = function(html) {
+  if (!html) return html;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  let modified = 0;
+
+  // Find all video elements with class "mediaelement" or with source children
+  doc.querySelectorAll('video.mediaelement, video:has(source)').forEach((video) => {
+    // Get the source URL - either from <source> child or from video.src
+    let src = video.getAttribute('src') || '';
+    const sourceEl = video.querySelector('source');
+    if (sourceEl) {
+      src = sourceEl.getAttribute('src') || src;
+    }
+
+    // Skip if no source found
+    if (!src) return;
+
+    // Get type from source if available
+    const type = sourceEl?.getAttribute('type') || '';
+
+    // Preserve important attributes
+    const width = video.getAttribute('width') || '';
+    const height = video.getAttribute('height') || '';
+    const poster = video.getAttribute('poster') || '';
+    const className = video.className.replace('mediaelement', '').trim();
+
+    // Create simple video element
+    const newVideo = doc.createElement('video');
+    newVideo.setAttribute('src', src);
+    newVideo.setAttribute('controls', '');
+
+    if (type) newVideo.setAttribute('type', type);
+    if (width) newVideo.setAttribute('width', width);
+    if (height) newVideo.setAttribute('height', height);
+    if (poster) newVideo.setAttribute('poster', poster);
+    if (className) newVideo.className = className;
+
+    // Style for responsive sizing
+    newVideo.style.maxWidth = '100%';
+    newVideo.style.height = 'auto';
+
+    // Replace the old video with the new simple one
+    video.parentNode.replaceChild(newVideo, video);
+    modified++;
+  });
+
+  // Also simplify audio elements with source children
+  doc.querySelectorAll('audio:has(source)').forEach((audio) => {
+    let src = audio.getAttribute('src') || '';
+    const sourceEl = audio.querySelector('source');
+    if (sourceEl) {
+      src = sourceEl.getAttribute('src') || src;
+    }
+
+    if (!src) return;
+
+    const type = sourceEl?.getAttribute('type') || '';
+    const className = audio.className;
+
+    const newAudio = doc.createElement('audio');
+    newAudio.setAttribute('src', src);
+    newAudio.setAttribute('controls', '');
+
+    if (type) newAudio.setAttribute('type', type);
+    if (className) newAudio.className = className;
+
+    audio.parentNode.replaceChild(newAudio, audio);
+    modified++;
+  });
+
+  if (modified > 0) {
+    Logger.log(`[simplifyMediaElements] Simplified ${modified} media element(s)`);
+  }
+
+  return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+};
+
+/**
+ * Helper to unescape HTML entities
+ * Used by escapePreCodeContent to avoid double-escaping
+ *
+ * @param {string} str - String with HTML entities
+ * @returns {string} - Unescaped string
+ */
+function unescapeHtml(str) {
+  if (!str) return '';
+  const map = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#039;': "'",
+    '&#39;': "'",
+  };
+  return String(str).replace(/&(amp|lt|gt|quot|#0?39);/gi, m => map[m.toLowerCase()] || m);
+}
+
+/**
+ * Helper to escape HTML special characters
+ *
+ * @param {string} str - String to escape
+ * @returns {string} - Escaped string
+ */
+function escapeHtml(str) {
+  if (!str) return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return String(str).replace(/[&<>"']/g, m => map[m]);
+}
+
+/**
+ * Global helper to escape HTML entities inside <pre><code>...</code></pre> blocks.
+ * This prevents script tags and other HTML from being executed
+ * when shown as example code in the editor view.
+ *
+ * @param {string} html - HTML content
+ * @returns {string} - HTML with escaped content inside pre>code blocks
+ */
+window.escapePreCodeContent = function(html) {
+  if (!html) return html;
+
+  // Match <pre><code>...</code></pre> blocks (with optional attributes/whitespace)
+  const PRE_CODE_REGEX = /(<pre[^>]*>\s*<code[^>]*>)([\s\S]*?)(<\/code>\s*<\/pre>)/gi;
+
+  return html.replace(PRE_CODE_REGEX, (match, openTags, innerContent, closeTags) => {
+    if (!innerContent.trim()) return openTags + innerContent + closeTags;
+
+    // First decode any existing entities to avoid double-escaping
+    const decoded = unescapeHtml(innerContent);
+    // Then escape properly
+    const escaped = escapeHtml(decoded);
+    return openTags + escaped + closeTags;
+  });
+};
 
 /**
  * Global helper function to resolve asset:// URLs

@@ -6,35 +6,13 @@
  * Run with: make test-frontend
  */
 
- 
+// Mock Logger BEFORE requiring ResourceFetcher
+global.Logger = { log: vi.fn() };
 
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const ResourceFetcher = require('./ResourceFetcher.js');
 
 describe('ResourceFetcher', () => {
-  let ResourceFetcher;
   let mockFetch;
-
-  beforeAll(() => {
-    // Mock Logger
-    global.Logger = { log: vi.fn() };
-
-    // Read and execute the script
-    const scriptPath = join(__dirname, 'ResourceFetcher.js');
-    const scriptContent = readFileSync(scriptPath, 'utf-8');
-
-     
-    const scriptFn = new Function(scriptContent + '\n; return ResourceFetcher;');
-    ResourceFetcher = scriptFn();
-  });
-
-  afterAll(() => {
-    delete global.Logger;
-  });
 
   beforeEach(() => {
     vi.clearAllMocks();

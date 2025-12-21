@@ -1685,3 +1685,8 @@ pipwerks.nav.goForward = function () {
     trace("pipwerks.nav.goForward failed: API is null.");
   }
 };
+
+// Export for Node.js/CommonJS (tests)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = pipwerks;
+}

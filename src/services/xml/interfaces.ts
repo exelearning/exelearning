@@ -108,6 +108,9 @@ export interface NormalizedComponent {
     type: string;
     content: string | Record<string, unknown>; // HTML or structured content
     blockName?: string; // Block name for legacy support
+    blockIconName?: string; // Block icon name for export
+    blockId?: string; // Block ID for grouping
+    blockProperties?: Record<string, PropertyValue>; // Block-level properties
     order?: number; // Order within the page
     position?: number; // Position within the page
     properties?: Record<string, PropertyValue>; // Component properties

@@ -15,9 +15,11 @@ require('./yjs-loader.js');
 
 describe('YjsLoader', () => {
   let mockScripts;
+  let originalY;
 
   beforeEach(() => {
     mockScripts = [];
+    originalY = window.Y;
 
     // Setup window mocks - set properties on existing window (don't replace it)
     // This preserves happy-dom's window while adding our test properties
@@ -73,7 +75,11 @@ describe('YjsLoader', () => {
   afterEach(() => {
     // Clean up window properties BUT keep YjsLoader (module is cached)
     delete window.eXeLearning;
-    delete window.Y;
+    if (originalY === undefined) {
+      delete window.Y;
+    } else {
+      window.Y = originalY;
+    }
     delete window.JSZip;
     delete window.YjsModules;
     // Don't delete window.YjsLoader - module is cached and won't reload
@@ -147,7 +153,7 @@ describe('YjsLoader', () => {
       delete window.Y;
       expect(window.YjsLoader.getStatus().yjsAvailable).toBe(false);
 
-      window.Y = { Doc: mock(() => undefined) };
+      window.Y = originalY || globalThis.Y;
       expect(window.YjsLoader.getStatus().yjsAvailable).toBe(true);
     });
 

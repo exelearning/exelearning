@@ -386,3 +386,8 @@ var hangMan = {
 $(function() {
     if (window.eXeLearning === undefined) $exeGames.init();
 });
+
+// Export for Node.js/CommonJS (tests)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { $exeGames, hangMan };
+}
