@@ -700,7 +700,7 @@ export default class ModalFilemanager extends Modal {
      */
     async showSidebarContent(asset) {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
-        if (this.sidebarContent) this.sidebarContent.style.display = 'block';
+        if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
 
         // Get blob URL
         let blobUrl = this.assetManager.blobURLCache.get(asset.id);
