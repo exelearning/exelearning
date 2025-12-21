@@ -32,6 +32,15 @@
                             <option value="date-asc">Oldest first</option>
                             <option value="size-desc">Largest first</option>
                             <option value="size-asc">Smallest first</option>
+                            <option value="type-asc">Type A-Z</option>
+                            <option value="type-desc">Type Z-A</option>
+                        </select>
+                    </div>
+
+                    <div class="media-library-filter-controls">
+                        <label>Type:</label>
+                        <select class="form-control media-library-filter">
+                            <option value="">All</option>
                         </select>
                     </div>
 
@@ -43,18 +52,20 @@
                         <div class="media-library-grid">
                             <div class="media-library-loading">Loading assets...</div>
                         </div>
-                        <table class="media-library-list" style="display:none;">
-                            <thead>
-                                <tr>
-                                    <th class="col-thumb"></th>
-                                    <th class="col-name" data-sort="name">Name</th>
-                                    <th class="col-type" data-sort="type">Type</th>
-                                    <th class="col-size" data-sort="size">Size</th>
-                                    <th class="col-date" data-sort="date">Date</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                        <div class="media-library-list-container" style="display:none;">
+                            <table class="media-library-list">
+                                <thead>
+                                    <tr>
+                                        <th class="col-thumb"></th>
+                                        <th class="col-name" data-sort="name">Name</th>
+                                        <th class="col-type" data-sort="type">Type</th>
+                                        <th class="col-size" data-sort="size">Size</th>
+                                        <th class="col-date" data-sort="date">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                         <div class="media-library-empty" style="display:none;">No media files yet. Click "Add file" to upload.</div>
 
                         <div class="media-library-pagination">
