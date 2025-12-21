@@ -158,6 +158,21 @@ describe('ModalFilemanager', () => {
           expect(modal.grid).not.toBeNull();
           expect(modal.uploadBtn).not.toBeNull();
       });
+
+      it('should find action buttons (delete and insert)', () => {
+          modal.initElements();
+          expect(modal.deleteBtn).not.toBeNull();
+          expect(modal.insertBtn).not.toBeNull();
+          expect(modal.deleteBtn.classList.contains('media-library-delete-btn')).toBe(true);
+          expect(modal.insertBtn.classList.contains('media-library-insert-btn')).toBe(true);
+      });
+
+      it('should find sidebar elements', () => {
+          modal.initElements();
+          expect(modal.sidebar).not.toBeNull();
+          expect(modal.sidebarEmpty).not.toBeNull();
+          expect(modal.sidebarContent).not.toBeNull();
+      });
   });
 
   describe('initBehaviour', () => {
@@ -317,6 +332,13 @@ describe('ModalFilemanager', () => {
       expect(modal.selectedAsset).toBe(asset);
       expect(modal.previewImg.style.display).toBe('block');
       expect(modal.dimensionsSpan.textContent).toContain('640');
+    });
+
+    it('should use display:flex for sidebar-content to preserve action buttons layout', async () => {
+      const asset = { id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) };
+      await modal.showSidebarContent(asset);
+      // Must be flex, not block - block breaks the flexbox layout and hides action buttons
+      expect(modal.sidebarContent.style.display).toBe('flex');
     });
 
     it('should show video/audio/pdf/file previews', async () => {
