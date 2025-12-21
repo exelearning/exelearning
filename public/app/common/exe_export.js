@@ -202,6 +202,8 @@ const $exeExport = window.$exeExport = {
         // Idevice export object
         let exportIdevice = this.getIdeviceObject(ideviceType);
         if (exportIdevice === undefined) return false;
+        // Clear interval immediately - we only need to run once
+        clearInterval(window[intervalName]);
         // Get json data and initializes each page component of the indicated type
         let idevicesNodes = document.querySelectorAll(`.idevice_node.${ideviceType}`);
         idevicesNodes.forEach(ideviceNode => {
@@ -243,8 +245,6 @@ const $exeExport = window.$exeExport = {
             ideviceNode.classList.add('loaded');
             setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
         })
-        // Clear interval
-        clearInterval(window[intervalName]);
     },
 
 

@@ -1773,6 +1773,15 @@ export default class IdevicesEngine {
         // Set title and visibility
         pageTitleElement.innerText = title;
         pageTitleElement.classList.toggle('hidden', !title);
+
+        // Typeset LaTeX in page title if detected
+        if (title && /(?:\\\(|\\\[|\\begin\{)/.test(title)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([pageTitleElement]).catch(err => {
+                    Logger.log('[IdevicesEngine] MathJax typeset error:', err);
+                });
+            }
+        }
     }
 
     /**

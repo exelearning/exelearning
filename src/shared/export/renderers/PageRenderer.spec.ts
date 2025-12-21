@@ -211,7 +211,7 @@ describe('PageRenderer', () => {
             expect(html).toContain('Second');
         });
 
-        it('should mark current page as active', () => {
+        it('should mark current page as active with id and class', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -219,6 +219,7 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavigation(pages, 'page-2', '');
 
+            expect(html).toContain('id="active"');
             expect(html).toContain('class="active"');
         });
 

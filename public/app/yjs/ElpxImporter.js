@@ -1484,6 +1484,26 @@ class ElpxImporter {
       return str;
     };
 
+    // Helper to transform asset paths in properties object (recursive)
+    // This handles questionsData arrays where question/answer HTML may contain images
+    const transformPropertiesAssets = (obj, transformFn) => {
+      if (obj == null) return obj;
+      if (typeof obj === 'string') {
+        return transformFn(obj);
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(item => transformPropertiesAssets(item, transformFn));
+      }
+      if (typeof obj === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(obj)) {
+          result[key] = transformPropertiesAssets(value, transformFn);
+        }
+        return result;
+      }
+      return obj;
+    };
+
     // 4. Import structure into Yjs
     const ydoc = this.manager.getDoc();
     const navigation = this.manager.getNavigation();
@@ -1591,8 +1611,26 @@ class ElpxImporter {
                 };
                 compMap.set('jsonProperties', JSON.stringify(jsonProps));
               } else {
-                // For other iDevices, set empty jsonProperties
-                compMap.set('jsonProperties', '{}');
+                // For other iDevices (form, etc.), use properties from LegacyXmlParser if available
+                // The properties object may contain questionsData for form iDevices
+                if (ideviceData.properties && typeof ideviceData.properties === 'object' && Object.keys(ideviceData.properties).length > 0) {
+                  // Apply asset path transformation to any HTML content in properties
+                  const transformedProps = transformPropertiesAssets(ideviceData.properties, replaceAssetPaths);
+                  compMap.set('jsonProperties', JSON.stringify(transformedProps));
+                } else {
+                  compMap.set('jsonProperties', '{}');
+                }
+              }
+
+              // Set structure properties for rubric iDevices (cssClass is needed for rubricIdevice wrapper class)
+              // The cssClass is set by LegacyXmlParser when detecting rubric content
+              if (ideviceData.cssClass) {
+                const propsMap = new Y.Map();
+                propsMap.set('cssClass', ideviceData.cssClass);
+                propsMap.set('visibility', 'true');
+                propsMap.set('teacherOnly', 'false');
+                propsMap.set('identifier', '');
+                compMap.set('properties', propsMap);
               }
 
               componentsArray.push([compMap]);
@@ -1625,6 +1663,32 @@ class ElpxImporter {
           metadata.set('title', parsedData.meta.title || 'Legacy Project');
           metadata.set('author', parsedData.meta.author || '');
           metadata.set('description', parsedData.meta.description || '');
+          // Set custom footer content if present in legacy file
+          if (parsedData.meta.footer) {
+            metadata.set('footer', parsedData.meta.footer);
+          }
+          // Set custom head content if present in legacy file
+          if (parsedData.meta.extraHeadContent) {
+            metadata.set('extraHeadContent', parsedData.meta.extraHeadContent);
+          }
+          // Set export options if present in legacy file
+          // Use metadata keys WITHOUT pp_ prefix to match YjsPropertiesBinding.propertyKeyMap
+          // (LegacyXmlParser returns pp_ prefixed keys, but metadata uses non-prefixed keys)
+          if (parsedData.meta.exportSource !== undefined) {
+            metadata.set('exportSource', parsedData.meta.exportSource);
+          }
+          if (parsedData.meta.pp_addPagination !== undefined) {
+            metadata.set('addPagination', parsedData.meta.pp_addPagination);
+          }
+          if (parsedData.meta.pp_addSearchBox !== undefined) {
+            metadata.set('addSearchBox', parsedData.meta.pp_addSearchBox);
+          }
+          if (parsedData.meta.pp_addExeLink !== undefined) {
+            metadata.set('addExeLink', parsedData.meta.pp_addExeLink);
+          }
+          if (parsedData.meta.pp_addAccessibilityToolbar !== undefined) {
+            metadata.set('addAccessibilityToolbar', parsedData.meta.pp_addAccessibilityToolbar);
+          }
         }
       }
 

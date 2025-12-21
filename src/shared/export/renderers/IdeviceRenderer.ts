@@ -96,10 +96,13 @@ export class IdeviceRenderer {
             if (config.componentType === 'json') {
                 dataAttrs += ` data-idevice-component-type="json"`;
 
-                // Add JSON data for non-text iDevices
-                if (type !== 'text' && Object.keys(properties).length > 0) {
+                // Add JSON data for iDevices with properties
+                if (Object.keys(properties).length > 0) {
                     const jsonData = JSON.stringify(properties);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
+                }
+                // Always add template for JSON components (including text)
+                if (config.template) {
                     dataAttrs += ` data-idevice-template="${this.escapeAttr(config.template)}"`;
                 }
             }

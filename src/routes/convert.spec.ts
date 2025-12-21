@@ -132,13 +132,13 @@ describe('Convert Routes', () => {
         await fs.ensureDir(path.join(testDir, 'tmp'));
         await fs.ensureDir(path.join(testDir, 'public'));
         await fs.ensureDir(path.join(testDir, 'public', 'style', 'base'));
-        await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
+        await fs.ensureDir(path.join(testDir, 'public', 'style', 'workarea'));
         await fs.ensureDir(path.join(testDir, 'public', 'libs'));
 
         // Create minimal theme file
         await fs.writeFile(path.join(testDir, 'public', 'style', 'base', 'content.css'), '/* base theme */');
-        // Create base.css required by exporters
-        await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base css */');
+        // Create base.css required by exporters - FileSystemResourceProvider reads from style/workarea/base.css
+        await fs.writeFile(path.join(testDir, 'public', 'style', 'workarea', 'base.css'), '/* base css */');
 
         // Create mock dependencies
         mockDeps = createMockDependencies();
@@ -553,10 +553,7 @@ describe('Convert Routes', () => {
 
     describe('Successful exports', () => {
         it('should successfully convert ELP and return metadata', async () => {
-            // Ensure required files exist
-            await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
-            await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base */');
-
+            // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
             formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
@@ -571,20 +568,17 @@ describe('Convert Routes', () => {
                 }),
             );
 
-            // Check if it succeeded
-            if (res.status === 200) {
-                const body = await res.json();
-                expect(body.status).toBe('success');
-                expect(body.fileName).toBeDefined();
-                expect(body.size).toBeGreaterThanOrEqual(0);
-            }
+            // MUST succeed to cover success path (lines 340-344)
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.status).toBe('success');
+            expect(body.fileName).toBeDefined();
+            expect(body.size).toBeGreaterThanOrEqual(0);
+            expect(body.message).toContain('download=1');
         });
 
         it('should return ELPX file with download=1', async () => {
-            // Ensure required files exist
-            await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
-            await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base */');
-
+            // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
             formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
@@ -599,18 +593,18 @@ describe('Convert Routes', () => {
                 }),
             );
 
-            // If success, should return binary data with proper headers
-            if (res.status === 200) {
-                expect(res.headers.get('content-type')).toContain('exelearning');
-                expect(res.headers.get('content-disposition')).toContain('attachment');
-            }
+            // MUST succeed to cover download success path (lines 332-338)
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toContain('exelearning');
+            expect(res.headers.get('content-disposition')).toContain('attachment');
+            expect(res.headers.get('content-length')).toBeDefined();
+            // Verify we got binary data
+            const data = await res.arrayBuffer();
+            expect(data.byteLength).toBeGreaterThan(0);
         });
 
         it('should return export file with download=1 for export/:format', async () => {
-            // Ensure required files exist
-            await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
-            await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base */');
-
+            // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
             formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
@@ -625,18 +619,18 @@ describe('Convert Routes', () => {
                 }),
             );
 
-            // If success, should return binary data with proper headers
-            if (res.status === 200) {
-                expect(res.headers.get('content-type')).toBeDefined();
-                expect(res.headers.get('content-disposition')).toContain('attachment');
-            }
+            // MUST succeed to cover download success path (lines 425-431)
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toBeDefined();
+            expect(res.headers.get('content-disposition')).toContain('attachment');
+            expect(res.headers.get('content-length')).toBeDefined();
+            // Verify we got binary data
+            const data = await res.arrayBuffer();
+            expect(data.byteLength).toBeGreaterThan(0);
         });
 
         it('should return export metadata without download flag', async () => {
-            // Ensure required files exist
-            await fs.ensureDir(path.join(testDir, 'public', 'style', 'content', 'css'));
-            await fs.writeFile(path.join(testDir, 'public', 'style', 'content', 'css', 'base.css'), '/* base */');
-
+            // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
             formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
@@ -651,14 +645,14 @@ describe('Convert Routes', () => {
                 }),
             );
 
-            // If success, should return JSON metadata
-            if (res.status === 200) {
-                const body = await res.json();
-                expect(body.status).toBe('success');
-                expect(body.format).toBe('elpx');
-                expect(body.fileName).toBeDefined();
-                expect(body.size).toBeGreaterThanOrEqual(0);
-            }
+            // MUST succeed to cover metadata success path (lines 433-438)
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.status).toBe('success');
+            expect(body.format).toBe('elpx');
+            expect(body.fileName).toBeDefined();
+            expect(body.size).toBeGreaterThanOrEqual(0);
+            expect(body.message).toContain('download=1');
         });
     });
 
@@ -726,6 +720,31 @@ describe('Convert Routes', () => {
             expect(res.status).toBe(401);
         });
 
+        it('should handle JWT verify throwing exception', async () => {
+            // Create an app with a mock that causes JWT verify to throw
+            // This tests line 275 - the catch block in derive
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            // Create a malformed but parseable token that will cause verify to fail
+            // Using a token with wrong algorithm hint
+            const malformedToken = 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOjEsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSJ9.';
+
+            const res = await app.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${malformedToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // Should be unauthorized since token is invalid
+            expect(res.status).toBe(401);
+        });
+
         it('should reject user not found', async () => {
             // Create token for non-existent user (id 999)
             const secret = new TextEncoder().encode(JWT_SECRET);
@@ -750,6 +769,66 @@ describe('Convert Routes', () => {
             );
 
             expect(res.status).toBe(401);
+        });
+    });
+
+    describe('Internal Error Handling', () => {
+        it('should handle internal error when temp directory creation fails', async () => {
+            // Create a mock that will cause writeUploadedFile to fail
+            const brokenDeps = {
+                ...mockDeps,
+                tempDir: '/nonexistent/path/that/cannot/exist/convert-test-' + Date.now(),
+            };
+
+            const brokenApp = new Elysia().use(createConvertRoutes(brokenDeps));
+
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await brokenApp.handle(
+                new Request('http://localhost/api/convert/elp', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // Should return 500 with INTERNAL_ERROR or CONVERSION_FAILED
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(['INTERNAL_ERROR', 'CONVERSION_FAILED']).toContain(body.code);
+        });
+
+        it('should handle internal error in export/:format endpoint', async () => {
+            // Create a mock that will cause temp directory issues
+            const brokenDeps = {
+                ...mockDeps,
+                tempDir: '/nonexistent/path/that/cannot/exist/export-test-' + Date.now(),
+            };
+
+            const brokenApp = new Elysia().use(createConvertRoutes(brokenDeps));
+
+            const elpBuffer = await createTestElpBuffer();
+            const formData = new FormData();
+            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+
+            const res = await brokenApp.handle(
+                new Request('http://localhost/api/convert/export/html5', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                    body: formData,
+                }),
+            );
+
+            // Should return 500 with INTERNAL_ERROR or EXPORT_FAILED
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(['INTERNAL_ERROR', 'EXPORT_FAILED']).toContain(body.code);
         });
     });
 

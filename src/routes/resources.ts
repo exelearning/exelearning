@@ -265,19 +265,20 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     })
 
     // GET /api/resources/content-css - Get content CSS files (base.css, etc.)
+    // Serves from workarea/ directory but exports use path content/css/ for compatibility
     .get('/api/resources/content-css', () => {
-        const cssPath = 'public/style/content/css';
+        const cssPath = 'public/style/workarea';
         if (!deps.fs.existsSync(cssPath)) {
             return [];
         }
 
         // Build list with full relative path (content/css/base.css) for exporter compatibility
-        const files = scanDirectory(cssPath);
+        const files = scanDirectory(cssPath).filter(f => f.endsWith('.css'));
         const version = getAppVersion();
         const basePath = getBasePath();
 
         return files.map(filePath => ({
             path: `content/css/${filePath}`, // Full path expected by exporters
-            url: `${basePath}/${version}/style/content/css/${filePath}`,
+            url: `${basePath}/${version}/style/workarea/${filePath}`,
         }));
     });

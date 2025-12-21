@@ -11,6 +11,7 @@
 // Test functions available globally from vitest setup
 
 const ElpxImporter = require('./ElpxImporter');
+const LegacyXmlParser = require('./LegacyXmlParser');
 
 // Sample content.xml for mock fflate
 const SAMPLE_CONTENT_XML = `<?xml version="1.0"?>
@@ -2733,6 +2734,148 @@ describe('ElpxImporter', () => {
         expect(compData.structureProps.teacherOnly).toBe('false');
         expect(compData.structureProps.visibility).toBe('true');
       });
+    });
+  });
+
+  describe('importLegacyFormat - export options metadata keys', () => {
+    // Sample legacy contentv3.xml with export options
+    // This is the Python pickle format used by legacy eXeLearning
+    const LEGACY_XML_WITH_EXPORT_OPTIONS = `<?xml version="1.0"?>
+      <instance class="exe.engine.package.Package">
+        <dictionary>
+          <string role="key" value="_title"/>
+          <unicode value="Legacy Project With Export Options"/>
+          <string role="key" value="_author"/>
+          <unicode value="Test Author"/>
+          <string role="key" value="_addPagination"/>
+          <bool value="1"/>
+          <string role="key" value="_addSearchBox"/>
+          <bool value="1"/>
+          <string role="key" value="_addExeLink"/>
+          <bool value="0"/>
+          <string role="key" value="exportSource"/>
+          <bool value="1"/>
+          <string role="key" value="_addAccessibilityToolbar"/>
+          <bool value="1"/>
+          <string role="key" value="_nodeIdDict"/>
+          <dictionary/>
+          <string role="key" value="_root"/>
+          <instance class="exe.engine.node.Node">
+            <dictionary>
+              <string role="key" value="_id"/>
+              <unicode value="root-page"/>
+              <string role="key" value="_title"/>
+              <unicode value="Home"/>
+              <string role="key" value="_children"/>
+              <list/>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </dictionary>
+      </instance>`;
+
+    let importerWithLegacy;
+    let mockDocManagerWithLegacy;
+
+    beforeEach(() => {
+      // Setup mock fflate to return legacy format (contentv3.xml)
+      // And add LegacyXmlParser to window for legacy import
+      global.window.fflate = createMockFflateLegacy(LEGACY_XML_WITH_EXPORT_OPTIONS);
+      global.window.LegacyXmlParser = LegacyXmlParser;
+      mockDocManagerWithLegacy = createMockDocumentManager();
+      importerWithLegacy = new ElpxImporter(mockDocManagerWithLegacy, createMockAssetManager());
+    });
+
+    it('should set export options to metadata keys WITHOUT pp_ prefix', async () => {
+      const mockFile = createMockFile('legacy-project.elp');
+      await importerWithLegacy.importLegacyFormat(mockFile);
+
+      const metadata = mockDocManagerWithLegacy.getMetadata();
+
+      // Export options should be stored with keys WITHOUT pp_ prefix
+      // This matches the keys used in importStructure() and expected by YjsPropertiesBinding
+      expect(metadata.get('addPagination')).toBe(true);
+      expect(metadata.get('addSearchBox')).toBe(true);
+      expect(metadata.get('addExeLink')).toBe(false); // Explicitly set to false
+      expect(metadata.get('exportSource')).toBe(true);
+      expect(metadata.get('addAccessibilityToolbar')).toBe(true);
+    });
+
+    it('should NOT use pp_ prefixed keys for export options', async () => {
+      const mockFile = createMockFile('legacy-project.elp');
+      await importerWithLegacy.importLegacyFormat(mockFile);
+
+      const metadata = mockDocManagerWithLegacy.getMetadata();
+
+      // These keys should NOT exist - the bug was that we used these keys
+      expect(metadata.get('pp_addPagination')).toBeUndefined();
+      expect(metadata.get('pp_addSearchBox')).toBeUndefined();
+      expect(metadata.get('pp_addExeLink')).toBeUndefined();
+      expect(metadata.get('pp_addAccessibilityToolbar')).toBeUndefined();
+    });
+
+    it('should preserve default addExeLink=true when not explicitly set to false', async () => {
+      // Legacy XML without _addExeLink set (should default to true)
+      const legacyXmlWithDefaults = `<?xml version="1.0"?>
+        <instance class="exe.engine.package.Package">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Project Without ExeLink Set"/>
+            <string role="key" value="_nodeIdDict"/>
+            <dictionary/>
+            <string role="key" value="_root"/>
+            <instance class="exe.engine.node.Node">
+              <dictionary>
+                <string role="key" value="_id"/>
+                <unicode value="root"/>
+                <string role="key" value="_title"/>
+                <unicode value="Home"/>
+                <string role="key" value="_children"/>
+                <list/>
+                <string role="key" value="idevices"/>
+                <list/>
+              </dictionary>
+            </instance>
+          </dictionary>
+        </instance>`;
+
+      global.window.fflate = createMockFflateLegacy(legacyXmlWithDefaults);
+      const docManager = createMockDocumentManager();
+      const importer = new ElpxImporter(docManager, createMockAssetManager());
+
+      const mockFile = createMockFile('legacy-defaults.elp');
+      await importer.importLegacyFormat(mockFile);
+
+      const metadata = docManager.getMetadata();
+
+      // addExeLink should default to true when not explicitly set
+      expect(metadata.get('addExeLink')).toBe(true);
+      // Other export options should default to false
+      expect(metadata.get('addPagination')).toBe(false);
+      expect(metadata.get('addSearchBox')).toBe(false);
+      expect(metadata.get('exportSource')).toBe(false);
+      expect(metadata.get('addAccessibilityToolbar')).toBe(false);
+    });
+
+    it('should store export options that persist across page navigation', async () => {
+      // This test documents the expected behavior:
+      // Export options stored in metadata should be retrievable at any time
+      const mockFile = createMockFile('legacy-project.elp');
+      await importerWithLegacy.importLegacyFormat(mockFile);
+
+      const metadata = mockDocManagerWithLegacy.getMetadata();
+
+      // Simulate page navigation by just checking the values are still there
+      const addPaginationBefore = metadata.get('addPagination');
+      const addSearchBoxBefore = metadata.get('addSearchBox');
+
+      // Values should still be accessible (this is how YjsPropertiesBinding reads them)
+      expect(metadata.get('addPagination')).toBe(addPaginationBefore);
+      expect(metadata.get('addSearchBox')).toBe(addSearchBoxBefore);
+      expect(metadata.get('addExeLink')).toBeDefined();
+      expect(metadata.get('exportSource')).toBeDefined();
+      expect(metadata.get('addAccessibilityToolbar')).toBeDefined();
     });
   });
 

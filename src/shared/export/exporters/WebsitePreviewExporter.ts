@@ -214,9 +214,9 @@ export class WebsitePreviewExporter {
         const lang = meta.language || 'en';
         const projectTitle = meta.title || 'eXeLearning';
         const customStyles = meta.customStyles || '';
-        const author = meta.author || '';
         const license = meta.license || 'CC-BY-SA';
         const themeName = meta.theme || 'base';
+        const userFooterContent = meta.footer || '';
 
         // Export options (with defaults)
         const addExeLink = meta.addExeLink ?? true;
@@ -297,7 +297,7 @@ ${staticHeaderHtml}
 ${pagesHtml}
 </main>
 ${this.renderNavButtons()}
-${this.renderWebsiteFooter(author, license)}
+${this.renderFooterSection({ license, userFooterContent })}
 </div>
 ${madeWithExeHtml}
 ${searchDataScript}
@@ -373,6 +373,18 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${this.escapeHtml(projectTitle)} - Preview</title>
 <script>document.querySelector("html").classList.add("js");</script>
+<script>
+// jQuery shim - captures $(fn) calls from legacy inline scripts until jQuery loads
+(function() {
+    var queue = [];
+    var jQueryReady = function(fn) {
+        if (typeof fn === 'function') queue.push(fn);
+        return jQueryReady;
+    };
+    window.$ = window.jQuery = jQueryReady;
+    window.__jQueryShimQueue = queue;
+})();
+</script>
 
 <!-- Server-hosted libraries (versioned paths) -->
 <link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}${detectedLibraryCss}
@@ -635,7 +647,7 @@ button.toggler span,
             linkClasses.push('highlighted-link');
         }
 
-        let html = `<li${isActive ? ' class="active"' : ''}>`;
+        let html = `<li${isActive ? ' id="active" class="active"' : ''}>`;
         const parentAttr = page.parentId ? ` data-parent-id="${page.parentId}"` : '';
         html += ` <a href="#" data-page-id="${page.id}"${parentAttr} class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
 
@@ -714,12 +726,20 @@ ${blockHtml}
     }
 
     /**
-     * Render website footer
+     * Render footer section with license and optional user footer content
+     * Matches the structure from PageRenderer.renderFooterSection()
      */
-    private renderWebsiteFooter(author: string, license: string): string {
-        return `<footer id="siteFooter">
-<p class="license">${this.escapeHtml(author ? `${author} - ` : '')}${this.escapeHtml(license)}</p>
-</footer>`;
+    private renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
+        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+
+        let userFooterHtml = '';
+        if (userFooterContent) {
+            userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
+        }
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="cc cc-by-sa"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
+</div>
+${userFooterHtml}</div></footer>`;
     }
 
     /**
@@ -808,6 +828,28 @@ ${blockHtml}
             elpxDownloadScripts = `\n<script src="${fflateJs}"></script>\n<script src="${elpxDownloadJs}"></script>`;
         }
 
+        // Check if MathJax is needed (exe_math library detected)
+        const needsMathJax = detectedLibraries.libraries.some(
+            lib => lib.name === 'exe_math' || lib.name === 'exe_math_datagame',
+        );
+
+        // MathJax configuration - must be set BEFORE loading the script
+        // Configure pageReady to catch errors from auto-typeset on hidden SPA pages
+        let mathJaxConfig = '';
+        if (needsMathJax) {
+            mathJaxConfig = `\n<script>
+window.MathJax = {
+    startup: {
+        pageReady: function() {
+            return MathJax.startup.defaultPageReady().catch(function(err) {
+                console.warn('[MathJax] Auto-typeset error:', err.message);
+            });
+        }
+    }
+};
+</script>`;
+        }
+
         // Build detected library JS scripts
         let detectedLibraryScripts = '';
         for (const file of detectedLibraries.files) {
@@ -847,10 +889,17 @@ ${blockHtml}
         }
 
         return `<script src="${jqueryJs}"></script>
+<script>
+// Execute queued callbacks from jQuery shim (legacy inline scripts)
+if (window.__jQueryShimQueue) {
+    window.__jQueryShimQueue.forEach(function(fn) { $(fn); });
+    delete window.__jQueryShimQueue;
+}
+</script>
 <script src="${bootstrapJs}"></script>${jqueryUiScript}${elpxDownloadScripts}
 <script src="${commonJs}"></script>
 <script src="${commonI18nJs}"></script>
-<script src="${exeExportJs}"></script>${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
+<script src="${exeExportJs}"></script>${mathJaxConfig}${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"></script>
 <script>
 // Polyfill for confirm/alert/prompt in sandboxed iframes (preview mode)
@@ -927,6 +976,21 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   var pageCounterEl = document.querySelector('.page-counter-current-page');
   var currentIndex = 0;
 
+  // Helper to detect LaTeX patterns in text
+  // Matches \\( or \\[ or \\begin{ (LaTeX delimiters)
+  function hasLatex(text) {
+    return text && /(?:\\\\\\(|\\\\\\[|\\\\begin\\{)/.test(text);
+  }
+
+  // Helper to typeset LaTeX in an element using MathJax
+  function typesetLatex(element) {
+    if (element && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+      MathJax.typesetPromise([element]).catch(function(err) {
+        console.log('[Preview] MathJax typeset error:', err);
+      });
+    }
+  }
+
   function showPage(index) {
     if (index < 0 || index >= pages.length) return;
     currentIndex = index;
@@ -969,7 +1033,12 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
       pageHeaderEl.style.display = hideTitle ? 'none' : '';
     }
     if (pageTitleEl && activePage.dataset.pageTitle) {
-      pageTitleEl.textContent = activePage.dataset.pageTitle;
+      var title = activePage.dataset.pageTitle;
+      pageTitleEl.textContent = title;
+      // Re-typeset LaTeX in page title if detected
+      if (hasLatex(title)) {
+        typesetLatex(pageTitleEl);
+      }
     }
     if (pageCounterEl) {
       pageCounterEl.textContent = (index + 1).toString();
@@ -1024,6 +1093,17 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
 
   // Check initial hash on load
   showPageByHash();
+
+  // Typeset LaTeX in navigation sidebar if detected
+  var navContainer = document.querySelector('nav');
+  if (navContainer && hasLatex(navContainer.textContent)) {
+    typesetLatex(navContainer);
+  }
+
+  // Typeset LaTeX in initial page title if detected
+  if (pageTitleEl && hasLatex(pageTitleEl.textContent)) {
+    typesetLatex(pageTitleEl);
+  }
 
   updateNavButtons();
 })();`;
@@ -1085,7 +1165,10 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
      * This avoids bloating each page with large JSON in attributes
      */
     private generateSearchDataScript(searchDataJson: string): string {
-        return `<script>window.exeSearchData = ${searchDataJson};</script>`;
+        // Escape </script> sequences to prevent premature script tag closing
+        // Replace </ with <\/ which is valid in JSON strings but not parsed as closing tags
+        const safeJson = searchDataJson.replace(/<\//g, '<\\/');
+        return `<script>window.exeSearchData = ${safeJson};</script>`;
     }
 
     /**

@@ -264,7 +264,7 @@ ${madeWithExeHtml}
         const isFirstPage = page.id === allPages[0]?.id;
 
         // Build li class attribute
-        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
+        const liClass = isCurrent ? ' id="active" class="active"' : isAncestor ? ' class="current-page-parent"' : '';
         const link = this.getPageLink(page, allPages, basePath);
 
         // Build link classes: main-node for first page, daddy/no-ch for children, active if current

@@ -34,17 +34,58 @@ class LegacyXmlParser {
   };
 
   /**
+   * Preprocess legacy XML content before parsing
+   * Fixes encoding issues from eXe 2.x exports
+   *
+   * Based on Symfony OdeXmlUtil.php lines 993-1035
+   *
+   * @param {string} xmlContent - Raw XML content
+   * @returns {string} Preprocessed XML content
+   */
+  preprocessLegacyXml(xmlContent) {
+    let xml = xmlContent;
+
+    // 1. Remove indentations (5 spaces, tabs)
+    // eXe 2.x adds extra indentation inside attributes that breaks DOMParser
+    xml = xml.replace(/ {5}/g, '');
+    xml = xml.replace(/\t/g, '');
+
+    // 2. Unify newlines to Unix LF
+    xml = xml.replace(/\r/g, '\n');
+    xml = xml.replace(/\n\n/g, '\n');
+
+    // 3. Convert newlines to &#10; entity (preserves inside attributes)
+    xml = xml.replace(/\n/g, '&#10;');
+
+    // 4. Restore newlines between tags (not inside attributes)
+    xml = xml.replace(/>&#10;</g, '>\n<');
+
+    // 5. Convert hex escape sequences (\xNN) to characters
+    // Legacy files may contain Python-style hex escapes in content
+    xml = xml.replace(/\\x([0-9A-Fa-f]{2})/g, (match, hex) => {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+
+    // 6. Convert \n to &#10; (literal backslash-n in content)
+    xml = xml.replace(/\\n/g, '&#10;');
+
+    return xml;
+  }
+
+  /**
    * Parse legacy XML content and return normalized structure
    * @param {string} xmlContent - The raw XML content from contentv3.xml
    * @returns {Object} Normalized structure with pages, meta, etc.
    */
   parse(xmlContent) {
     Logger.log('[LegacyXmlParser] Parsing legacy XML format');
-    this.xmlContent = xmlContent;
+
+    // Preprocess XML to fix encoding issues from eXe 2.x
+    this.xmlContent = this.preprocessLegacyXml(xmlContent);
 
     // Parse XML
     const parser = new DOMParser();
-    this.xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
+    this.xmlDoc = parser.parseFromString(this.xmlContent, 'text/xml');
 
     const parseError = this.xmlDoc.querySelector('parsererror');
     if (parseError) {
@@ -63,6 +104,10 @@ class LegacyXmlParser {
 
     // Build page hierarchy
     const pages = this.buildPageHierarchy(nodes);
+
+    // Convert internal links (exe-node: path-based to ID-based)
+    const fullPathMap = this.buildFullPathMap(pages);
+    this.convertAllInternalLinks(pages, fullPathMap);
 
     Logger.log(`[LegacyXmlParser] Parse complete: ${pages.length} pages`);
 
@@ -124,6 +169,11 @@ class LegacyXmlParser {
         if (valueEl.tagName === 'unicode' || valueEl.tagName === 'string') {
           return valueEl.getAttribute('value') || valueEl.textContent;
         }
+        if (valueEl.tagName === 'bool') {
+          // Handle boolean elements: <bool value="1"/> or <bool value="0"/>
+          const boolVal = valueEl.getAttribute('value');
+          return boolVal === '1' || boolVal === 'True' || boolVal === 'true';
+        }
         if (valueEl.tagName === 'instance') {
           return valueEl.getAttribute('reference');
         }
@@ -145,13 +195,21 @@ class LegacyXmlParser {
 
   /**
    * Extract metadata from root package
-   * @returns {Object} Metadata object with title, author, description
+   * @returns {Object} Metadata object with title, author, description, footer, extraHeadContent, and export options
    */
   extractMetadata() {
     const meta = {
       title: 'Legacy Project',
       author: '',
       description: '',
+      footer: '',
+      extraHeadContent: '',
+      // Export options (defaults) - use pp_ prefix to match form property names
+      exportSource: false,
+      pp_addPagination: false,
+      pp_addSearchBox: false,
+      pp_addExeLink: true, // Default to true
+      pp_addAccessibilityToolbar: false,
     };
 
     // Find root package instance
@@ -172,6 +230,32 @@ class LegacyXmlParser {
     // Extract description
     const description = this.findDictValue(dict, '_description');
     if (description) meta.description = description;
+
+    // Extract custom footer content (user-provided footer HTML)
+    const footer = this.findDictValue(dict, 'footer');
+    if (footer) meta.footer = footer;
+
+    // Extract custom head content (user-provided head HTML/scripts)
+    const extraHeadContent = this.findDictValue(dict, '_extraHeadContent');
+    if (extraHeadContent) meta.extraHeadContent = extraHeadContent;
+
+    // Extract export options (legacy uses _addPagination, _addSearchBox, exportSource, _addExeLink)
+    // These map to pp_addPagination, pp_addSearchBox, exportSource, pp_addExeLink in modern format
+    const addPagination = this.findDictValue(dict, '_addPagination');
+    if (addPagination === true) meta.pp_addPagination = true;
+
+    const addSearchBox = this.findDictValue(dict, '_addSearchBox');
+    if (addSearchBox === true) meta.pp_addSearchBox = true;
+
+    const exportSource = this.findDictValue(dict, 'exportSource');
+    if (exportSource === true) meta.exportSource = true;
+
+    // _addExeLink defaults to true, only set to false if explicitly false
+    const addExeLink = this.findDictValue(dict, '_addExeLink');
+    if (addExeLink === false) meta.pp_addExeLink = false;
+
+    const addAccessibilityToolbar = this.findDictValue(dict, '_addAccessibilityToolbar');
+    if (addAccessibilityToolbar === true) meta.pp_addAccessibilityToolbar = true;
 
     Logger.log(`[LegacyXmlParser] Metadata: title="${meta.title}"`);
     return meta;
@@ -302,13 +386,22 @@ class LegacyXmlParser {
     // the root's direct children to top-level pages.
     // This is INTENTIONAL behavior for legacy imports. See doc/conventions.md.
     const { shouldFlatten, rootPage } = this.shouldFlattenRootChildren(rootPages);
+    let flatPages;
     if (shouldFlatten && rootPage) {
-      return this.flattenRootChildren(rootPage);
+      flatPages = this.flattenRootChildren(rootPage);
+    } else {
+      // 3. Flatten into array with correct structure (no flattening needed)
+      flatPages = [];
+      this.flattenPages(rootPages, flatPages, null);
     }
 
-    // 3. Flatten into array with correct structure (no flattening needed)
-    const flatPages = [];
-    this.flattenPages(rootPages, flatPages, null);
+    // 4. Detect and apply node reordering for malformed contentv3.xml files
+    // Some legacy files have nodes in wrong positions (referenced by <reference key="N"/>
+    // instead of inline instances). See Symfony OdeXmlUtil.php lines 1101-1210.
+    const nodesChangeRef = this.detectNodeReorderMap();
+    if (nodesChangeRef.size > 0) {
+      flatPages = this.applyNodeReordering(flatPages, nodesChangeRef);
+    }
 
     return flatPages;
   }
@@ -335,6 +428,296 @@ class LegacyXmlParser {
         this.flattenPages(page.children, result, page.id);
       }
     });
+  }
+
+  /**
+   * Detect and reorder nodes that are incorrectly positioned in the XML
+   *
+   * Some malformed contentv3.xml files have nodes whose content appears
+   * outside their correct position in the children list (referenced by
+   * <reference key="N"/> instead of being inline instances).
+   *
+   * Based on Symfony OdeXmlUtil.php lines 1101-1129
+   *
+   * @returns {Map} Map of oldRef -> afterRef (position after which to insert)
+   */
+  detectNodeReorderMap() {
+    const nodesChangeRef = new Map(); // oldRef -> afterRef
+
+    // Find all Node instances
+    const allNodes = this.xmlDoc.querySelectorAll('instance[class="exe.engine.node.Node"]');
+
+    for (const node of allNodes) {
+      const nodeRef = node.getAttribute('reference');
+      if (!nodeRef) continue;
+
+      // Find children list for this node
+      const dict = node.querySelector(':scope > dictionary');
+      if (!dict) continue;
+
+      const childrenList = this.findDictList(dict, 'children');
+      if (!childrenList) continue;
+
+      let prevRef = parseInt(nodeRef, 10);
+
+      // Check each child in the list
+      for (const child of childrenList.children) {
+        if (child.tagName === 'instance') {
+          // Normal inline instance - update prevRef
+          const instRef = child.getAttribute('reference');
+          if (instRef) {
+            prevRef = parseInt(instRef, 10);
+          }
+        } else if (child.tagName === 'reference') {
+          // Reference to node defined elsewhere - needs reordering
+          const refKey = parseInt(child.getAttribute('key'), 10);
+          nodesChangeRef.set(refKey, prevRef);
+          prevRef = refKey;
+        }
+      }
+    }
+
+    if (nodesChangeRef.size > 0) {
+      Logger.log(`[LegacyXmlParser] Detected ${nodesChangeRef.size} nodes needing reordering`);
+    }
+
+    return nodesChangeRef;
+  }
+
+  /**
+   * Apply node reordering based on the detected reference map
+   *
+   * @param {Array} pages - Array of page objects
+   * @param {Map} nodesChangeRef - Map of oldRef -> afterRef
+   * @returns {Array} Reordered pages array
+   */
+  applyNodeReordering(pages, nodesChangeRef) {
+    if (nodesChangeRef.size === 0) return pages;
+
+    // Create a map of page ref -> page object
+    const pageRefMap = new Map();
+    for (const page of pages) {
+      // Extract ref from page id (page-{ref})
+      const ref = page.id.replace('page-', '');
+      pageRefMap.set(parseInt(ref, 10), page);
+    }
+
+    // Adjust positions based on reordering map
+    for (const [oldRef, afterRef] of nodesChangeRef) {
+      const pageToMove = pageRefMap.get(oldRef);
+      const referencePoint = pageRefMap.get(afterRef);
+
+      if (pageToMove && referencePoint) {
+        // Set position to be right after the reference point
+        pageToMove.position = referencePoint.position + 0.5;
+      }
+    }
+
+    // Re-sort pages by position
+    pages.sort((a, b) => a.position - b.position);
+
+    // Renumber positions
+    pages.forEach((page, index) => {
+      page.position = index;
+    });
+
+    Logger.log(`[LegacyXmlParser] Reordered ${nodesChangeRef.size} nodes`);
+    return pages;
+  }
+
+  /**
+   * Build a map of full page paths to page IDs
+   *
+   * Example: "Root:Chapter1:Page1" -> "page-abc123"
+   *
+   * Based on Symfony OdeXmlUtil.php changeOldExeNodeLink()
+   *
+   * @param {Array} pages - Array of page objects
+   * @returns {Map} Map of full path -> page ID
+   */
+  buildFullPathMap(pages) {
+    const fullPathMap = new Map();
+    const pageIdMap = new Map(); // pageId -> { id, name, parent_id }
+
+    // First pass: build page info map
+    for (const page of pages) {
+      pageIdMap.set(page.id, {
+        id: page.id,
+        name: page.title,
+        parent_id: page.parent_id
+      });
+    }
+
+    // Second pass: build full paths
+    for (const page of pages) {
+      const pathParts = [page.title];
+      let currentParentId = page.parent_id;
+
+      // Walk up the parent chain
+      while (currentParentId && pageIdMap.has(currentParentId)) {
+        const parent = pageIdMap.get(currentParentId);
+        pathParts.unshift(parent.name);
+        currentParentId = parent.parent_id;
+      }
+
+      const fullPath = pathParts.join(':');
+      fullPathMap.set(fullPath, page.id);
+
+      // Also add URL-decoded version if different
+      try {
+        const decodedPath = decodeURIComponent(fullPath);
+        if (decodedPath !== fullPath) {
+          fullPathMap.set(decodedPath, page.id);
+        }
+      } catch (e) {
+        // Ignore decoding errors
+      }
+    }
+
+    if (fullPathMap.size > 0) {
+      Logger.log(`[LegacyXmlParser] Built path map with ${fullPathMap.size} entries`);
+    }
+
+    return fullPathMap;
+  }
+
+  /**
+   * Convert exe-node: links in HTML content from path-based to ID-based
+   *
+   * Converts: exe-node:Root:Chapter1:Page1 -> exe-node:page-abc123
+   *
+   * Based on Symfony OdeComponentsSync.php replaceOldInternalLinks()
+   *
+   * @param {string} html - HTML content with exe-node: links
+   * @param {Map} fullPathMap - Map of full path -> page ID
+   * @returns {string} HTML with converted links
+   */
+  convertInternalLinks(html, fullPathMap) {
+    if (!html || !html.includes('exe-node:')) return html;
+
+    const EXE_NODE_PREFIX = 'exe-node:';
+
+    // Find all href attributes with exe-node: links
+    return html.replace(
+      /href=["'](exe-node:[^"'#]+)(#[^"']*)?["']/gi,
+      (match, linkPart, hashPart = '') => {
+        const originalLink = linkPart;
+
+        // Remove hash and decode
+        let cleanedLink = linkPart;
+        try {
+          cleanedLink = decodeURIComponent(cleanedLink);
+        } catch (e) {
+          // Ignore decoding errors
+        }
+
+        // Extract path (remove exe-node: prefix)
+        let pathOnly = cleanedLink.replace(EXE_NODE_PREFIX, '');
+
+        // Handle case where path starts with project name (first segment)
+        const segments = pathOnly.split(':');
+        if (segments.length > 1) {
+          // Try without first segment (project/root name)
+          const pathWithoutRoot = segments.slice(1).join(':');
+          if (fullPathMap.has(pathWithoutRoot)) {
+            pathOnly = pathWithoutRoot;
+          }
+        }
+
+        // Look up the page ID
+        if (fullPathMap.has(pathOnly)) {
+          const pageId = fullPathMap.get(pathOnly);
+          const newLink = `${EXE_NODE_PREFIX}${pageId}`;
+          Logger.log(`[LegacyXmlParser] Converted link: ${originalLink} -> ${newLink}`);
+          // Strip #auto_top suffix (legacy auto-scroll anchor)
+          let finalHash = hashPart || '';
+          if (finalHash === '#auto_top') {
+            finalHash = '';
+          }
+          return `href="${newLink}${finalHash}"`;
+        }
+
+        // No match found - keep original
+        Logger.log(`[LegacyXmlParser] Link not found in path map: ${pathOnly}`);
+        return match;
+      }
+    );
+  }
+
+  /**
+   * Recursively convert internal links in object properties
+   *
+   * @param {Object|Array} obj - Object or array to process
+   * @param {Map} fullPathMap - Map of full path -> page ID
+   */
+  convertLinksInObject(obj, fullPathMap) {
+    if (!obj || typeof obj !== 'object') return;
+
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) {
+        if (typeof obj[i] === 'string' && obj[i].includes('exe-node:')) {
+          obj[i] = this.convertInternalLinks(obj[i], fullPathMap);
+        } else if (typeof obj[i] === 'object') {
+          this.convertLinksInObject(obj[i], fullPathMap);
+        }
+      }
+    } else {
+      for (const key of Object.keys(obj)) {
+        if (typeof obj[key] === 'string' && obj[key].includes('exe-node:')) {
+          obj[key] = this.convertInternalLinks(obj[key], fullPathMap);
+        } else if (typeof obj[key] === 'object') {
+          this.convertLinksInObject(obj[key], fullPathMap);
+        }
+      }
+    }
+  }
+
+  /**
+   * Convert all internal links in all iDevices
+   *
+   * @param {Array} pages - Array of page objects
+   * @param {Map} fullPathMap - Map of full path -> page ID
+   * @returns {Array} Pages with converted links
+   */
+  convertAllInternalLinks(pages, fullPathMap) {
+    if (fullPathMap.size === 0) return pages;
+
+    let convertedCount = 0;
+
+    for (const page of pages) {
+      if (!page.blocks) continue;
+
+      for (const block of page.blocks) {
+        if (!block.idevices) continue;
+
+        for (const idevice of block.idevices) {
+          // Convert links in htmlView
+          if (idevice.htmlView && idevice.htmlView.includes('exe-node:')) {
+            const converted = this.convertInternalLinks(idevice.htmlView, fullPathMap);
+            if (converted !== idevice.htmlView) {
+              idevice.htmlView = converted;
+              convertedCount++;
+            }
+          }
+
+          // Convert links in feedbackHtml
+          if (idevice.feedbackHtml && idevice.feedbackHtml.includes('exe-node:')) {
+            idevice.feedbackHtml = this.convertInternalLinks(idevice.feedbackHtml, fullPathMap);
+          }
+
+          // Convert links in properties (recursively traverse object)
+          if (idevice.properties) {
+            this.convertLinksInObject(idevice.properties, fullPathMap);
+          }
+        }
+      }
+    }
+
+    if (convertedCount > 0) {
+      Logger.log(`[LegacyXmlParser] Converted ${convertedCount} internal links`);
+    }
+
+    return pages;
   }
 
   /**
@@ -482,12 +865,12 @@ class LegacyXmlParser {
       // True/False quiz
       'TrueFalseIdevice': 'trueorfalse',
       'VerdaderofalsofpdIdevice': 'trueorfalse',
-      // Multiple choice (single answer)
-      'MultichoiceIdevice': 'quick-questions-multiple-choice',
-      'EleccionmultiplefpdIdevice': 'quick-questions-multiple-choice',
-      // Multiple select (multiple answers)
-      'MultiSelectIdevice': 'quick-questions-multiple-choice',
-      'SeleccionmultiplefpdIdevice': 'quick-questions-multiple-choice',
+      // Multiple choice / Multiple select → form (as per legacy Symfony/NestJS)
+      // Note: 'quick-questions-*' are separate modern iDevice types, not legacy equivalents
+      'MultichoiceIdevice': 'form',
+      'EleccionmultiplefpdIdevice': 'form',
+      'MultiSelectIdevice': 'form',
+      'SeleccionmultiplefpdIdevice': 'form',
       // Fill in the blanks / Cloze
       'ClozeIdevice': 'complete',
       'ClozefpdIdevice': 'complete',
@@ -538,14 +921,45 @@ class LegacyXmlParser {
   extractIDevicesWithTitles(listEl) {
     const idevices = [];
 
-    // Find all instance elements that are iDevices
-    const instances = listEl.querySelectorAll(':scope > instance');
+    // Find all direct child elements (instance or reference) in the idevices list
+    // Legacy ELP files may have iDevices as:
+    // 1. Inline <instance> elements (direct)
+    // 2. <reference key="N"/> elements pointing to iDevices defined elsewhere (indirect)
+    const directChildren = Array.from(listEl.children);
+    const instancesToProcess = [];
 
-    for (const inst of instances) {
+    for (const child of directChildren) {
+      if (child.tagName === 'instance') {
+        // Direct instance - use as-is
+        instancesToProcess.push(child);
+      } else if (child.tagName === 'reference') {
+        // Indirect reference - find the actual iDevice instance globally
+        const refKey = child.getAttribute('key');
+        if (refKey) {
+          // Search globally for the instance with this reference
+          const referencedInstance = this.xmlDoc.querySelector(
+            `instance[reference="${refKey}"]`
+          );
+          if (referencedInstance) {
+            Logger.log(`[LegacyXmlParser] Resolved reference key=${refKey} to instance`);
+            instancesToProcess.push(referencedInstance);
+          } else {
+            Logger.log(`[LegacyXmlParser] WARNING: Could not find instance for reference key=${refKey}`);
+          }
+        }
+      }
+    }
+
+    Logger.log(`[LegacyXmlParser] Found ${instancesToProcess.length} iDevice elements (${directChildren.filter(c => c.tagName === 'instance').length} direct, ${directChildren.filter(c => c.tagName === 'reference').length} references)`);
+
+    for (const inst of instancesToProcess) {
       const className = inst.getAttribute('class') || '';
 
       // Check if this is an iDevice (class contains "idevice" case-insensitive)
-      if (!className.toLowerCase().includes('idevice')) continue;
+      if (!className.toLowerCase().includes('idevice')) {
+        Logger.log(`[LegacyXmlParser] SKIPPING instance - no 'idevice' in class: ${className}`);
+        continue;
+      }
 
       const ref = inst.getAttribute('reference') || `idev-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
 
@@ -567,11 +981,24 @@ class LegacyXmlParser {
             'listacotejo-activity': 'checklist',
             'adivina-activity': 'guess',
             'form-activity': 'form',
+            'download-package': 'download-source-file',
           };
           ideviceType = jsIdeviceTypeMap[extractedType] || extractedType;
           Logger.log(`[LegacyXmlParser] JsIdevice detected with type: ${ideviceType} (from path: ${iDeviceDir})`);
         } else {
           ideviceType = 'text'; // Fallback for JsIdevice without _iDeviceDir
+        }
+      } else if (this.isGenericIdeviceClass(className) && dict) {
+        // GENERIC IDEVICE CLASS FORMAT
+        // Handle non-standard formats like exelearning.libs.idevices.idevice.Idevice
+        // where the actual type is stored in __name__ field
+        const typeName = this.findDictStringValue(dict, '__name__');
+        if (typeName) {
+          ideviceType = this.mapGenericIdeviceType(typeName);
+          Logger.log(`[LegacyXmlParser] Generic Idevice detected with type: ${typeName} -> ${ideviceType}`);
+        } else {
+          ideviceType = 'text'; // Fallback if no __name__ found
+          Logger.log(`[LegacyXmlParser] Generic Idevice without __name__, defaulting to 'text'`);
         }
       } else {
         // LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
@@ -644,6 +1071,60 @@ class LegacyXmlParser {
         if (!idevice.htmlView) {
           idevice.htmlView = this.extractAnyTextFieldContent(dict);
         }
+
+        // Strategy 4: FreeTextIdevice with circular reference pattern
+        // When content field points back to parent TextAreaField (see Symfony
+        // OdeOldXmlFreeTextIdevice.php lines 56-61 for reference implementation)
+        if (!idevice.htmlView && className.includes('FreeTextIdevice')) {
+          const parentTextArea = this.findParentTextAreaField(inst);
+          if (parentTextArea) {
+            idevice.htmlView = this.extractTextFieldContent(parentTextArea);
+            if (idevice.htmlView) {
+              Logger.log(`[LegacyXmlParser] FreeTextIdevice content from parent TextAreaField`);
+            }
+          }
+        }
+
+        // LEGACY IDEVICE PROPERTY EXTRACTION
+        // Use handler registry if available, otherwise fall back to inline logic
+        if (typeof LegacyHandlerRegistry !== 'undefined') {
+          const handler = LegacyHandlerRegistry.getHandler(className);
+          const handlerProps = handler.extractProperties(dict);
+          if (handlerProps && Object.keys(handlerProps).length > 0) {
+            idevice.properties = handlerProps;
+            Logger.log(`[LegacyXmlParser] Extracted properties via ${handler.constructor.name}`);
+          }
+        } else {
+          // Fallback: Legacy inline extraction for MultichoiceIdevice/MultiSelectIdevice
+          if (ideviceType === 'form' && (
+            className.includes('MultichoiceIdevice') ||
+            className.includes('MultiSelectIdevice')
+          )) {
+            const questionsData = this.extractMultichoiceQuestions(dict);
+            if (questionsData.length > 0) {
+              idevice.properties = { questionsData };
+              Logger.log(`[LegacyXmlParser] Form iDevice with ${questionsData.length} questions`);
+            }
+          }
+        }
+      }
+
+      // RUBRIC IDEVICE DETECTION AND TRANSFORMATION
+      // Based on Symfony OdeXmlUtil.php lines 2420-2426 and 2194-2196
+      // Legacy rubric content contains 'exe-rubric-strings' (singular) which must be
+      // transformed to 'exe-rubrics-strings' (plural) for the export script to work
+      if (idevice.htmlView && idevice.htmlView.includes('exe-rubric-strings')) {
+        // 1. Set iDevice type to 'rubric'
+        idevice.type = 'rubric';
+
+        // 2. Transform exe-rubric to exe-rubrics (fixes singular to plural)
+        // This ensures exe-rubric-strings becomes exe-rubrics-strings
+        idevice.htmlView = idevice.htmlView.replace(/exe-rubric([^s])/g, 'exe-rubrics$1');
+
+        // 3. Set cssClass for rubricIdevice wrapper class (used by ideviceNode.js line 285)
+        idevice.cssClass = 'rubric';
+
+        Logger.log('[LegacyXmlParser] Detected rubric iDevice, transformed to modern format');
       }
 
       idevices.push(idevice);
@@ -687,6 +1168,143 @@ class LegacyXmlParser {
   }
 
   /**
+   * Find a list element in dictionary by key
+   * @param {Element} dict - Dictionary element
+   * @param {string} key - Key to find
+   * @returns {Element|null} List element or null
+   */
+  findDictList(dict, key) {
+    const children = Array.from(dict.children);
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === key) {
+        const valueEl = children[i + 1];
+        if (valueEl && valueEl.tagName === 'list') {
+          return valueEl;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Find an instance element in dictionary by key
+   * @param {Element} dict - Dictionary element
+   * @param {string} key - Key to find
+   * @returns {Element|null} Instance element or null
+   */
+  findDictInstance(dict, key) {
+    const children = Array.from(dict.children);
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === key) {
+        const valueEl = children[i + 1];
+        if (valueEl && valueEl.tagName === 'instance') {
+          return valueEl;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Find a boolean value in dictionary by key
+   * @param {Element} dict - Dictionary element
+   * @param {string} key - Key to find
+   * @returns {boolean} Boolean value (false if not found)
+   */
+  findDictBoolValue(dict, key) {
+    const children = Array.from(dict.children);
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === key) {
+        const valueEl = children[i + 1];
+        if (valueEl && valueEl.tagName === 'bool') {
+          return valueEl.getAttribute('value') === '1';
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * LEGACY MULTICHOICE IDEVICE QUESTION EXTRACTION
+   *
+   * Extracts questions from legacy MultichoiceIdevice format
+   * and converts to modern form iDevice questionsData format.
+   *
+   * Structure:
+   * - MultichoiceIdevice.questions -> list of QuizQuestionField
+   * - QuizQuestionField.questionTextArea -> question text
+   * - QuizQuestionField.options -> list of QuizOptionField
+   * - QuizOptionField.answerTextArea -> option text
+   * - QuizOptionField.isCorrect -> boolean
+   *
+   * @param {Element} dict - Dictionary element of the MultichoiceIdevice
+   * @returns {Array} Array of question objects in form iDevice format
+   */
+  extractMultichoiceQuestions(dict) {
+    const questionsData = [];
+
+    // Find "questions" list in dictionary
+    const questionsList = this.findDictList(dict, 'questions');
+    if (!questionsList) return questionsData;
+
+    // Iterate each QuizQuestionField
+    const questionFields = questionsList.querySelectorAll(':scope > instance');
+    for (const questionField of questionFields) {
+      const qDict = questionField.querySelector(':scope > dictionary');
+      if (!qDict) continue;
+
+      // Extract question text from questionTextArea
+      const questionTextArea = this.findDictInstance(qDict, 'questionTextArea');
+      const questionText = questionTextArea ? this.extractTextAreaFieldContent(questionTextArea) : '';
+
+      // Extract options from options list
+      const optionsList = this.findDictList(qDict, 'options');
+      const answers = [];
+      let correctCount = 0;
+
+      if (optionsList) {
+        const optionFields = optionsList.querySelectorAll(':scope > instance');
+        for (const optionField of optionFields) {
+          const optDict = optionField.querySelector(':scope > dictionary');
+          if (!optDict) continue;
+
+          // Get answer text from answerTextArea
+          const answerTextArea = this.findDictInstance(optDict, 'answerTextArea');
+          const optionText = answerTextArea ? this.extractTextAreaFieldContent(answerTextArea) : '';
+
+          // Get isCorrect flag
+          const isCorrect = this.findDictBoolValue(optDict, 'isCorrect');
+
+          if (isCorrect) correctCount++;
+          answers.push([isCorrect, optionText]);
+        }
+      }
+
+      // Only add if we have a question or answers
+      if (questionText || answers.length > 0) {
+        questionsData.push({
+          activityType: 'selection',
+          selectionType: correctCount > 1 ? 'multiple' : 'single',
+          baseText: questionText,
+          answers: answers
+        });
+      }
+    }
+
+    Logger.log(`[LegacyXmlParser] Extracted ${questionsData.length} multichoice questions`);
+    return questionsData;
+  }
+
+  /**
    * Extract content from "fields" list in JsIdevice format
    * Structure: fields -> list -> TextAreaField instances -> content_w_resourcePaths
    * @param {Element} dict - Dictionary element of the iDevice
@@ -718,7 +1336,30 @@ class LegacyXmlParser {
         const listEl = children[i + 1];
         if (listEl && listEl.tagName === 'list') {
           // Extract content from each field in the list
-          const fieldInstances = listEl.querySelectorAll(':scope > instance');
+          // Handle both direct instances and references (like iDevices, fields can be referenced)
+          const directChildren = Array.from(listEl.children);
+          const fieldInstances = [];
+
+          for (const child of directChildren) {
+            if (child.tagName === 'instance') {
+              fieldInstances.push(child);
+            } else if (child.tagName === 'reference') {
+              // Resolve reference to actual field instance
+              const refKey = child.getAttribute('key');
+              if (refKey) {
+                const referencedInstance = this.xmlDoc.querySelector(
+                  `instance[reference="${refKey}"]`
+                );
+                if (referencedInstance) {
+                  Logger.log(`[LegacyXmlParser] Resolved field reference key=${refKey}`);
+                  fieldInstances.push(referencedInstance);
+                } else {
+                  Logger.log(`[LegacyXmlParser] WARNING: Could not find field for reference key=${refKey}`);
+                }
+              }
+            }
+          }
+
           for (const fieldInst of fieldInstances) {
             const fieldClass = fieldInst.getAttribute('class') || '';
             // Process TextAreaField and TextField
@@ -854,7 +1495,7 @@ class LegacyXmlParser {
         const valueEl = children[i + 1];
         if (!valueEl) return '';
 
-        // Value might be unicode, string, or an instance (TextField)
+        // Value might be unicode, string, instance (TextField), or reference
         if (valueEl.tagName === 'unicode' || valueEl.tagName === 'string') {
           return this.decodeHtmlContent(valueEl.getAttribute('value') || valueEl.textContent || '');
         }
@@ -862,6 +1503,24 @@ class LegacyXmlParser {
         if (valueEl.tagName === 'instance') {
           // It's a TextField or similar - look for content inside
           return this.extractTextFieldContent(valueEl);
+        }
+
+        // Handle reference to TextAreaField defined elsewhere
+        // This handles cases where content points to a field at a different location
+        if (valueEl.tagName === 'reference') {
+          const refKey = valueEl.getAttribute('key');
+          if (refKey && this.xmlDoc) {
+            const referencedInstance = this.xmlDoc.querySelector(
+              `instance[reference="${refKey}"]`
+            );
+            if (referencedInstance) {
+              const refClass = referencedInstance.getAttribute('class') || '';
+              if (refClass.includes('TextAreaField') || refClass.includes('TextField')) {
+                Logger.log(`[LegacyXmlParser] Resolved content reference key=${refKey}`);
+                return this.extractTextFieldContent(referencedInstance);
+              }
+            }
+          }
         }
       }
     }
@@ -980,6 +1639,88 @@ class LegacyXmlParser {
     const textarea = document.createElement('textarea');
     textarea.innerHTML = text;
     return textarea.value;
+  }
+
+  /**
+   * FREETEXTIDEVICE PARENT TEXTAREAFIELD LOOKUP
+   *
+   * Find the parent TextAreaField that contains this iDevice instance.
+   * Used for circular reference patterns where FreeTextIdevice's `content`
+   * field points back to its parent TextAreaField.
+   *
+   * Legacy structure (circular reference pattern):
+   *   <instance class="exe.engine.field.TextAreaField" reference="61">
+   *     <dictionary>
+   *       <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="62">
+   *         <dictionary>
+   *           <string role="key" value="content"/>
+   *           <reference key="61"/>  <!-- Points to parent -->
+   *         </dictionary>
+   *       </instance>
+   *       <string role="key" value="content_w_resourcePaths"/>
+   *       <unicode content="true" value="...actual content..."/>
+   *     </dictionary>
+   *   </instance>
+   *
+   * See Symfony OdeOldXmlFreeTextIdevice.php lines 56-61 for reference.
+   *
+   * @param {Element} ideviceInst - The iDevice instance element
+   * @returns {Element|null} The parent TextAreaField element or null
+   */
+  findParentTextAreaField(ideviceInst) {
+    if (!ideviceInst) return null;
+
+    // Navigate up: ideviceInst -> dictionary -> TextAreaField
+    const parentDict = ideviceInst.parentElement;
+    if (parentDict && parentDict.tagName === 'dictionary') {
+      const parentInst = parentDict.parentElement;
+      if (parentInst && parentInst.tagName === 'instance') {
+        const parentClass = parentInst.getAttribute('class') || '';
+        if (parentClass.includes('TextAreaField')) {
+          return parentInst;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * GENERIC IDEVICE CLASS DETECTION
+   *
+   * Check if class is a generic Idevice class from non-standard formats.
+   * These formats store their actual type in the __name__ field rather than
+   * encoding it in the class name.
+   *
+   * Example: exelearning.libs.idevices.idevice.Idevice
+   * (vs standard exe.engine.freetextidevice.FreeTextIdevice)
+   *
+   * @param {string} className - Legacy class name
+   * @returns {boolean} True if this is a generic Idevice class
+   */
+  isGenericIdeviceClass(className) {
+    // Matches classes that end with .Idevice but are NOT from exe.engine.*
+    // These are from alternate forks/versions of eXeLearning
+    return className.endsWith('.Idevice') &&
+           !className.startsWith('exe.engine.');
+  }
+
+  /**
+   * GENERIC IDEVICE TYPE MAPPING
+   *
+   * Map generic iDevice type names (from __name__ field) to modern types.
+   * Generic types typically map to 'text' since they're simple content containers.
+   *
+   * @param {string} typeName - Type from __name__ field (e.g., 'latex')
+   * @returns {string} Modern iDevice type
+   */
+  mapGenericIdeviceType(typeName) {
+    // Generic types map to 'text' for editability in modern editor
+    // Add specific mappings here if certain types need different handling
+    const typeMap = {
+      // Future: Add specific mappings if needed
+      // 'specific-type': 'modern-type',
+    };
+    return typeMap[typeName.toLowerCase()] || 'text';
   }
 }
 

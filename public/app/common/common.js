@@ -161,7 +161,9 @@ var $exe = {
                         }
                     });
                     if (typeof (window.MathJax) == 'object' && typeof (MathJax.typesetPromise) == 'function') {
-                        MathJax.typesetPromise();
+                        MathJax.typesetPromise().catch(function(err) {
+                            console.warn('[MathJax] Typeset error:', err.message);
+                        });
                         $exe.math.createLinks();
                     }
                 } else {
