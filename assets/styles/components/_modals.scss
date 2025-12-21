@@ -518,7 +518,8 @@
             }
         }
 
-        .media-library-sort-controls {
+        .media-library-sort-controls,
+        .media-library-filter-controls {
             display: flex;
             align-items: center;
             gap: 6px;
@@ -660,6 +661,15 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+    }
+
+    /* List view container */
+    .media-library-list-container {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
     }
 
     /* List view (table) */
@@ -805,7 +815,7 @@
         background: var(--main-background-color);
         display: flex;
         flex-direction: column;
-        overflow-y: auto;
+        overflow: hidden;
         flex-shrink: 0;
     }
 
@@ -823,6 +833,7 @@
         display: flex;
         flex-direction: column;
         height: 100%;
+        overflow: hidden;
     }
 
     /* Preview */
@@ -863,6 +874,7 @@
         padding: var(--margin-l);
         flex: 1;
         overflow-y: auto;
+        min-height: 0;
 
         .metadata-row {
             display: flex;
@@ -898,6 +910,7 @@
         display: flex;
         gap: var(--margin-m);
         justify-content: space-between;
+        flex-shrink: 0;
 
         .btn {
             flex: 1;
