@@ -656,4 +656,154 @@ describe('IdeviceRenderer', () => {
             expect(scripts[0].tag).toBe('<script src="idevices/crossword/crossword.js"></script>');
         });
     });
+
+    describe('unescapeHtml', () => {
+        it('should unescape HTML entities', () => {
+            expect(renderer.unescapeHtml('&lt;script&gt;')).toBe('<script>');
+            expect(renderer.unescapeHtml('&amp;')).toBe('&');
+            expect(renderer.unescapeHtml('&quot;')).toBe('"');
+            expect(renderer.unescapeHtml('&#039;')).toBe("'");
+            expect(renderer.unescapeHtml('&#39;')).toBe("'");
+        });
+
+        it('should handle multiple entities in one string', () => {
+            expect(renderer.unescapeHtml('&lt;div class=&quot;test&quot;&gt;')).toBe('<div class="test">');
+        });
+
+        it('should handle empty string', () => {
+            expect(renderer.unescapeHtml('')).toBe('');
+        });
+
+        it('should handle null/undefined safely', () => {
+            expect(renderer.unescapeHtml(null as unknown as string)).toBe('');
+            expect(renderer.unescapeHtml(undefined as unknown as string)).toBe('');
+        });
+
+        it('should preserve unknown entities', () => {
+            expect(renderer.unescapeHtml('&nbsp;')).toBe('&nbsp;');
+            expect(renderer.unescapeHtml('&copy;')).toBe('&copy;');
+        });
+
+        it('should handle mixed content', () => {
+            expect(renderer.unescapeHtml('Hello &lt;world&gt; &amp; friends')).toBe('Hello <world> & friends');
+        });
+    });
+
+    describe('escapePreCodeContent', () => {
+        it('should escape script tags inside pre>code blocks', () => {
+            const input = '<pre><code><script src="test.js"></script></code></pre>';
+            const expected = '<pre><code>&lt;script src=&quot;test.js&quot;&gt;&lt;/script&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should NOT escape content outside pre>code blocks', () => {
+            const input = '<p>Hello <strong>world</strong></p><pre><code><div>test</div></code></pre>';
+            const expected = '<p>Hello <strong>world</strong></p><pre><code>&lt;div&gt;test&lt;/div&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should NOT escape inline code tags (without pre)', () => {
+            const input = '<p>Use <code><script></code> tag</p>';
+            expect(renderer.escapePreCodeContent(input)).toBe(input);
+        });
+
+        it('should handle multiple pre>code blocks', () => {
+            const input = '<pre><code><a></code></pre><p>text</p><pre><code><b></code></pre>';
+            const expected = '<pre><code>&lt;a&gt;</code></pre><p>text</p><pre><code>&lt;b&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle attributes on pre and code tags', () => {
+            const input = '<pre class="highlighted"><code class="lang-js"><script></script></code></pre>';
+            const expected =
+                '<pre class="highlighted"><code class="lang-js">&lt;script&gt;&lt;/script&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle whitespace between tags', () => {
+            const input = '<pre>\n  <code>\n    <div>\n  </code>\n</pre>';
+            const expected = '<pre>\n  <code>\n    &lt;div&gt;\n  </code>\n</pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle empty pre>code blocks', () => {
+            const input = '<pre><code></code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(input);
+        });
+
+        it('should handle pre>code blocks with only whitespace', () => {
+            const input = '<pre><code>   </code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(input);
+        });
+
+        it('should not double-escape already escaped content', () => {
+            const input = '<pre><code>&lt;script&gt;</code></pre>';
+            const expected = '<pre><code>&lt;script&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle ampersands correctly', () => {
+            const input = '<pre><code>a & b && c</code></pre>';
+            const expected = '<pre><code>a &amp; b &amp;&amp; c</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle quotes correctly', () => {
+            const input = '<pre><code>let x = "hello";</code></pre>';
+            const expected = '<pre><code>let x = &quot;hello&quot;;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle tikzjax example from bug report', () => {
+            const input = '<pre><code>\n<script src="https://tikzjax.com/v1/tikzjax.js"></script>\n</code></pre>';
+            const expected =
+                '<pre><code>\n&lt;script src=&quot;https://tikzjax.com/v1/tikzjax.js&quot;&gt;&lt;/script&gt;\n</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should handle empty content', () => {
+            expect(renderer.escapePreCodeContent('')).toBe('');
+        });
+
+        it('should handle null/undefined safely', () => {
+            expect(renderer.escapePreCodeContent(null as unknown as string)).toBe('');
+            expect(renderer.escapePreCodeContent(undefined as unknown as string)).toBe('');
+        });
+
+        it('should handle content with no pre>code blocks', () => {
+            const input = '<p>Just some <em>normal</em> HTML</p>';
+            expect(renderer.escapePreCodeContent(input)).toBe(input);
+        });
+
+        it('should handle complex nested HTML in code blocks', () => {
+            const input = '<pre><code><div class="container"><p id="test">Hello</p></div></code></pre>';
+            const expected =
+                '<pre><code>&lt;div class=&quot;container&quot;&gt;&lt;p id=&quot;test&quot;&gt;Hello&lt;/p&gt;&lt;/div&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+
+        it('should preserve content between multiple code blocks', () => {
+            const input = '<pre><code><a></code></pre><script>alert("real")</script><pre><code><b></code></pre>';
+            const expected =
+                '<pre><code>&lt;a&gt;</code></pre><script>alert("real")</script><pre><code>&lt;b&gt;</code></pre>';
+            expect(renderer.escapePreCodeContent(input)).toBe(expected);
+        });
+    });
+
+    describe('render with pre>code escaping', () => {
+        it('should escape pre>code content in rendered output', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Example:</p><pre><code><script src="test.js"></script></code></pre>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('&lt;script src=&quot;test.js&quot;&gt;&lt;/script&gt;');
+            expect(html).not.toContain('<script src="test.js">');
+        });
+    });
 });

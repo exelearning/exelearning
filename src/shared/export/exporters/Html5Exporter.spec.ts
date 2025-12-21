@@ -413,6 +413,99 @@ describe('Html5Exporter', () => {
         });
     });
 
+    describe('LaTeX Pre-Rendering', () => {
+        it('should call preRenderLatex hook when provided', async () => {
+            let preRenderCalled = false;
+            let pagesProcessed = 0;
+
+            const result = await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    preRenderCalled = true;
+                    pagesProcessed++;
+                    return {
+                        html: html.replace('<p>Welcome', '<p class="exe-math-rendered">Welcome'),
+                        hasLatex: true,
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(result.success).toBe(true);
+            expect(preRenderCalled).toBe(true);
+            expect(pagesProcessed).toBe(samplePages.length);
+        });
+
+        it('should include LaTeX CSS when preRenderLatex succeeds', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 5,
+                }),
+            });
+
+            // Check that base CSS includes LaTeX styles
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            expect(cssContent).toContain('.exe-math-rendered');
+        });
+
+        it('should not include LaTeX CSS when no latex was rendered', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: false,
+                    latexRendered: false,
+                    count: 0,
+                }),
+            });
+
+            // Check that base CSS does NOT include LaTeX styles
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            expect(cssContent).not.toContain('.exe-math-rendered');
+        });
+
+        it('should handle preRenderLatex errors gracefully', async () => {
+            const result = await exporter.export({
+                preRenderLatex: async () => {
+                    throw new Error('MathJax not available');
+                },
+            });
+
+            // Should still succeed even if LaTeX pre-rendering fails
+            expect(result.success).toBe(true);
+        });
+
+        it('should modify HTML content when LaTeX is rendered', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html: html.replace('<p>Welcome to the course.</p>', '<span class="exe-math-rendered">E=mc²</span>'),
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('exe-math-rendered');
+            expect(indexHtml).toContain('E=mc²');
+        });
+
+        it('should return correct CSS for pre-rendered LaTeX', () => {
+            const css = exporter['getPreRenderedLatexCss']();
+
+            expect(css).toContain('.exe-math-rendered');
+            expect(css).toContain('display: inline-block');
+            expect(css).toContain('svg');
+            expect(css).toContain('math');
+        });
+    });
+
     describe('Asset Inclusion', () => {
         it('should include assets in content/resources/ folder', async () => {
             // Create asset provider that returns actual assets

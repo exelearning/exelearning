@@ -298,6 +298,13 @@ export interface ExportOptions {
 
     /** Theme name to use for export */
     theme?: string;
+
+    /**
+     * Optional hook to pre-render LaTeX expressions to SVG+MathML.
+     * When provided and successful, MathJax library will NOT be included in the output.
+     * This reduces export size by ~1MB and provides instant math rendering.
+     */
+    preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
 }
 
 /**
@@ -465,6 +472,9 @@ export interface PageRenderOptions {
     extraHeadScripts?: string;
     onLoadScript?: string;
     onUnloadScript?: string;
+
+    // Detected libraries from content scanning (MathJax, Mermaid, etc.)
+    detectedLibraries?: LibraryDetectionResult;
 }
 
 /**
@@ -526,6 +536,22 @@ export interface LibraryDetectionResult {
 export interface LibraryDetectionOptions {
     includeScorm?: boolean;
     includeAccessibilityToolbar?: boolean;
+    /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
+    skipMathJax?: boolean;
+}
+
+/**
+ * LaTeX pre-render result
+ */
+export interface LatexPreRenderResult {
+    /** Processed HTML with LaTeX rendered to SVG+MathML */
+    html: string;
+    /** Whether the original HTML contained LaTeX expressions */
+    hasLatex: boolean;
+    /** Whether LaTeX was successfully pre-rendered */
+    latexRendered: boolean;
+    /** Number of expressions rendered */
+    count: number;
 }
 
 // =============================================================================

@@ -81,11 +81,30 @@ export class Scorm2004Exporter extends Html5Exporter {
             const commonFiles: string[] = [];
             const pageFiles: Record<string, { fileUrl: string; files: string[] }> = {};
 
-            // 1. Generate HTML pages (with SCORM 2004 support)
+            // 1. Generate HTML pages (with SCORM 2004 support and optional LaTeX pre-rendering)
+            let latexWasRendered = false;
+
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                const html = this.generateScorm2004PageHtml(page, pages, meta, isIndex);
+                let html = this.generateScorm2004PageHtml(page, pages, meta, isIndex);
+
+                // Pre-render LaTeX to SVG+MathML if hook is provided
+                if (options?.preRenderLatex) {
+                    try {
+                        const result = await options.preRenderLatex(html);
+                        if (result.latexRendered) {
+                            html = result.html;
+                            latexWasRendered = true;
+                            console.log(
+                                `[Scorm2004Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
+                            );
+                        }
+                    } catch (error) {
+                        console.warn('[Scorm2004Exporter] LaTeX pre-render failed for page:', page.title, error);
+                    }
+                }
+
                 const pageFilename = isIndex ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 this.zip.addFile(pageFilename, html);
 
@@ -102,11 +121,19 @@ export class Scorm2004Exporter extends Html5Exporter {
                 commonFiles.push('search_index.js');
             }
 
-            // 2. Add base CSS (fetch from content/css)
+            // 2. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             const contentCssFiles = await this.resources.fetchContentCss();
-            const baseCss = contentCssFiles.get('content/css/base.css');
+            let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
+            }
+            // Append pre-rendered LaTeX CSS if LaTeX was rendered
+            if (latexWasRendered) {
+                const latexCss = this.getPreRenderedLatexCss();
+                const decoder = new TextDecoder();
+                const baseCssText = decoder.decode(baseCss);
+                const encoder = new TextEncoder();
+                baseCss = encoder.encode(baseCssText + '\n' + latexCss);
             }
             this.zip.addFile('content/css/base.css', baseCss);
             commonFiles.push('content/css/base.css');

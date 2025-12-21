@@ -1532,6 +1532,11 @@ export default class IdeviceNode {
             html = this.htmlView;
         }
 
+        // Escape HTML entities inside <pre><code> blocks to display code examples correctly
+        if (typeof window.escapePreCodeContent === 'function') {
+            html = window.escapePreCodeContent(html);
+        }
+
         // Add MIME types to media elements BEFORE resolving URLs
         // (while asset:// URLs still contain filename with extension)
         if (typeof window.addMediaTypes === 'function') {

@@ -161,6 +161,7 @@ var $exe = {
                         }
                     });
                     if (typeof (window.MathJax) == 'object' && typeof (MathJax.typesetPromise) == 'function') {
+                        // Note: Do NOT call texReset() here - labels must persist for \ref{} to resolve
                         MathJax.typesetPromise().catch(function(err) {
                             console.warn('[MathJax] Typeset error:', err.message);
                         });
@@ -1258,6 +1259,7 @@ var $exeDevices = {
                         var start = (MathJax.startup && MathJax.startup.promise) ? MathJax.startup.promise : Promise.resolve();
                         return start.then(function () {
                             if (typeof MathJax.typesetClear === 'function') MathJax.typesetClear(nodes);
+                            // Note: Do NOT call texReset() here - labels must persist for \ref{} to resolve
                             return (MathJax.typesetPromise ? MathJax.typesetPromise(nodes) : MathJax.typeset(nodes));
                         }).catch(function (e) { console.error('MathJax v3 typeset error:', e); });
                     }

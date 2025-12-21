@@ -10,7 +10,7 @@
  * - Shows one page at a time with SPA-style navigation
  * - Asset URLs stay as `asset://` for later resolution to `blob://`
  */
-import type { ExportDocument, ExportPage, ResourceProvider } from '../interfaces';
+import type { ExportDocument, ExportPage, ResourceProvider, LatexPreRenderResult } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
@@ -26,6 +26,12 @@ export interface PreviewOptions {
     version?: string;
     /** Base path for URLs (e.g., '/exelearning') */
     basePath?: string;
+    /**
+     * Optional hook to pre-render LaTeX expressions to SVG+MathML.
+     * When provided and successful, MathJax library will NOT be included in the output.
+     * The pre-renderer runs on the client using MathJax already loaded in the workarea.
+     */
+    preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
 }
 
 /**
@@ -77,8 +83,8 @@ export class WebsitePreviewExporter {
             // Check if download-source-file iDevice is used (needs special handling)
             const needsElpxDownload = this.needsElpxDownloadSupport(pages);
 
-            // Generate the SPA HTML
-            let html = this.generateWebsiteSpaHtml(pages, meta, usedIdevices, options, needsElpxDownload);
+            // Generate the SPA HTML (with optional LaTeX pre-rendering)
+            let html = await this.generateWebsiteSpaHtml(pages, meta, usedIdevices, options, needsElpxDownload);
 
             // Apply exe-package:elp protocol replacement if download-source-file is used
             if (needsElpxDownload) {
@@ -204,13 +210,13 @@ export class WebsitePreviewExporter {
     /**
      * Generate complete SPA HTML with all pages
      */
-    private generateWebsiteSpaHtml(
+    private async generateWebsiteSpaHtml(
         pages: ExportPage[],
         meta: ReturnType<ExportDocument['getMetadata']>,
         usedIdevices: string[],
         options: PreviewOptions,
         needsElpxDownload: boolean = false,
-    ): string {
+    ): Promise<string> {
         const lang = meta.language || 'en';
         const projectTitle = meta.title || 'eXeLearning';
         const customStyles = meta.customStyles || '';
@@ -249,12 +255,6 @@ export class WebsitePreviewExporter {
             );
         }
 
-        // Detect required libraries by scanning all rendered HTML content
-        const libraryDetector = new LibraryDetector();
-        const detectedLibraries = libraryDetector.detectLibraries(pagesHtml, {
-            includeAccessibilityToolbar: addAccessibilityToolbar,
-        });
-
         // Conditionally render "Made with eXeLearning"
         const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(lang) : '';
 
@@ -282,14 +282,9 @@ export class WebsitePreviewExporter {
         const staticHeaderHtml = `${initialPageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
 <header class="page-header"${pageHeaderStyle}><h2 id="page-title" class="page-title">${this.escapeHtml(firstPageTitle)}</h2></header>`;
 
-        return `<!DOCTYPE html>
-<html lang="${lang}">
-<head>
-${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
-</head>
-<body class="exe-web-site exe-preview" lang="${lang}">
-<script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js">
+        // Build the body content that will be pre-rendered
+        // Note: head and scripts are added AFTER pre-rendering to avoid corrupting them
+        const bodyContent = `<div class="exe-content exe-export pre-js">
 ${this.renderSpaNavigation(pages)}
 <main class="page">
 ${searchBoxHtml}
@@ -299,7 +294,41 @@ ${pagesHtml}
 ${this.renderNavButtons()}
 ${this.renderFooterSection({ license, userFooterContent })}
 </div>
-${madeWithExeHtml}
+${madeWithExeHtml}`;
+
+        // Pre-render LaTeX to SVG+MathML if hook is provided
+        // This processes ALL body content including navigation, headers, and pages
+        // The DOM-based pre-renderer safely skips script, style, code, pre elements
+        let finalBodyContent = bodyContent;
+        let latexWasRendered = false;
+        if (options.preRenderLatex) {
+            try {
+                const result = await options.preRenderLatex(bodyContent);
+                if (result.latexRendered) {
+                    finalBodyContent = result.html;
+                    latexWasRendered = true;
+                    console.log(`[Preview] Pre-rendered ${result.count} LaTeX expressions to SVG+MathML`);
+                }
+            } catch (error) {
+                console.warn('[Preview] LaTeX pre-render failed, falling back to MathJax:', error);
+            }
+        }
+
+        // Detect required libraries by scanning body content (after pre-rendering)
+        const libraryDetector = new LibraryDetector();
+        const detectedLibraries = libraryDetector.detectLibraries(finalBodyContent, {
+            includeAccessibilityToolbar: addAccessibilityToolbar,
+            skipMathJax: latexWasRendered,
+        });
+
+        return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
+</head>
+<body class="exe-web-site exe-preview" lang="${lang}">
+<script>document.body.className+=" js"</script>
+${finalBodyContent}
 ${searchDataScript}
 ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar, detectedLibraries)}
 </body>
@@ -497,7 +526,17 @@ button.toggler span,
 /* Nav buttons positioning (theme fallback) */
 .nav-buttons { display: flex; justify-content: space-between; padding: 1rem; }
 .nav-button { cursor: pointer; }
-.nav-button.disabled { opacity: 0.5; pointer-events: none; }`;
+.nav-button.disabled { opacity: 0.5; pointer-events: none; }
+
+/* Pre-rendered LaTeX (SVG+MathML) - when MathJax is not included */
+.exe-math-rendered { display: inline-block; vertical-align: middle; }
+.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
+.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
+/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
+.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
+.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
+/* Hide MathML visually but keep accessible for screen readers */
+.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
     }
 
     /**

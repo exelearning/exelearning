@@ -907,4 +907,96 @@ describe('PageRenderer', () => {
             expect(html).not.toContain('highlighted-link');
         });
     });
+
+    describe('detectContentLibraries', () => {
+        it('should detect exe_highlighter by class pattern', () => {
+            const html = '<pre class="highlighted-code language-python">print("hello")</pre>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_highlighter');
+        });
+
+        it('should detect exe_effects by class pattern', () => {
+            const html = '<div class="exe-fx-flip">Content</div>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_effects');
+        });
+
+        it('should detect exe_lightbox by rel attribute', () => {
+            const html = '<a rel="lightbox" href="img.jpg"><img src="thumb.jpg"></a>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_lightbox');
+        });
+
+        it('should detect multiple libraries in same content', () => {
+            const html = `
+                <pre class="highlighted-code">code</pre>
+                <div class="exe-fx-flip">flip</div>
+            `;
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_highlighter');
+            expect(libs).toContain('exe_effects');
+        });
+
+        it('should return empty array when no libraries detected', () => {
+            const html = '<p>Simple text content</p>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toEqual([]);
+        });
+
+        it('should detect class pattern with multiple classes', () => {
+            const html = '<div class="other-class highlighted-code another-class">Code</div>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).toContain('exe_highlighter');
+        });
+    });
+
+    describe('renderHead with detected libraries', () => {
+        it('should include exe_highlighter scripts when detected', () => {
+            const head = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                detectedLibraries: ['exe_highlighter'],
+            });
+
+            expect(head).toContain('libs/exe_highlighter/exe_highlighter.js');
+            expect(head).toContain('libs/exe_highlighter/exe_highlighter.css');
+        });
+
+        it('should not duplicate exe_lightbox when detected', () => {
+            const head = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                detectedLibraries: ['exe_lightbox'],
+            });
+
+            // exe_lightbox is already hardcoded, so should only appear once
+            const matches = head.match(/exe_lightbox\/exe_lightbox\.js/g) || [];
+            expect(matches.length).toBe(1);
+        });
+
+        it('should include multiple detected libraries', () => {
+            const head = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                detectedLibraries: ['exe_highlighter', 'exe_effects'],
+            });
+
+            expect(head).toContain('libs/exe_highlighter/exe_highlighter.js');
+            expect(head).toContain('libs/exe_effects/exe_effects.js');
+        });
+
+        it('should use correct basePath for detected libraries', () => {
+            const head = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '../',
+                usedIdevices: [],
+                detectedLibraries: ['exe_highlighter'],
+            });
+
+            expect(head).toContain('../libs/exe_highlighter/exe_highlighter.js');
+        });
+    });
 });

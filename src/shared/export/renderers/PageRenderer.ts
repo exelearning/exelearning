@@ -16,6 +16,7 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
+import { LIBRARY_PATTERNS } from '../constants';
 
 /**
  * PageRenderer class
@@ -71,6 +72,10 @@ export class PageRenderer {
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
 
+        // Detect content-based libraries from page content
+        const pageContent = this.renderPageContent(page, basePath);
+        const detectedLibraries = this.detectContentLibraries(pageContent);
+
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
         const currentIdx = currentPageIndex ?? allPages.findIndex(p => p.id === page.id);
@@ -101,13 +106,13 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, extraHeadContent, addSearchBox })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, extraHeadContent, addSearchBox, detectedLibraries })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
-${this.renderPageContent(page, basePath)}
+${pageContent}
 </div></main>${this.renderNavButtons(page, allPages, basePath)}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
@@ -135,6 +140,7 @@ ${madeWithExeHtml}
         addAccessibilityToolbar?: boolean;
         extraHeadContent?: string;
         addSearchBox?: boolean;
+        detectedLibraries?: string[];
     }): string {
         const {
             pageTitle,
@@ -148,6 +154,7 @@ ${madeWithExeHtml}
             addAccessibilityToolbar = false,
             extraHeadContent = '',
             addSearchBox = false,
+            detectedLibraries = [],
         } = options;
 
         // Meta tags
@@ -191,6 +198,27 @@ ${madeWithExeHtml}
             head += `\n${jsScripts[i]}`;
             if (cssLinks[i]) {
                 head += cssLinks[i];
+            }
+        }
+
+        // Content-detected libraries (e.g., exe_highlighter for highlighted-code class)
+        // Skip libraries already included above (exe_lightbox is hardcoded)
+        const alreadyIncluded = new Set(['exe_lightbox', 'exe_lightbox_gallery']);
+        for (const libName of detectedLibraries) {
+            if (alreadyIncluded.has(libName)) continue;
+
+            const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
+            if (!libPattern) continue;
+
+            // Add JS files first, then CSS files (legacy order)
+            const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
+            const cssFiles = libPattern.files.filter(f => f.endsWith('.css'));
+
+            for (const jsFile of jsFiles) {
+                head += `\n<script src="${basePath}libs/${jsFile}"> </script>`;
+            }
+            for (const cssFile of cssFiles) {
+                head += `\n<link rel="stylesheet" href="${basePath}libs/${cssFile}">`;
             }
         }
 
@@ -769,6 +797,47 @@ ${this.renderLicense({ author, license })}
 
         html += '</li>\n';
         return html;
+    }
+
+    /**
+     * Detect content-based libraries from HTML content
+     * Scans the content for patterns that indicate specific libraries are needed
+     * @param html - HTML content to scan
+     * @returns Array of library names detected
+     */
+    detectContentLibraries(html: string): string[] {
+        const detectedLibs: Set<string> = new Set();
+
+        for (const lib of LIBRARY_PATTERNS) {
+            let found = false;
+
+            switch (lib.type) {
+                case 'class':
+                    // Look for class="...pattern..." or class='...pattern...'
+                    found =
+                        html.includes(`class="${lib.pattern}"`) ||
+                        html.includes(`class='${lib.pattern}'`) ||
+                        new RegExp(`class="[^"]*\\b${lib.pattern}\\b[^"]*"`, 'i').test(html) ||
+                        new RegExp(`class='[^']*\\b${lib.pattern}\\b[^']*'`, 'i').test(html);
+                    break;
+
+                case 'rel':
+                    // Look for rel="pattern"
+                    found = html.includes(`rel="${lib.pattern}"`) || html.includes(`rel='${lib.pattern}'`);
+                    break;
+
+                case 'data':
+                    // Look for data-pattern or data-pattern="..."
+                    found = html.includes(`data-${lib.pattern}`) || html.includes(`data-${lib.pattern}=`);
+                    break;
+            }
+
+            if (found) {
+                detectedLibs.add(lib.name);
+            }
+        }
+
+        return Array.from(detectedLibs);
     }
 
     /**

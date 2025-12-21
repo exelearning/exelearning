@@ -1775,19 +1775,17 @@ export default class NavbarFile {
                 resourceFetcher = new window.ResourceFetcher();
             }
 
-            // Create the appropriate exporter using unified pipeline
-            // Pass assetManager as 5th parameter (preferred source for assets)
-            const exporter = SharedExporters.createExporter(
+            // Export using quickExport which auto-injects LaTeX pre-renderer hook
+            // This enables SVG+MathML generation in exports (skipping MathJax ~1MB)
+            Logger.log(`[NavbarFile] Starting unified ${format} export via SharedExporters...`);
+            const result = await SharedExporters.quickExport(
                 format,
                 documentManager,
                 assetCache,
                 resourceFetcher,
+                {}, // options
                 assetManager
             );
-
-            // Export
-            Logger.log(`[NavbarFile] Starting unified ${format} export via SharedExporters...`);
-            const result = await exporter.export();
 
             if (result.success && result.data) {
                 // Trigger browser download
