@@ -272,6 +272,45 @@ const app = new Elysia()
         set.status = 404;
         return 'Not Found';
     })
+    // Serve codemagic editor via API endpoint to bypass Bun's HTML bundler
+    // This uses /api/codemagic-editor/* which Bun won't intercept
+    .get('/api/codemagic-editor/*', ({ params, set }) => {
+        const relativePath = params['*'] || 'codemagic.html';
+        const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/codemagic';
+        const filePath = path.join(process.cwd(), editorBase, relativePath);
+
+        // Security: ensure path is within the editor directory
+        const resolvedPath = path.resolve(filePath);
+        const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
+        if (!resolvedPath.startsWith(resolvedBase)) {
+            set.status = 403;
+            return 'Forbidden';
+        }
+
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            let content = fs.readFileSync(filePath);
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+            // For HTML files, rewrite relative paths to absolute paths
+            if (ext === '.html' || ext === '.htm') {
+                let html = content.toString('utf-8');
+                // Fix includes/ paths -> /api/codemagic-editor/includes/
+                html = html.replace(/src="includes\//g, 'src="/api/codemagic-editor/includes/');
+                html = html.replace(/href="includes\//g, 'href="/api/codemagic-editor/includes/');
+                // Fix images/icons/ paths -> /api/codemagic-editor/images/
+                html = html.replace(/src="images\//g, 'src="/api/codemagic-editor/images/');
+                content = Buffer.from(html, 'utf-8');
+            }
+
+            set.headers['Content-Type'] = contentType;
+            set.headers['Content-Length'] = content.length.toString();
+            return content;
+        }
+
+        set.status = 404;
+        return 'Not Found';
+    })
     // Static files from public directory (served at root, BASE_PATH handled in onRequest)
     .use(
         staticPlugin({
