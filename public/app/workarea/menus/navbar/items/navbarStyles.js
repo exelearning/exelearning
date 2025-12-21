@@ -219,7 +219,7 @@ export default class NavbarFile {
             icon.classList.add('medium-icon', 'palette-icon-green');
             const title = document.createElement('span');
             title.classList.add('user-theme-title');
-            title.textContent = theme.name;
+            title.textContent = theme.title;
 
             const button = document.createElement('div');
             button.classList.add(

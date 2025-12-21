@@ -19,6 +19,7 @@
 - TinyMCE alignment issues
 - TinyMCE image and media plugin bugs
 - Prevent TinyMCE `exelink` plugin from removing videos and multimedia when creating links
+- Display the correct name of the imported styles
 
 ### Upgraded
 
