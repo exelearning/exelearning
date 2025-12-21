@@ -45,8 +45,8 @@ export const FIXTURES: Record<string, Omit<FixtureInfo, 'path' | 'size'>> = {
         format: 'elp',
         isLegacy: true,
     },
-    'latex.elpx': {
-        name: 'latex.elpx',
+    'latex.elp': {
+        name: 'latex.elp',
         category: 'small',
         format: 'elpx',
         isLegacy: true, // Has contentv3.xml, not content.xml
