@@ -1273,6 +1273,11 @@ describe('NavbarFile', () => {
                         filename: 'export.zip',
                     }),
                 })),
+                quickExport: vi.fn().mockResolvedValue({
+                    success: true,
+                    data: new Uint8Array([1, 2, 3]),
+                    filename: 'export.zip',
+                }),
             };
             global.URL.createObjectURL = vi.fn(() => 'blob:test');
             global.URL.revokeObjectURL = vi.fn();
@@ -1308,18 +1313,16 @@ describe('NavbarFile', () => {
             const result = await navbarFile.exportViaYjs('HTML5', 'html5');
 
             expect(result).toBe(true);
-            expect(window.SharedExporters.createExporter).toHaveBeenCalled();
+            expect(window.SharedExporters.quickExport).toHaveBeenCalled();
             expect(global.URL.createObjectURL).toHaveBeenCalled();
             expect(appendSpy).toHaveBeenCalled();
             expect(removeSpy).toHaveBeenCalled();
         });
 
         it('should show alert on export error', async () => {
-            window.SharedExporters.createExporter.mockReturnValue({
-                export: vi.fn().mockResolvedValue({
-                    success: false,
-                    error: 'bad',
-                }),
+            window.SharedExporters.quickExport.mockResolvedValue({
+                success: false,
+                error: 'bad',
             });
 
             const result = await navbarFile.exportViaYjs('HTML5', 'html5');

@@ -106,8 +106,27 @@ function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: str
 
             let filenames: string[];
             if (!parentMatch) {
-                // Default to ideviceId.js or ideviceId.css
-                filenames = [`${ideviceId}.${tag.includes('js') ? 'js' : 'css'}`];
+                // No explicit files specified - scan folder for all matching files
+                // This ensures dependencies like html2canvas.js are included
+                const folderPath = path.join(basePath, subfolder);
+                const extension = tag.includes('js') ? '.js' : '.css';
+                if (fs.existsSync(folderPath)) {
+                    try {
+                        filenames = fs
+                            .readdirSync(folderPath)
+                            .filter(file => file.endsWith(extension))
+                            .sort((a, b) => {
+                                // Put main iDevice file first, then alphabetically
+                                if (a === `${ideviceId}${extension}`) return -1;
+                                if (b === `${ideviceId}${extension}`) return 1;
+                                return a.localeCompare(b);
+                            });
+                    } catch {
+                        filenames = [`${ideviceId}${extension}`];
+                    }
+                } else {
+                    filenames = [`${ideviceId}${extension}`];
+                }
             } else {
                 filenames = [];
                 const filenameMatches = parentMatch[1].matchAll(/<filename>([^<]+)<\/filename>/g);

@@ -45,10 +45,10 @@ export const FIXTURES: Record<string, Omit<FixtureInfo, 'path' | 'size'>> = {
         format: 'elp',
         isLegacy: true,
     },
-    'latex.elpx': {
-        name: 'latex.elpx',
+    'latex.elp': {
+        name: 'latex.elp',
         category: 'small',
-        format: 'elpx',
+        format: 'elp',
         isLegacy: true, // Has contentv3.xml, not content.xml
     },
     'un-contenido-de-ejemplo-para-probar-estilos-y-catalogacion.elpx': {

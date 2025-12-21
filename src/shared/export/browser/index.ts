@@ -216,6 +216,33 @@ export function createExporter(
 }
 
 /**
+ * Get LaTeX pre-renderer hook if available in browser context
+ * @returns PreRenderLatex function or undefined
+ */
+function getLatexPreRenderer():
+    | ((html: string) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>)
+    | undefined {
+    if (typeof window === 'undefined') return undefined;
+
+    const windowLatexPreRenderer = (
+        window as unknown as {
+            LatexPreRenderer?: {
+                preRender: (
+                    html: string,
+                ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
+            };
+        }
+    ).LatexPreRenderer;
+    const windowMathJax = (window as unknown as { MathJax?: unknown }).MathJax;
+
+    if (windowLatexPreRenderer && windowMathJax) {
+        return windowLatexPreRenderer.preRender.bind(windowLatexPreRenderer);
+    }
+
+    return undefined;
+}
+
+/**
  * Quick export function - creates exporter and runs export in one call
  *
  * @param format - Export format
@@ -235,7 +262,12 @@ export async function quickExport(
     assetManager?: AssetManagerLike | null,
 ) {
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
-    return exporter.export(options);
+
+    // Wire up LaTeX pre-renderer if available in browser context
+    const preRenderLatex = getLatexPreRenderer();
+    const exportOptions = preRenderLatex ? { ...options, preRenderLatex } : options;
+
+    return exporter.export(exportOptions);
 }
 
 /**
@@ -260,7 +292,11 @@ export async function exportAndDownload(
 ) {
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
 
-    const result = await exporter.export(options);
+    // Wire up LaTeX pre-renderer if available in browser context
+    const preRenderLatex = getLatexPreRenderer();
+    const exportOptions = preRenderLatex ? { ...options, preRenderLatex } : options;
+
+    const result = await exporter.export(exportOptions);
 
     if (!result.success || !result.data) {
         throw new Error(result.error || 'Export failed');
@@ -302,6 +338,29 @@ export async function generatePreview(
         ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
         : createNullResourceProvider();
     const exporter = new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
+
+    // Wire up LaTeX pre-renderer if available in browser context
+    // LatexPreRenderer uses DOM parsing to find LaTeX expressions in text nodes
+    // and renders them individually to SVG+MathML using MathJax.
+    // This allows exports to skip bundling MathJax (~1MB)
+    const windowLatexPreRenderer = (
+        window as unknown as {
+            LatexPreRenderer?: {
+                preRender: (
+                    html: string,
+                ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
+            };
+        }
+    ).LatexPreRenderer;
+    const windowMathJax = (window as unknown as { MathJax?: unknown }).MathJax;
+
+    if (windowLatexPreRenderer && windowMathJax) {
+        options = {
+            ...options,
+            preRenderLatex: windowLatexPreRenderer.preRender.bind(windowLatexPreRenderer),
+        };
+    }
+
     return exporter.generatePreview(options);
 }
 

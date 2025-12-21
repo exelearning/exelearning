@@ -269,6 +269,24 @@ export default class MenuStructureCompose {
             }
         }
         this.initAccesibility();
+
+        // Typeset LaTeX in navigation if any page titles contain LaTeX delimiters
+        this.typesetLatexInNavigation();
+    }
+
+    /**
+     * Typeset LaTeX in navigation page titles if detected
+     */
+    typesetLatexInNavigation() {
+        const navText = this.menuNavList?.textContent || '';
+        // Check if any page title contains LaTeX patterns
+        if (/(?:\\\(|\\\[|\\begin\{)/.test(navText)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([this.menuNavList]).catch(err => {
+                    Logger.log('[MenuStructureCompose] MathJax typeset error:', err);
+                });
+            }
+        }
     }
 
     /**

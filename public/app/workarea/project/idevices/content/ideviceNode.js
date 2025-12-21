@@ -1532,6 +1532,11 @@ export default class IdeviceNode {
             html = this.htmlView;
         }
 
+        // Escape HTML entities inside <pre><code> blocks to display code examples correctly
+        if (typeof window.escapePreCodeContent === 'function') {
+            html = window.escapePreCodeContent(html);
+        }
+
         // Add MIME types to media elements BEFORE resolving URLs
         // (while asset:// URLs still contain filename with extension)
         if (typeof window.addMediaTypes === 'function') {
@@ -3036,6 +3041,18 @@ export default class IdeviceNode {
         if (idevice) {
             this.odeIdeviceTypeName = nameWithoutSuffix;
             return idevice;
+        }
+
+        // Fallback: search all installed iDevices by cssClass
+        // This helps find iDevices when the type name doesn't match the id but matches the cssClass
+        const installedNames = Object.keys(idevicesManager.installed || {});
+        for (const name of installedNames) {
+            const installed = idevicesManager.installed[name];
+            if (installed && installed.cssClass === typeName) {
+                console.log(`[IdeviceNode] Found iDevice by cssClass match: ${typeName} -> ${installed.name}`);
+                this.odeIdeviceTypeName = installed.name;
+                return installed;
+            }
         }
 
         console.warn(`[IdeviceNode] Could not find installed iDevice for type: ${typeName}`);

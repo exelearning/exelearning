@@ -8,6 +8,7 @@ import {
     loadIdeviceConfigs,
     resetIdeviceConfigCache,
     setIdevicesBasePath,
+    getIdeviceExportFiles,
 } from './idevice-config-browser';
 
 describe('idevice-config-browser', () => {
@@ -245,6 +246,49 @@ describe('idevice-config-browser', () => {
         it('setIdevicesBasePath is a no-op', () => {
             // Should not throw
             expect(() => setIdevicesBasePath()).not.toThrow();
+        });
+    });
+
+    describe('getIdeviceExportFiles', () => {
+        it('returns main JS file for unknown iDevice', () => {
+            const files = getIdeviceExportFiles('unknown', '.js');
+            expect(files).toEqual(['unknown.js']);
+        });
+
+        it('returns main CSS file for any iDevice', () => {
+            const files = getIdeviceExportFiles('checklist', '.css');
+            expect(files).toEqual(['checklist.css']);
+        });
+
+        it('includes html2canvas.js for checklist', () => {
+            const files = getIdeviceExportFiles('checklist', '.js');
+            expect(files).toContain('checklist.js');
+            expect(files).toContain('html2canvas.js');
+            expect(files[0]).toBe('checklist.js'); // main file first
+        });
+
+        it('includes html2canvas.js for progress-report', () => {
+            const files = getIdeviceExportFiles('progress-report', '.js');
+            expect(files).toContain('progress-report.js');
+            expect(files).toContain('html2canvas.js');
+            expect(files[0]).toBe('progress-report.js'); // main file first
+        });
+
+        it('includes mansory-jq.js for select-media-files', () => {
+            const files = getIdeviceExportFiles('select-media-files', '.js');
+            expect(files).toContain('select-media-files.js');
+            expect(files).toContain('mansory-jq.js');
+        });
+
+        it('includes simple-lightbox.min.js for image-gallery', () => {
+            const files = getIdeviceExportFiles('image-gallery', '.js');
+            expect(files).toContain('image-gallery.js');
+            expect(files).toContain('simple-lightbox.min.js');
+        });
+
+        it('returns just main file for iDevice without dependencies', () => {
+            const files = getIdeviceExportFiles('text', '.js');
+            expect(files).toEqual(['text.js']);
         });
     });
 });

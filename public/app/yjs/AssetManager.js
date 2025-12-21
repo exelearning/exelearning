@@ -2229,6 +2229,69 @@ window.simplifyMediaElements = function(html) {
 };
 
 /**
+ * Helper to unescape HTML entities
+ * Used by escapePreCodeContent to avoid double-escaping
+ *
+ * @param {string} str - String with HTML entities
+ * @returns {string} - Unescaped string
+ */
+function unescapeHtml(str) {
+  if (!str) return '';
+  const map = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#039;': "'",
+    '&#39;': "'",
+  };
+  return String(str).replace(/&(amp|lt|gt|quot|#0?39);/gi, m => map[m.toLowerCase()] || m);
+}
+
+/**
+ * Helper to escape HTML special characters
+ *
+ * @param {string} str - String to escape
+ * @returns {string} - Escaped string
+ */
+function escapeHtml(str) {
+  if (!str) return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return String(str).replace(/[&<>"']/g, m => map[m]);
+}
+
+/**
+ * Global helper to escape HTML entities inside <pre><code>...</code></pre> blocks.
+ * This prevents script tags and other HTML from being executed
+ * when shown as example code in the editor view.
+ *
+ * @param {string} html - HTML content
+ * @returns {string} - HTML with escaped content inside pre>code blocks
+ */
+window.escapePreCodeContent = function(html) {
+  if (!html) return html;
+
+  // Match <pre><code>...</code></pre> blocks (with optional attributes/whitespace)
+  const PRE_CODE_REGEX = /(<pre[^>]*>\s*<code[^>]*>)([\s\S]*?)(<\/code>\s*<\/pre>)/gi;
+
+  return html.replace(PRE_CODE_REGEX, (match, openTags, innerContent, closeTags) => {
+    if (!innerContent.trim()) return openTags + innerContent + closeTags;
+
+    // First decode any existing entities to avoid double-escaping
+    const decoded = unescapeHtml(innerContent);
+    // Then escape properly
+    const escaped = escapeHtml(decoded);
+    return openTags + escaped + closeTags;
+  });
+};
+
+/**
  * Global helper function to resolve asset:// URLs
  * Searches for active AssetManager and resolves
  *

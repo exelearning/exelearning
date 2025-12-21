@@ -10,10 +10,11 @@
  * - Shows one page at a time with SPA-style navigation
  * - Asset URLs stay as `asset://` for later resolution to `blob://`
  */
-import type { ExportDocument, ExportPage, ResourceProvider } from '../interfaces';
+import type { ExportDocument, ExportPage, ResourceProvider, LatexPreRenderResult } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { getIdeviceExportFiles } from '../../../services/idevice-config';
 
 /**
  * Options for preview generation
@@ -25,6 +26,12 @@ export interface PreviewOptions {
     version?: string;
     /** Base path for URLs (e.g., '/exelearning') */
     basePath?: string;
+    /**
+     * Optional hook to pre-render LaTeX expressions to SVG+MathML.
+     * When provided and successful, MathJax library will NOT be included in the output.
+     * The pre-renderer runs on the client using MathJax already loaded in the workarea.
+     */
+    preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
 }
 
 /**
@@ -76,8 +83,8 @@ export class WebsitePreviewExporter {
             // Check if download-source-file iDevice is used (needs special handling)
             const needsElpxDownload = this.needsElpxDownloadSupport(pages);
 
-            // Generate the SPA HTML
-            let html = this.generateWebsiteSpaHtml(pages, meta, usedIdevices, options, needsElpxDownload);
+            // Generate the SPA HTML (with optional LaTeX pre-rendering)
+            let html = await this.generateWebsiteSpaHtml(pages, meta, usedIdevices, options, needsElpxDownload);
 
             // Apply exe-package:elp protocol replacement if download-source-file is used
             if (needsElpxDownload) {
@@ -203,19 +210,19 @@ export class WebsitePreviewExporter {
     /**
      * Generate complete SPA HTML with all pages
      */
-    private generateWebsiteSpaHtml(
+    private async generateWebsiteSpaHtml(
         pages: ExportPage[],
         meta: ReturnType<ExportDocument['getMetadata']>,
         usedIdevices: string[],
         options: PreviewOptions,
         needsElpxDownload: boolean = false,
-    ): string {
+    ): Promise<string> {
         const lang = meta.language || 'en';
         const projectTitle = meta.title || 'eXeLearning';
         const customStyles = meta.customStyles || '';
-        const author = meta.author || '';
         const license = meta.license || 'CC-BY-SA';
         const themeName = meta.theme || 'base';
+        const userFooterContent = meta.footer || '';
 
         // Export options (with defaults)
         const addExeLink = meta.addExeLink ?? true;
@@ -248,12 +255,6 @@ export class WebsitePreviewExporter {
             );
         }
 
-        // Detect required libraries by scanning all rendered HTML content
-        const libraryDetector = new LibraryDetector();
-        const detectedLibraries = libraryDetector.detectLibraries(pagesHtml, {
-            includeAccessibilityToolbar: addAccessibilityToolbar,
-        });
-
         // Conditionally render "Made with eXeLearning"
         const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(lang) : '';
 
@@ -281,14 +282,9 @@ export class WebsitePreviewExporter {
         const staticHeaderHtml = `${initialPageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
 <header class="page-header"${pageHeaderStyle}><h2 id="page-title" class="page-title">${this.escapeHtml(firstPageTitle)}</h2></header>`;
 
-        return `<!DOCTYPE html>
-<html lang="${lang}">
-<head>
-${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
-</head>
-<body class="exe-web-site exe-preview" lang="${lang}">
-<script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js">
+        // Build the body content that will be pre-rendered
+        // Note: head and scripts are added AFTER pre-rendering to avoid corrupting them
+        const bodyContent = `<div class="exe-content exe-export pre-js">
 ${this.renderSpaNavigation(pages)}
 <main class="page">
 ${searchBoxHtml}
@@ -296,9 +292,43 @@ ${staticHeaderHtml}
 ${pagesHtml}
 </main>
 ${this.renderNavButtons()}
-${this.renderWebsiteFooter(author, license)}
+${this.renderFooterSection({ license, userFooterContent })}
 </div>
-${madeWithExeHtml}
+${madeWithExeHtml}`;
+
+        // Pre-render LaTeX to SVG+MathML if hook is provided
+        // This processes ALL body content including navigation, headers, and pages
+        // The DOM-based pre-renderer safely skips script, style, code, pre elements
+        let finalBodyContent = bodyContent;
+        let latexWasRendered = false;
+        if (options.preRenderLatex) {
+            try {
+                const result = await options.preRenderLatex(bodyContent);
+                if (result.latexRendered) {
+                    finalBodyContent = result.html;
+                    latexWasRendered = true;
+                    console.log(`[Preview] Pre-rendered ${result.count} LaTeX expressions to SVG+MathML`);
+                }
+            } catch (error) {
+                console.warn('[Preview] LaTeX pre-render failed, falling back to MathJax:', error);
+            }
+        }
+
+        // Detect required libraries by scanning body content (after pre-rendering)
+        const libraryDetector = new LibraryDetector();
+        const detectedLibraries = libraryDetector.detectLibraries(finalBodyContent, {
+            includeAccessibilityToolbar: addAccessibilityToolbar,
+            skipMathJax: latexWasRendered,
+        });
+
+        return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
+</head>
+<body class="exe-web-site exe-preview" lang="${lang}">
+<script>document.body.className+=" js"</script>
+${finalBodyContent}
 ${searchDataScript}
 ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar, detectedLibraries)}
 </body>
@@ -372,6 +402,18 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${this.escapeHtml(projectTitle)} - Preview</title>
 <script>document.querySelector("html").classList.add("js");</script>
+<script>
+// jQuery shim - captures $(fn) calls from legacy inline scripts until jQuery loads
+(function() {
+    var queue = [];
+    var jQueryReady = function(fn) {
+        if (typeof fn === 'function') queue.push(fn);
+        return jQueryReady;
+    };
+    window.$ = window.jQuery = jQueryReady;
+    window.__jQueryShimQueue = queue;
+})();
+</script>
 
 <!-- Server-hosted libraries (versioned paths) -->
 <link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}${detectedLibraryCss}
@@ -385,17 +427,22 @@ ${this.getWebsitePreviewCss()}
 <link rel="stylesheet" href="${themeCss}" onerror="this.href='${fallbackCss}'">`;
 
         // iDevice CSS from server
+        // Scan export folder for ALL CSS files to include any additional styles
         const seen = new Set<string>();
         for (const idevice of usedIdevices) {
             const typeName = normalizeIdeviceType(idevice);
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                const ideviceCss = this.getVersionedPath(
-                    `/files/perm/idevices/base/${typeName}/export/${typeName}.css`,
-                    options,
-                );
-                head += `\n<link rel="stylesheet" href="${ideviceCss}" onerror="this.remove()">`;
+                // Get ALL CSS files from export folder
+                const cssFiles = getIdeviceExportFiles(typeName, '.css');
+                for (const cssFile of cssFiles) {
+                    const ideviceCss = this.getVersionedPath(
+                        `/files/perm/idevices/base/${typeName}/export/${cssFile}`,
+                        options,
+                    );
+                    head += `\n<link rel="stylesheet" href="${ideviceCss}" onerror="this.remove()">`;
+                }
             }
         }
 
@@ -479,7 +526,17 @@ button.toggler span,
 /* Nav buttons positioning (theme fallback) */
 .nav-buttons { display: flex; justify-content: space-between; padding: 1rem; }
 .nav-button { cursor: pointer; }
-.nav-button.disabled { opacity: 0.5; pointer-events: none; }`;
+.nav-button.disabled { opacity: 0.5; pointer-events: none; }
+
+/* Pre-rendered LaTeX (SVG+MathML) - when MathJax is not included */
+.exe-math-rendered { display: inline-block; vertical-align: middle; }
+.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
+.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
+/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
+.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
+.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
+/* Hide MathML visually but keep accessible for screen readers */
+.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
     }
 
     /**
@@ -629,7 +686,7 @@ button.toggler span,
             linkClasses.push('highlighted-link');
         }
 
-        let html = `<li${isActive ? ' class="active"' : ''}>`;
+        let html = `<li${isActive ? ' id="active" class="active"' : ''}>`;
         const parentAttr = page.parentId ? ` data-parent-id="${page.parentId}"` : '';
         html += ` <a href="#" data-page-id="${page.id}"${parentAttr} class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
 
@@ -708,12 +765,20 @@ ${blockHtml}
     }
 
     /**
-     * Render website footer
+     * Render footer section with license and optional user footer content
+     * Matches the structure from PageRenderer.renderFooterSection()
      */
-    private renderWebsiteFooter(author: string, license: string): string {
-        return `<footer id="siteFooter">
-<p class="license">${this.escapeHtml(author ? `${author} - ` : '')}${this.escapeHtml(license)}</p>
-</footer>`;
+    private renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
+        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+
+        let userFooterHtml = '';
+        if (userFooterContent) {
+            userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
+        }
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="cc cc-by-sa"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
+</div>
+${userFooterHtml}</div></footer>`;
     }
 
     /**
@@ -802,6 +867,28 @@ ${blockHtml}
             elpxDownloadScripts = `\n<script src="${fflateJs}"></script>\n<script src="${elpxDownloadJs}"></script>`;
         }
 
+        // Check if MathJax is needed (exe_math library detected)
+        const needsMathJax = detectedLibraries.libraries.some(
+            lib => lib.name === 'exe_math' || lib.name === 'exe_math_datagame',
+        );
+
+        // MathJax configuration - must be set BEFORE loading the script
+        // Configure pageReady to catch errors from auto-typeset on hidden SPA pages
+        let mathJaxConfig = '';
+        if (needsMathJax) {
+            mathJaxConfig = `\n<script>
+window.MathJax = {
+    startup: {
+        pageReady: function() {
+            return MathJax.startup.defaultPageReady().catch(function(err) {
+                console.warn('[MathJax] Auto-typeset error:', err.message);
+            });
+        }
+    }
+};
+</script>`;
+        }
+
         // Build detected library JS scripts
         let detectedLibraryScripts = '';
         for (const file of detectedLibraries.files) {
@@ -813,6 +900,7 @@ ${blockHtml}
         }
 
         // iDevice scripts
+        // Scan export folder for ALL JS files to include dependencies like html2canvas.js
         let ideviceScripts = '';
         const seenJs = new Set<string>();
         for (const idevice of usedIdevices) {
@@ -820,11 +908,15 @@ ${blockHtml}
 
             if (!seenJs.has(typeName)) {
                 seenJs.add(typeName);
-                const ideviceJs = this.getVersionedPath(
-                    `/files/perm/idevices/base/${typeName}/export/${typeName}.js`,
-                    options,
-                );
-                ideviceScripts += `\n<script src="${ideviceJs}" onerror="this.remove()"></script>`;
+                // Get ALL JS files from export folder (main file first, then dependencies)
+                const jsFiles = getIdeviceExportFiles(typeName, '.js');
+                for (const jsFile of jsFiles) {
+                    const ideviceJs = this.getVersionedPath(
+                        `/files/perm/idevices/base/${typeName}/export/${jsFile}`,
+                        options,
+                    );
+                    ideviceScripts += `\n<script src="${ideviceJs}" onerror="this.remove()"></script>`;
+                }
             }
         }
 
@@ -836,12 +928,70 @@ ${blockHtml}
         }
 
         return `<script src="${jqueryJs}"></script>
+<script>
+// Execute queued callbacks from jQuery shim (legacy inline scripts)
+if (window.__jQueryShimQueue) {
+    window.__jQueryShimQueue.forEach(function(fn) { $(fn); });
+    delete window.__jQueryShimQueue;
+}
+</script>
 <script src="${bootstrapJs}"></script>${jqueryUiScript}${elpxDownloadScripts}
 <script src="${commonJs}"></script>
 <script src="${commonI18nJs}"></script>
-<script src="${exeExportJs}"></script>${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
+<script src="${exeExportJs}"></script>${mathJaxConfig}${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"></script>
 <script>
+// Polyfill for confirm/alert/prompt in sandboxed iframes (preview mode)
+// These are blocked by default in blob: URLs, so we provide custom implementations
+(function() {
+    if (typeof window.confirm === 'undefined' || window.confirm.toString().includes('native code')) {
+        var originalConfirm = window.confirm;
+        window.confirm = function(message) {
+            try {
+                return originalConfirm.call(window, message);
+            } catch (e) {
+                // Sandboxed - show Bootstrap modal if available, otherwise return true
+                if (typeof $ !== 'undefined' && $.fn.modal) {
+                    return new Promise(function(resolve) {
+                        var modalId = 'exeConfirmModal';
+                        var $modal = $('#' + modalId);
+                        if (!$modal.length) {
+                            $modal = $('<div class="modal fade" id="' + modalId + '" tabindex="-1">' +
+                                '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
+                                '<div class="modal-body text-center py-4"></div>' +
+                                '<div class="modal-footer justify-content-center">' +
+                                '<button type="button" class="btn btn-secondary" data-result="false">Cancelar</button>' +
+                                '<button type="button" class="btn btn-primary" data-result="true">Aceptar</button>' +
+                                '</div></div></div></div>');
+                            $('body').append($modal);
+                        }
+                        $modal.find('.modal-body').text(message);
+                        $modal.find('button').off('click').on('click', function() {
+                            var result = $(this).data('result');
+                            $modal.modal('hide');
+                            resolve(result);
+                        });
+                        $modal.modal('show');
+                    });
+                }
+                // Fallback: just return true in preview mode
+                console.log('[Preview] confirm() blocked by sandbox, returning true:', message);
+                return true;
+            }
+        };
+    }
+    if (typeof window.alert === 'undefined' || window.alert.toString().includes('native code')) {
+        var originalAlert = window.alert;
+        window.alert = function(message) {
+            try {
+                return originalAlert.call(window, message);
+            } catch (e) {
+                console.log('[Preview] alert():', message);
+            }
+        };
+    }
+})();
+
 ${this.getSpaNavigationScript()}
 // Initialize iDevices after DOM is ready
 if (typeof $exeExport !== 'undefined' && $exeExport.init) {
@@ -864,6 +1014,21 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   var pageHeaderEl = document.querySelector('.page-header');
   var pageCounterEl = document.querySelector('.page-counter-current-page');
   var currentIndex = 0;
+
+  // Helper to detect LaTeX patterns in text
+  // Matches \\( or \\[ or \\begin{ (LaTeX delimiters)
+  function hasLatex(text) {
+    return text && /(?:\\\\\\(|\\\\\\[|\\\\begin\\{)/.test(text);
+  }
+
+  // Helper to typeset LaTeX in an element using MathJax
+  function typesetLatex(element) {
+    if (element && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+      MathJax.typesetPromise([element]).catch(function(err) {
+        console.log('[Preview] MathJax typeset error:', err);
+      });
+    }
+  }
 
   function showPage(index) {
     if (index < 0 || index >= pages.length) return;
@@ -907,7 +1072,12 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
       pageHeaderEl.style.display = hideTitle ? 'none' : '';
     }
     if (pageTitleEl && activePage.dataset.pageTitle) {
-      pageTitleEl.textContent = activePage.dataset.pageTitle;
+      var title = activePage.dataset.pageTitle;
+      pageTitleEl.textContent = title;
+      // Re-typeset LaTeX in page title if detected
+      if (hasLatex(title)) {
+        typesetLatex(pageTitleEl);
+      }
     }
     if (pageCounterEl) {
       pageCounterEl.textContent = (index + 1).toString();
@@ -962,6 +1132,17 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
 
   // Check initial hash on load
   showPageByHash();
+
+  // Typeset LaTeX in navigation sidebar if detected
+  var navContainer = document.querySelector('nav');
+  if (navContainer && hasLatex(navContainer.textContent)) {
+    typesetLatex(navContainer);
+  }
+
+  // Typeset LaTeX in initial page title if detected
+  if (pageTitleEl && hasLatex(pageTitleEl.textContent)) {
+    typesetLatex(pageTitleEl);
+  }
 
   updateNavButtons();
 })();`;
@@ -1023,7 +1204,10 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
      * This avoids bloating each page with large JSON in attributes
      */
     private generateSearchDataScript(searchDataJson: string): string {
-        return `<script>window.exeSearchData = ${searchDataJson};</script>`;
+        // Escape </script> sequences to prevent premature script tag closing
+        // Replace </ with <\/ which is valid in JSON strings but not parsed as closing tags
+        const safeJson = searchDataJson.replace(/<\//g, '<\\/');
+        return `<script>window.exeSearchData = ${safeJson};</script>`;
     }
 
     /**

@@ -16,7 +16,7 @@ import type {
     BlockRenderOptions,
     ExportBlockProperties,
 } from '../interfaces';
-import { getIdeviceConfig } from '../../../services/idevice-config';
+import { getIdeviceConfig, getIdeviceExportFiles } from '../../../services/idevice-config';
 
 /**
  * CSS link for an iDevice
@@ -96,10 +96,13 @@ export class IdeviceRenderer {
             if (config.componentType === 'json') {
                 dataAttrs += ` data-idevice-component-type="json"`;
 
-                // Add JSON data for non-text iDevices
-                if (type !== 'text' && Object.keys(properties).length > 0) {
+                // Add JSON data for iDevices with properties
+                if (Object.keys(properties).length > 0) {
                     const jsonData = JSON.stringify(properties);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
+                }
+                // Always add template for JSON components (including text)
+                if (config.template) {
                     dataAttrs += ` data-idevice-template="${this.escapeAttr(config.template)}"`;
                 }
             }
@@ -112,10 +115,13 @@ export class IdeviceRenderer {
         const isPreviewMode = basePath.startsWith('/') || basePath.includes('://');
         const fixedContent = this.fixAssetUrls(htmlContent, basePath, isPreviewMode);
 
+        // Escape HTML entities inside <pre><code> blocks to display code examples correctly
+        const escapedContent = this.escapePreCodeContent(fixedContent);
+
         // Wrap text iDevice content in exe-text div (as per legacy format)
         const isTextIdevice = type === 'text' || type === 'FreeTextIdevice' || type === 'TextIdevice';
         const contentHtml =
-            isTextIdevice && fixedContent ? `<div class="exe-text">${fixedContent}</div>` : fixedContent;
+            isTextIdevice && escapedContent ? `<div class="exe-text">${escapedContent}</div>` : escapedContent;
 
         // Generate HTML
         return `<div id="${this.escapeAttr(ideviceId)}" class="${classes.join(' ')}"${dataAttrs}>
@@ -322,6 +328,50 @@ ${contentHtml}
     }
 
     /**
+     * Unescape HTML entities
+     * @param str - String with HTML entities
+     * @returns Unescaped string
+     */
+    unescapeHtml(str: string): string {
+        if (!str) return '';
+        const map: Record<string, string> = {
+            '&amp;': '&',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&quot;': '"',
+            '&#039;': "'",
+            '&#39;': "'",
+        };
+        return String(str).replace(/&(amp|lt|gt|quot|#0?39);/gi, m => map[m.toLowerCase()] || m);
+    }
+
+    /**
+     * Escape HTML entities inside <pre><code>...</code></pre> blocks
+     * while preserving the rest of the HTML content.
+     * This prevents script tags and other HTML from being executed
+     * when shown as example code.
+     *
+     * @param content - HTML content string
+     * @returns HTML with escaped content inside pre>code blocks
+     */
+    escapePreCodeContent(content: string): string {
+        if (!content) return '';
+
+        // Match <pre><code>...</code></pre> blocks (with optional attributes/whitespace)
+        const PRE_CODE_REGEX = /(<pre[^>]*>\s*<code[^>]*>)([\s\S]*?)(<\/code>\s*<\/pre>)/gi;
+
+        return content.replace(PRE_CODE_REGEX, (_match, openTags, innerContent, closeTags) => {
+            if (!innerContent.trim()) return openTags + innerContent + closeTags;
+
+            // First decode any existing entities to avoid double-escaping
+            const decoded = this.unescapeHtml(innerContent);
+            // Then escape properly
+            const escaped = this.escapeHtml(decoded);
+            return openTags + escaped + closeTags;
+        });
+    }
+
+    /**
      * Escape attribute value
      * @param str - String to escape
      * @returns Escaped string
@@ -374,7 +424,11 @@ ${contentHtml}
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                scripts.push(`<script src="${basePath}idevices/${typeName}/${typeName}.js"></script>`);
+                // Get ALL JS files from export folder (main file first, then dependencies)
+                const jsFiles = getIdeviceExportFiles(typeName, '.js');
+                for (const jsFile of jsFiles) {
+                    scripts.push(`<script src="${basePath}idevices/${typeName}/${jsFile}"></script>`);
+                }
             }
         }
 
@@ -398,11 +452,15 @@ ${contentHtml}
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                const href = `${basePath}idevices/${typeName}/${typeName}.css`;
-                links.push({
-                    href,
-                    tag: `<link rel="stylesheet" href="${href}">`,
-                });
+                // Get ALL CSS files from export folder
+                const cssFiles = getIdeviceExportFiles(typeName, '.css');
+                for (const cssFile of cssFiles) {
+                    const href = `${basePath}idevices/${typeName}/${cssFile}`;
+                    links.push({
+                        href,
+                        tag: `<link rel="stylesheet" href="${href}">`,
+                    });
+                }
             }
         }
 
@@ -426,11 +484,15 @@ ${contentHtml}
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                const src = `${basePath}idevices/${typeName}/${typeName}.js`;
-                scripts.push({
-                    src,
-                    tag: `<script src="${src}"></script>`,
-                });
+                // Get ALL JS files from export folder (main file first, then dependencies)
+                const jsFiles = getIdeviceExportFiles(typeName, '.js');
+                for (const jsFile of jsFiles) {
+                    const src = `${basePath}idevices/${typeName}/${jsFile}`;
+                    scripts.push({
+                        src,
+                        tag: `<script src="${src}"></script>`,
+                    });
+                }
             }
         }
 

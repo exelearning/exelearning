@@ -62,13 +62,38 @@ export class Html5Exporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
-            // 1. Generate HTML pages
+            // 1. Generate HTML pages (with optional LaTeX pre-rendering)
+            const pageHtmlMap = new Map<string, string>();
+            let latexWasRendered = false;
+
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const html = this.generatePageHtml(page, pages, meta, i === 0, i);
+                let html = this.generatePageHtml(page, pages, meta, i === 0, i);
+
+                // Pre-render LaTeX to SVG+MathML if hook is provided
+                if (options?.preRenderLatex) {
+                    try {
+                        const result = await options.preRenderLatex(html);
+                        if (result.latexRendered) {
+                            html = result.html;
+                            latexWasRendered = true;
+                            console.log(
+                                `[Html5Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
+                            );
+                        }
+                    } catch (error) {
+                        console.warn('[Html5Exporter] LaTeX pre-render failed for page:', page.title, error);
+                    }
+                }
+
                 // First page is index.html, others go in html/ directory
                 const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
-                this.zip.addFile(pageFilename, html);
+                pageHtmlMap.set(pageFilename, html);
+            }
+
+            // Add all pages to ZIP
+            for (const [filename, html] of pageHtmlMap) {
+                this.zip.addFile(filename, html);
             }
 
             // 2. Add search_index.js if search box is enabled
@@ -83,11 +108,19 @@ export class Html5Exporter extends BaseExporter {
                 this.zip.addFile('content.xml', contentXml);
             }
 
-            // 4. Add base CSS (fetch from content/css)
+            // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             const contentCssFiles = await this.resources.fetchContentCss();
-            const baseCss = contentCssFiles.get('content/css/base.css');
+            let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
+            }
+            // Append pre-rendered LaTeX CSS if LaTeX was rendered
+            if (latexWasRendered) {
+                const latexCss = this.getPreRenderedLatexCss();
+                const decoder = new TextDecoder();
+                const baseCssText = decoder.decode(baseCss);
+                const encoder = new TextEncoder();
+                baseCss = encoder.encode(baseCssText + '\n' + latexCss);
             }
             this.zip.addFile('content/css/base.css', baseCss);
 
@@ -134,10 +167,16 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 8. Detect and fetch additional required libraries based on content
+            // Skip MathJax if LaTeX was pre-rendered to SVG+MathML
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
                 includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                skipMathJax: latexWasRendered,
             });
+
+            if (latexWasRendered) {
+                console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
+            }
 
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles);
@@ -238,5 +277,21 @@ export class Html5Exporter extends BaseExporter {
         }
         const filename = this.sanitizePageFilename(page.title);
         return `${basePath}html/${filename}.html`;
+    }
+
+    /**
+     * Get CSS for pre-rendered LaTeX (SVG+MathML)
+     * This CSS is needed when LaTeX is pre-rendered instead of using MathJax at runtime
+     */
+    protected getPreRenderedLatexCss(): string {
+        return `/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */
+.exe-math-rendered { display: inline-block; vertical-align: middle; }
+.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
+.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
+/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
+.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
+.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
+/* Hide MathML visually but keep accessible for screen readers */
+.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
     }
 }

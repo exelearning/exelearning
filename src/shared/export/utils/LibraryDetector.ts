@@ -50,6 +50,11 @@ export class LibraryDetector {
 
         // Scan for each pattern
         for (const lib of LIBRARY_PATTERNS) {
+            // Skip MathJax libraries if LaTeX was pre-rendered
+            if (options.skipMathJax && (lib.name === 'exe_math' || lib.name === 'exe_math_datagame')) {
+                continue;
+            }
+
             if (this._matchesPattern(html, lib)) {
                 // Special case: DataGame requires LaTeX check in decrypted content
                 if (lib.requiresLatexCheck) {

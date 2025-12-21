@@ -177,11 +177,17 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch content CSS files
+     * Uses style/workarea/base.css as source, maps to content/css/base.css for export
      * @returns Map of file paths to content
      */
     async fetchContentCss(): Promise<Map<string, Buffer>> {
-        const cssPath = path.join(this.publicDir, 'style', 'content', 'css');
-        return this.readDirectoryRecursive(cssPath, 'content/css');
+        const files = new Map<string, Buffer>();
+        const cssPath = path.join(this.publicDir, 'style', 'workarea', 'base.css');
+        if (await fs.pathExists(cssPath)) {
+            const content = await fs.readFile(cssPath);
+            files.set('content/css/base.css', content);
+        }
+        return files;
     }
 
     /**

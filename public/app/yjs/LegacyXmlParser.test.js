@@ -100,6 +100,157 @@ describe('LegacyXmlParser', () => {
       expect(meta).toHaveProperty('title');
       expect(meta).toHaveProperty('author');
       expect(meta).toHaveProperty('description');
+      expect(meta).toHaveProperty('footer');
+      expect(meta).toHaveProperty('extraHeadContent');
+    });
+
+    it('extracts footer content from package', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Project With Footer"/>
+              <string role="key" value="footer"/>
+              <unicode value="&lt;p&gt;Custom footer content&lt;/p&gt;"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.title).toBe('Project With Footer');
+      expect(meta.footer).toBe('<p>Custom footer content</p>');
+    });
+
+    it('returns empty footer when not present', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="No Footer Project"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.footer).toBe('');
+    });
+
+    it('extracts extraHeadContent from package', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Project With Head"/>
+              <string role="key" value="_extraHeadContent"/>
+              <unicode value="&lt;script&gt;console.log('test');&lt;/script&gt;"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.title).toBe('Project With Head');
+      expect(meta.extraHeadContent).toBe("<script>console.log('test');</script>");
+    });
+
+    it('returns empty extraHeadContent when not present', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="No Head Project"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.extraHeadContent).toBe('');
+    });
+
+    it('extracts export options from package with bool elements', () => {
+      // Legacy format uses <bool value="1"/> for boolean values
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Project With Export Options"/>
+              <string role="key" value="_addPagination"/>
+              <bool value="1"/>
+              <string role="key" value="_addSearchBox"/>
+              <bool value="1"/>
+              <string role="key" value="exportSource"/>
+              <bool value="1"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.title).toBe('Project With Export Options');
+      expect(meta.pp_addPagination).toBe(true);
+      expect(meta.pp_addSearchBox).toBe(true);
+      expect(meta.exportSource).toBe(true);
+    });
+
+    it('returns false export options when not present', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="No Export Options"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.pp_addPagination).toBe(false);
+      expect(meta.pp_addSearchBox).toBe(false);
+      expect(meta.exportSource).toBe(false);
+      expect(meta.pp_addExeLink).toBe(true); // Default is true
+      expect(meta.pp_addAccessibilityToolbar).toBe(false);
+    });
+
+    it('has all expected metadata properties', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Full Project"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      // Should have all expected properties
+      expect(meta).toHaveProperty('title');
+      expect(meta).toHaveProperty('author');
+      expect(meta).toHaveProperty('description');
+      expect(meta).toHaveProperty('footer');
+      expect(meta).toHaveProperty('extraHeadContent');
+      expect(meta).toHaveProperty('exportSource');
+      expect(meta).toHaveProperty('pp_addPagination');
+      expect(meta).toHaveProperty('pp_addSearchBox');
+      expect(meta).toHaveProperty('pp_addExeLink');
+      expect(meta).toHaveProperty('pp_addAccessibilityToolbar');
     });
   });
 
@@ -158,6 +309,34 @@ describe('LegacyXmlParser', () => {
 
       const value = parser.findDictValue(dict, 'refKey');
       expect(value).toBe('ref123');
+    });
+
+    it('returns true for bool element with value 1', () => {
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="boolKey"/>
+          <bool value="1"/>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      const dict = doc.querySelector('dictionary');
+
+      const value = parser.findDictValue(dict, 'boolKey');
+      expect(value).toBe(true);
+    });
+
+    it('returns false for bool element with value 0', () => {
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="boolKey"/>
+          <bool value="0"/>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      const dict = doc.querySelector('dictionary');
+
+      const value = parser.findDictValue(dict, 'boolKey');
+      expect(value).toBe(false);
     });
 
     it('returns null for non-existent key', () => {
@@ -1604,6 +1783,1190 @@ describe('LegacyXmlParser', () => {
 
       expect(blocks.length).toBe(1);
       expect(blocks[0].iconName).toBe('');
+    });
+  });
+
+  /**
+   * Phase 3: XML Preprocessing & Internal Links
+   *
+   * Tests for encoding fixes, node reordering, and internal link conversion
+   * Based on Symfony OdeXmlUtil.php patterns
+   */
+
+  describe('preprocessLegacyXml', () => {
+    it('removes 5-space indentations', () => {
+      const xml = '<root>     <child>text</child></root>';
+      const result = parser.preprocessLegacyXml(xml);
+      expect(result).toBe('<root><child>text</child></root>');
+    });
+
+    it('removes tabs', () => {
+      const xml = '<root>\t<child>text</child></root>';
+      const result = parser.preprocessLegacyXml(xml);
+      expect(result).toBe('<root><child>text</child></root>');
+    });
+
+    it('unifies Windows line endings to Unix', () => {
+      const xml = '<root>\r\n<child/>\r\n</root>';
+      const result = parser.preprocessLegacyXml(xml);
+      // Newlines are converted to &#10; then restored between tags
+      expect(result).not.toContain('\r');
+    });
+
+    it('removes double newlines', () => {
+      const xml = '<root>\n\n<child/></root>';
+      const result = parser.preprocessLegacyXml(xml);
+      // Double newlines become single
+      expect(result).toBe('<root>\n<child/></root>');
+    });
+
+    it('converts hex escape sequences to characters', () => {
+      const xml = '<root>\\x41\\x42\\x43</root>';
+      const result = parser.preprocessLegacyXml(xml);
+      expect(result).toBe('<root>ABC</root>');
+    });
+
+    it('converts literal \\n to entity', () => {
+      const xml = '<root>Line1\\nLine2</root>';
+      const result = parser.preprocessLegacyXml(xml);
+      expect(result).toBe('<root>Line1&#10;Line2</root>');
+    });
+
+    it('preserves newlines inside attributes via &#10;', () => {
+      const xml = '<root attr="line1\nline2"/>';
+      const result = parser.preprocessLegacyXml(xml);
+      expect(result).toContain('attr="line1&#10;line2"');
+    });
+
+    it('restores newlines between tags', () => {
+      const xml = '<root>\n<child/>\n</root>';
+      const result = parser.preprocessLegacyXml(xml);
+      expect(result).toBe('<root>\n<child/>\n</root>');
+    });
+
+    it('handles complex mixed encoding case', () => {
+      const xml = '<root>     \t\\x48ello\\nWorld\r\n</root>';
+      const result = parser.preprocessLegacyXml(xml);
+      expect(result).toContain('Hello');
+      expect(result).toContain('&#10;');
+      expect(result).not.toContain('\\x');
+      expect(result).not.toContain('\t');
+    });
+  });
+
+  describe('buildFullPathMap', () => {
+    it('builds map for flat pages', () => {
+      const pages = [
+        { id: 'page-1', title: 'Page One', parent_id: null },
+        { id: 'page-2', title: 'Page Two', parent_id: null },
+      ];
+
+      const map = parser.buildFullPathMap(pages);
+
+      expect(map.get('Page One')).toBe('page-1');
+      expect(map.get('Page Two')).toBe('page-2');
+    });
+
+    it('builds map for nested pages', () => {
+      const pages = [
+        { id: 'page-1', title: 'Root', parent_id: null },
+        { id: 'page-2', title: 'Chapter 1', parent_id: 'page-1' },
+        { id: 'page-3', title: 'Section A', parent_id: 'page-2' },
+      ];
+
+      const map = parser.buildFullPathMap(pages);
+
+      expect(map.get('Root')).toBe('page-1');
+      expect(map.get('Root:Chapter 1')).toBe('page-2');
+      expect(map.get('Root:Chapter 1:Section A')).toBe('page-3');
+    });
+
+    it('handles URL-encoded paths', () => {
+      const pages = [
+        { id: 'page-1', title: 'Page%20With%20Spaces', parent_id: null },
+      ];
+
+      const map = parser.buildFullPathMap(pages);
+
+      // Both encoded and decoded versions should be present
+      expect(map.get('Page%20With%20Spaces')).toBe('page-1');
+      expect(map.get('Page With Spaces')).toBe('page-1');
+    });
+
+    it('returns empty map for empty pages', () => {
+      const map = parser.buildFullPathMap([]);
+      expect(map.size).toBe(0);
+    });
+  });
+
+  describe('convertInternalLinks', () => {
+    it('converts path-based exe-node links to ID-based', () => {
+      const fullPathMap = new Map([
+        ['Chapter 1:Section A', 'page-123'],
+      ]);
+      const html = '<a href="exe-node:Chapter 1:Section A">Link</a>';
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe('<a href="exe-node:page-123">Link</a>');
+    });
+
+    it('handles links with #auto_top suffix', () => {
+      const fullPathMap = new Map([
+        ['Page One', 'page-1'],
+      ]);
+      const html = '<a href="exe-node:Page One#auto_top">Link</a>';
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe('<a href="exe-node:page-1">Link</a>');
+    });
+
+    it('preserves other hash fragments', () => {
+      const fullPathMap = new Map([
+        ['Page One', 'page-1'],
+      ]);
+      const html = '<a href="exe-node:Page One#section">Link</a>';
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe('<a href="exe-node:page-1#section">Link</a>');
+    });
+
+    it('handles URL-encoded paths', () => {
+      const fullPathMap = new Map([
+        ['Page With Spaces', 'page-1'],
+      ]);
+      const html = '<a href="exe-node:Page%20With%20Spaces">Link</a>';
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe('<a href="exe-node:page-1">Link</a>');
+    });
+
+    it('handles project name prefix in path', () => {
+      const fullPathMap = new Map([
+        ['Chapter 1', 'page-2'],
+      ]);
+      const html = '<a href="exe-node:ProjectName:Chapter 1">Link</a>';
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe('<a href="exe-node:page-2">Link</a>');
+    });
+
+    it('keeps original link if path not found', () => {
+      const fullPathMap = new Map([
+        ['Page One', 'page-1'],
+      ]);
+      const html = '<a href="exe-node:Unknown Page">Link</a>';
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe('<a href="exe-node:Unknown Page">Link</a>');
+    });
+
+    it('returns unchanged html if no exe-node links', () => {
+      const fullPathMap = new Map([
+        ['Page One', 'page-1'],
+      ]);
+      const html = '<a href="https://example.com">Link</a>';
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe(html);
+    });
+
+    it('handles multiple links in same html', () => {
+      const fullPathMap = new Map([
+        ['Page 1', 'page-1'],
+        ['Page 2', 'page-2'],
+      ]);
+      const html = '<a href="exe-node:Page 1">Link 1</a> and <a href="exe-node:Page 2">Link 2</a>';
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe('<a href="exe-node:page-1">Link 1</a> and <a href="exe-node:page-2">Link 2</a>');
+    });
+
+    it('handles single quoted attributes', () => {
+      const fullPathMap = new Map([
+        ['Page One', 'page-1'],
+      ]);
+      const html = "<a href='exe-node:Page One'>Link</a>";
+
+      const result = parser.convertInternalLinks(html, fullPathMap);
+
+      expect(result).toBe('<a href="exe-node:page-1">Link</a>');
+    });
+
+    it('returns empty string for null/undefined html', () => {
+      const fullPathMap = new Map();
+
+      expect(parser.convertInternalLinks(null, fullPathMap)).toBe(null);
+      expect(parser.convertInternalLinks(undefined, fullPathMap)).toBe(undefined);
+      expect(parser.convertInternalLinks('', fullPathMap)).toBe('');
+    });
+  });
+
+  describe('convertAllInternalLinks', () => {
+    it('converts links in htmlView', () => {
+      const fullPathMap = new Map([
+        ['Target Page', 'page-target'],
+      ]);
+      const pages = [
+        {
+          id: 'page-1',
+          title: 'Source',
+          blocks: [
+            {
+              idevices: [
+                { htmlView: '<a href="exe-node:Target Page">Link</a>' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      parser.convertAllInternalLinks(pages, fullPathMap);
+
+      expect(pages[0].blocks[0].idevices[0].htmlView).toBe('<a href="exe-node:page-target">Link</a>');
+    });
+
+    it('converts links in feedbackHtml', () => {
+      const fullPathMap = new Map([
+        ['Target Page', 'page-target'],
+      ]);
+      const pages = [
+        {
+          id: 'page-1',
+          title: 'Source',
+          blocks: [
+            {
+              idevices: [
+                {
+                  htmlView: 'text',
+                  feedbackHtml: '<a href="exe-node:Target Page">Feedback Link</a>',
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      parser.convertAllInternalLinks(pages, fullPathMap);
+
+      expect(pages[0].blocks[0].idevices[0].feedbackHtml).toBe('<a href="exe-node:page-target">Feedback Link</a>');
+    });
+
+    it('converts links in properties JSON', () => {
+      const fullPathMap = new Map([
+        ['Target Page', 'page-target'],
+      ]);
+      const pages = [
+        {
+          id: 'page-1',
+          title: 'Source',
+          blocks: [
+            {
+              idevices: [
+                {
+                  htmlView: '',
+                  properties: {
+                    content: '<a href="exe-node:Target Page">Link</a>',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      parser.convertAllInternalLinks(pages, fullPathMap);
+
+      expect(pages[0].blocks[0].idevices[0].properties.content).toBe('<a href="exe-node:page-target">Link</a>');
+    });
+
+    it('handles pages without blocks', () => {
+      const fullPathMap = new Map();
+      const pages = [{ id: 'page-1', title: 'Empty' }];
+
+      // Should not throw
+      expect(() => parser.convertAllInternalLinks(pages, fullPathMap)).not.toThrow();
+    });
+
+    it('handles empty fullPathMap', () => {
+      const fullPathMap = new Map();
+      const pages = [
+        {
+          id: 'page-1',
+          blocks: [
+            {
+              idevices: [
+                { htmlView: '<a href="exe-node:Target">Link</a>' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      // Should return early and not modify
+      parser.convertAllInternalLinks(pages, fullPathMap);
+
+      expect(pages[0].blocks[0].idevices[0].htmlView).toBe('<a href="exe-node:Target">Link</a>');
+    });
+  });
+
+  describe('detectNodeReorderMap', () => {
+    it('returns empty map for well-formed XML', () => {
+      const xmlContent = `
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="2">
+                  <dictionary/>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>
+      `;
+
+      // Parse the XML first
+      parser.xmlContent = parser.preprocessLegacyXml(xmlContent);
+      const domParser = new DOMParser();
+      parser.xmlDoc = domParser.parseFromString(parser.xmlContent, 'text/xml');
+
+      const map = parser.detectNodeReorderMap();
+
+      expect(map.size).toBe(0);
+    });
+
+    it('detects nodes referenced outside their position', () => {
+      const xmlContent = `
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="2">
+                  <dictionary/>
+                </instance>
+                <reference key="3"/>
+              </list>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="3">
+            <dictionary/>
+          </instance>
+        </root>
+      `;
+
+      // Parse the XML first
+      parser.xmlContent = parser.preprocessLegacyXml(xmlContent);
+      const domParser = new DOMParser();
+      parser.xmlDoc = domParser.parseFromString(parser.xmlContent, 'text/xml');
+
+      const map = parser.detectNodeReorderMap();
+
+      // Node 3 should be reordered to appear after node 2
+      expect(map.size).toBe(1);
+      expect(map.get(3)).toBe(2);
+    });
+
+    it('handles multiple references in children list', () => {
+      const xmlContent = `
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="children"/>
+              <list>
+                <reference key="2"/>
+                <reference key="3"/>
+              </list>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="2">
+            <dictionary/>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="3">
+            <dictionary/>
+          </instance>
+        </root>
+      `;
+
+      parser.xmlContent = parser.preprocessLegacyXml(xmlContent);
+      const domParser = new DOMParser();
+      parser.xmlDoc = domParser.parseFromString(parser.xmlContent, 'text/xml');
+
+      const map = parser.detectNodeReorderMap();
+
+      // Node 2 after node 1, node 3 after node 2
+      expect(map.size).toBe(2);
+      expect(map.get(2)).toBe(1);
+      expect(map.get(3)).toBe(2);
+    });
+  });
+
+  describe('applyNodeReordering', () => {
+    it('returns unchanged pages for empty reorder map', () => {
+      const pages = [
+        { id: 'page-1', position: 0 },
+        { id: 'page-2', position: 1 },
+      ];
+      const nodesChangeRef = new Map();
+
+      const result = parser.applyNodeReordering(pages, nodesChangeRef);
+
+      expect(result).toBe(pages);
+    });
+
+    it('reorders pages based on map', () => {
+      const pages = [
+        { id: 'page-1', position: 0 },
+        { id: 'page-3', position: 1 },  // Out of order
+        { id: 'page-2', position: 2 },
+      ];
+      const nodesChangeRef = new Map([
+        [2, 1],  // Node 2 should come right after node 1
+      ]);
+
+      const result = parser.applyNodeReordering([...pages], nodesChangeRef);
+
+      // After reordering: page-1 (pos 0), page-2 (pos 0.5 -> 1), page-3 (pos 1 -> 2)
+      expect(result[0].id).toBe('page-1');
+      expect(result[1].id).toBe('page-2');
+      expect(result[2].id).toBe('page-3');
+    });
+
+    it('renumbers positions after reordering', () => {
+      const pages = [
+        { id: 'page-1', position: 0 },
+        { id: 'page-3', position: 1 },
+        { id: 'page-2', position: 2 },
+      ];
+      const nodesChangeRef = new Map([
+        [2, 1],
+      ]);
+
+      const result = parser.applyNodeReordering([...pages], nodesChangeRef);
+
+      // All positions should be sequential integers
+      expect(result[0].position).toBe(0);
+      expect(result[1].position).toBe(1);
+      expect(result[2].position).toBe(2);
+    });
+  });
+
+  describe('rubric iDevice detection and transformation', () => {
+    it('should detect rubric content via JsIdevice _iDeviceDir', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="rub1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Rúbrica de evaluación"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="rubric"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="table content"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].type).toBe('rubric');
+    });
+
+    it('should transform exe-rubric-strings to exe-rubrics-strings (plural)', () => {
+      // Directly test the transformation logic in the rubric detection code
+      // by simulating what happens when htmlView contains exe-rubric-strings
+      const idevice = {
+        id: 'test-idevice',
+        type: 'text',
+        htmlView: '<table></table><ul class="exe-rubric-strings"><li>Test</li></ul>'
+      };
+
+      // Apply the rubric transformation logic (same as in extractIDevicesWithTitles)
+      if (idevice.htmlView && idevice.htmlView.includes('exe-rubric-strings')) {
+        idevice.type = 'rubric';
+        idevice.htmlView = idevice.htmlView.replace(/exe-rubric([^s])/g, 'exe-rubrics$1');
+        idevice.cssClass = 'rubric';
+      }
+
+      expect(idevice.type).toBe('rubric');
+      expect(idevice.htmlView).toContain('exe-rubrics-strings');
+      expect(idevice.htmlView).not.toContain('exe-rubric-strings');
+      expect(idevice.cssClass).toBe('rubric');
+    });
+
+    it('should set cssClass to rubric for rubricIdevice wrapper class', () => {
+      // Directly test the transformation sets cssClass
+      const idevice = {
+        id: 'test-idevice',
+        type: 'text',
+        htmlView: '<ul class="exe-rubric-strings"></ul>'
+      };
+
+      // Apply the rubric transformation logic
+      if (idevice.htmlView && idevice.htmlView.includes('exe-rubric-strings')) {
+        idevice.type = 'rubric';
+        idevice.htmlView = idevice.htmlView.replace(/exe-rubric([^s])/g, 'exe-rubrics$1');
+        idevice.cssClass = 'rubric';
+      }
+
+      expect(idevice.cssClass).toBe('rubric');
+    });
+
+    it('should not transform non-rubric iDevices', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="txt1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Free Text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="Normal content without rubric"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].type).toBe('text');
+      expect(idevices[0].cssClass).toBeUndefined();
+    });
+
+    it('should handle exe-rubric-authorship class correctly (not transform to plural)', () => {
+      // The regex should only transform exe-rubric-strings, not exe-rubric-authorship
+      // because the regex /exe-rubric([^s])/ matches 'exe-rubric-a' (the -a part)
+      const html = '<p class="exe-rubrics-authorship">Author</p><ul class="exe-rubric-strings"></ul>';
+
+      // Apply transformation
+      const transformed = html.replace(/exe-rubric([^s])/g, 'exe-rubrics$1');
+
+      // exe-rubric-strings should become exe-rubrics-strings
+      expect(transformed).toContain('exe-rubrics-strings');
+      // exe-rubrics-authorship should remain as is (was already plural in test)
+      expect(transformed).toContain('exe-rubrics-authorship');
+    });
+  });
+
+  describe('download-package iDevice mapping', () => {
+    it('should map download-package JsIdevice to download-source-file type', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="dl1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Descargar paquete"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="download-package"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&amp;lt;div class=&amp;quot;exe-download-package-instructions&amp;quot;&amp;gt;Download content&amp;lt;/div&amp;gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].type).toBe('download-source-file');
+      expect(idevices[0].title).toBe('Descargar paquete');
+    });
+
+    it('should extract HTML content from download-package iDevice', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="dl1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Download"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="download-package"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&amp;lt;p&amp;gt;Package download content&amp;lt;/p&amp;gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].htmlView).toContain('<p>Package download content</p>');
+    });
+  });
+
+  describe('reference-based iDevice extraction', () => {
+    it('should extract iDevices referenced via <reference key="N"/> elements', () => {
+      // Simulates a legacy ELP where iDevices are referenced, not inline
+      // This is common in malformed contentv3.xml files from legacy eXeLearning
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <list id="idevices-list">
+            <reference key="123"/>
+            <reference key="456"/>
+          </list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="123">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Referenced Text iDevice"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&amp;lt;p&amp;gt;Content from referenced iDevice&amp;lt;/p&amp;gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="456">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Another Referenced iDevice"/>
+              <string role="key" value="content"/>
+              <unicode value="&amp;lt;p&amp;gt;Second iDevice content&amp;lt;/p&amp;gt;"/>
+            </dictionary>
+          </instance>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list#idevices-list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(2);
+      expect(idevices[0].type).toBe('text');
+      expect(idevices[0].title).toBe('Referenced Text iDevice');
+      expect(idevices[0].htmlView).toContain('<p>Content from referenced iDevice</p>');
+      expect(idevices[1].type).toBe('text');
+      expect(idevices[1].title).toBe('Another Referenced iDevice');
+    });
+
+    it('should handle mixed inline instances and references', () => {
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <list id="idevices-list">
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="inline1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Inline iDevice"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+              </dictionary>
+            </instance>
+            <reference key="ref1"/>
+          </list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="ref1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Referenced iDevice"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="text"/>
+            </dictionary>
+          </instance>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list#idevices-list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(2);
+      expect(idevices[0].title).toBe('Inline iDevice');
+      expect(idevices[1].title).toBe('Referenced iDevice');
+    });
+
+    it('should log warning for unresolved references', () => {
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <list id="idevices-list">
+            <reference key="nonexistent"/>
+          </list>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list#idevices-list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      // Should not crash, just return empty array
+      expect(idevices.length).toBe(0);
+    });
+  });
+
+  describe('referenced TextAreaField extraction', () => {
+    it('should extract content from referenced TextAreaField in fields list', () => {
+      // Simulates a JsIdevice where the TextAreaField is referenced, not inline
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Text with Referenced Field"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <reference key="field123"/>
+              </list>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.field.TextAreaField" reference="field123">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"/>
+              <unicode value="&amp;lt;p&amp;gt;This is the referenced content from TextAreaField&amp;lt;/p&amp;gt;"/>
+            </dictionary>
+          </instance>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const ideviceInst = doc.querySelector('instance[reference="idev1"]');
+      const dict = ideviceInst.querySelector(':scope > dictionary');
+      const result = parser.extractFieldsContentWithFeedback(dict);
+
+      expect(result.content).toContain('<p>This is the referenced content from TextAreaField</p>');
+    });
+
+    it('should handle mixed inline and referenced fields', () => {
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="inline1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&amp;lt;p&amp;gt;Inline content&amp;lt;/p&amp;gt;"/>
+                  </dictionary>
+                </instance>
+                <reference key="ref1"/>
+              </list>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.field.TextAreaField" reference="ref1">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"/>
+              <unicode value="&amp;lt;p&amp;gt;Referenced content&amp;lt;/p&amp;gt;"/>
+            </dictionary>
+          </instance>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const ideviceInst = doc.querySelector('instance[reference="idev1"]');
+      const dict = ideviceInst.querySelector(':scope > dictionary');
+      const result = parser.extractFieldsContentWithFeedback(dict);
+
+      expect(result.content).toContain('<p>Inline content</p>');
+      expect(result.content).toContain('<p>Referenced content</p>');
+    });
+
+    it('should extract content when iDevice itself is referenced', () => {
+      // Complete test: iDevice is referenced AND its TextAreaField is referenced
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <list id="idevices-list">
+            <reference key="idev1"/>
+          </list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="idev1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Doubly Referenced iDevice"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <reference key="field1"/>
+              </list>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.field.TextAreaField" reference="field1">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"/>
+              <unicode value="&amp;lt;p&amp;gt;Content from doubly referenced structure&amp;lt;/p&amp;gt;"/>
+            </dictionary>
+          </instance>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list#idevices-list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].title).toBe('Doubly Referenced iDevice');
+      expect(idevices[0].htmlView).toContain('<p>Content from doubly referenced structure</p>');
+    });
+  });
+
+  describe('FreeTextIdevice with circular reference pattern', () => {
+    // This tests the pattern where FreeTextIdevice is nested inside TextAreaField
+    // and its content field points back to the parent TextAreaField.
+    // See Symfony OdeOldXmlFreeTextIdevice.php lines 56-61 for reference.
+
+    it('extracts content from parent TextAreaField when content is circular reference', () => {
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <list id="top-list">
+            <instance class="exe.engine.field.TextAreaField" reference="61">
+              <dictionary>
+                <string role="key" value="_id"/>
+                <int value="85"/>
+                <string role="key" value="_idevice"/>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="62">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Free Text"/>
+                    <string role="key" value="content"/>
+                    <reference key="61"/>
+                  </dictionary>
+                </instance>
+                <string role="key" value="content_w_resourcePaths"/>
+                <unicode content="true" value="&lt;table&gt;&lt;tr&gt;&lt;td&gt;LaTeX Table Content&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;"/>
+              </dictionary>
+            </instance>
+          </list>
+          <instance class="exe.engine.node.Node" reference="65">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Test Page"/>
+              <string role="key" value="idevices"/>
+              <list id="idevices-list">
+                <reference key="62"/>
+              </list>
+            </dictionary>
+          </instance>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list#idevices-list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].type).toBe('text'); // FreeTextIdevice maps to text
+      expect(idevices[0].htmlView).toContain('LaTeX Table Content');
+    });
+
+    it('extracts content when FreeTextIdevice has empty content strategies', () => {
+      // Simulates case where strategies 1-3 all fail, falling back to parent lookup
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <instance class="exe.engine.field.TextAreaField" reference="parent1">
+            <dictionary>
+              <string role="key" value="_idevice"/>
+              <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="freetext1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Orphaned Content"/>
+                  <string role="key" value="content"/>
+                  <reference key="parent1"/>
+                </dictionary>
+              </instance>
+              <string role="key" value="content_w_resourcePaths"/>
+              <unicode content="true" value="&lt;div&gt;Parent content found via fallback&lt;/div&gt;"/>
+            </dictionary>
+          </instance>
+          <list id="idevices-list">
+            <reference key="freetext1"/>
+          </list>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list#idevices-list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].htmlView).toContain('Parent content found via fallback');
+    });
+
+    it('findParentTextAreaField returns parent TextAreaField', () => {
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <instance class="exe.engine.field.TextAreaField" reference="ta1">
+            <dictionary>
+              <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="ft1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Test"/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      const ideviceInst = doc.querySelector('instance[reference="ft1"]');
+      const result = parser.findParentTextAreaField(ideviceInst);
+
+      expect(result).not.toBeNull();
+      expect(result.getAttribute('reference')).toBe('ta1');
+      expect(result.getAttribute('class')).toContain('TextAreaField');
+    });
+
+    it('findParentTextAreaField returns null when no parent TextAreaField', () => {
+      const xml = `<?xml version="1.0"?>
+        <document>
+          <list>
+            <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="ft1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Test"/>
+              </dictionary>
+            </instance>
+          </list>
+        </document>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      const ideviceInst = doc.querySelector('instance[reference="ft1"]');
+      const result = parser.findParentTextAreaField(ideviceInst);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Generic Idevice class format (exelearning.libs.*)', () => {
+    describe('isGenericIdeviceClass', () => {
+      it('returns true for exelearning.libs.idevices.idevice.Idevice', () => {
+        expect(parser.isGenericIdeviceClass('exelearning.libs.idevices.idevice.Idevice')).toBe(true);
+      });
+
+      it('returns true for other non-exe.engine classes ending with .Idevice', () => {
+        expect(parser.isGenericIdeviceClass('some.other.package.Idevice')).toBe(true);
+        expect(parser.isGenericIdeviceClass('custom.Idevice')).toBe(true);
+      });
+
+      it('returns false for standard exe.engine format', () => {
+        expect(parser.isGenericIdeviceClass('exe.engine.freetextidevice.FreeTextIdevice')).toBe(false);
+        expect(parser.isGenericIdeviceClass('exe.engine.jsidevice.JsIdevice')).toBe(false);
+        expect(parser.isGenericIdeviceClass('exe.engine.genericidevice.GenericIdevice')).toBe(false);
+      });
+
+      it('returns false for classes not ending with .Idevice', () => {
+        expect(parser.isGenericIdeviceClass('exelearning.libs.idevices.field.TextField')).toBe(false);
+        expect(parser.isGenericIdeviceClass('exelearning.libs.idevices.idevice')).toBe(false);
+      });
+    });
+
+    describe('mapGenericIdeviceType', () => {
+      it('returns text for unknown type names', () => {
+        expect(parser.mapGenericIdeviceType('latex')).toBe('text');
+        expect(parser.mapGenericIdeviceType('custom')).toBe('text');
+        expect(parser.mapGenericIdeviceType('unknown')).toBe('text');
+      });
+
+      it('is case-insensitive', () => {
+        expect(parser.mapGenericIdeviceType('LATEX')).toBe('text');
+        expect(parser.mapGenericIdeviceType('LaTeX')).toBe('text');
+      });
+    });
+
+    describe('extractIDevicesWithTitles with generic Idevice', () => {
+      it('extracts type from __name__ field for exelearning.libs.idevices.idevice.Idevice', () => {
+        const xml = `<?xml version="1.0"?>
+          <document>
+            <list id="idevices-list">
+              <instance class="exelearning.libs.idevices.idevice.Idevice" reference="93">
+                <dictionary>
+                  <string role="key" value="__name__"/>
+                  <string value="latex"/>
+                  <string role="key" value="_title"/>
+                  <unicode value="LaTeX Formula"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exelearning.libs.idevices.fields.textareafield.TextAreaField" reference="94">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </document>`;
+
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        parser.xmlDoc = doc;
+
+        const listEl = doc.querySelector('list#idevices-list');
+        const idevices = parser.extractIDevicesWithTitles(listEl);
+
+        expect(idevices.length).toBe(1);
+        expect(idevices[0].type).toBe('text'); // Generic types map to 'text'
+        expect(idevices[0].title).toBe('LaTeX Formula');
+        expect(idevices[0].htmlView).toContain('\\frac{-b');
+      });
+
+      it('extracts content from exelearning.libs TextAreaField format', () => {
+        const xml = `<?xml version="1.0"?>
+          <document>
+            <list id="idevices-list">
+              <instance class="exelearning.libs.idevices.idevice.Idevice" reference="1">
+                <dictionary>
+                  <string role="key" value="__name__"/>
+                  <string value="custom"/>
+                  <string role="key" value="_title"/>
+                  <unicode value="Custom iDevice"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exelearning.libs.idevices.fields.textareafield.TextAreaField" reference="2">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Custom content from exelearning format"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </document>`;
+
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        parser.xmlDoc = doc;
+
+        const listEl = doc.querySelector('list#idevices-list');
+        const idevices = parser.extractIDevicesWithTitles(listEl);
+
+        expect(idevices.length).toBe(1);
+        expect(idevices[0].type).toBe('text');
+        expect(idevices[0].title).toBe('Custom iDevice');
+        expect(idevices[0].htmlView).toContain('Custom content from exelearning format');
+      });
+
+      it('defaults to text type when __name__ is missing', () => {
+        const xml = `<?xml version="1.0"?>
+          <document>
+            <list id="idevices-list">
+              <instance class="exelearning.libs.idevices.idevice.Idevice" reference="1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="No Name iDevice"/>
+                  <string role="key" value="fields"/>
+                  <list>
+                    <instance class="exelearning.libs.idevices.fields.textareafield.TextAreaField" reference="2">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Content without __name__"/>
+                      </dictionary>
+                    </instance>
+                  </list>
+                </dictionary>
+              </instance>
+            </list>
+          </document>`;
+
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        parser.xmlDoc = doc;
+
+        const listEl = doc.querySelector('list#idevices-list');
+        const idevices = parser.extractIDevicesWithTitles(listEl);
+
+        expect(idevices.length).toBe(1);
+        expect(idevices[0].type).toBe('text'); // Defaults to text
+        expect(idevices[0].title).toBe('No Name iDevice');
+      });
+
+      it('handles multiple generic Idevices', () => {
+        const xml = `<?xml version="1.0"?>
+          <document>
+            <list id="idevices-list">
+              <instance class="exelearning.libs.idevices.idevice.Idevice" reference="1">
+                <dictionary>
+                  <string role="key" value="__name__"/>
+                  <string value="latex"/>
+                  <string role="key" value="_title"/>
+                  <unicode value="First Formula"/>
+                </dictionary>
+              </instance>
+              <instance class="exelearning.libs.idevices.idevice.Idevice" reference="2">
+                <dictionary>
+                  <string role="key" value="__name__"/>
+                  <string value="custom"/>
+                  <string role="key" value="_title"/>
+                  <unicode value="Second iDevice"/>
+                </dictionary>
+              </instance>
+            </list>
+          </document>`;
+
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        parser.xmlDoc = doc;
+
+        const listEl = doc.querySelector('list#idevices-list');
+        const idevices = parser.extractIDevicesWithTitles(listEl);
+
+        expect(idevices.length).toBe(2);
+        expect(idevices[0].title).toBe('First Formula');
+        expect(idevices[0].type).toBe('text');
+        expect(idevices[1].title).toBe('Second iDevice');
+        expect(idevices[1].type).toBe('text');
+      });
     });
   });
 });

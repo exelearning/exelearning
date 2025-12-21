@@ -2258,3 +2258,140 @@ describe('window.resolveAssetUrlsAsync global function', () => {
     expect(result).toBe('<p>Resolved</p>');
   });
 });
+
+describe('window.escapePreCodeContent', () => {
+  let escapePreCodeContentFunc;
+  let savedWindow;
+
+  beforeEach(() => {
+    // Save original window
+    savedWindow = global.window;
+
+    // Create a clean window-like object
+    global.window = {};
+
+    // Import the module fresh to get the function registered
+    delete require.cache[require.resolve('./AssetManager')];
+    require('./AssetManager');
+
+    // The function should now be on global.window
+    escapePreCodeContentFunc = global.window.escapePreCodeContent;
+  });
+
+  afterEach(() => {
+    // Restore original window or delete if none
+    if (savedWindow) {
+      global.window = savedWindow;
+    } else {
+      delete global.window;
+    }
+  });
+
+  it('should escape script tags inside pre>code blocks', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code><script src="test.js"></script></code></pre>';
+    const expected = '<pre><code>&lt;script src=&quot;test.js&quot;&gt;&lt;/script&gt;</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should NOT escape content outside pre>code blocks', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<p>Hello <strong>world</strong></p><pre><code><div>test</div></code></pre>';
+    const expected = '<p>Hello <strong>world</strong></p><pre><code>&lt;div&gt;test&lt;/div&gt;</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should NOT escape inline code tags (without pre)', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<p>Use <code><script></code> tag</p>';
+    expect(escapePreCodeContentFunc(input)).toBe(input);
+  });
+
+  it('should handle multiple pre>code blocks', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code><a></code></pre><p>text</p><pre><code><b></code></pre>';
+    const expected = '<pre><code>&lt;a&gt;</code></pre><p>text</p><pre><code>&lt;b&gt;</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should handle attributes on pre and code tags', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre class="highlighted"><code class="lang-js"><script></script></code></pre>';
+    const expected = '<pre class="highlighted"><code class="lang-js">&lt;script&gt;&lt;/script&gt;</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should handle whitespace between tags', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre>\n  <code>\n    <div>\n  </code>\n</pre>';
+    const expected = '<pre>\n  <code>\n    &lt;div&gt;\n  </code>\n</pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should handle empty pre>code blocks', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code></code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(input);
+  });
+
+  it('should handle pre>code blocks with only whitespace', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code>   </code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(input);
+  });
+
+  it('should not double-escape already escaped content', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code>&lt;script&gt;</code></pre>';
+    const expected = '<pre><code>&lt;script&gt;</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should handle ampersands correctly', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code>a & b && c</code></pre>';
+    const expected = '<pre><code>a &amp; b &amp;&amp; c</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should handle quotes correctly', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code>let x = "hello";</code></pre>';
+    const expected = '<pre><code>let x = &quot;hello&quot;;</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should handle tikzjax example from bug report', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code>\n<script src="https://tikzjax.com/v1/tikzjax.js"></script>\n</code></pre>';
+    const expected = '<pre><code>\n&lt;script src=&quot;https://tikzjax.com/v1/tikzjax.js&quot;&gt;&lt;/script&gt;\n</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should handle null/undefined content', () => {
+    if (!escapePreCodeContentFunc) return;
+    expect(escapePreCodeContentFunc(null)).toBeNull();
+    expect(escapePreCodeContentFunc(undefined)).toBeUndefined();
+    expect(escapePreCodeContentFunc('')).toBe('');
+  });
+
+  it('should handle content with no pre>code blocks', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<p>Just some <em>normal</em> HTML</p>';
+    expect(escapePreCodeContentFunc(input)).toBe(input);
+  });
+
+  it('should handle complex nested HTML in code blocks', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code><div class="container"><p id="test">Hello</p></div></code></pre>';
+    const expected = '<pre><code>&lt;div class=&quot;container&quot;&gt;&lt;p id=&quot;test&quot;&gt;Hello&lt;/p&gt;&lt;/div&gt;</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+
+  it('should preserve content between multiple code blocks', () => {
+    if (!escapePreCodeContentFunc) return;
+    const input = '<pre><code><a></code></pre><script>alert("real")</script><pre><code><b></code></pre>';
+    const expected = '<pre><code>&lt;a&gt;</code></pre><script>alert("real")</script><pre><code>&lt;b&gt;</code></pre>';
+    expect(escapePreCodeContentFunc(input)).toBe(expected);
+  });
+});

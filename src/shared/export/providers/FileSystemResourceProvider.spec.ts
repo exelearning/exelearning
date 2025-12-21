@@ -29,8 +29,8 @@ describe('FileSystemResourceProvider', () => {
         await fs.ensureDir(path.join(testDir, 'app', 'common', 'scorm'));
         // Common JS files
         await fs.ensureDir(path.join(testDir, 'app', 'common'));
-        // Content CSS
-        await fs.ensureDir(path.join(testDir, 'style', 'content', 'css'));
+        // Content CSS (stored in style/workarea/ but exported as content/css/)
+        await fs.ensureDir(path.join(testDir, 'style', 'workarea'));
 
         // Create test files
         // Theme files
@@ -62,8 +62,8 @@ describe('FileSystemResourceProvider', () => {
         await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_export.js'), '/* Export */');
         await fs.writeFile(path.join(testDir, 'app', 'common', 'common.js'), '/* Common */');
         await fs.writeFile(path.join(testDir, 'app', 'common', 'common_i18n.js'), '/* i18n */');
-        // Content CSS
-        await fs.writeFile(path.join(testDir, 'style', 'content', 'css', 'base.css'), '.content { margin: 0; }');
+        // Content CSS (stored in style/workarea/ but exported as content/css/)
+        await fs.writeFile(path.join(testDir, 'style', 'workarea', 'base.css'), '.content { margin: 0; }');
 
         provider = new FileSystemResourceProvider(testDir);
     });

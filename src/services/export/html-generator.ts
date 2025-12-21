@@ -13,7 +13,7 @@ import { Html5ExportOptions } from './interfaces';
 import { normalizeHtmlPaths } from '../../utils/html-path-normalizer.util';
 
 // Import shared iDevice configuration service
-import { getIdeviceConfig } from '../idevice-config';
+import { getIdeviceConfig, getIdeviceExportFiles } from '../idevice-config';
 
 /**
  * Generate the full HTML for a page
@@ -126,14 +126,23 @@ function generateHead(
     head += `\n<link rel="stylesheet" href="${resourcesPrefix}libs/exe_lightbox/exe_lightbox.css">`;
 
     // iDevice-specific scripts and CSS
+    // Scan export folder for ALL JS/CSS files to include dependencies like html2canvas.js
     const seen = new Set<string>();
     for (const type of usedIdevices) {
         const config = getIdeviceConfig(type);
         const typeName = config.cssClass || type.toLowerCase().replace('idevice', '');
         if (!seen.has(typeName)) {
             seen.add(typeName);
-            head += `\n<script src="${resourcesPrefix}idevices/${typeName}/${typeName}.js"> </script>`;
-            head += `<link rel="stylesheet" href="${resourcesPrefix}idevices/${typeName}/${typeName}.css">`;
+            // Get ALL JS files from export folder (main file first, then dependencies)
+            const jsFiles = getIdeviceExportFiles(typeName, '.js');
+            for (const jsFile of jsFiles) {
+                head += `\n<script src="${resourcesPrefix}idevices/${typeName}/${jsFile}"> </script>`;
+            }
+            // Get ALL CSS files from export folder
+            const cssFiles = getIdeviceExportFiles(typeName, '.css');
+            for (const cssFile of cssFiles) {
+                head += `<link rel="stylesheet" href="${resourcesPrefix}idevices/${typeName}/${cssFile}">`;
+            }
         }
     }
 
