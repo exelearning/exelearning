@@ -2018,15 +2018,18 @@ class ExportXmlUtil
         // Package title and subtitle container
         $packageHeaderDiv = null;
         $packageTitleValue = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : '';
+
         // The single page export has its own package title
         if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
             $packageTitleValue = '';
-        } else {
-            if ('' != $packageTitleValue || '' != $subtitle) {
-                $packageHeaderDiv = $pageHeader->addChild('div');
-            } else {
-                $packageHeaderDiv = $pageHeader->addChild('div', '');
-            }
+        } elseif ('' == $packageTitleValue) {
+            // There should be no untitled packages
+            // Use a NO-BREAK SPACE in those cases
+            $packageTitleValue = '&#160;';
+        }
+
+        if ('' != $packageTitleValue || (Constants::EXPORT_TYPE_HTML5_SP != $exportType && '' != $subtitle)) {
+            $packageHeaderDiv = $pageHeader->addChild('div');
             $packageHeaderDiv->addAttribute('class', 'package-header');
         }
 

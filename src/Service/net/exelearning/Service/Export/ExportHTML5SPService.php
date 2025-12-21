@@ -193,7 +193,13 @@ class ExportHTML5SPService implements ExportServiceInterface
         // Add a header node as the first child of $targetPageContent
         $headerNode = $targetPageContent->addChild('header');
         $headerNode->addAttribute('class', 'package-header');
-        $headerNodeTitle = $headerNode->addChild('h1', $odeProperties['pp_title']->getValue('value'));
+        $headerNodeTitleContent = $odeProperties['pp_title']->getValue('value');
+        if ('' == $headerNodeTitleContent) {
+            // There should be no untitled packages
+            // Use a NO-BREAK SPACE in those cases
+            $headerNodeTitleContent = '&#160;';
+        }
+        $headerNodeTitle = $headerNode->addChild('h1', $headerNodeTitleContent);
         $headerNodeTitle->addAttribute('class', 'package-title');
 
         // Move the first two nodes of $targetPageContent to the new section node
