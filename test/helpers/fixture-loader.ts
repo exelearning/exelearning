@@ -44,11 +44,11 @@ export const FIXTURES: Record<string, Omit<FixtureInfo, 'path' | 'size'>> = {
         category: 'small',
         format: 'elp',
         isLegacy: true,
-    },
+    },make
     'latex.elp': {
         name: 'latex.elp',
         category: 'small',
-        format: 'elpx',
+        format: 'elp',
         isLegacy: true, // Has contentv3.xml, not content.xml
     },
     'un-contenido-de-ejemplo-para-probar-estilos-y-catalogacion.elpx': {
