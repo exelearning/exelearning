@@ -1622,10 +1622,28 @@ class ElpxImporter {
                 };
                 compMap.set('jsonProperties', JSON.stringify(jsonProps));
               } else {
-                // For other iDevices (form, etc.), use properties from LegacyXmlParser if available
-                // The properties object may contain questionsData for form iDevices
-                if (ideviceData.properties && typeof ideviceData.properties === 'object' && Object.keys(ideviceData.properties).length > 0) {
-                  // Apply asset path transformation to any HTML content in properties
+                // For casestudy iDevice, use properties from handler (history, activities)
+                // The casestudy editor expects { history: "...", activities: [...] }
+                // CaseStudyHandler extracts all content into properties, htmlView is empty
+                if (ideviceType === 'casestudy') {
+                  const jsonProps = {
+                    history: '',
+                    activities: [],
+                    // Task info fields (new in modern format, default to empty for legacy imports)
+                    textInfoDurationInput: '',
+                    textInfoDurationTextInput: '',
+                    textInfoParticipantsInput: '',
+                    textInfoParticipantsTextInput: '',
+                    ...(ideviceData.properties || {}),
+                  };
+                  // Only override history if transformedHtml has content (for compatibility)
+                  if (transformedHtml) {
+                    jsonProps.history = transformedHtml;
+                  }
+                  const transformedProps = transformPropertiesAssets(jsonProps, replaceAssetPaths);
+                  compMap.set('jsonProperties', JSON.stringify(transformedProps));
+                } else if (ideviceData.properties && typeof ideviceData.properties === 'object' && Object.keys(ideviceData.properties).length > 0) {
+                  // For other iDevices (form, etc.), use properties from LegacyXmlParser if available
                   const transformedProps = transformPropertiesAssets(ideviceData.properties, replaceAssetPaths);
                   compMap.set('jsonProperties', JSON.stringify(transformedProps));
                 } else {

@@ -55,46 +55,63 @@ class ImageMagnifierHandler extends BaseLegacyHandler {
 
   /**
    * Extract properties including image and magnifier settings
+   * Property names MUST match what the modern magnifier editor expects
    */
   extractProperties(dict) {
-    if (!dict) return {};
+    // Default structure matching modern magnifier editor expectations
+    const defaultProperties = {
+      textTextarea: '',        // Instructions (from htmlView/caption)
+      imageResource: '',       // Image path
+      isDefaultImage: '1',     // '0' = custom image, '1' = default
+      width: 600,              // Image width
+      height: '',              // Image height
+      align: 'left',           // Alignment
+      initialZSize: 100,       // Initial zoom (100, 150, 200, etc.)
+      glassSize: 2,            // Magnifier size (1-6 range, 2 = 100px)
+    };
 
-    const props = {};
+    if (!dict) return defaultProperties;
 
-    // Extract image source
-    const imageSrc = this.extractImagePath(dict);
-    if (imageSrc) {
-      props.imageSrc = imageSrc;
+    const props = { ...defaultProperties };
+
+    // Extract image source -> imageResource
+    const imagePath = this.extractImagePath(dict);
+    if (imagePath) {
+      props.imageResource = imagePath;
+      props.isDefaultImage = '0';  // Has custom image
+    }
+
+    // Extract instructions from caption (goes to textTextarea)
+    const caption = this.extractHtmlView(dict);
+    if (caption) {
+      props.textTextarea = caption;
     }
 
     // Extract magnifier settings
+    // Legacy zoomSize (like 2.0) -> initialZSize (100, 150, 200, etc.)
     const zoomSize = this.findDictStringValue(dict, 'zoomSize') ||
                     this.findDictStringValue(dict, '_zoomSize');
     if (zoomSize) {
-      props.zoomSize = parseFloat(zoomSize) || 2;
+      // Convert legacy zoom multiplier (e.g. 2.0) to percentage (e.g. 200)
+      const zoomMultiplier = parseFloat(zoomSize) || 2;
+      props.initialZSize = Math.round(zoomMultiplier * 100);
     }
 
-    const glassSize = this.findDictStringValue(dict, 'glassSize') ||
-                     this.findDictStringValue(dict, '_glassSize');
-    if (glassSize) {
-      props.glassSize = parseInt(glassSize, 10) || 150;
+    // Legacy glassSize (like 150px) -> modern glassSize (1-6 range)
+    // 1=50, 2=100, 3=150, 4=200, 5=250, 6=300
+    const legacyGlassSize = this.findDictStringValue(dict, 'glassSize') ||
+                           this.findDictStringValue(dict, '_glassSize');
+    if (legacyGlassSize) {
+      const glassPx = parseInt(legacyGlassSize, 10) || 100;
+      // Convert px to range: 50->1, 100->2, 150->3, 200->4, 250->5, 300->6
+      props.glassSize = Math.max(1, Math.min(6, Math.round(glassPx / 50)));
     }
 
-    // Extract max width
+    // Extract width (from maxImageWidth)
     const maxWidth = this.findDictStringValue(dict, 'maxImageWidth') ||
                     this.findDictStringValue(dict, '_maxImageWidth');
     if (maxWidth) {
-      props.maxWidth = parseInt(maxWidth, 10);
-    }
-
-    // Extract initial zoom position (optional)
-    const initialZoomX = this.findDictStringValue(dict, 'initialZoomX');
-    const initialZoomY = this.findDictStringValue(dict, 'initialZoomY');
-    if (initialZoomX) {
-      props.initialZoomX = parseFloat(initialZoomX);
-    }
-    if (initialZoomY) {
-      props.initialZoomY = parseFloat(initialZoomY);
+      props.width = parseInt(maxWidth, 10) || 600;
     }
 
     return props;

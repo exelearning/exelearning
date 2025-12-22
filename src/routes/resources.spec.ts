@@ -863,7 +863,9 @@ describe('Resources Routes', () => {
                 });
                 app = new Elysia().use(resourcesRoutes);
 
-                const res = await app.handle(new Request('http://localhost/api/resources/bundle/theme/theme-with-error'));
+                const res = await app.handle(
+                    new Request('http://localhost/api/resources/bundle/theme/theme-with-error'),
+                );
 
                 // Should succeed (skips broken file)
                 expect(res.status).toBe(200);

@@ -19,6 +19,11 @@
  * - handlers/FileAttachHandler.js
  * - handlers/ImageMagnifierHandler.js
  * - handlers/GameIdeviceHandler.js
+ * - handlers/ScormTestHandler.js
+ * - handlers/FpdSolvedExerciseHandler.js
+ * - handlers/RssHandler.js
+ * - handlers/WikipediaHandler.js
+ * - handlers/GeogebraHandler.js
  * - handlers/DefaultHandler.js
  */
 
@@ -38,14 +43,19 @@ const LegacyHandlerRegistry = {
     this.handlers = [
       new MultichoiceHandler(),      // MultichoiceIdevice, MultiSelectIdevice → form
       new TrueFalseHandler(),        // TrueFalseIdevice → form (true-false questions)
-      new FillHandler(),             // ClozeIdevice → form (fill-in-blanks)
+      new FillHandler(),             // ClozeIdevice, ClozeLanguageIdevice → form (fill-in-blanks)
       new DropdownHandler(),         // ListaIdevice → form (dropdown questions)
+      new ScormTestHandler(),        // ScormTestIdevice, QuizTestIdevice → form (SCORM quiz)
       new CaseStudyHandler(),        // CaseStudyIdevice → casestudy
       new GalleryHandler(),          // ImageGalleryIdevice, GalleryIdevice → image-gallery
       new ExternalUrlHandler(),      // ExternalUrlIdevice → external-website
       new FileAttachHandler(),       // FileAttachIdevice, AttachmentIdevice → download-source-file
       new ImageMagnifierHandler(),   // ImageMagnifierIdevice → magnifier
+      new GeogebraHandler(),         // GeogebraIdevice → geogebra-activity
       new GameIdeviceHandler(),      // flipcards, selecciona, trivial, etc. → game types
+      new FpdSolvedExerciseHandler(),// SolvedExerciseIdevice → text (with Q&A)
+      new WikipediaHandler(),        // WikipediaIdevice → text (with wrapper)
+      new RssHandler(),              // RssIdevice → text
       new FreeTextHandler(),         // FreeTextIdevice, ReflectionIdevice, GenericIdevice → text
       new DefaultHandler(),          // Fallback for unknown types (must be last)
     ];
@@ -89,6 +99,10 @@ const LEGACY_TYPE_MAP = {
   'ReflectionIdevice': 'text',
   'ReflectionfpdIdevice': 'text',
   'GenericIdevice': 'text',
+  'SolvedExerciseIdevice': 'text',
+  'EjercicioResueltoFpdIdevice': 'text',
+  'WikipediaIdevice': 'text',
+  'RssIdevice': 'text',
 
   // Quiz/Form iDevices → form
   'MultichoiceIdevice': 'form',
@@ -98,6 +112,10 @@ const LEGACY_TYPE_MAP = {
   'ListaIdevice': 'form',
   'ClozeIdevice': 'form',
   'ClozeActivityIdevice': 'form',
+  'ClozeLanguageIdevice': 'form',
+  'ClozeLangIdevice': 'form',
+  'ScormTestIdevice': 'form',
+  'QuizTestIdevice': 'form',
 
   // Case Study
   'CaseStudyIdevice': 'casestudy',
@@ -113,13 +131,8 @@ const LEGACY_TYPE_MAP = {
 
   // External content
   'ExternalUrlIdevice': 'external-website',
-  'WikipediaIdevice': 'wikipedia',
-  'RssIdevice': 'rss',
-  'GeogebraIdevice': 'geogebra',
+  'GeogebraIdevice': 'geogebra-activity',
   'JavaAppIdevice': 'java-app',
-
-  // Games (placeholder)
-  'ScormTestIdevice': 'scorm-test',
 };
 
 /**

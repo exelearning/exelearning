@@ -41,8 +41,8 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'truefalse': 'true-false',
         'cloze': 'cloze',
         'clozeactivity': 'cloze',
-        'case-study': 'case-study',
-        'casestudy': 'case-study',
+        'case-study': 'casestudy',
+        'casestudy': 'casestudy',
     };
 
     const cssClass = typeMap[normalized] || normalized || 'text';

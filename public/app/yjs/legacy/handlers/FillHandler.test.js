@@ -41,6 +41,14 @@ describe('FillHandler', () => {
       expect(handler.canHandle('exe.engine.clozeactivityidevice.ClozeActivityIdevice')).toBe(true);
     });
 
+    it('returns true for ClozeLanguageIdevice (FPD variant)', () => {
+      expect(handler.canHandle('exe.engine.clozelang.ClozeLanguageIdevice')).toBe(true);
+    });
+
+    it('returns true for ClozeLangIdevice', () => {
+      expect(handler.canHandle('exe.engine.clozelang.ClozeLangIdevice')).toBe(true);
+    });
+
     it('returns false for other iDevice types', () => {
       expect(handler.canHandle('exe.engine.freetextidevice.FreeTextIdevice')).toBe(false);
     });

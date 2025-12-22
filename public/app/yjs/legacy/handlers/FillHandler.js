@@ -1,12 +1,13 @@
 /**
  * FillHandler
  *
- * Handles legacy ClozeIdevice and ClozeActivityIdevice.
+ * Handles legacy ClozeIdevice, ClozeActivityIdevice, and ClozeLanguageIdevice.
  * Converts to modern 'form' iDevice with fill-in-blanks questions.
  *
  * Legacy XML structure:
  * - exe.engine.clozeidevice.ClozeIdevice
  * - exe.engine.clozeactivityidevice.ClozeActivityIdevice
+ * - exe.engine.clozelang.ClozeLanguageIdevice (FPD variant)
  *
  * Extracts:
  * - clozeText with gaps marked as {{answer}}
@@ -21,7 +22,9 @@ class FillHandler extends BaseLegacyHandler {
    */
   canHandle(className) {
     return className.includes('ClozeIdevice') ||
-           className.includes('ClozeActivityIdevice');
+           className.includes('ClozeActivityIdevice') ||
+           className.includes('ClozeLanguageIdevice') ||
+           className.includes('ClozeLangIdevice');
   }
 
   /**

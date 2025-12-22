@@ -374,9 +374,12 @@ export default class IdeviceNode {
                 if (iDevice.is(':hidden')) {
                     minifyIdeviceIcon = 'chevron-up-icon-green';
                 }
+                // Build iDevice type icon
+                const ideviceTypeIcon = this._getIdeviceTypeIconHtml();
                 blockButtonsHTML = `
                 <div class="dropdown exe-actions-menu">
                     <div class="idevice-editor-avatar" data-component-id="${id}"></div>
+                    ${ideviceTypeIcon}
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}"><span class="small-icon arrow-up-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move up')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}"><span class="small-icon arrow-down-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move down')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-edit-idevice ${blockButtonEditClass}" type="button" id=editIdevice${id} title="${_('Edit')}" ${blockButtonEditClass}><span class="small-icon edit-icon-green" aria-hidden="true"></span>${_('Edit')}${lockIndicator}</button>
@@ -3057,6 +3060,30 @@ export default class IdeviceNode {
 
         console.warn(`[IdeviceNode] Could not find installed iDevice for type: ${typeName}`);
         return null;
+    }
+
+    /**
+     * Generate HTML for the iDevice type icon in the toolbar
+     * @returns {string} HTML string for the icon
+     */
+    _getIdeviceTypeIconHtml() {
+        if (!this.idevice || !this.idevice.icon) {
+            return '';
+        }
+
+        const icon = this.idevice.icon;
+        const title = this.idevice.title || this.odeIdeviceTypeName;
+
+        if (icon.type === 'exe-icon') {
+            // exe-icon type: inline SVG content in icon.name
+            return `<div class="idevice-type-icon exe-app-tooltip" title="${title}">${icon.name}</div>`;
+        } else if (icon.type === 'img' && icon.url) {
+            // img type: background image from file
+            const iconUrl = `${this.idevice.path}/${icon.url}`;
+            return `<div class="idevice-type-icon idevice-img-icon exe-app-tooltip" style="background-image: url('${iconUrl}')" title="${title}"></div>`;
+        }
+
+        return '';
     }
 
     checkIsValid() {

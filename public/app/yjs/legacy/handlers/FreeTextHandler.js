@@ -71,6 +71,9 @@ class FreeTextHandler extends BaseLegacyHandler {
   extractFeedback(dict) {
     if (!dict) return { content: '', buttonCaption: '' };
 
+    // Use translation function if available, otherwise use Spanish default
+    const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+
     // Look for answerTextArea (ReflectionIdevice style)
     const answerTextArea = this.findDictInstance(dict, 'answerTextArea');
     if (answerTextArea) {
@@ -80,10 +83,7 @@ class FreeTextHandler extends BaseLegacyHandler {
         const content = this.extractTextAreaFieldContent(answerTextArea);
 
         // Get button caption
-        let buttonCaption = this.findDictStringValue(answerDict, 'buttonCaption') || '';
-        if (!buttonCaption) {
-          buttonCaption = 'Show Feedback';
-        }
+        const buttonCaption = this.findDictStringValue(answerDict, 'buttonCaption') || defaultCaption;
 
         if (content) {
           return { content, buttonCaption };
@@ -94,9 +94,14 @@ class FreeTextHandler extends BaseLegacyHandler {
     // Alternative: Look for feedbackTextArea
     const feedbackTextArea = this.findDictInstance(dict, 'feedbackTextArea');
     if (feedbackTextArea) {
+      const feedbackDict = feedbackTextArea.querySelector(':scope > dictionary');
+      let buttonCaption = defaultCaption;
+      if (feedbackDict) {
+        buttonCaption = this.findDictStringValue(feedbackDict, 'buttonCaption') || defaultCaption;
+      }
       const content = this.extractTextAreaFieldContent(feedbackTextArea);
       if (content) {
-        return { content, buttonCaption: 'Show Feedback' };
+        return { content, buttonCaption };
       }
     }
 

@@ -1615,9 +1615,11 @@ class LegacyXmlParser {
       }
     }
 
+    // Use translation function if available, otherwise use Spanish default
+    const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
     return {
       content,
-      buttonCaption: buttonCaption || 'Mostrar retroalimentación'
+      buttonCaption: buttonCaption || defaultCaption
     };
   }
 
@@ -1795,8 +1797,14 @@ class LegacyXmlParser {
             const buttonCaption = this.findDictStringValue(fieldDict, 'buttonCaption') || '';
             const content = this.extractTextAreaFieldContent(valueEl);
 
-            if (content && buttonCaption) {
-              return { content, buttonCaption };
+            // Return feedback if there's content (button caption is optional)
+            if (content) {
+              // Use translation function if available, otherwise use Spanish default
+              const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+              return {
+                content,
+                buttonCaption: buttonCaption || defaultCaption
+              };
             }
           }
         }
