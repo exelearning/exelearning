@@ -27,6 +27,7 @@ class YjsProjectBridge {
     this.resourceFetcher = null; // ResourceFetcher for fetching themes, libs, iDevices
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
+    this.connectionMonitor = null; // ConnectionMonitor for connection failure handling
     this.initialized = false;
     this.autoSyncEnabled = false;
     this.isNewProject = false; // Track if this is a new project (never saved)
@@ -138,10 +139,28 @@ class YjsProjectBridge {
       // Wait for connection and sync
       await this.documentManager.waitForWebSocketSync();
 
+      // IMPORTANT: Create blank structure AFTER sync to prevent duplicate pages
+      // When multiple clients join an unsaved project simultaneously, each would
+      // create a blank page before syncing, resulting in duplicates after Yjs merge.
+      // By deferring to after sync, we ensure only the first client creates the page.
+      this.documentManager.ensureBlankStructureIfEmpty();
+
       // Announce assets after WebSocket is connected
       if (this.assetWebSocketHandler && preloadedAssetCount > 0) {
         Logger.log(`[YjsProjectBridge] Announcing ${preloadedAssetCount} assets to server...`);
         await this.assetWebSocketHandler.announceAssetAvailability();
+      }
+
+      // Create ConnectionMonitor for connection failure handling
+      if (window.ConnectionMonitor) {
+        this.connectionMonitor = new window.ConnectionMonitor({
+          wsProvider: this.documentManager.wsProvider,
+          toastsManager: this.app.toasts,
+          sessionMonitor: window.eXeSessionMonitor,
+          maxReconnectAttempts: 5,
+        });
+        this.connectionMonitor.start();
+        Logger.log('[YjsProjectBridge] ConnectionMonitor initialized');
       }
     }
 
@@ -1989,6 +2008,12 @@ class YjsProjectBridge {
 
     // Cleanup SaveManager (no explicit cleanup needed, just null reference)
     this.saveManager = null;
+
+    // Cleanup ConnectionMonitor
+    if (this.connectionMonitor) {
+      this.connectionMonitor.destroy();
+      this.connectionMonitor = null;
+    }
 
     this.initialized = false;
     this.documentManager = null;

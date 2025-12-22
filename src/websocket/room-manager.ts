@@ -291,6 +291,47 @@ export function getActiveRooms(): string[] {
 }
 
 /**
+ * Get all connections for a specific user in a room
+ * A user may have multiple connections (multiple tabs/devices)
+ */
+export function getConnectionsByUserId(docName: string, userId: number): ServerWebSocket<WsData>[] {
+    const room = rooms.get(docName);
+    if (!room) return [];
+
+    const connections: ServerWebSocket<WsData>[] = [];
+    for (const conn of room.conns) {
+        if (conn.data?.userId === userId) {
+            connections.push(conn);
+        }
+    }
+    return connections;
+}
+
+/**
+ * Get all unique userIds connected to a room
+ */
+export function getConnectedUserIds(docName: string): number[] {
+    const room = rooms.get(docName);
+    if (!room) return [];
+
+    const userIds = new Set<number>();
+    for (const conn of room.conns) {
+        if (conn.data?.userId !== undefined) {
+            userIds.add(conn.data.userId);
+        }
+    }
+    return Array.from(userIds);
+}
+
+/**
+ * Get room by project UUID (finds room named "project-<uuid>")
+ */
+export function getRoomByProjectUuid(projectUuid: string): Room | undefined {
+    const docName = `project-${projectUuid}`;
+    return rooms.get(docName);
+}
+
+/**
  * Get room statistics
  */
 export function getRoomStats(): {

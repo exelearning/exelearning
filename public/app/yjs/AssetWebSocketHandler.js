@@ -346,6 +346,11 @@ class AssetWebSocketHandler {
         this._handleSlotAvailable(data);
         break;
 
+      // Access control messages
+      case 'access-revoked':
+        this._handleAccessRevoked(data);
+        break;
+
       default:
         console.warn(`[AssetWebSocketHandler] Unknown message type: ${type}`);
     }
@@ -1069,6 +1074,36 @@ class AssetWebSocketHandler {
 
     // Emit event for SaveManager to potentially start next upload
     this._emit('slotAvailable', data);
+  }
+
+  /**
+   * Handle access-revoked message from server
+   * Server is notifying that user's access has been revoked
+   * @param {Object} data - { reason: 'visibility_changed' | 'collaborator_removed', revokedAt }
+   */
+  _handleAccessRevoked(data) {
+    const { reason } = data;
+
+    console.warn(`[AssetWebSocketHandler] Access revoked: ${reason}`);
+
+    // Disconnect WebSocket to prevent further reconnection attempts
+    if (this.wsProvider) {
+      // Mark as intentionally disconnecting to prevent reconnect
+      this.wsProvider.shouldConnect = false;
+      this.wsProvider.disconnect();
+    }
+
+    // Emit event for other components
+    this._emit('accessRevoked', data);
+
+    // Redirect to access denied page
+    const basePath = window.eXeLearning?.config?.basePath || '';
+    const accessDeniedUrl = `${basePath}/access-denied`;
+
+    // Small delay to allow disconnect to complete
+    setTimeout(() => {
+      window.location.href = accessDeniedUrl;
+    }, 100);
   }
 
   /**

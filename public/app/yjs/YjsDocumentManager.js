@@ -152,7 +152,7 @@ class YjsDocumentManager {
       // The YjsProjectBridge will call startWebSocketConnection() after AssetWebSocketHandler is ready
     }
 
-    // Check if document is empty (after both IndexedDB and WebSocket sync)
+    // Check if document is empty (after IndexedDB sync, before WebSocket sync)
     const navigation = this.ydoc.getArray('navigation');
     if (navigation.length === 0) {
       // For new projects, skip server load (there's nothing to load)
@@ -161,11 +161,15 @@ class YjsDocumentManager {
         await this.loadFromServer();
       }
 
-      // If still empty after all syncs, create blank structure
-      if (navigation.length === 0) {
-        Logger.log('[YjsDocumentManager] Creating blank project structure');
+      // For OFFLINE mode only: create blank structure immediately
+      // (no WebSocket sync will happen, so no risk of duplicates)
+      // For ONLINE mode: defer to ensureBlankStructureIfEmpty() after WebSocket sync
+      // This prevents duplicate pages when multiple clients join simultaneously
+      if (this.config.offline && navigation.length === 0) {
+        Logger.log('[YjsDocumentManager] Creating blank project structure (offline mode)');
         this.createBlankProjectStructure();
       }
+      // For online mode, YjsProjectBridge will call ensureBlankStructureIfEmpty() after sync
     }
 
     // Setup UndoManager
@@ -370,6 +374,25 @@ class YjsDocumentManager {
   }
 
   /**
+   * Ensure blank project structure exists if document is empty.
+   * Should be called AFTER WebSocket sync to prevent duplicate pages
+   * when multiple clients join simultaneously.
+   *
+   * This method is the safe way to create blank structure after sync,
+   * preventing the race condition where two clients both create pages
+   * before syncing with each other.
+   */
+  ensureBlankStructureIfEmpty() {
+    const navigation = this.ydoc.getArray('navigation');
+    if (navigation.length === 0) {
+      Logger.log('[YjsDocumentManager] Creating blank project structure (post-sync)');
+      this.createBlankProjectStructure();
+    } else {
+      Logger.log('[YjsDocumentManager] Navigation not empty after sync, skipping blank structure');
+    }
+  }
+
+  /**
    * Create a blank project structure with an initial page
    * Used when starting a new project or when no data exists
    */
@@ -516,7 +539,11 @@ class YjsDocumentManager {
 
     this.wsProvider.on('connection-close', (event) => {
       console.warn('[YjsDocumentManager] WebSocket connection closed:', event);
-      this.emit('connectionChange', { connected: false });
+      this.emit('connectionChange', {
+        connected: false,
+        code: event?.code,
+        reason: event?.reason,
+      });
       // Connection will auto-reconnect via y-websocket
     });
 

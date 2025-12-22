@@ -1429,6 +1429,84 @@ describe('YjsDocumentManager', () => {
     });
   });
 
+  describe('ensureBlankStructureIfEmpty', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('creates blank structure when navigation is empty', () => {
+      // Clear navigation first
+      const navigation = manager.getNavigation();
+      while (navigation.length > 0) {
+        navigation.delete(0);
+      }
+      expect(navigation.length).toBe(0);
+
+      manager.ensureBlankStructureIfEmpty();
+
+      expect(navigation.length).toBe(1);
+    });
+
+    it('does not create structure when navigation already has pages', () => {
+      const navigation = manager.getNavigation();
+      const initialLength = navigation.length;
+      expect(initialLength).toBeGreaterThan(0);
+
+      manager.ensureBlankStructureIfEmpty();
+
+      expect(navigation.length).toBe(initialLength);
+    });
+
+    it('is safe to call multiple times', () => {
+      // Clear navigation first
+      const navigation = manager.getNavigation();
+      while (navigation.length > 0) {
+        navigation.delete(0);
+      }
+
+      manager.ensureBlankStructureIfEmpty();
+      manager.ensureBlankStructureIfEmpty();
+      manager.ensureBlankStructureIfEmpty();
+
+      // Should still only have 1 page
+      expect(navigation.length).toBe(1);
+    });
+  });
+
+  describe('initialize blank structure behavior', () => {
+    it('creates blank structure immediately in offline mode', async () => {
+      manager.config.offline = true;
+      await manager.initialize();
+
+      const navigation = manager.getNavigation();
+      expect(navigation.length).toBe(1);
+    });
+
+    it('does NOT create blank structure in online mode (deferred to bridge)', async () => {
+      // Create a new manager for online mode test
+      const onlineManager = new YjsDocumentManager('test-online-project', {
+        wsUrl: 'ws://localhost:3001/yjs',
+        apiUrl: '/api',
+        token: 'test-token',
+        offline: false, // Online mode
+      });
+
+      await onlineManager.initialize({ isNewProject: true });
+
+      // In online mode, blank structure should NOT be created during initialize
+      // It will be created by ensureBlankStructureIfEmpty() after WebSocket sync
+      const navigation = onlineManager.getNavigation();
+      // Navigation should be empty - no blank structure created yet
+      expect(navigation.length).toBe(0);
+
+      // Now call ensureBlankStructureIfEmpty (simulating what bridge does after sync)
+      onlineManager.ensureBlankStructureIfEmpty();
+      expect(navigation.length).toBe(1);
+
+      await onlineManager.destroy();
+    });
+  });
+
   describe('destroy with options', () => {
     beforeEach(async () => {
       await manager.initialize();
