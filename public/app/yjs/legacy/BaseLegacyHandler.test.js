@@ -293,6 +293,23 @@ describe('BaseLegacyHandler', () => {
       expect(handler.decodeHtmlContent(encoded)).toBe('Line1\nLine2\tTabbed');
     });
 
+    it('preserves LaTeX commands containing backslash-r', () => {
+      // LaTeX commands like \right, \rfloor, \rceil, \rho, \rangle should NOT be converted
+      const latex = '\\left( \\frac{a}{b} \\right)';
+      expect(handler.decodeHtmlContent(latex)).toBe('\\left( \\frac{a}{b} \\right)');
+    });
+
+    it('preserves various LaTeX \\r commands', () => {
+      const commands = '\\rfloor \\rceil \\rho \\rangle \\rightarrow';
+      expect(handler.decodeHtmlContent(commands)).toBe('\\rfloor \\rceil \\rho \\rangle \\rightarrow');
+    });
+
+    it('converts standalone \\r to carriage return', () => {
+      // Actual carriage return escape (not followed by letters) should still convert
+      const withCR = 'Line1\\r\\nLine2';
+      expect(handler.decodeHtmlContent(withCR)).toBe('Line1\r\nLine2');
+    });
+
     it('returns empty string for null/empty input', () => {
       expect(handler.decodeHtmlContent(null)).toBe('');
       expect(handler.decodeHtmlContent('')).toBe('');
