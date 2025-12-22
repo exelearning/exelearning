@@ -1175,7 +1175,6 @@ describe('Pages Routes', () => {
             expect(templateData.user.id).toBe(1);
             expect(templateData.user.email || templateData.user.username).toBeDefined();
             expect(templateData.config).toBeDefined();
-            expect(templateData.symfony).toBeDefined();
             expect(templateData.locale).toBeDefined();
             expect(templateData.projectId).toBe('render-test');
             expect(templateData.t).toBeDefined();
@@ -1322,10 +1321,11 @@ describe('Pages Routes', () => {
                 }),
             );
 
-            const symfony = templateData.symfony;
-            expect(symfony.environment).toBeDefined();
-            expect(symfony.locale).toBeDefined();
-            expect(symfony.token).toBeDefined();
+            // Config now contains all settings (formerly split between config and symfony)
+            const config = templateData.config;
+            expect(config.environment).toBeDefined();
+            expect(config.locale).toBeDefined();
+            expect(config.token).toBeDefined();
         });
 
         it('should handle template render error with fallback HTML', async () => {

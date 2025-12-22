@@ -3,8 +3,8 @@ import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
 export default class ApiCallManager {
     constructor(app) {
         this.app = app;
-        this.apiUrlBase = `${app.eXeLearning.symfony.baseURL}`;
-        this.apiUrlBasePath = `${app.eXeLearning.symfony.basePath}`;
+        this.apiUrlBase = `${app.eXeLearning.config.baseURL}`;
+        this.apiUrlBasePath = `${app.eXeLearning.config.basePath}`;
         this.apiUrlParameters = `${this.apiUrlBase}${this.apiUrlBasePath}/api/parameter-management/parameters/data/list`;
         this.func = new ApiCallBaseFunctions();
         this.endpoints = {};
@@ -39,7 +39,7 @@ export default class ApiCallManager {
      * @returns
      */
     async getChangelogText() {
-        let url = this.app.eXeLearning.symfony.changelogURL;
+        let url = this.app.eXeLearning.config.changelogURL;
         url += '?version=' + eXeLearning.app.common.getVersionTimeStamp();
         return await this.func.getText(url);
     }
@@ -116,7 +116,7 @@ export default class ApiCallManager {
         // Get auth token from available sources
         const authToken = eXeLearning?.app?.project?._yjsBridge?.authToken ||
                           eXeLearning?.app?.auth?.getToken?.() ||
-                          eXeLearning?.symfony?.token ||
+                          eXeLearning?.config?.token ||
                           localStorage.getItem('authToken');
 
         try {
@@ -155,7 +155,7 @@ export default class ApiCallManager {
         const authToken =
             eXeLearning?.app?.project?._yjsBridge?.authToken ||
             eXeLearning?.app?.auth?.getToken?.() ||
-            eXeLearning?.symfony?.token ||
+            eXeLearning?.config?.token ||
             localStorage.getItem('authToken');
 
         try {
@@ -1429,17 +1429,6 @@ export default class ApiCallManager {
     }
 
     /**
-     * Duplicate idevice
-     *
-     * @param {*} params
-     * @returns
-     */
-    async postCloneIdevice(params) {
-        let url = this.endpoints.api_idevices_idevice_duplicate.path;
-        return await this.func.post(url, params);
-    }
-
-    /**
      * Delete idevice
      *
      * @param {*} ideviceId
@@ -1569,18 +1558,6 @@ export default class ApiCallManager {
         // This method is only used for legacy API mode
         let url = this.endpoints.api_pag_structures_pag_structure_reorder.path;
         return await this.func.put(url, params);
-    }
-
-    /**
-     * Duplicate block
-     *
-     * @param {*} params
-     * @returns
-     */
-    async postCloneBlock(params) {
-        let url =
-            this.endpoints.api_pag_structures_pag_structure_duplicate.path;
-        return await this.func.post(url, params);
     }
 
     /**

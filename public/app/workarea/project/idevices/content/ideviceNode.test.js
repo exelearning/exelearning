@@ -110,6 +110,16 @@ describe('IdeviceNode', () => {
         eXeLearning.app.project._yjsEnabled = false;
         eXeLearning.app.project._yjsBridge = null;
 
+        // Reset structure in case a test set it to null
+        eXeLearning.app.project.structure = {
+            getSelectNodeNavId: vi.fn(() => 'nav-id-1'),
+            getSelectNodePageId: vi.fn(() => 'page-id-1'),
+            getAllNodesOrderByView: vi.fn(() => [
+                { id: 'page-1', deep: 0, pageName: 'Home' },
+                { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
+            ]),
+        };
+
         // Create mock engine
         mockEngine = {
             generateId: vi.fn(() => `engine-id-${Date.now()}`),
@@ -3543,23 +3553,66 @@ describe('IdeviceNode', () => {
     describe('apiCloneIdevice', () => {
         beforeEach(() => {
             idevice.id = 'comp-to-clone';
-            idevice.apiSendDataService = vi.fn();
-            mockEngine.cloneIdeviceInContent = vi.fn();
+            idevice.cloneViaYjs = vi.fn();
         });
 
-        it('clones idevice and shows info modal on success', async () => {
-            idevice.apiSendDataService.mockResolvedValue({
+        it('delegates to cloneViaYjs', async () => {
+            idevice.cloneViaYjs.mockResolvedValue({
                 responseMessage: 'OK',
-                odeComponentsSync: { id: 'cloned-id' },
+                clonedComponent: { id: 'cloned-id' },
             });
 
-            await idevice.apiCloneIdevice();
+            const result = await idevice.apiCloneIdevice();
 
-            expect(mockEngine.cloneIdeviceInContent).toHaveBeenCalled();
-            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
-                title: 'Information',
-                body: 'Identical contents in the same page might cause errors. Edit the new one or move it to another page.',
+            expect(idevice.cloneViaYjs).toHaveBeenCalled();
+            expect(result.responseMessage).toBe('OK');
+        });
+    });
+
+    describe('cloneViaYjs', () => {
+        beforeEach(() => {
+            idevice.id = 'comp-to-clone';
+            idevice.pageId = 'page-1';
+            idevice.blockId = 'block-1';
+            mockEngine.loadApiIdevicesInPage = vi.fn().mockResolvedValue(true);
+        });
+
+        it('clones component via Yjs on success', async () => {
+            eXeLearning.app.project.cloneComponentViaYjs = vi.fn().mockReturnValue({
+                id: 'cloned-id',
             });
+
+            const result = await idevice.cloneViaYjs();
+
+            expect(eXeLearning.app.project.cloneComponentViaYjs).toHaveBeenCalledWith(
+                'page-1',
+                'block-1',
+                'comp-to-clone'
+            );
+            expect(mockEngine.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('returns error when cloneComponentViaYjs fails', async () => {
+            eXeLearning.app.project.cloneComponentViaYjs = vi.fn().mockReturnValue(null);
+            idevice.showModalMessageErrorDatabase = vi.fn();
+
+            const result = await idevice.cloneViaYjs();
+
+            expect(result.responseMessage).toBe('ERROR');
+            expect(idevice.showModalMessageErrorDatabase).toHaveBeenCalled();
+        });
+
+        it('returns error when missing pageId or blockId', async () => {
+            idevice.pageId = null;
+            idevice.blockId = null;
+            eXeLearning.app.project.structure = null;
+            idevice.showModalMessageErrorDatabase = vi.fn();
+
+            const result = await idevice.cloneViaYjs();
+
+            expect(result.responseMessage).toBe('ERROR');
+            expect(idevice.showModalMessageErrorDatabase).toHaveBeenCalled();
         });
     });
 

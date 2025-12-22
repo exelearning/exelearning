@@ -83,12 +83,10 @@ describe('ModalStyleManager', () => {
                     },
                 },
             },
-            symfony: {
+            config: {
                 basePath: '/base',
                 themeTypeBase: 'base',
                 themeTypeUser: 'user',
-            },
-            config: {
                 isOfflineInstallation: false,
                 userStyles: true,
             },

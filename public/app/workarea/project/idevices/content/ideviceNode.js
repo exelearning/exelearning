@@ -2278,30 +2278,8 @@ export default class IdeviceNode {
      *
      */
     async apiCloneIdevice() {
-        let params = ['odeComponentsSyncId'];
-        let response = await this.apiSendDataService(
-            'postCloneIdevice',
-            params,
-            true
-        );
-        if (response.responseMessage == 'OK') {
-            await this.engine.cloneIdeviceInContent(
-                this,
-                response.odeComponentsSync
-            );
-            eXeLearning.app.modals.alert.show({
-                title: _('Information'),
-                body: _(
-                    'Identical contents in the same page might cause errors. Edit the new one or move it to another page.'
-                ),
-            });
-        } else {
-            let defaultErrorMessage = _(
-                'An error occurred while clone component in database'
-            );
-            this.showModalMessageErrorDatabase(response, defaultErrorMessage);
-        }
-        return response;
+        // Use Yjs for cloning (legacy API removed)
+        return await this.cloneViaYjs();
     }
 
     /**
@@ -2369,6 +2347,54 @@ export default class IdeviceNode {
                 defaultErrorMessage
             );
             return false;
+        }
+    }
+
+    /**
+     * Clone idevice via Yjs collaborative editing
+     * @returns {Object}
+     */
+    async cloneViaYjs() {
+        try {
+            const project = eXeLearning.app.project;
+            // Try multiple sources for pageId (same pattern as other methods)
+            const pageId =
+                this.block?.pageId ??
+                this.odeNavStructureSyncId ??
+                this.pageId ??
+                project.structure?.getSelectNodePageId?.() ??
+                project.structure?.nodeSelected?.id;
+            // Try multiple sources for blockId
+            const blockId = this.block?.blockId ?? this.blockId ?? this.block?.id;
+
+            if (!pageId || !blockId) {
+                console.error('[IdeviceNode] cloneViaYjs missing IDs:', { pageId, blockId, block: this.block });
+                throw new Error('Missing pageId or blockId for clone');
+            }
+
+            // Clone via Yjs - syncs to other clients automatically
+            const clonedComponent = project.cloneComponentViaYjs(pageId, blockId, this.id);
+
+            if (clonedComponent) {
+                Logger.log('[IdeviceNode] Cloned component via Yjs:', this.id, '→', clonedComponent.id);
+
+                // Reload page content to show the cloned idevice
+                await this.engine.loadApiIdevicesInPage(true);
+
+                return { responseMessage: 'OK', clonedComponent };
+            } else {
+                throw new Error('Failed to clone component via Yjs');
+            }
+        } catch (error) {
+            console.error('[IdeviceNode] Yjs clone error:', error);
+            let defaultErrorMessage = _(
+                'An error occurred while cloning the component'
+            );
+            this.showModalMessageErrorDatabase(
+                { responseMessage: 'ERROR' },
+                defaultErrorMessage
+            );
+            return { responseMessage: 'ERROR' };
         }
     }
 

@@ -63,7 +63,7 @@ describe('common.js $exe helpers', () => {
   });
 
   it('hasTooltips loads tooltip script when tooltips are present', () => {
-    global.eXeLearning = { symfony: { fullURL: 'http://example.com' } };
+    global.eXeLearning = { config: { fullURL: 'http://example.com' } };
     document.body.innerHTML = '<a class="exe-tooltip" href="#"></a>';
 
     const loadSpy = vi.spyOn(global.$exe, 'loadScript').mockImplementation(() => {});

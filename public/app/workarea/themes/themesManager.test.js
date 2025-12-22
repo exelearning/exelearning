@@ -59,7 +59,7 @@ describe('ThemesManager', () => {
     // Mock app
     mockApp = {
       eXeLearning: {
-        symfony: {
+        config: {
           basePath: 'http://localhost:8080',
         },
       },

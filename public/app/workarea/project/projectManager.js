@@ -112,7 +112,7 @@ export default class projectManager {
 
             // Get auth token (optional - enables collaborative mode)
             const authToken = this.app?.auth?.getToken?.() ||
-                              eXeLearning?.symfony?.token ||
+                              eXeLearning?.config?.token ||
                               localStorage.getItem('authToken');
 
             // Determine if we should use local-only mode (no WebSocket sync)
@@ -206,7 +206,7 @@ export default class projectManager {
 
         // Get auth token
         const authToken = this.app?.auth?.getToken?.() ||
-                          eXeLearning?.symfony?.token ||
+                          eXeLearning?.config?.token ||
                           localStorage.getItem('authToken');
 
         // Determine mode
@@ -328,7 +328,7 @@ export default class projectManager {
             }
 
             // Add basePath to import path if it starts with / (relative server path)
-            const basePath = window.eXeLearning?.symfony?.basePath || '';
+            const basePath = window.eXeLearning?.config?.basePath || '';
             const fetchPath = importPath.startsWith('/') && basePath && !importPath.startsWith(basePath)
                 ? `${basePath}${importPath}`
                 : importPath;

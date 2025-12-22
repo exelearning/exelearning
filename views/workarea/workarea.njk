@@ -51,7 +51,6 @@
             extension: "{{ extension }}",
             user: `{{ user | dump | safe }}`,
             config: `{{ config | dump | safe }}`,
-            symfony: `{{ symfony | dump | safe }}`,
             projectId: {% if projectId %}"{{ projectId }}"{% else %}null{% endif %}
         }
     </script>

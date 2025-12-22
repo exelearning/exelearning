@@ -156,7 +156,7 @@ describe('YjsProjectBridge', () => {
       ResourceFetcher: MockResourceFetcher,
       ResourceCache: MockResourceCache,
       eXeLearning: {
-        symfony: { basePath: '' },
+        config: { basePath: '' },
       },
       location: {
         protocol: 'http:',
@@ -254,7 +254,7 @@ describe('YjsProjectBridge', () => {
     });
 
     it('includes basePath from config', () => {
-      window.eXeLearning.symfony.basePath = '/web/exelearning';
+      window.eXeLearning.config.basePath = '/web/exelearning';
       const url = bridge.getWebSocketUrl();
       expect(url).toContain('/web/exelearning/yjs');
     });
@@ -267,7 +267,7 @@ describe('YjsProjectBridge', () => {
     });
 
     it('includes basePath from config', () => {
-      window.eXeLearning.symfony.basePath = '/web/exelearning';
+      window.eXeLearning.config.basePath = '/web/exelearning';
       const url = bridge.getApiUrl();
       expect(url).toContain('/web/exelearning/api');
     });
@@ -1319,8 +1319,7 @@ describe('YjsProjectBridge', () => {
 
     it('returns true when isOfflineInstallation is true', () => {
       global.window.eXeLearning = {
-        config: { isOfflineInstallation: true },
-        symfony: { basePath: '' },
+        config: { isOfflineInstallation: true, basePath: '' },
       };
       const result = bridge._shouldSkipSyncWait();
       expect(result).toBe(true);
@@ -1328,8 +1327,7 @@ describe('YjsProjectBridge', () => {
 
     it('returns false in normal browser environment', () => {
       global.window.eXeLearning = {
-        config: { isOfflineInstallation: false },
-        symfony: { basePath: '' },
+        config: { isOfflineInstallation: false, basePath: '' },
       };
       const result = bridge._shouldSkipSyncWait();
       expect(result).toBe(false);

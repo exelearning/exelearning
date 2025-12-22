@@ -1190,6 +1190,30 @@ describe('YjsStructureBinding', () => {
       const result = binding.moveBlockToPage('block-1', 'page-1');
       expect(result).toBe(false);
     });
+
+    it('places moved block at end based on max order (not array length)', () => {
+      // Setup page-2 with non-sequential orders (simulating deletions)
+      const page2 = mockDocManager.getNavigation().get(1);
+      const blocks2 = page2.get('blocks');
+      const existingBlock1 = createYMap({ id: 'existing-1', blockId: 'existing-1', order: 0 });
+      const existingBlock2 = createYMap({ id: 'existing-2', blockId: 'existing-2', order: 5 }); // Gap in orders
+      existingBlock1.set('components', createYArray());
+      existingBlock2.set('components', createYArray());
+      blocks2.push([existingBlock1]);
+      blocks2.push([existingBlock2]);
+
+      // Move block-1 to page-2
+      const result = binding.moveBlockToPage('block-1', 'page-2');
+
+      expect(result).toBe(true);
+      const movedBlocks = binding.getBlocks('page-2');
+      expect(movedBlocks).toHaveLength(3);
+      // Moved block should have order 6 (maxOrder 5 + 1), appearing last when sorted
+      const movedBlock = movedBlocks.find((b) => b.blockName === 'Block 1');
+      expect(movedBlock.order).toBe(6);
+      // Verify sort order places it at the end
+      expect(movedBlocks[2].blockName).toBe('Block 1');
+    });
   });
 
   // ===== Component Operations Tests =====
@@ -1568,6 +1592,367 @@ describe('YjsStructureBinding', () => {
     });
   });
 
+  describe('cloneComponentMap deep cloning', () => {
+    let component;
+
+    beforeEach(() => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = createYArray();
+      const block = createYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+      });
+
+      component = createYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+
+      const componentsArray = createYArray();
+      componentsArray.push([component]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('should clone htmlContent', () => {
+      const html = new Y.Text();
+      html.insert(0, '<p>Test content with <strong>formatting</strong></p>');
+      component.set('htmlContent', html);
+
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'comp-1');
+
+      expect(cloned).toBeDefined();
+      // Get the cloned component from the block
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedComp = blocks.get(0).get('components').get(1);
+      expect(clonedComp.get('htmlContent').toString()).toBe('<p>Test content with <strong>formatting</strong></p>');
+    });
+
+    it('should clone jsonProperties Y.Map', () => {
+      const jsonProps = new Y.Map();
+      jsonProps.set('questions', [{ q: 'What is 2+2?', a: '4' }]);
+      jsonProps.set('options', ['A', 'B', 'C', 'D']);
+      jsonProps.set('correctAnswer', 'D');
+      component.set('jsonProperties', jsonProps);
+
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'comp-1');
+
+      expect(cloned).toBeDefined();
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedComp = blocks.get(0).get('components').get(1);
+      const clonedJsonProps = clonedComp.get('jsonProperties');
+      expect(clonedJsonProps).toBeDefined();
+      expect(clonedJsonProps.get('questions')).toEqual([{ q: 'What is 2+2?', a: '4' }]);
+      expect(clonedJsonProps.get('options')).toEqual(['A', 'B', 'C', 'D']);
+      expect(clonedJsonProps.get('correctAnswer')).toBe('D');
+    });
+
+    it('should clone properties Y.Map', () => {
+      const props = new Y.Map();
+      props.set('visibility', 'visible');
+      props.set('teacherOnly', true);
+      props.set('cssClass', 'highlight');
+      component.set('properties', props);
+
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'comp-1');
+
+      expect(cloned).toBeDefined();
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedComp = blocks.get(0).get('components').get(1);
+      const clonedProps = clonedComp.get('properties');
+      expect(clonedProps).toBeDefined();
+      expect(clonedProps.get('visibility')).toBe('visible');
+      expect(clonedProps.get('teacherOnly')).toBe(true);
+      expect(clonedProps.get('cssClass')).toBe('highlight');
+    });
+
+    it('should clone htmlView', () => {
+      component.set('htmlView', '<div class="rendered">Rendered content</div>');
+
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'comp-1');
+
+      expect(cloned).toBeDefined();
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedComp = blocks.get(0).get('components').get(1);
+      expect(clonedComp.get('htmlView')).toBe('<div class="rendered">Rendered content</div>');
+    });
+
+    it('should clone title, subtitle, instructions, and feedback', () => {
+      component.set('title', 'My Title');
+      component.set('subtitle', 'My Subtitle');
+      component.set('instructions', 'Read carefully');
+      component.set('feedback', 'Good job!');
+
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'comp-1');
+
+      expect(cloned).toBeDefined();
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedComp = blocks.get(0).get('components').get(1);
+      expect(clonedComp.get('title')).toBe('My Title');
+      expect(clonedComp.get('subtitle')).toBe('My Subtitle');
+      expect(clonedComp.get('instructions')).toBe('Read carefully');
+      expect(clonedComp.get('feedback')).toBe('Good job!');
+    });
+  });
+
+  describe('cloneBlockMap deep cloning', () => {
+    let block;
+
+    beforeEach(() => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = createYArray();
+      block = createYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Original Block',
+        order: 0,
+      });
+
+      const componentsArray = createYArray();
+      const comp = createYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+      componentsArray.push([comp]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+    });
+
+    it('should clone block properties Y.Map', () => {
+      const props = new Y.Map();
+      props.set('allowToggle', true);
+      props.set('minimized', false);
+      props.set('visibility', 'visible');
+      block.set('properties', props);
+
+      const cloned = binding.cloneBlock('page-1', 'block-1');
+
+      expect(cloned).toBeDefined();
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedBlock = blocks.get(1);
+      const clonedProps = clonedBlock.get('properties');
+      expect(clonedProps).toBeDefined();
+      expect(clonedProps.get('allowToggle')).toBe(true);
+      expect(clonedProps.get('minimized')).toBe(false);
+      expect(clonedProps.get('visibility')).toBe('visible');
+    });
+
+    it('should clone iconName and blockType', () => {
+      block.set('iconName', 'fa-book');
+      block.set('blockType', 'content');
+
+      const cloned = binding.cloneBlock('page-1', 'block-1');
+
+      expect(cloned).toBeDefined();
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedBlock = blocks.get(1);
+      expect(clonedBlock.get('iconName')).toBe('fa-book');
+      expect(clonedBlock.get('blockType')).toBe('content');
+    });
+
+    it('should clone all components with their content', () => {
+      // Add content to the component
+      const comp = block.get('components').get(0);
+      const html = new Y.Text();
+      html.insert(0, '<p>Component content</p>');
+      comp.set('htmlContent', html);
+
+      const jsonProps = new Y.Map();
+      jsonProps.set('answers', ['A', 'B', 'C']);
+      comp.set('jsonProperties', jsonProps);
+
+      const cloned = binding.cloneBlock('page-1', 'block-1');
+
+      expect(cloned).toBeDefined();
+      expect(cloned.componentCount).toBe(1);
+
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedBlock = blocks.get(1);
+      const clonedComps = clonedBlock.get('components');
+      expect(clonedComps.length).toBe(1);
+
+      const clonedComp = clonedComps.get(0);
+      expect(clonedComp.get('htmlContent').toString()).toBe('<p>Component content</p>');
+      expect(clonedComp.get('jsonProperties').get('answers')).toEqual(['A', 'B', 'C']);
+    });
+
+    it('should clone multiple components with different content', () => {
+      // Add second component
+      const comp2 = createYMap({
+        id: 'comp-2',
+        ideviceId: 'comp-2',
+        ideviceType: 'MultipleChoiceIdevice',
+        order: 1,
+      });
+      const html2 = new Y.Text();
+      html2.insert(0, '<p>Second component</p>');
+      comp2.set('htmlContent', html2);
+      block.get('components').push([comp2]);
+
+      const cloned = binding.cloneBlock('page-1', 'block-1');
+
+      expect(cloned).toBeDefined();
+      expect(cloned.componentCount).toBe(2);
+
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedBlock = blocks.get(1);
+      const clonedComps = clonedBlock.get('components');
+      expect(clonedComps.length).toBe(2);
+      expect(clonedComps.get(0).get('ideviceType')).toBe('FreeTextIdevice');
+      expect(clonedComps.get(1).get('ideviceType')).toBe('MultipleChoiceIdevice');
+      expect(clonedComps.get(1).get('htmlContent').toString()).toBe('<p>Second component</p>');
+    });
+  });
+
+  describe('clonePage deep cloning', () => {
+    let page;
+    let block;
+    let component;
+
+    beforeEach(() => {
+      page = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Original Page',
+      });
+      const blocksArray = createYArray();
+      block = createYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        order: 0,
+      });
+
+      component = createYMap({
+        id: 'comp-1',
+        ideviceId: 'comp-1',
+        ideviceType: 'FreeTextIdevice',
+        order: 0,
+      });
+
+      const componentsArray = createYArray();
+      componentsArray.push([component]);
+      block.set('components', componentsArray);
+      blocksArray.push([block]);
+      page.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([page]);
+    });
+
+    it('should clone page with all blocks and components content', () => {
+      // Add content to component
+      const html = new Y.Text();
+      html.insert(0, '<h1>Page content</h1>');
+      component.set('htmlContent', html);
+
+      const jsonProps = new Y.Map();
+      jsonProps.set('options', ['A', 'B', 'C']);
+      component.set('jsonProperties', jsonProps);
+
+      // Add block properties
+      const blockProps = new Y.Map();
+      blockProps.set('allowToggle', true);
+      block.set('properties', blockProps);
+      block.set('iconName', 'fa-file-text');
+
+      const cloned = binding.clonePage('page-1');
+
+      expect(cloned).toBeDefined();
+      expect(cloned.id).not.toBe('page-1');
+      expect(cloned.pageName).toBe('Original Page (copy)');
+      expect(cloned.blockCount).toBe(1);
+
+      // Verify cloned content
+      const clonedPageMap = cloned._ymap;
+      const clonedBlocks = clonedPageMap.get('blocks');
+      expect(clonedBlocks.length).toBe(1);
+
+      const clonedBlock = clonedBlocks.get(0);
+      expect(clonedBlock.get('iconName')).toBe('fa-file-text');
+      expect(clonedBlock.get('properties').get('allowToggle')).toBe(true);
+
+      const clonedComps = clonedBlock.get('components');
+      expect(clonedComps.length).toBe(1);
+
+      const clonedComp = clonedComps.get(0);
+      expect(clonedComp.get('htmlContent').toString()).toBe('<h1>Page content</h1>');
+      expect(clonedComp.get('jsonProperties').get('options')).toEqual(['A', 'B', 'C']);
+    });
+
+    it('should clone page with multiple blocks each having multiple components', () => {
+      // Add second block with two components
+      const block2 = createYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+        order: 1,
+      });
+      block2.set('iconName', 'fa-question');
+
+      const comp2a = createYMap({
+        id: 'comp-2a',
+        ideviceId: 'comp-2a',
+        ideviceType: 'MultipleChoiceIdevice',
+        order: 0,
+      });
+      const html2a = new Y.Text();
+      html2a.insert(0, '<p>Question 1</p>');
+      comp2a.set('htmlContent', html2a);
+
+      const comp2b = createYMap({
+        id: 'comp-2b',
+        ideviceId: 'comp-2b',
+        ideviceType: 'TrueFalseIdevice',
+        order: 1,
+      });
+      const html2b = new Y.Text();
+      html2b.insert(0, '<p>Question 2</p>');
+      comp2b.set('htmlContent', html2b);
+
+      const comps2 = createYArray();
+      comps2.push([comp2a]);
+      comps2.push([comp2b]);
+      block2.set('components', comps2);
+
+      page.get('blocks').push([block2]);
+
+      const cloned = binding.clonePage('page-1');
+
+      expect(cloned).toBeDefined();
+      expect(cloned.blockCount).toBe(2);
+
+      const clonedPageMap = cloned._ymap;
+      const clonedBlocks = clonedPageMap.get('blocks');
+      expect(clonedBlocks.length).toBe(2);
+
+      // Verify second block
+      const clonedBlock2 = clonedBlocks.get(1);
+      expect(clonedBlock2.get('iconName')).toBe('fa-question');
+
+      const clonedComps2 = clonedBlock2.get('components');
+      expect(clonedComps2.length).toBe(2);
+      expect(clonedComps2.get(0).get('htmlContent').toString()).toBe('<p>Question 1</p>');
+      expect(clonedComps2.get(1).get('htmlContent').toString()).toBe('<p>Question 2</p>');
+    });
+  });
+
   describe('moveComponentToBlock', () => {
     beforeEach(() => {
       const pageMap = createYMap({
@@ -1626,6 +2011,30 @@ describe('YjsStructureBinding', () => {
     it('handles moving within same block as reorder', () => {
       const result = binding.moveComponentToBlock('comp-1', 'block-1', 0);
       expect(result).toBe(true);
+    });
+
+    it('places moved component at end based on max order (not array length)', () => {
+      // Add components with non-sequential orders to block-2
+      const page = mockDocManager.getNavigation().get(0);
+      const blocks = page.get('blocks');
+      const block2 = blocks.get(1);
+      const comps2 = block2.get('components');
+      const existingComp1 = createYMap({ id: 'existing-comp-1', ideviceId: 'existing-comp-1', order: 0 });
+      const existingComp2 = createYMap({ id: 'existing-comp-2', ideviceId: 'existing-comp-2', order: 10 }); // Gap
+      comps2.push([existingComp1]);
+      comps2.push([existingComp2]);
+
+      // Move comp-1 to block-2
+      const result = binding.moveComponentToBlock('comp-1', 'block-2');
+
+      expect(result).toBe(true);
+      const movedComps = binding.getComponents('page-1', 'block-2');
+      expect(movedComps).toHaveLength(3);
+      // Moved component should have order 11 (maxOrder 10 + 1)
+      const movedComp = movedComps.find((c) => c.id === 'comp-1');
+      expect(movedComp.order).toBe(11);
+      // Verify sort order places it at the end
+      expect(movedComps[2].id).toBe('comp-1');
     });
   });
 
@@ -1688,6 +2097,30 @@ describe('YjsStructureBinding', () => {
 
       expect(result).toBeDefined();
       expect(result.blockId).toBeDefined();
+    });
+
+    it('places new block at end based on max order (not array length)', () => {
+      // Add blocks with non-sequential orders to page-2
+      const page2 = mockDocManager.getNavigation().get(1);
+      const blocks2 = page2.get('blocks');
+      const existingBlock1 = createYMap({ id: 'existing-1', blockId: 'existing-1', order: 0 });
+      const existingBlock2 = createYMap({ id: 'existing-2', blockId: 'existing-2', order: 7 }); // Gap
+      existingBlock1.set('components', createYArray());
+      existingBlock2.set('components', createYArray());
+      blocks2.push([existingBlock1]);
+      blocks2.push([existingBlock2]);
+
+      // Move comp-1 to page-2
+      const result = binding.moveComponentToPage('comp-1', 'page-2');
+
+      expect(result).toBeDefined();
+      const movedBlocks = binding.getBlocks('page-2');
+      expect(movedBlocks).toHaveLength(3);
+      // New block should have order 8 (maxOrder 7 + 1)
+      const newBlock = movedBlocks.find((b) => b.id === result.blockId);
+      expect(newBlock.order).toBe(8);
+      // Verify sort order places it at the end
+      expect(movedBlocks[2].id).toBe(result.blockId);
     });
   });
 

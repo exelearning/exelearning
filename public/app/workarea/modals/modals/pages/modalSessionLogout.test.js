@@ -49,7 +49,7 @@ describe('ModalSessionLogout', () => {
       user: {
         username: 'testuser',
       },
-      symfony: {
+      config: {
         basePath: '/base',
       },
     };

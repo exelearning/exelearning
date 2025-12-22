@@ -23,7 +23,7 @@ export default class Locale {
      * @param {*} lang
      */
     async init() {
-        this.setLocaleLang(this.app.eXeLearning.symfony.locale);
+        this.setLocaleLang(this.app.eXeLearning.config.locale);
         await this.loadTranslationsStrings();
     }
 

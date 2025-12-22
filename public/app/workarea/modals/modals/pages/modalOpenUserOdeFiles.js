@@ -706,7 +706,7 @@ export default class modalOpenUserOdeFiles extends Modal {
 
         // Redirect to workarea with project UUID
         Logger.log(`[OpenProject] Opening project: ${projectUuid}`);
-        const basePath = window.eXeLearning?.symfony?.basePath || '';
+        const basePath = window.eXeLearning?.config?.basePath || '';
         window.location.href = `${basePath}/workarea?project=${projectUuid}`;
     }
 
@@ -717,7 +717,7 @@ export default class modalOpenUserOdeFiles extends Modal {
     getAuthToken() {
         return eXeLearning?.app?.project?._yjsBridge?.authToken ||
                eXeLearning?.app?.auth?.getToken?.() ||
-               eXeLearning?.symfony?.token ||
+               eXeLearning?.config?.token ||
                localStorage.getItem('authToken');
     }
 
@@ -1257,7 +1257,7 @@ export default class modalOpenUserOdeFiles extends Modal {
 
                 // Create a new project via API to get UUID
                 const projectTitle = odeFileName.replace(/\.(elp|elpx)$/i, '') || 'Imported Project';
-                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                const basePath = window.eXeLearning?.config?.basePath || '';
                 const authToken = this.getAuthToken();
                 const createResponse = await fetch(`${basePath}/api/project/create-quick`, {
                     method: 'POST',
@@ -1322,7 +1322,7 @@ export default class modalOpenUserOdeFiles extends Modal {
 
                     // Update URL without page reload (wrapped in try-catch to handle browser extensions blocking pushState)
                     try {
-                        const basePath = window.eXeLearning?.symfony?.basePath || '';
+                        const basePath = window.eXeLearning?.config?.basePath || '';
                         window.history.pushState({}, '', `${basePath}/workarea?project=${projectUuid}`);
                     } catch (pushStateError) {
                         // Some browser extensions (security/privacy) block pushState - this is non-critical
@@ -1580,7 +1580,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     window.onbeforeunload = null;
                     window._skipLeaveSessionModal = true;
                     const importParam = encodeURIComponent(response.elpImportPath);
-                    const basePath = window.eXeLearning?.symfony?.basePath || '';
+                    const basePath = window.eXeLearning?.config?.basePath || '';
                     window.location.href = `${basePath}/workarea?project=${response.projectUuid}&import=${importParam}`;
                     return; // Stop here - page will reload
                 }
@@ -1719,7 +1719,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 // Clear beforeunload handler to prevent browser "Leave site?" dialog
                 window.onbeforeunload = null;
                 const importParam = encodeURIComponent(response.elpImportPath);
-                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                const basePath = window.eXeLearning?.config?.basePath || '';
                 window.location.href = `${basePath}/workarea?project=${response.projectUuid}&import=${importParam}`;
                 return;
             }

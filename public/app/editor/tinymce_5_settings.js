@@ -113,8 +113,8 @@ var $exeTinyMCE = {
     getAssetURL: function (url) {
         // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/...)
         let assetUrl =
-            eXeLearning.symfony.baseURL +
-            eXeLearning.symfony.basePath +
+            eXeLearning.config.baseURL +
+            eXeLearning.config.basePath +
             '/' +
             eXeLearning.version;
         return assetUrl + url;

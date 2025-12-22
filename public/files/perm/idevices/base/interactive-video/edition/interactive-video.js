@@ -509,8 +509,8 @@ var $exeDevice = {
             var win = null;
             // Get file path
             var filePath = $exeDevice.idevicePath.replace(
-                eXeLearning.symfony.baseURL +
-                    eXeLearning.symfony.basePath +
+                eXeLearning.config.baseURL +
+                    eXeLearning.config.basePath +
                     '/files/',
                 ''
             );
@@ -519,8 +519,8 @@ var $exeDevice = {
                 '#modalGenericIframeContainer,#modalGenericIframeContainerCSS'
             ).remove();
             const editorURL =
-                eXeLearning.symfony.baseURL +
-                eXeLearning.symfony.basePath +
+                eXeLearning.config.baseURL +
+                eXeLearning.config.basePath +
                 '/api/idevice-management/idevices/download/file/resources?resource=' +
                 filePath +
                 'editor/index.html';

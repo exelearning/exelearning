@@ -21,7 +21,7 @@ describe('ApiCallManager', () => {
 
     mockApp = {
       eXeLearning: {
-        symfony: {
+        config: {
           baseURL: 'http://localhost',
           basePath: '/exelearning',
           changelogURL: 'http://localhost/changelog',
@@ -1081,7 +1081,6 @@ describe('ApiCallManager', () => {
       apiManager.endpoints.api_idevices_upload_large_file_resources = { path: 'http://localhost/file/large' };
 
       await apiManager.putReorderBlock({ id: 1 });
-      await apiManager.postCloneBlock({ id: 1 });
       await apiManager.deleteBlock('block-1');
       await apiManager.putSavePage({ id: 1 });
       await apiManager.putReorderPage({ id: 1 });
@@ -1091,7 +1090,6 @@ describe('ApiCallManager', () => {
       await apiManager.postUploadLargeFileResource({ file: 'b' });
 
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/block/reorder', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/block/clone', { id: 1 });
       expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/block/delete/block-1');
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/page/save', { id: 1 });
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/page/reorder', { id: 1 });
@@ -1148,17 +1146,14 @@ describe('ApiCallManager', () => {
     it('should call idevice save and reorder endpoints', async () => {
       apiManager.endpoints.api_idevices_idevice_data_save = { path: 'http://localhost/idevice/save' };
       apiManager.endpoints.api_idevices_idevice_reorder = { path: 'http://localhost/idevice/reorder' };
-      apiManager.endpoints.api_idevices_idevice_duplicate = { path: 'http://localhost/idevice/clone' };
       apiManager.endpoints.api_ode_export_preview = { path: 'http://localhost/preview/{odeSessionId}' };
 
       await apiManager.putSaveIdevice({ id: 1 });
       await apiManager.putReorderIdevice({ id: 1 });
-      await apiManager.postCloneIdevice({ id: 1 });
       await apiManager.getOdePreviewUrl('sess-1');
 
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/save', { id: 1 });
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/reorder', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevice/clone', { id: 1 });
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/preview/sess-1');
     });
 
