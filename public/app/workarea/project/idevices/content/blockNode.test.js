@@ -1263,4 +1263,74 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+    describe('apiCloneBlock', () => {
+        beforeEach(() => {
+            block.id = 'block-to-clone';
+            block.cloneBlockViaYjs = vi.fn();
+        });
+
+        it('delegates to cloneBlockViaYjs', async () => {
+            block.cloneBlockViaYjs.mockResolvedValue({
+                responseMessage: 'OK',
+                clonedBlock: { id: 'cloned-id' },
+            });
+
+            const result = await block.apiCloneBlock();
+
+            expect(block.cloneBlockViaYjs).toHaveBeenCalled();
+            expect(result.responseMessage).toBe('OK');
+        });
+    });
+
+    describe('cloneBlockViaYjs', () => {
+        beforeEach(() => {
+            block.id = 'block-to-clone';
+            block.blockId = 'block-to-clone';
+            block.pageId = 'page-1';
+            block.engine = {
+                loadApiIdevicesInPage: vi.fn().mockResolvedValue(true),
+                getBlockById: vi.fn(),
+            };
+            block.showModalMessageErrorDatabase = vi.fn();
+        });
+
+        it('clones block via Yjs on success', async () => {
+            const mockClonedBlock = { id: 'cloned-block-id' };
+            eXeLearning.app.project._yjsBridge = {
+                cloneBlock: vi.fn().mockReturnValue(mockClonedBlock),
+            };
+            const mockClonedBlockNode = {
+                goWindowToBlock: vi.fn(),
+                blockContent: { classList: { add: vi.fn(), remove: vi.fn() } },
+            };
+            block.engine.getBlockById.mockReturnValue(mockClonedBlockNode);
+
+            const result = await block.cloneBlockViaYjs();
+
+            expect(eXeLearning.app.project._yjsBridge.cloneBlock).toHaveBeenCalledWith('page-1', 'block-to-clone');
+            expect(block.engine.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('returns error when cloneBlock fails', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                cloneBlock: vi.fn().mockReturnValue(null),
+            };
+
+            const result = await block.cloneBlockViaYjs();
+
+            expect(result.responseMessage).toBe('ERROR');
+            expect(block.showModalMessageErrorDatabase).toHaveBeenCalled();
+        });
+
+        it('returns error when bridge not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+
+            const result = await block.cloneBlockViaYjs();
+
+            expect(result.responseMessage).toBe('ERROR');
+            expect(block.showModalMessageErrorDatabase).toHaveBeenCalled();
+        });
+    });
+
 });
