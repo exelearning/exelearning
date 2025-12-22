@@ -1445,7 +1445,7 @@ var $eXeCrucigrama = {
         }
 
         const html = $('#ccgmDetails-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex('#ccgmDetails');
         }
@@ -1457,55 +1457,39 @@ var $eXeCrucigrama = {
             $Author = $('#ccgmAuthorPoint-' + instance);
 
         $Author.html(author || '');
-
-        const loadImage = (resolvedUrl) => {
-            $Image
-                .prop('src', resolvedUrl)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
-                        $Image.hide();
-                        $Image.attr(
-                            'alt',
-                            $eXeCrucigrama.options[instance].msgs.msgNoImage
-                        );
-                        $noImage.show();
-                        $eXeCrucigrama.showCubiertaOptions(instance, 2);
-                        return false;
-                    } else {
-                        $Image.show();
-                        $Image.attr('alt', alt || '');
-                        $eXeCrucigrama.showCubiertaOptions(instance, 2);
-                        $eXeCrucigrama.positionPointerCard($cursor, x, y);
-                        return true;
-                    }
-                })
-                .on('error', function () {
+        $Image
+            .prop('src', url)
+            .on('load', function () {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth == 'undefined' ||
+                    this.naturalWidth == 0
+                ) {
                     $Image.hide();
                     $Image.attr(
                         'alt',
                         $eXeCrucigrama.options[instance].msgs.msgNoImage
                     );
+                    $noImage.show();
                     $eXeCrucigrama.showCubiertaOptions(instance, 2);
                     return false;
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(url);
-        }
+                } else {
+                    $Image.show();
+                    $Image.attr('alt', alt || '');
+                    $eXeCrucigrama.showCubiertaOptions(instance, 2);
+                    $eXeCrucigrama.positionPointerCard($cursor, x, y);
+                    return true;
+                }
+            })
+            .on('error', function () {
+                $Image.hide();
+                $Image.attr(
+                    'alt',
+                    $eXeCrucigrama.options[instance].msgs.msgNoImage
+                );
+                $eXeCrucigrama.showCubiertaOptions(instance, 2);
+                return false;
+            });
 
         $('#ccgmMultimediaPoint-' + instance).show();
     },

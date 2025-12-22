@@ -15,8 +15,9 @@
     display: none;
 }
 
-.form-IDevice .form-instructions{
+.form-IDevice .form-instructions {
     margin-top: .5em;
+    overflow: auto;
 }
 
 .form-IDevice .form-buttons-container {
@@ -30,12 +31,12 @@
 }
 
 .form-IDevice .form-results-container {
-    margin-top: 10px;
     padding: 5px 60px 5px;
-    justify-content: flex-start;
-    flex-direction: column;
+    justify-content: center;
+    flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
+    gap: 0.5em;
     font-size: 18px;
 }
 
@@ -55,6 +56,14 @@
 
 .form-IDevice ul.FRMP-PREVIEW .FormView_question {
     padding: .5em 0;
+    overflow: auto;
+    clear: both;
+}
+
+.form-IDevice ul.FRMP-PREVIEW .FormView_question::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 .form-IDevice ul.FRMP-PREVIEW .FormView_question .activity-title {
@@ -65,11 +74,33 @@
     background: none;
 }
 
+.form-IDevice .FormViewContainer {
+    overflow: auto;
+    clear: both;
+}
+
+.form-IDevice .FormViewContainer::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.form-IDevice .FormViewContainer>div[title] {
+    overflow: auto;
+    clear: both;
+}
+
+.form-IDevice .FormViewContainer>div[title]::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
 .FormView_question .selection-buttons-container input[type="radio"],
 .FormView_question .selection-buttons-container input[type="checkbox"],
 .form-IDevice ul.FRMP-PREVIEW .FormView_question input[type="radio"],
 .form-IDevice ul.FRMP-PREVIEW .FormView_question input[type="checkbox"] {
-    margin-right: 4px;
+    margin-right: 4px !important;
 }
 
 .form-IDevice ul.FRMP-PREVIEW {
@@ -140,6 +171,17 @@
 .form-IDevice .inline-icon.help-icon {
     cursor: help;
     float: right;
+}
+
+.form-IDevice [id^="questionTopBar"] {
+    overflow: auto;
+    clear: both;
+}
+
+.form-IDevice [id^="questionTopBar"]::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 .form-IDevice .FormViewContainer input.fillInput {
@@ -311,4 +353,80 @@ select.dropdownSelect {
 
 .Games-ReportIconDiv span {
     font-size: 0.9em;
+}
+
+/* Feedback messages styles */
+.form-feedback-message {
+    margin-top: 1em;
+    padding: 1em 1.2em;
+    border-radius: var(--radius, 8px);
+    font-size: 1em;
+    line-height: 1.5;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-feedback-correct {
+    background-color: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.form-feedback-wrong {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+/* Suggestion styles */
+.FRMP-Suggestion {
+    margin: 0 0 1em 1em;
+    background: #e1f1f9;
+    color: #2b627d;
+    border: 1px solid #c9edf4;
+    border-radius: 4px;
+    padding: 0.7em;
+}
+
+.FRMP-ShowSuggestion {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin: 0.8em 0 0.8em 0;
+    text-decoration: none;
+    color: #2b627d;
+    clear: both;
+    cursor: pointer;
+}
+
+.FRMP-SuggestionIcon {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+.FRMP-SuggestionIcon:hover {
+    text-decoration: underline;
+}
+
+.FRMP-EHidden {
+    display: none;
+}
+
+/* Question separator line */
+.form-question-separator {
+    margin-top: 2em;
+    margin-bottom: 0;
+    border: none;
+    border-top: 2px solid #888;
+}
+
+.form-IDevice .FormViewContainer img,
+.form-IDevice .form-instructions img {
+    max-width: 100%;
+    height: auto;
+}
+
+.form-IDevice .FormViewContainer img[style*="float"],
+.form-IDevice .form-instructions img[style*="float"] {
+    max-width: 60%;
 }

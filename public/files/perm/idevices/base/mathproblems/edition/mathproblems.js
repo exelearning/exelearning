@@ -1414,7 +1414,7 @@ var $exeDevice = {
         } else {
             $('#eXeIdeviceTextAfter').val(tAfter);
         }
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
         $exeDevice.showQuestion(0);
     },
 

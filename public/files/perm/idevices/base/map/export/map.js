@@ -222,24 +222,8 @@ var $eXeMapa = {
 
     showImageTest(url, alt, instance) {
         const $Image = $('#mapaImageRect-' + instance);
+        $Image.prop('src', url);
         $Image.attr('alt', alt);
-
-        const loadImage = (resolvedUrl) => {
-            $Image.prop('src', resolvedUrl);
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(url);
-        }
     },
 
     addPoints: function (instance, points) {
@@ -1334,7 +1318,7 @@ var $eXeMapa = {
             }
         );
         let html = $('#mapaQuestionDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaFTests-' + instance
@@ -1377,7 +1361,7 @@ var $eXeMapa = {
         );
 
         const html = $('#mapaQuestionDiv1-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -1455,7 +1439,7 @@ var $eXeMapa = {
         if (!solution) $('#mapaDefinition-' + instance).text(definition);
 
         const html = $('#mapaWordDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaWordDiv-' + instance
@@ -1530,7 +1514,9 @@ var $eXeMapa = {
             $mapaDefinition.text(definition);
         }
 
-        if (/\\\(|\\\[|\\begin\{.*?}/.test($mapaWordDiv.html())) {
+        if (
+            $exeDevices.iDevice.gamification.math.hasLatex($mapaWordDiv.html())
+        ) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaWordDiv1-' + instance
             );
@@ -1739,7 +1725,7 @@ var $eXeMapa = {
             }
 
             const html = $('#mapaTPQuestions-' + instance).html(),
-                latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+                latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
             if (latex)
                 $exeDevices.iDevice.gamification.math.updateLatex(
                     '#mapaTPQuestions-' + instance
@@ -2238,56 +2224,40 @@ var $eXeMapa = {
         }
 
         $Author.html(author);
-
-        const loadImage = (resolvedUrl) => {
-            $Image
-                .prop('src', resolvedUrl)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
-                        $Image.hide();
-                        $Image.attr(
-                            'alt',
-                            $eXeMapa.options[instance].msgs.msgNoImage
-                        );
-                        $noImage.show();
-                        return false;
-                    } else {
-                        let mData = $eXeMapa.placeImageWindows(
-                            this,
-                            this.naturalWidth,
-                            this.naturalHeight
-                        );
-                        $eXeMapa.drawImage(this, mData);
-                        $Image.show();
-                        $noImage.hide();
-                        $Image.attr('alt', alt);
-                        return true;
-                    }
-                })
-                .on('error', function () {
+        $Image
+            .prop('src', url)
+            .on('load', function () {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth == 'undefined' ||
+                    this.naturalWidth == 0
+                ) {
                     $Image.hide();
-                    $Image.attr('alt', $eXeMapa.options[instance].msgs.msgNoImage);
+                    $Image.attr(
+                        'alt',
+                        $eXeMapa.options[instance].msgs.msgNoImage
+                    );
                     $noImage.show();
                     return false;
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(url);
-        }
+                } else {
+                    let mData = $eXeMapa.placeImageWindows(
+                        this,
+                        this.naturalWidth,
+                        this.naturalHeight
+                    );
+                    $eXeMapa.drawImage(this, mData);
+                    $Image.show();
+                    $noImage.hide();
+                    $Image.attr('alt', alt);
+                    return true;
+                }
+            })
+            .on('error', function () {
+                $Image.hide();
+                $Image.attr('alt', $eXeMapa.options[instance].msgs.msgNoImage);
+                $noImage.show();
+                return false;
+            });
     },
 
     getNumberPoints: function (pts) {
@@ -2389,7 +2359,7 @@ var $eXeMapa = {
 
         mOptions.showDetail = false;
         let html = $('#mapaMainContainer-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaMainContainer-' + instance
@@ -3332,7 +3302,7 @@ var $eXeMapa = {
         }
 
         const html = $('#mapaToolTipText-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaToolTipText-' + instance
@@ -3440,7 +3410,7 @@ var $eXeMapa = {
             $('#mapaTextPoint-' + instance).append($divText);
         }
         let html = $('#mapaTextPoint-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaTextPoint-' + instance
@@ -4984,7 +4954,7 @@ var $eXeMapa = {
         }
         $eXeMapa.saveEvaluation(instance);
         let html = $('#mapaFDetails-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaFDetails-' + instance
@@ -5308,57 +5278,42 @@ var $eXeMapa = {
             return false;
         }
 
-        const loadImage = (resolvedUrl) => {
-            $Image
-                .prop('src', resolvedUrl)
-                .off('load error')
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
-                        $Image.hide();
-                        $Image.attr(
-                            'alt',
-                            $eXeMapa.options[instance].msgs.msgNoImage
-                        );
-                        return false;
-                    } else {
-                        $eXeMapa.placeImageWindows1(
-                            this,
-                            this.naturalWidth,
-                            this.naturalHeight,
-                            instance
-                        );
-                        $Image.show();
-                        $Image.attr('alt', alt);
-                        $eXeMapa.paintPoints(instance);
-                        $('#mapaMultimedia-' + instance).height(
-                            $Image.height() + 30
-                        );
-                        return true;
-                    }
-                })
-                .on('error', function () {
+        $Image
+            .prop('src', url)
+            .off('load error')
+            .on('load', function () {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth == 'undefined' ||
+                    this.naturalWidth == 0
+                ) {
                     $Image.hide();
-                    $Image.attr('alt', $eXeMapa.options[instance].msgs.msgNoImage);
+                    $Image.attr(
+                        'alt',
+                        $eXeMapa.options[instance].msgs.msgNoImage
+                    );
                     return false;
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(url);
-        }
+                } else {
+                    $eXeMapa.placeImageWindows1(
+                        this,
+                        this.naturalWidth,
+                        this.naturalHeight,
+                        instance
+                    );
+                    $Image.show();
+                    $Image.attr('alt', alt);
+                    $eXeMapa.paintPoints(instance);
+                    $('#mapaMultimedia-' + instance).height(
+                        $Image.height() + 30
+                    );
+                    return true;
+                }
+            })
+            .on('error', function () {
+                $Image.hide();
+                $Image.attr('alt', $eXeMapa.options[instance].msgs.msgNoImage);
+                return false;
+            });
     },
 
     placeImageWindows1: function (

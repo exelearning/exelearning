@@ -242,6 +242,34 @@ var $exeDevice = {
                             <div id="cmptEFeedbackP" class="CMPT-EFeedbackP mb-3">
                                 <textarea id="cmptEFeedBackEditor" class="exe-html-editor"></textarea>
                             </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptBack0" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="cmptBack0">${_('Background')}:</label>
+                                </span>                            
+                                <div class="d-flex align-items-center gap-2 flex-nowrap d-none" id="cmptbackground1">
+                                    <label for="cmptEURLBack" class="mb-0">${_('URL')}: </label>
+                                    <input type="text" class="exe-file-picker CMPT-EURLImage form-control me-0" id="cmptEURLBack"/>
+                                    <a href="#" id="cmptEPlayBack" class="CMPT-ENavigationButton CMPTEPlayVideo" title="${_('Show')}">
+                                        <img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CMPT-EButtonImage " />
+                                    </a>
+                                </div>
+                             </div>
+                            <div id="cmptbackground" class="CMPT-Back mb-3">
+                                <img class="CMPT-EMedia1" src="" id="cmptEImageBack" alt="${_('Image')}" />
+                                <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath}cmptbackground.png" id="cmptEImageNoBack" alt="${_('No image')}" />
+                            </div>
+                            <div id="cmptFontColorDiv" class="CMPT-FontColor d-none align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="cmptEFontColor" class="mb-0">${_('Font color')}: </label>
+                                <input type="color" id="cmptEFontColor" class="form-control form-control-color" value="#000000"/>
+                            </div>
+                            <div id="cmptAuthorBackDiv" class="CMPT-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="cmptAuthorBack" class="mb-0">${_('Authorship')}: </label>
+                                <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
+                            </div>
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
                                 <span class="toggle-item">
                                     <span class="toggle-control">
@@ -300,7 +328,12 @@ var $exeDevice = {
                 instructions = $('.completa-instructions', wrapper),
                 textAfter = $('.completa-extra-content', wrapper),
                 textFeedBack = $('.completa-feedback-game', wrapper),
-                textText = $('.completa-text-game', wrapper);
+                textText = $('.completa-text-game', wrapper),
+                $imageBack = $('.completa-LinkBack', wrapper);
+
+            if ($imageBack.length === 1) {
+                dataGame.urlBack = $imageBack.attr('href') || '';
+            }
 
             $exeDevice.updateFieldGame(dataGame);
 
@@ -327,6 +360,15 @@ var $exeDevice = {
             typeof game.evaluationID !== 'undefined' ? game.evaluationID : '';
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.hasBack =
+            typeof game.hasBack !== 'undefined' ? game.hasBack : false;
+        game.urlBack = typeof game.urlBack !== 'undefined' ? game.urlBack : '';
+        game.authorBackImage =
+            typeof game.authorBackImage !== 'undefined'
+                ? game.authorBackImage
+                : '';
+        game.fontColor =
+            typeof game.fontColor !== 'undefined' ? game.fontColor : '';
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
@@ -352,6 +394,10 @@ var $exeDevice = {
         $('#cmptEEvaluation').prop('checked', game.evaluation);
         $('#cmptEEvaluationID').val(game.evaluationID);
         $('#cmptEEvaluationID').prop('disabled', !game.evaluation);
+        $('#cmptBack0').prop('checked', game.hasBack);
+        $('#cmptEURLBack').val(game.urlBack);
+        $('#cmptAuthorBack').val(game.authorBackImage);
+        $('#cmptEFontColor').val(game.fontColor || '#000000');
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
@@ -384,6 +430,13 @@ var $exeDevice = {
         if (!game.estrictCheck) {
             $('#cmptECaseSensitiveDiv').show();
             $('#cmptEPercentajeErrorsDiv').hide();
+        }
+
+        $exeDevice.showImageBack(game.hasBack, game.urlBack);
+
+        // Show font color selector if background is configured
+        if (game.hasBack && game.urlBack && game.urlBack.length > 4) {
+            $('#cmptFontColorDiv').removeClass('d-none').addClass('d-flex');
         }
     },
 
@@ -430,7 +483,7 @@ var $exeDevice = {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         }
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
     },
 
     escapeHtml: function (string) {
@@ -466,6 +519,13 @@ var $exeDevice = {
             divContent = `<div class="completa-instructions">${dataGame.instructions}</div>`;
         }
 
+        let img = $('#cmptEURLBack').val();
+        if (img.trim().length > 4) {
+            img = `<a href="${img}" class="js-hidden completa-LinkBack" alt="Back" />Background</a>`;
+        } else {
+            img = '';
+        }
+
         let html = '<div class="completa-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `<div class="completa-feedback-game">${textFeedBack}</div>`;
@@ -476,6 +536,8 @@ var $exeDevice = {
         if (textText !== '') {
             html += `<div class="completa-text-game js-hidden">${textText}</div>`;
         }
+
+        html += img;
 
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
         if (textAfter !== '') {
@@ -518,6 +580,10 @@ var $exeDevice = {
             attempsNumber = parseInt($('#cmptAttemptsNumber').val(), 10),
             evaluation = $('#cmptEEvaluation').is(':checked'),
             evaluationID = $('#cmptEEvaluationID').val(),
+            hasBack = $('#cmptBack0').is(':checked'),
+            urlBack = $('#cmptEURLBack').val().trim(),
+            authorBackImage = $('#cmptAuthorBack').val(),
+            fontColor = $('#cmptEFontColor').val(),
             id = $exeDevice.getIdeviceID();
         if (!itinerary) return;
 
@@ -565,6 +631,10 @@ var $exeDevice = {
             wordsLimit: wordsLimit,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            hasBack: hasBack,
+            urlBack: urlBack,
+            authorBackImage: authorBackImage,
+            fontColor: fontColor,
             id: id,
         };
     },
@@ -667,9 +737,53 @@ var $exeDevice = {
             return false;
         });
 
+        $('#cmptBack0').on('change', function () {
+            if ($(this).is(':checked')) {
+                $(
+                    '#cmptbackground, #cmptbackground1, #cmptAuthorBackDiv, #cmptFontColorDiv'
+                )
+                    .removeClass('d-none')
+                    .addClass('d-flex');
+            } else {
+                $(
+                    '#cmptbackground, #cmptbackground1, #cmptAuthorBackDiv, #cmptFontColorDiv'
+                )
+                    .removeClass('d-flex')
+                    .addClass('d-none');
+            }
+        });
+
+        $('#cmptEPlayBack').on('click', (e) => {
+            e.preventDefault();
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
+                selectedFile = $('#cmptEURLBack').val(),
+                ext = selectedFile.split('.').pop().toLowerCase(),
+                hasBack = $('#cmptBack0').is(':checked');
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
+                $exeDevice.showMessage(
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
+                );
+                return false;
+            }
+            $exeDevice.showImageBack(hasBack, selectedFile);
+        });
+
+        $('#cmptEURLBack').on('change', function () {
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
+                selectedFile = $(this).val(),
+                ext = selectedFile.split('.').pop().toLowerCase(),
+                hasBack = $('#cmptBack0').is(':checked');
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
+                $exeDevice.showMessage(
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
+                );
+                return false;
+            }
+            $exeDevice.showImageBack(hasBack, selectedFile);
+        });
+
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
-        // Inicialización de toggles con su estado actual
         $form.find('.toggle-input').each(function () {
             const checked = $(this).is(':checked');
             $(this).attr('aria-checked', checked).trigger('change');
@@ -680,5 +794,22 @@ var $exeDevice = {
             $(this).parent().fadeOut();
             return false;
         });
+    },
+
+    showImageBack: function (hasback, url) {
+        const $image = $('#cmptEImageBack'),
+            $imageno = $('#cmptEImageNoBack');
+        $image.hide();
+        $imageno.show();
+        url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
+        if (hasback && url.length > 4) {
+            $image
+                .prop('src', url)
+                .on('load', function () {
+                    $image.show();
+                    $imageno.hide();
+                })
+                .on('error', function () {});
+        }
     },
 };

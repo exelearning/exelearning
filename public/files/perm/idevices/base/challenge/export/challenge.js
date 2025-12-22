@@ -133,7 +133,12 @@ var $eXeDesafio = {
                 node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex('.desafio-IDevice');
+        const html = $('.desafio-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.desafio-IDevice'
+            );
+        }
     },
 
     createInterfaceChallenger: function (instance) {
@@ -673,7 +678,12 @@ var $eXeDesafio = {
         $eXeDesafio.showMessage(type, message, instance);
         $eXeDesafio.changeImageButtonState(instance, mOptions.typeQuestion);
         $('#desafioClues-' + instance).html('');
-        $exeDevices.iDevice.gamification.math.updateLatex('.desafio-IDevice');
+        const desafioHtml = $('.desafio-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(desafioHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.desafio-IDevice'
+            );
+        }
     },
 
     showChallenge: function (number, instance) {
@@ -720,7 +730,12 @@ var $eXeDesafio = {
         $eXeDesafio.showMessage(type, message, instance);
         $eXeDesafio.changeImageButtonState(instance, mOptions.typeQuestion);
         $eXeDesafio.showClues(number, instance);
-        $exeDevices.iDevice.gamification.math.updateLatex('.desafio-IDevice');
+        const desafioHtml = $('.desafio-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(desafioHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.desafio-IDevice'
+            );
+        }
     },
 
     showClues(number, instance) {
@@ -741,7 +756,11 @@ var $eXeDesafio = {
         }
 
         $('#desafioClues-' + instance).html(text);
-        $exeDevices.iDevice.gamification.math.updateLatex('.desafio-IDevice');
+        if ($exeDevices.iDevice.gamification.math.hasLatex(text)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.desafio-IDevice'
+            );
+        }
     },
 
     saveDataStorage: function (instance) {

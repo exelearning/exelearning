@@ -295,7 +295,7 @@ var $exeDevice = {
                             <div>
                                 <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                     <label>${_('Image')}:</label>
-                                    <input type="text" id="puzzleEURLImageDefinition" class="exe-image-picker form-control me-0" />
+                                    <input type="text" id="puzzleEURLImageDefinition" class="exe-file-picker form-control me-0" />
                                     <a href="#" id="puzzleEPlayImageDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
                                     <a href="#" id="puzzleEShowMoreDefinition" class="PZLE-ENavigationButton PZLE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="PZLE-EButtonImage " /></a>
                                 </div>
@@ -378,11 +378,6 @@ var $exeDevice = {
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
-        $exeDevice.addPickerButton();
-    },
-
-    addPickerButton: function () {
-        // Manejado globalmente por $exeDevicesEdition.iDevice.filePicker.init()
     },
 
     updateQuestionsNumber: function () {
@@ -418,18 +413,7 @@ var $exeDevice = {
         $('#puzzleEURLImageDefinition').val(puzzle.url);
         $('#puzzleEAltDefinition').val(puzzle.alt);
         $('#puzzleEAuthorDefinition').val(puzzle.author);
-        // Resolve asset:// URLs to blob URLs
-        if (puzzle.url && puzzle.url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(puzzle.url).then((blobUrl) => {
-                    $('#puzzleEImageDefinition').attr('src', blobUrl || '');
-                });
-            }
-        } else {
-            $('#puzzleEImageDefinition').attr('src', puzzle.url);
-        }
+        $('#puzzleEImageDefinition').attr('src', puzzle.url);
         $('#puzzleEDefinition').val(puzzle.definition);
         $('#puzzleENumberPuzzle').text($exeDevice.active + 1);
         $('#puzzleEURLAudioDefinition').val(puzzle.audioDefinition);
@@ -819,9 +803,8 @@ var $exeDevice = {
     showImage: function (id) {
         const $image = $(`#puzzleEImage-${id}`),
             $nimage = $(`#puzzleENoImage-${id}`),
-            $input = $(`#puzzleEURLImage-${id}`),
             alt = $(`#puzzleEAlt-${id}`).val(),
-            url = $input.val();
+            url = $(`#puzzleEURLImage-${id}`).val();
 
         $image.hide();
         $image.attr('alt', alt);
@@ -851,36 +834,16 @@ var $exeDevice = {
             return false;
         };
 
-        const loadImage = (resolvedUrl) => {
-            $image
-                .prop('src', resolvedUrl)
-                .on('load', onLoadHandler)
-                .on('error', onErrorHandler);
+        $image
+            .prop('src', url)
+            .on('load', onLoadHandler)
+            .on('error', onErrorHandler);
 
-            $exeDevice.imageLoadHandlers = $exeDevice.imageLoadHandlers || {};
-            $exeDevice.imageLoadHandlers[id] = {
-                load: onLoadHandler,
-                error: onErrorHandler,
-            };
+        $exeDevice.imageLoadHandlers = $exeDevice.imageLoadHandlers || {};
+        $exeDevice.imageLoadHandlers[id] = {
+            load: onLoadHandler,
+            error: onErrorHandler,
         };
-
-        // Handle asset:// URLs
-        if (url && url.startsWith('asset://')) {
-            const blobUrl = $input.data('blobUrl');
-            if (blobUrl) {
-                loadImage(blobUrl);
-            } else {
-                const assetManager =
-                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                if (assetManager) {
-                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
-                        loadImage(resolvedUrl || '');
-                    });
-                }
-            }
-        } else {
-            loadImage(url);
-        }
     },
 
     removeImageEvents: function (id) {
@@ -897,27 +860,12 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const playAudio = (url) => {
-            const selectFile =
-                $exeDevices.iDevice.gamification.media.extractURLGD(url);
-            $exeDevice.playerAudio = new Audio(selectFile);
-            $exeDevice.playerAudio
-                .play()
-                .catch((error) => console.error('Error playing audio:', error));
-        };
-
-        // Handle asset:// URLs
-        if (selectedFile && selectedFile.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(selectedFile).then((resolvedUrl) => {
-                    playAudio(resolvedUrl || '');
-                });
-            }
-        } else {
-            playAudio(selectedFile);
-        }
+        const selectFile =
+            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        $exeDevice.playerAudio = new Audio(selectFile);
+        $exeDevice.playerAudio
+            .play()
+            .catch((error) => console.error('Error playing audio:', error));
     },
 
     stopSound: function () {
@@ -1155,23 +1103,7 @@ var $exeDevice = {
             );
             return false;
         }
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const blobUrl = $('#puzzleEURLImageDefinition').data('blobUrl');
-            if (blobUrl) {
-                $('#puzzleEImageDefinition').attr('src', blobUrl);
-            } else {
-                const assetManager =
-                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                if (assetManager) {
-                    assetManager.resolveAssetURL(url).then((resolved) => {
-                        $('#puzzleEImageDefinition').attr('src', resolved || '');
-                    });
-                }
-            }
-        } else {
-            $('#puzzleEImageDefinition').attr('src', url);
-        }
+        $('#puzzleEImageDefinition').attr('src', url);
     },
 
     loadAudio: function (url) {
@@ -1407,7 +1339,7 @@ var $exeDevice = {
         $('#eXeIdeviceTextAfter').val(unescape(tAfter));
         $('#puzzleEFeedBackEditor').val(unescape(textFeedBack));
 
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
         $exeDevice.showPuzzle(0, false);
     },
 

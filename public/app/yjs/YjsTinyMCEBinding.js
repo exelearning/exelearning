@@ -94,12 +94,17 @@ class YjsTinyMCEBinding {
 
   /**
    * Sync Y.Text content to TinyMCE editor
+   * Converts asset:// URLs to blob: URLs for display
    */
   syncToEditor() {
     this._isUpdating = true;
 
     try {
-      const content = this.yText.toString();
+      let content = this.yText.toString();
+
+      // Convert asset:// URLs to blob: URLs for display in editor
+      content = this.convertAssetUrlsToBlobUrls(content);
+
       const currentContent = this.editor.getContent();
 
       if (content !== currentContent) {
@@ -124,10 +129,47 @@ class YjsTinyMCEBinding {
   }
 
   /**
+   * Convert asset:// URLs to blob: URLs for display in TinyMCE editor.
+   * Assets are stored with asset:// protocol in Yjs, but browsers need
+   * blob: URLs to actually render the images.
+   *
+   * @param {string} html - HTML content with asset:// URLs
+   * @returns {string} HTML content with blob: URLs for display
+   */
+  convertAssetUrlsToBlobUrls(html) {
+    if (!html || typeof html !== 'string') return html;
+
+    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+    if (!assetManager) return html;
+
+    // Match asset:// URLs (format: asset://uuid/filename)
+    const assetUrlRegex = /asset:\/\/([a-f0-9-]+)\/[^"'\s)]+/gi;
+
+    return html.replace(assetUrlRegex, (assetUrl, assetId) => {
+      const blobUrl = assetManager.blobURLCache?.get(assetId);
+      if (blobUrl) {
+        return blobUrl;
+      }
+      // If not in cache, try to resolve asynchronously
+      // The asset_url_resolver.js will handle this via MutationObserver
+      if (assetManager.resolveAssetURL) {
+        assetManager.resolveAssetURL(assetUrl);
+      }
+      // Keep asset:// for now - it will be resolved by asset_url_resolver
+      return assetUrl;
+    });
+  }
+
+  /**
    * Sync TinyMCE editor content to Y.Text
+   * Converts blob: URLs to asset:// URLs before persisting
    */
   syncFromEditor() {
-    const content = this.editor.getContent();
+    let content = this.editor.getContent();
+
+    // Convert blob: URLs to asset:// URLs before saving to Yjs
+    content = this.convertBlobUrlsToAssetUrls(content);
+
     const currentYText = this.yText.toString();
 
     if (content === currentYText) return;
@@ -148,6 +190,37 @@ class YjsTinyMCEBinding {
           offset += safeText.length;
         }
       }
+    });
+  }
+
+  /**
+   * Convert blob: URLs to asset:// URLs for persistence in Yjs.
+   * This ensures images are stored with their permanent asset ID rather than
+   * temporary browser blob URLs that won't work after page reload or export.
+   *
+   * @param {string} html - HTML content potentially containing blob: URLs
+   * @returns {string} HTML content with blob: URLs converted to asset:// URLs
+   */
+  convertBlobUrlsToAssetUrls(html) {
+    if (!html || typeof html !== 'string') return html;
+
+    // Access AssetManager via global path
+    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+    if (!assetManager || !assetManager.reverseBlobCache) return html;
+
+    // Match blob: URLs in src, href, data-mce-src attributes
+    const blobUrlRegex = /blob:https?:\/\/[^"'\s)]+/g;
+
+    return html.replace(blobUrlRegex, (blobUrl) => {
+      const assetId = assetManager.reverseBlobCache.get(blobUrl);
+      if (assetId) {
+        const asset = assetManager.getAssetById ? assetManager.getAssetById(assetId) : null;
+        const filename = asset?.filename || asset?.name || 'image';
+        return `asset://${assetId}/${filename}`;
+      }
+      // If not found in cache, keep original (may be external blob)
+      console.warn('[YjsTinyMCEBinding] Blob URL not found in AssetManager cache:', blobUrl);
+      return blobUrl;
     });
   }
 

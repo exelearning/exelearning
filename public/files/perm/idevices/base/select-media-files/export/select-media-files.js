@@ -113,9 +113,12 @@ var $eXeSeleccionaMedias = {
             $('#slcmpDivFeedBack-' + i).hide();
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.seleccionamedias-IDevice'
-        );
+        const mediasHtml = $('.seleccionamedias-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(mediasHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.seleccionamedias-IDevice'
+            );
+        }
     },
 
     getPhraseDefault: function () {
@@ -434,52 +437,36 @@ var $eXeSeleccionaMedias = {
         if (q.url.length < 4) return false;
         $imageDiv.show();
         $image.attr('alt', q.alt);
-
-        const loadImage = (resolvedUrl) => {
-            $image
-                .prop('src', resolvedUrl)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
-                        return false;
-                    } else {
-                        const mData = $eXeSeleccionaMedias.placeImageWindows(
-                            this,
-                            this.naturalWidth,
-                            this.naturalHeight
-                        );
-                        $eXeSeleccionaMedias.drawImage(this, mData);
-                        $imageDiv.show();
-                        if (q.author.length > 0) {
-                            $author.show();
-                        }
-                        if (q.alt.length > 0) {
-                            $image.prop('alt', q.alt);
-                        }
-                        return true;
-                    }
-                })
-                .on('error', function () {
-                    $imageDiv.hide();
+        $image
+            .prop('src', q.url)
+            .on('load', function () {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth == 'undefined' ||
+                    this.naturalWidth == 0
+                ) {
                     return false;
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (q.url && q.url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(q.url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(q.url);
-        }
+                } else {
+                    const mData = $eXeSeleccionaMedias.placeImageWindows(
+                        this,
+                        this.naturalWidth,
+                        this.naturalHeight
+                    );
+                    $eXeSeleccionaMedias.drawImage(this, mData);
+                    $imageDiv.show();
+                    if (q.author.length > 0) {
+                        $author.show();
+                    }
+                    if (q.alt.length > 0) {
+                        $image.prop('alt', q.alt);
+                    }
+                    return true;
+                }
+            })
+            .on('error', function () {
+                $imageDiv.hide();
+                return false;
+            });
     },
 
     drawImage: function (image, mData) {
@@ -1080,9 +1067,14 @@ var $eXeSeleccionaMedias = {
             if (mOptions.active < mOptions.phrasesGame.length) {
                 $eXeSeleccionaMedias.showPhrase(mOptions.active, instance);
                 $eXeSeleccionaMedias.activateHover(instance);
-                $exeDevices.iDevice.gamification.math.updateLatex(
-                    '.seleccionamedias-IDevice'
-                );
+                const mediasHtml = $('.seleccionamedias-IDevice').html();
+                if (
+                    $exeDevices.iDevice.gamification.math.hasLatex(mediasHtml)
+                ) {
+                    $exeDevices.iDevice.gamification.math.updateLatex(
+                        '.seleccionamedias-IDevice'
+                    );
+                }
             } else {
                 $eXeSeleccionaMedias.gameOver(0, instance);
             }

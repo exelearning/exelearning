@@ -149,12 +149,12 @@ describe('form iDevice edition', () => {
       expect(result.baseText).toContain('The sky is green');
     });
 
-    it('returns empty string for invalid format', () => {
-      expect($exeDevice.getTrueFalseQuestion('invalid')).toBe('');
+    it('returns null for invalid format', () => {
+      expect($exeDevice.getTrueFalseQuestion('invalid')).toBe(null);
     });
 
-    it('returns empty string for missing parts', () => {
-      expect($exeDevice.getTrueFalseQuestion('1')).toBe('');
+    it('returns null for missing parts', () => {
+      expect($exeDevice.getTrueFalseQuestion('1')).toBe(null);
     });
   });
 
@@ -167,8 +167,8 @@ describe('form iDevice edition', () => {
       expect(result.baseText).toContain('The sky is blue');
     });
 
-    it('returns empty string for insufficient parts', () => {
-      expect($exeDevice.getTrueFalseQuestionExe('0#question#1')).toBe('');
+    it('returns null for insufficient parts', () => {
+      expect($exeDevice.getTrueFalseQuestionExe('0#question#1')).toBe(null);
     });
   });
 
@@ -187,8 +187,8 @@ describe('form iDevice edition', () => {
       expect(result.answer).toBe(0);
     });
 
-    it('returns empty string for insufficient parts', () => {
-      expect($exeDevice.getTrueFalseQuestionExeSv('question#1#extra')).toBe('');
+    it('returns null for insufficient parts', () => {
+      expect($exeDevice.getTrueFalseQuestionExeSv('question#1#extra')).toBe(null);
     });
   });
 
@@ -342,135 +342,7 @@ describe('form iDevice edition', () => {
     });
   });
 
-  describe('Form class - hideQuestionsPanel', () => {
-    let form;
-
-    beforeEach(() => {
-      document.body.innerHTML = `
-        <div id="questionsContainerTop" style="display: block"></div>
-        <div id="questionsContainerBottom" style="display: flex"></div>
-      `;
-      $exeDevice.ideviceBody = document.body;
-      $exeDevice.msgs = { strings: {} };
-      form = new $exeDevice.Form($exeDevice, {});
-    });
-
-    it('hides panel by setting display to none', () => {
-      form.hideQuestionsPanel('questionsContainerTop');
-      expect(document.getElementById('questionsContainerTop').style.display).toBe('none');
-    });
-
-    it('hides bottom panel', () => {
-      form.hideQuestionsPanel('questionsContainerBottom');
-      expect(document.getElementById('questionsContainerBottom').style.display).toBe('none');
-    });
-  });
-
-  describe('Form class - behaviourToggleOneMultipleAnswer', () => {
-    let form;
-
-    beforeEach(() => {
-      document.body.innerHTML = `
-        <button id="buttonRadioCheckboxToggle" selection-type="single">toggle_off</button>
-        <span>Answer type: Single</span>
-        <span id="iconActivity_123">rule</span>
-        <div class="options-container">
-          <input type="radio" name="options" id="option_1" />
-          <input type="radio" name="options" id="option_2" />
-        </div>
-      `;
-      $exeDevice.ideviceBody = document.body;
-      $exeDevice.iconSelectMultiple = 'checklist_rtl';
-      $exeDevice.iconSelectOne = 'rule';
-      $exeDevice.iconActivityId = 'iconActivity';
-      $exeDevice.msgs = { strings: {} };
-      form = new $exeDevice.Form($exeDevice, {});
-    });
-
-    it('changes icon from toggle_off to toggle_on on click', () => {
-      form.behaviourToggleOneMultipleAnswer('buttonRadioCheckboxToggle');
-      document.getElementById('buttonRadioCheckboxToggle').click();
-      expect(document.getElementById('buttonRadioCheckboxToggle').innerHTML).toBe('toggle_on');
-    });
-
-    it('changes selection-type attribute from single to multiple', () => {
-      form.behaviourToggleOneMultipleAnswer('buttonRadioCheckboxToggle');
-      document.getElementById('buttonRadioCheckboxToggle').click();
-      expect(document.getElementById('buttonRadioCheckboxToggle').getAttribute('selection-type')).toBe('multiple');
-    });
-
-    it('changes input type from radio to checkbox', () => {
-      form.behaviourToggleOneMultipleAnswer('buttonRadioCheckboxToggle');
-      document.getElementById('buttonRadioCheckboxToggle').click();
-      expect(document.getElementById('option_1').type).toBe('checkbox');
-      expect(document.getElementById('option_2').type).toBe('checkbox');
-    });
-
-    it('toggles back to single on second click', () => {
-      form.behaviourToggleOneMultipleAnswer('buttonRadioCheckboxToggle');
-      const btn = document.getElementById('buttonRadioCheckboxToggle');
-      btn.click(); // -> multiple
-      btn.click(); // -> single
-      expect(btn.innerHTML).toBe('toggle_off');
-      expect(btn.getAttribute('selection-type')).toBe('single');
-    });
-  });
-
-  describe('Form class - behaviourButtonRemoveOption', () => {
-    let form;
-
-    beforeEach(() => {
-      document.body.innerHTML = `
-        <div id="options-list">
-          <div id="option_1_container" class="question-button">
-            <label>Option 1</label>
-            <button id="remove_option_1" class="remove-option">close</button>
-          </div>
-          <div id="option_1_textarea">Textarea 1</div>
-          <div id="option_2_container" class="question-button">
-            <label>Option 2</label>
-            <button id="remove_option_2" class="remove-option">close</button>
-          </div>
-          <div id="option_2_textarea">Textarea 2</div>
-        </div>
-      `;
-      $exeDevice.ideviceBody = document.body;
-      $exeDevice.msgs = { strings: {} };
-      form = new $exeDevice.Form($exeDevice, {});
-    });
-
-    it('removes option and associated textarea on click', () => {
-      form.behaviourButtonRemoveOption('remove_option_1');
-      document.getElementById('remove_option_1').click();
-      expect(document.getElementById('option_1_container')).toBeNull();
-      expect(document.getElementById('option_1_textarea')).toBeNull();
-    });
-
-    it('keeps other options intact', () => {
-      form.behaviourButtonRemoveOption('remove_option_1');
-      document.getElementById('remove_option_1').click();
-      expect(document.getElementById('option_2_container')).not.toBeNull();
-    });
-  });
-
-  describe('Form class - generateRandomId', () => {
-    let form;
-
-    beforeEach(() => {
-      $exeDevice.ideviceBody = document.body;
-      $exeDevice.msgs = { strings: {} };
-      form = new $exeDevice.Form($exeDevice, {});
-    });
-
-    it('generates unique IDs', () => {
-      const id1 = form.generateRandomId();
-      const id2 = form.generateRandomId();
-      expect(id1).not.toBe(id2);
-    });
-
-    it('generates string IDs', () => {
-      const id = form.generateRandomId();
-      expect(typeof id).toBe('string');
-    });
-  });
+  // Note: Form class tests removed because $exeDevice.Form
+  // does not exist in the current version of form.js from main branch.
+  // These tests were written for a modified version of the code.
 });

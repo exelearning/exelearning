@@ -116,11 +116,10 @@ var $exeDevice = {
         html += `</div>`;
         // [eXeLearning] - Set html to eXe idevice body
         this.ideviceBody.innerHTML = html;
-        // Load the previous values of the idevice data from eXe
-        // IMPORTANT: Must be called BEFORE setBehaviour() so TinyMCE picks up the content
-        this.loadPreviousValues();
-        // Set behaviour to elements of form (initializes TinyMCE)
+        // Set behaviour to elements of form
         this.setBehaviour();
+        // Load the previous values of the idevice data from eXe
+        this.loadPreviousValues();
     },
 
     /**
@@ -224,11 +223,10 @@ var $exeDevice = {
 
     /**
      * Set events to form
-     * Note: TinyMCE initialization is handled by initExeDeviceEdition() in ideviceNode.js
-     * Do NOT call $exeTinyMCE.init() here - it causes duplicate initialization and race conditions
+     *
      */
     setBehaviour: function () {
-        // TinyMCE is initialized by ideviceNode.js after $exeDevice.init() returns
+        $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
     },
 
     /**
@@ -381,7 +379,7 @@ var $exeDevice = {
         </legend>
         <div>
           ${content}
-        </div>
+        <div>
       </fieldset>`;
     },
 
