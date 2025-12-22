@@ -28,7 +28,7 @@
         "symfony/monolog-bundle": "^3.10",
         "symfony/process": "^7.3",
         "symfony/property-access": "^7.3",
-        "symfony/property-info": "^7.3",
+        "symfony/property-info": "^8.0",
         "symfony/runtime": "^7.3",
         "symfony/security-bundle": "^7.3",
         "symfony/security-core": "^7.3",
