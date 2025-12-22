@@ -794,19 +794,41 @@ class YjsStructureBinding {
 
   /**
    * Clone a block Y.Map (internal helper)
+   * Creates a deep copy with new IDs, including all properties and components
    * @private
    */
   cloneBlockMap(sourceBlock) {
     const newBlockId = this.generateId('block');
     const newBlock = new this.Y.Map();
 
+    // Copy all properties from source block generically (like cloneBlockMapForMove)
+    sourceBlock.forEach((value, key) => {
+      if (key === 'components') {
+        // Handle components separately below
+        return;
+      } else if (key === 'id' || key === 'blockId') {
+        // Skip - we'll set new IDs
+        return;
+      } else if (key === 'createdAt') {
+        // Skip - we'll set new timestamp
+        return;
+      } else if (key === 'properties' && value && typeof value.forEach === 'function') {
+        // Clone Y.Map properties
+        const newProps = new this.Y.Map();
+        value.forEach((v, k) => newProps.set(k, v));
+        newBlock.set(key, newProps);
+      } else if (value !== null && value !== undefined) {
+        // Copy primitive values directly (including iconName, blockType, blockName, order, etc.)
+        newBlock.set(key, value);
+      }
+    });
+
+    // Set new IDs and timestamp
     newBlock.set('id', newBlockId);
     newBlock.set('blockId', newBlockId);
-    newBlock.set('blockName', sourceBlock.get('blockName'));
-    newBlock.set('order', sourceBlock.get('order'));
     newBlock.set('createdAt', new Date().toISOString());
 
-    // Clone components
+    // Clone components with full content
     const sourceComponents = sourceBlock.get('components');
     const newComponents = new this.Y.Array();
 
@@ -978,6 +1000,7 @@ class YjsStructureBinding {
 
   /**
    * Clone a component Y.Map (internal helper)
+   * Creates a deep copy with new IDs, including all content and properties
    * @private
    */
   cloneComponentMap(sourceComp) {
@@ -1007,7 +1030,33 @@ class YjsStructureBinding {
       newComp.set('htmlContent', newHtml);
     }
 
-    // Clone other properties
+    // Clone htmlView if exists (fallback content)
+    const htmlView = sourceComp.get('htmlView');
+    if (htmlView) {
+      newComp.set('htmlView', htmlView);
+    }
+
+    // Clone properties Y.Map if exists (visibility, teacherOnly, etc.)
+    const sourceProps = sourceComp.get('properties');
+    if (sourceProps && typeof sourceProps.forEach === 'function') {
+      const newProps = new this.Y.Map();
+      sourceProps.forEach((value, key) => {
+        newProps.set(key, value);
+      });
+      newComp.set('properties', newProps);
+    }
+
+    // Clone jsonProperties Y.Map if exists (CRITICAL for complex iDevices like crosswords, MC, etc.)
+    const jsonProps = sourceComp.get('jsonProperties');
+    if (jsonProps && typeof jsonProps.forEach === 'function') {
+      const newJsonProps = new this.Y.Map();
+      jsonProps.forEach((value, key) => {
+        newJsonProps.set(key, value);
+      });
+      newComp.set('jsonProperties', newJsonProps);
+    }
+
+    // Clone other simple properties
     const keysToClone = ['title', 'subtitle', 'instructions', 'feedback'];
     for (const key of keysToClone) {
       const value = sourceComp.get(key);
@@ -1688,7 +1737,13 @@ class YjsStructureBinding {
           targetBlockMap.set('components', targetComponents);
         }
 
-        const finalOrder = newOrder !== null ? newOrder : targetComponents.length;
+        // Calculate max order to place at end (not array length, which may differ from orders)
+        let maxOrder = -1;
+        for (let i = 0; i < targetComponents.length; i++) {
+          const existingOrder = targetComponents.get(i).get('order') ?? 0;
+          if (existingOrder > maxOrder) maxOrder = existingOrder;
+        }
+        const finalOrder = newOrder !== null ? newOrder : maxOrder + 1;
         clonedComp.set('order', finalOrder);
         clonedComp.set('blockId', targetBlockId);
 
@@ -1780,10 +1835,17 @@ class YjsStructureBinding {
         const newBlockMap = new this.Y.Map();
         const newComponents = new this.Y.Array();
 
+        // Calculate max order to place at end (not array length, which may differ from orders)
+        let maxBlockOrder = -1;
+        for (let i = 0; i < targetBlocks.length; i++) {
+          const existingOrder = targetBlocks.get(i).get('order') ?? 0;
+          if (existingOrder > maxBlockOrder) maxBlockOrder = existingOrder;
+        }
+
         newBlockMap.set('id', newBlockId);
         newBlockMap.set('blockId', newBlockId);
         newBlockMap.set('blockName', blockName);
-        newBlockMap.set('order', targetBlocks.length);
+        newBlockMap.set('order', maxBlockOrder + 1);
         newBlockMap.set('createdAt', new Date().toISOString());
 
         // Update cloned component with new block reference
@@ -1877,7 +1939,13 @@ class YjsStructureBinding {
           targetPageMap.set('blocks', targetBlocks);
         }
 
-        const finalOrder = newOrder !== null ? newOrder : targetBlocks.length;
+        // Calculate max order to place at end (not array length, which may differ from orders)
+        let maxBlockOrder = -1;
+        for (let i = 0; i < targetBlocks.length; i++) {
+          const existingOrder = targetBlocks.get(i).get('order') ?? 0;
+          if (existingOrder > maxBlockOrder) maxBlockOrder = existingOrder;
+        }
+        const finalOrder = newOrder !== null ? newOrder : maxBlockOrder + 1;
         clonedBlock.set('order', finalOrder);
         clonedBlock.set('pageId', targetPageId);
 

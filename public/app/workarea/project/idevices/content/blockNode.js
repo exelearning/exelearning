@@ -1433,6 +1433,76 @@ export default class IdeviceBlockNode {
     }
 
     /**
+     * Clone block via Yjs
+     * @returns {Object} Response object
+     */
+    async cloneBlockViaYjs() {
+        try {
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            // Try multiple sources for pageId (same pattern as other methods)
+            const pageId =
+                this.pageId ??
+                this.odeNavStructureSyncId ??
+                eXeLearning.app.project.structure?.getSelectNodePageId?.() ??
+                eXeLearning.app.project.structure?.nodeSelected?.id;
+
+            if (!bridge || !pageId) {
+                console.error('[BlockNode] cloneBlockViaYjs missing:', { bridge: !!bridge, pageId });
+                throw new Error('Yjs bridge not available or missing pageId');
+            }
+
+            // Try with blockId first, then with id as fallback (same pattern as deleteBlockViaYjs)
+            const idsToTry = [this.blockId, this.id].filter(Boolean);
+            let clonedBlock = null;
+
+            for (const blockIdToTry of idsToTry) {
+                Logger.log('[BlockNode] Trying to clone block with id:', blockIdToTry);
+                clonedBlock = bridge.cloneBlock(pageId, blockIdToTry);
+                if (clonedBlock) {
+                    Logger.log('[BlockNode] Block cloned via Yjs with id:', blockIdToTry);
+                    break;
+                }
+            }
+
+            if (!clonedBlock && idsToTry.length === 0) {
+                console.error('[BlockNode] No block IDs available for cloning');
+                throw new Error('No block ID available');
+            }
+
+            if (clonedBlock) {
+                Logger.log('[BlockNode] Cloned block via Yjs:', this.id, '→', clonedBlock.id);
+
+                // Reload page content to show the cloned block
+                await this.engine.loadApiIdevicesInPage(true);
+
+                // Scroll to cloned block
+                const cloneBlockNode = this.engine.getBlockById(clonedBlock.id);
+                if (cloneBlockNode) {
+                    cloneBlockNode.goWindowToBlock(100);
+                    cloneBlockNode.blockContent.classList.add('moving');
+                    setTimeout(() => {
+                        cloneBlockNode.blockContent.classList.remove('moving');
+                    }, 2500);
+                }
+
+                return { responseMessage: 'OK', clonedBlock };
+            } else {
+                throw new Error('Failed to clone block via Yjs');
+            }
+        } catch (error) {
+            console.error('[BlockNode] Yjs clone error:', error);
+            let defaultModalMessage = _(
+                'An error occurred while cloning the block'
+            );
+            this.showModalMessageErrorDatabase(
+                { responseMessage: 'ERROR' },
+                defaultModalMessage
+            );
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
      * Update order of block in database
      *
      * @return {Array}
@@ -1574,30 +1644,8 @@ export default class IdeviceBlockNode {
      *
      */
     async apiCloneBlock() {
-        let params = ['odePagStructureSyncId'];
-        let response = await this.apiSendDataService(
-            'postCloneBlock',
-            params,
-            true
-        );
-        if (response.responseMessage == 'OK') {
-            await this.engine.cloneBlockInContent(
-                this,
-                response.odePagStructureSync
-            );
-            eXeLearning.app.modals.alert.show({
-                title: _('Information'),
-                body: _(
-                    'Identical contents in the same page might cause errors. Edit the new one or move it to another page.'
-                ),
-            });
-        } else {
-            let defaultErrorMessage = _(
-                'An error occurred while clone component in database'
-            );
-            this.showModalMessageErrorDatabase(response, defaultErrorMessage);
-        }
-        return response;
+        // Use Yjs for cloning (legacy API removed)
+        return await this.cloneBlockViaYjs();
     }
 
     /**

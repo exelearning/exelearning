@@ -1429,17 +1429,6 @@ export default class ApiCallManager {
     }
 
     /**
-     * Duplicate idevice
-     *
-     * @param {*} params
-     * @returns
-     */
-    async postCloneIdevice(params) {
-        let url = this.endpoints.api_idevices_idevice_duplicate.path;
-        return await this.func.post(url, params);
-    }
-
-    /**
      * Delete idevice
      *
      * @param {*} ideviceId
@@ -1569,18 +1558,6 @@ export default class ApiCallManager {
         // This method is only used for legacy API mode
         let url = this.endpoints.api_pag_structures_pag_structure_reorder.path;
         return await this.func.put(url, params);
-    }
-
-    /**
-     * Duplicate block
-     *
-     * @param {*} params
-     * @returns
-     */
-    async postCloneBlock(params) {
-        let url =
-            this.endpoints.api_pag_structures_pag_structure_duplicate.path;
-        return await this.func.post(url, params);
     }
 
     /**
