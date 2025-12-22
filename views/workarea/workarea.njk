@@ -57,6 +57,8 @@
     {# TinyMCE #}
     <script class="exe" src="{{ '/libs/tinymce_5/js/tinymce/tinymce.min.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/editor/tinymce_5_settings.js' | asset }}" defer></script>
+    {# Connection monitoring (must load before yjs-loader) #}
+    <script class="exe" type="module" src="{{ '/app/common/connectionMonitor.js' | asset }}" defer></script>
     {# Yjs Collaborative Editing (loaded on-demand via yjs-loader.js) #}
     <script class="exe" src="{{ '/app/yjs/yjs-loader.js' | asset }}" defer></script>
     {# eXeLearning app: use individual modules (debugJs) or bundle #}

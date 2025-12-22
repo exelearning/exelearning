@@ -47,7 +47,9 @@ export type AssetMessageType =
     | 'preempt-upload'
     | 'resume-upload'
     | 'slot-available'
-    | 'navigation-hint';
+    | 'navigation-hint'
+    // Access control message types
+    | 'access-revoked';
 
 /**
  * Union type for all asset message data payloads

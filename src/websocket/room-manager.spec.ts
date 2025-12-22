@@ -19,14 +19,17 @@ import {
     getActiveRooms,
     getRoomStats,
     closeAllRooms,
+    getConnectionsByUserId,
+    getConnectedUserIds,
+    getRoomByProjectUuid,
 } from './room-manager';
 
 // Mock WebSocket for testing
-function createMockWebSocket(clientId: string = 'test-client') {
+function createMockWebSocket(clientId: string = 'test-client', userId: number = 1) {
     return {
         data: {
             clientId,
-            userId: 1,
+            userId,
             projectUuid: 'test-project-uuid',
             docName: 'project-test',
         },
@@ -527,6 +530,109 @@ describe('Room Manager', () => {
 
             expect(() => closeAllRooms()).not.toThrow();
             expect(getActiveRooms()).toEqual([]);
+        });
+    });
+
+    describe('getConnectionsByUserId', () => {
+        it('should return empty array for non-existent room', () => {
+            const connections = getConnectionsByUserId('non-existent', 1);
+            expect(connections).toEqual([]);
+        });
+
+        it('should return empty array when no connections for user', () => {
+            const ws1 = createMockWebSocket('client-1', 1);
+            addConnection('test-room', ws1);
+
+            const connections = getConnectionsByUserId('test-room', 999);
+            expect(connections).toEqual([]);
+        });
+
+        it('should return connections for specific user', () => {
+            const ws1 = createMockWebSocket('client-1', 1);
+            const ws2 = createMockWebSocket('client-2', 2);
+            const ws3 = createMockWebSocket('client-3', 1); // Same user
+
+            addConnection('test-room', ws1);
+            addConnection('test-room', ws2);
+            addConnection('test-room', ws3);
+
+            const connections = getConnectionsByUserId('test-room', 1);
+            expect(connections).toHaveLength(2);
+            expect(connections).toContain(ws1);
+            expect(connections).toContain(ws3);
+        });
+
+        it('should handle undefined userId in connection data', () => {
+            const ws = createMockWebSocket('client-1', 1);
+            ws.data.userId = undefined;
+            addConnection('test-room', ws);
+
+            const connections = getConnectionsByUserId('test-room', 1);
+            expect(connections).toEqual([]);
+        });
+    });
+
+    describe('getConnectedUserIds', () => {
+        it('should return empty array for non-existent room', () => {
+            const userIds = getConnectedUserIds('non-existent');
+            expect(userIds).toEqual([]);
+        });
+
+        it('should return unique user IDs', () => {
+            const ws1 = createMockWebSocket('client-1', 1);
+            const ws2 = createMockWebSocket('client-2', 2);
+            const ws3 = createMockWebSocket('client-3', 1); // Same user as ws1
+
+            addConnection('test-room', ws1);
+            addConnection('test-room', ws2);
+            addConnection('test-room', ws3);
+
+            const userIds = getConnectedUserIds('test-room');
+            expect(userIds).toHaveLength(2);
+            expect(userIds).toContain(1);
+            expect(userIds).toContain(2);
+        });
+
+        it('should handle undefined userId in connection data', () => {
+            const ws = createMockWebSocket('client-1', 1);
+            ws.data.userId = undefined;
+            addConnection('test-room', ws);
+
+            const userIds = getConnectedUserIds('test-room');
+            expect(userIds).toEqual([]);
+        });
+
+        it('should handle zero userId', () => {
+            const ws = createMockWebSocket('client-1', 0);
+            addConnection('test-room', ws);
+
+            const userIds = getConnectedUserIds('test-room');
+            expect(userIds).toHaveLength(1);
+            expect(userIds).toContain(0);
+        });
+    });
+
+    describe('getRoomByProjectUuid', () => {
+        it('should return undefined for non-existent project', () => {
+            const room = getRoomByProjectUuid('non-existent-uuid');
+            expect(room).toBeUndefined();
+        });
+
+        it('should return room for existing project', () => {
+            const ws = createMockWebSocket('client-1');
+            addConnection('project-test-uuid', ws, 'test-uuid');
+
+            const room = getRoomByProjectUuid('test-uuid');
+            expect(room).toBeDefined();
+            expect(room?.conns.size).toBe(1);
+        });
+
+        it('should find room by project UUID pattern', () => {
+            const ws = createMockWebSocket('client-1');
+            addConnection('project-a1b2c3d4-e5f6-7890-abcd-ef1234567890', ws);
+
+            const room = getRoomByProjectUuid('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+            expect(room).toBeDefined();
         });
     });
 });

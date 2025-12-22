@@ -880,5 +880,103 @@ describe('AssetWebSocketHandler', () => {
         expect.stringContaining('Unknown message type')
       );
     });
+
+    it('handles access-revoked message', async () => {
+      handler._handleAccessRevoked = mock(() => undefined);
+
+      await handler._handleAssetMessage({
+        type: 'access-revoked',
+        data: { reason: 'visibility_changed', revokedAt: '2025-01-01T00:00:00Z' },
+      });
+
+      expect(handler._handleAccessRevoked).toHaveBeenCalledWith({
+        reason: 'visibility_changed',
+        revokedAt: '2025-01-01T00:00:00Z',
+      });
+    });
+  });
+
+  describe('access revocation', () => {
+    let originalLocation;
+
+    beforeEach(() => {
+      // Mock window.location
+      originalLocation = global.window?.location;
+      delete global.window;
+      global.window = {
+        location: { href: '' },
+        eXeLearning: { config: { basePath: '' } },
+      };
+    });
+
+    afterEach(() => {
+      if (originalLocation) {
+        global.window.location = originalLocation;
+      }
+    });
+
+    it('disconnects wsProvider on access revoked', () => {
+      mockWsProvider.disconnect = mock(() => undefined);
+      mockWsProvider.shouldConnect = true;
+
+      handler._handleAccessRevoked({ reason: 'visibility_changed', revokedAt: '2025-01-01T00:00:00Z' });
+
+      expect(mockWsProvider.shouldConnect).toBe(false);
+      expect(mockWsProvider.disconnect).toHaveBeenCalled();
+    });
+
+    it('emits accessRevoked event', () => {
+      mockWsProvider.disconnect = mock(() => undefined);
+      const emitSpy = spyOn(handler, '_emit');
+
+      handler._handleAccessRevoked({ reason: 'collaborator_removed', revokedAt: '2025-01-01T00:00:00Z' });
+
+      expect(emitSpy).toHaveBeenCalledWith('accessRevoked', {
+        reason: 'collaborator_removed',
+        revokedAt: '2025-01-01T00:00:00Z',
+      });
+    });
+
+    it('redirects to access-denied page', async () => {
+      mockWsProvider.disconnect = mock(() => undefined);
+
+      handler._handleAccessRevoked({ reason: 'visibility_changed', revokedAt: '2025-01-01T00:00:00Z' });
+
+      // Wait for setTimeout
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      expect(global.window.location.href).toBe('/access-denied');
+    });
+
+    it('uses basePath in redirect URL', async () => {
+      mockWsProvider.disconnect = mock(() => undefined);
+      global.window.eXeLearning = { config: { basePath: '/web/exelearning' } };
+
+      handler._handleAccessRevoked({ reason: 'visibility_changed', revokedAt: '2025-01-01T00:00:00Z' });
+
+      // Wait for setTimeout
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      expect(global.window.location.href).toBe('/web/exelearning/access-denied');
+    });
+
+    it('handles missing wsProvider gracefully', () => {
+      handler.wsProvider = null;
+
+      // Should not throw
+      expect(() => {
+        handler._handleAccessRevoked({ reason: 'visibility_changed' });
+      }).not.toThrow();
+    });
+
+    it('logs warning message', () => {
+      mockWsProvider.disconnect = mock(() => undefined);
+
+      handler._handleAccessRevoked({ reason: 'visibility_changed' });
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Access revoked: visibility_changed')
+      );
+    });
   });
 });
