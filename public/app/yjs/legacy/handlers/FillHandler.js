@@ -24,7 +24,8 @@ class FillHandler extends BaseLegacyHandler {
     return className.includes('ClozeIdevice') ||
            className.includes('ClozeActivityIdevice') ||
            className.includes('ClozeLanguageIdevice') ||
-           className.includes('ClozeLangIdevice');
+           className.includes('ClozeLangIdevice') ||
+           className.includes('ClozelangfpdIdevice');
   }
 
   /**

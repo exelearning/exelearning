@@ -15,9 +15,20 @@
 class GeogebraHandler extends BaseLegacyHandler {
   /**
    * Check if this handler can process the given legacy class
+   * Also handles JsIdevice with geogebra-activity type
+   * @param {string} className - Legacy class name
+   * @param {string} ideviceType - iDevice type from _iDeviceDir (for JsIdevice)
    */
-  canHandle(className) {
-    return className.includes('GeogebraIdevice');
+  canHandle(className, ideviceType) {
+    // Check legacy GeogebraIdevice class
+    if (className.includes('GeogebraIdevice')) {
+      return true;
+    }
+    // Check JsIdevice with geogebra-activity type
+    if (ideviceType === 'geogebra-activity') {
+      return true;
+    }
+    return false;
   }
 
   /**

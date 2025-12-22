@@ -37,6 +37,18 @@ describe('GeogebraHandler', () => {
       expect(handler.canHandle('exe.engine.geogebraidevice.GeogebraIdevice')).toBe(true);
     });
 
+    it('returns true for JsIdevice with geogebra-activity type', () => {
+      expect(handler.canHandle('exe.engine.jsidevice.JsIdevice', 'geogebra-activity')).toBe(true);
+    });
+
+    it('returns false for JsIdevice without geogebra type', () => {
+      expect(handler.canHandle('exe.engine.jsidevice.JsIdevice', 'text')).toBe(false);
+    });
+
+    it('returns false for JsIdevice with undefined type', () => {
+      expect(handler.canHandle('exe.engine.jsidevice.JsIdevice', undefined)).toBe(false);
+    });
+
     it('returns false for other iDevice types', () => {
       expect(handler.canHandle('exe.engine.freetextidevice.FreeTextIdevice')).toBe(false);
     });

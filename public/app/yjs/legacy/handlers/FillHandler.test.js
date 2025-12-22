@@ -49,6 +49,10 @@ describe('FillHandler', () => {
       expect(handler.canHandle('exe.engine.clozelang.ClozeLangIdevice')).toBe(true);
     });
 
+    it('returns true for ClozelangfpdIdevice (FPD cloze variant)', () => {
+      expect(handler.canHandle('exe.engine.clozelangfpdidevice.ClozelangfpdIdevice')).toBe(true);
+    });
+
     it('returns false for other iDevice types', () => {
       expect(handler.canHandle('exe.engine.freetextidevice.FreeTextIdevice')).toBe(false);
     });
