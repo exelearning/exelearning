@@ -85,12 +85,13 @@
       'AssetManager.js',
       'AssetWebSocketHandler.js',
       'LegacyXmlParser.js',  // Now can use LegacyHandlerRegistry
+      'ResourceCache.js',    // IndexedDB cache for ResourceFetcher
     ],
     // Group 2: Importers/Exporters and ResourceFetcher (depend on Group 1)
     [
       'ElpxImporter.js',
       'ElpxExporter.js',
-      'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports
+      'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports (uses ResourceCache)
     ],
     // Group 3: Shared exporters bundle (TypeScript from src/shared/export/)
     // Contains all export functionality: Html5, SCORM, IMS, EPUB3, Preview

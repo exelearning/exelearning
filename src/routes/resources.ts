@@ -15,6 +15,7 @@ const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
 const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
 const LIBS_PATH = 'public/libs';
 const COMMON_PATH = 'public/app/common';
+const BUNDLES_PATH = 'public/bundles';
 
 /**
  * Dependency injection for testing
@@ -381,4 +382,136 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
             path: `content/css/${filePath}`, // Full path expected by exporters
             url: `${basePath}/${version}/style/workarea/${filePath}`,
         }));
+    })
+
+    // =========================================================================
+    // Bundle Endpoints (ZIP bundles for optimized fetching)
+    // =========================================================================
+
+    // GET /api/resources/bundle/manifest - Get bundle manifest with hashes
+    .get('/api/resources/bundle/manifest', ({ set }) => {
+        const version = getAppVersion();
+        const manifestPath = path.join(BUNDLES_PATH, version, 'manifest.json');
+
+        if (!deps.fs.existsSync(manifestPath)) {
+            set.status = 404;
+            return { error: 'Not Found', message: 'Bundle manifest not found. Run build:resource-bundles.' };
+        }
+
+        try {
+            const manifest = JSON.parse(deps.fs.readFileSync(manifestPath, 'utf-8'));
+            return manifest;
+        } catch {
+            set.status = 500;
+            return { error: 'Internal Error', message: 'Failed to read bundle manifest' };
+        }
+    })
+
+    // GET /api/resources/bundle/theme/:themeName - Get theme ZIP bundle
+    .get('/api/resources/bundle/theme/:themeName', async ({ params, set }) => {
+        const { themeName } = params;
+        const version = getAppVersion();
+
+        // Check for pre-built bundle (base themes)
+        const prebuiltPath = path.join(BUNDLES_PATH, version, 'themes', `${themeName}.zip`);
+
+        if (deps.fs.existsSync(prebuiltPath)) {
+            set.headers['content-type'] = 'application/zip';
+            set.headers['cache-control'] = 'public, max-age=31536000, immutable';
+            return Bun.file(prebuiltPath);
+        }
+
+        // Check if this is a user theme that needs on-demand ZIP generation
+        const userThemePath = path.join(THEMES_USERS_PATH, themeName);
+        if (deps.fs.existsSync(userThemePath)) {
+            // Generate ZIP on-the-fly for user themes
+            const files = scanDirectory(userThemePath);
+            if (files.length === 0) {
+                set.status = 404;
+                return { error: 'Not Found', message: `Theme ${themeName} is empty` };
+            }
+
+            // Use fflate to create ZIP dynamically
+            const { zipSync } = await import('fflate');
+            const zipData: { [key: string]: Uint8Array } = {};
+
+            for (const filePath of files) {
+                const fullPath = path.join(userThemePath, filePath);
+                try {
+                    const content = deps.fs.readFileSync(fullPath) as Buffer;
+                    zipData[filePath] = new Uint8Array(content);
+                } catch {
+                    // Skip files that can't be read
+                }
+            }
+
+            const zipBuffer = zipSync(zipData, { level: 6 });
+
+            set.headers['content-type'] = 'application/zip';
+            set.headers['cache-control'] = 'private, max-age=3600'; // Shorter cache for user themes
+            return new Response(zipBuffer);
+        }
+
+        set.status = 404;
+        return { error: 'Not Found', message: `Theme bundle ${themeName} not found` };
+    })
+
+    // GET /api/resources/bundle/idevices - Get all iDevices ZIP bundle
+    .get('/api/resources/bundle/idevices', ({ set }) => {
+        const version = getAppVersion();
+        const bundlePath = path.join(BUNDLES_PATH, version, 'idevices.zip');
+
+        if (!deps.fs.existsSync(bundlePath)) {
+            set.status = 404;
+            return { error: 'Not Found', message: 'iDevices bundle not found. Run build:resource-bundles.' };
+        }
+
+        set.headers['content-type'] = 'application/zip';
+        set.headers['cache-control'] = 'public, max-age=31536000, immutable';
+        return Bun.file(bundlePath);
+    })
+
+    // GET /api/resources/bundle/libs - Get base libraries ZIP bundle
+    .get('/api/resources/bundle/libs', ({ set }) => {
+        const version = getAppVersion();
+        const bundlePath = path.join(BUNDLES_PATH, version, 'libs.zip');
+
+        if (!deps.fs.existsSync(bundlePath)) {
+            set.status = 404;
+            return { error: 'Not Found', message: 'Libraries bundle not found. Run build:resource-bundles.' };
+        }
+
+        set.headers['content-type'] = 'application/zip';
+        set.headers['cache-control'] = 'public, max-age=31536000, immutable';
+        return Bun.file(bundlePath);
+    })
+
+    // GET /api/resources/bundle/common - Get common libraries ZIP bundle
+    .get('/api/resources/bundle/common', ({ set }) => {
+        const version = getAppVersion();
+        const bundlePath = path.join(BUNDLES_PATH, version, 'common.zip');
+
+        if (!deps.fs.existsSync(bundlePath)) {
+            set.status = 404;
+            return { error: 'Not Found', message: 'Common libraries bundle not found. Run build:resource-bundles.' };
+        }
+
+        set.headers['content-type'] = 'application/zip';
+        set.headers['cache-control'] = 'public, max-age=31536000, immutable';
+        return Bun.file(bundlePath);
+    })
+
+    // GET /api/resources/bundle/content-css - Get content CSS ZIP bundle
+    .get('/api/resources/bundle/content-css', ({ set }) => {
+        const version = getAppVersion();
+        const bundlePath = path.join(BUNDLES_PATH, version, 'content-css.zip');
+
+        if (!deps.fs.existsSync(bundlePath)) {
+            set.status = 404;
+            return { error: 'Not Found', message: 'Content CSS bundle not found. Run build:resource-bundles.' };
+        }
+
+        set.headers['content-type'] = 'application/zip';
+        set.headers['cache-control'] = 'public, max-age=31536000, immutable';
+        return Bun.file(bundlePath);
     });

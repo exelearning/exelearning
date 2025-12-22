@@ -98,10 +98,29 @@ class YjsProjectBridge {
     // Create legacy asset cache (for backward compatibility)
     this.assetCache = new window.AssetCacheManager(projectId);
 
+    // Create ResourceCache for persistent caching of themes, libraries, iDevices
+    let resourceCache = null;
+    if (window.ResourceCache) {
+      resourceCache = new window.ResourceCache();
+      try {
+        await resourceCache.init();
+        Logger.log('[YjsProjectBridge] ResourceCache initialized');
+
+        // Clean old version entries on startup
+        const currentVersion = window.eXeLearning?.version || 'v0.0.0';
+        await resourceCache.clearOldVersions(currentVersion);
+      } catch (e) {
+        console.warn('[YjsProjectBridge] ResourceCache initialization failed:', e);
+        resourceCache = null;
+      }
+    }
+
     // Create ResourceFetcher for fetching themes, libraries, iDevices for exports
     if (window.ResourceFetcher) {
       this.resourceFetcher = new window.ResourceFetcher();
-      Logger.log('[YjsProjectBridge] ResourceFetcher initialized');
+      // Initialize with ResourceCache for persistent caching
+      await this.resourceFetcher.init(resourceCache);
+      Logger.log('[YjsProjectBridge] ResourceFetcher initialized with bundle support');
     }
 
     // Create AssetWebSocketHandler for peer-to-peer asset synchronization

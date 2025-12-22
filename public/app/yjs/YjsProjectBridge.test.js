@@ -107,6 +107,28 @@ class MockSaveManager {
   async save() { return { success: true, bytes: 100 }; }
 }
 
+// Mock ResourceFetcher
+class MockResourceFetcher {
+  constructor() {
+    this.initialized = false;
+  }
+  async init() { this.initialized = true; }
+  async fetchTheme() { return new Map(); }
+  async fetchBaseLibraries() { return new Map(); }
+  async fetchIdevice() { return new Map(); }
+  async fetchContentCss() { return new Map(); }
+}
+
+// Mock ResourceCache
+class MockResourceCache {
+  async init() {}
+  async get() { return null; }
+  async set() {}
+  async has() { return false; }
+  async clear() {}
+  async clearOldVersions() {}
+}
+
 const createYText = (text = '') => {
   const doc = new window.Y.Doc();
   const yText = doc.getText('html');
@@ -131,6 +153,8 @@ describe('YjsProjectBridge', () => {
       AssetCacheManager: MockAssetCacheManager,
       AssetManager: MockAssetManager,
       SaveManager: MockSaveManager,
+      ResourceFetcher: MockResourceFetcher,
+      ResourceCache: MockResourceCache,
       eXeLearning: {
         symfony: { basePath: '' },
       },
