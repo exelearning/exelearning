@@ -28,7 +28,7 @@ class ResourceFetcher {
     // In-memory cache for the session
     this.cache = new Map();
     // Get basePath from eXeLearning globals (for subdirectory installs)
-    this.basePath = window.eXeLearning?.symfony?.basePath || '';
+    this.basePath = window.eXeLearning?.config?.basePath || '';
     // Base URL for API endpoints (includes basePath)
     this.apiBase = `${this.basePath}/api/resources`;
     // Version for cache-busting static file URLs

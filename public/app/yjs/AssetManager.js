@@ -2317,7 +2317,7 @@ window.resolveAssetUrls = function(html, options = {}) {
       // Get API config
       const config = window.eXeLearning?.config || {};
       const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
-      const token = window.eXeLearning?.symfony?.token || '';
+      const token = window.eXeLearning?.config?.token || '';
       const projectUuid = bridge?.projectId || '';
 
       if (token && projectUuid) {

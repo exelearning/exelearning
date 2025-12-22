@@ -272,7 +272,7 @@ export default class ModalStyleManager extends Modal {
     getBaseThemes(themes) {
         let baseThemes = {};
         for (let [key, value] of Object.entries(themes)) {
-            if (value.type == eXeLearning.symfony.themeTypeBase) {
+            if (value.type == eXeLearning.config.themeTypeBase) {
                 baseThemes[key] = value;
             }
         }
@@ -288,7 +288,7 @@ export default class ModalStyleManager extends Modal {
     getUserThemes(themes) {
         let userThemes = {};
         for (let [key, value] of Object.entries(themes)) {
-            if (value.type == eXeLearning.symfony.themeTypeUser) {
+            if (value.type == eXeLearning.config.themeTypeUser) {
                 userThemes[key] = value;
             }
         }
@@ -997,7 +997,7 @@ export default class ModalStyleManager extends Modal {
         if (value)
             imgElement.setAttribute(
                 'src',
-                `${eXeLearning.symfony.basePath}${value}?v=${Date.now()}`
+                `${eXeLearning.config.basePath}${value}?v=${Date.now()}`
             );
         // - Input
         let inputFileElement = document.createElement('input');

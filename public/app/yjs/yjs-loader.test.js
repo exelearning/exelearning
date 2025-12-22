@@ -24,7 +24,7 @@ describe('YjsLoader', () => {
     // Setup window mocks - set properties on existing window (don't replace it)
     // This preserves happy-dom's window while adding our test properties
     window.eXeLearning = {
-      symfony: { basePath: '' },
+      config: { basePath: '' },
       version: 'v1.0.0',
     };
     window.Y = undefined;
@@ -198,18 +198,18 @@ describe('YjsLoader', () => {
   describe('path building', () => {
     it('uses basePath from eXeLearning config', () => {
       window.eXeLearning = {
-        symfony: { basePath: '/web/exelearning' },
+        config: { basePath: '/web/exelearning' },
         version: 'v1.0.0',
       };
 
       // The YjsLoader uses eXeLearning config at load time
       // Since module is cached, we test that the config structure is correct
-      expect(window.eXeLearning.symfony.basePath).toBe('/web/exelearning');
+      expect(window.eXeLearning.config.basePath).toBe('/web/exelearning');
     });
 
     it('uses version from eXeLearning config', () => {
       window.eXeLearning = {
-        symfony: { basePath: '' },
+        config: { basePath: '' },
         version: 'v2.0.0',
       };
 

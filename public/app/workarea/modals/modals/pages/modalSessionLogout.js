@@ -109,7 +109,7 @@ export default class ModalSessionLogout extends Modal {
         notSaveSessionButton.addEventListener('click', () => {
             // Handle Yjs project navigation (from Recent Projects menu)
             if (data.openYjsProject && data.projectUuid) {
-                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                const basePath = window.eXeLearning?.config?.basePath || '';
                 window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
                 this.close();
                 return;
@@ -166,7 +166,7 @@ export default class ModalSessionLogout extends Modal {
                     await saveManager.save();
                 }
                 // Navigate to the new project
-                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                const basePath = window.eXeLearning?.config?.basePath || '';
                 window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
             } catch (error) {
                 console.error('[SessionLogout] Error saving Yjs project:', error);

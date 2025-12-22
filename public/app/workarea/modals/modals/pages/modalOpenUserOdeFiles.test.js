@@ -102,7 +102,7 @@ describe('modalOpenUserOdeFiles', () => {
           },
         }
       },
-      symfony: { basePath: '/exelearning' }
+      config: { basePath: '/exelearning' }
     };
 
     // Mock DOM
@@ -562,10 +562,10 @@ describe('modalOpenUserOdeFiles', () => {
     it('should fallback to symfony token then localStorage', () => {
       window.eXeLearning.app.auth = null;
       window.eXeLearning.app.project._yjsBridge = null;
-      window.eXeLearning.symfony = { token: 'sym-token' };
+      window.eXeLearning.config = { token: 'sym-token' };
       expect(modal.getAuthToken()).toBe('sym-token');
 
-      window.eXeLearning.symfony = null;
+      window.eXeLearning.config = null;
       localStorage.setItem('authToken', 'local-token');
       expect(modal.getAuthToken()).toBe('local-token');
       localStorage.clear();

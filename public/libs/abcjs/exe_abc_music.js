@@ -227,7 +227,7 @@ $exeABCmusic = {
     if (window.eXeLearning === undefined) return; // Not load the scripts dynamically in the export
 
     // Use versioned path for cache busting: {basePath}/{version}/libs/...
-    const basePath = eXeLearning.symfony.basePath || '';
+    const basePath = eXeLearning.config.basePath || '';
     const version = eXeLearning.version || 'v1.0.0';
     let libsPath = `${basePath}/${version}/libs`;
     let abcmusicPath = `${libsPath}/tinymce_5/js/tinymce/plugins/abcmusic`;

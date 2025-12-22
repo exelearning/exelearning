@@ -440,7 +440,7 @@ var $exe = {
         if ($("A.exe-tooltip").length > 0) {
             var p = "";
             if (typeof (eXeLearning) !== 'undefined') {
-                p = eXeLearning.symfony.fullURL + "/app/common/exe_tooltips/";
+                p = eXeLearning.config.fullURL + "/app/common/exe_tooltips/";
             } else {
                 var ref = window.location.href;
                 // Check if it's the home page

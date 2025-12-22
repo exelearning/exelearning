@@ -19,7 +19,7 @@ describe('ResourceFetcher', () => {
 
     // Mock eXeLearning global
     global.eXeLearning = {
-      symfony: {
+      config: {
         basePath: '/web/exelearning',
       },
       version: 'v3.1.0',

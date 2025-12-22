@@ -22,7 +22,7 @@ import SessionMonitor from './common/sessionMonitor.js';
 export default class App {
     constructor(eXeLearning) {
         this.eXeLearning = eXeLearning;
-        this.parseExelearningSymfonyData();
+        this.parseExelearningConfig();
         this.api = new ApiCallManager(this);
         this.locale = new Locale(this);
         this.common = new Common(this);
@@ -144,19 +144,13 @@ export default class App {
     /**
      *
      */
-    parseExelearningSymfonyData() {
+    parseExelearningConfig() {
         window.eXeLearning.user = JSON.parse(
             window.eXeLearning.user.replace(/&quot;/g, '"')
         );
         window.eXeLearning.config = JSON.parse(
             window.eXeLearning.config.replace(/&quot;/g, '"')
         );
-        window.eXeLearning.symfony = JSON.parse(
-            window.eXeLearning.symfony.replace(/&quot;/g, '"')
-        );
-        // window.eXeLearning.mercure = JSON.parse(
-        //     window.eXeLearning.mercure.replace(/&quot;/g, '"')
-        // );
 
         const urlRequest = new URL(window.location.href);
         const protocol = urlRequest.protocol; // "https:"
@@ -170,33 +164,22 @@ export default class App {
             ];
             propertiesToForceHTTPS.forEach((property) => {
                 if (
-                    window.eXeLearning.symfony[property] &&
-                    window.eXeLearning.symfony[property].startsWith('http://')
+                    window.eXeLearning.config[property] &&
+                    window.eXeLearning.config[property].startsWith('http://')
                 ) {
-                    window.eXeLearning.symfony[property] =
-                        window.eXeLearning.symfony[property].replace(
+                    window.eXeLearning.config[property] =
+                        window.eXeLearning.config[property].replace(
                             'http://',
                             'https://'
                         );
                 }
             });
-
-            // if (
-            //     window.eXeLearning.mercure.url &&
-            //     window.eXeLearning.mercure.url.startsWith('http://')
-            // ) {
-            //     window.eXeLearning.mercure.url =
-            //         window.eXeLearning.mercure.url.replace(
-            //             'http://',
-            //             'https://'
-            //         );
-            // }
         }
 
         // Test-env override: when running E2E with Panther, the page origin
         // is the internal PHP server (exelearning:908X), which doesn't host Mercure.
         // Force the hub to the Nginx/Caddy endpoint in the exelearning container.
-        if (window.eXeLearning?.symfony?.environment === 'test') {
+        if (window.eXeLearning?.config?.environment === 'test') {
             // Only override if not already explicitly set to a non-908X host
             try {
                 const current = window.eXeLearning.mercure?.url || '';
@@ -254,7 +237,7 @@ export default class App {
     }
 
     getBasePath() {
-        const basePath = this.eXeLearning.symfony?.basePath ?? '';
+        const basePath = this.eXeLearning.config?.basePath ?? '';
         if (!basePath || basePath === '/') {
             return '';
         }
@@ -429,9 +412,9 @@ export default class App {
      */
     async check() {
         // Check FILES_DIR
-        if (!this.eXeLearning.symfony.filesDirPermission.checked) {
+        if (!this.eXeLearning.config.filesDirPermission.checked) {
             let htmlBody = '';
-            this.eXeLearning.symfony.filesDirPermission.info.forEach((text) => {
+            this.eXeLearning.config.filesDirPermission.info.forEach((text) => {
                 htmlBody += `<p>${text}</p>`;
             });
             this.modals.alert.show({

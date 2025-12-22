@@ -44,7 +44,6 @@ import { projectRoutes, symfonyCompatProjectRoutes } from './routes/project';
 import { assetsRoutes } from './routes/assets';
 import { exportRoutes } from './routes/export';
 import { convertRoutes } from './routes/convert';
-import { filemanagerRoutes } from './routes/filemanager';
 import { pagesRoutes } from './routes/pages';
 import { configRoutes } from './routes/config';
 import { idevicesRoutes } from './routes/idevices';
@@ -314,7 +313,6 @@ app.use(healthRoutes)
     .use(assetsRoutes)
     .use(exportRoutes)
     .use(convertRoutes)
-    .use(filemanagerRoutes)
     .use(configRoutes)
     .use(idevicesRoutes)
     .use(gamesRoutes)
@@ -347,7 +345,6 @@ if (routePrefix) {
             .use(assetsRoutes)
             .use(exportRoutes)
             .use(convertRoutes)
-            .use(filemanagerRoutes)
             .use(configRoutes)
             .use(idevicesRoutes)
             .use(themesRoutes)

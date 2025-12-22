@@ -25,7 +25,7 @@ describe('IdeviceManager', () => {
     // Mock app
     mockApp = {
       eXeLearning: {
-        symfony: {
+        config: {
           fullURL: 'http://localhost:8080',
         },
       },

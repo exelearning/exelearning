@@ -137,7 +137,7 @@ describe('YjsDocumentManager', () => {
     global.window.WebsocketProvider = MockWebsocketProvider;
     global.window.YjsLockManager = null;
     global.window.eXeLearning = {
-      symfony: { basePath: '' },
+      config: { basePath: '' },
     };
     global.window.location = {
       protocol: 'http:',

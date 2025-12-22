@@ -43,9 +43,7 @@ import type {
     OdeCurrentUserRequest,
     CheckBeforeLeaveRequest,
     CloseSessionRequest,
-    IdeviceDuplicateRequest,
     NavStructureDuplicateRequest,
-    PagStructureDuplicateRequest,
     StructureSaveRequest,
     ProjectMetadataRequest,
 } from './types/request-payloads';
@@ -2002,30 +2000,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // Clone/Duplicate Endpoints
             // =====================================================
 
-            // POST /api/idevice-management/idevices/duplicate - Clone an iDevice
-            .post('/api/idevice-management/idevices/duplicate', async ({ body }) => {
-                const data = body as IdeviceDuplicateRequest;
-                const { odeSessionId, ideviceId, targetBlockId } = data;
-
-                // In stateless Yjs mode, cloning is handled client-side
-                // This endpoint acknowledges the request and returns a new UUID
-                const newIdeviceId = crypto.randomUUID();
-
-                console.log(
-                    `[Project] Clone iDevice request: ${ideviceId} -> ${newIdeviceId} in block ${targetBlockId}`,
-                );
-
-                return {
-                    responseMessage: 'OK',
-                    success: true,
-                    newIdeviceId,
-                    message: 'iDevice cloned (client-side Yjs mode)',
-                    odeSessionId,
-                    originalIdeviceId: ideviceId,
-                    targetBlockId,
-                };
-            })
-
             // POST /api/nav-structure-management/nav-structures/duplicate - Clone a page (nav-structure)
             .post('/api/nav-structure-management/nav-structures/duplicate', async ({ body }) => {
                 const data = body as NavStructureDuplicateRequest;
@@ -2048,48 +2022,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 };
             })
 
-            // POST /api/pag-structure-management/pag-structures/duplicate - Clone a block (pag-structure)
-            .post('/api/pag-structure-management/pag-structures/duplicate', async ({ body }) => {
-                const data = body as PagStructureDuplicateRequest;
-                const { odeSessionId, pagStructureId, targetPageId } = data;
-
-                // In stateless Yjs mode, cloning is handled client-side
-                // This endpoint acknowledges the request and returns a new UUID
-                const newPagStructureId = crypto.randomUUID();
-
-                console.log(`[Project] Clone pag-structure request: ${pagStructureId} -> ${newPagStructureId}`);
-
-                return {
-                    responseMessage: 'OK',
-                    success: true,
-                    newPagStructureId,
-                    message: 'Block cloned (client-side Yjs mode)',
-                    odeSessionId,
-                    originalPagStructureId: pagStructureId,
-                    targetPageId,
-                };
-            })
-
             // =====================================================
             // Save/Update Endpoints for Structure Management
             // =====================================================
-
-            // PUT /api/nav-structure-management/nav-structures/nav/structure/data/save - Save page properties
-            .put('/api/nav-structure-management/nav-structures/nav/structure/data/save', async ({ body }) => {
-                const data = body as StructureSaveRequest;
-                const { odeSessionId, navStructureId, properties: _properties } = data;
-
-                // In stateless Yjs mode, saving is handled client-side
-                console.log(`[Project] Save nav-structure properties: ${navStructureId}`);
-
-                return {
-                    responseMessage: 'OK',
-                    success: true,
-                    message: 'Page properties saved (client-side Yjs mode)',
-                    odeSessionId,
-                    navStructureId,
-                };
-            })
 
             // PUT /api/nav-structure-management/nav-structures/reorder/save - Reorder pages
             .put('/api/nav-structure-management/nav-structures/reorder/save', async ({ body }) => {

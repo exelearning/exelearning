@@ -177,7 +177,7 @@ describe('NavbarFile', () => {
                 isOfflineInstallation: false,
                 platformUrlSet: 'http://platform',
             },
-            symfony: {
+            config: {
                 baseURL: '',
                 basePath: '',
             },

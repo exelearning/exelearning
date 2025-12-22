@@ -14,7 +14,7 @@ if (top.interactiveVideoEditor) {
     InteractiveVideo = top.interactiveVideoEditor.activityToSave;
 }
 var iAdmin = {
-    domainPath: window.parent.eXeLearning.symfony.fullURL,
+    domainPath: window.parent.eXeLearning.config.fullURL,
     globals: {
         mode: 'add', // add or edit
         currentSlide: '', // The order of the slide that's being edited (a number): InteractiveVideo.slides[X],
@@ -1763,7 +1763,7 @@ var iAdmin = {
                                 response.savedPath &&
                                 response.savedFilename
                             ) {
-                                let fullPath = `${top.eXeLearning.symfony.fullURL}/${response.savedPath}${response.savedFilename}`;
+                                let fullPath = `${top.eXeLearning.config.fullURL}/${response.savedPath}${response.savedFilename}`;
                                 cb(fullPath, {
                                     title: response.savedFilename,
                                     size: response.savedFileSize,

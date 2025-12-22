@@ -96,7 +96,7 @@ class YjsDocumentManager {
     const hostname = window.location.hostname || 'localhost';
     const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
     // Include basePath from eXeLearning config (set by pages.controller.ts)
-    const basePath = window.eXeLearning?.symfony?.basePath || '';
+    const basePath = window.eXeLearning?.config?.basePath || '';
 
     return `${protocol}//${hostname}:${port}${basePath}/yjs`;
   }

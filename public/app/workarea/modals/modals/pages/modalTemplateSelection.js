@@ -46,7 +46,7 @@ export default class modalTemplateSelection extends Modal {
     async fetchTemplates() {
         try {
             const locale =
-                eXeLearning.app.locale.lang || eXeLearning.symfony.locale;
+                eXeLearning.app.locale.lang || eXeLearning.config.locale;
             const response = await eXeLearning.app.api.getTemplates(locale);
             this.templates = response || [];
         } catch (error) {
