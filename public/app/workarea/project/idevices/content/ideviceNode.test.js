@@ -110,6 +110,16 @@ describe('IdeviceNode', () => {
         eXeLearning.app.project._yjsEnabled = false;
         eXeLearning.app.project._yjsBridge = null;
 
+        // Reset structure in case a test set it to null
+        eXeLearning.app.project.structure = {
+            getSelectNodeNavId: vi.fn(() => 'nav-id-1'),
+            getSelectNodePageId: vi.fn(() => 'page-id-1'),
+            getAllNodesOrderByView: vi.fn(() => [
+                { id: 'page-1', deep: 0, pageName: 'Home' },
+                { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
+            ]),
+        };
+
         // Create mock engine
         mockEngine = {
             generateId: vi.fn(() => `engine-id-${Date.now()}`),

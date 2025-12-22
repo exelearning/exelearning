@@ -158,7 +158,23 @@ DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test bun test src/path/to/fil
 
 # Run with coverage
 make test-coverage
+
+# Run frontend tests (Vitest)
+make test-frontend
+
+# Run specific frontend test file
+bun vitest run public/app/path/to/file.test.js
 ```
+
+### Keeping Tests Updated
+
+**When developing features, always run and update ALL relevant tests:**
+- **Backend unit tests** (`src/**/*.spec.ts`): Run with `make test-unit`
+- **Frontend unit tests** (`public/app/**/*.test.js`): Run with `make test-frontend`
+- **Integration tests** (`test/integration/**/*.spec.ts`): Run with `make test-integration`
+- **E2E tests** (Playwright): Run with `make test-e2e`
+
+If a feature touches frontend JavaScript files, you MUST update the corresponding `.test.js` files. Frontend tests use Vitest with happy-dom environment.
 
 ### Coverage Requirements
 
