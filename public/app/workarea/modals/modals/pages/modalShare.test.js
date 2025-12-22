@@ -321,6 +321,52 @@ describe('ModalShare', () => {
       await modal.handleVisibilityChange('public');
       expect(modal.projectData.visibility).toBe('public');
     });
+
+    it('should save project before changing visibility to public', async () => {
+      const saveToServer = vi.fn().mockResolvedValue({});
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'private', uuid: 'proj-123' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.project._yjsBridge = { saveToServer };
+      window.eXeLearning.app.api.updateProjectVisibility.mockResolvedValueOnce({ responseMessage: 'OK' });
+
+      await modal.handleVisibilityChange('public');
+
+      // Save should be called before visibility change
+      expect(saveToServer).toHaveBeenCalled();
+      expect(window.eXeLearning.app.api.updateProjectVisibility).toHaveBeenCalledWith('proj-123', 'public');
+    });
+
+    it('should NOT save project when changing visibility to private', async () => {
+      const saveToServer = vi.fn().mockResolvedValue({});
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'public', uuid: 'proj-123' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.project._yjsBridge = { saveToServer };
+      window.eXeLearning.app.api.updateProjectVisibility.mockResolvedValueOnce({ responseMessage: 'OK' });
+
+      await modal.handleVisibilityChange('private');
+
+      // Save should NOT be called when going to private
+      expect(saveToServer).not.toHaveBeenCalled();
+      expect(window.eXeLearning.app.api.updateProjectVisibility).toHaveBeenCalledWith('proj-123', 'private');
+    });
+
+    it('should continue with visibility change even if save fails', async () => {
+      const saveToServer = vi.fn().mockRejectedValue(new Error('Save failed'));
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'private', uuid: 'proj-123' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.project._yjsBridge = { saveToServer };
+      window.eXeLearning.app.api.updateProjectVisibility.mockResolvedValueOnce({ responseMessage: 'OK' });
+
+      await modal.handleVisibilityChange('public');
+
+      // Should still update visibility even if save fails
+      expect(saveToServer).toHaveBeenCalled();
+      expect(window.eXeLearning.app.api.updateProjectVisibility).toHaveBeenCalled();
+      expect(modal.projectData.visibility).toBe('public');
+    });
   });
 
   describe('utilities', () => {
