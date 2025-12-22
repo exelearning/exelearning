@@ -214,7 +214,8 @@ async function cloneBlock(page: Page): Promise<void> {
     // Ensure we're in advanced mode to see clone buttons
     await ensureAdvancedMode(page);
 
-    const blockNode = page.locator('#node-content article .exe-block').first();
+    // Block elements have class 'box', not 'exe-block'
+    const blockNode = page.locator('#node-content article .box').first();
     await blockNode.waitFor({ state: 'visible', timeout: 10000 });
 
     // Get the block ID from the element
@@ -260,7 +261,7 @@ async function cloneBlock(page: Page): Promise<void> {
     await page
         .waitForFunction(
             () => {
-                const blocks = document.querySelectorAll('#node-content article .exe-block');
+                const blocks = document.querySelectorAll('#node-content article .box');
                 return blocks.length >= 2;
             },
             { timeout: 15000 },
@@ -415,8 +416,8 @@ test.describe('Cloning Functionality', () => {
             // Wait for cloned block to appear
             await page.waitForTimeout(1000);
 
-            // Verify there are now 2 blocks
-            const blocks = page.locator('#node-content article .exe-block');
+            // Verify there are now 2 blocks (blocks have class 'box')
+            const blocks = page.locator('#node-content article .box');
             const blockCount = await blocks.count();
 
             // Should have at least 2 blocks now (original + clone)
