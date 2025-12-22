@@ -121,28 +121,80 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
 }
 
 /**
+ * Helper to switch to advanced mode (to show clone buttons)
+ */
+async function ensureAdvancedMode(page: Page): Promise<void> {
+    // The clone button is inside .exe-advanced which is hidden in default mode
+    // Switch to advanced mode by setting body[mode="advanced"]
+    await page.evaluate(() => {
+        document.body.setAttribute('mode', 'advanced');
+    });
+    await page.waitForTimeout(300);
+}
+
+/**
  * Helper to click clone button on iDevice
  */
 async function cloneIdevice(page: Page): Promise<void> {
-    const ideviceNode = page.locator('#node-content article .idevice_node.text').first();
+    // Ensure we're in advanced mode to see clone buttons
+    await ensureAdvancedMode(page);
 
-    // Open iDevice dropdown menu
-    const dropdownToggle = ideviceNode.locator('.dropdown-toggle, .btn-group .dropdown-toggle').first();
+    const ideviceNode = page.locator('#node-content article .idevice_node.text').first();
+    await ideviceNode.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Get the iDevice ID from the element
+    const odeIdeviceId = await ideviceNode.getAttribute('ode-idevice-id');
+
+    // Open iDevice dropdown menu - the toggle button has data-bs-toggle="dropdown"
+    const dropdownToggle = ideviceNode
+        .locator('[data-bs-toggle="dropdown"], [id^="dropdownMenuButtonIdevice"]')
+        .first();
     if ((await dropdownToggle.count()) > 0) {
         await dropdownToggle.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
     }
 
-    // Click clone button
-    const cloneBtn = ideviceNode.locator(
-        '.btn-clone-idevice, [data-action="clone"], .dropdown-item:has-text("Clon"), .dropdown-item:has-text("Clone")',
-    );
-    if ((await cloneBtn.count()) > 0) {
-        await cloneBtn.first().click();
+    // Click clone button - it's inside the dropdown with id="cloneIdevice${odeIdeviceId}"
+    const cloneBtnSelectors = [
+        `#cloneIdevice${odeIdeviceId}`,
+        '[id^="cloneIdevice"]',
+        '.dropdown-item:has-text("Clone")',
+        '.dropdown-item:has-text("Clon")',
+    ];
+
+    let clicked = false;
+    for (const selector of cloneBtnSelectors) {
+        const cloneBtn = page.locator(selector).first();
+        if ((await cloneBtn.count()) > 0 && (await cloneBtn.isVisible())) {
+            await cloneBtn.click();
+            clicked = true;
+            break;
+        }
     }
 
-    // Wait for clone to complete and modal to appear
-    await page.waitForTimeout(1000);
+    if (!clicked) {
+        // Fallback: try clicking any visible clone button in the dropdown
+        const fallbackBtn = ideviceNode.locator('.dropdown-menu .dropdown-item').nth(1); // Clone is typically 2nd item
+        if ((await fallbackBtn.count()) > 0) {
+            await fallbackBtn.click();
+        }
+    }
+
+    // Wait for clone to complete
+    await page.waitForTimeout(2000);
+
+    // Wait for the cloned iDevice to appear (should now have 2 text idevices)
+    await page
+        .waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 2;
+            },
+            { timeout: 15000 },
+        )
+        .catch(() => {
+            // Continue even if timeout - the test assertion will catch the issue
+        });
 
     // Close the info modal if it appears
     const modal = page.locator('.modal.show');
@@ -159,25 +211,63 @@ async function cloneIdevice(page: Page): Promise<void> {
  * Helper to clone block
  */
 async function cloneBlock(page: Page): Promise<void> {
-    const blockNode = page.locator('#node-content article .exe-block').first();
+    // Ensure we're in advanced mode to see clone buttons
+    await ensureAdvancedMode(page);
 
-    // Open block dropdown menu
-    const dropdownToggle = blockNode.locator('.block-buttons .dropdown-toggle').first();
+    const blockNode = page.locator('#node-content article .exe-block').first();
+    await blockNode.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Get the block ID from the element
+    const blockId = await blockNode.getAttribute('block-id');
+
+    // Open block dropdown menu - toggle button is #dropdownMenuButton${blockId}
+    const dropdownToggle = blockNode.locator('[data-bs-toggle="dropdown"], [id^="dropdownMenuButton"]').first();
     if ((await dropdownToggle.count()) > 0) {
         await dropdownToggle.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
     }
 
-    // Click clone button
-    const cloneBtn = blockNode.locator(
-        '.btn-clone-block, [data-action="clone-block"], .dropdown-item:has-text("Clon")',
-    );
-    if ((await cloneBtn.count()) > 0) {
-        await cloneBtn.first().click();
+    // Click clone button - it's #dropdownBlockMore-button-clone${blockId}
+    const cloneBtnSelectors = [
+        `#dropdownBlockMore-button-clone${blockId}`,
+        '[id^="dropdownBlockMore-button-clone"]',
+        '.dropdown-item:has-text("Clone")',
+        '.dropdown-item:has-text("Clon")',
+    ];
+
+    let clicked = false;
+    for (const selector of cloneBtnSelectors) {
+        const cloneBtn = page.locator(selector).first();
+        if ((await cloneBtn.count()) > 0 && (await cloneBtn.isVisible())) {
+            await cloneBtn.click();
+            clicked = true;
+            break;
+        }
+    }
+
+    if (!clicked) {
+        // Fallback: try clicking any visible clone button in the dropdown
+        const fallbackBtn = blockNode.locator('.dropdown-menu .dropdown-item').nth(1); // Clone is typically 2nd item
+        if ((await fallbackBtn.count()) > 0) {
+            await fallbackBtn.click();
+        }
     }
 
     // Wait for clone to complete
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
+
+    // Wait for the cloned block to appear
+    await page
+        .waitForFunction(
+            () => {
+                const blocks = document.querySelectorAll('#node-content article .exe-block');
+                return blocks.length >= 2;
+            },
+            { timeout: 15000 },
+        )
+        .catch(() => {
+            // Continue even if timeout
+        });
 
     // Close the info modal if it appears
     const modal = page.locator('.modal.show');
