@@ -257,7 +257,7 @@ class BaseLegacyHandler {
       // Handle Python unicode escapes for common characters
       .replace(/\\n/g, '\n')
       .replace(/\\t/g, '\t')
-      .replace(/\\r/g, '\r');
+      .replace(/\\r(?![a-zA-Z])/g, '\r'); // Negative lookahead to preserve LaTeX commands like \right
 
     return decoded;
   }
