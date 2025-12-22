@@ -19,11 +19,12 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
     // Root has nav-id="root", pages have other nav-ids
     const pageNodeSelectors = [
         // First try to find a page node (excludes root)
+        // Note: .nav-element is NOT inside #menu_structure - it's directly in the DOM
         '.nav-element:not([nav-id="root"]) .nav-element-text',
         // Fallback: any nav-element-text in the structure tree that's not the root
-        '#menu_structure .structure-tree .nav-element:not([nav-id="root"]) .nav-element-text',
+        '.structure-tree .nav-element:not([nav-id="root"]) .nav-element-text',
         // Last resort: click on the tree item directly
-        '#menu_structure .structure-tree li:not(:first-child) .nav-element-text',
+        '.structure-tree li:not(:first-child) .nav-element-text',
     ];
 
     let pageSelected = false;
@@ -214,12 +215,13 @@ async function cloneBlock(page: Page): Promise<void> {
     // Ensure we're in advanced mode to see clone buttons
     await ensureAdvancedMode(page);
 
-    // Block elements have class 'box', not 'exe-block'
-    const blockNode = page.locator('#node-content article .box').first();
+    // Block elements are article.box (the article IS the .box element)
+    // They have an 'id' attribute like 'block-1766400580284-nre7blo26'
+    const blockNode = page.locator('#node-content article.box').first();
     await blockNode.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Get the block ID from the element
-    const blockId = await blockNode.getAttribute('block-id');
+    // Get the block ID from the element's 'id' attribute (not 'block-id')
+    const blockId = await blockNode.getAttribute('id');
 
     // Open block dropdown menu - toggle button is #dropdownMenuButton${blockId}
     const dropdownToggle = blockNode.locator('[data-bs-toggle="dropdown"], [id^="dropdownMenuButton"]').first();
@@ -261,7 +263,8 @@ async function cloneBlock(page: Page): Promise<void> {
     await page
         .waitForFunction(
             () => {
-                const blocks = document.querySelectorAll('#node-content article .box');
+                // Block elements are article.box (article IS the .box)
+                const blocks = document.querySelectorAll('#node-content article.box');
                 return blocks.length >= 2;
             },
             { timeout: 15000 },
@@ -287,9 +290,10 @@ async function cloneBlock(page: Page): Promise<void> {
 async function clonePage(page: Page): Promise<void> {
     // Select a PAGE node (not root) to clone
     // Root has nav-id="root", pages have other nav-ids
+    // Note: .nav-element is NOT inside #menu_structure - it's directly in the DOM
     const pageNodeSelectors = [
-        '#menu_structure .nav-element:not([nav-id="root"]) .nav-element-text',
-        '#menu_structure .structure-tree .nav-element:not([nav-id="root"]) .nav-element-text',
+        '.nav-element:not([nav-id="root"]) .nav-element-text',
+        '.structure-tree .nav-element:not([nav-id="root"]) .nav-element-text',
     ];
 
     let pageSelected = false;
@@ -309,15 +313,16 @@ async function clonePage(page: Page): Promise<void> {
 
     if (!pageSelected) {
         // Fallback - try any nav-element-text
-        const fallbackNode = page.locator('#menu_structure .nav-element-text').first();
+        const fallbackNode = page.locator('.nav-element-text').first();
         await fallbackNode.click({ force: true }).catch(() => {});
     }
 
     await page.waitForTimeout(300);
 
     // Look for clone button in structure menu actions
-    const cloneBtn = page.locator('#menu_structure .button_nav_action.action_clone');
-    if ((await cloneBtn.count()) > 0) {
+    // The button has class 'button_nav_action action_clone'
+    const cloneBtn = page.locator('.button_nav_action.action_clone');
+    if ((await cloneBtn.count()) > 0 && (await cloneBtn.isVisible())) {
         await cloneBtn.click();
     }
 
@@ -417,7 +422,7 @@ test.describe('Cloning Functionality', () => {
             await page.waitForTimeout(1000);
 
             // Verify there are now 2 blocks (blocks have class 'box')
-            const blocks = page.locator('#node-content article .box');
+            const blocks = page.locator('#node-content article.box');
             const blockCount = await blocks.count();
 
             // Should have at least 2 blocks now (original + clone)
@@ -433,7 +438,8 @@ test.describe('Cloning Functionality', () => {
     });
 
     test.describe('Clone Page', () => {
-        test('should clone page with all blocks and iDevices preserved', async ({
+        // Increase timeout for this test as it involves multiple operations
+        test('should clone page with all blocks and iDevices preserved', { timeout: 90000 }, async ({
             authenticatedPage,
             createProject,
         }) => {
@@ -460,8 +466,8 @@ test.describe('Cloning Functionality', () => {
             // Verify content exists
             await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 10000 });
 
-            // Count pages before clone
-            const pagesBefore = await page.locator('#menu_structure .nav-element').count();
+            // Count pages before clone (nav-elements are NOT inside #menu_structure)
+            const pagesBefore = await page.locator('.nav-element').count();
 
             // Clone the page
             await clonePage(page);
@@ -470,12 +476,12 @@ test.describe('Cloning Functionality', () => {
             await page.waitForTimeout(1500);
 
             // Count pages after clone
-            const pagesAfter = await page.locator('#menu_structure .nav-element').count();
+            const pagesAfter = await page.locator('.nav-element').count();
             expect(pagesAfter).toBe(pagesBefore + 1);
 
             // Navigate to the cloned page (should be the last one with "(copy)" suffix)
             const clonedPageNode = page
-                .locator('#menu_structure .nav-element:not([nav-id="root"]) .nav-element-text:has-text("(copy)")')
+                .locator('.nav-element:not([nav-id="root"]) .nav-element-text:has-text("(copy)")')
                 .first();
             if ((await clonedPageNode.count()) > 0) {
                 await clonedPageNode.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
@@ -487,7 +493,7 @@ test.describe('Cloning Functionality', () => {
             } else {
                 // If no "(copy)" suffix, click the last non-root page node
                 const lastPageNode = page
-                    .locator('#menu_structure .nav-element:not([nav-id="root"]) .nav-element-text')
+                    .locator('.nav-element:not([nav-id="root"]) .nav-element-text')
                     .last();
                 await lastPageNode.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
                 await lastPageNode.click({ timeout: 5000 }).catch(() => lastPageNode.click({ force: true }));
