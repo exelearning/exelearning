@@ -51,9 +51,10 @@ describe('GameIdeviceHandler', () => {
       expect(handler.getTargetType()).toBe('flipcards');
     });
 
-    it('removes -activity suffix from type', () => {
+    it('removes -activity suffix and maps to installed type', () => {
       handler._detectedType = 'selecciona-activity';
-      expect(handler.getTargetType()).toBe('selecciona');
+      // selecciona maps to quick-questions-multiple-choice in TYPE_MAP
+      expect(handler.getTargetType()).toBe('quick-questions-multiple-choice');
     });
   });
 
@@ -126,8 +127,8 @@ describe('GameIdeviceHandler', () => {
       expect(data).toBe('{"typeGame":"FlipCards"}');
     });
 
-    it('extracts data with escaped quotes', () => {
-      const html = '<div class=\\"selecciona-DataGame js-hidden\\">%E9%B0%F3</div>';
+    it('extracts encrypted data from selecciona-DataGame', () => {
+      const html = '<div class="selecciona-DataGame js-hidden">%E9%B0%F3</div>';
       const data = handler.extractGameDataFromHtml(html, 'selecciona-DataGame');
       expect(data).toBe('%E9%B0%F3');
     });
@@ -218,6 +219,55 @@ describe('GameIdeviceHandler', () => {
 
     it('does not include flipcards', () => {
       expect(GameIdeviceHandler.ENCRYPTED_GAMES).not.toContain('flipcards');
+    });
+
+    it('includes Spanish encrypted games', () => {
+      const spanishGames = [
+        'rosco',
+        'videoquext',
+        'vquext',
+        'quext',
+        'desafio',
+        'candado',
+        'adivina',
+        'clasifica',
+        'completa',
+        'descubre',
+        'identifica',
+        'sopa',
+        'ordena',
+        'crucigrama',
+      ];
+      spanishGames.forEach(game => {
+        expect(GameIdeviceHandler.ENCRYPTED_GAMES).toContain(game);
+      });
+    });
+  });
+
+  describe('TYPE_MAP Spanish mappings', () => {
+    it('maps Spanish to English types correctly', () => {
+      const mappings = {
+        sopa: 'word-search',
+        crucigrama: 'crossword',
+        relaciona: 'relate',
+        desafio: 'challenge',
+        candado: 'padlock',
+        adivina: 'guess',
+        clasifica: 'classify',
+        completa: 'complete',
+        descubre: 'discover',
+        identifica: 'identify',
+        ordena: 'sort',
+        listacotejo: 'checklist',
+        informe: 'progress-report',
+        seleccionamedias: 'select-media-files',
+        vquext: 'quick-questions-video',
+        quext: 'quick-questions',
+      };
+
+      Object.entries(mappings).forEach(([spanish, english]) => {
+        expect(GameIdeviceHandler.TYPE_MAP[spanish]).toBe(english);
+      });
     });
   });
 });

@@ -27,6 +27,7 @@ class GameIdeviceHandler extends BaseLegacyHandler {
     'trivial': 'trivial-DataGame',
     'crossword': 'crossword-DataGame',
     'relate': 'relate-DataGame',
+    'relaciona': 'relaciona-DataGame',
     'identify': 'identify-DataGame',
     'discover': 'discover-DataGame',
     'complete': 'complete-DataGame',
@@ -47,9 +48,25 @@ class GameIdeviceHandler extends BaseLegacyHandler {
     'dragdrop': 'dragdrop-DataGame',
     'trueorfalse': 'trueorfalse-DataGame',
     // Spanish legacy names (mapped to English installed iDevice types)
+    // From OdeXmlUtil.php type detection
     'mapa': 'mapa-DataGame',
     'rosco': 'rosco-DataGame',
     'videoquext': 'videoquext-DataGame',
+    'vquext': 'vquext-DataGame',
+    'quext': 'quext-DataGame',
+    'desafio': 'desafio-DataGame',
+    'candado': 'candado-DataGame',
+    'adivina': 'adivina-DataGame',
+    'clasifica': 'clasifica-DataGame',
+    'completa': 'completa-DataGame',
+    'descubre': 'descubre-DataGame',
+    'identifica': 'identifica-DataGame',
+    'sopa': 'sopa-DataGame',
+    'ordena': 'ordena-DataGame',
+    'seleccionamedias': 'seleccionamedias-DataGame',
+    'listacotejo': 'listacotejo-DataGame',
+    'informe': 'informe-DataGame',
+    'crucigrama': 'crucigrama-DataGame',
   };
 
   /**
@@ -68,6 +85,7 @@ class GameIdeviceHandler extends BaseLegacyHandler {
     'sort',
     'puzzle',
     'relate',
+    'relaciona',
     'hidden-image',
     'mathematicaloperations',
     'padlock',
@@ -82,7 +100,22 @@ class GameIdeviceHandler extends BaseLegacyHandler {
     // Spanish legacy names that use encryption
     'rosco',
     'videoquext',
+    'vquext',
+    'quext',
+    'desafio',
+    'candado',
+    'adivina',
+    'clasifica',
+    'completa',
+    'descubre',
+    'identifica',
+    'sopa',
+    'ordena',
+    'listacotejo',
+    'informe',
+    'crucigrama',
     // Note: 'mapa' is NOT encrypted - it uses plain JSON like flipcards
+    // Note: 'seleccionamedias' may not use encryption
   ];
 
   /**
@@ -92,15 +125,32 @@ class GameIdeviceHandler extends BaseLegacyHandler {
    */
   static TYPE_MAP = {
     // Spanish → English mappings (must match installed iDevice css-class)
+    // Based on OdeXmlUtil.php type detection
     'selecciona': 'quick-questions-multiple-choice',
     'trivial': 'quick-questions',
     'mapa': 'map',
     'rosco': 'az-quiz-game',
     'videoquext': 'quick-questions-video',
+    'vquext': 'quick-questions-video',
+    'quext': 'quick-questions',
+    'desafio': 'challenge',
+    'candado': 'padlock',
+    'adivina': 'guess',
+    'clasifica': 'classify',
+    'completa': 'complete',
+    'descubre': 'discover',
+    'identifica': 'identify',
+    'sopa': 'word-search',
+    'ordena': 'sort',
+    'seleccionamedias': 'select-media-files',
+    'listacotejo': 'checklist',
+    'informe': 'progress-report',
+    'crucigrama': 'crossword',
     // These map to themselves (already correct)
     'flipcards': 'flipcards',
     'crossword': 'crossword',
     'relate': 'relate',
+    'relaciona': 'relate',
     'identify': 'identify',
     'discover': 'discover',
     'complete': 'complete',
@@ -123,6 +173,8 @@ class GameIdeviceHandler extends BaseLegacyHandler {
     'map': 'map',
     'dragdrop': 'dragdrop',
     'trueorfalse': 'trueorfalse',
+    'select-media-files': 'select-media-files',
+    'progress-report': 'progress-report',
   };
 
   // Track detected game type for getTargetType()

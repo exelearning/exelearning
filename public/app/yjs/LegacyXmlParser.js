@@ -826,7 +826,15 @@ class LegacyXmlParser {
       'FreeTextIdevice',
       'FreeTextfpdIdevice',
       'GenericIdevice',
-      // Reflection variants
+      'TextIdevice',             // Generic text
+      // Activity/Task iDevices (text-based with different styling)
+      'ActivityIdevice',         // Activity instructions
+      'TaskIdevice',             // Task iDevice
+      // Learning objectives and prerequisites
+      'ObjectivesIdevice',       // Learning objectives
+      'PreknowledgeIdevice',     // Prior knowledge / prerequisites
+      // Reading and reflection
+      'ReadingActivityIdevice',  // Reading activity
       'ReflectionIdevice',
       'ReflectionfpdIdevice',
       'ReflectionfpdmodifIdevice',
@@ -977,13 +985,52 @@ class LegacyXmlParser {
 
           // Map legacy JsIdevice type names to modern iDevice types
           // Legacy ELP files may use different naming conventions
+          // Based on analysis of all legacy _iDeviceDir values found in ELP fixtures
           const jsIdeviceTypeMap = {
-            'listacotejo-activity': 'checklist',
+            // Spanish activity names -> English iDevice types
             'adivina-activity': 'guess',
-            'form-activity': 'form',
+            'candado-activity': 'padlock',
+            'clasifica-activity': 'classify',
+            'completa-activity': 'complete',
+            'desafio-activity': 'challenge',
+            'descubre-activity': 'discover',
+            'flipcards-activity': 'flipcards',
+            'identifica-activity': 'identify',
+            'listacotejo-activity': 'checklist',
+            'mapa-activity': 'map',
+            'mathematicaloperations-activity': 'mathematicaloperations',
+            'mathproblems-activity': 'mathproblems',
+            'ordena-activity': 'sort',
+            'quext-activity': 'quick-questions',
+            'relaciona-activity': 'relate',
+            'rosco-activity': 'az-quiz-game',
+            'selecciona-activity': 'quick-questions-multiple-choice',
+            'seleccionamedias-activity': 'select-media-files',
+            'sopa-activity': 'word-search',
+            'trivial-activity': 'trivial',
+            'videoquext-activity': 'quick-questions-video',
+            // Other legacy type mappings
             'download-package': 'download-source-file',
+            'form-activity': 'form',
+            'rubrics': 'rubric',
+            'pbl-tools': 'text', // PBL Task iDevice -> text with special metadata extraction
           };
           ideviceType = jsIdeviceTypeMap[extractedType] || extractedType;
+
+          // Check if the type is a known modern iDevice type
+          // Types that match their directory names (no mapping needed)
+          const knownModernTypes = [
+            'text', 'casestudy', 'geogebra-activity', 'interactive-video',
+            'scrambled-list', 'udl-content', 'image-gallery', 'beforeafter',
+            'dragdrop', 'external-website', 'hidden-image', 'magnifier',
+            'periodic-table', 'attached-files', 'trueorfalse', 'example',
+            'collaborative-editing',
+          ];
+          const allKnownTypes = [...Object.values(jsIdeviceTypeMap), ...knownModernTypes];
+          if (!allKnownTypes.includes(ideviceType)) {
+            Logger.log(`[LegacyXmlParser] Unknown JsIdevice type '${extractedType}', defaulting to 'text'`);
+            ideviceType = 'text';
+          }
           Logger.log(`[LegacyXmlParser] JsIdevice detected with type: ${ideviceType} (from path: ${iDeviceDir})`);
         } else {
           ideviceType = 'text'; // Fallback for JsIdevice without _iDeviceDir
@@ -1143,6 +1190,54 @@ class LegacyXmlParser {
         idevice.cssClass = 'rubric';
 
         Logger.log('[LegacyXmlParser] Detected rubric iDevice, transformed to modern format');
+      }
+
+      // UDL CONTENT DETECTION (Universal Design for Learning)
+      // Based on Symfony OdeXmlUtil.php lines 2407-2412
+      if (idevice.htmlView && idevice.htmlView.includes('exe-udlContent')) {
+        idevice.type = 'udl-content';
+        Logger.log('[LegacyXmlParser] Detected UDL content iDevice');
+      }
+
+      // SCRAMBLED LIST DETECTION
+      // Based on Symfony OdeXmlUtil.php lines 2414-2418
+      if (idevice.htmlView && idevice.htmlView.includes('exe-sortableList')) {
+        idevice.type = 'scrambled-list';
+        Logger.log('[LegacyXmlParser] Detected scrambled-list iDevice');
+      }
+
+      // DOWNLOAD SOURCE FILE DETECTION
+      // Based on Symfony OdeXmlUtil.php lines 2427-2433
+      if (idevice.htmlView && idevice.htmlView.includes('exe-download-package-instructions')) {
+        idevice.type = 'download-source-file';
+        Logger.log('[LegacyXmlParser] Detected download-source-file iDevice');
+      }
+
+      // INTERACTIVE VIDEO DETECTION
+      // Based on Symfony OdeXmlUtil.php lines 2441-2476
+      if (idevice.htmlView && idevice.htmlView.includes('exe-interactive-video')) {
+        idevice.type = 'interactive-video';
+        Logger.log('[LegacyXmlParser] Detected interactive-video iDevice');
+      }
+
+      // GEOGEBRA ACTIVITY DETECTION
+      // Based on Symfony OdeXmlUtil.php lines 2478-2482
+      if (idevice.htmlView && idevice.htmlView.includes('auto-geogebra')) {
+        idevice.type = 'geogebra-activity';
+        Logger.log('[LegacyXmlParser] Detected geogebra-activity iDevice');
+      }
+
+      // PBL TASK DETECTION AND METADATA EXTRACTION
+      // Based on Symfony OdeXmlUtil.php lines 2159-2192 and 2272-2320
+      // PBL Task iDevices have structured HTML with duration, participants, and feedback
+      if (idevice.htmlView && idevice.htmlView.includes('pbl-task-description')) {
+        // Type stays as 'text' but we preserve the special HTML structure
+        // and extract metadata as JSON properties for the text iDevice editor
+        const pblTaskData = this.extractPblTaskMetadata(idevice.htmlView);
+        if (pblTaskData) {
+          idevice.properties = { ...idevice.properties, ...pblTaskData };
+          Logger.log('[LegacyXmlParser] Detected PBL Task iDevice, extracted metadata');
+        }
       }
 
       idevices.push(idevice);
@@ -1320,6 +1415,70 @@ class LegacyXmlParser {
 
     Logger.log(`[LegacyXmlParser] Extracted ${questionsData.length} multichoice questions`);
     return questionsData;
+  }
+
+  /**
+   * Extract PBL Task metadata from HTML content
+   * Based on Symfony OdeXmlUtil.php searchTaskIdeviceElementsOldElp()
+   *
+   * PBL Task iDevices have structured HTML:
+   * - dl.pbl-task-info with dt/dd pairs for duration and participants
+   * - div.pbl-task-description with main content
+   * - div.feedback with feedback content
+   * - input.feedbackbutton with button text
+   *
+   * @param {string} htmlView - HTML content of the iDevice
+   * @returns {Object|null} Extracted metadata or null if extraction fails
+   */
+  extractPblTaskMetadata(htmlView) {
+    if (!htmlView) return null;
+
+    try {
+      // Create a temporary DOM element to parse HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlView;
+
+      // Extract duration
+      const durationLabel = tempDiv.querySelector('dt.pbl-task-duration');
+      const durationValue = tempDiv.querySelector('dd.pbl-task-duration');
+
+      // Extract participants
+      const participantsLabel = tempDiv.querySelector('dt.pbl-task-participants');
+      const participantsValue = tempDiv.querySelector('dd.pbl-task-participants');
+
+      // Extract feedback
+      const feedbackDiv = tempDiv.querySelector('.feedback.js-feedback');
+      const feedbackButton = tempDiv.querySelector('.feedbackbutton');
+
+      // Build metadata object matching Symfony's structure
+      const metadata = {};
+
+      if (durationLabel) {
+        metadata.textInfoDurationInput = durationLabel.textContent?.trim() || '';
+      }
+      if (durationValue) {
+        metadata.textInfoDurationTextInput = durationValue.textContent?.trim() || '';
+      }
+      if (participantsLabel) {
+        metadata.textInfoParticipantsInput = participantsLabel.textContent?.trim() || '';
+      }
+      if (participantsValue) {
+        metadata.textInfoParticipantsTextInput = participantsValue.textContent?.trim() || '';
+      }
+      if (feedbackDiv) {
+        metadata.textInfoFeedback = feedbackDiv.innerHTML?.trim() || '';
+      }
+      if (feedbackButton) {
+        metadata.textInfoFeedbackButton = feedbackButton.value || feedbackButton.textContent?.trim() || '';
+      }
+
+      // Only return if we found some metadata
+      const hasMetadata = Object.keys(metadata).length > 0;
+      return hasMetadata ? metadata : null;
+    } catch (e) {
+      Logger.log(`[LegacyXmlParser] Error extracting PBL Task metadata: ${e.message}`);
+      return null;
+    }
   }
 
   /**
