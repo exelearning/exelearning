@@ -25,8 +25,7 @@ describe('App utility methods', () => {
     // Mock global eXeLearning object required by constructor
     window.eXeLearning = {
       user: '{"id":1}',
-      config: '{"isOfflineInstallation":false}',
-      config: '{"basePath":"/exelearning"}',
+      config: '{"isOfflineInstallation":false,"basePath":"/exelearning"}',
     };
 
     // Mock global _ function for translations
@@ -767,8 +766,7 @@ describe('App utility methods', () => {
     it('sets up session monitor for online installation', () => {
       window.eXeLearning = {
         user: '{"id":1}',
-        config: '{"isOfflineInstallation":false}',
-        config: '{"basePath":""}',
+        config: '{"isOfflineInstallation":false,"basePath":""}',
       };
 
       const app = new App(window.eXeLearning);

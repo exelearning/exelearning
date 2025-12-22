@@ -26,6 +26,7 @@ describe('modalOpenUserOdeFiles', () => {
     window.eXeLearning = {
       config: {
         isOfflineInstallation: false,
+        basePath: '/exelearning',
       },
       extension: 'elpx',
       app: {
@@ -101,8 +102,7 @@ describe('modalOpenUserOdeFiles', () => {
             },
           },
         }
-      },
-      config: { basePath: '/exelearning' }
+      }
     };
 
     // Mock DOM

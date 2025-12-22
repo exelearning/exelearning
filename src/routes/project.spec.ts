@@ -2115,9 +2115,7 @@ describe('Project Routes', () => {
         });
 
         it('should return empty when no session id provided for current-users', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/odes/current-users'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/odes/current-users'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -2178,9 +2176,7 @@ describe('Project Routes', () => {
         });
 
         it('should return empty array for recent projects when not authenticated', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/projects/user/recent'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/projects/user/recent'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
