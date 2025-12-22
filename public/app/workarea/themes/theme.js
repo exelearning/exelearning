@@ -54,7 +54,7 @@ export default class Theme {
         textColor: '',
         linkColor: '',
         cssFiles: [],
-        type: eXeLearning.symfony.themeBaseType,
+        type: eXeLearning.config.themeBaseType,
         icons: {},
     };
 

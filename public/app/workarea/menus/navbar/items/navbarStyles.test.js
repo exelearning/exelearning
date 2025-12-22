@@ -50,7 +50,7 @@ global.eXeLearning = {
             confirm: { show: vi.fn() },
         },
     },
-    symfony: {
+    config: {
         basePath: '',
     },
 };

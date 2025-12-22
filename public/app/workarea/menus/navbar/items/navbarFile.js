@@ -467,10 +467,10 @@ export default class NavbarFile {
             : null;
 
         const baseUrl =
-            window.eXeLearning?.symfony?.baseURL || window.location.origin;
+            window.eXeLearning?.config?.baseURL || window.location.origin;
         const basePathRaw =
-            window.eXeLearning?.symfony?.basePath !== undefined
-                ? window.eXeLearning.symfony.basePath
+            window.eXeLearning?.config?.basePath !== undefined
+                ? window.eXeLearning.config.basePath
                 : '';
         const trimmedBasePath = String(basePathRaw).replace(/^\/+|\/+$/g, '');
         const sanitizedBasePath = trimmedBasePath ? `/${trimmedBasePath}` : '';
@@ -1107,7 +1107,7 @@ export default class NavbarFile {
             Logger.log('[NavbarFile] Creating new project in Yjs mode');
             try {
                 // Create new project on backend
-                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                const basePath = window.eXeLearning?.config?.basePath || '';
                 const response = await fetch(`${basePath}/api/project/create-quick`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1148,7 +1148,7 @@ export default class NavbarFile {
                 window.onbeforeunload = null;
                 // Redirect to /workarea without project parameter
                 // Backend will create a new project and redirect back with new UUID
-                const basePath = window.eXeLearning?.symfony?.basePath || '';
+                const basePath = window.eXeLearning?.config?.basePath || '';
                 window.location.href = `${basePath}/workarea`;
             }
         });
@@ -1608,7 +1608,7 @@ export default class NavbarFile {
                         eXeLearning.app.modals.sessionlogout.show(data);
                     } else {
                         // No unsaved changes, navigate directly
-                        const basePath = window.eXeLearning?.symfony?.basePath || '';
+                        const basePath = window.eXeLearning?.config?.basePath || '';
                         window.location.href = `${basePath}/workarea?project=${projectUuid}`;
                     }
                 });
@@ -3090,7 +3090,7 @@ export default class NavbarFile {
             formData.append('file', file);
             formData.append('sessionId', eXeLearning.app.project.odeSession);
 
-            const basePath = window.eXeLearning?.symfony?.basePath || '';
+            const basePath = window.eXeLearning?.config?.basePath || '';
             const response = await fetch(`${basePath}/api/project/convert-legacy`, {
                 method: 'POST',
                 body: formData,

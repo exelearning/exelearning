@@ -25,8 +25,7 @@ describe('App utility methods', () => {
     // Mock global eXeLearning object required by constructor
     window.eXeLearning = {
       user: '{"id":1}',
-      config: '{"isOfflineInstallation":false}',
-      symfony: '{"basePath":"/exelearning"}',
+      config: '{"isOfflineInstallation":false,"basePath":"/exelearning"}',
     };
 
     // Mock global _ function for translations
@@ -51,117 +50,113 @@ describe('App utility methods', () => {
 
   describe('getBasePath', () => {
     it('returns empty string when basePath is not set', () => {
-      appInstance.eXeLearning.symfony.basePath = '';
+      appInstance.eXeLearning.config.basePath = '';
       expect(appInstance.getBasePath()).toBe('');
     });
 
     it('returns empty string when basePath is /', () => {
-      appInstance.eXeLearning.symfony.basePath = '/';
+      appInstance.eXeLearning.config.basePath = '/';
       expect(appInstance.getBasePath()).toBe('');
     });
 
     it('returns basePath without trailing slash', () => {
-      appInstance.eXeLearning.symfony.basePath = '/app/';
+      appInstance.eXeLearning.config.basePath = '/app/';
       expect(appInstance.getBasePath()).toBe('/app');
     });
 
     it('returns basePath without trailing slashes for multiple slashes', () => {
-      appInstance.eXeLearning.symfony.basePath = '/app///';
+      appInstance.eXeLearning.config.basePath = '/app///';
       expect(appInstance.getBasePath()).toBe('/app');
     });
 
     it('handles undefined basePath', () => {
-      appInstance.eXeLearning.symfony.basePath = undefined;
+      appInstance.eXeLearning.config.basePath = undefined;
       expect(appInstance.getBasePath()).toBe('');
     });
   });
 
   describe('composeUrl', () => {
     it('prepends basePath to path', () => {
-      appInstance.eXeLearning.symfony.basePath = '/app';
+      appInstance.eXeLearning.config.basePath = '/app';
       expect(appInstance.composeUrl('api/test')).toBe('/app/api/test');
     });
 
     it('handles path starting with slash', () => {
-      appInstance.eXeLearning.symfony.basePath = '/app';
+      appInstance.eXeLearning.config.basePath = '/app';
       expect(appInstance.composeUrl('/api/test')).toBe('/app/api/test');
     });
 
     it('returns path with leading slash when no basePath', () => {
-      appInstance.eXeLearning.symfony.basePath = '';
+      appInstance.eXeLearning.config.basePath = '';
       expect(appInstance.composeUrl('api/test')).toBe('/api/test');
     });
 
     it('handles empty path', () => {
-      appInstance.eXeLearning.symfony.basePath = '/app';
+      appInstance.eXeLearning.config.basePath = '/app';
       expect(appInstance.composeUrl('')).toBe('/app/');
     });
 
     it('handles path without argument', () => {
-      appInstance.eXeLearning.symfony.basePath = '/app';
+      appInstance.eXeLearning.config.basePath = '/app';
       expect(appInstance.composeUrl()).toBe('/app/');
     });
   });
 
-  describe('parseExelearningSymfonyData', () => {
+  describe('parseExelearningConfig', () => {
     it('parses JSON from escaped HTML entities', () => {
       window.eXeLearning.user = '{"id":2,"name":"test"}';
-      window.eXeLearning.config = '{"isOfflineInstallation":true}';
-      window.eXeLearning.symfony = '{"basePath":"/test"}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":"/test"}';
 
-      appInstance.parseExelearningSymfonyData();
+      appInstance.parseExelearningConfig();
 
       expect(window.eXeLearning.user.id).toBe(2);
       expect(window.eXeLearning.config.isOfflineInstallation).toBe(true);
-      expect(window.eXeLearning.symfony.basePath).toBe('/test');
+      expect(window.eXeLearning.config.basePath).toBe('/test');
     });
 
     it('forces HTTPS when protocol is https:', () => {
       window.eXeLearning.user = '{"id":1}';
-      window.eXeLearning.config = '{"isOfflineInstallation":false}';
-      window.eXeLearning.symfony = '{"baseURL":"http://localhost","fullURL":"http://localhost/api","changelogURL":"http://localhost/changelog"}';
+      window.eXeLearning.config = '{"isOfflineInstallation":false,"baseURL":"http://localhost","fullURL":"http://localhost/api","changelogURL":"http://localhost/changelog"}';
 
       // Mock https protocol
       const originalLocation = window.location;
       delete window.location;
       window.location = { href: 'https://localhost/test', protocol: 'https:' };
 
-      appInstance.parseExelearningSymfonyData();
+      appInstance.parseExelearningConfig();
 
-      expect(window.eXeLearning.symfony.baseURL).toBe('https://localhost');
-      expect(window.eXeLearning.symfony.fullURL).toBe('https://localhost/api');
-      expect(window.eXeLearning.symfony.changelogURL).toBe('https://localhost/changelog');
+      expect(window.eXeLearning.config.baseURL).toBe('https://localhost');
+      expect(window.eXeLearning.config.fullURL).toBe('https://localhost/api');
+      expect(window.eXeLearning.config.changelogURL).toBe('https://localhost/changelog');
 
       window.location = originalLocation;
     });
 
     it('does not change URLs when protocol is http:', () => {
       window.eXeLearning.user = '{"id":1}';
-      window.eXeLearning.config = '{"isOfflineInstallation":false}';
-      window.eXeLearning.symfony = '{"baseURL":"http://localhost"}';
+      window.eXeLearning.config = '{"isOfflineInstallation":false,"baseURL":"http://localhost"}';
 
       const originalLocation = window.location;
       delete window.location;
       window.location = { href: 'http://localhost/test', protocol: 'http:' };
 
-      appInstance.parseExelearningSymfonyData();
+      appInstance.parseExelearningConfig();
 
-      expect(window.eXeLearning.symfony.baseURL).toBe('http://localhost');
+      expect(window.eXeLearning.config.baseURL).toBe('http://localhost');
 
       window.location = originalLocation;
     });
 
     it('handles test environment mercure override', () => {
       window.eXeLearning.user = '{"id":1}';
-      window.eXeLearning.config = '{"isOfflineInstallation":false}';
-      window.eXeLearning.symfony = '{"environment":"test"}';
+      window.eXeLearning.config = '{"isOfflineInstallation":false,"environment":"test"}';
       window.eXeLearning.mercure = { url: 'http://test:9080' };
 
       const originalLocation = window.location;
       delete window.location;
       window.location = { href: 'http://localhost:9080/test', protocol: 'http:', port: '9080' };
 
-      appInstance.parseExelearningSymfonyData();
+      appInstance.parseExelearningConfig();
 
       expect(window.eXeLearning.mercure.url).toBe('http://exelearning:8080/.well-known/mercure');
 
@@ -402,7 +397,7 @@ describe('App utility methods', () => {
     it('shows alert when filesDirPermission is not checked', async () => {
       const showSpy = vi.fn();
       appInstance.modals = { alert: { show: showSpy } };
-      appInstance.eXeLearning.symfony.filesDirPermission = {
+      appInstance.eXeLearning.config.filesDirPermission = {
         checked: false,
         info: ['Error 1', 'Error 2'],
       };
@@ -418,7 +413,7 @@ describe('App utility methods', () => {
     it('does not show alert when filesDirPermission is checked', async () => {
       const showSpy = vi.fn();
       appInstance.modals = { alert: { show: showSpy } };
-      appInstance.eXeLearning.symfony.filesDirPermission = {
+      appInstance.eXeLearning.config.filesDirPermission = {
         checked: true,
         info: [],
       };
@@ -771,8 +766,7 @@ describe('App utility methods', () => {
     it('sets up session monitor for online installation', () => {
       window.eXeLearning = {
         user: '{"id":1}',
-        config: '{"isOfflineInstallation":false}',
-        symfony: '{"basePath":""}',
+        config: '{"isOfflineInstallation":false,"basePath":""}',
       };
 
       const app = new App(window.eXeLearning);
@@ -783,8 +777,7 @@ describe('App utility methods', () => {
     it('does not set up session monitor for offline installation', () => {
       window.eXeLearning = {
         user: '{"id":1}',
-        config: '{"isOfflineInstallation":true}',
-        symfony: '{"basePath":""}',
+        config: '{"isOfflineInstallation":true,"basePath":""}',
       };
 
       const app = new App(window.eXeLearning);
@@ -795,8 +788,7 @@ describe('App utility methods', () => {
     it('initializes all managers', () => {
       window.eXeLearning = {
         user: '{"id":1}',
-        config: '{"isOfflineInstallation":true}',
-        symfony: '{"basePath":""}',
+        config: '{"isOfflineInstallation":true,"basePath":""}',
       };
 
       const app = new App(window.eXeLearning);

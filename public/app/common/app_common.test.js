@@ -7,7 +7,7 @@ describe('Common', () => {
     // Mock eXeLearning global
     window.eXeLearning = {
       version: 'v1.2.3',
-      symfony: { environment: 'prod' }
+      config: { environment: 'prod' }
     };
 
     common = new Common({});
@@ -156,20 +156,20 @@ describe('Common', () => {
 
   describe('getVersionTimeStamp', () => {
     it('should return version in production environment', () => {
-      window.eXeLearning.symfony.environment = 'prod';
+      window.eXeLearning.config.environment = 'prod';
       window.eXeLearning.version = 'v1.2.3';
       expect(common.getVersionTimeStamp()).toBe('v1.2.3');
     });
 
     it('should return version when not in dev environment', () => {
-      window.eXeLearning.symfony.environment = 'test';
+      window.eXeLearning.config.environment = 'test';
       window.eXeLearning.version = 'v2.0.0';
       expect(common.getVersionTimeStamp()).toBe('v2.0.0');
     });
 
     it('should return Date.now() in dev environment', () => {
       vi.setSystemTime(new Date('2025-12-17T10:30:45.123'));
-      window.eXeLearning.symfony.environment = 'dev';
+      window.eXeLearning.config.environment = 'dev';
       const result = common.getVersionTimeStamp();
       expect(typeof result).toBe('number');
       expect(result).toBe(Date.now());
@@ -178,7 +178,7 @@ describe('Common', () => {
     it('should return Date.now() when version is v0.0.0-alpha', () => {
       vi.setSystemTime(new Date('2025-12-17T10:30:45.123'));
       window.eXeLearning.version = 'v0.0.0-alpha';
-      window.eXeLearning.symfony.environment = 'prod';
+      window.eXeLearning.config.environment = 'prod';
       const result = common.getVersionTimeStamp();
       expect(typeof result).toBe('number');
       expect(result).toBe(Date.now());
@@ -186,7 +186,7 @@ describe('Common', () => {
 
     it('should handle different version formats', () => {
       window.eXeLearning.version = 'v3.1.0-beta';
-      window.eXeLearning.symfony.environment = 'prod';
+      window.eXeLearning.config.environment = 'prod';
       expect(common.getVersionTimeStamp()).toBe('v3.1.0-beta');
     });
   });

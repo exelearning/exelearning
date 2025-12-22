@@ -929,7 +929,7 @@ export default class NavbarFile {
         if (value) {
             imgElement.setAttribute(
                 'src',
-                `${eXeLearning.symfony.basePath}${value}?v=${Date.now()}`
+                `${eXeLearning.config.basePath}${value}?v=${Date.now()}`
             );
         }
 

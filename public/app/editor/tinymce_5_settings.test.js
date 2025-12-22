@@ -9,7 +9,7 @@ globalThis.bootstrap = {
 };
 globalThis.eXeLearning = {
   version: 'v3.0.0',
-  symfony: {
+  config: {
     baseURL: 'http://localhost',
     basePath: '/exelearning',
     themeBaseType: 'XHTML',

@@ -21,7 +21,7 @@ describe('ApiCallManager', () => {
 
     mockApp = {
       eXeLearning: {
-        symfony: {
+        config: {
           baseURL: 'http://localhost',
           basePath: '/exelearning',
           changelogURL: 'http://localhost/changelog',

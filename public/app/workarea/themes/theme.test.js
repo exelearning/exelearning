@@ -11,7 +11,7 @@ describe('Theme', () => {
 
     // Mock eXeLearning global
     window.eXeLearning = {
-      symfony: {
+      config: {
         themeBaseType: 'XHTML',
       },
       app: {

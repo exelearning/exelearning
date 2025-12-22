@@ -37,8 +37,6 @@ describe('ApiCallBaseFunctions', () => {
     global.eXeLearning = {
       config: {
         clientCallWaitingTime: 30000,
-      },
-      symfony: {
         basePath: '/web/exelearning',
       },
       app: {

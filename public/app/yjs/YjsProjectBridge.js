@@ -189,7 +189,7 @@ class YjsProjectBridge {
     const hostname = window.location.hostname;
     const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
     // Include basePath from eXeLearning config (set by pages.controller.ts)
-    const basePath = window.eXeLearning?.symfony?.basePath || '';
+    const basePath = window.eXeLearning?.config?.basePath || '';
     // WebSocket server runs on the same port with {basePath}/yjs/ prefix
     return `${protocol}//${hostname}:${port}${basePath}/yjs`;
   }
@@ -199,7 +199,7 @@ class YjsProjectBridge {
    */
   getApiUrl() {
     // Include basePath from eXeLearning config (set by pages.controller.ts)
-    const basePath = window.eXeLearning?.symfony?.basePath || '';
+    const basePath = window.eXeLearning?.config?.basePath || '';
     return `${window.location.origin}${basePath}/api`;
   }
 
