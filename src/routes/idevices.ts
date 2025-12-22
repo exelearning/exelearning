@@ -114,7 +114,10 @@ function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: str
                     try {
                         filenames = fs
                             .readdirSync(folderPath)
-                            .filter(file => file.endsWith(extension))
+                            .filter(
+                                file =>
+                                    file.endsWith(extension) && !file.includes('.test.') && !file.includes('.spec.'),
+                            )
                             .sort((a, b) => {
                                 // Put main iDevice file first, then alphabetically
                                 if (a === `${ideviceId}${extension}`) return -1;

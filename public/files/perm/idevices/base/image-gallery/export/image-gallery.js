@@ -105,6 +105,11 @@ var $imagegallery = {
         if (isInExe) return file;
         if ($node.length == 0) return file;
 
+        // Handle blob: URLs (preview mode) - use directly
+        if (file && file.startsWith('blob:')) {
+            return file;
+        }
+
         const pathMedia = $('html').is('#exe-index')
             ? 'content/resources/'
             : '../content/resources/';
@@ -115,11 +120,15 @@ var $imagegallery = {
             return pathMedia + assetPath;
         }
 
-        // Legacy: server paths
-        const parts = file.split(/[/\\]/),
-            name = parts.pop(),
-            dir = pathMedia + data.ideviceId;
-        return dir + '/' + name;
+        // Already resolved paths (from IdeviceRenderer) - return as-is
+        // This handles: content/resources/uuid/file, ../content/resources/uuid/file
+        if (file && (file.includes('content/resources/') || file.startsWith('../'))) {
+            return file;
+        }
+
+        // Fallback: return file unchanged (shouldn't reach here with proper data)
+        console.warn('[image-gallery] Unhandled file path format:', file);
+        return file;
     },
 
     getStringGallery: function (data) {

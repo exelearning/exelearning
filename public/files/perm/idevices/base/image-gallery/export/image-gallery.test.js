@@ -53,4 +53,30 @@ describe('image-gallery iDevice export', () => {
       expect(code).not.toMatch(/\$\(function\s*\(\)\s*\{\s*\$imagegallery\.init\(\)/);
     });
   });
+
+  describe('changeDirectory function', () => {
+    it('has changeDirectory function', () => {
+      expect(code).toContain('changeDirectory');
+    });
+
+    it('handles blob: URLs (preview mode)', () => {
+      // blob: URLs should be returned as-is for preview mode
+      expect(code).toContain("file.startsWith('blob:')");
+    });
+
+    it('handles asset:// URLs', () => {
+      expect(code).toContain("file.startsWith('asset://')");
+    });
+
+    it('preserves already-resolved content/resources paths', () => {
+      // The fix: paths with content/resources/ should be returned as-is
+      expect(code).toContain("file.includes('content/resources/')");
+      expect(code).toContain("file.startsWith('../')");
+    });
+
+    it('has fallback with warning for unhandled formats', () => {
+      // Fallback logs a warning and returns file unchanged
+      expect(code).toContain("console.warn('[image-gallery] Unhandled file path format:'");
+    });
+  });
 });

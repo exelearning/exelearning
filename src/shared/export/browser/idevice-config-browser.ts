@@ -47,9 +47,28 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
 
     const cssClass = typeMap[normalized] || normalized || 'text';
 
-    // JSON idevices need JS initialization via renderBehaviour()
-    // These idevices have export JS that attaches event handlers
-    const jsonIdevices = ['text', 'freetext', 'freetextfpd', 'generic', 'reflection', 'reflectionfpd'];
+    // JSON idevices need JS initialization via renderView()
+    // These idevices store data in jsonProperties and have export JS that renders from JSON
+    // The data-idevice-json-data attribute is added for these types
+    const jsonIdevices = [
+        // Text-type iDevices
+        'text',
+        'freetext',
+        'freetextfpd',
+        'generic',
+        'reflection',
+        'reflectionfpd',
+        // iDevices with <component-type>json</component-type> in config.xml
+        'image-gallery',
+        'form',
+        'casestudy',
+        'case-study',
+        'example',
+        'trueorfalse',
+        'true-or-false',
+        'scrambled-list',
+        'magnifier',
+    ];
     const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
 
     return {

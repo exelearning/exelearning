@@ -1460,14 +1460,25 @@ class ElpxImporter {
 
         // 2. Replace resources/filename when preceded by attribute quote or start
         // This ensures we don't replace filenames inside http:// or https:// URLs
-        // Pattern: ("|'|=)resources/filename -> $1asset://uuid
+        // Pattern: ("|'|=|&quot;|&#39;)resources/filename -> $1asset://uuid
+        // Note: Legacy contentv3.xml files often have HTML-entity encoded quotes
         const resourcesPattern = new RegExp(
-          `(["'=])resources/${escapedFileName}`,
+          `(["'=]|&quot;|&#39;|&apos;)resources/${escapedFileName}`,
           'g'
         );
         str = str.replace(resourcesPattern, `$1asset://${assetId}/${fileName}`);
 
-        // 3. Replace bare filename ONLY in src/href attributes (not inside other URLs)
+        // 3. Replace bare resources/filename paths (for raw path properties like image gallery)
+        // These are object values (not HTML attributes), so they don't have preceding quotes
+        // The string itself IS the path, e.g., "resources/image.jpg"
+        if (str === `resources/${fileName}`) {
+          str = `asset://${assetId}/${fileName}`;
+        } else if (str.startsWith(`resources/${fileName}`)) {
+          // Handle paths with additional characters after filename (shouldn't normally happen)
+          str = str.replace(`resources/${fileName}`, `asset://${assetId}/${fileName}`);
+        }
+
+        // 4. Replace bare filename ONLY in src/href attributes (not inside other URLs)
         // Pattern: src="filename" or href="filename" (bare filename, not a path with /)
         if (fileName) {
           str = str.replace(

@@ -520,8 +520,10 @@ class AssetManager {
     // Find all asset:// references (supports both asset://uuid and asset://uuid/filename)
     // Also matches corrupted URLs like asset://asset//uuid/filename
     // NOTE: Filename part can contain spaces, so we match until quote character
-    // Note: [^"'\\] excludes quotes AND backslash to avoid matching JSON escape sequences
-    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(\/[^"'\\]+)?/gi;
+    // Note: [^"'\\&] excludes quotes, backslash, AND ampersand to avoid matching:
+    //   - JSON escape sequences (backslash)
+    //   - HTML entities like &quot; in data-idevice-json-data attributes (ampersand)
+    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(\/[^"'\\&]+)?/gi;
     const matches = [...html.matchAll(assetRegex)];
 
     if (matches.length === 0) return html;
@@ -636,7 +638,8 @@ class AssetManager {
     // Phase 1: Handle <img> tags with asset:// src specially (to add correct tracking per asset)
     // This regex captures: beforeSrc, quote, full assetUrl, assetId, afterSrc
     // Also handles corrupted URLs like asset://asset//uuid/filename
-    const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\/[^"']+)?)\2([^>]*>)/gi;
+    // Note: [^"'&] excludes ampersand for HTML entities in JSON data attributes
+    const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\/[^"'&]+)?)\2([^>]*>)/gi;
 
     resolvedHTML = resolvedHTML.replace(imgAssetRegex, (fullMatch, beforeSrc, quote, assetUrl, assetId, afterSrc) => {
       const blobURL = this.blobURLCache.get(assetId);

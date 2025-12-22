@@ -18,6 +18,7 @@
  * - handlers/ExternalUrlHandler.js
  * - handlers/FileAttachHandler.js
  * - handlers/ImageMagnifierHandler.js
+ * - handlers/GameIdeviceHandler.js
  * - handlers/DefaultHandler.js
  */
 
@@ -44,6 +45,7 @@ const LegacyHandlerRegistry = {
       new ExternalUrlHandler(),      // ExternalUrlIdevice → external-website
       new FileAttachHandler(),       // FileAttachIdevice, AttachmentIdevice → download-source-file
       new ImageMagnifierHandler(),   // ImageMagnifierIdevice → magnifier
+      new GameIdeviceHandler(),      // flipcards, selecciona, trivial, etc. → game types
       new FreeTextHandler(),         // FreeTextIdevice, ReflectionIdevice, GenericIdevice → text
       new DefaultHandler(),          // Fallback for unknown types (must be last)
     ];
@@ -52,12 +54,13 @@ const LegacyHandlerRegistry = {
   /**
    * Get the appropriate handler for a legacy iDevice class
    * @param {string} className - Legacy class name (e.g., 'exe.engine.multichoiceidevice.MultichoiceIdevice')
+   * @param {string} [ideviceType] - Optional iDevice type (e.g., 'flipcards-activity') for JsIdevice handlers
    * @returns {BaseLegacyHandler} Handler instance
    */
-  getHandler(className) {
+  getHandler(className, ideviceType) {
     this.init();
     for (const handler of this.handlers) {
-      if (handler.canHandle(className)) {
+      if (handler.canHandle(className, ideviceType)) {
         return handler;
       }
     }

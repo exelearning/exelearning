@@ -18,6 +18,7 @@ global.GalleryHandler = require('./handlers/GalleryHandler');
 global.ExternalUrlHandler = require('./handlers/ExternalUrlHandler');
 global.FileAttachHandler = require('./handlers/FileAttachHandler');
 global.ImageMagnifierHandler = require('./handlers/ImageMagnifierHandler');
+global.GameIdeviceHandler = require('./handlers/GameIdeviceHandler');
 global.FreeTextHandler = require('./handlers/FreeTextHandler');
 global.DefaultHandler = require('./handlers/DefaultHandler');
 
@@ -158,7 +159,7 @@ describe('LegacyHandlerRegistry', () => {
 
     it('includes all registered handlers', () => {
       const handlers = LegacyHandlerRegistry.getAllHandlers();
-      expect(handlers.length).toBe(11); // All handlers including DefaultHandler
+      expect(handlers.length).toBe(12); // All handlers including DefaultHandler and GameIdeviceHandler
     });
   });
 });

@@ -46,28 +46,32 @@ class GalleryHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Extract properties including images array
+   * Extract properties in format expected by modern image-gallery iDevice
+   *
+   * Modern format uses indexed keys (img_0, img_1, etc.) with fields:
+   * - img: image path with resources/ prefix
+   * - thumbnail: thumbnail path with resources/ prefix (optional)
+   * - title: caption text
+   * - linktitle, author, linkauthor, license: attribution fields
    */
   extractProperties(dict) {
     const images = this.extractImages(dict);
-
-    // Extract gallery settings
-    const showCaptions = this.findDictBoolValue(dict, 'showCaptions');
-    const showThumbnails = this.findDictBoolValue(dict, 'showThumbnails');
-
     const props = {};
 
-    if (images.length > 0) {
-      props.images = images;
-    }
-
-    if (showCaptions !== undefined) {
-      props.showCaptions = showCaptions;
-    }
-
-    if (showThumbnails !== undefined) {
-      props.showThumbnails = showThumbnails;
-    }
+    // Convert to indexed format expected by modern iDevice
+    // The image-gallery edition code uses Object.entries() and expects img_N keys
+    // Paths need resources/ prefix as that's where assets are stored
+    images.forEach((image, index) => {
+      props[`img_${index}`] = {
+        img: `resources/${image.src}`,                                    // Add resources/ prefix
+        thumbnail: image.thumbnail ? `resources/${image.thumbnail}` : '', // Include thumbnail with prefix
+        title: image.caption || '',                                       // caption → title
+        linktitle: '',                                                    // Not available in legacy format
+        author: '',                                                       // Not available in legacy format
+        linkauthor: '',                                                   // Not available in legacy format
+        license: ''                                                       // Not available in legacy format
+      };
+    });
 
     return props;
   }
@@ -75,32 +79,48 @@ class GalleryHandler extends BaseLegacyHandler {
   /**
    * Extract images from the legacy format
    *
-   * Structure:
-   * - list of GalleryImage instances
-   * - Each has: imageResource (path), caption, thumbnailResource
+   * Legacy XML structure:
+   * - "images" key points to a GalleryImages wrapper instance
+   * - The actual list is inside that wrapper under ".listitems" key
+   * - Each GalleryImage has: _imageResource, _caption (TextField), _thumbnailResource
    *
    * @param {Element} dict - Dictionary element of the GalleryIdevice
    * @returns {Array} Array of image objects
    */
   extractImages(dict) {
     const images = [];
-
-    // Find the list containing GalleryImage instances
-    const lists = dict.querySelectorAll(':scope > list');
     let imagesList = null;
 
-    for (const list of lists) {
-      const firstInst = list.querySelector(':scope > instance');
-      if (firstInst) {
-        const className = firstInst.getAttribute('class') || '';
-        if (className.includes('GalleryImage')) {
-          imagesList = list;
-          break;
+    // STEP 1: Find the images list
+    // The "images" key points to a GalleryImages instance wrapper
+    // The actual list is inside that instance under ".listitems"
+    const imagesInstance = this.findDictInstance(dict, 'images') ||
+                           this.findDictInstance(dict, '_images');
+
+    if (imagesInstance) {
+      const imagesDict = imagesInstance.querySelector(':scope > dictionary');
+      if (imagesDict) {
+        // The actual list is under ".listitems" inside the wrapper
+        imagesList = this.findDictList(imagesDict, '.listitems');
+      }
+    }
+
+    // Fallback: direct list containing GalleryImage instances (some formats)
+    if (!imagesList) {
+      const lists = dict.querySelectorAll(':scope > list');
+      for (const list of lists) {
+        const firstInst = list.querySelector(':scope > instance');
+        if (firstInst) {
+          const className = firstInst.getAttribute('class') || '';
+          if (className.includes('GalleryImage')) {
+            imagesList = list;
+            break;
+          }
         }
       }
     }
 
-    // Alternative: images may be in an "_images" or "images" key
+    // Fallback: try direct list keys
     if (!imagesList) {
       imagesList = this.findDictList(dict, '_images') ||
                    this.findDictList(dict, 'images') ||
@@ -109,7 +129,7 @@ class GalleryHandler extends BaseLegacyHandler {
 
     if (!imagesList) return images;
 
-    // Iterate each GalleryImage
+    // STEP 2: Extract each GalleryImage
     const imageInstances = imagesList.querySelectorAll(':scope > instance');
     for (const imageInst of imageInstances) {
       const iDict = imageInst.querySelector(':scope > dictionary');
@@ -119,13 +139,31 @@ class GalleryHandler extends BaseLegacyHandler {
       const imageResource = this.extractResourcePath(iDict, '_imageResource') ||
                            this.extractResourcePath(iDict, 'imageResource');
 
-      // Extract caption
-      const caption = this.findDictStringValue(iDict, 'caption') ||
-                     this.findDictStringValue(iDict, '_caption') || '';
+      // Extract caption from TextField instance
+      // Legacy format stores caption as TextField instance, not direct string
+      let caption = '';
+      const captionInstance = this.findDictInstance(iDict, '_caption') ||
+                             this.findDictInstance(iDict, 'caption');
+      if (captionInstance) {
+        caption = this.extractTextAreaFieldContent(captionInstance);
+      }
+      // Fallback: try direct string value (some legacy formats)
+      if (!caption) {
+        caption = this.findDictStringValue(iDict, 'caption') ||
+                 this.findDictStringValue(iDict, '_caption') || '';
+      }
 
       // Extract alt text
-      const alt = this.findDictStringValue(iDict, 'alt') ||
-                 this.findDictStringValue(iDict, '_alt') || caption;
+      let alt = '';
+      const altInstance = this.findDictInstance(iDict, '_alt') ||
+                         this.findDictInstance(iDict, 'alt');
+      if (altInstance) {
+        alt = this.extractTextAreaFieldContent(altInstance);
+      }
+      if (!alt) {
+        alt = this.findDictStringValue(iDict, 'alt') ||
+             this.findDictStringValue(iDict, '_alt') || caption;
+      }
 
       // Extract thumbnail (optional)
       const thumbnail = this.extractResourcePath(iDict, '_thumbnailResource') ||

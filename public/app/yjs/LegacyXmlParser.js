@@ -1088,11 +1088,29 @@ class LegacyXmlParser {
         // LEGACY IDEVICE PROPERTY EXTRACTION
         // Use handler registry if available, otherwise fall back to inline logic
         if (typeof LegacyHandlerRegistry !== 'undefined') {
-          const handler = LegacyHandlerRegistry.getHandler(className);
+          const handler = LegacyHandlerRegistry.getHandler(className, ideviceType);
           const handlerProps = handler.extractProperties(dict);
           if (handlerProps && Object.keys(handlerProps).length > 0) {
             idevice.properties = handlerProps;
             Logger.log(`[LegacyXmlParser] Extracted properties via ${handler.constructor.name}`);
+          }
+
+          // Use handler's extractHtmlView if available (e.g., GameIdeviceHandler updates DataGame div with decrypted JSON)
+          if (typeof handler.extractHtmlView === 'function') {
+            const handlerHtml = handler.extractHtmlView(dict);
+            if (handlerHtml) {
+              idevice.htmlView = handlerHtml;
+              Logger.log(`[LegacyXmlParser] Used handler htmlView (${handlerHtml.length} chars)`);
+            }
+          }
+
+          // Update type from handler if it provides a normalized type
+          // GameIdeviceHandler normalizes: flipcards-activity -> flipcards, selecciona-activity -> selecciona
+          // Call this AFTER extractProperties since handler may set _detectedType during extraction
+          const handlerType = handler.getTargetType();
+          if (handlerType && handlerType !== 'text' && handlerType !== idevice.type) {
+            Logger.log(`[LegacyXmlParser] Handler updated type: ${idevice.type} -> ${handlerType}`);
+            idevice.type = handlerType;
           }
         } else {
           // Fallback: Legacy inline extraction for MultichoiceIdevice/MultiSelectIdevice
