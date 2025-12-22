@@ -34,6 +34,10 @@ import { db as dbDefault } from '../db/client';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
+import {
+    notifyVisibilityChanged as notifyVisibilityChangedDefault,
+    notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
+} from '../websocket/access-notifier';
 import type { Kysely } from 'kysely';
 import type { Database, Project, User } from '../db/types';
 import type {
@@ -116,6 +120,14 @@ export interface UtilsDeps {
 }
 
 /**
+ * Access notifier dependencies (WebSocket notifications)
+ */
+export interface AccessNotifierDeps {
+    notifyVisibilityChanged: typeof notifyVisibilityChangedDefault;
+    notifyCollaboratorRemoved: typeof notifyCollaboratorRemovedDefault;
+}
+
+/**
  * All dependencies for project routes
  */
 export interface ProjectDependencies {
@@ -126,6 +138,7 @@ export interface ProjectDependencies {
     fileHelper?: FileHelperDeps;
     queries?: QueriesDeps;
     utils?: UtilsDeps;
+    accessNotifier?: AccessNotifierDeps;
 }
 
 // Default dependencies
@@ -180,6 +193,11 @@ const defaultUtils: UtilsDeps = {
     createGravatarUrl: createGravatarUrlDefault,
 };
 
+const defaultAccessNotifier: AccessNotifierDeps = {
+    notifyVisibilityChanged: notifyVisibilityChangedDefault,
+    notifyCollaboratorRemoved: notifyCollaboratorRemovedDefault,
+};
+
 const defaultDependencies: ProjectDependencies = {
     db: dbDefault,
     fs: fsDefault,
@@ -188,6 +206,7 @@ const defaultDependencies: ProjectDependencies = {
     fileHelper: defaultFileHelper,
     queries: defaultQueries,
     utils: defaultUtils,
+    accessNotifier: defaultAccessNotifier,
 };
 
 // Get default project visibility from environment
@@ -620,6 +639,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
         createAsset,
     } = deps.queries ?? defaultQueries;
 
+    // Access notifier functions (WebSocket notifications for access revocation)
+    const { notifyVisibilityChanged, notifyCollaboratorRemoved } = deps.accessNotifier ?? defaultAccessNotifier;
+
     return (
         new Elysia()
             .use(cookie())
@@ -800,6 +822,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 await updateProjectVisibility(db, projectId, visibility);
 
+                // If made private, kick non-authorized users via WebSocket
+                if (visibility === 'private') {
+                    const collabs = await getProjectCollaborators(db, projectId);
+                    const collaboratorIds = collabs.map(c => c.user_id);
+                    notifyVisibilityChanged(project.uuid, project.owner_id, collaboratorIds);
+                }
+
                 return { responseMessage: 'OK' };
             })
 
@@ -886,6 +915,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 await removeCollaborator(db, projectId, userId);
+
+                // Notify removed user via WebSocket
+                notifyCollaboratorRemoved(project.uuid, userId);
 
                 return { responseMessage: 'OK' };
             })
@@ -1079,6 +1111,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 await updateProjectVisibilityByUuid(db, uuid, visibility);
 
+                // If made private, kick non-authorized users via WebSocket
+                if (visibility === 'private') {
+                    const collabs = await getProjectCollaborators(db, project.id);
+                    const collaboratorIds = collabs.map(c => c.user_id);
+                    notifyVisibilityChanged(uuid, project.owner_id, collaboratorIds);
+                }
+
                 return { responseMessage: 'OK' };
             })
 
@@ -1159,6 +1198,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 await removeCollaborator(db, project.id, userId);
+
+                // Notify removed user via WebSocket
+                notifyCollaboratorRemoved(uuid, userId);
 
                 return { responseMessage: 'OK' };
             })

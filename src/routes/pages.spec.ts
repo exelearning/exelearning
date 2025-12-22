@@ -1693,4 +1693,48 @@ describe('Pages Routes', () => {
             expect(templateData.config.isOfflineInstallation).toBe(true);
         });
     });
+
+    describe('GET /access-denied', () => {
+        it('should render access denied page with 403 status', async () => {
+            const res = await app.handle(new Request('http://localhost/access-denied'));
+
+            expect(res.status).toBe(403);
+            expect(res.headers.get('content-type')).toContain('text/html');
+
+            const html = await res.text();
+            // Mock template includes the template name
+            expect(html).toContain('workarea/access-denied');
+        });
+
+        it('should pass basePath to template', async () => {
+            const originalBasePath = process.env.BASE_PATH;
+            process.env.BASE_PATH = '/web/exelearning';
+
+            try {
+                let templateData: any = null;
+                const customTemplate: PagesTemplateDeps = {
+                    renderTemplate: (template: string, data: any) => {
+                        templateData = data;
+                        return `<html><body>Template: ${template}</body></html>`;
+                    },
+                };
+
+                const customDeps = {
+                    ...mockDeps,
+                    template: customTemplate,
+                };
+                const newApp = new Elysia().use(createPagesRoutes(customDeps));
+                const res = await newApp.handle(new Request('http://localhost/access-denied'));
+
+                expect(res.status).toBe(403);
+                expect(templateData.basePath).toBe('/web/exelearning');
+            } finally {
+                if (originalBasePath !== undefined) {
+                    process.env.BASE_PATH = originalBasePath;
+                } else {
+                    delete process.env.BASE_PATH;
+                }
+            }
+        });
+    });
 });

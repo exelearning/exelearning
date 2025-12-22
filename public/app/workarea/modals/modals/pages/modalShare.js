@@ -565,6 +565,23 @@ export default class ModalShare extends Modal {
         }
 
         try {
+            // Force save BEFORE changing visibility to public/shared
+            // This ensures the Yjs document is on the server so other clients can load it
+            // and don't create duplicate blank pages when joining
+            if (newVisibility !== 'private') {
+                const bridge = eXeLearning.app.project?._yjsBridge;
+                if (bridge?.saveToServer) {
+                    Logger.log('[Share] Saving project before visibility change to:', newVisibility);
+                    try {
+                        await bridge.saveToServer();
+                        Logger.log('[Share] Project saved successfully');
+                    } catch (saveError) {
+                        // Log but continue - visibility change can still work
+                        console.warn('[Share] Failed to save before visibility change:', saveError);
+                    }
+                }
+            }
+
             const response = await eXeLearning.app.api.updateProjectVisibility(
                 projectId,
                 newVisibility

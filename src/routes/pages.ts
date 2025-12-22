@@ -682,6 +682,21 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     });
                 }
             })
+
+            // =====================================================
+            // Access Denied Page (standalone route for redirects)
+            // =====================================================
+            .get('/access-denied', () => {
+                const basePath = getBasePath();
+                const html = renderTemplate('workarea/access-denied', {
+                    basePath,
+                    locale: 'en',
+                });
+                return new Response(html, {
+                    status: 403,
+                    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                });
+            })
     );
 }
 
