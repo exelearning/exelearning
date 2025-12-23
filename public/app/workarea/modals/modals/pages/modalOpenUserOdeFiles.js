@@ -122,6 +122,8 @@ export default class modalOpenUserOdeFiles extends Modal {
                 this.setFooterElement(footerContent);
             }
             this.modal.show();
+            // Typeset LaTeX in project titles after modal is shown
+            this.typesetTitles();
         }, time);
     }
 
@@ -245,6 +247,8 @@ export default class modalOpenUserOdeFiles extends Modal {
         // Re-render the project list with filtered data
         const bodyContent = this.makeElementListOdeFiles(this.allOdeFilesData);
         this.setBodyElement(bodyContent);
+        // Typeset LaTeX in project titles after tab switch
+        this.typesetTitles();
     }
 
     makeFooterElement(data) {
@@ -1825,6 +1829,35 @@ export default class modalOpenUserOdeFiles extends Modal {
                     });
             },
         });
+    }
+
+    /**
+     * Typeset LaTeX in project titles using MathJax
+     * Called after rendering the project list to render any LaTeX formulas in titles
+     */
+    typesetTitles() {
+        if (typeof MathJax === 'undefined' || !MathJax.typesetPromise) {
+            return;
+        }
+
+        // Find all title elements in the modal
+        const titles = this.modalElementBodyContent.querySelectorAll('.ode-file-title');
+        if (titles.length === 0) {
+            return;
+        }
+
+        // Check if any title contains LaTeX patterns
+        const latexPattern = /\\[()\[\]]|\\begin\{/;
+        const titlesWithLatex = Array.from(titles).filter(
+            (el) => latexPattern.test(el.textContent)
+        );
+
+        if (titlesWithLatex.length > 0) {
+            // Use MathJax to typeset the elements
+            MathJax.typesetPromise(titlesWithLatex).catch((err) => {
+                console.warn('[OpenProject] MathJax typeset error:', err);
+            });
+        }
     }
 
 }

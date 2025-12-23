@@ -934,6 +934,55 @@ describe('YjsStructureBinding', () => {
       expect(blocks[0].order).toBe(0);
       expect(blocks[1].order).toBe(1);
     });
+
+    // Regression test: inserting block at specific order should work correctly
+    it('inserts block at specified order position and shifts existing blocks', () => {
+      // Create two blocks at positions 0 and 1
+      binding.createBlock('page-1', 'Block A', 'block-a');
+      binding.createBlock('page-1', 'Block B', 'block-b');
+
+      // Now insert a new block at position 0 (beginning)
+      binding.createBlock('page-1', 'Block New', 'block-new', 0);
+
+      const blocks = binding.getBlocks('page-1');
+
+      // Should have 3 blocks
+      expect(blocks).toHaveLength(3);
+
+      // block-new should be first (order 0)
+      expect(blocks[0].id).toBe('block-new');
+      expect(blocks[0].order).toBe(0);
+
+      // block-a should be second (order 1, shifted from 0)
+      expect(blocks[1].id).toBe('block-a');
+      expect(blocks[1].order).toBe(1);
+
+      // block-b should be third (order 2, shifted from 1)
+      expect(blocks[2].id).toBe('block-b');
+      expect(blocks[2].order).toBe(2);
+    });
+
+    it('inserts block in middle position correctly', () => {
+      // Create three blocks
+      binding.createBlock('page-1', 'Block 0', 'block-0');
+      binding.createBlock('page-1', 'Block 1', 'block-1');
+      binding.createBlock('page-1', 'Block 2', 'block-2');
+
+      // Insert new block at position 1 (middle)
+      binding.createBlock('page-1', 'Block Middle', 'block-middle', 1);
+
+      const blocks = binding.getBlocks('page-1');
+
+      expect(blocks).toHaveLength(4);
+      expect(blocks[0].id).toBe('block-0');
+      expect(blocks[0].order).toBe(0);
+      expect(blocks[1].id).toBe('block-middle');
+      expect(blocks[1].order).toBe(1);
+      expect(blocks[2].id).toBe('block-1');
+      expect(blocks[2].order).toBe(2);
+      expect(blocks[3].id).toBe('block-2');
+      expect(blocks[3].order).toBe(3);
+    });
   });
 
   describe('updateBlock', () => {

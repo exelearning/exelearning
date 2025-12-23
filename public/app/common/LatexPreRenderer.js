@@ -38,7 +38,7 @@
     // Note: Only BLOCK-level containers are included here. Inline elements like <span>, <a>, <strong>
     // are NOT included because they shouldn't prevent innerHTML processing of their parent.
     // If a <p> contains a <span> + text with LaTeX, we want to process the <p>'s innerHTML directly.
-    const CONTAINER_ELEMENTS = new Set(['p', 'div', 'td', 'th', 'li', 'article', 'section', 'main', 'aside', 'header', 'footer', 'blockquote', 'figcaption']);
+    const CONTAINER_ELEMENTS = new Set(['p', 'div', 'td', 'th', 'li', 'article', 'section', 'main', 'aside', 'header', 'footer', 'blockquote', 'figcaption', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
 
     // Elements to skip entirely
     const SKIP_ELEMENTS = new Set(['script', 'style', 'textarea', 'code', 'pre', 'noscript', 'svg', 'math']);
