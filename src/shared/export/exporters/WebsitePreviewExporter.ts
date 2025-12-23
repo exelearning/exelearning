@@ -270,7 +270,7 @@ export class WebsitePreviewExporter {
         const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : '';
 
         // Get first visible page for initial header content
-        const firstPage = visiblePages[0];
+        const _firstPage = visiblePages[0];
         const firstPageIndex = 0;
 
         // Build initial page counter HTML (only if pagination is enabled)

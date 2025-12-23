@@ -1847,7 +1847,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         }
 
         // Check if any title contains LaTeX patterns
-        const latexPattern = /\\[()\[\]]|\\begin\{/;
+        const latexPattern = /\\[()[\]]|\\begin\{/;
         const titlesWithLatex = Array.from(titles).filter(
             (el) => latexPattern.test(el.textContent)
         );
