@@ -1641,7 +1641,7 @@ var $quickquestionsmultiplechoice = {
         });
 
         if (!solution) {
-            $(`#seleccionaDefinition-${instance}`).text(definition);
+            $(`#seleccionaDefinition-${instance}`).html(definition);
         }
 
         const htmlContent = $(`#seleccionaWordDiv-${instance}`).html();
@@ -1685,7 +1685,7 @@ var $quickquestionsmultiplechoice = {
             )
         );
         $(`#seleccionaPTime-${instance}`).text(time);
-        $(`#seleccionaQuestion-${instance}`).text(mQuestion.quextion);
+        $(`#seleccionaQuestion-${instance}`).html(mQuestion.quextion);
 
         $(
             `#seleccionaImagen-${instance}, #seleccionaEText-${instance}, #seleccionaVideo-${instance}, #seleccionaLinkAudio-${instance}, #seleccionaCursor-${instance}`
@@ -2467,7 +2467,7 @@ var $quickquestionsmultiplechoice = {
                         cursor: 'pointer',
                         color: $quickquestionsmultiplechoice.colors.black,
                     })
-                    .text(option || '')
+                    .html(option || '')
                     .toggle(!!option);
             }
         );

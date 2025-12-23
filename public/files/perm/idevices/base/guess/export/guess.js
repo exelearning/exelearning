@@ -546,7 +546,7 @@ var $guess = {
         }
 
         if (!solution) {
-            $('#adivinaDefinition-' + instance).text(definition);
+            $('#adivinaDefinition-' + instance).html(definition);
         }
 
         const html = $('#adivinaDefinition-' + instance).html(),

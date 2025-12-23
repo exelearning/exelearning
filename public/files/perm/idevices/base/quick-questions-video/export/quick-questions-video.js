@@ -2185,7 +2185,7 @@ var $quickquestionsvideo = {
                 )
             );
 
-        $(`#vquextQuestion-${instance}`).text(mQuestion.quextion).show();
+        $(`#vquextQuestion-${instance}`).html(mQuestion.quextion).show();
         $(`#vquextPTime-${instance}`).text(ntime);
         $(`#vquextDivModeBoard-${instance}`).hide();
 
@@ -2210,7 +2210,7 @@ var $quickquestionsvideo = {
                             cursor: 'pointer',
                             'text-align': 'center',
                         })
-                        .text(option || '')
+                        .html(option || '')
                         .toggle(!!option);
                 }
             );

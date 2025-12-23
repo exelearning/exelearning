@@ -547,7 +547,7 @@ var $eXeSopa = {
 
         $container.find('#sopaMFDetails-' + instanceId).show();
         $container.find('#sopaMAuthorPoint-' + instanceId).html(q.author);
-        $container.find('#sopaMFooterPoint-' + instanceId).text(q.definition);
+        $container.find('#sopaMFooterPoint-' + instanceId).html(q.definition);
 
         if (q.definition.length > 0) {
             $container.find('#sopaMFooterPoint-' + instanceId).show();

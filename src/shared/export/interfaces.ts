@@ -305,6 +305,14 @@ export interface ExportOptions {
      * This reduces export size by ~1MB and provides instant math rendering.
      */
     preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
+
+    /**
+     * Optional hook to pre-render LaTeX inside encrypted DataGame divs.
+     * Game iDevices store questions in encrypted JSON. This decrypts, pre-renders LaTeX,
+     * and re-encrypts before the main preRenderLatex processes visible content.
+     * Must be called BEFORE preRenderLatex.
+     */
+    preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
 }
 
 /**

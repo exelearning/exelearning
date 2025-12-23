@@ -2718,7 +2718,7 @@ var $eXeTrivial = {
         }
 
         if (!solution) {
-            $('#trivialDefinition-' + instance).text(definition);
+            $('#trivialDefinition-' + instance).html(definition);
         }
         const html = $('#trivialWordDiv-' + instance).html(),
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
@@ -2770,7 +2770,7 @@ var $eXeTrivial = {
 
         $('#trivialDivModeBoard-' + instance).hide();
         $('#trivialPTime-' + instance).text(tiempo);
-        $('#trivialQuestion-' + instance).text(mQuextion.quextion);
+        $('#trivialQuestion-' + instance).html(mQuextion.quextion);
         $('#trivialImagen-' + instance).hide();
         $('#trivialCover-' + instance).show();
         $('#trivialEText-' + instance).hide();
@@ -3144,7 +3144,7 @@ var $eXeTrivial = {
                         cursor: 'pointer',
                         color: $eXeTrivial.colors.black,
                     })
-                    .text(option);
+                    .html(option);
                 if (option) {
                     $(this).show();
                 } else {

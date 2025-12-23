@@ -1309,7 +1309,7 @@ var $eXeMapa = {
                         cursor: 'pointer',
                         color: $eXeMapa.colors.black,
                     })
-                    .text(option);
+                    .html(option);
                 if (option) {
                     $(this).show();
                 } else {
@@ -1351,7 +1351,7 @@ var $eXeMapa = {
                         cursor: 'pointer',
                         color: $eXeMapa.colors.black,
                     })
-                    .text(option);
+                    .html(option);
                 if (option) {
                     $(this).show();
                 } else {
@@ -1436,7 +1436,7 @@ var $eXeMapa = {
             }
         }
 
-        if (!solution) $('#mapaDefinition-' + instance).text(definition);
+        if (!solution) $('#mapaDefinition-' + instance).html(definition);
 
         const html = $('#mapaWordDiv-' + instance).html(),
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
@@ -1511,7 +1511,7 @@ var $eXeMapa = {
         });
 
         if (!solution) {
-            $mapaDefinition.text(definition);
+            $mapaDefinition.html(definition);
         }
 
         if (
@@ -1639,7 +1639,7 @@ var $eXeMapa = {
         mOptions.gameActived = true;
         mOptions.question = mQuextion;
         mOptions.respuesta = '';
-        $('#mapaQuestion-' + instance).text(mQuextion.quextion);
+        $('#mapaQuestion-' + instance).html(mQuextion.quextion);
         $eXeMapa.ramdonOptions(instance);
 
         if (mQuextion.typeSelect == 0) {
@@ -1687,7 +1687,7 @@ var $eXeMapa = {
             $eXeMapa.clearTPQuestions(instance);
             mOptions.gameActived = true;
             p.respuesta = '';
-            $('#mapaQuestion1-' + instance).text(q.quextion);
+            $('#mapaQuestion1-' + instance).html(q.quextion);
             q = $eXeMapa.ramdonTPOptions(instance);
             if (q.typeSelect == 0) {
                 $eXeMapa.drawTPQuestions(instance);

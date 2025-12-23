@@ -753,7 +753,7 @@ var $eXeCrucigrama = {
                 .text(wordindex + 1);
             $activeDefinition
                 .find('.CCGMP-WordDefinition')
-                .text(mOptions.wordsGame[wordindex].definition);
+                .html(mOptions.wordsGame[wordindex].definition);
 
             const $linkImage = $activeDefinition.find('.CCGMP-LinkImage');
             const $linkSound = $activeDefinition.find('.CCGMP-LinkSound');

@@ -1329,7 +1329,7 @@ var $quickquestions = {
         );
 
         $('#quextPTime-' + instance).text(tiempo);
-        $('#quextQuestion-' + instance).text(mQuestion.quextion);
+        $('#quextQuestion-' + instance).html(mQuestion.quextion);
         $('#quextImage-' + instance).hide();
         $('#quextCover-' + instance).show();
         $('#quextEText-' + instance).hide();
@@ -1823,7 +1823,7 @@ var $quickquestions = {
                         color: $quickquestions.colors.black,
                         'border-width': '1px',
                     })
-                    .text(option || '')
+                    .html(option || '')
                     .toggle(!!option);
             }
         );

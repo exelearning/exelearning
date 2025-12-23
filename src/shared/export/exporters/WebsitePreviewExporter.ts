@@ -32,6 +32,12 @@ export interface PreviewOptions {
      * The pre-renderer runs on the client using MathJax already loaded in the workarea.
      */
     preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
+    /**
+     * Optional hook to pre-render LaTeX inside encrypted DataGame divs.
+     * Game iDevices store questions in encrypted JSON. This decrypts, pre-renders LaTeX,
+     * and re-encrypts before the main preRenderLatex processes visible content.
+     */
+    preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
 }
 
 /**
@@ -293,14 +299,29 @@ ${this.renderFooterSection({ license, userFooterContent })}
 </div>
 ${madeWithExeHtml}`;
 
-        // Pre-render LaTeX to SVG+MathML if hook is provided
-        // This processes ALL body content including navigation, headers, and pages
-        // The DOM-based pre-renderer safely skips script, style, code, pre elements
+        // Pre-render LaTeX in encrypted DataGame divs FIRST
+        // (game iDevices store questions in encrypted JSON)
         let finalBodyContent = bodyContent;
         let latexWasRendered = false;
+        if (options.preRenderDataGameLatex) {
+            try {
+                const result = await options.preRenderDataGameLatex(bodyContent);
+                if (result.count > 0) {
+                    finalBodyContent = result.html;
+                    latexWasRendered = true;
+                    console.log(`[Preview] Pre-rendered LaTeX in ${result.count} DataGame(s)`);
+                }
+            } catch (error) {
+                console.warn('[Preview] DataGame LaTeX pre-render failed:', error);
+            }
+        }
+
+        // Pre-render visible LaTeX to SVG+MathML if hook is provided
+        // This processes ALL body content including navigation, headers, and pages
+        // The DOM-based pre-renderer safely skips script, style, code, pre elements
         if (options.preRenderLatex) {
             try {
-                const result = await options.preRenderLatex(bodyContent);
+                const result = await options.preRenderLatex(finalBodyContent);
                 if (result.latexRendered) {
                     finalBodyContent = result.html;
                     latexWasRendered = true;

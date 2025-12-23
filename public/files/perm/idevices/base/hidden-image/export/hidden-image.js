@@ -725,7 +725,7 @@ var $eXeHiddenImage = {
             $eXeHiddenImage.ramdonOptions(instance);
         }
 
-        $('#hiPQuestion-' + instance).text(mQuestion.question);
+        $('#hiPQuestion-' + instance).html(mQuestion.question);
         $('#hiPLinkAudio-' + instance).hide();
         $eXeHiddenImage.showAuthor('', instance);
 
@@ -1178,7 +1178,7 @@ var $eXeHiddenImage = {
                         color: $eXeHiddenImage.colors.black,
                         'border-width': '1px',
                     })
-                    .text(option || '')
+                    .html(option || '')
                     .toggle(!!option);
             }
         );
