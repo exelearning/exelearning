@@ -294,20 +294,20 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
-        // The page-header div should be hidden (display:none) on first page
-        const pageHeader = iframe.locator('.page-header');
-        await expect(pageHeader).toHaveCSS('display', 'none');
+        // The page-header div should be hidden (display:none) on first page (active article)
+        const activePageHeader = iframe.locator('article.active .page-header');
+        await expect(activePageHeader).toHaveCSS('display', 'none');
 
         // Navigate to the second page
         const secondPageLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Visible Title Page' });
         await secondPageLink.click();
         await page.waitForTimeout(300);
 
-        // The page-header should be visible on the second page
-        await expect(pageHeader).not.toHaveCSS('display', 'none');
+        // The page-header should be visible on the second page (now active)
+        await expect(activePageHeader).not.toHaveCSS('display', 'none');
 
-        // The title should be visible and contain the correct text
-        const pageTitle = iframe.locator('#page-title, .page-title');
+        // The title should be visible and contain the correct text (in active article)
+        const pageTitle = iframe.locator('article.active .page-title');
         await expect(pageTitle).toContainText('Visible Title Page');
     });
 
@@ -384,7 +384,8 @@ test.describe('Page Properties', () => {
         const iframe = page.frameLocator('#preview-iframe');
 
         // The page title in header should show the custom title (titlePage), not the navigation title
-        const pageTitle = iframe.locator('#page-title, .page-title');
+        // Target only the active article's page title to avoid strict mode violations
+        const pageTitle = iframe.locator('article.active .page-title');
         await expect(pageTitle).toContainText('Custom Display Title');
         await expect(pageTitle).not.toContainText('Navigation Title');
 
@@ -393,7 +394,7 @@ test.describe('Page Properties', () => {
         await secondPageLink.click();
         await page.waitForTimeout(300);
 
-        // The title should be the normal page title
+        // The title should be the normal page title (now in active article)
         await expect(pageTitle).toContainText('Normal Page');
     });
 

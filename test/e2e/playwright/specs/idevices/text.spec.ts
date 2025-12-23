@@ -643,29 +643,30 @@ test.describe('Text iDevice', () => {
             await expect(imageBtn).toBeVisible({ timeout: 10000 });
             await imageBtn.click();
 
-            // 7. Wait for file manager modal
-            await page.waitForSelector('#modal-filemanager, .modal.show', { timeout: 10000 });
+            // 7. Wait for file manager modal (ID is modalFileManager, not modal-filemanager)
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
 
             // 8. Upload image from fixture
-            const fileInput = page.locator('#modal-filemanager input[type="file"], .modal.show input[type="file"]');
+            const fileInput = page.locator('#modalFileManager input[type="file"]');
             await fileInput.setInputFiles('test/fixtures/sample-2.jpg');
 
             // 9. Wait for upload to complete
             await page.waitForTimeout(3000);
 
             // 10. Select and insert the uploaded image
-            const imageItem = page.locator('#modal-filemanager .file-item img, .modal.show .file-item img').first();
+            const imageItem = page
+                .locator('#modalFileManager .media-library-grid-item img, #modalFileManager .file-item img')
+                .first();
             if ((await imageItem.count()) > 0) {
                 await imageItem.click();
             }
 
             // Click insert/select button
-            const insertBtn = page
-                .locator('button:has-text("Insert"), button:has-text("Insertar"), button:has-text("Select")')
-                .first();
-            if ((await insertBtn.count()) > 0) {
-                await insertBtn.click();
-            }
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
 
             // 11. Wait for modal to close
             await page.waitForTimeout(2000);
@@ -769,26 +770,27 @@ test.describe('Text iDevice', () => {
             await expect(imageBtn).toBeVisible({ timeout: 10000 });
             await imageBtn.click();
 
-            // 7. Wait for file manager
-            await page.waitForSelector('#modal-filemanager, .modal.show', { timeout: 10000 });
+            // 7. Wait for file manager (ID is modalFileManager)
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
 
             // 8. Upload fixture image
-            const fileInput = page.locator('#modal-filemanager input[type="file"], .modal.show input[type="file"]');
+            const fileInput = page.locator('#modalFileManager input[type="file"]');
             await fileInput.setInputFiles('test/fixtures/sample-3.jpg');
             await page.waitForTimeout(3000);
 
             // 9. Select and insert
-            const imageItem = page.locator('#modal-filemanager .file-item img, .modal.show .file-item img').first();
+            const imageItem = page
+                .locator('#modalFileManager .media-library-grid-item img, #modalFileManager .file-item img')
+                .first();
             if ((await imageItem.count()) > 0) {
                 await imageItem.click();
             }
 
-            const insertBtn = page
-                .locator('button:has-text("Insert"), button:has-text("Insertar"), button:has-text("Select")')
-                .first();
-            if ((await insertBtn.count()) > 0) {
-                await insertBtn.click();
-            }
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
 
             await page.waitForTimeout(2000);
 
