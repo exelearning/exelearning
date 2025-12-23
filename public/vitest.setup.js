@@ -217,6 +217,9 @@ global.eXeLearning = {
     apiUrl: 'http://localhost:3001/api',
     assetsUrl: 'http://localhost:3001/assets',
   },
+  symfony: {
+    fullURL: 'http://localhost:3001',
+  },
   utils: {
     generateId: vi.fn(() => 'mock-id-' + Math.random().toString(36).substr(2, 9)),
     sanitizeFilename: vi.fn((name) => name.replace(/[^a-z0-9]/gi, '-').toLowerCase()),
@@ -1171,6 +1174,58 @@ const mockGamificationHelpers = {
   }),
 };
 
+const mockGamificationMath = {
+  engine: './libs/exe_math/tex-mml-svg.js',
+  engineConfig: {
+    tex: {
+      inlineMath: [['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true,
+      tags: 'ams',
+      packages: { '[+]': [] },
+    },
+    loader: {
+      paths: { mathjax: './libs/exe_math' },
+      load: [],
+    },
+    options: {},
+  },
+  loadMathJax: vi.fn((callback) => {
+    if (callback) setTimeout(callback, 0);
+  }),
+  hasLatex: vi.fn((text) => text && (text.includes('\\(') || text.includes('$$'))),
+  updateLatex: vi.fn(() => {}),
+};
+
+const mockGamificationObservers = {
+  debounce: vi.fn((func, wait) => func),
+  observeMutations: vi.fn(($idevice, element) => {
+    if (!element) return;
+    if (!$idevice.observers) $idevice.observers = new Map();
+    if ($idevice.observers.has(element)) return $idevice.observers.get(element);
+    const observer = { disconnect: vi.fn(), observe: vi.fn() };
+    $idevice.observers.set(element, observer);
+    return observer;
+  }),
+  observeResize: vi.fn(($idevice, element) => {
+    if (!element) return;
+    if (!$idevice.observersresize) $idevice.observersresize = new Map();
+    if ($idevice.observersresize.has(element)) return $idevice.observersresize.get(element);
+    const observer = { disconnect: vi.fn(), observe: vi.fn() };
+    $idevice.observersresize.set(element, observer);
+    return observer;
+  }),
+  observersDisconnect: vi.fn(($idevice) => {
+    if (!$idevice) return;
+    if ($idevice.observers) {
+      $idevice.observers.forEach((observer) => observer.disconnect());
+    }
+    if ($idevice.observersresize) {
+      $idevice.observersresize.forEach((observer) => observer.disconnect());
+    }
+  }),
+};
+
 global.$exeDevices = {
   iDevice: {
     gamification: {
@@ -1178,6 +1233,8 @@ global.$exeDevices = {
       scorm: mockGamificationScorm,
       common: mockGamificationCommon,
       helpers: mockGamificationHelpers,
+      math: mockGamificationMath,
+      observers: mockGamificationObservers,
     },
   },
 };
@@ -1189,6 +1246,8 @@ global.$exeDevicesEdition = {
       scorm: mockGamificationScorm,
       common: mockGamificationCommon,
       helpers: mockGamificationHelpers,
+      math: mockGamificationMath,
+      observers: mockGamificationObservers,
     },
   },
 };
@@ -1196,6 +1255,37 @@ global.$exeDevicesEdition = {
 if (typeof window !== 'undefined') {
   window.$exeDevices = global.$exeDevices;
   window.$exeDevicesEdition = global.$exeDevicesEdition;
+}
+
+// ============================================================================
+// Mock $exeTinyMCE helper for iDevice TinyMCE initialization
+// ============================================================================
+
+/**
+ * Mock $exeTinyMCE helper used by iDevices to initialize TinyMCE editors.
+ * This is called by iDevices like text.js: $exeTinyMCE.init('multiple-visible', '.exe-html-editor')
+ */
+global.$exeTinyMCE = {
+  init: vi.fn((mode, selector) => {
+    // Mock TinyMCE initialization - in tests, we don't need to actually initialize editors
+    // unless the test specifically needs them
+    return Promise.resolve();
+  }),
+  remove: vi.fn((selector) => {
+    return Promise.resolve();
+  }),
+  getContent: vi.fn((editorId) => {
+    const editor = global.tinymce?.get(editorId);
+    return editor ? editor.getContent() : '';
+  }),
+  setContent: vi.fn((editorId, content) => {
+    const editor = global.tinymce?.get(editorId);
+    if (editor) editor.setContent(content);
+  }),
+};
+
+if (typeof window !== 'undefined') {
+  window.$exeTinyMCE = global.$exeTinyMCE;
 }
 
 // ============================================================================

@@ -2447,50 +2447,35 @@ var $eXeTrivial = {
             return false;
         }
 
-        const loadImage = (resolvedUrl) => {
-            $Image.attr('src', '');
-            $Image
-                .attr('src', resolvedUrl)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
-                        $cursor.hide();
-                        $Image.hide();
-                        $noImage.show();
-                        $Author.text('');
-                    } else {
-                        $Image.show();
-                        $cursor.show();
-                        $noImage.hide();
-                        $Author.text(mQuextion.author);
-                        $Image.attr('alt', mQuextion.alt);
-                        $eXeTrivial.positionPointer(instance);
-                    }
-                })
-                .on('error', function () {
+        $Image.attr('src', '');
+        $Image
+            .attr('src', url)
+            .on('load', function () {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth == 'undefined' ||
+                    this.naturalWidth == 0
+                ) {
                     $cursor.hide();
                     $Image.hide();
                     $noImage.show();
                     $Author.text('');
-                    return false;
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(url);
-        }
+                } else {
+                    $Image.show();
+                    $cursor.show();
+                    $noImage.hide();
+                    $Author.text(mQuextion.author);
+                    $Image.attr('alt', mQuextion.alt);
+                    $eXeTrivial.positionPointer(instance);
+                }
+            })
+            .on('error', function () {
+                $cursor.hide();
+                $Image.hide();
+                $noImage.show();
+                $Author.text('');
+                return false;
+            });
 
         $eXeTrivial.showMessage(0, mQuextion.author, instance);
     },
@@ -2733,10 +2718,10 @@ var $eXeTrivial = {
         }
 
         if (!solution) {
-            $('#trivialDefinition-' + instance).text(definition);
+            $('#trivialDefinition-' + instance).html(definition);
         }
         const html = $('#trivialWordDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -2785,7 +2770,7 @@ var $eXeTrivial = {
 
         $('#trivialDivModeBoard-' + instance).hide();
         $('#trivialPTime-' + instance).text(tiempo);
-        $('#trivialQuestion-' + instance).text(mQuextion.quextion);
+        $('#trivialQuestion-' + instance).html(mQuextion.quextion);
         $('#trivialImagen-' + instance).hide();
         $('#trivialCover-' + instance).show();
         $('#trivialEText-' + instance).hide();
@@ -2818,40 +2803,24 @@ var $eXeTrivial = {
         $('#trivialAuthor-' + instance).text('');
 
         if (mQuextion.type === 1) {
-            const loadTrivialImage = (resolvedUrl) => {
-                $('#trivialImagen-' + instance)
-                    .attr('src', resolvedUrl)
-                    .on('load', function () {
-                        if (
-                            !this.complete ||
-                            typeof this.naturalWidth == 'undefined' ||
-                            this.naturalWidth === 0
-                        ) {
-                            alt = mOptions.msgNoImage;
-                            $('#trivialAuthor-' + instance).text('');
-                        } else {
-                            $('#trivialImagen-' + instance).show();
-                            $('#trivialCover-' + instance).hide();
-                            $('#trivialCursor-' + instance).hide();
-                            $eXeTrivial.positionPointer(instance);
-                        }
-                        $eXeTrivial.showMessage(0, author, instance);
-                    });
-            };
-
-            // Resolve asset:// URLs to blob URLs
-            if (url && url.startsWith('asset://')) {
-                const assetManager =
-                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                if (assetManager) {
-                    assetManager.resolveAssetURL(url).then((blobUrl) => {
-                        loadTrivialImage(blobUrl || '');
-                    });
-                }
-            } else {
-                loadTrivialImage(url);
-            }
-
+            $('#trivialImagen-' + instance)
+                .attr('src', url)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth === 0
+                    ) {
+                        alt = mOptions.msgNoImage;
+                        $('#trivialAuthor-' + instance).text('');
+                    } else {
+                        $('#trivialImagen-' + instance).show();
+                        $('#trivialCover-' + instance).hide();
+                        $('#trivialCursor-' + instance).hide();
+                        $eXeTrivial.positionPointer(instance);
+                    }
+                    $eXeTrivial.showMessage(0, author, instance);
+                });
             $('#trivialImagen-' + instance).prop('alt', alt);
         } else if (mQuextion.type === 3) {
             let text = mQuextion.eText;
@@ -3175,7 +3144,7 @@ var $eXeTrivial = {
                         cursor: 'pointer',
                         color: $eXeTrivial.colors.black,
                     })
-                    .text(option);
+                    .html(option);
                 if (option) {
                     $(this).show();
                 } else {
@@ -3184,7 +3153,7 @@ var $eXeTrivial = {
             });
 
         const html = $('#trivialQuestionDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '.trivial-IDevice'

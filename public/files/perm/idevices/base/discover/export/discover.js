@@ -507,7 +507,7 @@ var $eXeDescubre = {
                 $textcontainer = $card.find('.DescubreQP-EText'),
                 latex =
                     $textcontainer.find('mjx-container').length > 0 ||
-                    /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(
+                    $exeDevices.iDevice.gamification.math.hasLatex(
                         $textcontainer.text()
                     );
 
@@ -1453,43 +1453,27 @@ var $eXeDescubre = {
         if (url.length > 3) {
             $image.attr('alt', alt);
             $image.show();
-
-            const loadImage = (resolvedUrl) => {
-                $image
-                    .prop('src', resolvedUrl)
-                    .on('load', function () {
-                        if (
-                            !this.complete ||
-                            typeof this.naturalWidth == 'undefined' ||
-                            this.naturalWidth == 0
-                        ) {
-                            $cursor.hide();
-                            $noImage.show();
-                        } else {
-                            $image.show();
-                            $cursor.hide();
-                            $eXeDescubre.positionPointerCard($cursor, x, y);
-                            return true;
-                        }
-                    })
-                    .on('error', function () {
+            $image
+                .prop('src', url)
+                .on('load', function () {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth == 0
+                    ) {
                         $cursor.hide();
                         $noImage.show();
-                    });
-            };
-
-            // Resolve asset:// URLs to blob URLs
-            if (url && url.startsWith('asset://')) {
-                const assetManager =
-                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                if (assetManager) {
-                    assetManager.resolveAssetURL(url).then((blobUrl) => {
-                        loadImage(blobUrl || '');
-                    });
-                }
-            } else {
-                loadImage(url);
-            }
+                    } else {
+                        $image.show();
+                        $cursor.hide();
+                        $eXeDescubre.positionPointerCard($cursor, x, y);
+                        return true;
+                    }
+                })
+                .on('error', function () {
+                    $cursor.hide();
+                    $noImage.show();
+                });
         }
         if (stxt.length > 0) {
             $text.show();

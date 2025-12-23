@@ -32,6 +32,12 @@ export interface PreviewOptions {
      * The pre-renderer runs on the client using MathJax already loaded in the workarea.
      */
     preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
+    /**
+     * Optional hook to pre-render LaTeX inside encrypted DataGame divs.
+     * Game iDevices store questions in encrypted JSON. This decrypts, pre-renders LaTeX,
+     * and re-encrypts before the main preRenderLatex processes visible content.
+     */
+    preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
 }
 
 /**
@@ -264,7 +270,7 @@ export class WebsitePreviewExporter {
         const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : '';
 
         // Get first visible page for initial header content
-        const firstPage = visiblePages[0];
+        const _firstPage = visiblePages[0];
         const firstPageIndex = 0;
 
         // Build initial page counter HTML (only if pagination is enabled)
@@ -272,15 +278,12 @@ export class WebsitePreviewExporter {
             ? `<p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${firstPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalVisiblePages}</strong></span></p>`
             : '';
 
-        // Check if first page title should be hidden and get effective title
-        const firstPageTitle = firstPage ? this.getEffectivePageTitle(firstPage) : '';
-        const hideFirstPageTitle = firstPage ? this.shouldHidePageTitle(firstPage) : false;
-        const pageHeaderStyle = hideFirstPageTitle ? ' style="display:none"' : '';
-
         // Build static headers (separate header elements for exe_export.js teacherMode to find)
         // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
+        // NOTE: Page header is now inside each article (see renderPageArticle) to preserve pre-rendered LaTeX
+        // The shared #page-title element is hidden but kept for backwards compatibility with scripts
         const staticHeaderHtml = `${initialPageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
-<header class="page-header"${pageHeaderStyle}><h2 id="page-title" class="page-title">${this.escapeHtml(firstPageTitle)}</h2></header>`;
+<header class="page-header" style="display:none"><h2 id="page-title" class="page-title"></h2></header>`;
 
         // Build the body content that will be pre-rendered
         // Note: head and scripts are added AFTER pre-rendering to avoid corrupting them
@@ -296,14 +299,29 @@ ${this.renderFooterSection({ license, userFooterContent })}
 </div>
 ${madeWithExeHtml}`;
 
-        // Pre-render LaTeX to SVG+MathML if hook is provided
-        // This processes ALL body content including navigation, headers, and pages
-        // The DOM-based pre-renderer safely skips script, style, code, pre elements
+        // Pre-render LaTeX in encrypted DataGame divs FIRST
+        // (game iDevices store questions in encrypted JSON)
         let finalBodyContent = bodyContent;
         let latexWasRendered = false;
+        if (options.preRenderDataGameLatex) {
+            try {
+                const result = await options.preRenderDataGameLatex(bodyContent);
+                if (result.count > 0) {
+                    finalBodyContent = result.html;
+                    latexWasRendered = true;
+                    console.log(`[Preview] Pre-rendered LaTeX in ${result.count} DataGame(s)`);
+                }
+            } catch (error) {
+                console.warn('[Preview] DataGame LaTeX pre-render failed:', error);
+            }
+        }
+
+        // Pre-render visible LaTeX to SVG+MathML if hook is provided
+        // This processes ALL body content including navigation, headers, and pages
+        // The DOM-based pre-renderer safely skips script, style, code, pre elements
         if (options.preRenderLatex) {
             try {
-                const result = await options.preRenderLatex(bodyContent);
+                const result = await options.preRenderLatex(finalBodyContent);
                 if (result.latexRendered) {
                     finalBodyContent = result.html;
                     latexWasRendered = true;
@@ -741,8 +759,14 @@ button.toggler span,
         // Store page title properties as data attributes for SPA navigation to update header
         const effectiveTitle = this.getEffectivePageTitle(page);
         const hideTitle = this.shouldHidePageTitle(page);
+        const headerStyle = hideTitle ? ' style="display:none"' : '';
+
+        // Include page header INSIDE each article so LatexPreRenderer processes each title
+        // This allows each page to have its own pre-rendered LaTeX in the title
+        const pageHeaderHtml = `<header class="page-header page-header-spa"${headerStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></header>`;
 
         return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}" data-page-title="${this.escapeAttr(effectiveTitle)}" data-page-hide-title="${hideTitle}">
+${pageHeaderHtml}
 <div id="page-content-${pageId}" class="page-content">
 ${blockHtml}
 </div>
@@ -1010,25 +1034,8 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   var navLinks = document.querySelectorAll('[data-page-id]');
   var prevBtn = document.querySelector('[data-nav="prev"]');
   var nextBtn = document.querySelector('[data-nav="next"]');
-  var pageTitleEl = document.getElementById('page-title');
-  var pageHeaderEl = document.querySelector('.page-header');
   var pageCounterEl = document.querySelector('.page-counter-current-page');
   var currentIndex = 0;
-
-  // Helper to detect LaTeX patterns in text
-  // Matches \\( or \\[ or \\begin{ (LaTeX delimiters)
-  function hasLatex(text) {
-    return text && /(?:\\\\\\(|\\\\\\[|\\\\begin\\{)/.test(text);
-  }
-
-  // Helper to typeset LaTeX in an element using MathJax
-  function typesetLatex(element) {
-    if (element && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-      MathJax.typesetPromise([element]).catch(function(err) {
-        console.log('[Preview] MathJax typeset error:', err);
-      });
-    }
-  }
 
   function showPage(index) {
     if (index < 0 || index >= pages.length) return;
@@ -1066,19 +1073,8 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
         link.parentElement.classList.toggle('current-page-parent', isAncestor);
       }
     });
-    // Update header with current page info
-    var hideTitle = activePage.dataset.pageHideTitle === 'true';
-    if (pageHeaderEl) {
-      pageHeaderEl.style.display = hideTitle ? 'none' : '';
-    }
-    if (pageTitleEl && activePage.dataset.pageTitle) {
-      var title = activePage.dataset.pageTitle;
-      pageTitleEl.textContent = title;
-      // Re-typeset LaTeX in page title if detected
-      if (hasLatex(title)) {
-        typesetLatex(pageTitleEl);
-      }
-    }
+    // Page header with pre-rendered LaTeX is now inside each article (page-header-spa class)
+    // No need to update shared header - it shows/hides automatically with the article
     if (pageCounterEl) {
       pageCounterEl.textContent = (index + 1).toString();
     }
@@ -1133,16 +1129,8 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   // Check initial hash on load
   showPageByHash();
 
-  // Typeset LaTeX in navigation sidebar if detected
-  var navContainer = document.querySelector('nav');
-  if (navContainer && hasLatex(navContainer.textContent)) {
-    typesetLatex(navContainer);
-  }
-
-  // Typeset LaTeX in initial page title if detected
-  if (pageTitleEl && hasLatex(pageTitleEl.textContent)) {
-    typesetLatex(pageTitleEl);
-  }
+  // Note: LaTeX in navigation and page titles is pre-rendered by LatexPreRenderer
+  // No need for dynamic MathJax typesetting - it's already converted to SVG+MathML
 
   updateNavButtons();
 })();`;

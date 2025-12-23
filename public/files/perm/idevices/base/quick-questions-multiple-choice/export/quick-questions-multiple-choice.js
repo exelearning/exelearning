@@ -1132,50 +1132,35 @@ var $quickquestionsmultiplechoice = {
             return false;
         }
 
-        const loadImage = (resolvedUrl) => {
-            $image
-                .attr('src', '')
-                .attr('src', resolvedUrl)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth === 'undefined' ||
-                        this.naturalWidth === 0
-                    ) {
-                        $cursor.hide();
-                        $image.hide();
-                        $noImage.show();
-                        $author.text('');
-                    } else {
-                        $image.show();
-                        $cursor.show();
-                        $noImage.hide();
-                        $author.text(mQuestion.author);
-                        $image.attr('alt', mQuestion.alt);
-                        $quickquestionsmultiplechoice.centerImage(instance);
-                    }
-                })
-                .on('error', function () {
+        $image
+            .attr('src', '')
+            .attr('src', url)
+            .on('load', function () {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth === 'undefined' ||
+                    this.naturalWidth === 0
+                ) {
                     $cursor.hide();
                     $image.hide();
                     $noImage.show();
                     $author.text('');
-                    return false;
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(url);
-        }
+                } else {
+                    $image.show();
+                    $cursor.show();
+                    $noImage.hide();
+                    $author.text(mQuestion.author);
+                    $image.attr('alt', mQuestion.alt);
+                    $quickquestionsmultiplechoice.centerImage(instance);
+                }
+            })
+            .on('error', function () {
+                $cursor.hide();
+                $image.hide();
+                $noImage.show();
+                $author.text('');
+                return false;
+            });
 
         $quickquestionsmultiplechoice.showMessage(
             0,
@@ -1656,11 +1641,11 @@ var $quickquestionsmultiplechoice = {
         });
 
         if (!solution) {
-            $(`#seleccionaDefinition-${instance}`).text(definition);
+            $(`#seleccionaDefinition-${instance}`).html(definition);
         }
 
         const htmlContent = $(`#seleccionaWordDiv-${instance}`).html();
-        if (/(?:\\\(|\\\[|\\begin\{.*?})/.test(htmlContent)) {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(htmlContent)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 `seleccionaWordDiv-${instance}`
             );
@@ -1700,7 +1685,7 @@ var $quickquestionsmultiplechoice = {
             )
         );
         $(`#seleccionaPTime-${instance}`).text(time);
-        $(`#seleccionaQuestion-${instance}`).text(mQuestion.quextion);
+        $(`#seleccionaQuestion-${instance}`).html(mQuestion.quextion);
 
         $(
             `#seleccionaImagen-${instance}, #seleccionaEText-${instance}, #seleccionaVideo-${instance}, #seleccionaLinkAudio-${instance}, #seleccionaCursor-${instance}`
@@ -2482,13 +2467,13 @@ var $quickquestionsmultiplechoice = {
                         cursor: 'pointer',
                         color: $quickquestionsmultiplechoice.colors.black,
                     })
-                    .text(option || '')
+                    .html(option || '')
                     .toggle(!!option);
             }
         );
 
         const html = $(`#seleccionaQuestionDiv-${instance}`).html();
-        if (/(?:\\\(|\\\[|\\begin\{.*?})/.test(html)) {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 `seleccionaQuestionDiv-${instance}`
             );

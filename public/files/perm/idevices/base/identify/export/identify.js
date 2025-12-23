@@ -1057,40 +1057,24 @@ var $eXeIdentifica = {
                 : $eXeIdentifica.idevicePath + 'identificaHome.png';
         $image.attr('alt', q.alt);
 
-        const loadImage = (resolvedUrl) => {
-            $image
-                .prop('src', resolvedUrl)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth == 'undefined' ||
-                        this.naturalWidth == 0
-                    ) {
-                        $cursor.hide();
-                    } else {
-                        $image.show();
-                        $eXeIdentifica.positionPointerCard(instance);
-                        return true;
-                    }
-                })
-                .on('error', function () {
+        $image
+            .prop('src', url)
+            .on('load', function () {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth == 'undefined' ||
+                    this.naturalWidth == 0
+                ) {
                     $cursor.hide();
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(url);
-        }
-
+                } else {
+                    $image.show();
+                    $eXeIdentifica.positionPointerCard(instance);
+                    return true;
+                }
+            })
+            .on('error', function () {
+                $cursor.hide();
+            });
         $image.hide();
     },
 
@@ -1135,7 +1119,7 @@ var $eXeIdentifica = {
         $eXeIdentifica.showMessage(0, '', instance);
 
         const html = $(`#idfGameContainer-${instance}`).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(

@@ -286,7 +286,7 @@ var $exeDevice = {
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
-                $('.exe-form-tabs li:first-child a').click();
+                //$('.exe-form-tabs li:first-child a').click();
             } else {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
@@ -1212,7 +1212,7 @@ var $exeDevice = {
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
-                $('.exe-form-tabs li:first-child a').click();
+                //$('.exe-form-tabs li:first-child a').click();
             } else {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
@@ -1250,7 +1250,7 @@ var $exeDevice = {
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
-                $('.exe-form-tabs li:first-child a').click();
+                //$('.exe-form-tabs li:first-child a').click();
             } else {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
@@ -1291,7 +1291,7 @@ var $exeDevice = {
         tinymce.editors[0].setContent(game.instructions);
         const tAfter = game.textAfter || '';
         tinymce.editors[1].setContent(unescape(tAfter));
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
     },
 
     addEvents: function () {
@@ -1853,7 +1853,7 @@ var $exeDevice = {
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
-                $('.exe-form-tabs li:first-child a').click();
+                //$('.exe-form-tabs li:first-child a').click();
             } else {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }

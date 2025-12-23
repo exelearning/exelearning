@@ -23,6 +23,38 @@
     2015. Refactored and completed by Ignacio Gros (http://www.gros.es) for http://exelearning.net/
 */
 
+window.MathJax = window.MathJax || (function() {
+    var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
+    var isIndex = document.documentElement.id === 'exe-index';
+    var basePath = isWorkarea ? '/app/common/exe_math' : (isIndex ? './libs/exe_math' : '../libs/exe_math');
+    
+    var externalExtensions = [
+        'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel', 
+        'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose', 
+        'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
+        'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb', 
+        'setoptions',
+        'bbm', 'bboldx', 'begingroup', 'colorv2', 'dsfont', 'texhtml', 'units'
+    ];
+    
+    return {
+        tex: {
+            inlineMath: [["\\(", "\\)"]],
+            displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+            processEscapes: true,
+            tags: 'ams',
+            packages: { '[+]': externalExtensions }
+        },
+        loader: {
+            paths: { mathjax: basePath },
+            load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
+        },
+        options: {
+            // MathJax Configuration Options
+        }
+    };
+})();
+
 var $exe = {
 
     options: {
@@ -69,8 +101,21 @@ var $exe = {
 
     // Math options (MathJax, etc.) - To review (some options might not be needed)
     math: {
-        // MathJax script path
-        engine: $("html").prop("id") == "exe-index" ? "./libs/exe_math/tex-mml-svg.js" : "../libs/exe_math/tex-mml-svg.js",
+        get engine() {
+            return $exeDevices.iDevice.gamification.math.engine;
+        },
+        get engineConfig() {
+            return $exeDevices.iDevice.gamification.math.engineConfig;
+        },
+        loadMathJax: function(callback) {
+            return $exeDevices.iDevice.gamification.math.loadMathJax(callback);
+        },
+        hasLatex: function(text) {
+            return $exeDevices.iDevice.gamification.math.hasLatex(text);
+        },
+        refresh: function(elements) {
+            return $exeDevices.iDevice.gamification.math.updateLatex(elements);
+        },
         // Create links to the code and the image (different possibilities)
         createLinks: function (math) {
             var mathjax = false;
@@ -160,13 +205,10 @@ var $exe = {
                             }
                         }
                     });
-                    if (typeof (window.MathJax) == 'object' && typeof (MathJax.typesetPromise) == 'function') {
-                        // Note: Do NOT call texReset() here - labels must persist for \ref{} to resolve
-                        MathJax.typesetPromise().catch(function(err) {
-                            console.warn('[MathJax] Typeset error:', err.message);
-                        });
+                    $exe.math.loadMathJax(function () {
+                        MathJax.typesetPromise();
                         $exe.math.createLinks();
-                    }
+                    });
                 } else {
                     $exe.math.createLinks(math);
                 }
@@ -440,7 +482,12 @@ var $exe = {
         if ($("A.exe-tooltip").length > 0) {
             var p = "";
             if (typeof (eXeLearning) !== 'undefined') {
-                p = eXeLearning.config.fullURL + "/app/common/exe_tooltips/";
+                // TODO: UNIFY - Fallback for branch compatibility.
+                // In 'main' branch: eXeLearning.symfony.fullURL exists (added by Symfony backend)
+                // In this branch: only eXeLearning.config.fullURL exists (set in workarea.njk)
+                // To unify: Either add 'symfony' property to workarea.njk template,
+                // or update main branch to use 'config' consistently.
+                p = (eXeLearning.symfony?.fullURL || eXeLearning.config?.fullURL || '') + "/app/common/exe_tooltips/";
             } else {
                 var ref = window.location.href;
                 // Check if it's the home page
@@ -526,15 +573,6 @@ var $exe = {
     }
 
 };
-
-if (typeof window !== 'undefined') {
-    window.$exe = $exe;
-}
-if (typeof global !== 'undefined') {
-    global.$exe = $exe;
-}
-
-// Export $exeDevices to global for Node.js environments (testing)
 
 // iDevices common code - To review (Part of this code should not be exported)
 var $exeDevices = {
@@ -633,6 +671,33 @@ var $exeDevices = {
                     }
                 },
 
+                // Nueva función: Obtener puntuación de una actividad específica desde suspend_data
+                getActivityScore: function (ideviceNumber) {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
+                        return 0;
+                    }
+
+                    const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+
+                    if (lmsData[ideviceNumber]) {
+                        // Score está guardado en escala 0-1000, convertir a 0-10
+                        return (lmsData[ideviceNumber].score / 10) || 0;
+                    }
+
+                    return 0;
+                },
+
+                // Nueva función: Obtener puntuación total del nodo desde cmi.core.score.raw
+                getTotalScore: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
+                        return 0;
+                    }
+
+                    const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
+                    return parseFloat(rawScore) || 0;
+                },
+
                 endScorm: function (scormgame) {
                     /*if (scormgame && typeof scormgame.quit == "function") scormgame.quit();*/
                 },
@@ -666,13 +731,27 @@ var $exeDevices = {
                 },
 
                 createScoreScormHtml: function (game) {
-                    const $exeScoreNode = $("#exeScoreNode");
+                    let $exeScoreNode = $("#exeScoreNode");
+                    let initialScore = 0;
+                    
+                    if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
+                        const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
+                        if (rawScore && rawScore !== "" && rawScore !== "0") {
+                            initialScore = parseFloat(rawScore) || 0;
+                        } else {
+                            const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+                            if (suspendData && suspendData.trim() !== "") {
+                                const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                                initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                            }
+                        }
+                    }
 
                     if ($exeScoreNode.length === 0) {
                         const newScoreNodeHtml = `
                                     <div id="exeScoreNode" class="text-end p-2">
                                         <div id="eXeScoreNodeScore" class="bg-success text-white d-inline-block px-2 py-1">
-                                            ${game.msgs.msgYouScore}: 0/100
+                                            ${game.msgs.msgYouScore}: ${initialScore}/100
                                         </div>
                                     </div>
                                 `;
@@ -686,6 +765,8 @@ var $exeDevices = {
                         if ($page.length > 0) {
                             $page.prepend(newScoreNodeHtml);
                         }
+                    } else {
+                        $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${initialScore}/100`);
                     }
                 },
 
@@ -811,14 +892,23 @@ var $exeDevices = {
 
                         lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
 
-                        lmsData[game.ideviceNumber] = {
-                            title: game.title,
-                            score: lmsData[game.ideviceNumber]?.score || (game.scorerp * 10),
-                            weighted: game.weighted
-                        };
+                        if (lmsData[game.ideviceNumber]) {
+                            game.previousScore = (lmsData[game.ideviceNumber].score / 10).toFixed(2);
+                            // Actualizar el score node con la puntuación recuperada
+                            const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                            if (totalScore > 0) {
+                                $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
+                            }
+                        } else {
+                            lmsData[game.ideviceNumber] = {
+                                title: game.title,
+                                score: 0,
+                                weighted: game.weighted
+                            };
 
-                        const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
-                        pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+                            const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
+                            pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+                        }
                     }
 
                     $exeDevices.iDevice.gamification.scorm.updateScormNew(game, lmsData);
@@ -978,7 +1068,7 @@ var $exeDevices = {
                     if (newFinalScore >= 50) {
                         pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
                     } else {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "incomplete");
+                        pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
@@ -1191,56 +1281,81 @@ var $exeDevices = {
             },
 
             math: {
-                loadMathJax: function () {
-                    if (!window.MathJax) window.MathJax = $exeDevices.iDevice.gamification.math.engineConfig;
-                    const script = document.createElement('script');
-                    script.src = $exeDevices.iDevice.gamification.math.engine;
-                    script.async = true;
-                    document.head.appendChild(script);
-                },
-                engine: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js",
+                _loading: false,
+                _callbacks: [],
 
-                engineConfig: {
-                    loader: {
-                        load: ['[tex]/ams', '[tex]/amscd', '[tex]/cancel', '[tex]/centernot',
-                            '[tex]/color', '[tex]/colortbl', '[tex]/configmacros', '[tex]/gensymb',
-                            '[tex]/mathtools', '[tex]/mhchem', '[tex]/newcommand', '[tex]/noerrors',
-                            '[tex]/noundefined', '[tex]/physics', '[tex]/textmacros', '[tex]/gensymb',
-                            '[tex]/textcomp', '[tex]/bbox', '[tex]/upgreek', '[tex]/verb'
-                        ]
-                    },
-                    tex: {
-                        inlineMath: [
-                            ["\\(", "\\)"]
-                        ],
-                        displayMath: [
-                            ["\\[", "\\]"]
-                        ],
-                        processEscapes: true,
-                        tags: 'ams',
-                        packages: {
-                            '[+]': ['ams', 'amscd', 'cancel', 'centernot', 'color', 'colortbl',
-                                'configmacros', 'gensymb', 'mathtools', 'mhchem', 'newcommand', 'noerrors',
-                                'noundefined', 'physics', 'textmacros', 'upgreek', 'verb'
-                            ]
-                        },
-                        physics: {
-                            italicdiff: false,
-                            arrowdel: false
-                        },
-                    },
-                    textmacros: {
-                        packages: {
-                            '[+]': ['textcomp', 'bbox']
-                        }
+                engine: $("html").prop("id") == "exe-index" ? "./libs/exe_math/tex-mml-svg.js" : "../libs/exe_math/tex-mml-svg.js",
+
+                engineConfig: window.MathJax,
+
+                loadMathJax: function (callback) {
+                    var self = $exeDevices.iDevice.gamification.math;
+
+                    if (typeof window.MathJax === 'object' && typeof MathJax.typesetPromise === 'function') {
+                        if (callback) callback();
+                        return;
                     }
+
+                    if (callback) {
+                        self._callbacks.push(callback);
+                    }
+
+                    if (self._loading) {
+                        return;
+                    }
+
+                    var existingScript = document.querySelector('script[src*="tex-mml-svg.js"]');
+                    if (existingScript) {
+                        self._loading = true;
+                        var checkMathJax = function () {
+                            if (typeof window.MathJax === 'object' && typeof MathJax.typesetPromise === 'function') {
+                                self._loading = false;
+                                while (self._callbacks.length > 0) {
+                                    var cb = self._callbacks.shift();
+                                    cb();
+                                }
+                            } else {
+                                setTimeout(checkMathJax, 50);
+                            }
+                        };
+                        checkMathJax();
+                        return;
+                    }
+
+                    self._loading = true;
+                    var basePath = $("html").prop("id") == "exe-index" ? "./libs/exe_math" : "../libs/exe_math";
+                    if (!window.MathJax) {
+                        window.MathJax = self.engineConfig;
+                    }
+                    if (!window.MathJax.loader) window.MathJax.loader = {};
+                    if (!window.MathJax.loader.paths) window.MathJax.loader.paths = {};
+                    window.MathJax.loader.paths.mathjax = basePath;
+                    var script = document.createElement('script');
+                    script.src = self.engine;
+                    script.async = true;
+                    script.onload = function () {
+                        var checkReady = function () {
+                            if (typeof window.MathJax === 'object' && typeof MathJax.typesetPromise === 'function') {
+                                self._loading = false;
+                                while (self._callbacks.length > 0) {
+                                    var cb = self._callbacks.shift();
+                                    cb();
+                                }
+                            } else {
+                                setTimeout(checkReady, 50);
+                            }
+                        };
+                        checkReady();
+                    };
+                    document.head.appendChild(script);
                 },
 
                 hasLatex: function (text) {
-                    return /\\\(|\\\[|\\begin\{/.test(text);
+                    return /\\\(|\\\[|\\begin\{|\$\$/.test(text);
                 },
 
                 updateLatex: function (target, opts) {
+                    var self = $exeDevices.iDevice.gamification.math;
                     var options = opts || {};
 
                     function nodesFrom(t) {
@@ -1259,7 +1374,6 @@ var $exeDevices = {
                         var start = (MathJax.startup && MathJax.startup.promise) ? MathJax.startup.promise : Promise.resolve();
                         return start.then(function () {
                             if (typeof MathJax.typesetClear === 'function') MathJax.typesetClear(nodes);
-                            // Note: Do NOT call texReset() here - labels must persist for \ref{} to resolve
                             return (MathJax.typesetPromise ? MathJax.typesetPromise(nodes) : MathJax.typeset(nodes));
                         }).catch(function (e) { console.error('MathJax v3 typeset error:', e); });
                     }
@@ -1273,14 +1387,21 @@ var $exeDevices = {
 
                     function typesetNow() {
                         var nodes = nodesFrom(target);
-                        if (!nodes.length || typeof MathJax === 'undefined') return;
+                        if (!nodes.length) return;
 
-                        if (MathJax.typesetPromise || MathJax.startup) return runV3(nodes); // v3
-                        if (MathJax.Hub && typeof MathJax.Hub.Queue === 'function') return runV2(nodes); // v2
+                        if (typeof MathJax === 'undefined') {
+                            self.loadMathJax(function () {
+                                typesetNow();
+                            });
+                            return;
+                        }
+
+                        if (MathJax.typesetPromise || MathJax.startup) return runV3(nodes);
+                        if (MathJax.Hub && typeof MathJax.Hub.Queue === 'function') return runV2(nodes);
                     }
 
                     if (options.defer) {
-                        // Wait for slide animation/visibility to complete
+                        // Espera a que termine la animación/visibilidad de la slide
                         requestAnimationFrame(function () { requestAnimationFrame(typesetNow); });
                     } else {
                         typesetNow();
@@ -1525,6 +1646,64 @@ var $exeDevices = {
             },
 
             helpers: {
+                sanitizeJSONString: function (jsonString) {
+                    if (typeof jsonString !== 'string' || jsonString === '') return jsonString;
+
+                    let inString = false;
+                    let result = '';
+
+                    for (let i = 0; i < jsonString.length; i++) {
+                        const ch = jsonString[i];
+
+                        if (!inString) {
+                            if (ch === '"') {
+                                inString = true;
+                            }
+                            result += ch;
+                            continue;
+                        }
+
+                        if (ch === '\\') {
+                            if (i + 1 < jsonString.length) {
+                                result += ch + jsonString[i + 1];
+                                i++;
+                            } else {
+                                result += ch;
+                            }
+                            continue;
+                        }
+
+                        if (ch === '"') {
+                            inString = false;
+                            result += ch;
+                            continue;
+                        }
+
+                        const code = ch.charCodeAt(0);
+
+                        if (code === 0x08) {
+                            result += '\\b';
+                        } else if (code === 0x09) {
+                            result += '\\t';
+                        } else if (code === 0x0a) {
+                            result += '\\n';
+                        } else if (code === 0x0c) {
+                            result += '\\f';
+                        } else if (code === 0x0d) {
+                            result += '\\r';
+                        } else if (code === 0x2028 || code === 0x2029) {
+                            const hex = code.toString(16).padStart(4, '0');
+                            result += `\\u${hex}`;
+                        } else if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) {
+                            const hex = code.toString(16).padStart(4, '0');
+                            result += `\\u${hex}`;
+                        } else {
+                            result += ch;
+                        }
+                    }
+
+                    return result;
+                },
                 isJsonString: function (str) {
                     if (typeof str !== 'string') return false;
                     str = str.trim();
@@ -1862,6 +2041,12 @@ var $exeDevices = {
     }
 }
 
+// Export globals for browser and test environments
+if (typeof window !== 'undefined') {
+    window.$exe = $exe;
+    window.$exeDevices = $exeDevices;
+}
 if (typeof global !== 'undefined') {
+    global.$exe = $exe;
     global.$exeDevices = $exeDevices;
 }

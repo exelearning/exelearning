@@ -601,4 +601,271 @@ test.describe('Text iDevice', () => {
             expect(hasBoldContent).toBe(true);
         });
     });
+
+    test.describe('Image Persistence', () => {
+        test('should persist image after save and reload', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // 1. Create project
+            const projectUuid = await createProject(page, 'Image Persistence Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            // 2. Wait for Yjs to initialize
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 3. Add text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // 4. Enter edit mode
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 10000 });
+
+            const editBtn = block.locator('.btn-edit-idevice');
+            if ((await editBtn.count()) > 0) {
+                await editBtn.click();
+            }
+
+            // 5. Wait for TinyMCE
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // 6. Click on image button in TinyMCE toolbar
+            const imageBtn = page
+                .locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]')
+                .first();
+            await expect(imageBtn).toBeVisible({ timeout: 10000 });
+            await imageBtn.click();
+
+            // 7. Wait for TinyMCE's image dialog to open
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+
+            // 8. Click the Browse button in the Source field to open Media Library
+            // The browse button is inside a urlinput component in TinyMCE's dialog
+            const browseBtn = page.locator(
+                '.tox-dialog .tox-browse-url, .tox-dialog button[title*="Browse" i], .tox-dialog button[aria-label*="Browse" i]',
+            );
+            await expect(browseBtn.first()).toBeVisible({ timeout: 5000 });
+            await browseBtn.first().click();
+
+            // 9. Wait for Media Library modal
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            // 10. Upload image from fixture using the hidden file input
+            const fileInput = page.locator('#modalFileManager .media-library-upload-input');
+            await fileInput.setInputFiles('test/fixtures/sample-2.jpg');
+
+            // 11. Wait for the uploaded image to appear in the grid
+            // The grid items have class 'media-library-item' (not 'media-library-grid-item')
+            const imageItem = page.locator('#modalFileManager .media-library-item').first();
+            await expect(imageItem).toBeVisible({ timeout: 10000 });
+
+            // 12. Click to select the uploaded image
+            await imageItem.click();
+
+            // 13. Wait for sidebar content to show (appears when asset is selected)
+            const sidebarContent = page.locator('#modalFileManager .media-library-sidebar-content');
+            await expect(sidebarContent).toBeVisible({ timeout: 5000 });
+
+            // 14. Click insert button in Media Library
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
+
+            // 14. Wait for modal to close and URL to be set in TinyMCE dialog
+            await page.waitForTimeout(1000);
+
+            // 15. Close TinyMCE dialog by clicking Save button
+            const tinyMceSaveBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
+            if ((await tinyMceSaveBtn.count()) > 0) {
+                await tinyMceSaveBtn.click();
+            }
+            await page.waitForTimeout(1000);
+
+            // 12. Save iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            // 13. Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // 14. Verify image is visible BEFORE reload
+            const imgBefore = page.locator('#node-content article .idevice_node.text img');
+            await expect(imgBefore).toBeVisible({ timeout: 10000 });
+
+            // 15. Save project
+            await workarea.save();
+            await page.waitForTimeout(2000);
+
+            // 16. Reload the page
+            await page.reload();
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            // 17. Wait for Yjs to reinitialize
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 18. Navigate to the page with the iDevice
+            const pageNode = page
+                .locator('.nav-element-text')
+                .filter({ hasText: /New page|Nueva página/i })
+                .first();
+            if ((await pageNode.count()) > 0) {
+                await pageNode.click({ force: true });
+                await page.waitForTimeout(1000);
+            }
+
+            // 19. Verify image is visible AFTER reload
+            const imgAfter = page.locator('#node-content article .idevice_node.text img');
+            await expect(imgAfter).toBeVisible({ timeout: 15000 });
+
+            // 20. Verify image src is NOT a blob: URL (should be resolved from IndexedDB)
+            const imgSrc = await imgAfter.getAttribute('src');
+            expect(imgSrc).not.toBeNull();
+            // After reload, src can be blob: (resolved) or asset:// (waiting to resolve)
+            // It should NOT be an invalid blob URL that returns 404
+            const naturalWidth = await imgAfter.evaluate((el: HTMLImageElement) => el.naturalWidth);
+            expect(naturalWidth).toBeGreaterThan(0);
+        });
+
+        test('should show image in preview after insert', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // 1. Create project
+            const projectUuid = await createProject(page, 'Image Preview Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            // 2. Wait for Yjs
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 3. Add text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // 4. Enter edit mode
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 10000 });
+
+            const editBtn = block.locator('.btn-edit-idevice');
+            if ((await editBtn.count()) > 0) {
+                await editBtn.click();
+            }
+
+            // 5. Wait for TinyMCE
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // 6. Click image button
+            const imageBtn = page
+                .locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]')
+                .first();
+            await expect(imageBtn).toBeVisible({ timeout: 10000 });
+            await imageBtn.click();
+
+            // 7. Wait for TinyMCE's image dialog to open
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+
+            // 8. Click the Browse button to open Media Library
+            const browseBtn = page.locator(
+                '.tox-dialog .tox-browse-url, .tox-dialog button[title*="Browse" i], .tox-dialog button[aria-label*="Browse" i]',
+            );
+            await expect(browseBtn.first()).toBeVisible({ timeout: 5000 });
+            await browseBtn.first().click();
+
+            // 9. Wait for Media Library modal
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            // 10. Upload fixture image using the hidden file input
+            const fileInput = page.locator('#modalFileManager .media-library-upload-input');
+            await fileInput.setInputFiles('test/fixtures/sample-3.jpg');
+
+            // 11. Wait for the uploaded image to appear in the grid
+            const imageItem = page.locator('#modalFileManager .media-library-item').first();
+            await expect(imageItem).toBeVisible({ timeout: 10000 });
+
+            // 12. Click to select the uploaded image
+            await imageItem.click();
+
+            // 13. Wait for sidebar content to show
+            const sidebarContent = page.locator('#modalFileManager .media-library-sidebar-content');
+            await expect(sidebarContent).toBeVisible({ timeout: 5000 });
+
+            // 14. Click insert button
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
+
+            // 12. Wait for modal to close and close TinyMCE dialog
+            await page.waitForTimeout(1000);
+            const tinyMceSaveBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
+            if ((await tinyMceSaveBtn.count()) > 0) {
+                await tinyMceSaveBtn.click();
+            }
+            await page.waitForTimeout(1000);
+
+            // 13. Save iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // 11. Save project
+            await workarea.save();
+            await page.waitForTimeout(2000);
+
+            // 12. Open preview panel (side panel, not popup)
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // 13. Wait for iframe to load
+            const iframe = page.frameLocator('#preview-iframe');
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+            // 14. Verify image in preview
+            const previewImg = iframe.locator('article.spa-page.active img');
+            await expect(previewImg).toBeVisible({ timeout: 15000 });
+
+            // 15. Verify image loads (not broken)
+            const naturalWidth = await previewImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
+            expect(naturalWidth).toBeGreaterThan(0);
+        });
+    });
 });

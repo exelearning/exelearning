@@ -83,9 +83,12 @@ var $eXeListaCotejo = {
 
             $('#ctjMainContainer-' + i).show();
         });
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.listacotejo-IDevice'
-        );
+        const html = $('.listacotejo-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.listacotejo-IDevice'
+            );
+        }
     },
 
     loadDataGame: function (data, imglink, imglink1, imglink2) {
@@ -316,9 +319,12 @@ var $eXeListaCotejo = {
 
         $eXeListaCotejo.counter(instance);
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#ctjGameContainer-' + instance
-        );
+        const containerHtml = $('#ctjGameContainer-' + instance).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(containerHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#ctjGameContainer-' + instance
+            );
+        }
 
         $('#ctjReboot-' + instance).on('click', function (e) {
             e.preventDefault();

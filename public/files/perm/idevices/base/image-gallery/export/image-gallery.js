@@ -42,55 +42,28 @@ var $imagegallery = {
     renderBehaviour(data) {
         const $node = $('#' + data.ideviceId),
             isInExe = eXe.app.isInExe();
-
-        // In export/preview, regenerate gallery HTML with resolved URLs
         if (!isInExe && $node.length == 1) {
             let gallery = $imagegallery.getStringGallery(data);
             $node.html(gallery);
         }
 
-        // Initialize lightbox - links have rel="lightbox[gallery-{id}]"
-        // Re-initialize prettyPhoto to pick up new links
-        const initLightbox = () => {
-            const $links = $node.find('.imageGallery-IDevice a.imageLink');
-
-            if ($links.length === 0) {
-                return false;
-            }
-
-            // Check if prettyPhoto is available
-            if (typeof $.fn.prettyPhoto === 'undefined') {
-                console.log('[image-gallery] prettyPhoto not available yet');
-                return false;
-            }
-
-            // Initialize prettyPhoto on gallery links
-            // Using the hook 'rel' to group images by gallery
-            try {
-                $links.prettyPhoto({
-                    hook: 'rel',
-                    theme: 'pp_default',
-                    social_tools: '',
-                    deeplinking: false,
-                    show_title: true,
-                    allow_resize: true,
-                    overlay_gallery: true,
-                    overlay_gallery_max: 30
+        // Disabled links
+        document
+            .querySelectorAll('.image-galleryIdevice .imageGallery-IDevice a')
+            .forEach((img) => {
+                img.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
                 });
-                return true;
-            } catch (e) {
-                console.error('[image-gallery] prettyPhoto init error:', e);
-                return false;
-            }
-        };
+            });
 
-        // Try immediately, then retry with interval (wait for prettyPhoto to load)
-        if (!initLightbox()) {
-            let attempts = 0;
-            const maxAttempts = 25; // 5 seconds max
-            const interval = setInterval(() => {
-                attempts++;
-                if (initLightbox() || attempts >= maxAttempts) {
+        // Simplelightbox
+        if (typeof SimpleLightbox !== 'undefined') {
+            this.createSLightboxGallery(data.ideviceId);
+        } else {
+            var interval = setInterval(function () {
+                if (typeof SimpleLightbox !== 'undefined') {
+                    $imagegallery.createSLightboxGallery(data.ideviceId);
                     clearInterval(interval);
                 }
             }, 200);
@@ -100,25 +73,15 @@ var $imagegallery = {
     changeDirectory(file, data) {
         const $node = $('#' + data.ideviceId),
             isInExe = eXe.app.isInExe();
-
-        // In editor, don't modify asset:// URLs
-        if (isInExe) return file;
-        if ($node.length == 0) return file;
+        if (isInExe || $node.length == 0) return file;
 
         const pathMedia = $('html').is('#exe-index')
-            ? 'content/resources/'
-            : '../content/resources/';
+            ? 'content/resources/' + data.ideviceId + '/'
+            : '../content/resources/' + data.ideviceId + '/';
 
-        // Handle asset:// URLs
-        if (file && file.startsWith('asset://')) {
-            const assetPath = file.replace('asset://', '');
-            return pathMedia + assetPath;
-        }
-
-        // Legacy: server paths
         const parts = file.split(/[/\\]/),
             name = parts.pop(),
-            dir = pathMedia + data.ideviceId;
+            dir = pathMedia.replace(/[/\\]+$/, '');
         return dir + '/' + name;
     },
 
@@ -131,20 +94,20 @@ var $imagegallery = {
         Object.entries(data).forEach(([key, value]) => {
             if (key !== 'ideviceId') {
                 let imageURL = $imagegallery.changeDirectory(value.img, data);
-                // Use same image for thumbnail if no thumbnail field (CSS resize)
-                let thumbnailURL = value.thumbnail
-                    ? $imagegallery.changeDirectory(value.thumbnail, data)
-                    : imageURL;
-                let imageTitle = value.title || '';
-                let imageLinkTitle = value.linktitle || '';
-                let imageAuthor = value.author || '';
-                let imageLinkAuthor = value.linkauthor || '';
-                let imageLicense = value.license || '';
+                let thumbnailURL = $imagegallery.changeDirectory(
+                    value.thumbnail,
+                    data
+                );
+                let imageTitle = value.title;
+                let imageLinkTitle = value.linktitle;
+                let imageAuthor = value.author;
+                let imageLinkAuthor = value.linkauthor;
+                let imageLicense = value.license;
                 let imageLinkLicense = this.getLinkLicense(value.license);
                 htmlContent += `<div id="imageContainer_${idIncremental}" class="imageContainer">`;
-                htmlContent += ` <a idevice-id="${ideviceId}" title="${imageTitle}" href="${imageURL}" class="imageLink" rel="lightbox[gallery-${ideviceId}]">`;
+                htmlContent += ` <a idevice-id="${ideviceId}" title="${imageTitle}" href="${imageURL}" class="imageLink">`;
                 htmlContent += `  <div class="imageElement">`;
-                htmlContent += `   <img src="${thumbnailURL}" class="gallery-thumbnail" title="${imageTitle}" alt="${imageTitle}" titlelink="${imageLinkTitle}" author="${imageAuthor}" authorlink="${imageLinkAuthor}" license="${imageLicense}" licenselink="${imageLinkLicense}"/>`;
+                htmlContent += `   <img src="${thumbnailURL}" height="128" width="128" title="${imageTitle}" alt="${imageTitle}" titlelink="${imageLinkTitle}" author="${imageAuthor}" authorlink="${imageLinkAuthor}" license="${imageLicense}" licenselink="${imageLinkLicense}"/>`;
                 htmlContent += `  </div>`;
                 htmlContent += ` </a>`;
                 htmlContent += `</div>`;
@@ -163,6 +126,26 @@ var $imagegallery = {
      *
      */
     init: function () {},
+
+    /**
+     * Create a new simple ligthbox gallery
+     *
+     */
+    createSLightboxGallery: function (ideviceId) {
+        let selector = `[id="${ideviceId}"] .imageGallery-IDevice a`;
+        new SimpleLightbox(selector, {
+            // Custom lightbox for exe. Now we can take values from multiple attributes
+            captionsData: [
+                'title',
+                'titlelink',
+                'author',
+                'authorlink',
+                'license',
+                'licenselink',
+            ],
+            captionPosition: 'outside',
+        });
+    },
 
     getLinkLicense: function (attrLicense) {
         let linkLicense = '';

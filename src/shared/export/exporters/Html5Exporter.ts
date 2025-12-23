@@ -70,7 +70,24 @@ export class Html5Exporter extends BaseExporter {
                 const page = pages[i];
                 let html = this.generatePageHtml(page, pages, meta, i === 0, i);
 
-                // Pre-render LaTeX to SVG+MathML if hook is provided
+                // Pre-render LaTeX in encrypted DataGame divs FIRST
+                // (game iDevices store questions in encrypted JSON)
+                if (options?.preRenderDataGameLatex) {
+                    try {
+                        const result = await options.preRenderDataGameLatex(html);
+                        if (result.count > 0) {
+                            html = result.html;
+                            latexWasRendered = true;
+                            console.log(
+                                `[Html5Exporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
+                            );
+                        }
+                    } catch (error) {
+                        console.warn('[Html5Exporter] DataGame LaTeX pre-render failed for page:', page.title, error);
+                    }
+                }
+
+                // Pre-render visible LaTeX to SVG+MathML if hook is provided
                 if (options?.preRenderLatex) {
                     try {
                         const result = await options.preRenderLatex(html);
