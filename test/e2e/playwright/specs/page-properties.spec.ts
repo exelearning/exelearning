@@ -294,20 +294,25 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
-        // The page-header div should be hidden (display:none) on first page (active article)
-        const activePageHeader = iframe.locator('article.active .page-header');
+        // Wait for preview to load - the SPA renders all pages as articles
+        // Use state: 'attached' since the article might be in DOM but not fully visible
+        await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+        // The page-header inside the active article should be hidden (display:none) on first page
+        // Use .spa-page.active to ensure we're targeting SPA article pages
+        const activePageHeader = iframe.locator('article.spa-page.active .page-header-spa');
         await expect(activePageHeader).toHaveCSS('display', 'none');
 
         // Navigate to the second page
         const secondPageLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Visible Title Page' });
         await secondPageLink.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // The page-header should be visible on the second page (now active)
         await expect(activePageHeader).not.toHaveCSS('display', 'none');
 
         // The title should be visible and contain the correct text (in active article)
-        const pageTitle = iframe.locator('article.active .page-title');
+        const pageTitle = iframe.locator('article.spa-page.active .page-title');
         await expect(pageTitle).toContainText('Visible Title Page');
     });
 
@@ -383,16 +388,20 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
+        // Wait for preview to load - the SPA renders all pages as articles
+        // Use state: 'attached' since the article might be in DOM but not fully visible
+        await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
         // The page title in header should show the custom title (titlePage), not the navigation title
         // Target only the active article's page title to avoid strict mode violations
-        const pageTitle = iframe.locator('article.active .page-title');
+        const pageTitle = iframe.locator('article.spa-page.active .page-title');
         await expect(pageTitle).toContainText('Custom Display Title');
         await expect(pageTitle).not.toContainText('Navigation Title');
 
         // Navigate to the second page
         const secondPageLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Normal Page' });
         await secondPageLink.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
         // The title should be the normal page title (now in active article)
         await expect(pageTitle).toContainText('Normal Page');
