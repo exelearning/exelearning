@@ -162,12 +162,17 @@ class YjsTinyMCEBinding {
 
   /**
    * Sync TinyMCE editor content to Y.Text
-   * Converts blob: URLs to asset:// URLs before persisting
+   * Converts blob: URLs and data-asset-url attributes to asset:// URLs before persisting
    */
   syncFromEditor() {
     let content = this.editor.getContent();
 
-    // Convert blob: URLs to asset:// URLs before saving to Yjs
+    // Step 1: Convert data-asset-url attributes to proper src values
+    // This handles images inserted via file picker which use data: URLs with data-asset-url attr
+    content = this.convertDataAssetUrlToSrc(content);
+
+    // Step 2: Convert blob: URLs to asset:// URLs before saving to Yjs
+    // This handles images from drag & drop which use blob: URLs
     content = this.convertBlobUrlsToAssetUrls(content);
 
     const currentYText = this.yText.toString();
@@ -194,6 +199,28 @@ class YjsTinyMCEBinding {
   }
 
   /**
+   * Convert data-asset-url attributes to proper src values.
+   * Images inserted via file picker use data: URLs with data-asset-url attribute
+   * containing the permanent asset:// reference. This extracts that reference
+   * and uses it as the src, then removes the data-asset-url attribute.
+   *
+   * @param {string} html - HTML content with data-asset-url attributes
+   * @returns {string} HTML content with data-asset-url converted to src
+   */
+  convertDataAssetUrlToSrc(html) {
+    if (!html || typeof html !== 'string') return html;
+
+    // Match img/video/audio elements with data-asset-url attribute
+    // Handles cases like: <img src="data:..." data-asset-url="asset://uuid/filename">
+    const regex = /(<(?:img|video|audio|source)[^>]*?)(?:src|href)=(["'])([^"']*)\2([^>]*?)data-asset-url=(["'])([^"']+)\5([^>]*>)/gi;
+
+    return html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+      // Replace src with asset URL and remove data-asset-url attribute
+      return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
+    });
+  }
+
+  /**
    * Convert blob: URLs to asset:// URLs for persistence in Yjs.
    * This ensures images are stored with their permanent asset ID rather than
    * temporary browser blob URLs that won't work after page reload or export.
@@ -212,8 +239,15 @@ class YjsTinyMCEBinding {
     const blobUrlRegex = /blob:https?:\/\/[^"'\s)]+/g;
 
     return html.replace(blobUrlRegex, (blobUrl) => {
-      const assetId = assetManager.reverseBlobCache.get(blobUrl);
+      let assetId = assetManager.reverseBlobCache.get(blobUrl);
       if (assetId) {
+        // Defensive check: if the cached value is already an asset:// URL (incorrect),
+        // extract the UUID from it to avoid corrupted URLs like "asset://asset://..."
+        if (assetId.startsWith('asset://')) {
+          console.warn('[YjsTinyMCEBinding] Found corrupted cache value (asset:// URL instead of UUID):', assetId);
+          // Extract UUID from asset://uuid/filename format
+          assetId = assetManager.extractAssetId ? assetManager.extractAssetId(assetId) : assetId.replace(/^asset:\/\//, '').split('/')[0];
+        }
         const asset = assetManager.getAssetById ? assetManager.getAssetById(assetId) : null;
         const filename = asset?.filename || asset?.name || 'image';
         return `asset://${assetId}/${filename}`;

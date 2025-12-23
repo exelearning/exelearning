@@ -1131,6 +1131,24 @@ export default class IdevicesEngine {
         // idevice.id contains the actual type name used in the iDevices menu
         const ideviceTypeName = ideviceNode.idevice?.id || ideviceNode.odeIdeviceTypeName || 'text';
 
+        // Calculate correct order based on DOM position
+        // ideviceNode.order may not be set yet, so we need to calculate it from the DOM
+        let componentOrder = ideviceNode.order;
+        if (componentOrder === undefined || componentOrder === null) {
+            // Use getCurrentOrder which calculates based on sibling positions in DOM
+            if (typeof ideviceNode.getCurrentOrder === 'function') {
+                const calculatedOrder = ideviceNode.getCurrentOrder();
+                if (calculatedOrder >= 0) {
+                    componentOrder = calculatedOrder;
+                }
+            }
+        }
+        // Fallback: count existing components in Yjs to append at end
+        if (componentOrder === undefined || componentOrder === null || componentOrder < 0) {
+            const existingComponents = bridge.structureBinding.getComponents(pageId, blockId);
+            componentOrder = existingComponents ? existingComponents.length : 0;
+        }
+
         // Create component in Yjs (this will also request the lock for the creator)
         // Include jsonProperties so remote clients can render JSON-type iDevices
         const componentId = bridge.addComponent(
@@ -1142,7 +1160,7 @@ export default class IdevicesEngine {
                 htmlContent: ideviceNode.htmlView || '',
                 title: ideviceNode.idevice?.title || '',
                 jsonProperties: JSON.stringify(ideviceNode.jsonProperties || {}),
-                order: ideviceNode.order || 0,
+                order: componentOrder,
             }
         );
 

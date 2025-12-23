@@ -976,14 +976,20 @@ class YjsStructureBinding {
       newComp.set('properties', newProps);
     }
 
-    // Clone jsonProperties if exist
+    // Clone jsonProperties - handle both Y.Map and string storage
     const jsonProps = sourceComp.get('jsonProperties');
-    if (jsonProps && typeof jsonProps.forEach === 'function') {
-      const newJsonProps = new this.Y.Map();
-      jsonProps.forEach((value, key) => {
-        newJsonProps.set(key, value);
-      });
-      newComp.set('jsonProperties', newJsonProps);
+    if (jsonProps) {
+      if (typeof jsonProps.forEach === 'function') {
+        // It's a Y.Map, clone it
+        const newJsonProps = new this.Y.Map();
+        jsonProps.forEach((value, key) => {
+          newJsonProps.set(key, value);
+        });
+        newComp.set('jsonProperties', newJsonProps);
+      } else if (typeof jsonProps === 'string') {
+        // It's a string (most common case), just copy it
+        newComp.set('jsonProperties', jsonProps);
+      }
     }
 
     // Clone other simple properties
@@ -1046,14 +1052,21 @@ class YjsStructureBinding {
       newComp.set('properties', newProps);
     }
 
-    // Clone jsonProperties Y.Map if exists (CRITICAL for complex iDevices like crosswords, MC, etc.)
+    // Clone jsonProperties - handle both Y.Map and string storage
+    // CRITICAL for JSON-type iDevices like text, crosswords, MC, etc.
     const jsonProps = sourceComp.get('jsonProperties');
-    if (jsonProps && typeof jsonProps.forEach === 'function') {
-      const newJsonProps = new this.Y.Map();
-      jsonProps.forEach((value, key) => {
-        newJsonProps.set(key, value);
-      });
-      newComp.set('jsonProperties', newJsonProps);
+    if (jsonProps) {
+      if (typeof jsonProps.forEach === 'function') {
+        // It's a Y.Map, clone it
+        const newJsonProps = new this.Y.Map();
+        jsonProps.forEach((value, key) => {
+          newJsonProps.set(key, value);
+        });
+        newComp.set('jsonProperties', newJsonProps);
+      } else if (typeof jsonProps === 'string') {
+        // It's a string (most common case), just copy it
+        newComp.set('jsonProperties', jsonProps);
+      }
     }
 
     // Clone other simple properties
@@ -1489,10 +1502,15 @@ class YjsStructureBinding {
         blockMap.set('components', components);
       }
 
+      // Determine the target order/position
+      const targetOrder = (initialData.order !== undefined && initialData.order !== null)
+        ? initialData.order
+        : components.length;
+
       compMap.set('id', componentId);
       compMap.set('ideviceId', componentId);
       compMap.set('ideviceType', ideviceType);
-      compMap.set('order', components.length);
+      compMap.set('order', targetOrder);
       compMap.set('createdAt', new Date().toISOString());
 
       // Set lock info - creator starts with the lock
@@ -1500,8 +1518,9 @@ class YjsStructureBinding {
       compMap.set('lockUserName', userInfo.name || 'Unknown');
       compMap.set('lockUserColor', userInfo.color || '#999');
 
-      // Set initial data
+      // Set initial data (except 'order' which was already set)
       Object.entries(initialData).forEach(([key, value]) => {
+        if (key === 'order') return; // Already handled above
         if (typeof value === 'string') {
           // Use Y.Text for rich text content
           if (key === 'htmlContent' || key === 'content') {
@@ -1526,7 +1545,18 @@ class YjsStructureBinding {
         }
       });
 
-      components.push([compMap]);
+      // Insert at the correct position in Y.Array and update orders
+      const insertIndex = Math.min(Math.max(0, targetOrder), components.length);
+
+      // Shift order values of existing components that come after insert position
+      for (let i = insertIndex; i < components.length; i++) {
+        const existingComp = components.get(i);
+        const currentOrder = existingComp.get('order') ?? i;
+        existingComp.set('order', currentOrder + 1);
+      }
+
+      // Insert at the correct position
+      components.insert(insertIndex, [compMap]);
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Created component: ${ideviceType} (${componentId}) in block ${blockId}`);

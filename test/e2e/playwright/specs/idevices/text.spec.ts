@@ -601,4 +601,230 @@ test.describe('Text iDevice', () => {
             expect(hasBoldContent).toBe(true);
         });
     });
+
+    test.describe('Image Persistence', () => {
+        test('should persist image after save and reload', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // 1. Create project
+            const projectUuid = await createProject(page, 'Image Persistence Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            // 2. Wait for Yjs to initialize
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 3. Add text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // 4. Enter edit mode
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 10000 });
+
+            const editBtn = block.locator('.btn-edit-idevice');
+            if ((await editBtn.count()) > 0) {
+                await editBtn.click();
+            }
+
+            // 5. Wait for TinyMCE
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // 6. Click on image button in TinyMCE toolbar
+            const imageBtn = page
+                .locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]')
+                .first();
+            await expect(imageBtn).toBeVisible({ timeout: 10000 });
+            await imageBtn.click();
+
+            // 7. Wait for file manager modal
+            await page.waitForSelector('#modal-filemanager, .modal.show', { timeout: 10000 });
+
+            // 8. Upload image from fixture
+            const fileInput = page.locator('#modal-filemanager input[type="file"], .modal.show input[type="file"]');
+            await fileInput.setInputFiles('test/fixtures/sample-2.jpg');
+
+            // 9. Wait for upload to complete
+            await page.waitForTimeout(3000);
+
+            // 10. Select and insert the uploaded image
+            const imageItem = page.locator('#modal-filemanager .file-item img, .modal.show .file-item img').first();
+            if ((await imageItem.count()) > 0) {
+                await imageItem.click();
+            }
+
+            // Click insert/select button
+            const insertBtn = page
+                .locator('button:has-text("Insert"), button:has-text("Insertar"), button:has-text("Select")')
+                .first();
+            if ((await insertBtn.count()) > 0) {
+                await insertBtn.click();
+            }
+
+            // 11. Wait for modal to close
+            await page.waitForTimeout(2000);
+
+            // 12. Save iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            // 13. Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // 14. Verify image is visible BEFORE reload
+            const imgBefore = page.locator('#node-content article .idevice_node.text img');
+            await expect(imgBefore).toBeVisible({ timeout: 10000 });
+
+            // 15. Save project
+            await workarea.save();
+            await page.waitForTimeout(2000);
+
+            // 16. Reload the page
+            await page.reload();
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            // 17. Wait for Yjs to reinitialize
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 18. Navigate to the page with the iDevice
+            const pageNode = page
+                .locator('.nav-element-text')
+                .filter({ hasText: /New page|Nueva página/i })
+                .first();
+            if ((await pageNode.count()) > 0) {
+                await pageNode.click({ force: true });
+                await page.waitForTimeout(1000);
+            }
+
+            // 19. Verify image is visible AFTER reload
+            const imgAfter = page.locator('#node-content article .idevice_node.text img');
+            await expect(imgAfter).toBeVisible({ timeout: 15000 });
+
+            // 20. Verify image src is NOT a blob: URL (should be resolved from IndexedDB)
+            const imgSrc = await imgAfter.getAttribute('src');
+            expect(imgSrc).not.toBeNull();
+            // After reload, src can be blob: (resolved) or asset:// (waiting to resolve)
+            // It should NOT be an invalid blob URL that returns 404
+            const naturalWidth = await imgAfter.evaluate((el: HTMLImageElement) => el.naturalWidth);
+            expect(naturalWidth).toBeGreaterThan(0);
+        });
+
+        test('should show image in preview after insert', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // 1. Create project
+            const projectUuid = await createProject(page, 'Image Preview Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            // 2. Wait for Yjs
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 3. Add text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // 4. Enter edit mode
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 10000 });
+
+            const editBtn = block.locator('.btn-edit-idevice');
+            if ((await editBtn.count()) > 0) {
+                await editBtn.click();
+            }
+
+            // 5. Wait for TinyMCE
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // 6. Click image button
+            const imageBtn = page
+                .locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]')
+                .first();
+            await expect(imageBtn).toBeVisible({ timeout: 10000 });
+            await imageBtn.click();
+
+            // 7. Wait for file manager
+            await page.waitForSelector('#modal-filemanager, .modal.show', { timeout: 10000 });
+
+            // 8. Upload fixture image
+            const fileInput = page.locator('#modal-filemanager input[type="file"], .modal.show input[type="file"]');
+            await fileInput.setInputFiles('test/fixtures/sample-3.jpg');
+            await page.waitForTimeout(3000);
+
+            // 9. Select and insert
+            const imageItem = page.locator('#modal-filemanager .file-item img, .modal.show .file-item img').first();
+            if ((await imageItem.count()) > 0) {
+                await imageItem.click();
+            }
+
+            const insertBtn = page
+                .locator('button:has-text("Insert"), button:has-text("Insertar"), button:has-text("Select")')
+                .first();
+            if ((await insertBtn.count()) > 0) {
+                await insertBtn.click();
+            }
+
+            await page.waitForTimeout(2000);
+
+            // 10. Save iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // 11. Save project
+            await workarea.save();
+            await page.waitForTimeout(2000);
+
+            // 12. Open preview
+            const popupPromise = page.context().waitForEvent('page', { timeout: 15000 });
+            await page.click('#head-bottom-preview');
+            const previewPage = await popupPromise;
+            await previewPage.waitForLoadState('networkidle');
+
+            // 13. Verify image in preview
+            const previewImg = previewPage.locator('article img');
+            await expect(previewImg).toBeVisible({ timeout: 15000 });
+
+            // 14. Verify image loads (not broken)
+            const naturalWidth = await previewImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
+            expect(naturalWidth).toBeGreaterThan(0);
+
+            await previewPage.close();
+        });
+    });
 });

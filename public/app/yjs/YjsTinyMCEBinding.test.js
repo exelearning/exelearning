@@ -291,6 +291,66 @@ describe('YjsTinyMCEBinding', () => {
       expect(deleteSpy).not.toHaveBeenCalled();
       expect(insertSpy).not.toHaveBeenCalled();
     });
+
+    it('converts blob URLs in content to asset URLs before saving to Y.Text', () => {
+      // Setup mock AssetManager with the mapping from blob URL to UUID
+      const mockAssetManager = {
+        reverseBlobCache: new Map([
+          ['blob:http://localhost:8081/xyz', 'my-asset-uuid-1234'],
+        ]),
+        getAssetById: () => ({ filename: 'image.jpg' }),
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      binding = new YjsTinyMCEBinding(mockEditor, mockYText);
+      // Editor has blob URL that should be converted
+      mockEditor._content = '<p>Hello</p><img src="blob:http://localhost:8081/xyz" alt="test">';
+
+      binding.syncFromEditor();
+
+      const yTextContent = mockYText.toString();
+      // Should have converted blob: to asset://
+      expect(yTextContent).toContain('asset://my-asset-uuid-1234');
+      expect(yTextContent).not.toContain('blob:');
+
+      delete window.eXeLearning;
+    });
+
+    it('preserves blob URL when not found in reverseBlobCache (warns but keeps content)', () => {
+      // Setup mock AssetManager with empty cache
+      const mockAssetManager = {
+        reverseBlobCache: new Map(), // Empty - no mapping
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      binding = new YjsTinyMCEBinding(mockEditor, mockYText);
+      mockEditor._content = '<p>Hello</p><img src="blob:http://localhost:8081/unknown">';
+
+      binding.syncFromEditor();
+
+      const yTextContent = mockYText.toString();
+      // Should preserve unknown blob URL (and warn)
+      expect(yTextContent).toContain('blob:http://localhost:8081/unknown');
+      expect(console.warn).toHaveBeenCalled();
+
+      delete window.eXeLearning;
+    });
   });
 
   describe('computeDiff', () => {
@@ -590,6 +650,99 @@ describe('YjsTinyMCEBinding', () => {
     });
   });
 
+  describe('convertDataAssetUrlToSrc', () => {
+    beforeEach(() => {
+      binding = new YjsTinyMCEBinding(mockEditor, mockYText);
+    });
+
+    it('returns html unchanged for null input', () => {
+      expect(binding.convertDataAssetUrlToSrc(null)).toBe(null);
+    });
+
+    it('returns html unchanged for undefined input', () => {
+      expect(binding.convertDataAssetUrlToSrc(undefined)).toBe(undefined);
+    });
+
+    it('returns html unchanged for empty string', () => {
+      expect(binding.convertDataAssetUrlToSrc('')).toBe('');
+    });
+
+    it('returns html unchanged for non-string input', () => {
+      expect(binding.convertDataAssetUrlToSrc(123)).toBe(123);
+    });
+
+    it('converts data-asset-url to src for img elements', () => {
+      const html = '<img src="data:image/png;base64,abc123" data-asset-url="asset://uuid-123/image.png">';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      // Data-asset-url is removed and src is replaced with asset URL
+      expect(result).toContain('src="asset://uuid-123/image.png"');
+      expect(result).not.toContain('data-asset-url');
+      expect(result).not.toContain('data:image');
+    });
+
+    it('converts data-asset-url for video elements', () => {
+      const html = '<video src="data:video/mp4;base64,xyz" data-asset-url="asset://uuid-456/video.mp4"></video>';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://uuid-456/video.mp4"');
+      expect(result).not.toContain('data-asset-url');
+      expect(result).toContain('</video>');
+    });
+
+    it('converts data-asset-url for audio elements', () => {
+      const html = '<audio src="data:audio/mp3;base64,123" data-asset-url="asset://uuid-789/audio.mp3"></audio>';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://uuid-789/audio.mp3"');
+      expect(result).not.toContain('data-asset-url');
+      expect(result).toContain('</audio>');
+    });
+
+    it('converts data-asset-url for source elements', () => {
+      const html = '<source src="data:video/webm;base64,abc" data-asset-url="asset://uuid-abc/video.webm">';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://uuid-abc/video.webm"');
+      expect(result).not.toContain('data-asset-url');
+    });
+
+    it('handles multiple data-asset-url attributes in same html', () => {
+      const html = '<img src="data:a" data-asset-url="asset://id1/a.png"><img src="data:b" data-asset-url="asset://id2/b.jpg">';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://id1/a.png"');
+      expect(result).toContain('src="asset://id2/b.jpg"');
+      expect(result).not.toContain('data-asset-url');
+    });
+
+    it('preserves other attributes when converting', () => {
+      const html = '<img alt="test" src="data:abc" title="My Image" data-asset-url="asset://uuid/img.png" class="my-class">';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://uuid/img.png"');
+      expect(result).toContain('alt="test"');
+      expect(result).toContain('title="My Image"');
+      expect(result).toContain('class="my-class"');
+      expect(result).not.toContain('data-asset-url');
+    });
+
+    it('does not modify elements without data-asset-url', () => {
+      const html = '<img src="data:image/png;base64,abc123">';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toBe(html);
+    });
+
+    it('handles both single and double quotes', () => {
+      const html = "<img src='data:abc' data-asset-url='asset://uuid/img.png'>";
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain("src='asset://uuid/img.png'");
+      expect(result).not.toContain('data-asset-url');
+    });
+  });
+
   describe('convertBlobUrlsToAssetUrls', () => {
     beforeEach(() => {
       binding = new YjsTinyMCEBinding(mockEditor, mockYText);
@@ -598,6 +751,74 @@ describe('YjsTinyMCEBinding', () => {
     it('returns html unchanged when no assetManager', () => {
       const html = '<img src="blob:http://localhost:8081/abc123">';
       expect(binding.convertBlobUrlsToAssetUrls(html)).toBe(html);
+    });
+
+    it('converts blob URL to asset URL when found in reverseBlobCache with valid UUID', () => {
+      // Setup mock assetManager with reverseBlobCache containing a VALID UUID (not asset:// URL)
+      const mockAssetManager = {
+        reverseBlobCache: new Map([
+          ['blob:http://localhost:8081/abc-123', '0b034dc2-1fcb-2be8-5fbd-e49a05d9bac0'],
+        ]),
+        getAssetById: () => ({ filename: 'test.jpg' }),
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      const html = '<img src="blob:http://localhost:8081/abc-123">';
+      const result = binding.convertBlobUrlsToAssetUrls(html);
+
+      // Should convert to asset:// URL with the UUID
+      expect(result).toContain('asset://0b034dc2-1fcb-2be8-5fbd-e49a05d9bac0/');
+      expect(result).not.toContain('blob:');
+
+      // Cleanup
+      delete window.eXeLearning;
+    });
+
+    it('should NOT have corrupted asset:// URLs in reverseBlobCache', () => {
+      // This test verifies that even if an incorrect asset:// URL is stored in reverseBlobCache
+      // (which shouldn't happen), the code handles it gracefully and doesn't produce corrupted output
+      const mockAssetManager = {
+        reverseBlobCache: new Map([
+          // WRONG - should NOT have asset:// URLs as values, but test defensive handling
+          ['blob:http://localhost:8081/bad-entry', 'asset://uuid-123/filename.jpg'],
+        ]),
+        getAssetById: () => ({ filename: 'test.jpg' }),
+        extractAssetId: (url) => {
+          // Extract UUID from asset://uuid/filename format
+          if (url && url.startsWith('asset://')) {
+            return url.replace(/^asset:\/\//, '').split('/')[0];
+          }
+          return url;
+        },
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      const html = '<img src="blob:http://localhost:8081/bad-entry">';
+      const result = binding.convertBlobUrlsToAssetUrls(html);
+
+      // The defensive code should detect the corrupted cache value and extract the UUID
+      // Result should be a clean asset:// URL, NOT "asset://asset://..."
+      expect(result).not.toContain('asset://asset://');
+      // Should produce clean output with extracted UUID
+      expect(result).toContain('asset://uuid-123/');
+
+      delete window.eXeLearning;
     });
 
     it('returns html unchanged for null input', () => {
