@@ -1105,9 +1105,10 @@ class YjsStructureBinding {
    * @param {string} pageId
    * @param {string} blockName
    * @param {string} existingBlockId - Optional existing block ID to use (for syncing with frontend)
+   * @param {number} order - Optional order position (defaults to end)
    * @returns {string} - The new block ID
    */
-  createBlock(pageId, blockName = 'Block', existingBlockId = null) {
+  createBlock(pageId, blockName = 'Block', existingBlockId = null, order = null) {
     const pageMap = this.getPageMap(pageId);
     if (!pageMap) return null;
 
@@ -1123,12 +1124,15 @@ class YjsStructureBinding {
         pageMap.set('blocks', blocks);
       }
 
+      // Determine target order/position
+      const targetOrder = (order !== undefined && order !== null) ? order : blocks.length;
+
       blockMap.set('id', blockId);
       blockMap.set('blockId', blockId);
       blockMap.set('blockName', blockName);
       blockMap.set('iconName', '');
       blockMap.set('blockType', 'default');
-      blockMap.set('order', blocks.length);
+      blockMap.set('order', targetOrder);
       blockMap.set('components', new this.Y.Array());
       blockMap.set('createdAt', new Date().toISOString());
 
@@ -1142,7 +1146,16 @@ class YjsStructureBinding {
       propsMap.set('cssClass', '');
       blockMap.set('properties', propsMap);
 
-      blocks.push([blockMap]);
+      // Insert at correct position and shift existing blocks' order values
+      const insertIndex = Math.min(Math.max(0, targetOrder), blocks.length);
+
+      for (let i = insertIndex; i < blocks.length; i++) {
+        const existingBlock = blocks.get(i);
+        const currentOrder = existingBlock.get('order') ?? i;
+        existingBlock.set('order', currentOrder + 1);
+      }
+
+      blocks.insert(insertIndex, [blockMap]);
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Created block: ${blockName} (${blockId}) in page ${pageId}`);
