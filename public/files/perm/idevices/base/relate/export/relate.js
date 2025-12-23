@@ -85,7 +85,12 @@ var $eXeRelaciona = {
                 node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex('.relaciona-IDevice');
+        const relateHtml = $('.relaciona-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(relateHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.relaciona-IDevice'
+            );
+        }
     },
 
     loadDataGame: function (data, sthis) {

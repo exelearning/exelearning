@@ -72,14 +72,6 @@ var $exeDevice = {
     ],
 
     /**
-     * Get AssetManager instance
-     * @returns {Object|null}
-     */
-    getAssetManager: function () {
-        return window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-    },
-
-    /**
      * Init required eXe function
      */
     init: function (element, previousData) {
@@ -110,7 +102,7 @@ var $exeDevice = {
     `;
         // Insert HTML into idevice body
         this.ideviceBody.innerHTML = html;
-        // Load previous values (sync, resolves URLs in background)
+        // Load previous values
         this.loadPreviousValues(this.idevicePreviousData);
         // Add behaviour
         this.addImageButtonBehaviour();
@@ -124,77 +116,34 @@ var $exeDevice = {
     },
 
     /**
-     * Load previous values from saved data
-     * Handles both asset:// URLs and legacy server paths
+     * Return the save
+     *
+     * @param {*} field
      */
     loadPreviousValues: function () {
         let data = this.idevicePreviousData;
         let incrementalId = 0;
-
         if (Object.keys(data).length > 1) {
             this.ideviceBody.querySelector('#textMsxHide').style.display =
                 'none';
         }
-
-        const assetManager = this.getAssetManager();
-
         // Load images
         Object.entries(data).forEach(([key, value]) => {
-            if (key === 'ideviceId') return;
-
-            // Load attribution data
-            let imageData = {};
-            this.attributionDataKeys.forEach((attrkey) => {
-                if (attrkey === 'license') {
-                    imageData[attrkey] = this.getLicenseTitle(value[attrkey]);
-                } else {
-                    imageData[attrkey] = value[attrkey];
-                }
-            });
-            $exeDevice.attributionData[`img_${incrementalId}`] = imageData;
-
-            let originURL = value.img;
-            let displayURL = originURL;
-
-            // Resolve asset:// URLs for display
-            if (originURL && originURL.startsWith('asset://')) {
-                if (assetManager) {
-                    // Try sync resolution from cache
-                    const cachedUrl =
-                        assetManager.resolveAssetURLSync?.(originURL);
-                    if (cachedUrl) {
-                        displayURL = cachedUrl;
+            if (key !== 'ideviceId') {
+                let imageData = {};
+                this.attributionDataKeys.forEach((attrkey) => {
+                    if (attrkey === 'license') {
+                        imageData[attrkey] = this.getLicenseTitle(
+                            value[attrkey]
+                        );
                     } else {
-                        // Async resolve and update image later
-                        const imgId = `img_${incrementalId}`;
-                        assetManager
-                            .resolveAssetURL(originURL)
-                            .then((blobUrl) => {
-                                if (blobUrl) {
-                                    const imgEl =
-                                        this.ideviceBody.querySelector(
-                                            `#${imgId}`
-                                        );
-                                    if (imgEl) {
-                                        imgEl.setAttribute('src', blobUrl);
-                                    }
-                                }
-                            })
-                            .catch((e) => {
-                                console.warn(
-                                    '[image-gallery] Could not resolve asset URL:',
-                                    originURL
-                                );
-                            });
+                        imageData[attrkey] = value[attrkey];
                     }
-                }
-            } else if (value.thumbnail) {
-                // Legacy: use thumbnail for display
-                displayURL = value.thumbnail;
+                });
+                $exeDevice.attributionData[`img_${incrementalId}`] = imageData;
+                this.addImageHTML(incrementalId, value.img, value.thumbnail);
+                incrementalId++;
             }
-
-            this.addImageHTML(incrementalId, originURL, displayURL);
-            incrementalId++;
         });
     },
 
@@ -211,19 +160,17 @@ var $exeDevice = {
             '.imgSelectContainer'
         );
 
-        this.dataIds = []; // Reset dataIds
         divImages.forEach((divImg) => {
-            const imgEl = divImg.querySelector('img.image');
-            if (imgEl) {
-                this.dataIds.push(imgEl.id);
-            }
+            this.dataIds.push(divImg.querySelector('img.image').id);
         });
 
         this.dataIds.forEach((element) => {
+            let thumbnailURL = this.ideviceBody
+                .querySelector(`#${element}`)
+                .getAttribute('src');
             let imageURL = this.ideviceBody
                 .querySelector(`#${element}`)
                 .getAttribute('origin');
-
             let imageTitle,
                 imageLinkTitle,
                 imageAuthor,
@@ -247,9 +194,9 @@ var $exeDevice = {
                 );
             }
 
-            // No thumbnail field - CSS handles resizing
             let imageData = {
                 img: imageURL,
+                thumbnail: thumbnailURL,
                 title: imageTitle,
                 linktitle: imageLinkTitle,
                 author: imageAuthor,
@@ -297,57 +244,15 @@ var $exeDevice = {
 
     /**
      * Add behaviour to button addImage
-     * Opens File Manager modal if available, otherwise falls back to file input
+     *
      */
     addImageButtonBehaviour: function () {
         this.ideviceBody
             .querySelector('#addImageButton')
-            .addEventListener('click', async () => {
-                const filemanager =
-                    window.eXeLearning?.app?.modals?.filemanager;
-                if (filemanager) {
-                    filemanager.show({
-                        onSelect: async (result) => {
-                            await this.addImageFromAsset(
-                                result.assetUrl,
-                                result.blobUrl,
-                                result.asset
-                            );
-                        },
-                    });
-                } else {
-                    // Fallback: use traditional file input
-                    this.ideviceBody.querySelector('#imageLoaded').innerHTML =
-                        '';
-                    this.ideviceBody.querySelector('#imageLoaded').click();
-                }
+            .addEventListener('click', (event, id) => {
+                this.ideviceBody.querySelector('#imageLoaded').innerHTML = '';
+                this.ideviceBody.querySelector('#imageLoaded').click();
             });
-    },
-
-    /**
-     * Add image from File Manager selection
-     * @param {string} assetUrl - asset://uuid/filename
-     * @param {string} blobUrl - blob:// URL for display
-     * @param {Object} asset - Asset metadata
-     */
-    addImageFromAsset: async function (assetUrl, blobUrl, asset) {
-        this.ideviceBody.querySelector('#textMsxHide').style.display = 'none';
-
-        if (this.editionId != null && this.editionId >= 0) {
-            // Editing existing image
-            let img = this.ideviceBody.querySelector(`#img_${this.editionId}`);
-            img.setAttribute('origin', assetUrl);
-            img.setAttribute('src', blobUrl);
-        } else {
-            // New image
-            this.addImageHTML(this.idImage, assetUrl, blobUrl);
-            this.idImage++;
-        }
-        this.editionId = null;
-
-        // Add sortable behaviour to new image
-        let images = this.ideviceBody.querySelectorAll('.imgSelectContainer');
-        this.addSortableBehaviour(images[images.length - 1]);
     },
 
     /**
@@ -365,33 +270,18 @@ var $exeDevice = {
     },
 
     /**
-     * Process file from drag & drop or file input
-     * Uses AssetManager if available, otherwise falls back to legacy upload
+     *
      */
     processFile: async function (file) {
         try {
-            const assetManager = this.getAssetManager();
-
-            if (assetManager) {
-                // Use AssetManager for IndexedDB storage
-                const assetUrl = await assetManager.insertImage(file);
-                const blobUrl = await assetManager.resolveAssetURL(assetUrl);
-                await this.addImageFromAsset(assetUrl, blobUrl, {
-                    filename: file.name,
-                });
-            } else {
-                // Fallback: legacy server upload
-                let buffer = await this.readFile(file);
-                await this.addUploadImage(buffer, file.name);
-                // Add sortable behaviour to the new images
-                let images = $exeDevice.ideviceBody.querySelectorAll(
-                    '.imgSelectContainer'
-                );
-                $exeDevice.addSortableBehaviour(images[images.length - 1]);
-            }
-        } catch (err) {
-            console.error('[image-gallery] Error processing file:', err);
-        }
+            let buffer = await this.readFile(file);
+            await this.addUploadImage(buffer, file.name);
+            // Add sortable behaviour to the news images
+            let images = $exeDevice.ideviceBody.querySelectorAll(
+                '.imgSelectContainer'
+            );
+            $exeDevice.addSortableBehaviour(images[images.length - 1]);
+        } catch (err) {}
     },
 
     /**
@@ -447,14 +337,13 @@ var $exeDevice = {
      * To generate the HTML container of image
      *
      * @param {*} id
-     * @param {*} originURL - asset:// URL or legacy path
-     * @param {*} displayURL - blob:// URL or path for display
+     * @param {*} thumbnailURL
      */
-    addImageHTML: function (id, originURL, displayURL) {
+    addImageHTML: function (id, originURL, thumbnailURL) {
         let html = `
       <div class="imgSelect">
         <div class="imageElement">
-          <img src="${displayURL}" id="img_${id}" class="image" origin="${originURL}" draggable="false">
+          <img height=128 width=128 src="${thumbnailURL}" id="img_${id}" class="image" origin="${originURL}" draggable="false">
         </div>
       </div>
       <div class="imgButtons">

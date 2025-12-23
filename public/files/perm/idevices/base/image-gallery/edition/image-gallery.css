@@ -50,11 +50,11 @@
 }
 
 .imageGalleryIdeviceForm .imgSelectContainer .imgSelect img.image {
-  width: 128px;
-  height: 128px;
-  object-fit: cover;
-  object-position: center;
-  border-radius: var(--radius);
+  max-height: 128px;
+  max-width: 128px;
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .imageGalleryIdeviceForm .imgSelectContainer .imgSelect input.textInput {

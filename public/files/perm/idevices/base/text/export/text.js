@@ -179,59 +179,47 @@ var $text = {
      * Add behavior and functionalities
      */
     renderBehaviour(data, accessibility, ideviceId) {
-        // Use ideviceId parameter as fallback when data.ideviceId is not set
-        // (e.g., when loading from legacy ELP files via ElpxImporter)
-        const effectiveId = data.ideviceId || ideviceId;
-        const $node = $('#' + effectiveId);
+        const $node = $('#' + data.ideviceId);
         const isInExe = eXe.app.isInExe();
 
         const $btn = $(
-            `#${effectiveId} input.feedbackbutton, #${effectiveId} input.feedbacktooglebutton`
+            `#${data.ideviceId} input.feedbackbutton, #${data.ideviceId} input.feedbacktooglebutton`
         );
-        if ($btn.length !== 1) return;
-
-        const [textA, textB = textA] = $btn.val().split('|');
-        $btn.val(textA).attr('data-text-a', textA).attr('data-text-b', textB);
-        $btn.off('click').closest('.feedback-button').removeClass('clearfix');
-
-        $btn.on('click', function () {
-            if ($text.working) return false;
-            $text.working = true;
-            const btn = $(this);
-            const feedbackEl = btn
+        if ($btn.length === 1) {
+            const [textA, textB = textA] = $btn.val().split('|');
+            $btn.val(textA)
+                .attr('data-text-a', textA)
+                .attr('data-text-b', textB);
+            $btn.off('click')
                 .closest('.feedback-button')
-                .next('.feedback');
+                .removeClass('clearfix');
 
-            // Check visibility - need to consider js-hidden class
-            const isVisible = feedbackEl.is(':visible') && !feedbackEl.hasClass('js-hidden');
+            $btn.on('click', function () {
+                if ($text.working) return false;
+                $text.working = true;
+                const btn = $(this);
+                const feedbackEl = btn
+                    .closest('.feedback-button')
+                    .next('.feedback');
 
-            if (isVisible) {
-                btn.val(btn.attr('data-text-a'));
-                feedbackEl.fadeOut(() => {
-                    feedbackEl.addClass('js-hidden');
-                    $text.working = false;
-                });
-            } else {
-                btn.val(btn.attr('data-text-b'));
-                // Remove js-hidden class before fadeIn to allow animation
-                feedbackEl.removeClass('js-hidden').hide().fadeIn(() => {
-                    $text.working = false;
-                });
-            }
-            $exeDevices.iDevice.gamification.math.updateLatex(
-                '.exe-text-template'
-            );
-        });
+                if (feedbackEl.is(':visible')) {
+                    btn.val(btn.attr('data-text-a'));
+                    feedbackEl.fadeOut(() => {
+                        $text.working = false;
+                    });
+                } else {
+                    btn.val(btn.attr('data-text-b'));
+                    feedbackEl.fadeIn(() => {
+                        $text.working = false;
+                    });
+                }
+                $exeDevices.iDevice.gamification.math.updateLatex(
+                    '.exe-text-template'
+                );
+            });
+        }
         const dataString = $node.html() || '';
-        const hasLatex =
-            $exeDevices.iDevice.gamification.math.hasLatex(dataString);
-
-        if (!hasLatex) return;
-        const mathjaxLoaded = typeof window.MathJax !== 'undefined';
-
-        if (!mathjaxLoaded) {
-            $exeDevices.iDevice.gamification.math.loadMathJax();
-        } else {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '.exe-text-template'
             );

@@ -22,9 +22,11 @@
     </edition-css>
     <export-js>
         <filename>image-gallery.js</filename>
+        <filename>simple-lightbox.min.js</filename>
     </export-js>
     <export-css>
         <filename>image-gallery.css</filename>
+        <filename>simple-lightbox.min.css</filename>
     </export-css>
     <export-template-filename>image-gallery.html</export-template-filename>
     <author>author</author>

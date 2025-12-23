@@ -622,7 +622,7 @@ var $eXeMathProblems = {
 
         mOptions.activeQuestion = num;
         const html = $('#mthpMainContainer-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mthpMainContainer-' + instance

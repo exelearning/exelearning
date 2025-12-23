@@ -131,9 +131,12 @@ var $periodicTable = {
             }
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.periodic-table-IDevice'
-        );
+        const tableHtml = $('.periodic-table-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(tableHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.periodic-table-IDevice'
+            );
+        }
     },
 
     loadDataGame: function (data) {

@@ -1329,7 +1329,7 @@ var $quickquestions = {
         );
 
         $('#quextPTime-' + instance).text(tiempo);
-        $('#quextQuestion-' + instance).text(mQuestion.quextion);
+        $('#quextQuestion-' + instance).html(mQuestion.quextion);
         $('#quextImage-' + instance).hide();
         $('#quextCover-' + instance).show();
         $('#quextEText-' + instance).hide();
@@ -1444,7 +1444,7 @@ var $quickquestions = {
         $quickquestions.drawQuestions(instance);
 
         const html = $('#quextMainContainer-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -1498,50 +1498,35 @@ var $quickquestions = {
             return false;
         }
 
-        const loadImage = (resolvedUrl) => {
-            $image
-                .attr('src', '')
-                .attr('src', resolvedUrl)
-                .on('load', function () {
-                    if (
-                        !this.complete ||
-                        typeof this.naturalWidth === 'undefined' ||
-                        this.naturalWidth === 0
-                    ) {
-                        $cursor.hide();
-                        $image.hide();
-                        $noImage.show();
-                        $author.text('');
-                    } else {
-                        $image.show();
-                        $cursor.show();
-                        $noImage.hide();
-                        $author.text(mQuestion.author);
-                        $image.attr('alt', mQuestion.alt);
-                        $quickquestions.centerImage(instance);
-                    }
-                })
-                .on('error', function () {
+        $image
+            .attr('src', '')
+            .attr('src', url)
+            .on('load', function () {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth === 'undefined' ||
+                    this.naturalWidth === 0
+                ) {
                     $cursor.hide();
                     $image.hide();
                     $noImage.show();
                     $author.text('');
-                    return false;
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (url && url.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(url).then((blobUrl) => {
-                    loadImage(blobUrl || '');
-                });
-            }
-        } else {
-            loadImage(url);
-        }
+                } else {
+                    $image.show();
+                    $cursor.show();
+                    $noImage.hide();
+                    $author.text(mQuestion.author);
+                    $image.attr('alt', mQuestion.alt);
+                    $quickquestions.centerImage(instance);
+                }
+            })
+            .on('error', function () {
+                $cursor.hide();
+                $image.hide();
+                $noImage.show();
+                $author.text('');
+                return false;
+            });
 
         $quickquestions.showMessage(0, mQuestion.author, instance);
     },
@@ -1838,7 +1823,7 @@ var $quickquestions = {
                         color: $quickquestions.colors.black,
                         'border-width': '1px',
                     })
-                    .text(option || '')
+                    .html(option || '')
                     .toggle(!!option);
             }
         );
