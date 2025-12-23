@@ -643,32 +643,52 @@ test.describe('Text iDevice', () => {
             await expect(imageBtn).toBeVisible({ timeout: 10000 });
             await imageBtn.click();
 
-            // 7. Wait for file manager modal
-            await page.waitForSelector('#modal-filemanager, .modal.show', { timeout: 10000 });
+            // 7. Wait for TinyMCE's image dialog to open
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
 
-            // 8. Upload image from fixture
-            const fileInput = page.locator('#modal-filemanager input[type="file"], .modal.show input[type="file"]');
+            // 8. Click the Browse button in the Source field to open Media Library
+            // The browse button is inside a urlinput component in TinyMCE's dialog
+            const browseBtn = page.locator(
+                '.tox-dialog .tox-browse-url, .tox-dialog button[title*="Browse" i], .tox-dialog button[aria-label*="Browse" i]',
+            );
+            await expect(browseBtn.first()).toBeVisible({ timeout: 5000 });
+            await browseBtn.first().click();
+
+            // 9. Wait for Media Library modal
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            // 10. Upload image from fixture using the hidden file input
+            const fileInput = page.locator('#modalFileManager .media-library-upload-input');
             await fileInput.setInputFiles('test/fixtures/sample-2.jpg');
 
-            // 9. Wait for upload to complete
-            await page.waitForTimeout(3000);
+            // 11. Wait for the uploaded image to appear in the grid
+            // The grid items have class 'media-library-item' (not 'media-library-grid-item')
+            const imageItem = page.locator('#modalFileManager .media-library-item').first();
+            await expect(imageItem).toBeVisible({ timeout: 10000 });
 
-            // 10. Select and insert the uploaded image
-            const imageItem = page.locator('#modal-filemanager .file-item img, .modal.show .file-item img').first();
-            if ((await imageItem.count()) > 0) {
-                await imageItem.click();
+            // 12. Click to select the uploaded image
+            await imageItem.click();
+
+            // 13. Wait for sidebar content to show (appears when asset is selected)
+            const sidebarContent = page.locator('#modalFileManager .media-library-sidebar-content');
+            await expect(sidebarContent).toBeVisible({ timeout: 5000 });
+
+            // 14. Click insert button in Media Library
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
+
+            // 14. Wait for modal to close and URL to be set in TinyMCE dialog
+            await page.waitForTimeout(1000);
+
+            // 15. Close TinyMCE dialog by clicking Save button
+            const tinyMceSaveBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
+            if ((await tinyMceSaveBtn.count()) > 0) {
+                await tinyMceSaveBtn.click();
             }
-
-            // Click insert/select button
-            const insertBtn = page
-                .locator('button:has-text("Insert"), button:has-text("Insertar"), button:has-text("Select")')
-                .first();
-            if ((await insertBtn.count()) > 0) {
-                await insertBtn.click();
-            }
-
-            // 11. Wait for modal to close
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(1000);
 
             // 12. Save iDevice
             const saveBtn = block.locator('.btn-save-idevice');
@@ -769,30 +789,50 @@ test.describe('Text iDevice', () => {
             await expect(imageBtn).toBeVisible({ timeout: 10000 });
             await imageBtn.click();
 
-            // 7. Wait for file manager
-            await page.waitForSelector('#modal-filemanager, .modal.show', { timeout: 10000 });
+            // 7. Wait for TinyMCE's image dialog to open
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
 
-            // 8. Upload fixture image
-            const fileInput = page.locator('#modal-filemanager input[type="file"], .modal.show input[type="file"]');
+            // 8. Click the Browse button to open Media Library
+            const browseBtn = page.locator(
+                '.tox-dialog .tox-browse-url, .tox-dialog button[title*="Browse" i], .tox-dialog button[aria-label*="Browse" i]',
+            );
+            await expect(browseBtn.first()).toBeVisible({ timeout: 5000 });
+            await browseBtn.first().click();
+
+            // 9. Wait for Media Library modal
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            // 10. Upload fixture image using the hidden file input
+            const fileInput = page.locator('#modalFileManager .media-library-upload-input');
             await fileInput.setInputFiles('test/fixtures/sample-3.jpg');
-            await page.waitForTimeout(3000);
 
-            // 9. Select and insert
-            const imageItem = page.locator('#modal-filemanager .file-item img, .modal.show .file-item img').first();
-            if ((await imageItem.count()) > 0) {
-                await imageItem.click();
+            // 11. Wait for the uploaded image to appear in the grid
+            const imageItem = page.locator('#modalFileManager .media-library-item').first();
+            await expect(imageItem).toBeVisible({ timeout: 10000 });
+
+            // 12. Click to select the uploaded image
+            await imageItem.click();
+
+            // 13. Wait for sidebar content to show
+            const sidebarContent = page.locator('#modalFileManager .media-library-sidebar-content');
+            await expect(sidebarContent).toBeVisible({ timeout: 5000 });
+
+            // 14. Click insert button
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
+
+            // 12. Wait for modal to close and close TinyMCE dialog
+            await page.waitForTimeout(1000);
+            const tinyMceSaveBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
+            if ((await tinyMceSaveBtn.count()) > 0) {
+                await tinyMceSaveBtn.click();
             }
+            await page.waitForTimeout(1000);
 
-            const insertBtn = page
-                .locator('button:has-text("Insert"), button:has-text("Insertar"), button:has-text("Select")')
-                .first();
-            if ((await insertBtn.count()) > 0) {
-                await insertBtn.click();
-            }
-
-            await page.waitForTimeout(2000);
-
-            // 10. Save iDevice
+            // 13. Save iDevice
             const saveBtn = block.locator('.btn-save-idevice');
             if ((await saveBtn.count()) > 0) {
                 await saveBtn.click();
@@ -810,21 +850,22 @@ test.describe('Text iDevice', () => {
             await workarea.save();
             await page.waitForTimeout(2000);
 
-            // 12. Open preview
-            const popupPromise = page.context().waitForEvent('page', { timeout: 15000 });
+            // 12. Open preview panel (side panel, not popup)
             await page.click('#head-bottom-preview');
-            const previewPage = await popupPromise;
-            await previewPage.waitForLoadState('networkidle');
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            // 13. Verify image in preview
-            const previewImg = previewPage.locator('article img');
+            // 13. Wait for iframe to load
+            const iframe = page.frameLocator('#preview-iframe');
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+            // 14. Verify image in preview
+            const previewImg = iframe.locator('article.spa-page.active img');
             await expect(previewImg).toBeVisible({ timeout: 15000 });
 
-            // 14. Verify image loads (not broken)
+            // 15. Verify image loads (not broken)
             const naturalWidth = await previewImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
-
-            await previewPage.close();
         });
     });
 });
