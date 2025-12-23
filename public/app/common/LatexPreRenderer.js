@@ -38,7 +38,7 @@
     // Note: Only BLOCK-level containers are included here. Inline elements like <span>, <a>, <strong>
     // are NOT included because they shouldn't prevent innerHTML processing of their parent.
     // If a <p> contains a <span> + text with LaTeX, we want to process the <p>'s innerHTML directly.
-    const CONTAINER_ELEMENTS = new Set(['p', 'div', 'td', 'th', 'li', 'article', 'section', 'main', 'aside', 'header', 'footer', 'blockquote', 'figcaption']);
+    const CONTAINER_ELEMENTS = new Set(['p', 'div', 'td', 'th', 'li', 'article', 'section', 'main', 'aside', 'header', 'footer', 'blockquote', 'figcaption', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
 
     // Elements to skip entirely
     const SKIP_ELEMENTS = new Set(['script', 'style', 'textarea', 'code', 'pre', 'noscript', 'svg', 'math']);
@@ -786,6 +786,182 @@
         };
     }
 
+    // =========================================================================
+    // DataGame LaTeX Pre-rendering
+    // Game iDevices store questions in encrypted JSON. We need to decrypt,
+    // pre-render LaTeX to SVG, and re-encrypt before export.
+    // =========================================================================
+
+    /** XOR encryption key (same as common.js) */
+    const ENCRYPT_KEY = 146;
+
+    /**
+     * Decrypt XOR-encoded string (matches common.js helpers.decrypt)
+     * @param {string} str - Encrypted string
+     * @returns {string} Decrypted string
+     */
+    function decrypt(str) {
+        if (!str || str === 'undefined' || str === 'null') return '';
+        try {
+            str = unescape(str);
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                result += String.fromCharCode(ENCRYPT_KEY ^ str.charCodeAt(i));
+            }
+            return result;
+        } catch {
+            return '';
+        }
+    }
+
+    /**
+     * Encrypt string with XOR (matches common.js helpers.encrypt)
+     * @param {string} str - String to encrypt
+     * @returns {string} Encrypted string
+     */
+    function encrypt(str) {
+        if (!str) return '';
+        try {
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                result += String.fromCharCode(str.charCodeAt(i) ^ ENCRYPT_KEY);
+            }
+            return escape(result);
+        } catch {
+            return '';
+        }
+    }
+
+    /**
+     * Pre-render LaTeX in a single string value
+     * Returns HTML with <span class="exe-math-rendered"> wrappers
+     * @param {string} text - Text that may contain LaTeX
+     * @returns {Promise<string>} Text with pre-rendered LaTeX
+     */
+    async function preRenderString(text) {
+        if (!text || typeof text !== 'string' || !hasLatex(text)) {
+            return text;
+        }
+
+        let result = text;
+
+        // Process each LaTeX pattern
+        for (const pattern of LATEX_PATTERNS) {
+            pattern.regex.lastIndex = 0;
+            const matches = [...text.matchAll(pattern.regex)];
+
+            for (const match of matches) {
+                const latexWithDelimiters = match[0];
+                const cleanLatex = cleanLatexFromHtml(latexWithDelimiters);
+
+                try {
+                    const { svg, mathml } = await renderLatexExpression(cleanLatex, pattern.display);
+                    const rendered = createRenderedWrapperHtml(latexWithDelimiters, cleanLatex, pattern.display, svg, mathml);
+                    result = result.replace(latexWithDelimiters, rendered);
+                } catch (error) {
+                    console.warn('[LatexPreRenderer] Failed to pre-render in game data:', cleanLatex, error);
+                    // Keep original LaTeX on error
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Recursively process game data, pre-rendering LaTeX in string fields
+     * @param {any} data - Game data (object, array, or primitive)
+     * @returns {Promise<any>} Processed data with pre-rendered LaTeX
+     */
+    async function preRenderLatexInGameData(data) {
+        if (typeof data === 'string') {
+            return await preRenderString(data);
+        }
+
+        if (Array.isArray(data)) {
+            const result = [];
+            for (const item of data) {
+                result.push(await preRenderLatexInGameData(item));
+            }
+            return result;
+        }
+
+        if (typeof data === 'object' && data !== null) {
+            const result = {};
+            for (const [key, value] of Object.entries(data)) {
+                result[key] = await preRenderLatexInGameData(value);
+            }
+            return result;
+        }
+
+        return data;
+    }
+
+    /**
+     * Pre-render LaTeX inside encrypted DataGame divs
+     * Called BEFORE the main preRender() to handle encrypted game data
+     * @param {string} html - HTML containing DataGame divs
+     * @returns {Promise<{html: string, count: number}>} HTML with pre-rendered LaTeX in DataGame
+     */
+    async function preRenderDataGameLatex(html) {
+        if (!html || typeof html !== 'string') {
+            return { html, count: 0 };
+        }
+
+        // Check MathJax availability
+        if (typeof MathJax === 'undefined' || !MathJax.tex2svg) {
+            return { html, count: 0 };
+        }
+
+        // Find all DataGame divs (various naming conventions)
+        // quext-DataGame, DataGame, etc.
+        const dataGamePattern = /<div[^>]*class="[^"]*DataGame[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+        const matches = [...html.matchAll(dataGamePattern)];
+
+        if (matches.length === 0) {
+            return { html, count: 0 };
+        }
+
+        let result = html;
+        let totalCount = 0;
+
+        for (const match of matches) {
+            const fullMatch = match[0];
+            const encryptedContent = match[1].trim();
+
+            if (!encryptedContent) continue;
+
+            // Decrypt the content
+            const decrypted = decrypt(encryptedContent);
+
+            // Quick check for LaTeX
+            if (!hasLatex(decrypted)) continue;
+
+            try {
+                // Parse JSON
+                const data = JSON.parse(decrypted);
+
+                // Pre-render LaTeX in all string fields
+                const processedData = await preRenderLatexInGameData(data);
+
+                // Re-encrypt
+                const newEncrypted = encrypt(JSON.stringify(processedData));
+
+                // Replace in HTML
+                const newDiv = fullMatch.replace(encryptedContent, newEncrypted);
+                result = result.replace(fullMatch, newDiv);
+
+                totalCount++;
+                console.log('[LatexPreRenderer] Pre-rendered LaTeX in DataGame');
+            } catch (error) {
+                console.warn('[LatexPreRenderer] Failed to process DataGame:', error);
+                // Keep original on error
+            }
+        }
+
+        return { html: result, count: totalCount };
+    }
+
     /**
      * Extract LaTeX expressions from HTML (for testing)
      * @param {string} html - HTML content
@@ -817,11 +993,14 @@
     // Public API
     const LatexPreRenderer = {
         preRender,
+        preRenderDataGameLatex,
         hasLatex,
         // For testing
         _extractLatexExpressions,
         _renderLatexExpression: renderLatexExpression,
         _cleanLatexFromHtml: cleanLatexFromHtml,
+        _decrypt: decrypt,
+        _encrypt: encrypt,
     };
 
     // Expose to global/window

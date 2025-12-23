@@ -1249,6 +1249,40 @@ describe('IdevicesEngine', () => {
             const title = engine.nodeContainerElement.querySelector('#page-title-node-content');
             expect(title.innerText).toBe('Node Title');
         });
+
+        it('calls MathJax.typesetPromise when title contains LaTeX', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+
+            const props = {
+                editableInPage: { value: true },
+                titlePage: { value: 'Title with \\(x^2\\)' },
+            };
+
+            engine.setNodeContentPageTitle(props);
+
+            const title = engine.nodeContainerElement.querySelector('#page-title-node-content');
+            expect(title.innerText).toBe('Title with \\(x^2\\)');
+            expect(mockTypesetPromise).toHaveBeenCalledWith([title]);
+
+            delete globalThis.MathJax;
+        });
+
+        it('does not call MathJax when title has no LaTeX', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+
+            const props = {
+                editableInPage: { value: true },
+                titlePage: { value: 'Normal title' },
+            };
+
+            engine.setNodeContentPageTitle(props);
+
+            expect(mockTypesetPromise).not.toHaveBeenCalled();
+
+            delete globalThis.MathJax;
+        });
     });
 
     describe('resetNodeTemplate', () => {
@@ -2348,6 +2382,110 @@ describe('IdevicesEngine', () => {
             engine.syncNewIdeviceToYjs(ideviceNode);
 
             expect(ideviceNode.yjsComponentId).toBe('new-comp-id');
+        });
+
+        it('calculates block order from DOM position when creating new block', () => {
+            // Create DOM structure with existing blocks
+            const nodeContent = document.createElement('div');
+            nodeContent.id = 'node-content';
+
+            // Add two existing blocks before where new one will be inserted
+            const block0 = document.createElement('article');
+            block0.className = 'box';
+            block0.id = 'existing-block-0';
+            nodeContent.appendChild(block0);
+
+            const block1 = document.createElement('article');
+            block1.className = 'box';
+            block1.id = 'existing-block-1';
+            nodeContent.appendChild(block1);
+
+            // New block that will be inserted at position 1 (between block0 and block1)
+            const newBlockContent = document.createElement('article');
+            newBlockContent.className = 'box';
+            newBlockContent.id = 'new-block-id';
+            // Insert before block1 to simulate being at position 1
+            nodeContent.insertBefore(newBlockContent, block1);
+
+            document.body.appendChild(nodeContent);
+
+            const mockBlockNode = {
+                blockName: 'Test Block',
+                blockContent: newBlockContent,
+                getCurrentOrder: vi.fn().mockReturnValue(-1), // Fallback should not be needed
+            };
+            vi.spyOn(engine, 'getBlockById').mockReturnValue(mockBlockNode);
+
+            const ideviceNode = {
+                odeIdeviceId: 'idevice-1',
+                blockId: 'new-block-id',
+                fromYjs: false,
+                yjsComponentId: null,
+                idevice: { id: 'text', title: 'Text' },
+                htmlView: '<p>Content</p>',
+                jsonProperties: {},
+                ideviceContent: null,
+            };
+            engine.components.blocks = [];
+
+            engine.syncNewIdeviceToYjs(ideviceNode);
+
+            // Should calculate order=1 from DOM position (second among .box elements)
+            expect(mockBridge.addBlock).toHaveBeenCalledWith(
+                'page-1',
+                'Test Block',
+                'new-block-id',
+                1 // Expected order based on DOM position
+            );
+
+            document.body.removeChild(nodeContent);
+        });
+
+        it('calculates component order from DOM position', () => {
+            // Setup: block already exists in Yjs
+            mockBridge.structureBinding.getBlocks = vi.fn().mockReturnValue([
+                { id: 'block-1', blockId: 'block-1' },
+            ]);
+
+            // Create DOM structure with existing iDevices
+            const blockContent = document.createElement('article');
+            blockContent.className = 'box';
+            blockContent.id = 'block-1';
+
+            // Add existing iDevice
+            const existingIdevice = document.createElement('div');
+            existingIdevice.className = 'idevice_node';
+            existingIdevice.id = 'existing-idevice';
+            blockContent.appendChild(existingIdevice);
+
+            // New iDevice inserted before existing one (at position 0)
+            const newIdeviceContent = document.createElement('div');
+            newIdeviceContent.className = 'idevice_node';
+            newIdeviceContent.id = 'new-idevice-content';
+            blockContent.insertBefore(newIdeviceContent, existingIdevice);
+
+            document.body.appendChild(blockContent);
+
+            const ideviceNode = {
+                odeIdeviceId: 'new-idevice',
+                blockId: 'block-1',
+                fromYjs: false,
+                yjsComponentId: null,
+                idevice: { id: 'text', title: 'Text' },
+                htmlView: '<p>Content</p>',
+                jsonProperties: {},
+                ideviceContent: newIdeviceContent,
+                getCurrentOrder: vi.fn().mockReturnValue(-1),
+            };
+            engine.components.blocks = [];
+
+            engine.syncNewIdeviceToYjs(ideviceNode);
+
+            // Should calculate order=0 from DOM position (first among .idevice_node elements)
+            const addComponentCall = mockBridge.addComponent.mock.calls[0];
+            expect(addComponentCall[3].order).toBe(0);
+
+            document.body.removeChild(blockContent);
         });
     });
 

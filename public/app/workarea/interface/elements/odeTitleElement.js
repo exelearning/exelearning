@@ -17,6 +17,9 @@ export default class OdeTitleMenu {
         this.titleDebounceTimer = null;
         this.titleDebounceDelay = 300; // ms
 
+        // Store raw title text (with LaTeX delimiters) for editing
+        this.rawTitleText = '';
+
         const observer = new MutationObserver(this.onTitleChanged.bind(this));
         observer.observe(this.titleContainer, {
             childList: true,
@@ -54,8 +57,10 @@ export default class OdeTitleMenu {
                 // Load initial title from Yjs
                 const initialTitle = metadata.get('title');
                 if (initialTitle) {
+                    this.rawTitleText = initialTitle;
                     this.odeTitleMenuHeadElement.textContent = initialTitle;
                     this.checkTitleLineCount();
+                    this.typesetTitle();
                     Logger.log('[OdeTitleMenu] Loaded initial title from Yjs:', initialTitle);
                 }
 
@@ -86,9 +91,11 @@ export default class OdeTitleMenu {
 
         // Only update if we're not currently editing
         if (!this.titleContainer.classList.contains('title-editing')) {
-            if (this.odeTitleMenuHeadElement.textContent !== title) {
+            if (this.rawTitleText !== title) {
+                this.rawTitleText = title;
                 this.odeTitleMenuHeadElement.textContent = title;
                 this.checkTitleLineCount();
+                this.typesetTitle();
                 Logger.log('[OdeTitleMenu] Remote title update:', title);
             }
         }
@@ -117,8 +124,27 @@ export default class OdeTitleMenu {
             }
         }
 
+        // Store raw text for editing
+        this.rawTitleText = odeTitleText;
         this.odeTitleMenuHeadElement.textContent = odeTitleText;
         this.checkTitleLineCount();
+
+        // Render LaTeX if present
+        this.typesetTitle();
+    }
+
+    /**
+     * Render LaTeX in title using MathJax
+     */
+    typesetTitle() {
+        const title = this.rawTitleText;
+        if (title && /(?:\\\(|\\\[|\\begin\{)/.test(title)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([this.odeTitleMenuHeadElement]).catch(err => {
+                    Logger.log('[OdeTitleMenu] MathJax typeset error:', err);
+                });
+            }
+        }
     }
 
     setChangeTitle() {
@@ -149,6 +175,10 @@ export default class OdeTitleMenu {
                 title.removeEventListener('input', currentOnInput);
             }
 
+            // Restore raw text (with LaTeX delimiters) for editing
+            // This replaces the rendered MathJax SVG with the original text
+            title.textContent = this.rawTitleText;
+
             title.setAttribute('contenteditable', 'true');
             this.attachPasteAsPlain(title);
             this.titleContainer.classList.add('title-editing');
@@ -168,11 +198,14 @@ export default class OdeTitleMenu {
 
             // Real-time sync on each keystroke with debouncing
             currentOnInput = () => {
+                // Update raw text as user types
+                this.rawTitleText = title.textContent;
+
                 if (this.titleDebounceTimer) {
                     clearTimeout(this.titleDebounceTimer);
                 }
                 this.titleDebounceTimer = setTimeout(() => {
-                    this.saveTitleToYjs(title.textContent);
+                    this.saveTitleToYjs(this.rawTitleText);
                     this.titleDebounceTimer = null;
                 }, this.titleDebounceDelay);
             };
@@ -196,9 +229,13 @@ export default class OdeTitleMenu {
                 this.titleContainer.classList.remove('title-editing');
                 this.titleContainer.classList.add('title-not-editing');
 
-                // Final save to ensure latest value is persisted
-                this.saveTitleToYjs(title.textContent);
+                // Store raw text and save to Yjs
+                this.rawTitleText = title.textContent;
+                this.saveTitleToYjs(this.rawTitleText);
                 this.checkTitleLineCount();
+
+                // Re-render LaTeX after editing
+                this.typesetTitle();
 
                 isEditing = false;
                 currentFinishEditing = null;

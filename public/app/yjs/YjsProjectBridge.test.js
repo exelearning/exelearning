@@ -621,13 +621,18 @@ describe('YjsProjectBridge', () => {
 
     it('addBlock calls structureBinding.createBlock', () => {
       const result = bridge.addBlock('page-1', 'My Block');
-      expect(bridge.structureBinding.createBlock).toHaveBeenCalledWith('page-1', 'My Block', null);
+      expect(bridge.structureBinding.createBlock).toHaveBeenCalledWith('page-1', 'My Block', null, null);
       expect(result).toBe('block-1');
     });
 
     it('addBlock with existing block ID', () => {
       bridge.addBlock('page-1', 'Block', 'existing-id');
-      expect(bridge.structureBinding.createBlock).toHaveBeenCalledWith('page-1', 'Block', 'existing-id');
+      expect(bridge.structureBinding.createBlock).toHaveBeenCalledWith('page-1', 'Block', 'existing-id', null);
+    });
+
+    it('addBlock with order parameter', () => {
+      bridge.addBlock('page-1', 'Block', 'new-block-id', 0);
+      expect(bridge.structureBinding.createBlock).toHaveBeenCalledWith('page-1', 'Block', 'new-block-id', 0);
     });
 
     it('updateBlock updates block properties', () => {

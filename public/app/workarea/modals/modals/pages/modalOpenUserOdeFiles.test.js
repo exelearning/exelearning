@@ -215,6 +215,52 @@ describe('modalOpenUserOdeFiles', () => {
     });
   });
 
+  describe('typesetTitles', () => {
+    it('should call MathJax.typesetPromise for titles with LaTeX', async () => {
+      const mockTypesetPromise = vi.fn().mockResolvedValue();
+      window.MathJax = { typesetPromise: mockTypesetPromise };
+
+      // Add title elements with LaTeX
+      const title = document.createElement('div');
+      title.className = 'ode-file-title';
+      title.textContent = 'Project with \\(x^2\\)';
+      modal.modalElementBodyContent.appendChild(title);
+
+      modal.typesetTitles();
+
+      expect(mockTypesetPromise).toHaveBeenCalled();
+      expect(mockTypesetPromise).toHaveBeenCalledWith([title]);
+    });
+
+    it('should not call MathJax if no titles have LaTeX', () => {
+      const mockTypesetPromise = vi.fn().mockResolvedValue();
+      window.MathJax = { typesetPromise: mockTypesetPromise };
+
+      // Add title without LaTeX
+      const title = document.createElement('div');
+      title.className = 'ode-file-title';
+      title.textContent = 'Normal Project Title';
+      modal.modalElementBodyContent.appendChild(title);
+
+      modal.typesetTitles();
+
+      expect(mockTypesetPromise).not.toHaveBeenCalled();
+    });
+
+    it('should not fail when MathJax is not available', () => {
+      delete window.MathJax;
+
+      // Add title with LaTeX
+      const title = document.createElement('div');
+      title.className = 'ode-file-title';
+      title.textContent = 'Project with \\(x^2\\)';
+      modal.modalElementBodyContent.appendChild(title);
+
+      // Should not throw
+      expect(() => modal.typesetTitles()).not.toThrow();
+    });
+  });
+
   describe('countProjectsByRole', () => {
     it('should count unique projects by role', () => {
       modal.allOdeFilesData = {

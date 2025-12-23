@@ -1116,7 +1116,33 @@ export default class IdevicesEngine {
                 const blockNode = this.getBlockById(blockId);
                 const blockName = blockNode?.blockName || '';
                 const frontendBlockId = blockId; // Save original blockId before addBlock might change it
-                blockId = bridge.addBlock(pageId, blockName, frontendBlockId);
+
+                // Calculate block order based on actual DOM position (counting siblings)
+                // This is more reliable than using the 'order' attribute which may be stale
+                let blockOrder = null;
+                if (blockNode?.blockContent) {
+                    const parent = blockNode.blockContent.parentElement;
+                    if (parent) {
+                        const siblings = Array.from(parent.querySelectorAll(':scope > .box'));
+                        const domIndex = siblings.indexOf(blockNode.blockContent);
+                        if (domIndex >= 0) {
+                            blockOrder = domIndex;
+                        }
+                    }
+                }
+                // Fallback: try getCurrentOrder (uses sibling order attributes)
+                if (blockOrder === null && typeof blockNode?.getCurrentOrder === 'function') {
+                    const calculatedOrder = blockNode.getCurrentOrder();
+                    if (calculatedOrder >= 0) {
+                        blockOrder = calculatedOrder;
+                    }
+                }
+                // Final fallback: count existing blocks in Yjs
+                if (blockOrder === null || blockOrder < 0) {
+                    blockOrder = allBlocks.length;
+                }
+
+                blockId = bridge.addBlock(pageId, blockName, frontendBlockId, blockOrder);
                 // Update the ideviceNode with the Yjs blockId
                 if (blockId && blockNode) {
                     blockNode.yjsBlockId = blockId;
@@ -1131,6 +1157,32 @@ export default class IdevicesEngine {
         // idevice.id contains the actual type name used in the iDevices menu
         const ideviceTypeName = ideviceNode.idevice?.id || ideviceNode.odeIdeviceTypeName || 'text';
 
+        // Calculate correct order based on actual DOM position (counting siblings)
+        // This is more reliable than using the 'order' attribute which may be stale
+        let componentOrder = null;
+        if (ideviceNode.ideviceContent) {
+            const parent = ideviceNode.ideviceContent.parentElement;
+            if (parent) {
+                const siblings = Array.from(parent.querySelectorAll(':scope > .idevice_node'));
+                const domIndex = siblings.indexOf(ideviceNode.ideviceContent);
+                if (domIndex >= 0) {
+                    componentOrder = domIndex;
+                }
+            }
+        }
+        // Fallback: try getCurrentOrder (uses sibling order attributes)
+        if (componentOrder === null && typeof ideviceNode.getCurrentOrder === 'function') {
+            const calculatedOrder = ideviceNode.getCurrentOrder();
+            if (calculatedOrder >= 0) {
+                componentOrder = calculatedOrder;
+            }
+        }
+        // Final fallback: count existing components in Yjs to append at end
+        if (componentOrder === null || componentOrder < 0) {
+            const existingComponents = bridge.structureBinding.getComponents(pageId, blockId);
+            componentOrder = existingComponents ? existingComponents.length : 0;
+        }
+
         // Create component in Yjs (this will also request the lock for the creator)
         // Include jsonProperties so remote clients can render JSON-type iDevices
         const componentId = bridge.addComponent(
@@ -1142,7 +1194,7 @@ export default class IdevicesEngine {
                 htmlContent: ideviceNode.htmlView || '',
                 title: ideviceNode.idevice?.title || '',
                 jsonProperties: JSON.stringify(ideviceNode.jsonProperties || {}),
-                order: ideviceNode.order || 0,
+                order: componentOrder,
             }
         );
 
@@ -1775,6 +1827,7 @@ export default class IdevicesEngine {
         pageTitleElement.classList.toggle('hidden', !title);
 
         // Typeset LaTeX in page title if detected
+        // The properties panel input shows raw text for editing - only the display is rendered
         if (title && /(?:\\\(|\\\[|\\begin\{)/.test(title)) {
             if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                 MathJax.typesetPromise([pageTitleElement]).catch(err => {

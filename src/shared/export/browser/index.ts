@@ -216,12 +216,20 @@ export function createExporter(
 }
 
 /**
- * Get LaTeX pre-renderer hook if available in browser context
- * @returns PreRenderLatex function or undefined
+ * LaTeX pre-renderer hooks interface
  */
-function getLatexPreRenderer():
-    | ((html: string) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>)
-    | undefined {
+interface LatexPreRendererHooks {
+    preRenderLatex: (
+        html: string,
+    ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
+    preRenderDataGameLatex: (html: string) => Promise<{ html: string; count: number }>;
+}
+
+/**
+ * Get LaTeX pre-renderer hooks if available in browser context
+ * @returns Object with preRenderLatex and preRenderDataGameLatex, or undefined
+ */
+function getLatexPreRendererHooks(): LatexPreRendererHooks | undefined {
     if (typeof window === 'undefined') return undefined;
 
     const windowLatexPreRenderer = (
@@ -230,13 +238,17 @@ function getLatexPreRenderer():
                 preRender: (
                     html: string,
                 ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
+                preRenderDataGameLatex: (html: string) => Promise<{ html: string; count: number }>;
             };
         }
     ).LatexPreRenderer;
     const windowMathJax = (window as unknown as { MathJax?: unknown }).MathJax;
 
     if (windowLatexPreRenderer && windowMathJax) {
-        return windowLatexPreRenderer.preRender.bind(windowLatexPreRenderer);
+        return {
+            preRenderLatex: windowLatexPreRenderer.preRender.bind(windowLatexPreRenderer),
+            preRenderDataGameLatex: windowLatexPreRenderer.preRenderDataGameLatex.bind(windowLatexPreRenderer),
+        };
     }
 
     return undefined;
@@ -263,9 +275,9 @@ export async function quickExport(
 ) {
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
 
-    // Wire up LaTeX pre-renderer if available in browser context
-    const preRenderLatex = getLatexPreRenderer();
-    const exportOptions = preRenderLatex ? { ...options, preRenderLatex } : options;
+    // Wire up LaTeX pre-renderer hooks if available in browser context
+    const latexHooks = getLatexPreRendererHooks();
+    const exportOptions = latexHooks ? { ...options, ...latexHooks } : options;
 
     return exporter.export(exportOptions);
 }
@@ -292,9 +304,9 @@ export async function exportAndDownload(
 ) {
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
 
-    // Wire up LaTeX pre-renderer if available in browser context
-    const preRenderLatex = getLatexPreRenderer();
-    const exportOptions = preRenderLatex ? { ...options, preRenderLatex } : options;
+    // Wire up LaTeX pre-renderer hooks if available in browser context
+    const latexHooks = getLatexPreRendererHooks();
+    const exportOptions = latexHooks ? { ...options, ...latexHooks } : options;
 
     const result = await exporter.export(exportOptions);
 
@@ -339,25 +351,17 @@ export async function generatePreview(
         : createNullResourceProvider();
     const exporter = new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
 
-    // Wire up LaTeX pre-renderer if available in browser context
+    // Wire up LaTeX pre-renderer hooks if available in browser context
     // LatexPreRenderer uses DOM parsing to find LaTeX expressions in text nodes
     // and renders them individually to SVG+MathML using MathJax.
+    // preRenderDataGameLatex handles LaTeX inside encrypted game iDevice data.
     // This allows exports to skip bundling MathJax (~1MB)
-    const windowLatexPreRenderer = (
-        window as unknown as {
-            LatexPreRenderer?: {
-                preRender: (
-                    html: string,
-                ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
-            };
-        }
-    ).LatexPreRenderer;
-    const windowMathJax = (window as unknown as { MathJax?: unknown }).MathJax;
-
-    if (windowLatexPreRenderer && windowMathJax) {
+    const latexHooks = getLatexPreRendererHooks();
+    if (latexHooks) {
         options = {
             ...options,
-            preRenderLatex: windowLatexPreRenderer.preRender.bind(windowLatexPreRenderer),
+            preRenderLatex: latexHooks.preRenderLatex,
+            preRenderDataGameLatex: latexHooks.preRenderDataGameLatex,
         };
     }
 

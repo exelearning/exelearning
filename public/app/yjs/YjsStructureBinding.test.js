@@ -934,6 +934,55 @@ describe('YjsStructureBinding', () => {
       expect(blocks[0].order).toBe(0);
       expect(blocks[1].order).toBe(1);
     });
+
+    // Regression test: inserting block at specific order should work correctly
+    it('inserts block at specified order position and shifts existing blocks', () => {
+      // Create two blocks at positions 0 and 1
+      binding.createBlock('page-1', 'Block A', 'block-a');
+      binding.createBlock('page-1', 'Block B', 'block-b');
+
+      // Now insert a new block at position 0 (beginning)
+      binding.createBlock('page-1', 'Block New', 'block-new', 0);
+
+      const blocks = binding.getBlocks('page-1');
+
+      // Should have 3 blocks
+      expect(blocks).toHaveLength(3);
+
+      // block-new should be first (order 0)
+      expect(blocks[0].id).toBe('block-new');
+      expect(blocks[0].order).toBe(0);
+
+      // block-a should be second (order 1, shifted from 0)
+      expect(blocks[1].id).toBe('block-a');
+      expect(blocks[1].order).toBe(1);
+
+      // block-b should be third (order 2, shifted from 1)
+      expect(blocks[2].id).toBe('block-b');
+      expect(blocks[2].order).toBe(2);
+    });
+
+    it('inserts block in middle position correctly', () => {
+      // Create three blocks
+      binding.createBlock('page-1', 'Block 0', 'block-0');
+      binding.createBlock('page-1', 'Block 1', 'block-1');
+      binding.createBlock('page-1', 'Block 2', 'block-2');
+
+      // Insert new block at position 1 (middle)
+      binding.createBlock('page-1', 'Block Middle', 'block-middle', 1);
+
+      const blocks = binding.getBlocks('page-1');
+
+      expect(blocks).toHaveLength(4);
+      expect(blocks[0].id).toBe('block-0');
+      expect(blocks[0].order).toBe(0);
+      expect(blocks[1].id).toBe('block-middle');
+      expect(blocks[1].order).toBe(1);
+      expect(blocks[2].id).toBe('block-1');
+      expect(blocks[2].order).toBe(2);
+      expect(blocks[3].id).toBe('block-2');
+      expect(blocks[3].order).toBe(3);
+    });
   });
 
   describe('updateBlock', () => {
@@ -1384,6 +1433,61 @@ describe('YjsStructureBinding', () => {
       expect(components[0].order).toBe(0);
       expect(components[1].order).toBe(1);
     });
+
+    // Regression test: inserting component at specific order should work correctly
+    it('inserts component at specified order position and shifts existing components', () => {
+      // Create two components at positions 0 and 1
+      binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', { id: 'comp-a' });
+      binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', { id: 'comp-b' });
+
+      // Now insert a new component at position 0 (beginning)
+      binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', {
+        id: 'comp-new',
+        order: 0,
+      });
+
+      const components = binding.getComponents('page-1', 'block-1');
+
+      // Should have 3 components
+      expect(components).toHaveLength(3);
+
+      // comp-new should be first (order 0)
+      expect(components[0].id).toBe('comp-new');
+      expect(components[0].order).toBe(0);
+
+      // comp-a should be second (order 1, shifted from 0)
+      expect(components[1].id).toBe('comp-a');
+      expect(components[1].order).toBe(1);
+
+      // comp-b should be third (order 2, shifted from 1)
+      expect(components[2].id).toBe('comp-b');
+      expect(components[2].order).toBe(2);
+    });
+
+    it('inserts component in middle position correctly', () => {
+      // Create three components
+      binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', { id: 'comp-0' });
+      binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', { id: 'comp-1' });
+      binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', { id: 'comp-2' });
+
+      // Insert new component at position 1 (middle)
+      binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', {
+        id: 'comp-middle',
+        order: 1,
+      });
+
+      const components = binding.getComponents('page-1', 'block-1');
+
+      expect(components).toHaveLength(4);
+      expect(components[0].id).toBe('comp-0');
+      expect(components[0].order).toBe(0);
+      expect(components[1].id).toBe('comp-middle');
+      expect(components[1].order).toBe(1);
+      expect(components[2].id).toBe('comp-1');
+      expect(components[2].order).toBe(2);
+      expect(components[3].id).toBe('comp-2');
+      expect(components[3].order).toBe(3);
+    });
   });
 
   describe('updateComponent', () => {
@@ -1654,6 +1758,35 @@ describe('YjsStructureBinding', () => {
       expect(clonedJsonProps.get('questions')).toEqual([{ q: 'What is 2+2?', a: '4' }]);
       expect(clonedJsonProps.get('options')).toEqual(['A', 'B', 'C', 'D']);
       expect(clonedJsonProps.get('correctAnswer')).toBe('D');
+    });
+
+    // Regression test for JSON-type iDevices (text, crossword, etc.)
+    // jsonProperties is stored as string, not Y.Map, in most cases
+    it('should clone jsonProperties when stored as string (common case for text iDevice)', () => {
+      // This is how jsonProperties is typically stored (see apiFromComponent line ~2500)
+      const jsonPropsString = JSON.stringify({
+        textTextarea: '<p>Hello</p><img src="asset://uuid-123/image.jpg">',
+        textFeedbackInput: 'Show feedback',
+        textFeedbackTextarea: '<p>Good job!</p>',
+      });
+      component.set('jsonProperties', jsonPropsString);
+
+      const cloned = binding.cloneComponent('page-1', 'block-1', 'comp-1');
+
+      expect(cloned).toBeDefined();
+      const blocks = mockDocManager.getNavigation().get(0).get('blocks');
+      const clonedComp = blocks.get(0).get('components').get(1);
+
+      // jsonProperties should be cloned as-is when it's a string
+      const clonedJsonProps = clonedComp.get('jsonProperties');
+      expect(typeof clonedJsonProps).toBe('string');
+      expect(clonedJsonProps).toBe(jsonPropsString);
+
+      // Verify the content is preserved
+      const parsed = JSON.parse(clonedJsonProps);
+      expect(parsed.textTextarea).toBe('<p>Hello</p><img src="asset://uuid-123/image.jpg">');
+      expect(parsed.textFeedbackInput).toBe('Show feedback');
+      expect(parsed.textFeedbackTextarea).toBe('<p>Good job!</p>');
     });
 
     it('should clone properties Y.Map', () => {

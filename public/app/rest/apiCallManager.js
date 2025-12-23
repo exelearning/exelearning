@@ -1240,8 +1240,27 @@ export default class ApiCallManager {
             const componentId = params.odeComponentsSyncId || params.id;
             if (componentId && params.htmlView !== undefined) {
                 try {
+                    // CRITICAL: Convert blob URLs to asset URLs before saving
+                    // blob:// URLs are ephemeral and don't persist across page reloads
+                    // asset:// URLs are persistent and resolved to blob:// on load
+                    const assetManager = projectManager._yjsBridge?.assetManager;
+                    let htmlContent = params.htmlView;
+                    if (assetManager && htmlContent && typeof htmlContent === 'string') {
+                        const hasBlobUrls = htmlContent.includes('blob:');
+                        const converted = assetManager.convertBlobURLsToAssetRefs(htmlContent);
+                        if (converted !== htmlContent) {
+                            console.log('[apiCallManager] ✅ Converted blob URLs to asset URLs');
+                            console.log('[apiCallManager] BEFORE:', htmlContent.substring(0, 200));
+                            console.log('[apiCallManager] AFTER:', converted.substring(0, 200));
+                        } else if (hasBlobUrls) {
+                            console.warn('[apiCallManager] ⚠️ HTML had blob: URLs but conversion returned unchanged!');
+                            console.warn('[apiCallManager] HTML preview:', htmlContent.substring(0, 300));
+                        }
+                        htmlContent = converted;
+                    }
+
                     projectManager._yjsBridge.structureBinding.updateComponent(componentId, {
-                        htmlContent: params.htmlView
+                        htmlContent: htmlContent
                     });
                     console.log('[apiCallManager] Saved htmlView to Yjs:', componentId);
                 } catch (e) {
@@ -1288,6 +1307,58 @@ export default class ApiCallManager {
             return { responseMessage: 'ERROR', error: 'Yjs not initialized' };
         }
 
+        // Helper to convert blob URLs to asset URLs before saving
+        const convertHtmlContent = (html) => {
+            if (!html || typeof html !== 'string') return html;
+            const assetManager = bridge?.assetManager;
+            if (assetManager?.convertBlobURLsToAssetRefs) {
+                const hasBlobUrls = html.includes('blob:');
+                const converted = assetManager.convertBlobURLsToAssetRefs(html);
+                if (converted !== html) {
+                    console.log('[apiCallManager] _saveIdeviceToYjs: ✅ Converted blob URLs to asset URLs');
+                    console.log('[apiCallManager] _saveIdeviceToYjs BEFORE:', html.substring(0, 200));
+                    console.log('[apiCallManager] _saveIdeviceToYjs AFTER:', converted.substring(0, 200));
+                } else if (hasBlobUrls) {
+                    console.warn('[apiCallManager] _saveIdeviceToYjs: ⚠️ HTML had blob: URLs but conversion returned unchanged!');
+                    console.warn('[apiCallManager] _saveIdeviceToYjs HTML:', html.substring(0, 300));
+                }
+                return converted;
+            }
+            return html;
+        };
+
+        // Helper to convert blob URLs inside jsonProperties (for JSON-type iDevices like text)
+        // The jsonProperties contains fields like textTextarea which store the actual content
+        const convertJsonProperties = (jsonPropsStr) => {
+            if (!jsonPropsStr || typeof jsonPropsStr !== 'string') return jsonPropsStr;
+            if (!jsonPropsStr.includes('blob:')) return jsonPropsStr; // Skip if no blob URLs
+
+            try {
+                const props = JSON.parse(jsonPropsStr);
+                let converted = false;
+
+                // Convert blob URLs in all string values
+                for (const key of Object.keys(props)) {
+                    const value = props[key];
+                    if (typeof value === 'string' && value.includes('blob:')) {
+                        const newValue = convertHtmlContent(value);
+                        if (newValue !== value) {
+                            props[key] = newValue;
+                            converted = true;
+                            console.log(`[apiCallManager] _saveIdeviceToYjs: ✅ Converted blob URLs in jsonProperties.${key}`);
+                        }
+                    }
+                }
+
+                if (converted) {
+                    return JSON.stringify(props);
+                }
+            } catch (e) {
+                console.warn('[apiCallManager] _saveIdeviceToYjs: Failed to parse jsonProperties:', e);
+            }
+            return jsonPropsStr;
+        };
+
         const pageId = params.odeNavStructureSyncId || params.odePageId;
         const blockId = params.odePagStructureSyncId || params.odeBlockId;
         const componentId = params.odeComponentsSyncId || params.odeIdeviceId || params.id;
@@ -1331,8 +1402,9 @@ export default class ApiCallManager {
                 params.odeIdeviceTypeName || 'FreeTextIdevice',
                 {
                     id: componentId, // Preserve the original ID if provided
-                    htmlContent: params.htmlView || '',
+                    htmlContent: convertHtmlContent(params.htmlView) || '',
                     iconName: params.iconName,
+                    jsonProperties: params.jsonProperties ? convertJsonProperties(params.jsonProperties) : undefined,
                 }
             );
             console.log('[apiCallManager] Created new iDevice in Yjs:', newComponentId);
@@ -1343,10 +1415,10 @@ export default class ApiCallManager {
         if (existingComponent && componentId) {
             const updateData = {};
             if (params.htmlView !== undefined) {
-                updateData.htmlContent = params.htmlView;
+                updateData.htmlContent = convertHtmlContent(params.htmlView);
             }
             if (params.jsonProperties !== undefined) {
-                updateData.jsonProperties = params.jsonProperties;
+                updateData.jsonProperties = convertJsonProperties(params.jsonProperties);
             }
             if (params.order !== undefined) {
                 updateData.order = params.order;

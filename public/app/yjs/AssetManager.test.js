@@ -368,6 +368,76 @@ describe('AssetManager', () => {
       expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
       expect(assetManager.putAsset).not.toHaveBeenCalled();
     });
+
+    it('registers blob URL in reverseBlobCache with pure UUID (not asset:// URL)', async () => {
+      // This is the CRITICAL test for the bug fix
+      // The bug was that asset:// URLs were being stored in reverseBlobCache instead of UUIDs
+      assetManager.db = mockDB;
+      assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
+      assetManager.putAsset = mock(() => undefined).mockResolvedValue();
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
+
+      const mockFile = {
+        name: 'test.jpg',
+        type: 'image/jpeg',
+        size: 100,
+        arrayBuffer: mock(() => undefined).mockResolvedValue(new ArrayBuffer(100)),
+      };
+
+      const assetUrl = await assetManager.insertImage(mockFile);
+
+      // assetUrl should be in format asset://uuid/filename
+      expect(assetUrl).toMatch(/^asset:\/\/[a-f0-9-]+\/test\.jpg$/);
+
+      // Extract the UUID from the asset URL
+      const assetId = assetManager.extractAssetId(assetUrl);
+
+      // blobURLCache should have the UUID as key
+      const blobUrl = assetManager.blobURLCache.get(assetId);
+      expect(blobUrl).toMatch(/^blob:/);
+
+      // CRITICAL: reverseBlobCache should have the UUID (not asset:// URL) as value
+      const reverseLookup = assetManager.reverseBlobCache.get(blobUrl);
+      expect(reverseLookup).toBe(assetId);
+      // Should NOT be an asset:// URL
+      expect(reverseLookup).not.toContain('asset://');
+      // Should be a valid UUID format
+      expect(reverseLookup).toMatch(/^[a-f0-9-]+$/);
+    });
+
+    it('full image insertion flow: insert -> conversion -> resolve', async () => {
+      // Test the complete flow that was broken
+      assetManager.db = mockDB;
+      assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
+      assetManager.putAsset = mock(() => undefined).mockResolvedValue();
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue('abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789');
+
+      // 1. Insert image
+      const mockFile = {
+        name: 'photo.jpg',
+        type: 'image/jpeg',
+        size: 1000,
+        arrayBuffer: mock(() => undefined).mockResolvedValue(new ArrayBuffer(1000)),
+      };
+      const assetUrl = await assetManager.insertImage(mockFile);
+      const assetId = assetManager.extractAssetId(assetUrl);
+
+      // 2. Get the blob URL that TinyMCE would use
+      const blobUrl = assetManager.blobURLCache.get(assetId);
+      expect(blobUrl).toBeTruthy();
+
+      // 3. Simulate HTML with blob URL (what TinyMCE has)
+      const htmlWithBlobUrl = `<p>Hello</p><img src="${blobUrl}" alt="photo">`;
+
+      // 4. Convert blob URL to asset URL (what syncFromEditor does)
+      const htmlWithAssetUrl = assetManager.convertBlobURLsToAssetRefs(htmlWithBlobUrl);
+
+      // 5. Verify the conversion was successful
+      expect(htmlWithAssetUrl).toContain(`asset://${assetId}`);
+      expect(htmlWithAssetUrl).not.toContain('blob:');
+      // Should NOT have corrupted double asset://
+      expect(htmlWithAssetUrl).not.toContain('asset://asset://');
+    });
   });
 
   describe('extractAssetId', () => {
@@ -428,6 +498,41 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('getBlobURLSynced', () => {
+    it('syncs reverseBlobCache when blob URL exists only in blobURLCache', () => {
+      // Setup: blob URL in blobURLCache but NOT in reverseBlobCache (simulating inconsistent state)
+      assetManager.blobURLCache.set('asset-123', 'blob:http://localhost/abc');
+      // Verify reverseBlobCache is empty
+      expect(assetManager.reverseBlobCache.has('blob:http://localhost/abc')).toBe(false);
+
+      // Call getBlobURLSynced
+      const result = assetManager.getBlobURLSynced('asset-123');
+
+      // Should return the blob URL
+      expect(result).toBe('blob:http://localhost/abc');
+      // Should have synced reverseBlobCache
+      expect(assetManager.reverseBlobCache.get('blob:http://localhost/abc')).toBe('asset-123');
+    });
+
+    it('returns undefined when asset not in cache', () => {
+      expect(assetManager.getBlobURLSynced('nonexistent')).toBeUndefined();
+    });
+
+    it('does not overwrite existing reverseBlobCache entry', () => {
+      // Setup: both caches already have entries
+      assetManager.blobURLCache.set('asset-456', 'blob:http://localhost/def');
+      assetManager.reverseBlobCache.set('blob:http://localhost/def', 'asset-456');
+
+      // Call getBlobURLSynced
+      const result = assetManager.getBlobURLSynced('asset-456');
+
+      // Should return the blob URL
+      expect(result).toBe('blob:http://localhost/def');
+      // reverseBlobCache should still have the original entry
+      expect(assetManager.reverseBlobCache.get('blob:http://localhost/def')).toBe('asset-456');
+    });
+  });
+
   describe('resolveHTMLAssets', () => {
     it('returns unchanged HTML when null', async () => {
       const result = await assetManager.resolveHTMLAssets(null);
@@ -480,13 +585,72 @@ describe('AssetManager', () => {
       expect(result).toBeNull();
     });
 
-    it('converts blob URLs back to asset:// refs', () => {
-      assetManager.reverseBlobCache.set('blob:test-url', 'asset-123');
+    it('returns unchanged HTML when non-string', () => {
+      const result = assetManager.convertBlobURLsToAssetRefs(123);
+      expect(result).toBe(123);
+    });
 
-      const html = '<img src="blob:test-url">';
+    it('converts blob URLs using data-asset-id attribute (priority)', () => {
+      // Setup: blob URL NOT in cache, but data-asset-id present
+      const assetId = 'a1b2c3d4-e5f6-7890-abcd-123456789abc';
+
+      const html = `<img src="blob:http://localhost/xyz" data-asset-id="${assetId}" alt="test">`;
       const result = assetManager.convertBlobURLsToAssetRefs(html);
 
-      expect(result).toBe('<img src="asset://asset-123">');
+      expect(result).toContain(`asset://${assetId}`);
+      expect(result).not.toContain('blob:');
+      expect(result).toContain('data-asset-id='); // Attribute preserved
+      expect(result).toContain('alt="test"'); // Other attrs preserved
+    });
+
+    it('converts blob URLs using reverseBlobCache when no data-asset-id', () => {
+      const assetId = 'asset-uuid-123';
+      assetManager.reverseBlobCache.set('blob:http://test/abc', assetId);
+
+      const html = '<img src="blob:http://test/abc">';
+      const result = assetManager.convertBlobURLsToAssetRefs(html);
+
+      expect(result).toContain(`asset://${assetId}`);
+      expect(result).not.toContain('blob:');
+    });
+
+    it('handles video and audio tags with data-asset-id', () => {
+      const videoId = 'video-uuid-123';
+      const audioId = 'audio-uuid-456';
+
+      const videoHtml = `<video src="blob:http://test/v1" data-asset-id="${videoId}"></video>`;
+      const audioHtml = `<audio src="blob:http://test/a1" data-asset-id="${audioId}"></audio>`;
+
+      expect(assetManager.convertBlobURLsToAssetRefs(videoHtml)).toContain(`asset://${videoId}`);
+      expect(assetManager.convertBlobURLsToAssetRefs(audioHtml)).toContain(`asset://${audioId}`);
+    });
+
+    it('handles multiple images in same HTML', () => {
+      const id1 = 'uuid-1111';
+      const id2 = 'uuid-2222';
+
+      const html = `<p><img src="blob:http://test/a" data-asset-id="${id1}"></p><p><img src="blob:http://test/b" data-asset-id="${id2}"></p>`;
+      const result = assetManager.convertBlobURLsToAssetRefs(html);
+
+      expect(result).toContain(`asset://${id1}`);
+      expect(result).toContain(`asset://${id2}`);
+      expect(result).not.toContain('blob:');
+    });
+
+    it('preserves non-blob URLs unchanged', () => {
+      const html = '<img src="https://example.com/image.png">';
+      const result = assetManager.convertBlobURLsToAssetRefs(html);
+
+      expect(result).toBe(html);
+    });
+
+    it('leaves blob URL unchanged when neither data-asset-id nor cache match', () => {
+      // Blob URL not in cache, no data-asset-id
+      const html = '<img src="blob:http://unknown/xyz">';
+      const result = assetManager.convertBlobURLsToAssetRefs(html);
+
+      // Should be unchanged (with warning logged)
+      expect(result).toContain('blob:');
     });
   });
 
@@ -1176,8 +1340,14 @@ describe('prepareHtmlForSync', () => {
   let assetManager;
 
   beforeEach(() => {
+    // Mock Logger for convertBlobURLsToAssetRefs logging
+    global.Logger = { log: mock(() => {}) };
     assetManager = new AssetManager('project-123');
     assetManager.reverseBlobCache.set('blob:test-url', 'asset-id-123');
+  });
+
+  afterEach(() => {
+    delete global.Logger;
   });
 
   it('returns null for null input', () => {

@@ -1500,10 +1500,11 @@ class YjsProjectBridge {
    * @param {string} pageId - Page ID
    * @param {string} blockName - Block name
    * @param {string} existingBlockId - Optional existing block ID to use (for syncing with frontend)
+   * @param {number} order - Optional order position (defaults to end)
    * @returns {string} Created block ID
    */
-  addBlock(pageId, blockName = 'Block', existingBlockId = null) {
-    const blockId = this.structureBinding.createBlock(pageId, blockName, existingBlockId);
+  addBlock(pageId, blockName = 'Block', existingBlockId = null, order = null) {
+    const blockId = this.structureBinding.createBlock(pageId, blockName, existingBlockId, order);
     this.updateUndoRedoButtons();
     return blockId;
   }

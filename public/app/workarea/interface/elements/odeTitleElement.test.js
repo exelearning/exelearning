@@ -306,4 +306,64 @@ describe('OdeTitleMenu', () => {
       expect(mockContainerElement.classList.add).toHaveBeenCalledWith('two-lines');
     });
   });
+
+  describe('LaTeX handling', () => {
+    it('should call MathJax.typesetPromise when title contains LaTeX', () => {
+      const mockTypesetPromise = vi.fn().mockResolvedValue();
+      globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+
+      odeTitleMenu.rawTitleText = 'Title with \\(x^2\\)';
+      odeTitleMenu.typesetTitle();
+
+      expect(mockTypesetPromise).toHaveBeenCalledWith([mockTitleElement]);
+
+      delete globalThis.MathJax;
+    });
+
+    it('should not call MathJax when title has no LaTeX', () => {
+      const mockTypesetPromise = vi.fn().mockResolvedValue();
+      globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+
+      odeTitleMenu.rawTitleText = 'Normal title without math';
+      odeTitleMenu.typesetTitle();
+
+      expect(mockTypesetPromise).not.toHaveBeenCalled();
+
+      delete globalThis.MathJax;
+    });
+
+    it('should store rawTitleText when setting title', () => {
+      mockMetadata.get.mockReturnValue('Pruebas de LATEX \\(z^3\\)');
+      odeTitleMenu.setTitle();
+
+      expect(odeTitleMenu.rawTitleText).toBe('Pruebas de LATEX \\(z^3\\)');
+    });
+
+    it('should restore raw text when entering edit mode', () => {
+      vi.useFakeTimers();
+      odeTitleMenu.rawTitleText = 'Title \\(x^2\\)';
+      odeTitleMenu.setChangeTitle();
+
+      const clickHandler = mockTitleElement.addEventListener.mock.calls.find(call => call[0] === 'click')[1];
+      clickHandler();
+
+      expect(mockTitleElement.textContent).toBe('Title \\(x^2\\)');
+      vi.useRealTimers();
+    });
+
+    it('should update rawTitleText on input during editing', () => {
+      vi.useFakeTimers();
+      odeTitleMenu.setChangeTitle();
+
+      const clickHandler = mockTitleElement.addEventListener.mock.calls.find(call => call[0] === 'click')[1];
+      clickHandler();
+
+      const inputHandler = mockTitleElement.addEventListener.mock.calls.find(call => call[0] === 'input')[1];
+      mockTitleElement.textContent = 'New \\(y^3\\) Title';
+      inputHandler();
+
+      expect(odeTitleMenu.rawTitleText).toBe('New \\(y^3\\) Title');
+      vi.useRealTimers();
+    });
+  });
 });

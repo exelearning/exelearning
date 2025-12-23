@@ -462,11 +462,14 @@ export default class ModalFilemanager extends Modal {
         row.dataset.assetId = asset.id;
         row.dataset.filename = asset.filename || '';
 
-        // Get or create blob URL
-        let blobUrl = this.assetManager.blobURLCache.get(asset.id);
+        // Get or create blob URL (using synced method to ensure reverseBlobCache consistency)
+        let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
         if (!blobUrl && asset.blob) {
             blobUrl = URL.createObjectURL(asset.blob);
             this.assetManager.blobURLCache.set(asset.id, blobUrl);
+            this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+        } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+            // Ensure reverseBlobCache is synced for existing blob URLs
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
@@ -620,11 +623,14 @@ export default class ModalFilemanager extends Modal {
         item.dataset.assetId = asset.id;
         item.dataset.filename = asset.filename || '';
 
-        // Get or create blob URL
-        let blobUrl = this.assetManager.blobURLCache.get(asset.id);
+        // Get or create blob URL (using synced method to ensure reverseBlobCache consistency)
+        let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
         if (!blobUrl && asset.blob) {
             blobUrl = URL.createObjectURL(asset.blob);
             this.assetManager.blobURLCache.set(asset.id, blobUrl);
+            this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+        } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+            // Ensure reverseBlobCache is synced for existing blob URLs
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
@@ -702,11 +708,14 @@ export default class ModalFilemanager extends Modal {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
 
-        // Get blob URL
-        let blobUrl = this.assetManager.blobURLCache.get(asset.id);
+        // Get blob URL (using synced method to ensure reverseBlobCache consistency)
+        let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
         if (!blobUrl && asset.blob) {
             blobUrl = URL.createObjectURL(asset.blob);
             this.assetManager.blobURLCache.set(asset.id, blobUrl);
+            this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+        } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+            // Ensure reverseBlobCache is synced for existing blob URLs
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
@@ -845,11 +854,14 @@ export default class ModalFilemanager extends Modal {
 
         // If callback provided, use it
         if (this.onSelectCallback) {
-            // Get blob URL for immediate display
-            let blobUrl = this.assetManager.blobURLCache.get(this.selectedAsset.id);
+            // Get blob URL for immediate display (using synced method to ensure reverseBlobCache consistency)
+            let blobUrl = this.assetManager.getBlobURLSynced?.(this.selectedAsset.id) ?? this.assetManager.blobURLCache.get(this.selectedAsset.id);
             if (!blobUrl && this.selectedAsset.blob) {
                 blobUrl = URL.createObjectURL(this.selectedAsset.blob);
                 this.assetManager.blobURLCache.set(this.selectedAsset.id, blobUrl);
+                this.assetManager.reverseBlobCache.set(blobUrl, this.selectedAsset.id);
+            } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+                // CRITICAL: Ensure reverseBlobCache is synced - this is required for convertBlobUrlsToAssetUrls
                 this.assetManager.reverseBlobCache.set(blobUrl, this.selectedAsset.id);
             }
 
@@ -865,10 +877,14 @@ export default class ModalFilemanager extends Modal {
         // Default: try to insert into active TinyMCE editor
         const editor = window.tinymce?.activeEditor;
         if (editor) {
-            let blobUrl = this.assetManager.blobURLCache.get(this.selectedAsset.id);
+            // Get blob URL (using synced method to ensure reverseBlobCache consistency)
+            let blobUrl = this.assetManager.getBlobURLSynced?.(this.selectedAsset.id) ?? this.assetManager.blobURLCache.get(this.selectedAsset.id);
             if (!blobUrl && this.selectedAsset.blob) {
                 blobUrl = URL.createObjectURL(this.selectedAsset.blob);
                 this.assetManager.blobURLCache.set(this.selectedAsset.id, blobUrl);
+                this.assetManager.reverseBlobCache.set(blobUrl, this.selectedAsset.id);
+            } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+                // CRITICAL: Ensure reverseBlobCache is synced - this is required for convertBlobUrlsToAssetUrls
                 this.assetManager.reverseBlobCache.set(blobUrl, this.selectedAsset.id);
             }
 
