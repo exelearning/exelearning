@@ -102,7 +102,9 @@ async function selectImageForMagnifier(page: Page, fixturePath: string): Promise
 
     // If button not found by specific selector, try generic button in the magnifier form
     if ((await pickFileBtn.count()) === 0) {
-        const genericBtn = page.locator('#magnifierIdeviceForm .exe-pick-any-file, #magnifierIdeviceForm input[type="button"][value*="Select"]');
+        const genericBtn = page.locator(
+            '#magnifierIdeviceForm .exe-pick-any-file, #magnifierIdeviceForm input[type="button"][value*="Select"]',
+        );
         await expect(genericBtn.first()).toBeVisible({ timeout: 10000 });
         await genericBtn.first().click();
     } else {
@@ -378,7 +380,9 @@ test.describe('Magnifier iDevice', () => {
             // Verify the magnifier is set up with proper data attributes
             // The image should have data-magnifysrc and data-zoom attributes for the magnifier effect
             const hasDataAttributes = await magnifierImg.evaluate((el: HTMLImageElement) => {
-                return el.hasAttribute('data-magnifysrc') || el.hasAttribute('data-zoom') || el.id.includes('magnifier');
+                return (
+                    el.hasAttribute('data-magnifysrc') || el.hasAttribute('data-zoom') || el.id.includes('magnifier')
+                );
             });
 
             expect(hasDataAttributes).toBe(true);

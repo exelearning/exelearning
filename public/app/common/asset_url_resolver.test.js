@@ -225,6 +225,26 @@ describe('AssetUrlResolver', () => {
         const result = await resolver.resolve('');
         expect(result).toBe('');
       });
+
+      it('populates cache so getAttribute can return blob URL for asset:// href (SimpleLightbox support)', async () => {
+        // This test verifies the behavior for SimpleLightbox and similar libraries
+        // When they read the href of an anchor, they should get the resolved blob:// URL
+        const assetUrl = 'asset://cached-uuid-test/lightbox-image.jpg';
+        const blobUrl = 'blob:http://localhost/cached-blob-test';
+        mockAssetManager.resolveAssetURL.mockResolvedValue(blobUrl);
+
+        // Resolve the URL to populate the cache
+        const resolved = await resolver.resolve(assetUrl);
+        expect(resolved).toBe(blobUrl);
+
+        // Now create an anchor with the asset:// href
+        const a = document.createElement('a');
+        a.setAttribute('href', assetUrl);
+
+        // When reading the href, should get the cached blob URL
+        const result = a.getAttribute('href');
+        expect(result).toBe(blobUrl);
+      });
     });
 
     describe('clearCache', () => {
@@ -584,5 +604,131 @@ describe('AssetUrlResolver', () => {
         expect(mockAssetManager.resolveAssetURL).toHaveBeenCalled();
       });
     });
+  });
+
+  describe('getAttribute interception', () => {
+    it('returns asset URL when data-asset-url exists and src is blob URL', () => {
+      const img = document.createElement('img');
+      img.setAttribute('data-asset-url', 'asset://uuid-123/image.png');
+      // Simulate the blob URL being set on the src
+      Object.defineProperty(img, 'src', {
+        value: 'blob:http://localhost/test',
+        writable: true,
+        configurable: true
+      });
+      // Also set it as attribute for getAttribute to return
+      img.setAttribute('src', 'blob:http://localhost/test');
+
+      const result = img.getAttribute('src');
+      expect(result).toBe('asset://uuid-123/image.png');
+    });
+
+    it('returns original src when no data-asset-url exists', () => {
+      const img = document.createElement('img');
+      img.setAttribute('src', 'blob:http://localhost/test');
+
+      const result = img.getAttribute('src');
+      expect(result).toBe('blob:http://localhost/test');
+    });
+
+    it('returns original src when src is not blob URL', () => {
+      const img = document.createElement('img');
+      img.setAttribute('data-asset-url', 'asset://uuid-123/image.png');
+      img.setAttribute('src', 'https://example.com/image.png');
+
+      const result = img.getAttribute('src');
+      expect(result).toBe('https://example.com/image.png');
+    });
+
+    it('returns asset URL for origin attribute using data-asset-origin', () => {
+      const img = document.createElement('img');
+      // origin attribute uses its own data-asset-origin storage
+      img.setAttribute('data-asset-origin', 'asset://uuid-456/large.jpg');
+      img.setAttribute('origin', 'blob:http://localhost/origin');
+
+      const result = img.getAttribute('origin');
+      expect(result).toBe('asset://uuid-456/large.jpg');
+    });
+
+    it('does not mix data-asset-url with origin attribute', () => {
+      const img = document.createElement('img');
+      // Only data-asset-url is set, not data-asset-origin
+      img.setAttribute('data-asset-url', 'asset://uuid-thumb/thumb.jpg');
+      img.setAttribute('origin', 'blob:http://localhost/fullsize');
+
+      // origin should NOT use data-asset-url, it should return the blob URL
+      const result = img.getAttribute('origin');
+      expect(result).toBe('blob:http://localhost/fullsize');
+    });
+
+    it('returns origin asset URL only when origin is blob URL', () => {
+      const img = document.createElement('img');
+      img.setAttribute('data-asset-origin', 'asset://uuid-456/large.jpg');
+      // Non-blob URL should be returned as-is
+      img.setAttribute('origin', 'https://example.com/fullsize.jpg');
+
+      const result = img.getAttribute('origin');
+      expect(result).toBe('https://example.com/fullsize.jpg');
+    });
+
+    it('handles both src and origin independently', () => {
+      const img = document.createElement('img');
+      img.setAttribute('data-asset-url', 'asset://uuid-thumb/thumb.jpg');
+      img.setAttribute('data-asset-origin', 'asset://uuid-full/fullsize.jpg');
+      img.setAttribute('src', 'blob:http://localhost/thumb-blob');
+      img.setAttribute('origin', 'blob:http://localhost/full-blob');
+
+      expect(img.getAttribute('src')).toBe('asset://uuid-thumb/thumb.jpg');
+      expect(img.getAttribute('origin')).toBe('asset://uuid-full/fullsize.jpg');
+    });
+
+    it('does not affect non-media elements', () => {
+      const div = document.createElement('div');
+      div.setAttribute('data-asset-url', 'asset://uuid/file');
+      div.setAttribute('src', 'blob:http://localhost/test');
+
+      const result = div.getAttribute('src');
+      expect(result).toBe('blob:http://localhost/test');
+    });
+
+    it('does not affect other attributes', () => {
+      const img = document.createElement('img');
+      img.setAttribute('data-asset-url', 'asset://uuid/file');
+      img.setAttribute('alt', 'test image');
+
+      const result = img.getAttribute('alt');
+      expect(result).toBe('test image');
+    });
+
+    it('returns asset URL for anchor href when blob URL', () => {
+      const a = document.createElement('a');
+      a.setAttribute('data-asset-url', 'asset://uuid-789/image.jpg');
+      a.setAttribute('href', 'blob:http://localhost/anchor-test');
+
+      const result = a.getAttribute('href');
+      expect(result).toBe('asset://uuid-789/image.jpg');
+    });
+
+    it('returns original href for anchor when not blob URL', () => {
+      const a = document.createElement('a');
+      a.setAttribute('data-asset-url', 'asset://uuid/image.jpg');
+      a.setAttribute('href', 'https://example.com/image.jpg');
+
+      const result = a.getAttribute('href');
+      expect(result).toBe('https://example.com/image.jpg');
+    });
+
+    it('returns original href for anchor when no data-asset-url', () => {
+      const a = document.createElement('a');
+      a.setAttribute('href', 'blob:http://localhost/test');
+
+      const result = a.getAttribute('href');
+      expect(result).toBe('blob:http://localhost/test');
+    });
+
+    // Note: Testing the cache behavior for asset:// -> blob:// resolution requires
+    // the resolver to be loaded with a mocked AssetManager. This is tested in the
+    // 'when jQuery is available' describe block's resolve tests. The getAttribute
+    // interception for cached URLs is verified through the combined test flow.
   });
 });

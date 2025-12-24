@@ -240,20 +240,20 @@
                 if (node.nodeType !== Node.ELEMENT_NODE) return;
 
                 // Find all media elements with asset:// src (including the node itself)
-                const selector = 'img[src^="asset://"], video[src^="asset://"], audio[src^="asset://"], source[src^="asset://"]';
+                const mediaSelector = 'img[src^="asset://"], video[src^="asset://"], audio[src^="asset://"], source[src^="asset://"]';
                 const mediaElements = [];
 
                 // Check if the node itself matches
-                if (node.matches && node.matches(selector)) {
+                if (node.matches && node.matches(mediaSelector)) {
                     mediaElements.push(node);
                 }
 
                 // Check descendants
                 if (node.querySelectorAll) {
-                    mediaElements.push(...node.querySelectorAll(selector));
+                    mediaElements.push(...node.querySelectorAll(mediaSelector));
                 }
 
-                // Resolve each asset:// URL
+                // Resolve each asset:// URL for media elements
                 mediaElements.forEach((el) => {
                     const assetUrl = el.getAttribute('src');
                     if (!assetUrl) return;
@@ -272,6 +272,66 @@
                         }
                     });
                 });
+
+                // Also handle images with asset:// in the 'origin' attribute (used by image-gallery)
+                const originSelector = 'img[origin^="asset://"]';
+                const originElements = [];
+
+                if (node.matches && node.matches(originSelector)) {
+                    originElements.push(node);
+                }
+
+                if (node.querySelectorAll) {
+                    originElements.push(...node.querySelectorAll(originSelector));
+                }
+
+                // Resolve each asset:// URL for origin attributes
+                originElements.forEach((el) => {
+                    const assetUrl = el.getAttribute('origin');
+                    if (!assetUrl || !isAssetUrl(assetUrl)) return;
+
+                    // Store the original asset URL in a separate data attribute
+                    el.setAttribute('data-asset-origin', assetUrl);
+
+                    // Resolve asynchronously and set the real origin
+                    resolveAssetUrl(assetUrl).then(resolved => {
+                        if (resolved) {
+                            el.setAttribute('origin', resolved);
+                        }
+                    });
+                });
+
+                // Also handle anchor elements with asset:// hrefs (for lightbox, etc.)
+                const anchorSelector = 'a[href^="asset://"]';
+                const anchorElements = [];
+
+                if (node.matches && node.matches(anchorSelector)) {
+                    anchorElements.push(node);
+                }
+
+                if (node.querySelectorAll) {
+                    anchorElements.push(...node.querySelectorAll(anchorSelector));
+                }
+
+                // Resolve each asset:// URL for anchor elements
+                anchorElements.forEach((el) => {
+                    const assetUrl = el.getAttribute('href');
+                    if (!assetUrl) return;
+
+                    // Store the original asset URL as data attribute for reference
+                    el.setAttribute('data-asset-url', assetUrl);
+
+                    // Don't set a placeholder - keep the asset:// URL in href
+                    // SimpleLightbox and other libraries need a valid href when they initialize
+                    // The resolved blob:// URL will be set once available
+
+                    // Resolve asynchronously and set the real href
+                    resolveAssetUrl(assetUrl).then(resolved => {
+                        if (resolved) {
+                            el.setAttribute('href', resolved);
+                        }
+                    });
+                });
             });
         });
     });
@@ -284,6 +344,55 @@
             observer.observe(document.body, { childList: true, subtree: true });
         });
     }
+
+    /**
+     * Intercept Element.getAttribute('src'/'href'/'origin') to return asset:// URL for persistence.
+     * When we resolve asset:// to blob://, we store the original in data-asset-url/data-asset-origin.
+     * This interception ensures that code reading these attributes for saving gets the
+     * persistent asset:// URL, not the ephemeral blob:// URL.
+     */
+    const originalGetAttribute = Element.prototype.getAttribute;
+    Element.prototype.getAttribute = function(name) {
+        const value = originalGetAttribute.call(this, name);
+
+        // For media elements reading 'src', check if we have a stored asset URL
+        if (name === 'src' &&
+            (this.tagName === 'IMG' || this.tagName === 'VIDEO' ||
+             this.tagName === 'AUDIO' || this.tagName === 'SOURCE')) {
+            // If value is a blob:// URL and we have the original asset:// URL stored
+            const assetUrl = originalGetAttribute.call(this, 'data-asset-url');
+            if (assetUrl && value && value.startsWith('blob:')) {
+                return assetUrl;
+            }
+        }
+
+        // For media elements reading 'origin' (used by image-gallery for full-size image)
+        if (name === 'origin' &&
+            (this.tagName === 'IMG' || this.tagName === 'VIDEO' ||
+             this.tagName === 'AUDIO' || this.tagName === 'SOURCE')) {
+            // If value is a blob:// URL and we have the original asset:// URL stored
+            const assetOrigin = originalGetAttribute.call(this, 'data-asset-origin');
+            if (assetOrigin && value && value.startsWith('blob:')) {
+                return assetOrigin;
+            }
+        }
+
+        // For anchor elements reading 'href'
+        if (name === 'href' && this.tagName === 'A') {
+            // If href is still asset://, try to return the resolved blob:// from cache
+            // This helps SimpleLightbox and similar libraries get the real URL
+            if (value && value.startsWith('asset://') && resolvedCache.has(value)) {
+                return resolvedCache.get(value);
+            }
+            // For persistence: return the original asset:// URL if we have one stored
+            const assetUrl = originalGetAttribute.call(this, 'data-asset-url');
+            if (assetUrl && value && value.startsWith('blob:')) {
+                return assetUrl;
+            }
+        }
+
+        return value;
+    };
 
     // Expose the observer for testing
     window.eXeLearningAssetResolver = {

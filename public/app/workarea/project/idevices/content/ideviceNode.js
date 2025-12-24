@@ -2404,10 +2404,37 @@ export default class IdeviceNode {
     }
 
     /**
+     * Convert base64 data URL to File object
+     * @param {string} base64 - Data URL (e.g., data:image/jpeg;base64,...)
+     * @param {string} filename - Filename
+     * @returns {File} File object
+     */
+    base64ToFile(base64, filename) {
+        // Extract MIME type and base64 data
+        const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+        if (!match) {
+            throw new Error('Invalid base64 data URL');
+        }
+        const mimeType = match[1];
+        const base64Data = match[2];
+
+        // Decode base64 to binary
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create File object
+        return new File([bytes], filename, { type: mimeType });
+    }
+
+    /**
+     * Upload file and also create asset for client-side display
      *
-     * @param {File} file
+     * @param {string} file - Base64 data URL
      * @param {String} filename
-     * @returns {Boolean}
+     * @returns {Object} Response with asset:// URLs
      */
     async apiUploadFile(file, filename) {
         let params = {
@@ -2417,6 +2444,37 @@ export default class IdeviceNode {
             createThumbnail: true,
         };
         let response = await eXeLearning.app.api.postUploadFileResource(params);
+
+        // Also create asset for client-side display (preview, blob URLs)
+        const assetManager = eXeLearning.app?.project?._yjsBridge?.assetManager;
+        if (assetManager && response?.savedPath) {
+            try {
+                // Convert base64 to File object
+                const fileObj = this.base64ToFile(file, filename);
+
+                // Create asset using AssetManager
+                const assetUrl = await assetManager.insertImage(fileObj);
+
+                // Parse the asset URL: asset://uuid/filename
+                const assetMatch = assetUrl.match(/^asset:\/\/([^/]+)\/(.+)$/);
+                if (assetMatch) {
+                    const assetId = assetMatch[1];
+                    const assetFilename = assetMatch[2];
+
+                    // Update response to use asset:// URLs
+                    // savedPath + savedFilename will become asset://uuid/filename
+                    response.savedPath = `asset://${assetId}`;
+                    response.savedFilename = assetFilename;
+                    // Use same asset for thumbnail (full image works as thumbnail)
+                    response.savedThumbnailName = assetFilename;
+
+                    Logger.log(`[IdeviceNode] Created asset for upload: ${assetUrl}`);
+                }
+            } catch (e) {
+                Logger.warn('[IdeviceNode] Failed to create asset from upload:', e);
+                // Fallback to server paths if asset creation fails
+            }
+        }
 
         return response;
     }

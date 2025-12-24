@@ -144,6 +144,8 @@ var $imagegallery = {
                 'licenselink',
             ],
             captionPosition: 'outside',
+            // Disable file extension check to support blob:// URLs in editor
+            fileExt: false,
         });
     },
 
