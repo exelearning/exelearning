@@ -611,4 +611,112 @@ describe('YjsPropertiesBinding', () => {
       expect(updateSpy).toHaveBeenCalled();
     });
   });
+
+  describe('pp_addMathJax property', () => {
+    it('stores addMathJax property in Yjs metadata', () => {
+      binding.setValue('pp_addMathJax', 'true');
+      expect(binding.metadata.get('addMathJax')).toBe('true');
+    });
+
+    it('reads addMathJax from metadata', () => {
+      binding.metadata.set('addMathJax', 'true');
+      expect(binding.getValue('pp_addMathJax')).toBe('true');
+    });
+
+    it('binds pp_addMathJax checkbox input', () => {
+      const checkbox = document.createElement('input');
+      checkbox.className = 'property-value';
+      checkbox.setAttribute('property', 'pp_addMathJax');
+      checkbox.type = 'checkbox';
+      checkbox.setAttribute('data-type', 'checkbox');
+      mockFormElement.appendChild(checkbox);
+
+      binding.bindForm(mockFormElement);
+
+      expect(binding.boundInputs.has(checkbox)).toBe(true);
+    });
+
+    it('initializes checkbox state from Yjs metadata (true)', () => {
+      binding.metadata.set('addMathJax', 'true');
+
+      const checkbox = document.createElement('input');
+      checkbox.className = 'property-value';
+      checkbox.setAttribute('property', 'pp_addMathJax');
+      checkbox.type = 'checkbox';
+      checkbox.setAttribute('data-type', 'checkbox');
+      mockFormElement.appendChild(checkbox);
+
+      binding.bindForm(mockFormElement);
+
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it('initializes checkbox state from Yjs metadata (false)', () => {
+      binding.metadata.set('addMathJax', 'false');
+
+      const checkbox = document.createElement('input');
+      checkbox.className = 'property-value';
+      checkbox.setAttribute('property', 'pp_addMathJax');
+      checkbox.type = 'checkbox';
+      checkbox.setAttribute('data-type', 'checkbox');
+      mockFormElement.appendChild(checkbox);
+
+      binding.bindForm(mockFormElement);
+
+      expect(checkbox.checked).toBe(false);
+    });
+
+    it('updates Yjs when checkbox is checked via updateYjsFromInput', () => {
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = true;
+
+      binding.updateYjsFromInput(checkbox, 'addMathJax', 'checkbox');
+
+      expect(binding.metadata.get('addMathJax')).toBe('true');
+    });
+
+    it('updates Yjs when checkbox is unchecked via updateYjsFromInput', () => {
+      binding.metadata.set('addMathJax', 'true');
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = false;
+
+      binding.updateYjsFromInput(checkbox, 'addMathJax', 'checkbox');
+
+      expect(binding.metadata.get('addMathJax')).toBe('false');
+    });
+
+    it('handles boolean true value from metadata', () => {
+      binding.metadata.set('addMathJax', true);
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+
+      binding.updateInputFromYjs(checkbox, 'addMathJax', 'checkbox');
+
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it('handles boolean false value from metadata', () => {
+      binding.metadata.set('addMathJax', false);
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = true;  // Start as checked
+
+      binding.updateInputFromYjs(checkbox, 'addMathJax', 'checkbox');
+
+      expect(checkbox.checked).toBe(false);
+    });
+
+    it('maps pp_addMathJax to addMathJax metadata key', () => {
+      expect(binding.mapPropertyToMetadataKey('pp_addMathJax')).toBe('addMathJax');
+    });
+
+    it('maps addMathJax to pp_addMathJax property', () => {
+      expect(binding.mapMetadataKeyToProperty('addMathJax')).toBe('pp_addMathJax');
+    });
+  });
 });

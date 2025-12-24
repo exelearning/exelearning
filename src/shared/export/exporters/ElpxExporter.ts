@@ -234,12 +234,15 @@ export class ElpxExporter extends Html5Exporter {
 
             // 1.7 Detect and fetch additional required libraries based on content
             const allHtmlContent = this.collectAllHtmlContent(pages);
-            const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
-                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-            });
+            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
+                allHtmlContent,
+                {
+                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                },
+            );
 
             try {
-                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles);
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
                 for (const [libPath, content] of libFiles) {
                     // Only add if not already added by base libraries
                     const zipPath = `libs/${libPath}`;
@@ -408,6 +411,7 @@ export class ElpxExporter extends Html5Exporter {
             pp_keywords: meta.keywords,
             pp_category: meta.category,
             pp_addAccessibilityToolbar: meta.addAccessibilityToolbar,
+            pp_addMathJax: meta.addMathJax,
             pp_customStyles: meta.customStyles,
             pp_exelearning_version: meta.exelearningVersion,
         };

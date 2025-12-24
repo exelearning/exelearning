@@ -582,4 +582,118 @@ describe('Html5Exporter', () => {
             expect(zip.files.has('content/resources/content/resources/abc/file.pdf')).toBe(false);
         });
     });
+
+    describe('addMathJax export option', () => {
+        it('should skip preRenderLatex when addMathJax=true', async () => {
+            // Create document with addMathJax enabled
+            document = new MockDocument({ addMathJax: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let preRenderWasCalled = false;
+
+            await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    preRenderWasCalled = true;
+                    return {
+                        html,
+                        hasLatex: true,
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            // preRenderLatex should NOT be called when addMathJax is true
+            expect(preRenderWasCalled).toBe(false);
+        });
+
+        it('should call preRenderLatex when addMathJax=false', async () => {
+            // Create document with addMathJax disabled
+            document = new MockDocument({ addMathJax: false }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let preRenderWasCalled = false;
+
+            await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    preRenderWasCalled = true;
+                    return {
+                        html,
+                        hasLatex: true,
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            // preRenderLatex SHOULD be called when addMathJax is false
+            expect(preRenderWasCalled).toBe(true);
+        });
+
+        it('should also skip preRenderDataGameLatex when addMathJax=true', async () => {
+            document = new MockDocument({ addMathJax: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let dataGamePreRenderCalled = false;
+
+            await exporter.export({
+                preRenderDataGameLatex: async (html: string) => {
+                    dataGamePreRenderCalled = true;
+                    return { html, count: 0 };
+                },
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: false,
+                    latexRendered: false,
+                    count: 0,
+                }),
+            });
+
+            // preRenderDataGameLatex should NOT be called when addMathJax is true
+            expect(dataGamePreRenderCalled).toBe(false);
+        });
+
+        it('should call preRenderDataGameLatex when addMathJax=false', async () => {
+            document = new MockDocument({ addMathJax: false }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let dataGamePreRenderCalled = false;
+
+            await exporter.export({
+                preRenderDataGameLatex: async (html: string) => {
+                    dataGamePreRenderCalled = true;
+                    return { html, count: 0 };
+                },
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: false,
+                    latexRendered: false,
+                    count: 0,
+                }),
+            });
+
+            // preRenderDataGameLatex SHOULD be called when addMathJax is false
+            expect(dataGamePreRenderCalled).toBe(true);
+        });
+
+        it('should not include pre-rendered LaTeX CSS when addMathJax=true', async () => {
+            document = new MockDocument({ addMathJax: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 5,
+                }),
+            });
+
+            // Since preRenderLatex was skipped, CSS should NOT include LaTeX styles
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            expect(cssContent).not.toContain('.exe-math-rendered');
+        });
+    });
 });

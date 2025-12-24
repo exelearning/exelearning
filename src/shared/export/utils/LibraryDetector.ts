@@ -28,10 +28,13 @@ export class LibraryDetector {
     private detectedLibraries: Set<string>;
     // Track unique file paths
     private filesToInclude: Set<string>;
+    // Track detected patterns (for directory-based libraries)
+    private detectedPatterns: LibraryPattern[];
 
     constructor() {
         this.detectedLibraries = new Set();
         this.filesToInclude = new Set();
+        this.detectedPatterns = [];
     }
 
     /**
@@ -43,6 +46,7 @@ export class LibraryDetector {
     detectLibraries(html: string, options: LibraryDetectionOptions = {}): LibraryDetectionResult {
         this.detectedLibraries.clear();
         this.filesToInclude.clear();
+        this.detectedPatterns = [];
 
         if (!html || typeof html !== 'string') {
             return this._buildResult();
@@ -71,6 +75,14 @@ export class LibraryDetector {
             const atoolsLib = LIBRARY_PATTERNS.find(l => l.name === 'exe_atools');
             if (atoolsLib) {
                 this._addLibrary(atoolsLib);
+            }
+        }
+
+        // Add MathJax if explicitly requested (regardless of content detection)
+        if (options.includeMathJax) {
+            const mathLib = LIBRARY_PATTERNS.find(l => l.name === 'exe_math');
+            if (mathLib) {
+                this._addLibrary(mathLib);
             }
         }
 
@@ -149,6 +161,7 @@ export class LibraryDetector {
         if (this.detectedLibraries.has(lib.name)) return;
 
         this.detectedLibraries.add(lib.name);
+        this.detectedPatterns.push(lib);
 
         // Add all files for this library
         for (const file of lib.files) {
@@ -177,6 +190,7 @@ export class LibraryDetector {
             libraries,
             files: Array.from(this.filesToInclude),
             count: libraries.length,
+            patterns: this.detectedPatterns,
         };
     }
 
@@ -203,6 +217,19 @@ export class LibraryDetector {
      * @returns Array of file paths
      */
     getAllRequiredFiles(html: string, options: LibraryDetectionOptions = {}): string[] {
+        return this.getAllRequiredFilesWithPatterns(html, options).files;
+    }
+
+    /**
+     * Get all files needed for export with pattern information
+     * @param html - HTML content to scan
+     * @param options - Options
+     * @returns Object with files and patterns for directory-based libraries
+     */
+    getAllRequiredFilesWithPatterns(
+        html: string,
+        options: LibraryDetectionOptions = {},
+    ): { files: string[]; patterns: LibraryPattern[] } {
         const detected = this.detectLibraries(html, options);
         const files = new Set(this.getBaseLibraries());
 
@@ -218,7 +245,10 @@ export class LibraryDetector {
             }
         }
 
-        return Array.from(files);
+        return {
+            files: Array.from(files),
+            patterns: detected.patterns,
+        };
     }
 
     /**

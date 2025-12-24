@@ -70,36 +70,44 @@ export class Html5Exporter extends BaseExporter {
                 const page = pages[i];
                 let html = this.generatePageHtml(page, pages, meta, i === 0, i);
 
-                // Pre-render LaTeX in encrypted DataGame divs FIRST
-                // (game iDevices store questions in encrypted JSON)
-                if (options?.preRenderDataGameLatex) {
-                    try {
-                        const result = await options.preRenderDataGameLatex(html);
-                        if (result.count > 0) {
-                            html = result.html;
-                            latexWasRendered = true;
-                            console.log(
-                                `[Html5Exporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
+                // Pre-render LaTeX ONLY if addMathJax is false
+                // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
+                if (!meta.addMathJax) {
+                    // Pre-render LaTeX in encrypted DataGame divs FIRST
+                    // (game iDevices store questions in encrypted JSON)
+                    if (options?.preRenderDataGameLatex) {
+                        try {
+                            const result = await options.preRenderDataGameLatex(html);
+                            if (result.count > 0) {
+                                html = result.html;
+                                latexWasRendered = true;
+                                console.log(
+                                    `[Html5Exporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
+                                );
+                            }
+                        } catch (error) {
+                            console.warn(
+                                '[Html5Exporter] DataGame LaTeX pre-render failed for page:',
+                                page.title,
+                                error,
                             );
                         }
-                    } catch (error) {
-                        console.warn('[Html5Exporter] DataGame LaTeX pre-render failed for page:', page.title, error);
                     }
-                }
 
-                // Pre-render visible LaTeX to SVG+MathML if hook is provided
-                if (options?.preRenderLatex) {
-                    try {
-                        const result = await options.preRenderLatex(html);
-                        if (result.latexRendered) {
-                            html = result.html;
-                            latexWasRendered = true;
-                            console.log(
-                                `[Html5Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
-                            );
+                    // Pre-render visible LaTeX to SVG+MathML if hook is provided
+                    if (options?.preRenderLatex) {
+                        try {
+                            const result = await options.preRenderLatex(html);
+                            if (result.latexRendered) {
+                                html = result.html;
+                                latexWasRendered = true;
+                                console.log(
+                                    `[Html5Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
+                                );
+                            }
+                        } catch (error) {
+                            console.warn('[Html5Exporter] LaTeX pre-render failed for page:', page.title, error);
                         }
-                    } catch (error) {
-                        console.warn('[Html5Exporter] LaTeX pre-render failed for page:', page.title, error);
                     }
                 }
 
@@ -184,19 +192,23 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 8. Detect and fetch additional required libraries based on content
-            // Skip MathJax if LaTeX was pre-rendered to SVG+MathML
+            // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
             const allHtmlContent = this.collectAllHtmlContent(pages);
-            const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
-                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                skipMathJax: latexWasRendered,
-            });
+            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
+                allHtmlContent,
+                {
+                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                    includeMathJax: meta.addMathJax === true,
+                    skipMathJax: latexWasRendered && !meta.addMathJax, // Don't skip if explicitly requested
+                },
+            );
 
             if (latexWasRendered) {
                 console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
             }
 
             try {
-                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles);
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
                 for (const [libPath, content] of libFiles) {
                     // Only add if not already added by base libraries
                     const zipPath = `libs/${libPath}`;

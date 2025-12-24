@@ -57,6 +57,7 @@ class YjsPropertiesBinding {
       'pp_addPagination': 'addPagination',
       'pp_addSearchBox': 'addSearchBox',
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
+      'pp_addMathJax': 'addMathJax',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',

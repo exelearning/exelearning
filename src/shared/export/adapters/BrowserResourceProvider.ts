@@ -14,7 +14,7 @@
  * ```
  */
 
-import type { ResourceProvider } from '../interfaces';
+import type { ResourceProvider, LibraryPattern } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants } from '../constants';
 
 /**
@@ -100,11 +100,53 @@ export class BrowserResourceProvider implements ResourceProvider {
     /**
      * Fetch specific library files by path
      * @param files - Array of file paths
+     * @param patterns - Optional library patterns to identify directory-based libraries
      * @returns Map of path -> content
      */
-    async fetchLibraryFiles(files: string[]): Promise<Map<string, Uint8Array>> {
-        const blobMap = await this.fetcher.fetchLibraryFiles(files);
-        return this.convertBlobMapToUint8ArrayMap(blobMap);
+    async fetchLibraryFiles(files: string[], patterns?: LibraryPattern[]): Promise<Map<string, Uint8Array>> {
+        // Build lookup for directory patterns
+        const directoryPatterns = new Set<string>();
+        if (patterns) {
+            for (const lib of patterns) {
+                if (lib.isDirectory) {
+                    for (const file of lib.files) {
+                        directoryPatterns.add(file);
+                    }
+                }
+            }
+        }
+
+        // Separate directory patterns from regular files
+        const regularFiles: string[] = [];
+        const directoryFiles: string[] = [];
+        for (const file of files) {
+            if (directoryPatterns.has(file)) {
+                directoryFiles.push(file);
+            } else {
+                regularFiles.push(file);
+            }
+        }
+
+        // Fetch regular files
+        const result = new Map<string, Uint8Array>();
+        if (regularFiles.length > 0) {
+            const blobMap = await this.fetcher.fetchLibraryFiles(regularFiles);
+            const converted = await this.convertBlobMapToUint8ArrayMap(blobMap);
+            for (const [path, content] of converted) {
+                result.set(path, content);
+            }
+        }
+
+        // Fetch directory patterns using fetchLibraryDirectory
+        for (const dir of directoryFiles) {
+            const blobMap = await this.fetcher.fetchLibraryDirectory(dir);
+            const converted = await this.convertBlobMapToUint8ArrayMap(blobMap);
+            for (const [path, content] of converted) {
+                result.set(path, content);
+            }
+        }
+
+        return result;
     }
 
     /**

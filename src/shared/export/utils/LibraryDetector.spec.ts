@@ -101,7 +101,9 @@ describe('LibraryDetector', () => {
 
             expect(result.count).toBe(1);
             expect(result.libraries[0].name).toBe('exe_math');
-            expect(result.files).toContain('exe_math/tex-mml-svg.js');
+            // exe_math is a directory pattern (includes all MathJax files)
+            expect(result.files).toContain('exe_math');
+            expect(result.patterns.find(p => p.name === 'exe_math')?.isDirectory).toBe(true);
         });
 
         it('should detect exe_math with display math', () => {
@@ -402,6 +404,115 @@ describe('LibraryDetector', () => {
 
             const mathGames = result.libraries.find(l => l.name === 'exe_math_datagame');
             expect(mathGames).toBeUndefined();
+        });
+    });
+
+    describe('includeMathJax option', () => {
+        it('should include exe_math when includeMathJax=true even without LaTeX content', () => {
+            const html = '<p>No math content here at all</p>';
+            const result = detector.detectLibraries(html, { includeMathJax: true });
+
+            expect(result.libraries.some(l => l.name === 'exe_math')).toBe(true);
+        });
+
+        it('should include exe_math files when includeMathJax=true', () => {
+            const html = '<p>Regular text without any formulas</p>';
+            const result = detector.detectLibraries(html, { includeMathJax: true });
+
+            // exe_math uses directory pattern
+            expect(result.files.some(f => f.includes('exe_math'))).toBe(true);
+        });
+
+        it('should include patterns with isDirectory=true when includeMathJax=true', () => {
+            const html = '<p>Regular text</p>';
+            const result = detector.detectLibraries(html, { includeMathJax: true });
+
+            const mathPattern = result.patterns.find(p => p.name === 'exe_math');
+            expect(mathPattern).toBeDefined();
+            expect(mathPattern?.isDirectory).toBe(true);
+        });
+
+        it('should work with getAllRequiredFilesWithPatterns when includeMathJax=true', () => {
+            const { patterns } = detector.getAllRequiredFilesWithPatterns('<p>No math</p>', {
+                includeMathJax: true,
+            });
+
+            const mathPattern = patterns.find(p => p.name === 'exe_math');
+            expect(mathPattern).toBeDefined();
+        });
+    });
+
+    describe('skipMathJax option', () => {
+        it('should skip exe_math when skipMathJax=true even with LaTeX content', () => {
+            const html = '<p>Math expression: \\(x^2 + y^2 = z^2\\)</p>';
+            const result = detector.detectLibraries(html, { skipMathJax: true });
+
+            expect(result.libraries.some(l => l.name === 'exe_math')).toBe(false);
+        });
+
+        it('should skip exe_math_datagame when skipMathJax=true', () => {
+            // Helper to create XOR-encrypted content
+            function encrypt(str: string): string {
+                const key = 146;
+                let result = '';
+                for (let i = 0; i < str.length; i++) {
+                    result += String.fromCharCode(key ^ str.charCodeAt(i));
+                }
+                return encodeURIComponent(result);
+            }
+
+            const latexContent = 'Question: \\(x^2\\) is a formula';
+            const encrypted = encrypt(latexContent);
+            const html = `<div class="DataGame">${encrypted}</div>`;
+
+            const result = detector.detectLibraries(html, { skipMathJax: true });
+
+            expect(result.libraries.some(l => l.name === 'exe_math_datagame')).toBe(false);
+        });
+
+        it('should NOT skip exe_math_mathml when skipMathJax=true (MathML needs MathJax for accessibility)', () => {
+            // MathML content still needs MathJax for accessibility features (context menu, screen reader)
+            // skipMathJax only skips LaTeX detection, not pre-rendered MathML
+            const html = '<math><mi>x</mi><mo>=</mo><mn>5</mn></math>';
+            const result = detector.detectLibraries(html, { skipMathJax: true });
+
+            // exe_math_mathml should still be detected for accessibility
+            expect(result.libraries.some(l => l.name === 'exe_math_mathml')).toBe(true);
+        });
+
+        it('should not affect other libraries when skipMathJax=true', () => {
+            const html = '<div class="exe-fx">Effects</div><p>\\(x\\)</p>';
+            const result = detector.detectLibraries(html, { skipMathJax: true });
+
+            // exe_effects should still be detected
+            expect(result.libraries.some(l => l.name === 'exe_effects')).toBe(true);
+            // exe_math should be skipped
+            expect(result.libraries.some(l => l.name === 'exe_math')).toBe(false);
+        });
+    });
+
+    describe('combined includeMathJax and skipMathJax options', () => {
+        it('should respect includeMathJax over skipMathJax when both specified', () => {
+            // includeMathJax adds the library explicitly after content detection
+            // skipMathJax only affects content detection phase
+            const html = '<p>No math</p>';
+            const result = detector.detectLibraries(html, {
+                includeMathJax: true,
+                skipMathJax: true,
+            });
+
+            // includeMathJax should still add exe_math
+            expect(result.libraries.some(l => l.name === 'exe_math')).toBe(true);
+        });
+
+        it('should include exe_math when includeMathJax=true regardless of content', () => {
+            const html = '<p>Plain text content without any mathematical expressions</p>';
+            const result = detector.detectLibraries(html, {
+                includeMathJax: true,
+                skipMathJax: false,
+            });
+
+            expect(result.libraries.some(l => l.name === 'exe_math')).toBe(true);
         });
     });
 

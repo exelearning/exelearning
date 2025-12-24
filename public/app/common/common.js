@@ -206,7 +206,18 @@ var $exe = {
                         }
                     });
                     $exe.math.loadMathJax(function () {
-                        MathJax.typesetPromise();
+                        // For SPA preview: only typeset active page (prevents replaceChild errors)
+                        var activePage = document.querySelector('.spa-page.active');
+                        if (activePage) {
+                            MathJax.typesetPromise([activePage]).catch(function(e) {
+                                console.warn('[MathJax] Typeset error:', e.message);
+                            });
+                        } else {
+                            // Not a SPA preview, typeset everything
+                            MathJax.typesetPromise().catch(function(e) {
+                                console.warn('[MathJax] Typeset error:', e.message);
+                            });
+                        }
                         $exe.math.createLinks();
                     });
                 } else {
@@ -1371,10 +1382,19 @@ var $exeDevices = {
 
                     function runV3(nodes) {
                         if (!nodes.length) return;
+                        // Filter out nodes in hidden SPA pages (prevents replaceChild errors)
+                        var visibleNodes = nodes.filter(function(n) {
+                            var spaPage = n.closest('.spa-page');
+                            // If inside a SPA page, only process if active
+                            if (spaPage) return spaPage.classList.contains('active');
+                            // If not in a SPA page, always process
+                            return true;
+                        });
+                        if (!visibleNodes.length) return;
                         var start = (MathJax.startup && MathJax.startup.promise) ? MathJax.startup.promise : Promise.resolve();
                         return start.then(function () {
-                            if (typeof MathJax.typesetClear === 'function') MathJax.typesetClear(nodes);
-                            return (MathJax.typesetPromise ? MathJax.typesetPromise(nodes) : MathJax.typeset(nodes));
+                            if (typeof MathJax.typesetClear === 'function') MathJax.typesetClear(visibleNodes);
+                            return (MathJax.typesetPromise ? MathJax.typesetPromise(visibleNodes) : MathJax.typeset(visibleNodes));
                         }).catch(function (e) { console.error('MathJax v3 typeset error:', e); });
                     }
 
