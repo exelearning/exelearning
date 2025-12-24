@@ -217,11 +217,13 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // LaTeX math expressions (MathJax)
+    // Includes entire exe_math directory for dynamic extension loading and context menu
     {
         name: 'exe_math',
         type: 'regex',
         pattern: /\\\(|\\\[/,
-        files: ['exe_math/tex-mml-svg.js'],
+        files: ['exe_math'],
+        isDirectory: true,
     },
 
     // DataGame with encrypted LaTeX (special case)
@@ -229,8 +231,19 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         name: 'exe_math_datagame',
         type: 'class',
         pattern: 'DataGame',
-        files: ['exe_math/tex-mml-svg.js'],
+        files: ['exe_math'],
+        isDirectory: true,
         requiresLatexCheck: true,
+    },
+
+    // Pre-rendered math with MathML (already converted from LaTeX to SVG+MathML)
+    // This enables MathJax accessibility features (right-click menu, screen reader support)
+    {
+        name: 'exe_math_mathml',
+        type: 'regex',
+        pattern: /<math[\s>]/i,
+        files: ['exe_math'],
+        isDirectory: true,
     },
 
     // Mermaid diagrams

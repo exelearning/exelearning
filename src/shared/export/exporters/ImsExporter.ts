@@ -78,8 +78,9 @@ export class ImsExporter extends Html5Exporter {
                 const isIndex = i === 0;
                 let html = this.generateImsPageHtml(page, pages, meta, isIndex);
 
-                // Pre-render LaTeX to SVG+MathML if hook is provided
-                if (options?.preRenderLatex) {
+                // Pre-render LaTeX ONLY if addMathJax is false
+                // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
+                if (!meta.addMathJax && options?.preRenderLatex) {
                     try {
                         const result = await options.preRenderLatex(html);
                         if (result.latexRendered) {

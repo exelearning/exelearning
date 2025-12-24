@@ -110,14 +110,17 @@ function scanDirectory(dirPath: string, basePath: string = ''): string[] {
 
 /**
  * Build file list with URLs
+ * @param dirPath - Directory to scan
+ * @param urlPrefix - URL prefix for fetching files
+ * @param pathPrefix - Optional prefix to add to file paths (e.g., library name for directory exports)
  */
-function buildFileList(dirPath: string, urlPrefix: string): ResourceFile[] {
+function buildFileList(dirPath: string, urlPrefix: string, pathPrefix?: string): ResourceFile[] {
     const files = scanDirectory(dirPath);
     const version = getAppVersion();
     const basePath = getBasePath();
 
     return files.map(filePath => ({
-        path: filePath,
+        path: pathPrefix ? `${pathPrefix}/${filePath}` : filePath,
         url: `${basePath}/${version}${urlPrefix}/${filePath}`,
     }));
 }
@@ -349,7 +352,8 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
             return { error: 'Not Found', message: `Library ${libraryName} not found` };
         }
 
-        return buildFileList(libPath, urlPrefix);
+        // Include libraryName as path prefix so files end up in libs/{libraryName}/ in exports
+        return buildFileList(libPath, urlPrefix, libraryName);
     })
 
     // GET /api/resources/schemas/:format - Get XSD schemas for a format

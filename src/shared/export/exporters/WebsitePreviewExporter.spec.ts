@@ -860,8 +860,8 @@ describe('WebsitePreviewExporter', () => {
         it('should not update shared header dynamically since page headers are in articles', async () => {
             const result = await exporter.generatePreview();
             // showPage() should NOT update pageTitleEl (header is inside each article)
-            // Instead, it just shows/hides articles which display their own pre-rendered headers
-            expect(result.html).toContain('Page header with pre-rendered LaTeX is now inside each article');
+            // Instead, it just shows/hides articles which display their own headers
+            expect(result.html).toContain('Page header is inside each article');
             expect(result.html).not.toContain('pageTitleEl.textContent = title');
         });
 
@@ -897,6 +897,189 @@ describe('WebsitePreviewExporter', () => {
             // LatexPreRenderer will convert this to SVG
             expect(result.html).toContain('class="page-header page-header-spa"');
             expect(result.html).toContain('Page with \\(x^2\\)');
+        });
+    });
+
+    describe('MathJax library inclusion', () => {
+        it('should include MathJax script when meta.addMathJax=true', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Test Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'block-1',
+                                name: 'Block 1',
+                                order: 0,
+                                components: [
+                                    {
+                                        id: 'comp-1',
+                                        type: 'text',
+                                        order: 0,
+                                        content: '<p>No math content</p>',
+                                        properties: {},
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+                { addMathJax: true },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('tex-mml-svg.js');
+        });
+
+        it('should configure MathJax for SPA with typeset:false when addMathJax=true', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Test Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [],
+                    },
+                ],
+                { addMathJax: true },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // MathJax should be configured to not auto-typeset (for SPA pages)
+            expect(result.html).toContain('typeset: false');
+        });
+
+        it('should include pageReady handler for active page only when addMathJax=true', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Test Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [],
+                    },
+                ],
+                { addMathJax: true },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // pageReady should only process active page
+            expect(result.html).toContain('pageReady');
+            expect(result.html).toContain('.spa-page.active');
+        });
+
+        it('should not include MathJax script when addMathJax=false and no LaTeX content', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Test Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'block-1',
+                                name: 'Block 1',
+                                order: 0,
+                                components: [
+                                    {
+                                        id: 'comp-1',
+                                        type: 'text',
+                                        order: 0,
+                                        content: '<p>Plain text without math</p>',
+                                        properties: {},
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+                { addMathJax: false },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // MathJax script should NOT be included
+            expect(result.html).not.toContain('tex-mml-svg.js');
+        });
+
+        it('should include MathJax when content has LaTeX even without addMathJax option', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>Math: \\(x^2 + y^2 = z^2\\)</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // MathJax should be detected from content
+            expect(result.html).toContain('tex-mml-svg.js');
+        });
+
+        it('should call MathJax.typesetPromise on SPA page navigation', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Page 1',
+                        parentId: null,
+                        order: 0,
+                        blocks: [],
+                    },
+                    {
+                        id: 'page-2',
+                        title: 'Page 2',
+                        parentId: null,
+                        order: 1,
+                        blocks: [],
+                    },
+                ],
+                { addMathJax: true },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // SPA navigation should trigger MathJax typeset
+            expect(result.html).toContain('MathJax.typesetPromise');
         });
     });
 });

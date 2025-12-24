@@ -46,6 +46,7 @@ export interface OdeXmlMeta {
     addPagination?: boolean;
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
+    addMathJax?: boolean;
     exportSource?: boolean;
 
     // Custom content

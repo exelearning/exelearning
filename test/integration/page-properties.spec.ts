@@ -889,4 +889,139 @@ describe('Page Properties Integration', () => {
             expect(navHtml).not.toContain('Hidden');
         });
     });
+
+    describe('addMathJax metadata property', () => {
+        // Create mock document with addMathJax metadata
+        const createMockDocumentWithMathJax = (addMathJax: boolean): ExportDocument => ({
+            getMetadata: (): ExportMetadata => ({
+                title: 'MathJax Test Project',
+                author: 'Test',
+                description: '',
+                language: 'en',
+                license: 'CC-BY-SA',
+                keywords: '',
+                theme: 'base',
+                addMathJax,
+            }),
+            getNavigation: (): ExportPage[] => [
+                {
+                    id: 'page-1',
+                    title: 'Math Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>No math content here</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        it('should include MathJax script in preview when addMathJax=true', async () => {
+            const document = createMockDocumentWithMathJax(true);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('tex-mml-svg.js');
+        });
+
+        it('should configure MathJax with typeset:false for SPA preview', async () => {
+            const document = createMockDocumentWithMathJax(true);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('typeset: false');
+            expect(result.html).toContain('pageReady');
+        });
+
+        it('should not include MathJax when addMathJax=false and no math content', async () => {
+            const document = createMockDocumentWithMathJax(false);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).not.toContain('tex-mml-svg.js');
+        });
+
+        it('should include MathJax when content has LaTeX even without addMathJax option', async () => {
+            const document: ExportDocument = {
+                getMetadata: (): ExportMetadata => ({
+                    title: 'LaTeX Content Project',
+                    author: 'Test',
+                    description: '',
+                    language: 'en',
+                    license: 'CC-BY-SA',
+                    keywords: '',
+                    theme: 'base',
+                    // addMathJax not set
+                }),
+                getNavigation: (): ExportPage[] => [
+                    {
+                        id: 'page-1',
+                        title: 'Math Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'block-1',
+                                name: 'Content',
+                                order: 0,
+                                components: [
+                                    {
+                                        id: 'comp-1',
+                                        type: 'text',
+                                        order: 0,
+                                        content: '<p>Formula: \\(E = mc^2\\)</p>',
+                                        properties: {},
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            };
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            // MathJax should be detected from content
+            expect(result.html).toContain('tex-mml-svg.js');
+        });
+
+        it('should preserve addMathJax in metadata through export pipeline', async () => {
+            const document = createMockDocumentWithMathJax(true);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+
+            // Verify MathJax config includes pageReady for SPA
+            expect(result.html).toContain('window.MathJax');
+            expect(result.html).toContain('.spa-page.active');
+        });
+    });
 });
