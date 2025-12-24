@@ -1136,7 +1136,8 @@ class LegacyXmlParser {
         // Use handler registry if available, otherwise fall back to inline logic
         if (typeof LegacyHandlerRegistry !== 'undefined') {
           const handler = LegacyHandlerRegistry.getHandler(className, ideviceType);
-          const handlerProps = handler.extractProperties(dict);
+          // Pass idevice.id for handlers that need it (e.g., TrueFalseHandler)
+          const handlerProps = handler.extractProperties(dict, idevice.id);
           if (handlerProps && Object.keys(handlerProps).length > 0) {
             idevice.properties = handlerProps;
             Logger.log(`[LegacyXmlParser] Extracted properties via ${handler.constructor.name}`);
