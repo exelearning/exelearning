@@ -131,6 +131,14 @@ const IDEVICE_JS_DEPENDENCIES: Record<string, string[]> = {
 };
 
 /**
+ * Known CSS dependencies for iDevices.
+ * Key is the iDevice type name, value is array of additional CSS files.
+ */
+const IDEVICE_CSS_DEPENDENCIES: Record<string, string[]> = {
+    'image-gallery': ['simple-lightbox.min.css'],
+};
+
+/**
  * Get all export files for an iDevice type (JS or CSS)
  * In browser context, we use a static mapping of known dependencies.
  *
@@ -146,6 +154,7 @@ export function getIdeviceExportFiles(typeName: string, extension: '.js' | '.css
         return [mainFile, ...dependencies];
     }
 
-    // For CSS, just return the main file (no known CSS dependencies)
-    return [mainFile];
+    // For CSS, check for known dependencies (e.g., SimpleLightbox for image-gallery)
+    const cssDependencies = IDEVICE_CSS_DEPENDENCIES[typeName] || [];
+    return [mainFile, ...cssDependencies];
 }

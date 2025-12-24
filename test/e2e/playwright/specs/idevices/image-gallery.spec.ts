@@ -470,8 +470,103 @@ test.describe('Image Gallery iDevice', () => {
             await expect(lightboxOverlay).toBeHidden({ timeout: 5000 });
         });
 
-        // Note: Preview panel lightbox test is skipped because preview uses relative paths
-        // that don't resolve correctly in the iframe context. The lightbox works in the editor.
-        // The preview's asset path resolution is a separate issue to address.
+        test('should open lightbox when clicking image in preview panel', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Image Gallery Preview Lightbox Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add image-gallery iDevice
+            await addImageGalleryFromPanel(page);
+
+            // Upload an image
+            await uploadImagesToGallery(page, ['test/fixtures/sample-3.jpg']);
+
+            // Wait for image to be added
+            await page.locator('.imgSelectContainer').first().waitFor({ timeout: 10000 });
+
+            // Save the iDevice
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Save project
+            await workarea.save();
+            await page.waitForTimeout(2000);
+
+            // Open preview panel
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for iframe to load
+            const iframe = page.frameLocator('#preview-iframe');
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+
+            // Wait for SimpleLightbox to be available in iframe
+            await page.waitForFunction(
+                () => {
+                    const previewIframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
+                    if (!previewIframe?.contentWindow) return false;
+                    return typeof (previewIframe.contentWindow as any).SimpleLightbox !== 'undefined';
+                },
+                { timeout: 15000 },
+            );
+
+            // Wait for renderBehaviour to complete
+            await page.waitForTimeout(1000);
+
+            // Click on the image in the preview
+            const previewGalleryLink = iframe.locator('.imageGallery-IDevice a.imageLink').first();
+            await expect(previewGalleryLink).toBeVisible({ timeout: 5000 });
+
+            // Verify the href is a blob or data URL (resolved asset)
+            const href = await previewGalleryLink.getAttribute('href');
+            console.log('Preview gallery link href:', href);
+            expect(href).toMatch(/^(blob:|data:)/);
+
+            await previewGalleryLink.click();
+
+            // Wait for SimpleLightbox to open - the wrapper becomes visible with the image
+            const lightboxWrapper = iframe.locator('.sl-wrapper');
+            await expect(lightboxWrapper).toBeVisible({ timeout: 5000 });
+
+            // Verify the lightbox image is displayed
+            const lightboxImage = iframe.locator('.sl-image img');
+            await expect(lightboxImage).toBeVisible({ timeout: 5000 });
+
+            // Close the lightbox by clicking the close button
+            const closeBtn = iframe.locator('.sl-close');
+            await closeBtn.click();
+
+            // Verify lightbox is closed
+            await expect(lightboxWrapper).toBeHidden({ timeout: 5000 });
+        });
     });
 });

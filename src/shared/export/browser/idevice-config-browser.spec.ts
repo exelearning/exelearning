@@ -255,9 +255,16 @@ describe('idevice-config-browser', () => {
             expect(files).toEqual(['unknown.js']);
         });
 
-        it('returns main CSS file for any iDevice', () => {
+        it('returns main CSS file for iDevice without dependencies', () => {
             const files = getIdeviceExportFiles('checklist', '.css');
             expect(files).toEqual(['checklist.css']);
+        });
+
+        it('includes simple-lightbox.min.css for image-gallery', () => {
+            const files = getIdeviceExportFiles('image-gallery', '.css');
+            expect(files).toContain('image-gallery.css');
+            expect(files).toContain('simple-lightbox.min.css');
+            expect(files[0]).toBe('image-gallery.css'); // main file first
         });
 
         it('includes html2canvas.js for checklist', () => {

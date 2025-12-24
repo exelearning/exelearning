@@ -595,9 +595,10 @@ describe('IdeviceRenderer', () => {
         it('should return CSS link tags for iDevice types', () => {
             const links = renderer.getCssLinks(['crossword', 'puzzle'], '');
 
-            expect(links).toHaveLength(2);
-            expect(links[0]).toBe('<link rel="stylesheet" href="idevices/crossword/crossword.css">');
-            expect(links[1]).toBe('<link rel="stylesheet" href="idevices/puzzle/puzzle.css">');
+            // Each iDevice gets at least its main CSS file
+            expect(links.length).toBeGreaterThanOrEqual(2);
+            expect(links.some(l => l.includes('crossword/crossword.css'))).toBe(true);
+            expect(links.some(l => l.includes('puzzle/puzzle.css'))).toBe(true);
         });
 
         it('should apply basePath', () => {
@@ -609,8 +610,8 @@ describe('IdeviceRenderer', () => {
         it('should deduplicate types', () => {
             const links = renderer.getCssLinks(['crossword', 'crossword', 'Crossword'], '');
 
-            // Should only have one entry for crossword
-            expect(links.filter(l => l.includes('crossword')).length).toBe(1);
+            // Should only have one entry for crossword (deduplication by type)
+            expect(links.filter(l => l.includes('crossword/crossword.css')).length).toBe(1);
         });
 
         it('should normalize iDevice names', () => {
@@ -618,6 +619,14 @@ describe('IdeviceRenderer', () => {
 
             // FreeTextIdevice normalizes to 'text' via config cssClass
             expect(links[0]).toContain('text');
+        });
+
+        it('should include CSS dependencies for image-gallery', () => {
+            const links = renderer.getCssLinks(['image-gallery'], '');
+
+            // image-gallery has simple-lightbox.min.css as a dependency
+            expect(links.some(l => l.includes('image-gallery/image-gallery.css'))).toBe(true);
+            expect(links.some(l => l.includes('image-gallery/simple-lightbox.min.css'))).toBe(true);
         });
     });
 

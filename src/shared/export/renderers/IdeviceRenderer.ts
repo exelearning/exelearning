@@ -439,7 +439,11 @@ ${contentHtml}
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                links.push(`<link rel="stylesheet" href="${basePath}idevices/${typeName}/${typeName}.css">`);
+                // Get ALL CSS files from export folder (main file first, then dependencies)
+                const cssFiles = getIdeviceExportFiles(typeName, '.css');
+                for (const cssFile of cssFiles) {
+                    links.push(`<link rel="stylesheet" href="${basePath}idevices/${typeName}/${cssFile}">`);
+                }
             }
         }
 
