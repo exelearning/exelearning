@@ -50,7 +50,7 @@ function createMockQueries(): PagesQueriesDeps {
                 return { hasAccess: true };
             }
             // Check collaborators
-            if (project.collaborators && project.collaborators.includes(userId)) {
+            if (project.collaborators?.includes(userId)) {
                 return { hasAccess: true };
             }
             // Check visibility
@@ -469,10 +469,7 @@ describe('Pages Routes', () => {
 
                     if (project) {
                         // Check owner or collaborator
-                        if (
-                            project.owner_id === currentUser.id ||
-                            (project.collaborators && project.collaborators.includes(currentUser.id))
-                        ) {
+                        if (project.owner_id === currentUser.id || project.collaborators?.includes(currentUser.id)) {
                             return new Response('OK', { status: 200 });
                         }
                         return new Response('Access Denied', { status: 403 });
@@ -509,10 +506,7 @@ describe('Pages Routes', () => {
                             return new Response('OK', { status: 200 });
                         }
                         // Check owner or collaborator
-                        if (
-                            project.owner_id === currentUser.id ||
-                            (project.collaborators && project.collaborators.includes(currentUser.id))
-                        ) {
+                        if (project.owner_id === currentUser.id || project.collaborators?.includes(currentUser.id)) {
                             return new Response('OK', { status: 200 });
                         }
                         return new Response('Access Denied', { status: 403 });

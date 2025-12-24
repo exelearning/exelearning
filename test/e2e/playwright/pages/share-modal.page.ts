@@ -74,7 +74,7 @@ export class ShareModalPage {
         await this.page.waitForFunction(
             () => {
                 const input = document.querySelector('#share-link-input') as HTMLInputElement;
-                return input && input.value && input.value.length > 0;
+                return input?.value && input.value.length > 0;
             },
             { timeout: 10000 },
         );

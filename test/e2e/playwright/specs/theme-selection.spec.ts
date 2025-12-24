@@ -23,10 +23,7 @@ test.describe('Theme Selection on ELP Import', () => {
         // Wait for the app to fully initialize
         await page.waitForFunction(
             () => {
-                return (
-                    typeof (window as any).eXeLearning !== 'undefined' &&
-                    (window as any).eXeLearning.app?.project?._yjsEnabled
-                );
+                return (window as any).eXeLearning?.app?.project?._yjsEnabled;
             },
             { timeout: 30000 },
         );
@@ -119,10 +116,7 @@ test.describe('Theme Selection on ELP Import', () => {
         // Wait for app initialization
         await page.waitForFunction(
             () => {
-                return (
-                    typeof (window as any).eXeLearning !== 'undefined' &&
-                    (window as any).eXeLearning.app?.themes?.selected
-                );
+                return (window as any).eXeLearning?.app?.themes?.selected;
             },
             { timeout: 30000 },
         );

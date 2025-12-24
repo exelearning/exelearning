@@ -156,7 +156,7 @@ function createMockQueries(): QueriesDeps {
             // Return projects where user is a collaborator (not owner)
             return Array.from(mockProjects.values()).filter(p => {
                 const collabIds = mockCollaborators.get(p.id);
-                return collabIds && collabIds.has(userId);
+                return collabIds?.has(userId);
             });
         },
         updateProjectVisibility: async (_db: any, id: number, visibility: string) => {

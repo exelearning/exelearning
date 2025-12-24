@@ -62,7 +62,7 @@ export class NavigationPage {
             const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
             for (const item of treeItems) {
                 const button = item.querySelector('button');
-                if (button && button.textContent && button.textContent.trim() === titleText) {
+                if (button?.textContent && button.textContent.trim() === titleText) {
                     return item.getAttribute('data-node-id') || item.getAttribute('nav-id') || item.id || null;
                 }
             }
@@ -70,7 +70,7 @@ export class NavigationPage {
             const nodes = Array.from(document.querySelectorAll('[data-testid="nav-node"]'));
             for (const nav of nodes) {
                 const span = nav.querySelector('.node-text-span');
-                if (span && span.textContent && span.textContent.trim() === titleText) {
+                if (span?.textContent && span.textContent.trim() === titleText) {
                     return nav.getAttribute('data-node-id') || nav.getAttribute('nav-id') || null;
                 }
             }
@@ -240,7 +240,7 @@ export class NavigationPage {
             const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
             const parentItem = treeItems.find(item => {
                 const button = item.querySelector(':scope > button');
-                return button && button.textContent && button.textContent.trim() === titleText;
+                return button?.textContent && button.textContent.trim() === titleText;
             });
 
             if (!parentItem) return [];
@@ -281,7 +281,7 @@ export class NavigationPage {
                 const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
                 const parentItem = treeItems.find(item => {
                     const button = item.querySelector(':scope > button');
-                    return button && button.textContent && button.textContent.trim() === title;
+                    return button?.textContent && button.textContent.trim() === title;
                 });
 
                 if (!parentItem) return false;

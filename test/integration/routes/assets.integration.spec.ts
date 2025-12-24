@@ -7,7 +7,6 @@ import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
-import { v4 as _uuidv4 } from 'uuid';
 import {
     createTestDb,
     closeTestDb,

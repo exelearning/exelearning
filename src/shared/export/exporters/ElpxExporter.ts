@@ -30,14 +30,10 @@
  */
 
 import type {
-    ExportDocument,
     ExportPage,
     ExportBlock,
     ExportComponent,
     ExportMetadata,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
     ExportOptions,
     ExportResult,
     ElpxExportOptions,
@@ -127,10 +123,6 @@ const ODE_DTD_CONTENT = `<!--
 `;
 
 export class ElpxExporter extends Html5Exporter {
-    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
-        super(document, resources, assets, zip);
-    }
-
     /**
      * Get file extension for ELPX format
      */

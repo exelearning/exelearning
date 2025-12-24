@@ -10,16 +10,7 @@
  * - Assets referenced by the component
  */
 
-import type {
-    ExportDocument,
-    ExportBlock,
-    ExportComponent,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ExportOptions,
-    ExportResult,
-} from '../interfaces';
+import type { ExportBlock, ExportComponent, ExportOptions, ExportResult } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 
 /**
@@ -41,10 +32,6 @@ export interface ComponentExportOptions extends ExportOptions {
  * ComponentExporter - exports individual blocks or iDevices
  */
 export class ComponentExporter extends BaseExporter {
-    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
-        super(document, resources, assets, zip);
-    }
-
     /**
      * Get file extension for component export
      */
