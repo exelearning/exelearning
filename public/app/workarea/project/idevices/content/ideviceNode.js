@@ -285,6 +285,7 @@ export default class IdeviceNode {
             this.ideviceBody.classList.add(`${this.idevice.cssClass}Idevice`);
         }
         this.ideviceBody.setAttribute('idevice-id', this.odeIdeviceId);
+        this.ideviceBody.id = this.odeIdeviceId;
         // Add events
         this.addBehaviourEditionIdeviceDoubleClick();
 
@@ -374,9 +375,12 @@ export default class IdeviceNode {
                 if (iDevice.is(':hidden')) {
                     minifyIdeviceIcon = 'chevron-up-icon-green';
                 }
+                // Build iDevice type icon
+                const ideviceTypeIcon = this._getIdeviceTypeIconHtml();
                 blockButtonsHTML = `
                 <div class="dropdown exe-actions-menu">
                     <div class="idevice-editor-avatar" data-component-id="${id}"></div>
+                    ${ideviceTypeIcon}
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}"><span class="small-icon arrow-up-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move up')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}"><span class="small-icon arrow-down-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move down')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-edit-idevice ${blockButtonEditClass}" type="button" id=editIdevice${id} title="${_('Edit')}" ${blockButtonEditClass}><span class="small-icon edit-icon-green" aria-hidden="true"></span>${_('Edit')}${lockIndicator}</button>
@@ -1751,6 +1755,8 @@ export default class IdeviceNode {
                 this.odeIdeviceId
             );
             this.ideviceBody.innerHTML = this.exportHtmlView();
+            // Ensure ideviceId is in jsonProperties for renderBehaviour selectors
+            this.jsonProperties.ideviceId = this.odeIdeviceId;
             // Idevice export function 2: renderBehaviour
             this.exportObject.renderBehaviour(
                 this.jsonProperties,
@@ -1773,8 +1779,10 @@ export default class IdeviceNode {
             response = new Promise((resolve, reject) => {
                 // In case the idevice has no json data, We try to load the viewhtml of it
                 this.ideviceBody.innerHTML = this.exportHtmlView();
-                this.exportObject.renderBehaviour({}, this.accesibility);
-                this.exportObject.init({}, this.accesibility);
+                // Pass ideviceId even when jsonProperties is empty - needed for renderBehaviour selectors
+                const fallbackData = { ideviceId: this.odeIdeviceId };
+                this.exportObject.renderBehaviour(fallbackData, this.accesibility);
+                this.exportObject.init(fallbackData, this.accesibility);
                 resolve({ init: 'true' });
             });
             return response;
@@ -2396,10 +2404,37 @@ export default class IdeviceNode {
     }
 
     /**
+     * Convert base64 data URL to File object
+     * @param {string} base64 - Data URL (e.g., data:image/jpeg;base64,...)
+     * @param {string} filename - Filename
+     * @returns {File} File object
+     */
+    base64ToFile(base64, filename) {
+        // Extract MIME type and base64 data
+        const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+        if (!match) {
+            throw new Error('Invalid base64 data URL');
+        }
+        const mimeType = match[1];
+        const base64Data = match[2];
+
+        // Decode base64 to binary
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create File object
+        return new File([bytes], filename, { type: mimeType });
+    }
+
+    /**
+     * Upload file and also create asset for client-side display
      *
-     * @param {File} file
+     * @param {string} file - Base64 data URL
      * @param {String} filename
-     * @returns {Boolean}
+     * @returns {Object} Response with asset:// URLs
      */
     async apiUploadFile(file, filename) {
         let params = {
@@ -2409,6 +2444,37 @@ export default class IdeviceNode {
             createThumbnail: true,
         };
         let response = await eXeLearning.app.api.postUploadFileResource(params);
+
+        // Also create asset for client-side display (preview, blob URLs)
+        const assetManager = eXeLearning.app?.project?._yjsBridge?.assetManager;
+        if (assetManager && response?.savedPath) {
+            try {
+                // Convert base64 to File object
+                const fileObj = this.base64ToFile(file, filename);
+
+                // Create asset using AssetManager
+                const assetUrl = await assetManager.insertImage(fileObj);
+
+                // Parse the asset URL: asset://uuid/filename
+                const assetMatch = assetUrl.match(/^asset:\/\/([^/]+)\/(.+)$/);
+                if (assetMatch) {
+                    const assetId = assetMatch[1];
+                    const assetFilename = assetMatch[2];
+
+                    // Update response to use asset:// URLs
+                    // savedPath + savedFilename will become asset://uuid/filename
+                    response.savedPath = `asset://${assetId}`;
+                    response.savedFilename = assetFilename;
+                    // Use same asset for thumbnail (full image works as thumbnail)
+                    response.savedThumbnailName = assetFilename;
+
+                    Logger.log(`[IdeviceNode] Created asset for upload: ${assetUrl}`);
+                }
+            } catch (e) {
+                Logger.warn('[IdeviceNode] Failed to create asset from upload:', e);
+                // Fallback to server paths if asset creation fails
+            }
+        }
 
         return response;
     }
@@ -3083,6 +3149,30 @@ export default class IdeviceNode {
 
         console.warn(`[IdeviceNode] Could not find installed iDevice for type: ${typeName}`);
         return null;
+    }
+
+    /**
+     * Generate HTML for the iDevice type icon in the toolbar
+     * @returns {string} HTML string for the icon
+     */
+    _getIdeviceTypeIconHtml() {
+        if (!this.idevice || !this.idevice.icon) {
+            return '';
+        }
+
+        const icon = this.idevice.icon;
+        const title = this.idevice.title || this.odeIdeviceTypeName;
+
+        if (icon.type === 'exe-icon') {
+            // exe-icon type: inline SVG content in icon.name
+            return `<div class="idevice-type-icon exe-app-tooltip" title="${title}">${icon.name}</div>`;
+        } else if (icon.type === 'img' && icon.url) {
+            // img type: background image from file
+            const iconUrl = `${this.idevice.path}/${icon.url}`;
+            return `<div class="idevice-type-icon idevice-img-icon exe-app-tooltip" style="background-image: url('${iconUrl}')" title="${title}"></div>`;
+        }
+
+        return '';
     }
 
     checkIsValid() {

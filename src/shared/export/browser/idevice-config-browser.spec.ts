@@ -106,19 +106,19 @@ describe('idevice-config-browser', () => {
             expect(config.cssClass).toBe('cloze-activity');
         });
 
-        it('maps case-study type correctly', () => {
+        it('maps case-study to casestudy (directory name)', () => {
             const config = getIdeviceConfig('case-study');
-            expect(config.cssClass).toBe('case-study');
+            expect(config.cssClass).toBe('casestudy');
         });
 
-        it('maps casestudy to case-study', () => {
+        it('maps casestudy to casestudy (directory name)', () => {
             const config = getIdeviceConfig('casestudy');
-            expect(config.cssClass).toBe('case-study');
+            expect(config.cssClass).toBe('casestudy');
         });
 
-        it('maps CaseStudyIdevice to case-study', () => {
+        it('maps CaseStudyIdevice to casestudy (directory name)', () => {
             const config = getIdeviceConfig('CaseStudyIdevice');
-            expect(config.cssClass).toBe('case-study');
+            expect(config.cssClass).toBe('casestudy');
         });
 
         it('handles unknown types by normalizing the name', () => {
@@ -255,9 +255,16 @@ describe('idevice-config-browser', () => {
             expect(files).toEqual(['unknown.js']);
         });
 
-        it('returns main CSS file for any iDevice', () => {
+        it('returns main CSS file for iDevice without dependencies', () => {
             const files = getIdeviceExportFiles('checklist', '.css');
             expect(files).toEqual(['checklist.css']);
+        });
+
+        it('includes simple-lightbox.min.css for image-gallery', () => {
+            const files = getIdeviceExportFiles('image-gallery', '.css');
+            expect(files).toContain('image-gallery.css');
+            expect(files).toContain('simple-lightbox.min.css');
+            expect(files[0]).toBe('image-gallery.css'); // main file first
         });
 
         it('includes html2canvas.js for checklist', () => {

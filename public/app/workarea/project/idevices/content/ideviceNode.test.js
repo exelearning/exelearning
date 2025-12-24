@@ -3281,20 +3281,110 @@ describe('IdeviceNode', () => {
         });
     });
 
+    describe('base64ToFile', () => {
+        it('converts base64 data URL to File object', () => {
+            // 1x1 transparent PNG as base64
+            const base64 =
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+            const file = idevice.base64ToFile(base64, 'test.png');
+
+            expect(file).toBeInstanceOf(File);
+            expect(file.name).toBe('test.png');
+            expect(file.type).toBe('image/png');
+            expect(file.size).toBeGreaterThan(0);
+        });
+
+        it('throws error for invalid base64 data', () => {
+            expect(() => idevice.base64ToFile('not-a-data-url', 'test.png')).toThrow('Invalid base64 data URL');
+        });
+    });
+
     describe('apiUploadFile', () => {
+        const base64Image =
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+        let originalYjsBridge;
+
+        beforeEach(() => {
+            // Save original _yjsBridge state
+            originalYjsBridge = eXeLearning.app.project._yjsBridge;
+        });
+
+        afterEach(() => {
+            // Restore original _yjsBridge state
+            eXeLearning.app.project._yjsBridge = originalYjsBridge;
+        });
+
         it('calls postUploadFileResource with correct params', async () => {
-            const mockFile = new Blob(['test'], { type: 'image/png' });
             eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({ success: true });
             idevice.odeIdeviceId = 'idevice-123';
 
-            await idevice.apiUploadFile(mockFile, 'test.png');
+            await idevice.apiUploadFile(base64Image, 'test.png');
 
             expect(eXeLearning.app.api.postUploadFileResource).toHaveBeenCalledWith({
                 odeIdeviceId: 'idevice-123',
-                file: mockFile,
+                file: base64Image,
                 filename: 'test.png',
                 createThumbnail: true,
             });
+        });
+
+        it('creates asset and returns asset:// URLs when AssetManager is available', async () => {
+            const mockAssetManager = {
+                insertImage: vi.fn().mockResolvedValue('asset://test-uuid-1234/test.png'),
+            };
+            eXeLearning.app.project._yjsBridge = { assetManager: mockAssetManager };
+            eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
+                savedPath: '/v1/files/perm/assets/project123',
+                savedFilename: 'test.png',
+                savedThumbnailName: 'thumb_test.png',
+            });
+            idevice.odeIdeviceId = 'idevice-123';
+
+            const result = await idevice.apiUploadFile(base64Image, 'test.png');
+
+            expect(mockAssetManager.insertImage).toHaveBeenCalled();
+            expect(result.savedPath).toBe('asset://test-uuid-1234');
+            expect(result.savedFilename).toBe('test.png');
+            expect(result.savedThumbnailName).toBe('test.png');
+        });
+
+        it('falls back to server paths when AssetManager is not available', async () => {
+            // Set _yjsBridge to null to simulate AssetManager not available
+            eXeLearning.app.project._yjsBridge = null;
+            eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
+                savedPath: '/v1/files/perm/assets/project123',
+                savedFilename: 'test.png',
+                savedThumbnailName: 'thumb_test.png',
+            });
+            idevice.odeIdeviceId = 'idevice-123';
+
+            const result = await idevice.apiUploadFile(base64Image, 'test.png');
+
+            expect(result.savedPath).toBe('/v1/files/perm/assets/project123');
+            expect(result.savedFilename).toBe('test.png');
+            expect(result.savedThumbnailName).toBe('thumb_test.png');
+        });
+
+        it('falls back to server paths when asset creation fails', async () => {
+            const mockAssetManager = {
+                insertImage: vi.fn().mockRejectedValue(new Error('Asset creation failed')),
+            };
+            eXeLearning.app.project._yjsBridge = { assetManager: mockAssetManager };
+            eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
+                savedPath: '/v1/files/perm/assets/project123',
+                savedFilename: 'test.png',
+                savedThumbnailName: 'thumb_test.png',
+            });
+            idevice.odeIdeviceId = 'idevice-123';
+
+            const result = await idevice.apiUploadFile(base64Image, 'test.png');
+
+            // Should fallback to original server paths
+            expect(result.savedPath).toBe('/v1/files/perm/assets/project123');
+            expect(result.savedFilename).toBe('test.png');
+            expect(result.savedThumbnailName).toBe('thumb_test.png');
         });
     });
 

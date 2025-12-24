@@ -244,15 +244,72 @@ var $exeDevice = {
 
     /**
      * Add behaviour to button addImage
-     *
+     * Opens the media library modal with multi-select enabled
      */
     addImageButtonBehaviour: function () {
         this.ideviceBody
             .querySelector('#addImageButton')
             .addEventListener('click', (event, id) => {
-                this.ideviceBody.querySelector('#imageLoaded').innerHTML = '';
-                this.ideviceBody.querySelector('#imageLoaded').click();
+                // Open file manager with multi-select for adding new images
+                this.openFileManagerForImages(true);
             });
+    },
+
+    /**
+     * Open the file manager modal for selecting images
+     * @param {boolean} multiSelect - Whether to allow multiple selection
+     */
+    openFileManagerForImages: function (multiSelect) {
+        const fileManager = eXeLearning?.app?.modals?.filemanager;
+        if (!fileManager) {
+            // Fallback to native file input if modal not available
+            console.warn('[ImageGallery] File manager not available, using native file input');
+            this.ideviceBody.querySelector('#imageLoaded').click();
+            return;
+        }
+
+        fileManager.show({
+            accept: 'image',
+            multiSelect: multiSelect,
+            onSelect: (result) => {
+                // Handle selected assets
+                if (multiSelect && Array.isArray(result)) {
+                    // Multiple images selected
+                    result.forEach(assetInfo => {
+                        this.addImageFromAsset(assetInfo);
+                    });
+                } else if (result) {
+                    // Single image selected (for modify)
+                    this.addImageFromAsset(result);
+                }
+            }
+        });
+    },
+
+    /**
+     * Add an image from asset manager selection
+     * @param {Object} assetInfo - Object with assetUrl, blobUrl, and asset properties
+     */
+    addImageFromAsset: function (assetInfo) {
+        const { assetUrl, blobUrl, asset } = assetInfo;
+
+        // Hide the "no images" message
+        this.ideviceBody.querySelector('#textMsxHide').style.display = 'none';
+
+        if (this.editionId != null && this.editionId >= 0) {
+            // Editing existing image
+            let img = this.ideviceBody.querySelector(`#img_${this.editionId}`);
+            img.setAttribute('origin', assetUrl);
+            img.setAttribute('src', assetUrl);
+        } else {
+            // Adding new image
+            this.addImageHTML(this.idImage, assetUrl, assetUrl);
+            // Add sortable behaviour to the new image
+            let images = this.ideviceBody.querySelectorAll('.imgSelectContainer');
+            this.addSortableBehaviour(images[images.length - 1]);
+            this.idImage++;
+        }
+        this.editionId = null;
     },
 
     /**
@@ -270,10 +327,26 @@ var $exeDevice = {
     },
 
     /**
-     *
+     * Process a dropped or selected file
+     * Uses AssetManager directly for immediate asset:// URL generation
      */
     processFile: async function (file) {
         try {
+            // Try to use AssetManager directly for immediate asset:// URLs
+            const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            if (assetManager) {
+                const assetUrl = await assetManager.insertImage(file);
+                if (assetUrl) {
+                    this.addImageFromAsset({
+                        assetUrl: assetUrl,
+                        blobUrl: assetManager.blobURLCache.get(assetManager.extractAssetId(assetUrl)),
+                        asset: { filename: file.name }
+                    });
+                    return;
+                }
+            }
+
+            // Fallback to old upload method if AssetManager not available
             let buffer = await this.readFile(file);
             await this.addUploadImage(buffer, file.name);
             // Add sortable behaviour to the news images
@@ -281,7 +354,9 @@ var $exeDevice = {
                 '.imgSelectContainer'
             );
             $exeDevice.addSortableBehaviour(images[images.length - 1]);
-        } catch (err) {}
+        } catch (err) {
+            console.error('[ImageGallery] Error processing file:', err);
+        }
     },
 
     /**
@@ -613,7 +688,8 @@ var $exeDevice = {
             .querySelector(`#buttonModify_${id}`)
             .addEventListener('click', () => {
                 this.editionId = id;
-                this.ideviceBody.querySelector('#addImageButton').click();
+                // Open file manager with single-select for modifying
+                this.openFileManagerForImages(false);
             });
         // Remove button
         this.ideviceBody

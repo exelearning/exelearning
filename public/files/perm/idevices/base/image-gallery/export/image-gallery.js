@@ -20,6 +20,12 @@ var $imagegallery = {
      * @returns {String}
      */
     renderView: function (data, accesibility, template) {
+        // In export context, the HTML is already rendered correctly server-side
+        // Don't re-generate to preserve correct paths (changeDirectory would break them)
+        if (document.body.classList.contains('exe-export')) {
+            return null; // Return null to prevent innerHTML replacement in exe_export.js
+        }
+
         // Generate html content from data values
         let htmlContent = $imagegallery.getStringGallery(data);
         // Insert the html content inside the template
@@ -41,8 +47,12 @@ var $imagegallery = {
      */
     renderBehaviour(data) {
         const $node = $('#' + data.ideviceId),
-            isInExe = eXe.app.isInExe();
-        if (!isInExe && $node.length == 1) {
+            isInExe = eXe.app.isInExe(),
+            isExport = document.body.classList.contains('exe-export');
+
+        // Only re-render gallery in preview panel (not in export, which already has correct HTML)
+        // Export HTML is generated server-side with correct paths; re-rendering would break them
+        if (!isInExe && !isExport && $node.length == 1) {
             let gallery = $imagegallery.getStringGallery(data);
             $node.html(gallery);
         }
@@ -73,6 +83,14 @@ var $imagegallery = {
     changeDirectory(file, data) {
         const $node = $('#' + data.ideviceId),
             isInExe = eXe.app.isInExe();
+
+        // Keep asset://, blob://, and data: URLs as-is
+        // - asset:// will be resolved by the asset resolver
+        // - blob:// and data: are already resolved URLs (from preview/export)
+        if (file && (file.startsWith('asset://') || file.startsWith('blob:') || file.startsWith('data:'))) {
+            return file;
+        }
+
         if (isInExe || $node.length == 0) return file;
 
         const pathMedia = $('html').is('#exe-index')
@@ -144,6 +162,8 @@ var $imagegallery = {
                 'licenselink',
             ],
             captionPosition: 'outside',
+            // Disable file extension check to support blob:// URLs in editor
+            fileExt: false,
         });
     },
 

@@ -83,6 +83,13 @@ var $magnifier = {
         if (isInExe || $node.length == 0 || !data.imageResource)
             return data.imageResource;
 
+        // Don't transform blob:, data:, or asset:// URLs - they're already valid or will be resolved
+        if (data.imageResource.startsWith('blob:') ||
+            data.imageResource.startsWith('data:') ||
+            data.imageResource.startsWith('asset://')) {
+            return data.imageResource;
+        }
+
         const pathMedia = $('html').is('#exe-index')
             ? 'content/resources/' + data.ideviceId + '/'
             : '../content/resources/' + data.ideviceId + '/';

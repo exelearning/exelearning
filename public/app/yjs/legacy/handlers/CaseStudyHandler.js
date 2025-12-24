@@ -16,9 +16,10 @@
 class CaseStudyHandler extends BaseLegacyHandler {
   /**
    * Check if this handler can process the given legacy class
+   * Case-insensitive match: legacy files may have 'CasestudyIdevice' or 'CaseStudyIdevice'
    */
   canHandle(className) {
-    return className.includes('CaseStudyIdevice');
+    return className.toLowerCase().includes('casestudyidevice');
   }
 
   /**
@@ -29,43 +30,61 @@ class CaseStudyHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Extract the main story/history content
+   * Extract HTML view - returns empty for casestudy
+   * All content goes in jsonProperties (history + activities)
+   * because casestudy has componentType: 'json'
    */
   extractHtmlView(dict) {
-    if (!dict) return '';
-
-    // Look for storyTextArea (main content)
-    const storyTextArea = this.findDictInstance(dict, 'storyTextArea');
-    if (storyTextArea) {
-      return this.extractTextAreaFieldContent(storyTextArea);
-    }
-
-    // Alternative: Look for story key
-    const storyInst = this.findDictInstance(dict, 'story');
-    if (storyInst) {
-      return this.extractTextAreaFieldContent(storyInst);
-    }
-
+    // For casestudy iDevice, all content goes in jsonProperties
+    // The editor expects { history: "...", activities: [...] }
     return '';
   }
 
   /**
-   * Extract properties including activities
+   * Extract properties including history and activities
+   * This populates jsonProperties for the casestudy editor
    */
   extractProperties(dict) {
-    const activities = this.extractActivities(dict);
-    if (activities.length > 0) {
-      return { activities };
+    // Default structure with all required fields for modern casestudy iDevice
+    // textInfo* fields are new in modern format - not in legacy, so default to empty
+    const defaultProperties = {
+      history: '',
+      activities: [],
+      // Task info fields (new in modern format, not in legacy)
+      textInfoDurationInput: '',
+      textInfoDurationTextInput: '',
+      textInfoParticipantsInput: '',
+      textInfoParticipantsTextInput: ''
+    };
+
+    if (!dict) return defaultProperties;
+
+    const properties = { ...defaultProperties };
+
+    // Extract story/history (main content)
+    const storyTextArea = this.findDictInstance(dict, 'storyTextArea');
+    if (storyTextArea) {
+      properties.history = this.extractTextAreaFieldContent(storyTextArea);
+    } else {
+      // Alternative: Look for story key
+      const storyInst = this.findDictInstance(dict, 'story');
+      if (storyInst) {
+        properties.history = this.extractTextAreaFieldContent(storyInst);
+      }
     }
-    return {};
+
+    // Extract activities (always an array, even if empty)
+    properties.activities = this.extractActivities(dict);
+
+    return properties;
   }
 
   /**
    * Extract activities from the legacy format
    *
    * Structure:
-   * - list of CasestudyActivityField instances
-   * - Each has: activityTextArea, feedbackTextArea
+   * - "questions" key contains a list of exe.engine.casestudyidevice.Question instances
+   * - Each Question has: questionTextArea, feedbackTextArea
    *
    * @param {Element} dict - Dictionary element of the CaseStudyIdevice
    * @returns {Array} Array of activity objects
@@ -73,17 +92,20 @@ class CaseStudyHandler extends BaseLegacyHandler {
   extractActivities(dict) {
     const activities = [];
 
-    // Find the list containing CasestudyActivityField instances
-    const lists = dict.querySelectorAll(':scope > list');
-    let activitiesList = null;
+    // Primary: Look for "questions" list (legacy CasestudyIdevice format)
+    let activitiesList = this.findDictList(dict, 'questions');
 
-    for (const list of lists) {
-      const firstInst = list.querySelector(':scope > instance');
-      if (firstInst) {
-        const className = firstInst.getAttribute('class') || '';
-        if (className.includes('CasestudyActivityField')) {
-          activitiesList = list;
-          break;
+    // Fallback: Find list containing Question or CasestudyActivityField instances
+    if (!activitiesList) {
+      const lists = dict.querySelectorAll(':scope > list');
+      for (const list of lists) {
+        const firstInst = list.querySelector(':scope > instance');
+        if (firstInst) {
+          const className = firstInst.getAttribute('class') || '';
+          if (className.includes('Question') || className.includes('CasestudyActivityField')) {
+            activitiesList = list;
+            break;
+          }
         }
       }
     }
@@ -95,34 +117,53 @@ class CaseStudyHandler extends BaseLegacyHandler {
 
     if (!activitiesList) return activities;
 
-    // Iterate each CasestudyActivityField
+    // Iterate each Question/Activity instance
     const activityInstances = activitiesList.querySelectorAll(':scope > instance');
     for (const activityInst of activityInstances) {
       const aDict = activityInst.querySelector(':scope > dictionary');
       if (!aDict) continue;
 
-      // Extract activity text
-      const activityTextArea = this.findDictInstance(aDict, 'activityTextArea');
+      // Extract activity/question text (try both field names)
+      let activityTextArea = this.findDictInstance(aDict, 'questionTextArea');
+      if (!activityTextArea) {
+        activityTextArea = this.findDictInstance(aDict, 'activityTextArea');
+      }
       const activityText = activityTextArea ? this.extractTextAreaFieldContent(activityTextArea) : '';
 
-      // Extract feedback text
-      const feedbackTextArea = this.findDictInstance(aDict, 'feedbackTextArea');
-      const feedbackText = feedbackTextArea ? this.extractTextAreaFieldContent(feedbackTextArea) : '';
-
-      // Get button caption (optional)
+      // Extract feedback - try multiple formats
+      let feedbackText = '';
       let buttonCaption = '';
+
+      // Strategy 1: Look for feedbackTextArea key (some legacy formats)
+      const feedbackTextArea = this.findDictInstance(aDict, 'feedbackTextArea');
       if (feedbackTextArea) {
+        feedbackText = this.extractTextAreaFieldContent(feedbackTextArea);
         const feedbackDict = feedbackTextArea.querySelector(':scope > dictionary');
         if (feedbackDict) {
           buttonCaption = this.findDictStringValue(feedbackDict, 'buttonCaption') || '';
         }
       }
 
-      if (activityText) {
+      // Strategy 2: Look for Feedback2Field instance (Symfony legacy format)
+      // Structure: <instance class="exe.engine.field.Feedback2Field">
+      if (!feedbackText) {
+        const feedback2Field = aDict.querySelector(':scope > instance[class*="Feedback2Field"]');
+        if (feedback2Field) {
+          feedbackText = this.extractTextAreaFieldContent(feedback2Field);
+          const fbDict = feedback2Field.querySelector(':scope > dictionary');
+          if (fbDict) {
+            buttonCaption = this.findDictStringValue(fbDict, 'buttonCaption') || '';
+          }
+        }
+      }
+
+      if (activityText || feedbackText) {
+        // Use translation function if available, otherwise use Spanish default
+        const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
         activities.push({
           activity: activityText,
           feedback: feedbackText,
-          buttonCaption: buttonCaption || 'Show Feedback'
+          buttonCaption: buttonCaption || defaultCaption
         });
       }
     }

@@ -49,25 +49,70 @@ describe('ExternalUrlHandler', () => {
   });
 
   describe('extractHtmlView', () => {
-    it('extracts from descriptionTextArea', () => {
+    it('generates iframe HTML with URL', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="descriptionTextArea"></string>
-          <instance class="exe.engine.field.TextAreaField">
-            <dictionary>
-              <string role="key" value="content_w_resourcePaths"></string>
-              <unicode value="${escapeXml('<p>Website description</p>')}"></unicode>
-            </dictionary>
-          </instance>
+          <string role="key" value="url"></string>
+          <unicode value="https://cedec.intef.es"></unicode>
+          <string role="key" value="height"></string>
+          <unicode value="300"></unicode>
         </dictionary>
       `);
 
       const html = handler.extractHtmlView(dict);
-      expect(html).toBe('<p>Website description</p>');
+      expect(html).toContain('<iframe');
+      expect(html).toContain('src="https://cedec.intef.es"');
+      expect(html).toContain('size="2"'); // 300 = medium = size 2
+      expect(html).toContain('height="300"');
+    });
+
+    it('maps height to correct size option', () => {
+      // Small (height <= 200)
+      let dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="url"></string>
+          <unicode value="https://example.com"></unicode>
+          <string role="key" value="height"></string>
+          <unicode value="200"></unicode>
+        </dictionary>
+      `);
+      expect(handler.extractHtmlView(dict)).toContain('size="1"');
+
+      // Large (height 301-500)
+      dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="url"></string>
+          <unicode value="https://example.com"></unicode>
+          <string role="key" value="height"></string>
+          <unicode value="500"></unicode>
+        </dictionary>
+      `);
+      expect(handler.extractHtmlView(dict)).toContain('size="3"');
+
+      // Super-size (height > 500)
+      dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="url"></string>
+          <unicode value="https://example.com"></unicode>
+          <string role="key" value="height"></string>
+          <unicode value="800"></unicode>
+        </dictionary>
+      `);
+      expect(handler.extractHtmlView(dict)).toContain('size="4"');
     });
 
     it('returns empty string for null dict', () => {
       expect(handler.extractHtmlView(null)).toBe('');
+    });
+
+    it('returns empty string when no URL', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="height"></string>
+          <unicode value="300"></unicode>
+        </dictionary>
+      `);
+      expect(handler.extractHtmlView(dict)).toBe('');
     });
   });
 
