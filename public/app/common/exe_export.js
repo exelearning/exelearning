@@ -242,7 +242,10 @@ const $exeExport = window.$exeExport = {
             // to generate the complete interface. These iDevices have empty htmlView by design.
             // Other JSON iDevices (like text) may have pre-rendered content in htmlView.
             const isJsonIdevice = ideviceNode.getAttribute('data-idevice-component-type') === 'json';
-            const jsonOnlyIdevices = ['casestudy', 'form', 'image-gallery', 'magnifier'];
+            // JSON-only iDevices that store ALL content in jsonProperties (not in htmlView)
+            // and need renderView to generate the complete interface.
+            // 'trueorfalse' added for legacy imports that have empty htmlView.
+            const jsonOnlyIdevices = ['casestudy', 'form', 'image-gallery', 'magnifier', 'trueorfalse'];
             const ideviceType = ideviceNode.getAttribute('data-idevice-type');
             const needsJsonRender = isJsonIdevice && jsonOnlyIdevices.includes(ideviceType);
             if (needsJsonRender || ideviceNode.classList.contains('db-no-data')) {
