@@ -14,17 +14,7 @@
  * Pages are XHTML (not HTML5) with self-closing void elements.
  */
 
-import type {
-    ExportDocument,
-    ExportPage,
-    ExportMetadata,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ExportOptions,
-    ExportResult,
-    Epub3ExportOptions,
-} from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Epub3ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 
 /**
@@ -106,10 +96,6 @@ export class Epub3Exporter extends BaseExporter {
     private manifestItems: ManifestItem[] = [];
     private spineItems: SpineItem[] = [];
     private usedIds: Set<string> = new Set();
-
-    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
-        super(document, resources, assets, zip);
-    }
 
     /**
      * Get file extension for EPUB3 format

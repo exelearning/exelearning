@@ -358,7 +358,7 @@ test.describe('Text iDevice', () => {
                 await frame.waitForFunction(
                     () => {
                         const cmElement = document.querySelector('.CodeMirror') as any;
-                        return cmElement && cmElement.CodeMirror;
+                        return cmElement?.CodeMirror;
                     },
                     { timeout: 10000 },
                 );
@@ -366,7 +366,7 @@ test.describe('Text iDevice', () => {
                 // Set the content using CodeMirror API via DOM element
                 await frame.evaluate(html => {
                     const cmElement = document.querySelector('.CodeMirror') as any;
-                    if (cmElement && cmElement.CodeMirror) {
+                    if (cmElement?.CodeMirror) {
                         cmElement.CodeMirror.setValue(html);
                     }
                 }, testHtml);
@@ -374,7 +374,7 @@ test.describe('Text iDevice', () => {
                 // Verify the content was set
                 const cmContent = await frame.evaluate(() => {
                     const cmElement = document.querySelector('.CodeMirror') as any;
-                    return cmElement && cmElement.CodeMirror ? cmElement.CodeMirror.getValue() : '';
+                    return cmElement?.CodeMirror ? cmElement.CodeMirror.getValue() : '';
                 });
                 expect(cmContent).toContain('HTML edited via CodeMagic');
             }

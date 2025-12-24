@@ -12,7 +12,7 @@
 // =============================================================================
 const BASE_URL = process.env.APP_BASE_URL || `http://localhost:${process.env.APP_PORT || process.env.PORT || '8080'}`;
 
-Response.redirect = function (url: string | URL, status?: number): Response {
+Response.redirect = (url: string | URL, status?: number): Response => {
     let absoluteUrl: string;
 
     if (typeof url === 'string' && !url.startsWith('http://') && !url.startsWith('https://')) {

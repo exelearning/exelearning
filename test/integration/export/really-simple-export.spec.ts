@@ -624,7 +624,7 @@ describe('Really Simple Preview Tests', () => {
         } finally {
             // Clean up the temp extraction directory created by fromElpFile
             const extractDir = document.extractedPath;
-            if (extractDir && extractDir.includes('/tmp/')) {
+            if (extractDir?.includes('/tmp/')) {
                 await fs.remove(extractDir);
             }
         }

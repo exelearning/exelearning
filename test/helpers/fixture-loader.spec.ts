@@ -3,7 +3,6 @@
  */
 import { describe, it, expect, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
-import * as _path from 'path';
 import {
     getFixturesDir,
     getFixturePath,

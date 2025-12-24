@@ -86,7 +86,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     Y.applyUpdate(ydoc, binaryData);
                     const metadata = ydoc.getMap('metadata');
                     const metadataTitle = metadata.get('title') as string | undefined;
-                    if (metadataTitle && metadataTitle.trim()) {
+                    if (metadataTitle?.trim()) {
                         title = metadataTitle.trim();
                     }
                 } catch {

@@ -10,7 +10,6 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test'
 import { Elysia } from 'elysia';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { v4 as _uuidv4 } from 'uuid';
 
 // In-memory storage for chunked uploads (mirrors the real implementation)
 const chunkUploads = new Map<
@@ -46,7 +45,7 @@ function createChunkedUploadTestApp(): Elysia {
                 }
 
                 const upload = chunkUploads.get(`${projectId}:${identifier}`);
-                if (upload && upload.uploadedChunks.has(chunkNumber)) {
+                if (upload?.uploadedChunks.has(chunkNumber)) {
                     // Chunk exists
                     set.status = 200;
                     return { exists: true };

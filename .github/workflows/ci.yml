@@ -59,11 +59,8 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: TS Lint
-        run: make lint-ts
-
-      - name: JS Lint
-        run: make lint-js
+      - name: Lint (Biome)
+        run: make lint
 
       - name: Unit Tests + 90% Coverage
         run: make test-unit-ci

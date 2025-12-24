@@ -524,7 +524,7 @@ function formatBytes(bytes: number): string {
     bytes = Math.max(bytes, 0);
     const pow = Math.floor((bytes ? Math.log(bytes) : 0) / Math.log(1024));
     const powCapped = Math.min(pow, units.length - 1);
-    const value = bytes / Math.pow(1024, powCapped);
+    const value = bytes / 1024 ** powCapped;
     return `${value.toFixed(2)} ${units[powCapped]}`;
 }
 
