@@ -183,12 +183,12 @@ export class WebsitePreviewExporter {
     /**
      * Libraries that are located in /libs/ instead of /app/common/
      * The LibraryDetector returns files without the base path, so we need to map them correctly
+     * Note: mermaid is in /app/common/mermaid/, not /libs/
      */
     private static readonly LIBS_FOLDER_LIBRARIES = new Set([
         'jquery-ui',
         'fflate',
         'exe_atools',
-        'mermaid',
         'exe_elpx_download', // Folder in /libs/
     ]);
 
