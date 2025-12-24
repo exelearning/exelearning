@@ -865,11 +865,32 @@ class ResourceFetcher {
   // =========================================================================
 
   /**
-   * Clear all cached resources
+   * Clear all cached resources (in-memory only)
    */
   clearCache() {
     this.cache.clear();
-    Logger.log('[ResourceFetcher] Cache cleared');
+    Logger.log('[ResourceFetcher] In-memory cache cleared');
+  }
+
+  /**
+   * Clear all cached resources including IndexedDB persistent cache
+   * @returns {Promise<void>}
+   */
+  async clearAllCaches() {
+    // Clear in-memory cache
+    this.cache.clear();
+
+    // Clear IndexedDB cache
+    if (this.resourceCache) {
+      try {
+        await this.resourceCache.clear();
+        Logger.log('[ResourceFetcher] All caches cleared (in-memory + IndexedDB)');
+      } catch (e) {
+        console.warn('[ResourceFetcher] Failed to clear IndexedDB cache:', e);
+      }
+    } else {
+      Logger.log('[ResourceFetcher] In-memory cache cleared (no IndexedDB cache)');
+    }
   }
 
   /**

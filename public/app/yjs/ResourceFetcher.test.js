@@ -535,7 +535,66 @@ describe('ResourceFetcher', () => {
     it('logs cache cleared message', () => {
       const fetcher = new ResourceFetcher();
       fetcher.clearCache();
-      expect(global.Logger.log).toHaveBeenCalledWith('[ResourceFetcher] Cache cleared');
+      expect(global.Logger.log).toHaveBeenCalledWith('[ResourceFetcher] In-memory cache cleared');
+    });
+  });
+
+  describe('clearAllCaches', () => {
+    it('clears in-memory cache', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.cache.set('theme:base', new Map());
+      fetcher.cache.set('idevice:text', new Map());
+
+      await fetcher.clearAllCaches();
+
+      expect(fetcher.cache.size).toBe(0);
+    });
+
+    it('clears IndexedDB cache when available', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockResourceCache = {
+        clear: vi.fn().mockResolvedValue(undefined),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      await fetcher.clearAllCaches();
+
+      expect(mockResourceCache.clear).toHaveBeenCalled();
+    });
+
+    it('logs appropriate message when IndexedDB cache available', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.resourceCache = {
+        clear: vi.fn().mockResolvedValue(undefined),
+      };
+
+      await fetcher.clearAllCaches();
+
+      expect(global.Logger.log).toHaveBeenCalledWith(
+        '[ResourceFetcher] All caches cleared (in-memory + IndexedDB)'
+      );
+    });
+
+    it('logs appropriate message when no IndexedDB cache', async () => {
+      const fetcher = new ResourceFetcher();
+
+      await fetcher.clearAllCaches();
+
+      expect(global.Logger.log).toHaveBeenCalledWith(
+        '[ResourceFetcher] In-memory cache cleared (no IndexedDB cache)'
+      );
+    });
+
+    it('handles IndexedDB clear error gracefully', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.resourceCache = {
+        clear: vi.fn().mockRejectedValue(new Error('Clear failed')),
+      };
+
+      // Should not throw
+      await fetcher.clearAllCaches();
+
+      expect(console.warn).toHaveBeenCalled();
     });
   });
 

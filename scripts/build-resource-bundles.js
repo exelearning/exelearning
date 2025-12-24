@@ -303,6 +303,7 @@ function buildCommonLibsBundle(manifest) {
 
 /**
  * Build content CSS bundle
+ * Files are stored with content/css/ prefix to match what exporters expect
  */
 function buildContentCssBundle(manifest) {
   console.log('\nBuilding content CSS bundle...');
@@ -314,13 +315,19 @@ function buildContentCssBundle(manifest) {
     return;
   }
 
-  const files = scanDirectory(cssPath)
+  const scannedFiles = scanDirectory(cssPath)
     .filter(f => f.relativePath.endsWith('.css'));
 
-  if (files.length === 0) {
+  if (scannedFiles.length === 0) {
     console.log('  No CSS files found, skipping');
     return;
   }
+
+  // Add content/css/ prefix to match what exporters expect (ElpxExporter, Html5Exporter, etc.)
+  const files = scannedFiles.map(f => ({
+    fullPath: f.fullPath,
+    relativePath: `content/css/${f.relativePath}`,
+  }));
 
   const zipBuffer = createZip(files);
   const outputFile = path.join(OUTPUT_PATH, 'content-css.zip');
