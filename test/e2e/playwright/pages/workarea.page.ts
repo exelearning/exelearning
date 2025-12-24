@@ -208,7 +208,7 @@ export class WorkareaPage {
         const blockEl = await block.elementHandle();
         if (blockEl) {
             await this.page
-                .waitForFunction(el => el && el.getAttribute && el.getAttribute('mode') !== 'edition', blockEl, {
+                .waitForFunction(el => el?.getAttribute && el.getAttribute('mode') !== 'edition', blockEl, {
                     timeout,
                 })
                 .catch(() => {});

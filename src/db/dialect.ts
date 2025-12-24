@@ -13,7 +13,7 @@ import { mkdirSync, existsSync } from 'fs';
 /**
  * Check if we're running in Bun
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: globalThis doesn't have Bun type
 const isBun = typeof (globalThis as any).Bun !== 'undefined';
 
 // ============================================================================

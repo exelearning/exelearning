@@ -14,24 +14,10 @@
  * - content/css/ (base CSS)
  */
 
-import type {
-    ExportDocument,
-    ExportPage,
-    ExportMetadata,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ExportOptions,
-    ExportResult,
-    Html5ExportOptions,
-} from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Html5ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 
 export class Html5Exporter extends BaseExporter {
-    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
-        super(document, resources, assets, zip);
-    }
-
     /**
      * Get file extension for HTML5 format
      */

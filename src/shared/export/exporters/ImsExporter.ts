@@ -14,25 +14,12 @@
  * - content/css/ (base CSS)
  */
 
-import type {
-    ExportDocument,
-    ExportPage,
-    ExportMetadata,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ExportOptions,
-    ExportResult,
-} from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { ImsManifestGenerator } from '../generators/ImsManifest';
 
 export class ImsExporter extends Html5Exporter {
     protected manifestGenerator: ImsManifestGenerator | null = null;
-
-    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
-        super(document, resources, assets, zip);
-    }
 
     /**
      * Get file suffix for IMS CP format

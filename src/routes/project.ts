@@ -765,7 +765,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // GET /api/projects/:projectId/sharing - Get project sharing info
             .get('/api/projects/:projectId/sharing', async ({ params, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
 
                 if (isNaN(projectId)) {
                     set.status = 400;
@@ -789,7 +789,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // PATCH /api/projects/:projectId/visibility - Update project visibility
             .patch('/api/projects/:projectId/visibility', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const { visibility } = body as { visibility: 'public' | 'private' };
 
                 if (isNaN(projectId)) {
@@ -834,7 +834,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // POST /api/projects/:projectId/collaborators - Add collaborator
             .post('/api/projects/:projectId/collaborators', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const { email } = body as { email: string };
 
                 if (isNaN(projectId)) {
@@ -888,8 +888,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // DELETE /api/projects/:projectId/collaborators/:userId - Remove collaborator
             .delete('/api/projects/:projectId/collaborators/:userId', async ({ params, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
-                const userId = parseInt(params.userId);
+                const projectId = parseInt(params.projectId, 10);
+                const userId = parseInt(params.userId, 10);
 
                 if (isNaN(projectId) || isNaN(userId)) {
                     set.status = 400;
@@ -924,7 +924,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // PATCH /api/projects/:projectId/owner - Transfer ownership
             .patch('/api/projects/:projectId/owner', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const { newOwnerId } = body as { newOwnerId: number };
 
                 if (isNaN(projectId)) {
@@ -1172,7 +1172,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // DELETE /api/projects/uuid/:uuid/collaborators/:userId - Remove collaborator by UUID
             .delete('/api/projects/uuid/:uuid/collaborators/:userId', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
-                const userId = parseInt(params.userId);
+                const userId = parseInt(params.userId, 10);
 
                 if (isNaN(userId)) {
                     set.status = 400;
@@ -1912,7 +1912,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
                     const k = 1024;
                     const i = Math.floor(Math.log(bytes) / Math.log(k));
-                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + units[i];
+                    return parseFloat((bytes / k ** i).toFixed(2)) + ' ' + units[i];
                 };
 
                 // Extract internal file links from HTML

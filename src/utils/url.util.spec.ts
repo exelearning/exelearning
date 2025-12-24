@@ -58,9 +58,9 @@ describe('URL Utilities', () => {
             expect(components?.day).toBeDefined();
 
             // Verify it's a valid date
-            const year = parseInt(components?.year || '0');
-            const month = parseInt(components?.month || '0');
-            const day = parseInt(components?.day || '0');
+            const year = parseInt(components?.year || '0', 10);
+            const month = parseInt(components?.month || '0', 10);
+            const day = parseInt(components?.day || '0', 10);
             expect(year).toBeGreaterThanOrEqual(2020);
             expect(month).toBeGreaterThanOrEqual(1);
             expect(month).toBeLessThanOrEqual(12);

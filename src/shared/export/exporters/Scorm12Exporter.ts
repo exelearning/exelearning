@@ -15,16 +15,7 @@
  * - content/css/ (base CSS)
  */
 
-import type {
-    ExportDocument,
-    ExportPage,
-    ExportMetadata,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ExportOptions,
-    ExportResult,
-} from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { Scorm12ManifestGenerator } from '../generators/Scorm12Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
@@ -32,10 +23,6 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 export class Scorm12Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm12ManifestGenerator | null = null;
     protected lomGenerator: LomMetadataGenerator | null = null;
-
-    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
-        super(document, resources, assets, zip);
-    }
 
     /**
      * Get file suffix for SCORM 1.2 format

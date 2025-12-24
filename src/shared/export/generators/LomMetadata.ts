@@ -296,7 +296,7 @@ export class LomMetadataGenerator {
      */
     getLocalizedString(key: string, lang: string): string {
         const langShort = lang.substring(0, 2).toLowerCase();
-        if (TRANSLATIONS[key] && TRANSLATIONS[key][langShort]) {
+        if (TRANSLATIONS[key]?.[langShort]) {
             return TRANSLATIONS[key][langShort];
         }
         return TRANSLATIONS[key]?.en || key;

@@ -55,7 +55,6 @@ export interface PreviewResult {
  */
 export class WebsitePreviewExporter {
     private document: ExportDocument;
-    private resourceProvider: ResourceProvider;
     private ideviceRenderer: IdeviceRenderer;
 
     /**
@@ -119,7 +118,7 @@ export class WebsitePreviewExporter {
                         return true;
                     }
                     // Also check content for the CSS class (more reliable)
-                    if (component.content && component.content.includes('exe-download-package-link')) {
+                    if (component.content?.includes('exe-download-package-link')) {
                         return true;
                     }
                 }
@@ -1176,19 +1175,6 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
             .replace(/'/g, '&#39;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
-    }
-
-    /**
-     * Sanitize filename for URLs
-     */
-    private sanitizeFilename(title: string): string {
-        return (
-            title
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-|-$/g, '')
-                .substring(0, 50) || 'page'
-        );
     }
 
     /**
