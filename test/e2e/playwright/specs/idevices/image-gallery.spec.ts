@@ -435,10 +435,7 @@ test.describe('Image Gallery iDevice', () => {
             );
 
             // Wait for SimpleLightbox to be loaded
-            await page.waitForFunction(
-                () => typeof (window as any).SimpleLightbox !== 'undefined',
-                { timeout: 10000 },
-            );
+            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined', { timeout: 10000 });
 
             // Wait for renderBehaviour to complete and SimpleLightbox to initialize
             await page.waitForTimeout(500);
