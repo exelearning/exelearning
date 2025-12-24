@@ -29,12 +29,15 @@ window.MathJax = window.MathJax || (function() {
     var basePath = isWorkarea ? '/app/common/exe_math' : (isIndex ? './libs/exe_math' : '../libs/exe_math');
     
     var externalExtensions = [
-        'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel', 
-        'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose', 
+        'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
+        'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose',
         'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
-        'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb', 
-        'setoptions',
-        'bbm', 'bboldx', 'begingroup', 'colorv2', 'dsfont', 'texhtml', 'units'
+        'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb',
+        'setoptions'
+        // TODO: Enable these extensions when upgrading to MathJax 4.0
+        // Currently disabled due to dependency issues with bundled tex-mml-svg.js (MathJax 3.x)
+        // These extensions require input/tex-base to be fully loaded before initialization
+        // 'bbm', 'bboldx', 'begingroup', 'colorv2', 'dsfont', 'texhtml', 'units'
     ];
     
     return {
