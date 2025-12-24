@@ -191,7 +191,7 @@ describe('Config Routes Integration', () => {
             });
         });
 
-        it('should have exactly 13 project properties', async () => {
+        it('should have exactly 14 project properties', async () => {
             const response = await configRoutes.handle(
                 new Request('http://localhost/api/parameter-management/parameters/data/list'),
             );
@@ -200,7 +200,7 @@ describe('Config Routes Integration', () => {
             const nestedConfig = data.odeProjectSyncPropertiesConfig as Record<string, Record<string, unknown>>;
             const config = flattenProperties(nestedConfig);
 
-            expect(Object.keys(config).length).toBe(13);
+            expect(Object.keys(config).length).toBe(14);
         });
 
         it('should have groups attribute on all properties for collapsible sections', async () => {

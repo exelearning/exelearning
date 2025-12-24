@@ -59,6 +59,7 @@ export class PageRenderer {
             addPagination = false,
             addSearchBox = false,
             addAccessibilityToolbar = false,
+            addMathJax = false,
             // Custom head content
             extraHeadContent = '',
             // SCORM-specific options
@@ -106,7 +107,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, extraHeadContent, addSearchBox, detectedLibraries })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -138,6 +139,7 @@ ${madeWithExeHtml}
         description?: string;
         licenseUrl?: string;
         addAccessibilityToolbar?: boolean;
+        addMathJax?: boolean;
         extraHeadContent?: string;
         addSearchBox?: boolean;
         detectedLibraries?: string[];
@@ -152,6 +154,7 @@ ${madeWithExeHtml}
             description = '',
             licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
             addAccessibilityToolbar = false,
+            addMathJax = false,
             extraHeadContent = '',
             addSearchBox = false,
             detectedLibraries = [],
@@ -236,6 +239,11 @@ ${madeWithExeHtml}
         if (addAccessibilityToolbar) {
             head += `\n<script src="${basePath}libs/exe_atools/exe_atools.js"> </script>`;
             head += `<link rel="stylesheet" href="${basePath}libs/exe_atools/exe_atools.css">`;
+        }
+
+        // MathJax library (for math formulas with accessibility features)
+        if (addMathJax) {
+            head += `\n<script src="${basePath}libs/exe_math/tex-mml-svg.js"> </script>`;
         }
 
         // Custom head content (from project properties)

@@ -46,6 +46,7 @@ export interface ExportMetadata {
     addPagination?: boolean; // Page counter (Página X/Y)
     addSearchBox?: boolean; // Search functionality (HTML5 website only)
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
+    addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
 
     // Custom content
@@ -156,9 +157,10 @@ export interface ResourceProvider {
     /**
      * Fetch specific library files
      * @param files - Array of file paths to fetch
+     * @param patterns - Optional library patterns to identify directory-based libraries
      * @returns Map of relative path -> content buffer
      */
-    fetchLibraryFiles(files: string[]): Promise<Map<string, Uint8Array>>;
+    fetchLibraryFiles(files: string[], patterns?: LibraryPattern[]): Promise<Map<string, Uint8Array>>;
 
     /**
      * Normalize iDevice type name to directory name
@@ -469,6 +471,7 @@ export interface PageRenderOptions {
     addPagination?: boolean;
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
+    addMathJax?: boolean;
 
     // Custom head content
     extraHeadContent?: string;
@@ -527,6 +530,8 @@ export interface LibraryPattern {
     pattern: string | RegExp;
     files: string[];
     requiresLatexCheck?: boolean;
+    /** When true, files array contains directory names and all contents should be included recursively */
+    isDirectory?: boolean;
 }
 
 /**
@@ -536,6 +541,8 @@ export interface LibraryDetectionResult {
     libraries: Array<{ name: string; files: string[] }>;
     files: string[];
     count: number;
+    /** Full pattern info for directory-based libraries */
+    patterns: LibraryPattern[];
 }
 
 /**
@@ -544,6 +551,8 @@ export interface LibraryDetectionResult {
 export interface LibraryDetectionOptions {
     includeScorm?: boolean;
     includeAccessibilityToolbar?: boolean;
+    /** Force include MathJax library regardless of content detection */
+    includeMathJax?: boolean;
     /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
     skipMathJax?: boolean;
 }

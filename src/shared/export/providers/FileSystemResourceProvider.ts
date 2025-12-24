@@ -14,7 +14,7 @@
 
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import type { ResourceProvider } from '../interfaces';
+import type { ResourceProvider, LibraryPattern } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
 
 /**
@@ -122,9 +122,10 @@ export class FileSystemResourceProvider implements ResourceProvider {
     /**
      * Fetch specific library files
      * @param filePaths - Array of file paths relative to libs/
+     * @param patterns - Optional library patterns to identify directory-based libraries
      * @returns Map of file paths to content (without libs/ prefix, caller adds it)
      */
-    async fetchLibraryFiles(filePaths: string[]): Promise<Map<string, Buffer>> {
+    async fetchLibraryFiles(filePaths: string[], patterns?: LibraryPattern[]): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
 
         // Mapping for specific files that are in app/common/ instead of libs/
@@ -146,9 +147,40 @@ export class FileSystemResourceProvider implements ResourceProvider {
             'exe_highlighter',
             'exe_slidesjs',
             'exe_media_link',
+            'exe_math', // MathJax library
+            'exe_atools', // Accessibility toolbar
         ]);
 
+        // Build lookup for directory patterns
+        const directoryPatterns = new Set<string>();
+        if (patterns) {
+            for (const lib of patterns) {
+                if (lib.isDirectory) {
+                    for (const file of lib.files) {
+                        directoryPatterns.add(file);
+                    }
+                }
+            }
+        }
+
         for (const filePath of filePaths) {
+            // Check if this is a directory pattern (entire directory should be included)
+            if (directoryPatterns.has(filePath)) {
+                // Recursively read all files from directory
+                const firstPart = filePath.split('/')[0];
+                let dirPath: string;
+                if (appCommonLibraries.has(firstPart)) {
+                    dirPath = path.join(this.publicDir, 'app/common', filePath);
+                } else {
+                    dirPath = path.join(this.publicDir, 'libs', filePath);
+                }
+                const dirFiles = await this.readDirectoryRecursive(dirPath, filePath);
+                for (const [subPath, content] of dirFiles) {
+                    files.set(subPath, content);
+                }
+                continue;
+            }
+
             let sourcePath: string;
 
             // Check if this is a specific mapped file

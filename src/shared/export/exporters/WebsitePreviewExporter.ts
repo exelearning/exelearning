@@ -299,36 +299,40 @@ ${this.renderFooterSection({ license, userFooterContent })}
 </div>
 ${madeWithExeHtml}`;
 
-        // Pre-render LaTeX in encrypted DataGame divs FIRST
-        // (game iDevices store questions in encrypted JSON)
+        // Pre-render LaTeX ONLY if addMathJax is false
+        // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
         let finalBodyContent = bodyContent;
         let latexWasRendered = false;
-        if (options.preRenderDataGameLatex) {
-            try {
-                const result = await options.preRenderDataGameLatex(bodyContent);
-                if (result.count > 0) {
-                    finalBodyContent = result.html;
-                    latexWasRendered = true;
-                    console.log(`[Preview] Pre-rendered LaTeX in ${result.count} DataGame(s)`);
+        if (!meta.addMathJax) {
+            // Pre-render LaTeX in encrypted DataGame divs FIRST
+            // (game iDevices store questions in encrypted JSON)
+            if (options.preRenderDataGameLatex) {
+                try {
+                    const result = await options.preRenderDataGameLatex(bodyContent);
+                    if (result.count > 0) {
+                        finalBodyContent = result.html;
+                        latexWasRendered = true;
+                        console.log(`[Preview] Pre-rendered LaTeX in ${result.count} DataGame(s)`);
+                    }
+                } catch (error) {
+                    console.warn('[Preview] DataGame LaTeX pre-render failed:', error);
                 }
-            } catch (error) {
-                console.warn('[Preview] DataGame LaTeX pre-render failed:', error);
             }
-        }
 
-        // Pre-render visible LaTeX to SVG+MathML if hook is provided
-        // This processes ALL body content including navigation, headers, and pages
-        // The DOM-based pre-renderer safely skips script, style, code, pre elements
-        if (options.preRenderLatex) {
-            try {
-                const result = await options.preRenderLatex(finalBodyContent);
-                if (result.latexRendered) {
-                    finalBodyContent = result.html;
-                    latexWasRendered = true;
-                    console.log(`[Preview] Pre-rendered ${result.count} LaTeX expressions to SVG+MathML`);
+            // Pre-render visible LaTeX to SVG+MathML if hook is provided
+            // This processes ALL body content including navigation, headers, and pages
+            // The DOM-based pre-renderer safely skips script, style, code, pre elements
+            if (options.preRenderLatex) {
+                try {
+                    const result = await options.preRenderLatex(finalBodyContent);
+                    if (result.latexRendered) {
+                        finalBodyContent = result.html;
+                        latexWasRendered = true;
+                        console.log(`[Preview] Pre-rendered ${result.count} LaTeX expressions to SVG+MathML`);
+                    }
+                } catch (error) {
+                    console.warn('[Preview] LaTeX pre-render failed, falling back to MathJax:', error);
                 }
-            } catch (error) {
-                console.warn('[Preview] LaTeX pre-render failed, falling back to MathJax:', error);
             }
         }
 
@@ -336,7 +340,8 @@ ${madeWithExeHtml}`;
         const libraryDetector = new LibraryDetector();
         const detectedLibraries = libraryDetector.detectLibraries(finalBodyContent, {
             includeAccessibilityToolbar: addAccessibilityToolbar,
-            skipMathJax: latexWasRendered,
+            includeMathJax: meta.addMathJax === true,
+            skipMathJax: latexWasRendered && !meta.addMathJax,
         });
 
         return `<!DOCTYPE html>
@@ -896,24 +901,32 @@ ${userFooterHtml}</div></footer>`;
             lib => lib.name === 'exe_math' || lib.name === 'exe_math_datagame',
         );
 
-        // MathJax configuration - must be set BEFORE loading the script
-        // Configure pageReady to catch errors from auto-typeset on hidden SPA pages
-        let mathJaxConfig = '';
+        // MathJax configuration and script - must be set BEFORE loading the script
+        // For SPA preview: disable auto-typeset and only process active pages
+        let mathJaxScripts = '';
         if (needsMathJax) {
-            mathJaxConfig = `\n<script>
+            const mathJaxJs = this.getVersionedPath('/app/common/exe_math/tex-mml-svg.js', options);
+            mathJaxScripts = `\n<script>
 window.MathJax = {
     startup: {
+        typeset: false,  // Disable auto-typeset on page load
         pageReady: function() {
-            return MathJax.startup.defaultPageReady().catch(function(err) {
-                console.warn('[MathJax] Auto-typeset error:', err.message);
-            });
+            // Only typeset the active SPA page (prevents replaceChild errors on hidden pages)
+            var activePage = document.querySelector('.spa-page.active');
+            if (activePage) {
+                return MathJax.typesetPromise([activePage]).catch(function(err) {
+                    console.warn('[MathJax] Typeset error:', err.message);
+                });
+            }
+            return Promise.resolve();
         }
     }
 };
-</script>`;
+</script>
+<script src="${mathJaxJs}"></script>`;
         }
 
-        // Build detected library JS scripts
+        // Build detected library JS scripts (skip exe_math since we handle it above)
         let detectedLibraryScripts = '';
         for (const file of detectedLibraries.files) {
             if (file.endsWith('.js')) {
@@ -962,7 +975,7 @@ if (window.__jQueryShimQueue) {
 <script src="${bootstrapJs}"></script>${jqueryUiScript}${elpxDownloadScripts}
 <script src="${commonJs}"></script>
 <script src="${commonI18nJs}"></script>
-<script src="${exeExportJs}"></script>${mathJaxConfig}${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
+<script src="${exeExportJs}"></script>${mathJaxScripts}${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"></script>
 <script>
 // Polyfill for confirm/alert/prompt in sandboxed iframes (preview mode)
@@ -1073,12 +1086,17 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
         link.parentElement.classList.toggle('current-page-parent', isAncestor);
       }
     });
-    // Page header with pre-rendered LaTeX is now inside each article (page-header-spa class)
-    // No need to update shared header - it shows/hides automatically with the article
+    // Page header is inside each article (page-header-spa class)
     if (pageCounterEl) {
       pageCounterEl.textContent = (index + 1).toString();
     }
     updateNavButtons();
+    // Typeset MathJax on the active page if MathJax is loaded
+    if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+      MathJax.typesetPromise([activePage]).catch(function(e) {
+        console.warn('[MathJax] Typeset error:', e.message);
+      });
+    }
   }
 
   function updateNavButtons() {
@@ -1129,9 +1147,7 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   // Check initial hash on load
   showPageByHash();
 
-  // Note: LaTeX in navigation and page titles is pre-rendered by LatexPreRenderer
-  // No need for dynamic MathJax typesetting - it's already converted to SVG+MathML
-
+  // MathJax typesets each page when it becomes active (if MathJax is loaded)
   updateNavButtons();
 })();`;
     }

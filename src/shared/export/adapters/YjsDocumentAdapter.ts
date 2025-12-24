@@ -88,6 +88,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             addPagination: this.parseBoolean(meta.get('addPagination'), false),
             addSearchBox: this.parseBoolean(meta.get('addSearchBox'), false),
             addAccessibilityToolbar: this.parseBoolean(meta.get('addAccessibilityToolbar'), false),
+            addMathJax: this.parseBoolean(meta.get('addMathJax'), false),
             exportSource: this.parseBoolean(meta.get('exportSource'), true), // Default: true
 
             // Custom content

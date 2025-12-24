@@ -359,6 +359,14 @@ const ODE_PROJECT_SYNC_PROPERTIES_CONFIG = {
             category: 'properties',
             groups: { export: GROUPS_TITLE.export },
         },
+        pp_addMathJax: {
+            title: `${TRANS_PREFIX}MathJax (formulas)`,
+            help: `${TRANS_PREFIX}Always include the MathJax library for mathematical formulas. Enables accessibility features and context menus for LaTeX/MathML content.`,
+            value: 'false',
+            type: 'checkbox',
+            category: 'properties',
+            groups: { export: GROUPS_TITLE.export },
+        },
 
         // === GROUP: custom_code (Código personalizado) ===
         pp_extraHeadContent: {

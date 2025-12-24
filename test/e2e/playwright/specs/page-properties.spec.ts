@@ -586,4 +586,137 @@ test.describe('Page Properties', () => {
             .filter({ hasText: 'Highlighted Page' });
         await expect(highlightedLink).toBeVisible();
     });
+
+    test('addMathJax metadata property should be stored and retrieved', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        // Create a new project
+        const projectUuid = await createProject(page, 'MathJax Property Persistence Test');
+
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+
+        // Wait for app to fully initialize including Yjs
+        await page.waitForFunction(
+            () => {
+                const app = (window as any).eXeLearning?.app;
+                return app?.project?._yjsBridge !== undefined;
+            },
+            { timeout: 30000 },
+        );
+
+        // Wait for loading screen to hide
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
+
+        // Set addMathJax property to true directly in metadata (Y.Map)
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            metadata.set('addMathJax', 'true');
+        });
+
+        await page.waitForTimeout(300);
+
+        // Verify the property was set in Yjs metadata
+        const valueAfterSet = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            return metadata.get('addMathJax');
+        });
+
+        expect(valueAfterSet).toBe('true');
+
+        // Set it to false
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            metadata.set('addMathJax', 'false');
+        });
+
+        await page.waitForTimeout(300);
+
+        // Verify the property was updated
+        const valueAfterUnset = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            return metadata.get('addMathJax');
+        });
+
+        expect(valueAfterUnset).toBe('false');
+    });
+
+    test('addMathJax property should affect preview MathJax inclusion', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        // Create a new project
+        const projectUuid = await createProject(page, 'MathJax Preview Effect Test');
+
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+
+        // Wait for app to fully initialize
+        await page.waitForFunction(
+            () => {
+                const app = (window as any).eXeLearning?.app;
+                return app?.project?._yjsBridge !== undefined;
+            },
+            { timeout: 30000 },
+        );
+
+        // Wait for loading screen to hide
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
+
+        // Enable addMathJax option directly in metadata (Y.Map)
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            metadata.set('addMathJax', 'true');
+        });
+
+        await page.waitForTimeout(300);
+
+        // Open Preview
+        const previewButton = page.locator('#head-bottom-preview');
+        await previewButton.click();
+
+        const previewPanel = page.locator('#previewsidenav');
+        await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+        // Wait for preview to render
+        await page.waitForTimeout(3000);
+
+        const iframe = page.frameLocator('#preview-iframe');
+
+        // Verify MathJax script is included when addMathJax is enabled
+        const hasMathJaxScript = await iframe.locator('body').evaluate(body => {
+            const doc = body.ownerDocument;
+            const scripts = doc.querySelectorAll('script[src*="tex-mml-svg"]');
+            return scripts.length > 0;
+        });
+
+        expect(hasMathJaxScript).toBe(true);
+
+        // Verify MathJax config for SPA
+        const hasSpaConfig = await iframe.locator('body').evaluate(body => {
+            const doc = body.ownerDocument;
+            const html = doc.documentElement.innerHTML;
+            return html.includes('typeset: false');
+        });
+
+        expect(hasSpaConfig).toBe(true);
+    });
 });
