@@ -3135,6 +3135,9 @@ export default class IdeviceNode {
         $exeABCmusic.init();
 
         $exeFX.init();
+
+        // Render mermaid diagrams after save
+        $exe.mermaid.init();
     }
 
     /**
