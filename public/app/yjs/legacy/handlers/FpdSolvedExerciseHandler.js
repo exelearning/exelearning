@@ -65,22 +65,26 @@ class FpdSolvedExerciseHandler extends BaseLegacyHandler {
           }
         }
 
-        // Extract feedback with toggle wrapper
+        // Extract feedback and render button + hidden div (matching Symfony approach)
         const feedbackTextArea = this.findDictInstance(qDict, 'feedbackTextArea');
         if (feedbackTextArea) {
           const feedbackContent = this.extractTextAreaFieldContent(feedbackTextArea);
           if (feedbackContent) {
             // Get button caption if available
             const feedbackDict = feedbackTextArea.querySelector(':scope > dictionary');
-            let buttonCaption = 'Mostrar retroalimentación';
+            const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+            let buttonCaption = defaultCaption;
             if (feedbackDict) {
               const caption = this.findDictStringValue(feedbackDict, 'buttonCaption');
               if (caption) {
                 buttonCaption = caption;
               }
             }
-            // Wrap feedback in toggle structure
-            html += `<div class="exe-feedback-toggle" data-button-caption="${this.escapeHtmlAttribute(buttonCaption)}">${feedbackContent}</div>`;
+            // Render feedback button and div (matching FreeTextHandler pattern)
+            html += `<div class="iDevice_buttons feedback-button js-required">
+<input type="button" class="feedbacktooglebutton" value="${buttonCaption}" data-text-a="${buttonCaption}" data-text-b="${buttonCaption}">
+</div>
+<div class="feedback js-feedback js-hidden" style="display: none;">${feedbackContent}</div>`;
           }
         }
       }
@@ -94,18 +98,6 @@ class FpdSolvedExerciseHandler extends BaseLegacyHandler {
    */
   extractProperties(dict) {
     return {};
-  }
-
-  /**
-   * Escape HTML attribute value
-   */
-  escapeHtmlAttribute(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;');
   }
 }
 

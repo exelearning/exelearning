@@ -214,6 +214,63 @@ test.describe('radioexploradores.elp Import Tests', () => {
             // Import ELP
             await importElpFixture(page);
 
+            // Find which page contains the relate iDevice
+            const pageWithRelate = await page.evaluate(() => {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return null;
+                const yDoc = bridge.getDocumentManager()?.getDoc();
+                if (!yDoc) return null;
+
+                const navigation = yDoc.getArray('navigation');
+
+                const searchInPage = (pageMap: any): string | null => {
+                    const pageId = pageMap?.get('id');
+                    const blocks = pageMap?.get('blocks');
+
+                    if (blocks) {
+                        for (let blockIdx = 0; blockIdx < blocks.length; blockIdx++) {
+                            const blockMap = blocks.get(blockIdx);
+                            const components = blockMap?.get('components');
+                            if (components) {
+                                for (let compIdx = 0; compIdx < components.length; compIdx++) {
+                                    const c = components.get(compIdx);
+                                    if (c?.get('type') === 'relate') {
+                                        return pageId;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Search in subpages
+                    const subpages = pageMap?.get('pages');
+                    if (subpages) {
+                        for (let i = 0; i < subpages.length; i++) {
+                            const found = searchInPage(subpages.get(i));
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                };
+
+                for (let pageIdx = 0; pageIdx < navigation.length; pageIdx++) {
+                    const pageMap = navigation.get(pageIdx);
+                    const found = searchInPage(pageMap);
+                    if (found) return found;
+                }
+                return null;
+            });
+
+            expect(pageWithRelate).not.toBeNull();
+
+            // Navigate to the page containing the relate iDevice
+            await page.evaluate((pageId: string) => {
+                (window as any).eXeLearning?.app?.project?.structure?.selectNode(pageId);
+            }, pageWithRelate!);
+
+            // Wait for the page to render
+            await page.waitForTimeout(1000);
+
             // Get relate data and check Edit button
             const relateData = await getIdeviceDataFromYjs(page, 'relate');
 

@@ -280,4 +280,310 @@ describe('MultichoiceHandler', () => {
       expect(questions).toEqual([]);
     });
   });
+
+  describe('extractHtmlView', () => {
+    it('extracts instructionsForLearners', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="instructionsForLearners"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Select the correct answer</p>')}"></unicode>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const html = handler.extractHtmlView(dict);
+      expect(html).toBe('<p>Select the correct answer</p>');
+    });
+
+    it('returns empty string for null dict', () => {
+      expect(handler.extractHtmlView(null)).toBe('');
+    });
+
+    it('returns empty string when no instructions', () => {
+      const dict = parseDictionary('<dictionary></dictionary>');
+      expect(handler.extractHtmlView(dict)).toBe('');
+    });
+  });
+
+  describe('extractFeedback', () => {
+    it('extracts feedback from feedback TextAreaField', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="feedback"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Well done!</p>')}"></unicode>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const feedback = handler.extractFeedback(dict);
+      expect(feedback).toBe('<p>Well done!</p>');
+    });
+
+    it('returns empty string for null dict', () => {
+      expect(handler.extractFeedback(null)).toBe('');
+    });
+
+    it('returns empty string when no feedback field', () => {
+      const dict = parseDictionary('<dictionary></dictionary>');
+      expect(handler.extractFeedback(dict)).toBe('');
+    });
+  });
+
+  describe('hint extraction', () => {
+    it('extracts hint from hintTextArea', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.field.QuizQuestionField">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>What is 2+2?</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="hintTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>Think of addition</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list>
+                  <instance class="exe.engine.field.QuizOptionField">
+                    <dictionary>
+                      <string role="key" value="answerTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="${escapeXml('<p>4</p>')}"></unicode>
+                        </dictionary>
+                      </instance>
+                      <string role="key" value="isCorrect"></string>
+                      <bool value="1"></bool>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const questions = handler.extractQuestions(dict);
+
+      expect(questions[0].hint).toBe('<p>Think of addition</p>');
+    });
+
+    it('does not include hint when empty', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.field.QuizQuestionField">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>What is 2+2?</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list></list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const questions = handler.extractQuestions(dict);
+
+      expect(questions[0].hint).toBeUndefined();
+    });
+  });
+
+  describe('option feedback extraction', () => {
+    it('extracts feedback from option feedbackTextArea', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.field.QuizQuestionField">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>What is 2+2?</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list>
+                  <instance class="exe.engine.field.QuizOptionField">
+                    <dictionary>
+                      <string role="key" value="answerTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="${escapeXml('<p>4</p>')}"></unicode>
+                        </dictionary>
+                      </instance>
+                      <string role="key" value="isCorrect"></string>
+                      <bool value="1"></bool>
+                      <string role="key" value="feedbackTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="${escapeXml('<p>Correct! Well done.</p>')}"></unicode>
+                        </dictionary>
+                      </instance>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const questions = handler.extractQuestions(dict);
+
+      // Answer with feedback has 3 elements: [isCorrect, text, feedback]
+      expect(questions[0].answers[0]).toEqual([true, '4', '<p>Correct! Well done.</p>']);
+    });
+
+    it('does not include feedback element when empty', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.field.QuizQuestionField">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>What is 2+2?</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list>
+                  <instance class="exe.engine.field.QuizOptionField">
+                    <dictionary>
+                      <string role="key" value="answerTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="${escapeXml('<p>4</p>')}"></unicode>
+                        </dictionary>
+                      </instance>
+                      <string role="key" value="isCorrect"></string>
+                      <bool value="1"></bool>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const questions = handler.extractQuestions(dict);
+
+      // Answer without feedback has 2 elements: [isCorrect, text]
+      expect(questions[0].answers[0]).toEqual([true, '4']);
+    });
+  });
+
+  describe('eXeFormInstructions in extractProperties', () => {
+    it('includes eXeFormInstructions when instructions are present', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="instructionsForLearners"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Choose wisely</p>')}"></unicode>
+            </dictionary>
+          </instance>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.field.QuizQuestionField">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>What is 1+1?</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list>
+                  <instance class="exe.engine.field.QuizOptionField">
+                    <dictionary>
+                      <string role="key" value="answerTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="${escapeXml('<p>2</p>')}"></unicode>
+                        </dictionary>
+                      </instance>
+                      <string role="key" value="isCorrect"></string>
+                      <bool value="1"></bool>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const result = handler.extractProperties(dict);
+
+      expect(result.eXeFormInstructions).toBe('<p>Choose wisely</p>');
+      expect(result.questionsData).toBeDefined();
+      expect(result.questionsData.length).toBe(1);
+    });
+
+    it('does not include eXeFormInstructions when no instructions', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.field.QuizQuestionField">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>What is 1+1?</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list></list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const result = handler.extractProperties(dict);
+
+      expect(result.eXeFormInstructions).toBeUndefined();
+      expect(result.questionsData).toBeDefined();
+    });
+  });
 });

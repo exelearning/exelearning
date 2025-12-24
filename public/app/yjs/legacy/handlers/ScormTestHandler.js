@@ -1,14 +1,15 @@
 /**
  * ScormTestHandler
  *
- * Handles legacy ScormTestIdevice (SCORM quiz format).
+ * Handles legacy ScormTestIdevice/QuizTestIdevice (SCORM quiz format).
  * Converts to modern 'form' iDevice with selection questions.
  *
  * Legacy XML structure:
  * - exe.engine.quiztestidevice.ScormTestIdevice
+ * - exe.engine.quiztestidevice.QuizTestIdevice
  *
  * Extracts:
- * - instructionsForLearners (intro text)
+ * - passRate → dropdownPassRate
  * - questions list with TestQuestion instances
  * - Each question has options (AnswerOption instances)
  *
@@ -31,33 +32,47 @@ class ScormTestHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Extract HTML view - instructions for learners
+   * Extract HTML view - QuizTestIdevice doesn't have instructionsForLearners
+   * per Symfony legacy which comments out eXeFormInstructions.
    */
   extractHtmlView(dict) {
-    if (!dict) return '';
-
-    // Look for instructionsForLearners
-    const instructionsArea = this.findDictInstance(dict, 'instructionsForLearners');
-    if (instructionsArea) {
-      return this.extractTextAreaFieldContent(instructionsArea);
-    }
-
+    // QuizTestIdevice/ScormTestIdevice doesn't have instructionsForLearners
+    // Symfony's OdeOldXmlScormTestIdevice.php comments out eXeFormInstructions
     return '';
   }
 
   /**
-   * Extract properties including questionsData
+   * Extract properties including questionsData, dropdownPassRate, etc.
+   * Follows Symfony's OdeOldXmlScormTestIdevice.php pattern.
    */
   extractProperties(dict) {
     if (!dict) return {};
 
     const questionsData = this.extractQuestions(dict);
 
-    if (questionsData.length > 0) {
-      return { questionsData };
+    if (questionsData.length === 0) {
+      return {};
     }
 
-    return {};
+    const props = {
+      questionsData,
+      checkAddBtnAnswers: true,
+      userTranslations: {
+        langTrueFalseHelp: 'Select whether the statement is true or false',
+        langDropdownHelp: 'Choose the correct answer among the options proposed',
+        langSingleSelectionHelp: 'Multiple choice with only one correct answer',
+        langMultipleSelectionHelp: 'Multiple choice with multiple corrects answers',
+        langFillHelp: 'Fill in the blanks with the appropriate word'
+      }
+    };
+
+    // Extract passRate → dropdownPassRate
+    const passRate = this.findDictStringValue(dict, 'passRate');
+    if (passRate) {
+      props.dropdownPassRate = passRate;
+    }
+
+    return props;
   }
 
   /**

@@ -105,8 +105,10 @@ describe('FpdSolvedExerciseHandler', () => {
 
       const html = handler.extractHtmlView(dict);
       expect(html).toContain('<p>Question 1: What is 2+2?</p>');
-      expect(html).toContain('<div class="exe-feedback-toggle"');
-      expect(html).toContain('data-button-caption="Ver solución"');
+      // Check feedback button structure (matching FreeTextHandler pattern)
+      expect(html).toContain('class="feedbacktooglebutton"');
+      expect(html).toContain('value="Ver solución"');
+      expect(html).toContain('class="feedback js-feedback js-hidden"');
       expect(html).toContain('<p>The answer is 4.</p>');
     });
 
@@ -201,7 +203,10 @@ describe('FpdSolvedExerciseHandler', () => {
       `);
 
       const html = handler.extractHtmlView(dict);
-      expect(html).toContain('data-button-caption="Mostrar retroalimentación"');
+      // Default caption when not provided (uses _ function if available, otherwise fallback)
+      const expectedCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+      expect(html).toContain(`value="${expectedCaption}"`);
+      expect(html).toContain('class="feedbacktooglebutton"');
     });
 
     it('returns empty string for null dict', () => {
@@ -219,20 +224,6 @@ describe('FpdSolvedExerciseHandler', () => {
       const dict = parseDictionary('<dictionary></dictionary>');
       const props = handler.extractProperties(dict);
       expect(props).toEqual({});
-    });
-  });
-
-  describe('escapeHtmlAttribute', () => {
-    it('escapes special characters', () => {
-      expect(handler.escapeHtmlAttribute('Test "quotes" & <tags>')).toBe('Test &quot;quotes&quot; &amp; &lt;tags&gt;');
-    });
-
-    it('handles null input', () => {
-      expect(handler.escapeHtmlAttribute(null)).toBe('');
-    });
-
-    it('handles empty string', () => {
-      expect(handler.escapeHtmlAttribute('')).toBe('');
     });
   });
 });

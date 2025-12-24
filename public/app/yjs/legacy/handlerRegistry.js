@@ -42,14 +42,14 @@ const LegacyHandlerRegistry = {
 
     this.handlers = [
       new MultichoiceHandler(),      // MultichoiceIdevice, MultiSelectIdevice → form
-      new TrueFalseHandler(),        // TrueFalseIdevice → form (true-false questions)
+      new TrueFalseHandler(),        // TrueFalseIdevice → trueorfalse
       new FillHandler(),             // ClozeIdevice, ClozeLanguageIdevice → form (fill-in-blanks)
       new DropdownHandler(),         // ListaIdevice → form (dropdown questions)
       new ScormTestHandler(),        // ScormTestIdevice, QuizTestIdevice → form (SCORM quiz)
       new CaseStudyHandler(),        // CaseStudyIdevice → casestudy
       new GalleryHandler(),          // ImageGalleryIdevice, GalleryIdevice → image-gallery
       new ExternalUrlHandler(),      // ExternalUrlIdevice → external-website
-      new FileAttachHandler(),       // FileAttachIdevice, AttachmentIdevice → download-source-file
+      new FileAttachHandler(),       // FileAttachIdevice, AttachmentIdevice → text (with file links)
       new ImageMagnifierHandler(),   // ImageMagnifierIdevice → magnifier
       new GeogebraHandler(),         // GeogebraIdevice → geogebra-activity
       new GameIdeviceHandler(),      // flipcards, selecciona, trivial, etc. → game types
@@ -107,9 +107,11 @@ const LEGACY_TYPE_MAP = {
   // Quiz/Form iDevices → form
   'MultichoiceIdevice': 'form',
   'MultiSelectIdevice': 'form',
-  'TrueFalseIdevice': 'form',
-  'VerdaderoFalsoFPDIdevice': 'form',
   'ListaIdevice': 'form',
+
+  // TrueFalse → trueorfalse (dedicated iDevice type)
+  'TrueFalseIdevice': 'trueorfalse',
+  'VerdaderoFalsoFPDIdevice': 'trueorfalse',
   'ClozeIdevice': 'form',
   'ClozeActivityIdevice': 'form',
   'ClozeLanguageIdevice': 'form',
@@ -125,9 +127,10 @@ const LEGACY_TYPE_MAP = {
   'ImageMagnifierIdevice': 'magnifier',
   'GalleryIdevice': 'image-gallery',
 
-  // File iDevices
-  'FileAttachIdevice': 'download-source-file',
-  'AttachmentIdevice': 'download-source-file',
+  // File iDevices → text with links (Symfony: OdeOldXmlFileAttachIdevice)
+  'FileAttachIdevice': 'text',
+  'FileAttachIdeviceInc': 'text',
+  'AttachmentIdevice': 'text',
 
   // External content
   'ExternalUrlIdevice': 'external-website',

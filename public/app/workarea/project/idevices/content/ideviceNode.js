@@ -285,6 +285,7 @@ export default class IdeviceNode {
             this.ideviceBody.classList.add(`${this.idevice.cssClass}Idevice`);
         }
         this.ideviceBody.setAttribute('idevice-id', this.odeIdeviceId);
+        this.ideviceBody.id = this.odeIdeviceId;
         // Add events
         this.addBehaviourEditionIdeviceDoubleClick();
 
@@ -1754,6 +1755,8 @@ export default class IdeviceNode {
                 this.odeIdeviceId
             );
             this.ideviceBody.innerHTML = this.exportHtmlView();
+            // Ensure ideviceId is in jsonProperties for renderBehaviour selectors
+            this.jsonProperties.ideviceId = this.odeIdeviceId;
             // Idevice export function 2: renderBehaviour
             this.exportObject.renderBehaviour(
                 this.jsonProperties,
@@ -1776,8 +1779,10 @@ export default class IdeviceNode {
             response = new Promise((resolve, reject) => {
                 // In case the idevice has no json data, We try to load the viewhtml of it
                 this.ideviceBody.innerHTML = this.exportHtmlView();
-                this.exportObject.renderBehaviour({}, this.accesibility);
-                this.exportObject.init({}, this.accesibility);
+                // Pass ideviceId even when jsonProperties is empty - needed for renderBehaviour selectors
+                const fallbackData = { ideviceId: this.odeIdeviceId };
+                this.exportObject.renderBehaviour(fallbackData, this.accesibility);
+                this.exportObject.init(fallbackData, this.accesibility);
                 resolve({ init: 'true' });
             });
             return response;

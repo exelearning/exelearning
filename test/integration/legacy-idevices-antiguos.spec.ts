@@ -66,7 +66,8 @@ function findAllIdeviceClasses(xml: string): string[] {
 function findJsIdeviceTypes(xml: string): string[] {
     const types: string[] = [];
     // Look for JsIdevice instances and their _iDeviceDir values
-    const jsIdevicePattern = /<instance\s+class="exe\.engine\.jsidevice\.JsIdevice"[^>]*>[\s\S]*?<string\s+role="key"\s+value="_iDeviceDir"><\/string>\s*<string\s+value="([^"]+)"/g;
+    const jsIdevicePattern =
+        /<instance\s+class="exe\.engine\.jsidevice\.JsIdevice"[^>]*>[\s\S]*?<string\s+role="key"\s+value="_iDeviceDir"><\/string>\s*<string\s+value="([^"]+)"/g;
     let match;
 
     while ((match = jsIdevicePattern.exec(xml)) !== null) {

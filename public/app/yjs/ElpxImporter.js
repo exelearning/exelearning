@@ -1612,13 +1612,17 @@ class ElpxImporter {
 
               // Convert htmlView to jsonProperties for JSON-type iDevices (FreeTextIdevice/TextIdevice)
               // These iDevices expect content in jsonProperties.textTextarea format
-              // Also include feedback content if present (from FeedbackField in legacy files)
+              // Also include feedback content if present (from FreeTextHandler.extractProperties)
               if (ideviceType === 'FreeTextIdevice' || ideviceType.toLowerCase().includes('text')) {
+                // Get feedback from handler properties (FreeTextHandler.extractProperties puts them in ideviceData.properties)
+                // Fall back to ideviceData.feedbackButton/feedbackHtml for backwards compatibility
+                const feedbackInput = ideviceData.properties?.textFeedbackInput || ideviceData.feedbackButton || '';
+                const feedbackTextarea = ideviceData.properties?.textFeedbackTextarea || ideviceData.feedbackHtml || '';
+
                 const jsonProps = {
                   textTextarea: transformedHtml || '',
-                  // Include feedback if present (extracted from FeedbackField by LegacyXmlParser)
-                  textFeedbackInput: ideviceData.feedbackButton || '',
-                  textFeedbackTextarea: ideviceData.feedbackHtml ? replaceAssetPaths(ideviceData.feedbackHtml) : ''
+                  textFeedbackInput: feedbackInput,
+                  textFeedbackTextarea: feedbackTextarea ? replaceAssetPaths(feedbackTextarea) : ''
                 };
                 compMap.set('jsonProperties', JSON.stringify(jsonProps));
               } else {

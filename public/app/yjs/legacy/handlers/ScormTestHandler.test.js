@@ -57,35 +57,16 @@ describe('ScormTestHandler', () => {
   });
 
   describe('extractHtmlView', () => {
-    it('extracts instructionsForLearners', () => {
-      const dict = parseDictionary(`
-        <dictionary>
-          <string role="key" value="instructionsForLearners"></string>
-          <instance class="exe.engine.field.TextAreaField">
-            <dictionary>
-              <string role="key" value="content_w_resourcePaths"></string>
-              <unicode value="${escapeXml('<p>Answer the following questions:</p>')}"></unicode>
-            </dictionary>
-          </instance>
-        </dictionary>
-      `);
-
-      const html = handler.extractHtmlView(dict);
-      expect(html).toBe('<p>Answer the following questions:</p>');
-    });
-
-    it('returns empty string when no instructions', () => {
+    it('returns empty string (QuizTestIdevice has no instructionsForLearners)', () => {
+      // QuizTestIdevice/ScormTestIdevice doesn't have instructionsForLearners
+      // per Symfony's OdeOldXmlScormTestIdevice.php which comments out eXeFormInstructions
       const dict = parseDictionary('<dictionary></dictionary>');
       expect(handler.extractHtmlView(dict)).toBe('');
-    });
-
-    it('returns empty string for null dict', () => {
-      expect(handler.extractHtmlView(null)).toBe('');
     });
   });
 
   describe('extractProperties', () => {
-    it('extracts questionsData from questions list', () => {
+    it('extracts questionsData and includes checkAddBtnAnswers and userTranslations', () => {
       const dict = parseDictionary(`
         <dictionary>
           <string role="key" value="questions"></string>
@@ -145,6 +126,53 @@ describe('ScormTestHandler', () => {
         [false, '3'],
         [true, '4']
       ]);
+
+      // Symfony properties
+      expect(props.checkAddBtnAnswers).toBe(true);
+      expect(props.userTranslations).toBeDefined();
+      expect(props.userTranslations.langSingleSelectionHelp).toBe('Multiple choice with only one correct answer');
+    });
+
+    it('extracts passRate as dropdownPassRate', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="passRate"></string>
+          <unicode value="50"></unicode>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.quiztestidevice.TestQuestion">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>Question</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list>
+                  <instance class="exe.engine.quiztestidevice.AnswerOption">
+                    <dictionary>
+                      <string role="key" value="answerTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="Answer"></unicode>
+                        </dictionary>
+                      </instance>
+                      <string role="key" value="isCorrect"></string>
+                      <bool value="1"></bool>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const props = handler.extractProperties(dict);
+      expect(props.dropdownPassRate).toBe('50');
     });
 
     it('sets selectionType to multiple when multiple correct answers', () => {
@@ -445,6 +473,52 @@ describe('ScormTestHandler', () => {
 
       const options = handler.extractOptions(qDict);
       expect(options).toEqual([]);
+    });
+  });
+
+  describe('no eXeFormInstructions (per Symfony pattern)', () => {
+    it('does not include eXeFormInstructions (QuizTestIdevice has none)', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.quiztestidevice.TestQuestion">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>What is 2+2?</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list>
+                  <instance class="exe.engine.quiztestidevice.AnswerOption">
+                    <dictionary>
+                      <string role="key" value="answerTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="4"></unicode>
+                        </dictionary>
+                      </instance>
+                      <string role="key" value="isCorrect"></string>
+                      <bool value="1"></bool>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const result = handler.extractProperties(dict);
+
+      // QuizTestIdevice doesn't have instructionsForLearners per Symfony
+      expect(result.eXeFormInstructions).toBeUndefined();
+      expect(result.questionsData).toBeDefined();
+      expect(result.checkAddBtnAnswers).toBe(true);
     });
   });
 });

@@ -2,6 +2,7 @@
  * ImageMagnifierHandler Tests
  *
  * Unit tests for ImageMagnifierHandler - handles ImageMagnifierIdevice.
+ * Based on Symfony OdeOldXmlImageMagnifierIdevice.php behavior.
  */
 
 // Load BaseLegacyHandler first and make it global
@@ -66,23 +67,6 @@ describe('ImageMagnifierHandler', () => {
       expect(html).toBe('<p>Image caption</p>');
     });
 
-    it('extracts from descriptionTextArea', () => {
-      const dict = parseDictionary(`
-        <dictionary>
-          <string role="key" value="descriptionTextArea"></string>
-          <instance class="exe.engine.field.TextAreaField">
-            <dictionary>
-              <string role="key" value="content_w_resourcePaths"></string>
-              <unicode value="${escapeXml('<p>Description</p>')}"></unicode>
-            </dictionary>
-          </instance>
-        </dictionary>
-      `);
-
-      const html = handler.extractHtmlView(dict);
-      expect(html).toBe('<p>Description</p>');
-    });
-
     it('extracts from direct caption value', () => {
       const dict = parseDictionary(`
         <dictionary>
@@ -107,11 +91,12 @@ describe('ImageMagnifierHandler', () => {
         textTextarea: '',
         imageResource: '',
         isDefaultImage: '1',
-        width: 600,
+        width: '',
         height: '',
         align: 'left',
-        initialZSize: 100,
-        glassSize: 2,
+        initialZSize: '100',
+        maxZSize: '150',
+        glassSize: '2',
       });
     });
 
@@ -121,22 +106,22 @@ describe('ImageMagnifierHandler', () => {
       expect(props.textTextarea).toBe('');
       expect(props.imageResource).toBe('');
       expect(props.isDefaultImage).toBe('1');
-      expect(props.width).toBe(600);
-      expect(props.initialZSize).toBe(100);
-      expect(props.glassSize).toBe(2);
+      expect(props.width).toBe('');
+      expect(props.initialZSize).toBe('100');
+      expect(props.glassSize).toBe('2');
     });
 
-    it('extracts imageResource from magnifierField', () => {
+    it('extracts imageResource from imageMagnifier key', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="_magnifierField"></string>
-          <instance class="exe.engine.imagemagnifieridevice.MagnifierField">
+          <string role="key" value="imageMagnifier"></string>
+          <instance class="exe.engine.field.MagnifierField">
             <dictionary>
-              <string role="key" value="_imageResource"></string>
+              <string role="key" value="imageResource"></string>
               <instance class="exe.engine.resource.Resource">
                 <dictionary>
                   <string role="key" value="_storageName"></string>
-                  <unicode value="zoom-image.jpg"></unicode>
+                  <string value="sunflowers.jpg"></string>
                 </dictionary>
               </instance>
             </dictionary>
@@ -145,14 +130,14 @@ describe('ImageMagnifierHandler', () => {
       `);
 
       const props = handler.extractProperties(dict);
-      expect(props.imageResource).toBe('zoom-image.jpg');
+      expect(props.imageResource).toBe('resources/sunflowers.jpg');
       expect(props.isDefaultImage).toBe('0');
     });
 
-    it('extracts textTextarea from caption', () => {
+    it('extracts textTextarea from text TextAreaField', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="captionTextArea"></string>
+          <string role="key" value="text"></string>
           <instance class="exe.engine.field.TextAreaField">
             <dictionary>
               <string role="key" value="content_w_resourcePaths"></string>
@@ -166,113 +151,131 @@ describe('ImageMagnifierHandler', () => {
       expect(props.textTextarea).toBe('<p>Instructions here</p>');
     });
 
-    it('converts zoomSize to initialZSize (multiplier to percentage)', () => {
+    it('extracts align from float field', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="zoomSize"></string>
-          <unicode value="2.5"></unicode>
+          <string role="key" value="float"></string>
+          <unicode value="right"></unicode>
         </dictionary>
       `);
 
       const props = handler.extractProperties(dict);
-      // 2.5 * 100 = 250
-      expect(props.initialZSize).toBe(250);
+      expect(props.align).toBe('right');
     });
 
-    it('converts legacy glassSize px to modern range (1-6)', () => {
-      // 50px -> 1, 100px -> 2, 150px -> 3, 200px -> 4, 250px -> 5, 300px -> 6
+    it('extracts MagnifierField properties (glassSize, initialZSize, etc.)', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="glassSize"></string>
-          <unicode value="150"></unicode>
-        </dictionary>
-      `);
-
-      const props = handler.extractProperties(dict);
-      // 150 / 50 = 3
-      expect(props.glassSize).toBe(3);
-    });
-
-    it('clamps glassSize to valid range', () => {
-      const dict = parseDictionary(`
-        <dictionary>
-          <string role="key" value="glassSize"></string>
-          <unicode value="500"></unicode>
-        </dictionary>
-      `);
-
-      const props = handler.extractProperties(dict);
-      // 500 / 50 = 10, clamped to 6
-      expect(props.glassSize).toBe(6);
-    });
-
-    it('extracts width from maxImageWidth', () => {
-      const dict = parseDictionary(`
-        <dictionary>
-          <string role="key" value="maxImageWidth"></string>
-          <unicode value="800"></unicode>
-        </dictionary>
-      `);
-
-      const props = handler.extractProperties(dict);
-      expect(props.width).toBe(800);
-    });
-
-    it('extracts all properties together', () => {
-      const dict = parseDictionary(`
-        <dictionary>
-          <string role="key" value="captionTextArea"></string>
-          <instance class="exe.engine.field.TextAreaField">
+          <string role="key" value="imageMagnifier"></string>
+          <instance class="exe.engine.field.MagnifierField">
             <dictionary>
-              <string role="key" value="content_w_resourcePaths"></string>
-              <unicode value="${escapeXml('<p>Look closely</p>')}"></unicode>
+              <string role="key" value="glassSize"></string>
+              <unicode value="3"></unicode>
+              <string role="key" value="initialZSize"></string>
+              <unicode value="150"></unicode>
+              <string role="key" value="maxZSize"></string>
+              <unicode value="200"></unicode>
+              <string role="key" value="width"></string>
+              <unicode value="400"></unicode>
+              <string role="key" value="height"></string>
+              <unicode value="300"></unicode>
             </dictionary>
           </instance>
-          <string role="key" value="zoomSize"></string>
-          <unicode value="2"></unicode>
-          <string role="key" value="glassSize"></string>
-          <unicode value="200"></unicode>
-          <string role="key" value="maxImageWidth"></string>
-          <unicode value="700"></unicode>
-          <string role="key" value="_magnifierField"></string>
-          <instance class="exe.engine.imagemagnifieridevice.MagnifierField">
+        </dictionary>
+      `);
+
+      const props = handler.extractProperties(dict);
+      expect(props.glassSize).toBe('3');
+      expect(props.initialZSize).toBe('150');
+      expect(props.maxZSize).toBe('200');
+      expect(props.width).toBe('400');
+      expect(props.height).toBe('300');
+    });
+
+    it('sets isDefaultImage to 1 when no imageResource (ignores XML value)', () => {
+      // Even if XML says isDefaultImage = 0, without an actual imageResource
+      // we must use the default image (isDefaultImage = '1')
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="imageMagnifier"></string>
+          <instance class="exe.engine.field.MagnifierField">
             <dictionary>
-              <string role="key" value="_imageResource"></string>
+              <string role="key" value="isDefaultImage"></string>
+              <bool value="0"></bool>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const props = handler.extractProperties(dict);
+      // No imageResource means use default image
+      expect(props.isDefaultImage).toBe('1');
+    });
+
+    it('extracts all properties together (real legacy structure)', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="float"></string>
+          <unicode value="left"></unicode>
+          <string role="key" value="imageMagnifier"></string>
+          <instance class="exe.engine.field.MagnifierField">
+            <dictionary>
+              <string role="key" value="glassSize"></string>
+              <unicode value="2"></unicode>
+              <string role="key" value="initialZSize"></string>
+              <unicode value="100"></unicode>
+              <string role="key" value="maxZSize"></string>
+              <unicode value="150"></unicode>
+              <string role="key" value="width"></string>
+              <unicode value="100"></unicode>
+              <string role="key" value="height"></string>
+              <unicode value="100"></unicode>
+              <string role="key" value="imageResource"></string>
               <instance class="exe.engine.resource.Resource">
                 <dictionary>
                   <string role="key" value="_storageName"></string>
-                  <unicode value="detailed-image.jpg"></unicode>
+                  <string value="sunflowers.jpg"></string>
                 </dictionary>
               </instance>
+              <string role="key" value="isDefaultImage"></string>
+              <bool value="1"></bool>
+            </dictionary>
+          </instance>
+          <string role="key" value="text"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Lorem ipsum text</p>')}"></unicode>
             </dictionary>
           </instance>
         </dictionary>
       `);
 
       const props = handler.extractProperties(dict);
-      expect(props.textTextarea).toBe('<p>Look closely</p>');
-      expect(props.imageResource).toBe('detailed-image.jpg');
-      expect(props.isDefaultImage).toBe('0');
-      expect(props.width).toBe(700);
-      expect(props.initialZSize).toBe(200); // 2 * 100
-      expect(props.glassSize).toBe(4); // 200 / 50
+      expect(props.textTextarea).toBe('<p>Lorem ipsum text</p>');
+      expect(props.imageResource).toBe('resources/sunflowers.jpg');
+      expect(props.isDefaultImage).toBe('0'); // Has imageResource, so custom image (ignore XML value)
+      expect(props.width).toBe('100');
+      expect(props.height).toBe('100');
+      expect(props.initialZSize).toBe('100');
+      expect(props.maxZSize).toBe('150');
+      expect(props.glassSize).toBe('2');
       expect(props.align).toBe('left');
-      expect(props.height).toBe('');
     });
   });
 
   describe('extractImagePath', () => {
-    it('extracts from magnifierField', () => {
+    it('extracts from imageMagnifier key', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="_magnifierField"></string>
-          <instance class="exe.engine.imagemagnifieridevice.MagnifierField">
+          <string role="key" value="imageMagnifier"></string>
+          <instance class="exe.engine.field.MagnifierField">
             <dictionary>
-              <string role="key" value="_imageResource"></string>
+              <string role="key" value="imageResource"></string>
               <instance class="exe.engine.resource.Resource">
                 <dictionary>
                   <string role="key" value="_storageName"></string>
-                  <unicode value="magnified.jpg"></unicode>
+                  <string value="magnified.jpg"></string>
                 </dictionary>
               </instance>
             </dictionary>
@@ -281,24 +284,28 @@ describe('ImageMagnifierHandler', () => {
       `);
 
       const path = handler.extractImagePath(dict);
-      expect(path).toBe('magnified.jpg');
+      expect(path).toBe('resources/magnified.jpg');
     });
 
-    it('extracts from direct imageResource', () => {
+    it('extracts from MagnifierField by class', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="_imageResource"></string>
-          <instance class="exe.engine.resource.Resource">
+          <instance class="exe.engine.field.MagnifierField">
             <dictionary>
-              <string role="key" value="_storageName"></string>
-              <unicode value="direct-image.jpg"></unicode>
+              <string role="key" value="imageResource"></string>
+              <instance class="exe.engine.resource.Resource">
+                <dictionary>
+                  <string role="key" value="_storageName"></string>
+                  <string value="by-class.jpg"></string>
+                </dictionary>
+              </instance>
             </dictionary>
           </instance>
         </dictionary>
       `);
 
       const path = handler.extractImagePath(dict);
-      expect(path).toBe('direct-image.jpg');
+      expect(path).toBe('resources/by-class.jpg');
     });
 
     it('returns null when no image found', () => {
@@ -312,24 +319,50 @@ describe('ImageMagnifierHandler', () => {
     it('extracts storage name from resource', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="_imageResource"></string>
+          <string role="key" value="imageResource"></string>
           <instance class="exe.engine.resource.Resource">
             <dictionary>
               <string role="key" value="_storageName"></string>
-              <unicode value="resource.jpg"></unicode>
+              <string value="resource.jpg"></string>
             </dictionary>
           </instance>
         </dictionary>
       `);
 
-      const path = handler.extractResourcePath(dict, '_imageResource');
+      const path = handler.extractResourcePath(dict, 'imageResource');
       expect(path).toBe('resource.jpg');
     });
 
     it('returns null for missing resource', () => {
       const dict = parseDictionary('<dictionary></dictionary>');
-      const path = handler.extractResourcePath(dict, '_imageResource');
+      const path = handler.extractResourcePath(dict, 'imageResource');
       expect(path).toBeNull();
+    });
+  });
+
+  describe('getMagnifierFieldDict', () => {
+    it('finds MagnifierField by imageMagnifier key', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="imageMagnifier"></string>
+          <instance class="exe.engine.field.MagnifierField">
+            <dictionary>
+              <string role="key" value="testKey"></string>
+              <unicode value="testValue"></unicode>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const mDict = handler.getMagnifierFieldDict(dict);
+      expect(mDict).not.toBeNull();
+      expect(handler.findDictStringValue(mDict, 'testKey')).toBe('testValue');
+    });
+
+    it('returns null when not found', () => {
+      const dict = parseDictionary('<dictionary></dictionary>');
+      const mDict = handler.getMagnifierFieldDict(dict);
+      expect(mDict).toBeNull();
     });
   });
 });

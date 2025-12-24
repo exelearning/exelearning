@@ -34,35 +34,57 @@ class FreeTextHandler extends BaseLegacyHandler {
 
   /**
    * Extract HTML content from the legacy format
+   * Also renders feedback button and content directly into htmlView (matching Symfony behavior)
    */
   extractHtmlView(dict) {
     if (!dict) return '';
 
+    let content = '';
+
     // Strategy 1: Look for activityTextArea (main content)
     const activityTextArea = this.findDictInstance(dict, 'activityTextArea');
     if (activityTextArea) {
-      return this.extractTextAreaFieldContent(activityTextArea);
+      content = this.extractTextAreaFieldContent(activityTextArea);
     }
 
     // Strategy 2: Look for "content" key
-    const contentTextArea = this.findDictInstance(dict, 'content');
-    if (contentTextArea) {
-      return this.extractTextAreaFieldContent(contentTextArea);
+    if (!content) {
+      const contentTextArea = this.findDictInstance(dict, 'content');
+      if (contentTextArea) {
+        content = this.extractTextAreaFieldContent(contentTextArea);
+      }
     }
 
     // Strategy 3: Look for "fields" list (JsIdevice format)
-    const fieldsContent = this.extractFieldsContent(dict);
-    if (fieldsContent) {
-      return fieldsContent;
+    if (!content) {
+      const fieldsContent = this.extractFieldsContent(dict);
+      if (fieldsContent) {
+        content = fieldsContent;
+      }
     }
 
     // Strategy 4: Any TextAreaField in the dictionary
-    const textAreaInst = dict.querySelector(':scope > instance[class*="TextAreaField"]');
-    if (textAreaInst) {
-      return this.extractTextAreaFieldContent(textAreaInst);
+    if (!content) {
+      const textAreaInst = dict.querySelector(':scope > instance[class*="TextAreaField"]');
+      if (textAreaInst) {
+        content = this.extractTextAreaFieldContent(textAreaInst);
+      }
     }
 
-    return '';
+    // Render feedback into htmlView (matching Symfony legacy approach)
+    // This ensures feedback works in editor, preview, and export
+    const feedback = this.extractFeedback(dict);
+    if (feedback.content) {
+      const buttonCaption = feedback.buttonCaption ||
+        (typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+
+      content += `<div class="iDevice_buttons feedback-button js-required">
+<input type="button" class="feedbacktooglebutton" value="${buttonCaption}" data-text-a="${buttonCaption}" data-text-b="${buttonCaption}">
+</div>
+<div class="feedback js-feedback js-hidden" style="display: none;">${feedback.content}</div>`;
+    }
+
+    return content;
   }
 
   /**
