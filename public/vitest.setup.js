@@ -1289,6 +1289,78 @@ if (typeof window !== 'undefined') {
 }
 
 // ============================================================================
+// Mock $exe object (common.js global object)
+// ============================================================================
+
+/**
+ * Mock $exe object used by common.js for mermaid, math, and other utilities.
+ * This is the global object that provides init() functions for various features.
+ */
+global.$exe = {
+  mermaid: {
+    engine: './libs/mermaid/mermaid.min.js',
+    reload_pending: false,
+    loadMermaid: vi.fn(() => {}),
+    init: vi.fn(() => {}),
+  },
+  math: {
+    engine: './libs/exe_math/tex-mml-svg.js',
+    init: vi.fn(() => {}),
+    loadMathJax: vi.fn((callback) => {
+      if (callback) setTimeout(callback, 0);
+    }),
+    hasLatex: vi.fn((text) => text && (text.includes('\\(') || text.includes('$$'))),
+    refresh: vi.fn(() => {}),
+    createLinks: vi.fn(() => {}),
+    showCode: vi.fn(() => {}),
+  },
+  dl: {
+    init: vi.fn(() => {}),
+  },
+  loadMediaPlayer: {
+    init: vi.fn(() => {}),
+  },
+  init: vi.fn(() => {}),
+  sfHover: vi.fn(() => {}),
+  setIframesProperties: vi.fn(() => {}),
+  hasTooltips: vi.fn(() => {}),
+  setMultimediaGalleries: vi.fn(() => {}),
+  setModalWindowContentSize: vi.fn(() => {}),
+};
+
+if (typeof window !== 'undefined') {
+  window.$exe = global.$exe;
+}
+
+// ============================================================================
+// Mock $exeABCmusic and $exeFX for iDevice export functionality
+// ============================================================================
+
+/**
+ * Mock $exeABCmusic object used by loadLegacyExeFunctionalitiesExport.
+ * This handles ABC music notation rendering.
+ */
+global.$exeABCmusic = {
+  init: vi.fn(() => {}),
+};
+
+if (typeof window !== 'undefined') {
+  window.$exeABCmusic = global.$exeABCmusic;
+}
+
+/**
+ * Mock $exeFX object used by loadLegacyExeFunctionalitiesExport.
+ * This handles special effects and animations.
+ */
+global.$exeFX = {
+  init: vi.fn(() => {}),
+};
+
+if (typeof window !== 'undefined') {
+  window.$exeFX = global.$exeFX;
+}
+
+// ============================================================================
 // Cleanup after each test
 // ============================================================================
 

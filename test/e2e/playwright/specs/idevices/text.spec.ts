@@ -602,6 +602,309 @@ test.describe('Text iDevice', () => {
         });
     });
 
+    test.describe('TinyMCE Mermaid Diagram (exemermaid)', () => {
+        test('should insert mermaid diagram and render correctly in editor and preview', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Mermaid Diagram Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
+
+            // Check if already in edit mode (TinyMCE visible) or need to click edit button
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                // Enter edit mode
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            // Wait for TinyMCE to load
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // The mermaid button is on the 4th toolbar row (buttons3), which is hidden by default
+            // First, click the toggletoolbars button to expand all toolbars
+            const toggleToolbarsButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
+                .first();
+            if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
+                await toggleToolbarsButton.click();
+                await page.waitForTimeout(500); // Wait for toolbar animation
+            }
+
+            // Find and click the mermaid button in TinyMCE toolbar
+            // The button has a tooltip "Paste Mermaid fragment (diagram)" or similar
+            const mermaidButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Mermaid"], .tox-tbtn[aria-label*="mermaid"], .tox-tbtn[title*="Mermaid"]',
+                )
+                .first();
+            await expect(mermaidButton).toBeVisible({ timeout: 10000 });
+            await mermaidButton.click();
+
+            // Wait for the mermaid TinyMCE dialog to appear
+            const dialog = page.locator('.tox-dialog');
+            await expect(dialog).toBeVisible({ timeout: 10000 });
+
+            // Verify the dialog title contains "Mermaid"
+            const dialogTitle = dialog.locator('.tox-dialog__title');
+            await expect(dialogTitle).toContainText(/Mermaid/i, { timeout: 5000 });
+
+            // Find the textarea and enter mermaid code
+            // The textarea has name="htmlSource"
+            const mermaidCode = `graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B`;
+
+            const textarea = dialog.locator('textarea');
+            await expect(textarea).toBeVisible({ timeout: 5000 });
+            await textarea.fill(mermaidCode);
+
+            // Click Save button to insert the mermaid code
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
+            await saveDialogBtn.click();
+
+            // Wait for dialog to close
+            await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+            // Save the iDevice to exit edit mode
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Wait for mermaid to render (it replaces <pre class="mermaid"> with SVG)
+            // Give mermaid.js time to process
+            await page.waitForTimeout(1500);
+
+            // Verify the mermaid diagram was inserted and rendered in the editor
+            // After mermaid.run(), the <pre class="mermaid"> gets transformed to contain an SVG
+            const mermaidRendered = await page.evaluate(() => {
+                const content = document.querySelector('#node-content article .idevice_node.text .textIdeviceContent');
+                if (!content) return { hasPre: false, hasSvg: false, hasDataProcessed: false };
+
+                const pre = content.querySelector('pre.mermaid');
+                const svg = content.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
+                // Mermaid adds data-processed="true" after rendering
+                const dataProcessed = pre?.getAttribute('data-processed') === 'true';
+
+                return {
+                    hasPre: !!pre,
+                    hasSvg: !!svg,
+                    hasDataProcessed: dataProcessed,
+                };
+            });
+
+            // The <pre class="mermaid"> should exist
+            expect(mermaidRendered.hasPre).toBe(true);
+            // After rendering, mermaid should have processed it (either SVG inside or data-processed)
+            expect(mermaidRendered.hasSvg || mermaidRendered.hasDataProcessed).toBe(true);
+
+            // Save the project
+            await workarea.save();
+            await page.waitForTimeout(1000);
+
+            // Open preview panel (side panel)
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for iframe to load
+            const iframe = page.frameLocator('#preview-iframe');
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+            // Wait for mermaid to render in preview
+            await page.waitForTimeout(2000);
+
+            // Verify mermaid diagram renders correctly in preview
+            const previewMermaidRendered = await iframe.locator('body').evaluate(() => {
+                const activeArticle = document.querySelector('article.spa-page.active');
+                if (!activeArticle) return { found: false, hasSvg: false };
+
+                const pre = activeArticle.querySelector('pre.mermaid');
+                const svg = activeArticle.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
+
+                return {
+                    found: !!pre,
+                    hasSvg: !!svg,
+                };
+            });
+
+            expect(previewMermaidRendered.found).toBe(true);
+            expect(previewMermaidRendered.hasSvg).toBe(true);
+        });
+
+        test('should update existing mermaid diagram', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const _workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Mermaid Update Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
+
+            // Enter edit mode if needed
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // Expand toolbars
+            const toggleToolbarsButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
+                .first();
+            if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
+                await toggleToolbarsButton.click();
+                await page.waitForTimeout(500);
+            }
+
+            // Click mermaid button and insert initial diagram
+            const mermaidButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Mermaid"], .tox-tbtn[aria-label*="mermaid"], .tox-tbtn[title*="Mermaid"]',
+                )
+                .first();
+            await mermaidButton.click();
+
+            const dialog = page.locator('.tox-dialog');
+            await expect(dialog).toBeVisible({ timeout: 10000 });
+
+            const initialCode = `graph LR
+    A[Initial] --> B[Diagram]`;
+
+            const textarea = dialog.locator('textarea');
+            await textarea.fill(initialCode);
+
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
+            await saveDialogBtn.click();
+            await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+            // Now select the mermaid block in TinyMCE and click mermaid button again to update
+            // First, we need to click inside the TinyMCE iframe on the mermaid block
+            const tinyMceFrame = block.locator('iframe.tox-edit-area__iframe').first();
+            const frameEl = await tinyMceFrame.elementHandle();
+            const frame = await frameEl?.contentFrame();
+
+            if (frame) {
+                // Click on the mermaid pre element to select it
+                await frame.click('pre.mermaid');
+                await page.waitForTimeout(300);
+            }
+
+            // The mermaid button should now be active/toggled because we're on a mermaid node
+            // Click it to open the edit dialog
+            await mermaidButton.click();
+
+            const updateDialog = page.locator('.tox-dialog');
+            await expect(updateDialog).toBeVisible({ timeout: 10000 });
+
+            // The textarea should contain the existing code
+            const updateTextarea = updateDialog.locator('textarea');
+            const existingCode = await updateTextarea.inputValue();
+            expect(existingCode).toContain('Initial');
+
+            // Update with new code
+            const updatedCode = `graph TB
+    A[Updated] --> B[Diagram]
+    B --> C[Works!]`;
+
+            await updateTextarea.fill(updatedCode);
+
+            const updateSaveBtn = updateDialog.locator('button').filter({ hasText: /Save|Guardar/i });
+            await updateSaveBtn.click();
+            await expect(updateDialog).not.toBeVisible({ timeout: 5000 });
+
+            // Save the iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Wait for mermaid to render
+            await page.waitForTimeout(1500);
+
+            // Verify the updated content is present
+            const contentHtml = await page.evaluate(() => {
+                const content = document.querySelector('#node-content article .idevice_node.text .textIdeviceContent');
+                return content?.innerHTML || '';
+            });
+
+            expect(contentHtml).toContain('Updated');
+            expect(contentHtml).toContain('Works!');
+        });
+    });
+
     test.describe('Image Persistence', () => {
         test('should persist image after save and reload', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
