@@ -270,10 +270,7 @@ test.describe('LaTeX Rendering', () => {
         // Skip: MathJax context menu requires raw LaTeX content and runtime rendering.
         // The fixture contains pre-rendered SVG content, so MathJax context menu won't appear.
         // This test would need a fixture with raw LaTeX (not pre-rendered) to work properly.
-        test.skip('should show MathJax context menu on right-click', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test.skip('should show MathJax context menu on right-click', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Context Menu Test');
@@ -330,17 +327,13 @@ test.describe('LaTeX Rendering', () => {
             // The menu is rendered at document level (not in iframe) or in iframe
             const menuVisible = await page.evaluate(() => {
                 // Check main document for MathJax menu
-                const mainDocMenu = document.querySelector(
-                    '.MJX_Menu, #MathJax_MenuFrame, [id^="MJX-"][role="menu"]',
-                );
+                const mainDocMenu = document.querySelector('.MJX_Menu, #MathJax_MenuFrame, [id^="MJX-"][role="menu"]');
                 return mainDocMenu !== null;
             });
 
             const menuVisibleInIframe = await iframe.locator('body').evaluate(body => {
                 // Check iframe for MathJax menu
-                const iframeMenu = body.querySelector(
-                    '.MJX_Menu, #MathJax_MenuFrame, [id^="MJX-"][role="menu"]',
-                );
+                const iframeMenu = body.querySelector('.MJX_Menu, #MathJax_MenuFrame, [id^="MJX-"][role="menu"]');
                 return iframeMenu !== null;
             });
 
