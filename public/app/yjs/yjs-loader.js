@@ -52,6 +52,35 @@
   // Local modules organized in parallel-loadable groups
   // Each group is loaded in parallel, groups are loaded sequentially
   const LOCAL_MODULE_GROUPS = [
+    // Group 0: Legacy iDevice handlers (must load BEFORE LegacyXmlParser)
+    // BaseLegacyHandler must load first, then handlers, then registry
+    [
+      'legacy/BaseLegacyHandler.js',  // Base class for all handlers
+    ],
+    // Group 0.5: Individual handlers (all depend on BaseLegacyHandler)
+    [
+      'legacy/handlers/MultichoiceHandler.js',
+      'legacy/handlers/TrueFalseHandler.js',
+      'legacy/handlers/FillHandler.js',
+      'legacy/handlers/DropdownHandler.js',
+      'legacy/handlers/ScormTestHandler.js',
+      'legacy/handlers/CaseStudyHandler.js',
+      'legacy/handlers/GalleryHandler.js',
+      'legacy/handlers/ExternalUrlHandler.js',
+      'legacy/handlers/FileAttachHandler.js',
+      'legacy/handlers/ImageMagnifierHandler.js',
+      'legacy/handlers/GeogebraHandler.js',
+      'legacy/handlers/GameIdeviceHandler.js',
+      'legacy/handlers/FpdSolvedExerciseHandler.js',
+      'legacy/handlers/WikipediaHandler.js',
+      'legacy/handlers/RssHandler.js',
+      'legacy/handlers/FreeTextHandler.js',
+      'legacy/handlers/DefaultHandler.js',
+    ],
+    // Group 0.75: Handler registry (depends on all handlers)
+    [
+      'legacy/handlerRegistry.js',  // Initializes LegacyHandlerRegistry with all handlers
+    ],
     // Group 1: Core managers (no dependencies between them)
     [
       'YjsDocumentManager.js',
@@ -60,13 +89,14 @@
       'AssetCacheManager.js',
       'AssetManager.js',
       'AssetWebSocketHandler.js',
-      'LegacyXmlParser.js',
+      'LegacyXmlParser.js',  // Now can use LegacyHandlerRegistry
+      'ResourceCache.js',    // IndexedDB cache for ResourceFetcher
     ],
     // Group 2: Importers/Exporters and ResourceFetcher (depend on Group 1)
     [
       'ElpxImporter.js',
       'ElpxExporter.js',
-      'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports
+      'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports (uses ResourceCache)
     ],
     // Group 3: Shared exporters bundle (TypeScript from src/shared/export/)
     // Contains all export functionality: Html5, SCORM, IMS, EPUB3, Preview

@@ -29,18 +29,39 @@ class ExternalUrlHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Extract any description/intro HTML
+   * Generate HTML view with iframe containing the URL
+   *
+   * The external-website iDevice JavaScript expects htmlView to contain
+   * an iframe with the src attribute set to the URL.
    */
   extractHtmlView(dict) {
     if (!dict) return '';
 
-    // Look for description or intro text
-    const descriptionArea = this.findDictInstance(dict, 'descriptionTextArea');
-    if (descriptionArea) {
-      return this.extractTextAreaFieldContent(descriptionArea);
+    const url = this.extractUrl(dict);
+    if (!url) return '';
+
+    // Get height option (defaults to 300 = medium)
+    const heightValue = this.findDictStringValue(dict, 'height') ||
+                       this.findDictStringValue(dict, '_height') || '300';
+
+    // Map numeric height to size option (1=small, 2=medium, 3=large, 4=super-size)
+    let sizeOption = '2'; // default medium
+    const height = parseInt(heightValue, 10);
+    if (height <= 200) {
+      sizeOption = '1';
+    } else if (height <= 300) {
+      sizeOption = '2';
+    } else if (height <= 500) {
+      sizeOption = '3';
+    } else {
+      sizeOption = '4';
     }
 
-    return '';
+    // Generate iframe HTML (matches Symfony OdeOldXmlExternalUrlIdevice.php format)
+    return `<div id="iframeWebsiteIdevice">
+<iframe src="${url}" size="${sizeOption}" width="600" height="${height}" style="width:100%;"></iframe>
+<div class="iframe-error-message" style="display:none;">Unable to display an iframe loaded over HTTP on a website that uses HTTPS.</div>
+</div>`;
   }
 
   /**

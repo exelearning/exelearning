@@ -13,11 +13,17 @@ global.MultichoiceHandler = require('./handlers/MultichoiceHandler');
 global.TrueFalseHandler = require('./handlers/TrueFalseHandler');
 global.FillHandler = require('./handlers/FillHandler');
 global.DropdownHandler = require('./handlers/DropdownHandler');
+global.ScormTestHandler = require('./handlers/ScormTestHandler');
 global.CaseStudyHandler = require('./handlers/CaseStudyHandler');
 global.GalleryHandler = require('./handlers/GalleryHandler');
 global.ExternalUrlHandler = require('./handlers/ExternalUrlHandler');
 global.FileAttachHandler = require('./handlers/FileAttachHandler');
 global.ImageMagnifierHandler = require('./handlers/ImageMagnifierHandler');
+global.GeogebraHandler = require('./handlers/GeogebraHandler');
+global.GameIdeviceHandler = require('./handlers/GameIdeviceHandler');
+global.FpdSolvedExerciseHandler = require('./handlers/FpdSolvedExerciseHandler');
+global.WikipediaHandler = require('./handlers/WikipediaHandler');
+global.RssHandler = require('./handlers/RssHandler');
 global.FreeTextHandler = require('./handlers/FreeTextHandler');
 global.DefaultHandler = require('./handlers/DefaultHandler');
 
@@ -66,7 +72,7 @@ describe('LegacyHandlerRegistry', () => {
     it('returns TrueFalseHandler for TrueFalseIdevice', () => {
       const handler = LegacyHandlerRegistry.getHandler('exe.engine.truefalseidevice.TrueFalseIdevice');
       expect(handler.constructor.name).toBe('TrueFalseHandler');
-      expect(handler.getTargetType()).toBe('form');
+      expect(handler.getTargetType()).toBe('trueorfalse');
     });
 
     it('returns TrueFalseHandler for VerdaderoFalsoFPDIdevice', () => {
@@ -112,7 +118,7 @@ describe('LegacyHandlerRegistry', () => {
     it('returns FileAttachHandler for FileAttachIdevice', () => {
       const handler = LegacyHandlerRegistry.getHandler('exe.engine.fileattachidevice.FileAttachIdevice');
       expect(handler.constructor.name).toBe('FileAttachHandler');
-      expect(handler.getTargetType()).toBe('download-source-file');
+      expect(handler.getTargetType()).toBe('text');
     });
 
     it('returns FileAttachHandler for AttachmentIdevice', () => {
@@ -158,7 +164,7 @@ describe('LegacyHandlerRegistry', () => {
 
     it('includes all registered handlers', () => {
       const handlers = LegacyHandlerRegistry.getAllHandlers();
-      expect(handlers.length).toBe(11); // All handlers including DefaultHandler
+      expect(handlers.length).toBe(17); // All handlers including DefaultHandler
     });
   });
 });
@@ -172,8 +178,8 @@ describe('LEGACY_TYPE_MAP', () => {
     expect(LEGACY_TYPE_MAP['MultichoiceIdevice']).toBe('form');
   });
 
-  it('maps TrueFalseIdevice to form', () => {
-    expect(LEGACY_TYPE_MAP['TrueFalseIdevice']).toBe('form');
+  it('maps TrueFalseIdevice to trueorfalse', () => {
+    expect(LEGACY_TYPE_MAP['TrueFalseIdevice']).toBe('trueorfalse');
   });
 
   it('maps CaseStudyIdevice to casestudy', () => {
@@ -192,8 +198,8 @@ describe('LEGACY_TYPE_MAP', () => {
     expect(LEGACY_TYPE_MAP['ExternalUrlIdevice']).toBe('external-website');
   });
 
-  it('maps FileAttachIdevice to download-source-file', () => {
-    expect(LEGACY_TYPE_MAP['FileAttachIdevice']).toBe('download-source-file');
+  it('maps FileAttachIdevice to text', () => {
+    expect(LEGACY_TYPE_MAP['FileAttachIdevice']).toBe('text');
   });
 });
 

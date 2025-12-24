@@ -47,22 +47,15 @@ describe('FileAttachHandler', () => {
   });
 
   describe('getTargetType', () => {
-    it('returns download-source-file', () => {
-      expect(handler.getTargetType()).toBe('download-source-file');
+    it('returns text (Symfony converts to text iDevice with file links)', () => {
+      expect(handler.getTargetType()).toBe('text');
     });
   });
 
   describe('extractHtmlView', () => {
-    it('extracts intro text and file links', () => {
+    it('generates file links HTML (Symfony format)', () => {
       const dict = parseDictionary(`
         <dictionary>
-          <string role="key" value="introductoryText"></string>
-          <instance class="exe.engine.field.TextAreaField">
-            <dictionary>
-              <string role="key" value="content_w_resourcePaths"></string>
-              <unicode value="${escapeXml('<p>Download files:</p>')}"></unicode>
-            </dictionary>
-          </instance>
           <list>
             <instance class="exe.engine.fileattachidevice.FileField">
               <dictionary>
@@ -85,18 +78,25 @@ describe('FileAttachHandler', () => {
 
       const html = handler.extractHtmlView(dict);
 
-      expect(html).toContain('<p>Download files:</p>');
+      // Symfony format: <p><a href="path" target="_blank">description</a></p>
+      expect(html).toContain('<p><a href=');
+      expect(html).toContain('target="_blank"');
       expect(html).toContain('document.pdf');
-      expect(html).toContain('My Document');
+      expect(html).toContain('A PDF file'); // description used as link text
     });
 
     it('returns empty string for null dict', () => {
       expect(handler.extractHtmlView(null)).toBe('');
     });
+
+    it('returns empty string when no files', () => {
+      const dict = parseDictionary('<dictionary></dictionary>');
+      expect(handler.extractHtmlView(dict)).toBe('');
+    });
   });
 
   describe('extractProperties', () => {
-    it('extracts files array', () => {
+    it('returns textTextarea with file links HTML', () => {
       const dict = parseDictionary(`
         <dictionary>
           <list>
@@ -117,8 +117,9 @@ describe('FileAttachHandler', () => {
 
       const props = handler.extractProperties(dict);
 
-      expect(props.files).toBeDefined();
-      expect(props.files.length).toBe(1);
+      expect(props.textTextarea).toBeDefined();
+      expect(props.textTextarea).toContain('file.pdf');
+      expect(props.textTextarea).toContain('target="_blank"');
     });
 
     it('returns empty object when no files', () => {
@@ -129,7 +130,7 @@ describe('FileAttachHandler', () => {
   });
 
   describe('extractFiles', () => {
-    it('extracts file with display name and description', () => {
+    it('extracts file with display name, description and path', () => {
       const dict = parseDictionary(`
         <dictionary>
           <list>
@@ -158,6 +159,7 @@ describe('FileAttachHandler', () => {
       expect(files[0].filename).toBe('report.pdf');
       expect(files[0].displayName).toBe('Annual Report');
       expect(files[0].description).toBe('PDF version');
+      expect(files[0].path).toBe('resources/report.pdf');
     });
 
     it('handles multiple files', () => {

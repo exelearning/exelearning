@@ -93,12 +93,20 @@ export class IdeviceRenderer {
             dataAttrs = ` data-idevice-path="${this.escapeAttr(idevicePath)}"`;
             dataAttrs += ` data-idevice-type="${this.escapeAttr(normalizedType)}"`;
 
+            // Determine mode early - needed for both properties and content URL transformation
+            // In preview mode (basePath starts with '/' or contains '://'), keep asset:// URLs for later blob resolution
+            // Export mode: basePath is '' or '../' (relative)
+            // Preview mode: basePath is '/files/...' or 'http://...' (absolute)
+            const isPreviewModeForUrls = basePath.startsWith('/') || basePath.includes('://');
+
             if (config.componentType === 'json') {
                 dataAttrs += ` data-idevice-component-type="json"`;
 
                 // Add JSON data for iDevices with properties
+                // Transform asset URLs in properties the same way as content
                 if (Object.keys(properties).length > 0) {
-                    const jsonData = JSON.stringify(properties);
+                    const transformedProps = this.transformPropertiesUrls(properties, basePath, isPreviewModeForUrls);
+                    const jsonData = JSON.stringify(transformedProps);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
                 }
                 // Always add template for JSON components (including text)
@@ -108,10 +116,7 @@ export class IdeviceRenderer {
             }
         }
 
-        // Fix asset URLs in content
-        // In preview mode (basePath starts with '/' or contains '://'), keep asset:// URLs for later blob resolution
-        // Export mode: basePath is '' or '../' (relative)
-        // Preview mode: basePath is '/files/...' or 'http://...' (absolute)
+        // Fix asset URLs in content (uses same mode detection as properties)
         const isPreviewMode = basePath.startsWith('/') || basePath.includes('://');
         const fixedContent = this.fixAssetUrls(htmlContent, basePath, isPreviewMode);
 
@@ -382,6 +387,41 @@ ${contentHtml}
     }
 
     /**
+     * Transform asset URLs in properties object recursively
+     * Applies same URL transformation as fixAssetUrls to all string values in the object
+     * @param obj - Properties object (can contain nested objects and arrays)
+     * @param basePath - Base path prefix
+     * @param isPreviewMode - If true, skip asset:// transformation (keep for blob resolution)
+     * @returns Transformed properties object with fixed URLs
+     */
+    transformPropertiesUrls(
+        obj: Record<string, unknown>,
+        basePath: string,
+        isPreviewMode: boolean,
+    ): Record<string, unknown> {
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj)) {
+            if (typeof value === 'string') {
+                result[key] = this.fixAssetUrls(value, basePath, isPreviewMode);
+            } else if (Array.isArray(value)) {
+                result[key] = value.map(item => {
+                    if (typeof item === 'string') {
+                        return this.fixAssetUrls(item, basePath, isPreviewMode);
+                    } else if (typeof item === 'object' && item !== null) {
+                        return this.transformPropertiesUrls(item as Record<string, unknown>, basePath, isPreviewMode);
+                    }
+                    return item;
+                });
+            } else if (typeof value === 'object' && value !== null) {
+                result[key] = this.transformPropertiesUrls(value as Record<string, unknown>, basePath, isPreviewMode);
+            } else {
+                result[key] = value;
+            }
+        }
+        return result;
+    }
+
+    /**
      * Get list of CSS link tags needed for given iDevice types
      * @param ideviceTypes - Array of iDevice type names
      * @param basePath - Base path prefix
@@ -399,7 +439,11 @@ ${contentHtml}
 
             if (!seen.has(typeName)) {
                 seen.add(typeName);
-                links.push(`<link rel="stylesheet" href="${basePath}idevices/${typeName}/${typeName}.css">`);
+                // Get ALL CSS files from export folder (main file first, then dependencies)
+                const cssFiles = getIdeviceExportFiles(typeName, '.css');
+                for (const cssFile of cssFiles) {
+                    links.push(`<link rel="stylesheet" href="${basePath}idevices/${typeName}/${cssFile}">`);
+                }
             }
         }
 

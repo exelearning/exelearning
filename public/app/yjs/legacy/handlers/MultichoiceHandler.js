@@ -29,14 +29,67 @@ class MultichoiceHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Extract questionsData from the legacy format
+   * Extract instructions HTML (if present)
+   * MultichoiceIdevice typically doesn't have instructionsForLearners,
+   * but we check anyway for compatibility.
+   */
+  extractHtmlView(dict) {
+    if (!dict) return '';
+
+    // Look for instructionsForLearners (may not exist in Multichoice)
+    const instructionsArea = this.findDictInstance(dict, 'instructionsForLearners');
+    if (instructionsArea) {
+      return this.extractTextAreaFieldContent(instructionsArea);
+    }
+
+    return '';
+  }
+
+  /**
+   * Extract feedback from iDevice level (if present)
+   * MultichoiceIdevice has per-option feedback, not iDevice-level,
+   * but we check for compatibility with other formats.
+   */
+  extractFeedback(dict) {
+    if (!dict) return '';
+
+    // Look for feedback TextAreaField at iDevice level
+    const feedbackField = this.findDictInstance(dict, 'feedback') ||
+                         this.findDictInstance(dict, 'feedbackTextArea');
+
+    if (feedbackField) {
+      return this.extractTextAreaFieldContent(feedbackField);
+    }
+
+    return '';
+  }
+
+  /**
+   * Extract questionsData and optionally eXeFormInstructions from the legacy format
+   * Only sets properties that have actual content - no defaults.
    */
   extractProperties(dict) {
     const questionsData = this.extractQuestions(dict);
+    const instructions = this.extractHtmlView(dict);
+    const feedback = this.extractFeedback(dict);
+
+    const props = {};
+
     if (questionsData.length > 0) {
-      return { questionsData };
+      props.questionsData = questionsData;
     }
-    return {};
+
+    // Only set instructions if we have actual content
+    if (instructions && instructions.trim()) {
+      props.eXeFormInstructions = instructions;
+    }
+
+    // Only set feedback if we have actual content
+    if (feedback && feedback.trim()) {
+      props.eXeIdeviceTextAfter = feedback;
+    }
+
+    return props;
   }
 
   /**
@@ -45,9 +98,11 @@ class MultichoiceHandler extends BaseLegacyHandler {
    * Structure:
    * - questions -> list of QuizQuestionField
    * - QuizQuestionField.questionTextArea -> question text
+   * - QuizQuestionField.hintTextArea -> hint for the question
    * - QuizQuestionField.options -> list of QuizOptionField
    * - QuizOptionField.answerTextArea -> option text
    * - QuizOptionField.isCorrect -> boolean
+   * - QuizOptionField.feedbackTextArea -> feedback for this option
    *
    * @param {Element} dict - Dictionary element of the MultichoiceIdevice
    * @returns {Array} Array of question objects in form iDevice format
@@ -69,6 +124,10 @@ class MultichoiceHandler extends BaseLegacyHandler {
       const questionTextArea = this.findDictInstance(qDict, 'questionTextArea');
       const questionText = questionTextArea ? this.extractTextAreaFieldContent(questionTextArea) : '';
 
+      // Extract hint from hintTextArea
+      const hintTextArea = this.findDictInstance(qDict, 'hintTextArea');
+      const hint = hintTextArea ? this.extractTextAreaFieldContent(hintTextArea) : '';
+
       // Extract options from options list
       const optionsList = this.findDictList(qDict, 'options');
       const answers = [];
@@ -89,19 +148,36 @@ class MultichoiceHandler extends BaseLegacyHandler {
           // Get isCorrect flag
           const isCorrect = this.findDictBoolValue(optDict, 'isCorrect');
 
+          // Get per-option feedback
+          const feedbackTextArea = this.findDictInstance(optDict, 'feedbackTextArea');
+          const optionFeedback = feedbackTextArea ? this.extractTextAreaFieldContent(feedbackTextArea) : '';
+
           if (isCorrect) correctCount++;
-          answers.push([isCorrect, optionText]);
+
+          // Include feedback if present (as third element)
+          if (optionFeedback && optionFeedback.trim()) {
+            answers.push([isCorrect, optionText, optionFeedback]);
+          } else {
+            answers.push([isCorrect, optionText]);
+          }
         }
       }
 
       // Only add if we have a question or answers
       if (questionText || answers.length > 0) {
-        questionsData.push({
+        const questionData = {
           activityType: 'selection',
           selectionType: correctCount > 1 ? 'multiple' : 'single',
           baseText: questionText,
           answers: answers
-        });
+        };
+
+        // Add hint if present
+        if (hint && hint.trim()) {
+          questionData.hint = hint;
+        }
+
+        questionsData.push(questionData);
       }
     }
 

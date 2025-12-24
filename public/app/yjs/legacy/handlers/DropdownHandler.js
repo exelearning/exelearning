@@ -8,8 +8,10 @@
  * - exe.engine.listaidevice.ListaIdevice
  *
  * Extracts:
- * - Questions with dropdown placeholders {{answer}}
+ * - Questions with dropdown placeholders (uses <u> tags)
  * - Wrong answers (distractors)
+ * - Instructions (instructionsForLearners -> eXeFormInstructions)
+ * - Feedback (feedback field -> rendered as button + hidden div)
  *
  * Requires: BaseLegacyHandler.js to be loaded first
  */
@@ -44,22 +46,123 @@ class DropdownHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Extract properties including questionsData
+   * Extract feedback content from the legacy format
+   *
+   * Legacy ListaIdevice has a "feedback" key containing a TextAreaField
+   * with content_w_resourcePaths for the feedback text.
+   *
+   * @param {Element} dict - Dictionary element
+   * @returns {Object} { content, buttonCaption }
+   */
+  extractFeedback(dict) {
+    if (!dict) return { content: '', buttonCaption: '' };
+
+    // Use translation function if available, otherwise use Spanish default
+    const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+
+    // Look for feedback field (ListaIdevice uses "feedback" key)
+    const feedbackField = this.findDictInstance(dict, 'feedback');
+    if (feedbackField) {
+      const feedbackDict = feedbackField.querySelector(':scope > dictionary');
+      let buttonCaption = defaultCaption;
+      if (feedbackDict) {
+        buttonCaption = this.findDictStringValue(feedbackDict, 'buttonCaption') || defaultCaption;
+      }
+      const content = this.extractTextAreaFieldContent(feedbackField);
+      if (content) {
+        return { content, buttonCaption };
+      }
+    }
+
+    // Alternative: Look for feedbackTextArea (other legacy formats)
+    const feedbackTextArea = this.findDictInstance(dict, 'feedbackTextArea');
+    if (feedbackTextArea) {
+      const feedbackDict = feedbackTextArea.querySelector(':scope > dictionary');
+      let buttonCaption = defaultCaption;
+      if (feedbackDict) {
+        buttonCaption = this.findDictStringValue(feedbackDict, 'buttonCaption') || defaultCaption;
+      }
+      const content = this.extractTextAreaFieldContent(feedbackTextArea);
+      if (content) {
+        return { content, buttonCaption };
+      }
+    }
+
+    return { content: '', buttonCaption: '' };
+  }
+
+  /**
+   * Extract properties including questionsData, eXeFormInstructions, and feedback
+   *
+   * Based on Symfony OdeOldXmlDropdownIdevice.php:
+   * - eXeFormInstructions comes from instructionsForLearners
+   * - questionsData contains the dropdown questions with <u> tags preserved
+   * - eXeIdeviceTextAfter contains the feedback content (form iDevice uses this field)
    */
   extractProperties(dict) {
     const questionsData = this.extractDropdownQuestions(dict);
-    if (questionsData.length > 0) {
-      return { questionsData };
+    const instructions = this.extractHtmlView(dict);
+    const feedback = this.extractFeedback(dict);
+
+    if (questionsData.length > 0 || feedback.content) {
+      const props = {};
+
+      if (questionsData.length > 0) {
+        props.questionsData = questionsData;
+      }
+
+      if (instructions) {
+        props.eXeFormInstructions = instructions;
+      }
+
+      // Add feedback as eXeIdeviceTextAfter for form iDevice
+      // (form.js uses eXeIdeviceTextAfter for "content after" section)
+      if (feedback.content) {
+        props.eXeIdeviceTextAfter = feedback.content;
+      }
+
+      return props;
     }
     return {};
   }
 
   /**
+   * Build the full HTML view including content and feedback button
+   *
+   * For dropdown iDevices, we need to render the feedback as a button
+   * and hidden div, similar to FreeTextHandler.
+   *
+   * @param {Element} dict - Dictionary element
+   * @returns {string} HTML content
+   */
+  buildHtmlViewWithFeedback(dict) {
+    if (!dict) return '';
+
+    let content = '';
+
+    // Get instructions (main content for dropdown is in questionsData, not htmlView)
+    // But we may want to include feedback rendering here
+    const feedback = this.extractFeedback(dict);
+    if (feedback.content) {
+      const buttonCaption = feedback.buttonCaption ||
+        (typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+
+      content += `<div class="iDevice_buttons feedback-button js-required">
+<input type="button" class="feedbacktooglebutton" value="${buttonCaption}" data-text-a="${buttonCaption}" data-text-b="${buttonCaption}">
+</div>
+<div class="feedback js-feedback js-hidden" style="display: none;">${feedback.content}</div>`;
+    }
+
+    return content;
+  }
+
+  /**
    * Extract dropdown questions from the legacy format
    *
-   * Structure:
-   * - list of ListaField instances
-   * - Each has: questionTextArea, wrongAnswers
+   * Structure can be:
+   * - Single ListaField in _content key (most common in real legacy files)
+   * - List of ListaField instances
+   * - Each has: _encodedContent/content_w_resourcePaths, otras (wrong answers)
    *
    * @param {Element} dict - Dictionary element of the ListaIdevice
    * @returns {Array} Array of question objects in form iDevice format
@@ -67,7 +170,18 @@ class DropdownHandler extends BaseLegacyHandler {
   extractDropdownQuestions(dict) {
     const questionsData = [];
 
-    // Find the list containing ListaField instances
+    // First: Look for single ListaField in _content key (real legacy format)
+    const contentField = this.findDictInstance(dict, '_content');
+    if (contentField) {
+      const className = contentField.getAttribute('class') || '';
+      if (className.includes('ListaField')) {
+        const question = this.extractSingleListaField(contentField);
+        if (question) questionsData.push(question);
+        return questionsData; // Single ListaField found, return
+      }
+    }
+
+    // Fallback: Find the list containing ListaField instances
     const lists = dict.querySelectorAll(':scope > list');
     let questionsList = null;
 
@@ -93,38 +207,60 @@ class DropdownHandler extends BaseLegacyHandler {
     // Iterate each ListaField
     const questionInstances = questionsList.querySelectorAll(':scope > instance');
     for (const questionInst of questionInstances) {
-      const qDict = questionInst.querySelector(':scope > dictionary');
-      if (!qDict) continue;
-
-      // Extract question text (contains {{answer}} placeholders)
-      const questionTextArea = this.findDictInstance(qDict, 'questionTextArea');
-      let questionText = questionTextArea ? this.extractTextAreaFieldContent(questionTextArea) : '';
-
-      // Extract wrong answers (distractors)
-      const wrongAnswers = this.findDictStringValue(qDict, 'wrongAnswers') ||
-                          this.findDictStringValue(qDict, '_wrongAnswers') || '';
-
-      // Parse the question text to find dropdown markers
-      // Legacy format may have various markers for dropdowns
-      const parsedQuestion = this.parseDropdownText(questionText);
-
-      if (parsedQuestion.baseText) {
-        questionsData.push({
-          activityType: 'dropdown',
-          baseText: parsedQuestion.baseText,
-          wrongAnswersValue: wrongAnswers,
-          answers: parsedQuestion.answers || []
-        });
-      }
+      const question = this.extractSingleListaField(questionInst);
+      if (question) questionsData.push(question);
     }
 
     return questionsData;
   }
 
   /**
+   * Extract a single ListaField instance
+   *
+   * IMPORTANT: The baseText should preserve <u> tags as-is!
+   * form.js (getProcessTextDropdownQuestion) will convert <u> tags to <select> elements.
+   * See Symfony OdeOldXmlDropdownIdevice.php line 145 - it also keeps <u> tags.
+   *
+   * @param {Element} listaFieldInst - ListaField instance element
+   * @returns {Object|null} Question object or null
+   */
+  extractSingleListaField(listaFieldInst) {
+    const qDict = listaFieldInst.querySelector(':scope > dictionary');
+    if (!qDict) return null;
+
+    // Extract question text from _encodedContent or content_w_resourcePaths
+    // Keep <u> tags intact - form.js will convert them to <select> elements
+    let baseText = this.findDictStringValue(qDict, '_encodedContent') ||
+                   this.findDictStringValue(qDict, 'content_w_resourcePaths') || '';
+
+    // Fallback: check for questionTextArea field (some legacy formats)
+    if (!baseText) {
+      const questionTextArea = this.findDictInstance(qDict, 'questionTextArea');
+      baseText = questionTextArea ? this.extractTextAreaFieldContent(questionTextArea) : '';
+    }
+
+    // Extract wrong answers from "otras" field (pipe-separated) or "wrongAnswers"
+    const wrongAnswers = this.findDictStringValue(qDict, 'otras') ||
+                        this.findDictStringValue(qDict, 'wrongAnswers') ||
+                        this.findDictStringValue(qDict, '_wrongAnswers') || '';
+
+    // Return with <u> tags preserved - do NOT convert to {{placeholders}}
+    if (baseText) {
+      return {
+        activityType: 'dropdown',
+        baseText: baseText,
+        wrongAnswersValue: wrongAnswers
+      };
+    }
+
+    return null;
+  }
+
+  /**
    * Parse dropdown text to extract answers and convert to modern format
    *
    * Legacy formats may use:
+   * - <u> tags (underlined text) marking correct answers
    * - <select> elements with options
    * - Special delimiters for answers
    *
@@ -138,6 +274,16 @@ class DropdownHandler extends BaseLegacyHandler {
 
     const answers = [];
     let baseText = text;
+
+    // Pattern 0: <u>answer</u> tags (most common in real legacy files)
+    // Answers are marked with underline tags
+    baseText = baseText.replace(
+      /<u>([^<]+)<\/u>/gi,
+      (match, answer) => {
+        answers.push(answer.trim());
+        return '{{' + answer.trim() + '}}';
+      }
+    );
 
     // Pattern 1: <select class="exe-lista-*">...<option selected>answer</option>...</select>
     baseText = baseText.replace(

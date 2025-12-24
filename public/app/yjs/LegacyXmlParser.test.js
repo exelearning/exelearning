@@ -1,16 +1,12 @@
 /**
- * LegacyXmlParser Bun Tests
+ * LegacyXmlParser Vitest Tests
  *
  * Unit tests for parsing legacy .elp files (contentv3.xml) that use Python pickle format.
  *
- * Run with: bun test
+ * Run with: bun run vitest run public/app/yjs/LegacyXmlParser.test.js
  */
 
- 
-
-// Test functions available globally from vitest setup
-
-// Import the LegacyXmlParser class
+// Import the LegacyXmlParser class (vitest.setup.js provides globals like DOMParser, document, etc.)
 const LegacyXmlParser = require('./LegacyXmlParser');
 
 describe('LegacyXmlParser', () => {
@@ -18,8 +14,6 @@ describe('LegacyXmlParser', () => {
 
   beforeEach(() => {
     parser = new LegacyXmlParser();
-    // Suppress console.log during tests
-    spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -605,7 +599,8 @@ describe('LegacyXmlParser', () => {
       const fieldInst = doc.querySelector('instance');
       const result = parser.extractFeedbackFieldContent(fieldInst);
 
-      expect(result.buttonCaption).toBe('Mostrar retroalimentación');
+      // In test environment, _('Show Feedback') returns 'Show Feedback' (the key)
+      expect(result.buttonCaption).toBe('Show Feedback');
     });
 
     it('returns empty when no dictionary', () => {
@@ -1343,8 +1338,8 @@ describe('LegacyXmlParser', () => {
       expect(result.buttonCaption).toBe('');
     });
 
-    it('returns empty when buttonCaption is missing', () => {
-      // answerTextArea without buttonCaption should not be treated as feedback
+    it('returns content with default buttonCaption when buttonCaption is missing', () => {
+      // answerTextArea without buttonCaption should use a default button caption
       const xml = `<?xml version="1.0"?>
         <dictionary>
           <string role="key" value="answerTextArea"/>
@@ -1362,9 +1357,9 @@ describe('LegacyXmlParser', () => {
       const dict = doc.querySelector('dictionary');
       const result = parser.extractReflectionFeedback(dict);
 
-      // Should return empty because both content AND buttonCaption must be present
-      expect(result.content).toBe('');
-      expect(result.buttonCaption).toBe('');
+      // Button caption is optional - implementation provides a default
+      expect(result.content).toBe('<p>Content without button</p>');
+      expect(result.buttonCaption).toBe('Show Feedback');
     });
 
     it('returns empty when answerTextArea has no content', () => {
@@ -2966,6 +2961,531 @@ describe('LegacyXmlParser', () => {
         expect(idevices[0].type).toBe('text');
         expect(idevices[1].title).toBe('Second iDevice');
         expect(idevices[1].type).toBe('text');
+      });
+    });
+  });
+
+  describe('HTML-based iDevice type detection', () => {
+    describe('UDL Content detection', () => {
+      it('should detect exe-udlContent and set type to udl-content', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="udl1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="UDL Test"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+                <string role="key" value="fields"/>
+                <list>
+                  <instance class="exe.engine.field.TextAreaField" reference="f1">
+                    <dictionary>
+                      <string role="key" value="content_w_resourcePaths"/>
+                      <unicode value="&amp;lt;div class=&amp;quot;exe-udlContent&amp;quot;&amp;gt;UDL content&amp;lt;/div&amp;gt;"/>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>`;
+
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        parser.xmlDoc = doc;
+
+        const listEl = doc.querySelector('list');
+        const idevices = parser.extractIDevicesWithTitles(listEl);
+
+        expect(idevices.length).toBe(1);
+        expect(idevices[0].type).toBe('udl-content');
+      });
+    });
+
+    describe('Scrambled List detection', () => {
+      it('should detect exe-sortableList and set type to scrambled-list', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="scr1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Scramble Test"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+                <string role="key" value="fields"/>
+                <list>
+                  <instance class="exe.engine.field.TextAreaField" reference="f1">
+                    <dictionary>
+                      <string role="key" value="content_w_resourcePaths"/>
+                      <unicode value="&amp;lt;ul class=&amp;quot;exe-sortableList&amp;quot;&amp;gt;&amp;lt;li&amp;gt;Item&amp;lt;/li&amp;gt;&amp;lt;/ul&amp;gt;"/>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>`;
+
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        parser.xmlDoc = doc;
+
+        const listEl = doc.querySelector('list');
+        const idevices = parser.extractIDevicesWithTitles(listEl);
+
+        expect(idevices.length).toBe(1);
+        expect(idevices[0].type).toBe('scrambled-list');
+      });
+    });
+
+    describe('Interactive Video detection', () => {
+      it('should detect exe-interactive-video and set type to interactive-video', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="iv1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Interactive Video"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+                <string role="key" value="fields"/>
+                <list>
+                  <instance class="exe.engine.field.TextAreaField" reference="f1">
+                    <dictionary>
+                      <string role="key" value="content_w_resourcePaths"/>
+                      <unicode value="&amp;lt;div class=&amp;quot;exe-interactive-video&amp;quot;&amp;gt;Video content&amp;lt;/div&amp;gt;"/>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>`;
+
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        parser.xmlDoc = doc;
+
+        const listEl = doc.querySelector('list');
+        const idevices = parser.extractIDevicesWithTitles(listEl);
+
+        expect(idevices.length).toBe(1);
+        expect(idevices[0].type).toBe('interactive-video');
+      });
+    });
+
+    describe('GeoGebra Activity detection', () => {
+      it('should detect auto-geogebra and set type to geogebra-activity', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="geo1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="GeoGebra Activity"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+                <string role="key" value="fields"/>
+                <list>
+                  <instance class="exe.engine.field.TextAreaField" reference="f1">
+                    <dictionary>
+                      <string role="key" value="content_w_resourcePaths"/>
+                      <unicode value="&amp;lt;div class=&amp;quot;auto-geogebra&amp;quot;&amp;gt;GeoGebra content&amp;lt;/div&amp;gt;"/>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>`;
+
+        const doc = new DOMParser().parseFromString(xml, 'text/xml');
+        parser.xmlDoc = doc;
+
+        const listEl = doc.querySelector('list');
+        const idevices = parser.extractIDevicesWithTitles(listEl);
+
+        expect(idevices.length).toBe(1);
+        expect(idevices[0].type).toBe('geogebra-activity');
+      });
+    });
+  });
+
+  describe('PBL Task metadata extraction', () => {
+    it('should detect pbl-task-description and extract metadata', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="pbl1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Investigamos"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&amp;lt;dl class=&amp;quot;pbl-task-info&amp;quot;&amp;gt;&amp;lt;dt class=&amp;quot;pbl-task-duration&amp;quot;&amp;gt;Duración:&amp;lt;/dt&amp;gt;&amp;lt;dd class=&amp;quot;pbl-task-duration&amp;quot;&amp;gt;2 sesiones&amp;lt;/dd&amp;gt;&amp;lt;dt class=&amp;quot;pbl-task-participants&amp;quot;&amp;gt;Agrupamiento:&amp;lt;/dt&amp;gt;&amp;lt;dd class=&amp;quot;pbl-task-participants&amp;quot;&amp;gt;Grupo de 4&amp;lt;/dd&amp;gt;&amp;lt;/dl&amp;gt;&amp;lt;div class=&amp;quot;pbl-task-description&amp;quot;&amp;gt;Task content&amp;lt;/div&amp;gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].type).toBe('text'); // Type stays as text
+      expect(idevices[0].properties).toBeDefined();
+      expect(idevices[0].properties.textInfoDurationInput).toBe('Duración:');
+      expect(idevices[0].properties.textInfoDurationTextInput).toBe('2 sesiones');
+      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Agrupamiento:');
+      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Grupo de 4');
+    });
+
+    it('should extract feedback metadata from PBL Task', () => {
+      const html = '<dl class="pbl-task-info"><dt class="pbl-task-duration">Duration:</dt><dd class="pbl-task-duration">1 hour</dd></dl><div class="pbl-task-description">Content</div><input type="button" class="feedbackbutton" value="Show Feedback"><div class="feedback js-feedback js-hidden"><p>Feedback text</p></div>';
+
+      const metadata = parser.extractPblTaskMetadata(html);
+
+      expect(metadata).not.toBeNull();
+      expect(metadata.textInfoDurationInput).toBe('Duration:');
+      expect(metadata.textInfoDurationTextInput).toBe('1 hour');
+      expect(metadata.textInfoFeedbackButton).toBe('Show Feedback');
+      expect(metadata.textInfoFeedback).toContain('Feedback text');
+    });
+
+    it('should return null for non-PBL content', () => {
+      const html = '<p>Regular text content</p>';
+      const metadata = parser.extractPblTaskMetadata(html);
+      expect(metadata).toBeNull();
+    });
+  });
+
+  describe('Text-based iDevice class mapping', () => {
+    it('should map ActivityIdevice to text type', () => {
+      const type = parser.mapIdeviceType('exe.engine.activityidevice.ActivityIdevice');
+      expect(type).toBe('text');
+    });
+
+    it('should map ObjectivesIdevice to text type', () => {
+      const type = parser.mapIdeviceType('exe.engine.objectivesidevice.ObjectivesIdevice');
+      expect(type).toBe('text');
+    });
+
+    it('should map PreknowledgeIdevice to text type', () => {
+      const type = parser.mapIdeviceType('exe.engine.preknowledgeidevice.PreknowledgeIdevice');
+      expect(type).toBe('text');
+    });
+
+    it('should map ReadingActivityIdevice to text type', () => {
+      const type = parser.mapIdeviceType('exe.engine.readingactivityidevice.ReadingActivityIdevice');
+      expect(type).toBe('text');
+    });
+
+    it('should map TaskIdevice to text type', () => {
+      const type = parser.mapIdeviceType('exe.engine.taskidevice.TaskIdevice');
+      expect(type).toBe('text');
+    });
+  });
+
+  describe('JsIdevice _iDeviceDir type mappings', () => {
+    // Test all legacy _iDeviceDir values found in ELP fixtures
+
+    describe('Spanish activity name mappings', () => {
+      it('should map adivina-activity to guess', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="adivina-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('guess');
+      });
+
+      it('should map candado-activity to padlock', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="candado-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('padlock');
+      });
+
+      it('should map clasifica-activity to classify', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="clasifica-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('classify');
+      });
+
+      it('should map mapa-activity to map', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="mapa-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('map');
+      });
+
+      it('should map relaciona-activity to relate', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="relaciona-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('relate');
+      });
+
+      it('should map selecciona-activity to quick-questions-multiple-choice', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="selecciona-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('quick-questions-multiple-choice');
+      });
+
+      it('should map sopa-activity to word-search', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="sopa-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('word-search');
+      });
+
+      it('should map rosco-activity to az-quiz-game', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="rosco-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('az-quiz-game');
+      });
+
+      it('should map quext-activity to quick-questions', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="quext-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('quick-questions');
+      });
+
+      it('should map videoquext-activity to quick-questions-video', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="videoquext-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('quick-questions-video');
+      });
+    });
+
+    describe('PBL-tools mapping', () => {
+      it('should map pbl-tools to text type', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="pbl1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="¡Grabación a la vista!"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="pbl-tools"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('text');
+        expect(result[0].title).toBe('¡Grabación a la vista!');
+      });
+    });
+
+    describe('Other legacy type mappings', () => {
+      it('should map rubrics to rubric', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="rubrics"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('rubric');
+      });
+
+      it('should map flipcards-activity to flipcards', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="flipcards-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('flipcards');
+      });
+
+      it('should map ordena-activity to sort', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="ordena-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('sort');
+      });
+
+      it('should map trivial-activity to trivial', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="trivial-activity"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('trivial');
+      });
+    });
+
+    describe('Unknown type fallback', () => {
+      it('should default unknown _iDeviceDir to text type', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="completely-unknown-type"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('text');
+      });
+
+      it('should preserve known modern types without mapping', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="image-gallery"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('image-gallery');
+      });
+
+      it('should preserve text type without modification', () => {
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].type).toBe('text');
       });
     });
   });

@@ -47,8 +47,8 @@ describe('TrueFalseHandler', () => {
   });
 
   describe('getTargetType', () => {
-    it('returns form', () => {
-      expect(handler.getTargetType()).toBe('form');
+    it('returns trueorfalse', () => {
+      expect(handler.getTargetType()).toBe('trueorfalse');
     });
   });
 
@@ -292,6 +292,70 @@ describe('TrueFalseHandler', () => {
     it('handles null dict', () => {
       // Handler should check for null
       expect(handler.extractHtmlView(null)).toBe('');
+    });
+  });
+
+  describe('eXeFormInstructions in extractProperties', () => {
+    it('includes eXeFormInstructions when instructions are present', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="instructionsForLearners"></string>
+          <instance class="TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Mark each statement as true or false</p>')}"></unicode>
+            </dictionary>
+          </instance>
+          <list>
+            <instance class="exe.engine.truefalseidevice.TrueFalseQuestion">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>The sun rises in the east</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="isCorrect"></string>
+                <bool value="1"></bool>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const result = handler.extractProperties(dict);
+
+      expect(result.eXeFormInstructions).toBe('<p>Mark each statement as true or false</p>');
+      expect(result.questionsData).toBeDefined();
+      expect(result.questionsData.length).toBe(1);
+    });
+
+    it('does not include eXeFormInstructions when no instructions', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <list>
+            <instance class="exe.engine.truefalseidevice.TrueFalseQuestion">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>Statement</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="isCorrect"></string>
+                <bool value="1"></bool>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const result = handler.extractProperties(dict);
+
+      expect(result.eXeFormInstructions).toBeUndefined();
+      expect(result.questionsData).toBeDefined();
     });
   });
 });

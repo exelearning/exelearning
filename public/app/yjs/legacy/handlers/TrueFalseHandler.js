@@ -23,19 +23,25 @@ class TrueFalseHandler extends BaseLegacyHandler {
 
   /**
    * Get the target modern iDevice type
-   * Note: Symfony uses 'trueorfalse' but we map to 'form' for consistency
+   * Matches Symfony: 'trueorfalse'
    */
   getTargetType() {
-    return 'form';
+    return 'trueorfalse';
   }
 
   /**
-   * Extract questionsData from the legacy format
+   * Extract questionsData and eXeFormInstructions from the legacy format
    */
   extractProperties(dict) {
     const questionsData = this.extractQuestions(dict);
+    const instructions = this.extractHtmlView(dict);
+
     if (questionsData.length > 0) {
-      return { questionsData };
+      const props = { questionsData };
+      if (instructions) {
+        props.eXeFormInstructions = instructions;
+      }
+      return props;
     }
     return {};
   }

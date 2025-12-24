@@ -689,18 +689,27 @@ describe('ElpxImporter', () => {
         const escapedFileName = escapeRegex(fileName);
 
         // 1. Replace {{context_path}}/resources/filename
-        str = str.split(`{{context_path}}/resources/${fileName}`).join(`asset://${assetId}`);
-        str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}`);
+        str = str.split(`{{context_path}}/resources/${fileName}`).join(`asset://${assetId}/${fileName}`);
+        str = str.split(`{{context_path}}/${originalPath}`).join(`asset://${assetId}/${fileName}`);
 
-        // 2. Replace resources/filename when preceded by attribute quote
-        const resourcesPattern = new RegExp(`(["'="])resources/${escapedFileName}`, 'g');
-        str = str.replace(resourcesPattern, `$1asset://${assetId}`);
+        // 2. Replace resources/filename when preceded by attribute quote or HTML entity
+        // Note: Legacy contentv3.xml files often have HTML-entity encoded quotes
+        const resourcesPattern = new RegExp(`(["'=]|&quot;|&#39;|&apos;)resources/${escapedFileName}`, 'g');
+        str = str.replace(resourcesPattern, `$1asset://${assetId}/${fileName}`);
 
-        // 3. Replace bare filename ONLY in src/href attributes
+        // 3. Replace bare resources/filename paths (for raw path properties like image gallery)
+        // These are object values (not HTML attributes), so they don't have preceding quotes
+        if (str === `resources/${fileName}`) {
+          str = `asset://${assetId}/${fileName}`;
+        } else if (str.startsWith(`resources/${fileName}`)) {
+          str = str.replace(`resources/${fileName}`, `asset://${assetId}/${fileName}`);
+        }
+
+        // 4. Replace bare filename ONLY in src/href attributes
         if (fileName) {
           str = str.replace(
             new RegExp(`(src|href)=(["'])${escapedFileName}\\2`, 'g'),
-            `$1=$2asset://${assetId}$2`
+            `$1=$2asset://${assetId}/${fileName}$2`
           );
         }
       }
@@ -716,7 +725,7 @@ describe('ElpxImporter', () => {
       const result = replaceAssetPaths(html, assetMap);
 
       // Local resource path SHOULD be converted to asset://
-      expect(result).toContain('asset://asset-uuid-123');
+      expect(result).toContain('asset://asset-uuid-123/cedec-Plantilla.pdf');
 
       // External URL SHOULD remain unchanged - filename should NOT be replaced
       expect(result).toContain('https://example.com/viewer.php?file=https://example.com/uploads/cedec-Plantilla.pdf');
@@ -730,7 +739,7 @@ describe('ElpxImporter', () => {
       const result = replaceAssetPaths(html, assetMap);
 
       // Local resource path SHOULD be converted
-      expect(result).toContain('asset://doc-uuid-456');
+      expect(result).toContain('asset://doc-uuid-456/document.pdf');
       expect(result).not.toContain('resources/document.pdf');
     });
 
@@ -740,8 +749,20 @@ describe('ElpxImporter', () => {
       const html = '<img src="{{context_path}}/resources/image.png">';
       const result = replaceAssetPaths(html, assetMap);
 
-      expect(result).toContain('asset://img-uuid-789');
+      expect(result).toContain('asset://img-uuid-789/image.png');
       expect(result).not.toContain('{{context_path}}');
+    });
+
+    it('should replace resources/ path with HTML-entity encoded quotes', () => {
+      // Legacy contentv3.xml files often store HTML with encoded entities
+      const assetMap = new Map([['image.png', 'img-uuid-entity']]);
+
+      // &quot; is the HTML entity for double quote
+      const html = '&lt;img src=&quot;resources/image.png&quot;&gt;';
+      const result = replaceAssetPaths(html, assetMap);
+
+      expect(result).toContain('asset://img-uuid-entity/image.png');
+      expect(result).not.toContain('&quot;resources/image.png');
     });
 
     it('should NOT replace filename in query string parameter', () => {
@@ -755,7 +776,7 @@ describe('ElpxImporter', () => {
       expect(result).toContain('/download.php?file=report.pdf');
 
       // Local resource path SHOULD be replaced
-      expect(result).toContain('asset://report-uuid-abc');
+      expect(result).toContain('asset://report-uuid-abc/report.pdf');
     });
 
     it('should handle multiple assets correctly', () => {
@@ -774,9 +795,9 @@ describe('ElpxImporter', () => {
       const result = replaceAssetPaths(html, assetMap);
 
       // All local resources should be converted
-      expect(result).toContain('asset://uuid-1');
-      expect(result).toContain('asset://uuid-2');
-      expect(result).toContain('asset://uuid-3');
+      expect(result).toContain('asset://uuid-1/file1.pdf');
+      expect(result).toContain('asset://uuid-2/file2.png');
+      expect(result).toContain('asset://uuid-3/video.mp4');
 
       // External URL should NOT be modified
       expect(result).toContain('https://cdn.example.com/embed?video=video.mp4');
@@ -792,10 +813,33 @@ describe('ElpxImporter', () => {
       const result = replaceAssetPaths(html, assetMap);
 
       // Local link should be converted
-      expect(result).toContain('asset://asset-123');
+      expect(result).toContain('asset://asset-123/cedec-Plantilla-ideografia-A-la-romana.pdf');
 
       // External iframe URL should be completely preserved
       expect(result).toContain('https://cedec.intef.es/wp-content/plugins/pdfjs-viewer-shortcode/pdfjs/web/viewer.php?file=https://cedec.intef.es/wp-content/uploads/2019/09/cedec-Plantilla-ideografia-A-la-romana.pdf');
+    });
+
+    it('should replace bare resources/ path strings (image gallery property values)', () => {
+      // This tests the case where the entire string is a bare path
+      // Used by image gallery jsonProperties: { img_0: { img: "resources/image.jpg" } }
+      const assetMap = new Map([['photo.jpg', 'photo-uuid-xyz']]);
+
+      // Bare path with no surrounding HTML or quotes
+      const barePath = 'resources/photo.jpg';
+      const result = replaceAssetPaths(barePath, assetMap);
+
+      // Should be converted to asset:// URL
+      expect(result).toBe('asset://photo-uuid-xyz/photo.jpg');
+    });
+
+    it('should replace bare resources/ path with thumbnail format', () => {
+      // Test thumbnail paths from image gallery
+      const assetMap = new Map([['thumb_image.jpg', 'thumb-uuid-abc']]);
+
+      const barePath = 'resources/thumb_image.jpg';
+      const result = replaceAssetPaths(barePath, assetMap);
+
+      expect(result).toBe('asset://thumb-uuid-abc/thumb_image.jpg');
     });
   });
 

@@ -114,7 +114,10 @@ function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: str
                     try {
                         filenames = fs
                             .readdirSync(folderPath)
-                            .filter(file => file.endsWith(extension))
+                            .filter(
+                                file =>
+                                    file.endsWith(extension) && !file.includes('.test.') && !file.includes('.spec.'),
+                            )
                             .sort((a, b) => {
                                 // Put main iDevice file first, then alphabetically
                                 if (a === `${ideviceId}${extension}`) return -1;
@@ -378,7 +381,9 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
         const fileAsString = typeof fileFieldValue === 'string' ? fileFieldValue : undefined;
         const base64String = data?.base64String || fileAsString;
         const filename = data?.filename;
-        const createThumbnail = data?.createThumbnail === true;
+        // Support both boolean and string 'true' for createThumbnail
+        const createThumbnailRaw = data?.createThumbnail;
+        const createThumbnail = createThumbnailRaw === true || createThumbnailRaw === 'true';
 
         // Validate required parameters
         if (!odeIdeviceId || !base64String || !filename) {
@@ -457,7 +462,21 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Create thumbnail for images if requested
         if (createThumbnail) {
-            const mimeType = dataParts[0]?.match(/data:([^;]+)/)?.[1] || '';
+            // Try to detect mime type from data URL
+            let mimeType = dataParts[0]?.match(/data:([^;]+)/)?.[1] || '';
+
+            // Fallback: detect from filename extension if data URL doesn't have mime
+            if (!mimeType && filename) {
+                const ext = path.extname(filename).toLowerCase();
+                const extToMime: Record<string, string> = {
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png',
+                    '.gif': 'image/gif',
+                };
+                mimeType = extToMime[ext] || '';
+            }
+
             const thumbValidMimeTypes = ['image/jpeg', 'image/gif', 'image/png'];
             if (thumbValidMimeTypes.includes(mimeType)) {
                 // Simple thumbnail: just use the same file for now
