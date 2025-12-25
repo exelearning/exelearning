@@ -6,7 +6,7 @@ import { Elysia } from 'elysia';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { db } from '../db/client';
-import { findAllPreferencesForUser, findPreference, setPreference } from '../db/queries';
+import { findAllPreferencesForUser, findPreference, setPreference, findUserById, getUserStorageUsage } from '../db/queries';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import type { JwtPayload, UserPreferencesRequest } from './types/request-payloads';
@@ -42,6 +42,8 @@ export interface UserQueries {
     findAllPreferencesForUser: typeof findAllPreferencesForUser;
     findPreference: typeof findPreference;
     setPreference: typeof setPreference;
+    findUserById: typeof findUserById;
+    getUserStorageUsage: typeof getUserStorageUsage;
 }
 
 /**
@@ -61,6 +63,8 @@ const defaultDependencies: UserDependencies = {
         findAllPreferencesForUser,
         findPreference,
         setPreference,
+        findUserById,
+        getUserStorageUsage,
     },
 };
 
@@ -160,6 +164,38 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                 const preferences = await getUserPreferences(userId);
                 // Frontend expects: { userPreferences: { key: { value: x } } }
                 return { userPreferences: preferences };
+            })
+
+            // GET /api/user/storage - Get user storage usage and quota
+            .get('/api/user/storage', async ({ currentUser, set }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
+
+                const userIdNum = parseInt(String(currentUser.id), 10);
+                if (Number.isNaN(userIdNum)) {
+                    set.status = 400;
+                    return { error: 'Bad Request', message: 'Invalid user ID' };
+                }
+
+                const user = await queries.findUserById(database, userIdNum);
+                if (!user) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'User not found' };
+                }
+
+                const usedBytes = await queries.getUserStorageUsage(database, userIdNum);
+                const usedMB = Math.round(usedBytes / (1024 * 1024));
+
+                return {
+                    success: true,
+                    data: {
+                        quota_mb: user.quota_mb,
+                        used_bytes: usedBytes,
+                        used_mb: usedMB,
+                    },
+                };
             })
 
             // POST /api/user/preferences - Save user preferences

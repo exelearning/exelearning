@@ -661,6 +661,7 @@ const API_ROUTES = {
         api_user_set_lopd_accepted: { path: '/api/user/lopd-accepted', methods: ['POST'] },
         api_user_preferences_get: { path: '/api/user/preferences', methods: ['GET'] },
         api_user_preferences_save: { path: '/api/user/preferences', methods: ['PUT'] },
+        api_user_storage_get: { path: '/api/user/storage', methods: ['GET'] },
 
         // Translations
         api_translations_lists: { path: '/api/translations/lists', methods: ['GET'] },
