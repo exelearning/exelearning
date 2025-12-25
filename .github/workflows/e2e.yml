@@ -47,7 +47,9 @@ jobs:
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: E2E Tests (${{ matrix.browser }})
-        run: npx playwright test --project=${{ matrix.browser }}
+        run: |
+          set -e
+          npx playwright test --project=${{ matrix.browser }}
 
       - name: Upload Playwright Report
         if: always()
