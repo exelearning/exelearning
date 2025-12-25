@@ -27,7 +27,13 @@ import {
     getSystemStats as getSystemStatsDefault,
     getAllSettings as getAllSettingsDefault,
     setSetting as setSettingDefault,
+    findProjectsPaginated as findProjectsPaginatedDefault,
 } from '../db/queries/admin';
+import {
+    findProjectById as findProjectByIdDefault,
+    updateProject as updateProjectDefault,
+    hardDeleteProject as hardDeleteProjectDefault,
+} from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 
@@ -52,6 +58,10 @@ export interface AdminQueries {
     getUserStorageUsage: typeof getUserStorageUsageDefault;
     getAllSettings: typeof getAllSettingsDefault;
     setSetting: typeof setSettingDefault;
+    findProjectsPaginated: typeof findProjectsPaginatedDefault;
+    findProjectById: typeof findProjectByIdDefault;
+    updateProject: typeof updateProjectDefault;
+    hardDeleteProject: typeof hardDeleteProjectDefault;
 }
 
 /**
@@ -82,6 +92,10 @@ const defaultDependencies: AdminDependencies = {
         getUserStorageUsage: getUserStorageUsageDefault,
         getAllSettings: getAllSettingsDefault,
         setSetting: setSettingDefault,
+        findProjectsPaginated: findProjectsPaginatedDefault,
+        findProjectById: findProjectByIdDefault,
+        updateProject: updateProjectDefault,
+        hardDeleteProject: hardDeleteProjectDefault,
     },
 };
 
@@ -126,6 +140,10 @@ const updateStatusSchema = t.Object({
 
 const updateQuotaSchema = t.Object({
     quota_mb: t.Union([t.Number(), t.Null()]),
+});
+
+const updateProjectActiveSchema = t.Object({
+    is_active: t.Boolean(),
 });
 
 const updateSettingsSchema = t.Object({
@@ -542,6 +560,102 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 },
                 { body: updateQuotaSchema },
             )
+
+            // =====================================================
+            // PROJECT MANAGEMENT
+            // =====================================================
+
+            // GET /api/admin/projects - List projects with filters
+            .get('/api/admin/projects', async ({ query }) => {
+                const limit = Math.min(parseInt((query.limit as string) || '50', 10), 100);
+                const offset = parseInt((query.offset as string) || '0', 10);
+                const owner = (query.owner as string | undefined)?.trim();
+                const title = (query.title as string | undefined)?.trim();
+                const status = (query.status as string | undefined)?.trim();
+                const visibility = (query.visibility as string | undefined)?.trim();
+                const isActiveRaw = (query.is_active as string | undefined)?.trim();
+                const sortByRaw = (query.sortBy as string | undefined)?.trim();
+                const sortOrderRaw = (query.sortOrder as string | undefined)?.trim();
+                const allowedSortBy = new Set(['id', 'title', 'created_at']);
+                const allowedSortOrder = new Set(['asc', 'desc']);
+                const sortBy = (sortByRaw && allowedSortBy.has(sortByRaw) ? sortByRaw : 'id') as
+                    | 'id'
+                    | 'title'
+                    | 'created_at';
+                const sortOrder = (sortOrderRaw && allowedSortOrder.has(sortOrderRaw) ? sortOrderRaw : 'desc') as
+                    | 'asc'
+                    | 'desc';
+
+                const allowedStatuses = new Set(['active', 'archived', 'deleted']);
+                const allowedVisibility = new Set(['public', 'private']);
+
+                const parsedStatus = status && allowedStatuses.has(status) ? status : undefined;
+                const parsedVisibility = visibility && allowedVisibility.has(visibility) ? visibility : undefined;
+                let parsedIsActive: boolean | undefined;
+                if (isActiveRaw !== undefined && isActiveRaw !== '') {
+                    if (['1', 'true', 'yes', 'on'].includes(isActiveRaw.toLowerCase())) {
+                        parsedIsActive = true;
+                    } else if (['0', 'false', 'no', 'off'].includes(isActiveRaw.toLowerCase())) {
+                        parsedIsActive = false;
+                    }
+                }
+
+                const { projects, total } = await queries.findProjectsPaginated(db, {
+                    limit,
+                    offset,
+                    owner,
+                    title,
+                    status: parsedStatus,
+                    visibility: parsedVisibility,
+                    isActive: parsedIsActive,
+                    sortBy,
+                    sortOrder,
+                });
+
+                return { projects, total };
+            })
+
+            // PATCH /api/admin/projects/:id/active - Toggle project active state
+            .patch(
+                '/api/admin/projects/:id/active',
+                async ({ params, body, set }) => {
+                    const projectId = parseInt(params.id, 10);
+                    if (isNaN(projectId)) {
+                        set.status = 400;
+                        return { error: 'BAD_REQUEST', message: 'Invalid project ID' };
+                    }
+
+                    const updated = await queries.updateProject(db, projectId, {
+                        is_active: body.is_active ? 1 : 0,
+                    });
+
+                    if (!updated) {
+                        set.status = 404;
+                        return { error: 'NOT_FOUND', message: 'Project not found' };
+                    }
+
+                    return { project: updated };
+                },
+                { body: updateProjectActiveSchema },
+            )
+
+            // DELETE /api/admin/projects/:id - Hard delete project
+            .delete('/api/admin/projects/:id', async ({ params, set }) => {
+                const projectId = parseInt(params.id, 10);
+                if (isNaN(projectId)) {
+                    set.status = 400;
+                    return { error: 'BAD_REQUEST', message: 'Invalid project ID' };
+                }
+
+                const project = await queries.findProjectById(db, projectId);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'NOT_FOUND', message: 'Project not found' };
+                }
+
+                await queries.hardDeleteProject(db, projectId);
+                return { success: true };
+            })
 
             // DELETE /api/admin/users/:id - Delete user
             .delete('/api/admin/users/:id', async ({ params, set, jwtPayload }) => {

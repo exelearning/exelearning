@@ -371,6 +371,23 @@
             color: var(--gray-500, #696d75);
         }
 
+        .badge-archived {
+            background: var(--gray-100, #f3f4f6);
+            color: var(--gray-600, #4b5563);
+        }
+
+        .badge-deleted {
+            background: linear-gradient(135deg, #fecaca 0%, #fee2e2 100%);
+            color: #dc2626;
+        }
+
+        .admin-filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
         /* Table */
         .admin-table-wrapper {
             overflow-x: auto;
@@ -1025,11 +1042,25 @@
                             <span class="mi mi-sm">folder</span>
                             {{ t.project_management or 'Project Management' }}
                         </h5>
-                        <div class="d-flex gap-2 align-items-center">
-                            <div style="position: relative;">
-                                <span class="mi mi-sm" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--admin-text-muted);">search</span>
-                                <input type="search" class="admin-input" id="projectSearch" placeholder="{{ t.search or 'Search' }}..." style="width: 200px; padding-left: 36px;">
-                            </div>
+                        <div class="admin-filter-group">
+                            <input type="search" class="admin-input" id="projectOwnerFilter" placeholder="{{ t.owner or 'Owner' }}" style="width: 200px;">
+                            <input type="search" class="admin-input" id="projectTitleFilter" placeholder="{{ t.title or 'Title' }}" style="width: 200px;">
+                            <select class="admin-input" id="projectStatusFilter">
+                                <option value="">{{ t.all_statuses or 'All statuses' }}</option>
+                                <option value="active">active</option>
+                                <option value="archived">archived</option>
+                                <option value="deleted">deleted</option>
+                            </select>
+                            <select class="admin-input" id="projectVisibilityFilter">
+                                <option value="">{{ t.all_visibility or 'All visibility' }}</option>
+                                <option value="public">public</option>
+                                <option value="private">private</option>
+                            </select>
+                            <select class="admin-input" id="projectIsActiveFilter">
+                                <option value="">{{ t.all_states or 'All states' }}</option>
+                                <option value="true">{{ t.active or 'Active' }}</option>
+                                <option value="false">{{ t.inactive or 'Inactive' }}</option>
+                            </select>
                         </div>
                     </div>
                     <div class="loading-overlay" id="projectsLoading">
@@ -1062,6 +1093,8 @@
                                     </th>
                                     <th>{{ t.owner or 'Owner' }}</th>
                                     <th>{{ t.status or 'Status' }}</th>
+                                    <th>{{ t.visibility or 'Visibility' }}</th>
+                                    <th>{{ t.active or 'Active' }}</th>
                                     <th>{{ t.created or 'Created' }}</th>
                                     <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
                                 </tr>
@@ -1458,16 +1491,21 @@
         const T = {
             confirm_delete: '{{ t.confirm_delete or "Are you sure you want to delete this user?" }}',
             confirm_delete_bulk: '{{ t.confirm_delete_bulk or "Are you sure you want to delete {count} users?" }}',
+            confirm_delete_project: '{{ t.confirm_delete_project or "Are you sure you want to delete this project?" }}',
+            confirm_delete_project_bulk: '{{ t.confirm_delete_project_bulk or "Are you sure you want to delete {count} projects?" }}',
             loading: '{{ t.loading or "Loading" }}',
             dashboard: '{{ t.dashboard or "Dashboard" }}',
             users: '{{ t.users or "Users" }}',
+            projects: '{{ t.projects or "Projects" }}',
             extensions: '{{ t.extensions or "Extensions" }}',
             settings: '{{ t.settings or "Settings" }}',
             active: '{{ t.active or "Active" }}',
             inactive: '{{ t.inactive or "Inactive" }}',
             error_loading: '{{ t.error_loading or "Error loading data" }}',
             selected: '{{ t.selected or "selected" }}',
-            deleting: '{{ t.deleting or "Deleting..." }}'
+            deleting: '{{ t.deleting or "Deleting..." }}',
+            activate: '{{ t.activate or "Activate" }}',
+            deactivate: '{{ t.deactivate or "Deactivate" }}'
         };
 
         // State
@@ -1478,6 +1516,12 @@
         let selectedUserIds = new Set();
         let sortBy = 'id';
         let sortOrder = 'asc';
+        let projectsOffset = 0;
+        let projectsTotal = 0;
+        const projectsLimit = 20;
+        let selectedProjectIds = new Set();
+        let projectSortBy = 'id';
+        let projectSortOrder = 'desc';
 
         // Navigation
         document.querySelectorAll('.admin-nav-link[data-section]').forEach(link => {
@@ -1499,12 +1543,19 @@
             document.getElementById(section)?.classList.add('active');
 
             // Update title
-            const titles = { dashboard: T.dashboard, users: T.users, extensions: T.extensions, settings: T.settings };
+            const titles = {
+                dashboard: T.dashboard,
+                users: T.users,
+                projects: T.projects,
+                extensions: T.extensions,
+                settings: T.settings
+            };
             document.getElementById('sectionTitle').textContent = titles[section] || section;
 
             // Load section data
             if (section === 'dashboard') loadStats();
             if (section === 'users') loadUsers();
+            if (section === 'projects') loadProjects();
 
             // Close mobile sidebar
             document.getElementById('adminSidebar').classList.remove('show');
@@ -1743,7 +1794,7 @@
 
         // Sort functionality
         function updateSortIcons() {
-            document.querySelectorAll('.admin-table th.sortable').forEach(th => {
+            document.querySelectorAll('.admin-table th.sortable[data-sort]').forEach(th => {
                 const col = th.dataset.sort;
                 const icon = th.querySelector('.sort-icon');
 
@@ -1757,7 +1808,7 @@
             });
         }
 
-        document.querySelectorAll('.admin-table th.sortable').forEach(th => {
+        document.querySelectorAll('.admin-table th.sortable[data-sort]').forEach(th => {
             th.addEventListener('click', () => {
                 const col = th.dataset.sort;
                 if (sortBy === col) {
@@ -1901,6 +1952,317 @@
                 loadUsers();
             }, 300);
         });
+
+        // Load projects
+        async function loadProjects() {
+            const tbody = document.getElementById('projectsTableBody');
+            const loading = document.getElementById('projectsLoading');
+
+            loading.classList.add('active');
+
+            try {
+                const owner = document.getElementById('projectOwnerFilter').value.trim();
+                const title = document.getElementById('projectTitleFilter').value.trim();
+                const status = document.getElementById('projectStatusFilter').value;
+                const visibility = document.getElementById('projectVisibilityFilter').value;
+                const isActive = document.getElementById('projectIsActiveFilter').value;
+
+                const url = new URL(`${API_BASE}/projects`, window.location.origin);
+                url.searchParams.set('limit', projectsLimit);
+                url.searchParams.set('offset', projectsOffset);
+                url.searchParams.set('sortBy', projectSortBy);
+                url.searchParams.set('sortOrder', projectSortOrder);
+                if (owner) url.searchParams.set('owner', owner);
+                if (title) url.searchParams.set('title', title);
+                if (status) url.searchParams.set('status', status);
+                if (visibility) url.searchParams.set('visibility', visibility);
+                if (isActive) url.searchParams.set('is_active', isActive);
+
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load projects');
+                const data = await res.json();
+
+                projectsTotal = data.total;
+                tbody.innerHTML = '';
+
+                data.projects.forEach(project => {
+                    const statusClass = project.status === 'active'
+                        ? 'badge-active'
+                        : project.status === 'archived'
+                            ? 'badge-archived'
+                            : 'badge-deleted';
+                    const visibilityClass = 'badge-user';
+                    const activeClass = project.is_active ? 'badge-active' : 'badge-inactive';
+                    const activeText = project.is_active ? T.active : T.inactive;
+                    const toggleLabel = project.is_active ? T.deactivate : T.activate;
+                    const toggleIcon = project.is_active ? 'toggle_off' : 'toggle_on';
+                    const ownerLabel = project.owner_email || project.owner_user_id || `#${project.owner_id}`;
+                    const createdAt = project.created_at ? new Date(project.created_at).toLocaleDateString() : '-';
+                    const isChecked = selectedProjectIds.has(project.id) ? 'checked' : '';
+
+                    const tr = document.createElement('tr');
+                    tr.dataset.projectId = project.id;
+                    tr.innerHTML = `
+                        <td>
+                            <input type="checkbox" class="bulk-checkbox project-checkbox" data-project-id="${project.id}" ${isChecked}>
+                        </td>
+                        <td style="font-weight: 600; color: var(--admin-text-muted);">#${project.id}</td>
+                        <td>${project.title || '-'}</td>
+                        <td>${ownerLabel}</td>
+                        <td><span class="badge-role ${statusClass}">${project.status}</span></td>
+                        <td><span class="badge-role ${visibilityClass}">${project.visibility}</span></td>
+                        <td><span class="badge-role ${activeClass}">${activeText}</span></td>
+                        <td>${createdAt}</td>
+                        <td>
+                            <button class="btn-admin-outline" onclick="toggleProjectActive(${project.id}, ${project.is_active ? 'false' : 'true'})" title="${toggleLabel}">
+                                <span class="mi mi-sm">${toggleIcon}</span>
+                            </button>
+                            <button class="btn-admin-outline btn-admin-danger" onclick="deleteProject(${project.id})" title="{{ t.delete or 'Delete' }}">
+                                <span class="mi mi-sm">delete</span>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                bindProjectCheckboxes();
+                updateProjectSortIcons();
+                updateProjectsPagination();
+            } catch (err) {
+                console.error('Failed to load projects:', err);
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        function updateProjectsPagination() {
+            const paginationEl = document.getElementById('projectsPagination');
+            const prevBtn = document.getElementById('projectsPrevBtn');
+            const nextBtn = document.getElementById('projectsNextBtn');
+
+            const start = projectsTotal > 0 ? projectsOffset + 1 : 0;
+            const end = Math.min(projectsOffset + projectsLimit, projectsTotal);
+            paginationEl.textContent = `${start}-${end} of ${projectsTotal}`;
+
+            prevBtn.disabled = projectsOffset === 0;
+            nextBtn.disabled = projectsOffset + projectsLimit >= projectsTotal;
+        }
+
+        document.getElementById('projectsPrevBtn').addEventListener('click', () => {
+            projectsOffset = Math.max(0, projectsOffset - projectsLimit);
+            loadProjects();
+        });
+
+        document.getElementById('projectsNextBtn').addEventListener('click', () => {
+            projectsOffset += projectsLimit;
+            loadProjects();
+        });
+
+        function updateProjectSortIcons() {
+            document.querySelectorAll('.admin-table th.sortable[data-sort-project]').forEach(th => {
+                const col = th.dataset.sortProject;
+                const icon = th.querySelector('.sort-icon');
+
+                if (col === projectSortBy) {
+                    th.classList.add('sorted');
+                    icon.textContent = projectSortOrder === 'asc' ? 'expand_less' : 'expand_more';
+                } else {
+                    th.classList.remove('sorted');
+                    icon.textContent = 'unfold_more';
+                }
+            });
+        }
+
+        document.querySelectorAll('.admin-table th.sortable[data-sort-project]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sortProject;
+                if (projectSortBy === col) {
+                    projectSortOrder = projectSortOrder === 'asc' ? 'desc' : 'asc';
+                } else {
+                    projectSortBy = col;
+                    projectSortOrder = 'asc';
+                }
+                projectsOffset = 0;
+                loadProjects();
+            });
+        });
+
+        function bindProjectCheckboxes() {
+            document.querySelectorAll('.project-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const projectId = parseInt(e.target.dataset.projectId);
+                    if (e.target.checked) {
+                        selectedProjectIds.add(projectId);
+                    } else {
+                        selectedProjectIds.delete(projectId);
+                    }
+                    updateProjectsBulkActionsBar();
+                    updateProjectsSelectAllCheckbox();
+                });
+            });
+        }
+
+        function updateProjectsBulkActionsBar() {
+            const bar = document.getElementById('projectsBulkActionsBar');
+            const countEl = document.getElementById('projectsSelectedCount');
+            const count = selectedProjectIds.size;
+
+            if (count > 0) {
+                bar.classList.add('active');
+                countEl.textContent = `${count} ${T.selected}`;
+            } else {
+                bar.classList.remove('active');
+            }
+        }
+
+        function updateProjectsSelectAllCheckbox() {
+            const selectAll = document.getElementById('selectAllProjects');
+            const checkboxes = document.querySelectorAll('.project-checkbox');
+            const checkedCount = document.querySelectorAll('.project-checkbox:checked').length;
+
+            if (checkboxes.length === 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else if (checkedCount === 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else if (checkedCount === checkboxes.length) {
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            }
+        }
+
+        document.getElementById('selectAllProjects').addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.project-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = e.target.checked;
+                const projectId = parseInt(cb.dataset.projectId);
+                if (e.target.checked) {
+                    selectedProjectIds.add(projectId);
+                } else {
+                    selectedProjectIds.delete(projectId);
+                }
+            });
+            updateProjectsBulkActionsBar();
+        });
+
+        document.getElementById('projectsClearSelectionBtn').addEventListener('click', () => {
+            selectedProjectIds.clear();
+            document.querySelectorAll('.project-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('selectAllProjects').checked = false;
+            document.getElementById('selectAllProjects').indeterminate = false;
+            updateProjectsBulkActionsBar();
+        });
+
+        document.getElementById('projectsBulkDeleteBtn').addEventListener('click', async () => {
+            const count = selectedProjectIds.size;
+            if (count === 0) return;
+
+            const confirmMsg = T.confirm_delete_project_bulk.replace('{count}', count);
+            if (!confirm(confirmMsg)) return;
+
+            const btn = document.getElementById('projectsBulkDeleteBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="mi mi-sm">hourglass_empty</span> ${T.deleting}`;
+            btn.disabled = true;
+
+            let deleted = 0;
+            let errors = [];
+
+            for (const projectId of selectedProjectIds) {
+                try {
+                    const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+
+                    if (res.ok) {
+                        deleted++;
+                    } else {
+                        const data = await res.json();
+                        errors.push(`Project ${projectId}: ${data.message || 'Failed'}`);
+                    }
+                } catch (err) {
+                    errors.push(`Project ${projectId}: ${err.message}`);
+                }
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+
+            if (errors.length > 0) {
+                alert(`Deleted ${deleted} projects. Errors:\n${errors.join('\n')}`);
+            }
+
+            selectedProjectIds.clear();
+            document.getElementById('selectAllProjects').checked = false;
+            updateProjectsBulkActionsBar();
+            loadProjects();
+        });
+
+        let projectFilterTimeout;
+        ['projectOwnerFilter', 'projectTitleFilter'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                clearTimeout(projectFilterTimeout);
+                projectFilterTimeout = setTimeout(() => {
+                    projectsOffset = 0;
+                    loadProjects();
+                }, 300);
+            });
+        });
+
+        ['projectStatusFilter', 'projectVisibilityFilter', 'projectIsActiveFilter'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                projectsOffset = 0;
+                loadProjects();
+            });
+        });
+
+        async function toggleProjectActive(projectId, isActive) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/active`, {
+                    method: 'PATCH',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: isActive })
+                });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.message || 'Failed to update project');
+                }
+
+                loadProjects();
+            } catch (err) {
+                console.error('Failed to update project:', err);
+                alert(err.message || 'Failed to update project');
+            }
+        }
+
+        async function deleteProject(projectId) {
+            if (!confirm(T.confirm_delete_project)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.message || 'Failed to delete project');
+                }
+
+                loadProjects();
+            } catch (err) {
+                console.error('Failed to delete project:', err);
+                alert(err.message || 'Failed to delete project');
+            }
+        }
 
         // Edit user
         async function editUser(userId) {

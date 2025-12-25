@@ -63,6 +63,10 @@ const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries 
     getUserStorageUsage: async () => 0,
     getAllSettings: async () => [],
     setSetting: async () => undefined,
+    findProjectsPaginated: async () => ({ projects: [], total: 0 }),
+    findProjectById: async () => undefined,
+    updateProject: async () => undefined,
+    hardDeleteProject: async () => undefined,
     ...overrides,
 });
 

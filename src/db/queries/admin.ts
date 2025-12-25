@@ -5,7 +5,7 @@
  */
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
-import type { Database, User } from '../types';
+import type { Database, User, Project } from '../types';
 import { now, stringifyRoles, parseRoles } from '../types';
 import { ROLES } from '../../utils/guards';
 
@@ -55,6 +55,120 @@ export async function findUsersPaginated(
     const total = Number(countResult?.count ?? 0);
 
     return { users, total };
+}
+
+// ============================================================================
+// PROJECT MANAGEMENT QUERIES
+// ============================================================================
+
+export type AdminProjectListItem = Project & {
+    owner_email: string;
+    owner_user_id: string;
+};
+
+/**
+ * Get paginated list of projects with optional filters
+ */
+export async function findProjectsPaginated(
+    db: Kysely<Database>,
+    options: {
+        limit?: number;
+        offset?: number;
+        owner?: string;
+        title?: string;
+        status?: string;
+        visibility?: string;
+        isActive?: boolean;
+        sortBy?: 'id' | 'title' | 'created_at';
+        sortOrder?: 'asc' | 'desc';
+    } = {},
+): Promise<{ projects: AdminProjectListItem[]; total: number }> {
+    const {
+        limit = 50,
+        offset = 0,
+        owner,
+        title,
+        status,
+        visibility,
+        isActive,
+        sortBy = 'id',
+        sortOrder = 'desc',
+    } = options;
+
+    let query = db
+        .selectFrom('projects')
+        .innerJoin('users', 'projects.owner_id', 'users.id')
+        .selectAll('projects')
+        .select(['users.email as owner_email', 'users.user_id as owner_user_id']);
+
+    if (owner) {
+        const ownerId = parseInt(owner, 10);
+        query = query.where(eb => {
+            const predicates = [eb('users.email', 'like', `%${owner}%`), eb('users.user_id', 'like', `%${owner}%`)];
+            if (!Number.isNaN(ownerId)) {
+                predicates.push(eb('users.id', '=', ownerId));
+            }
+            return eb.or(predicates);
+        });
+    }
+
+    if (title) {
+        query = query.where('projects.title', 'like', `%${title}%`);
+    }
+
+    if (status) {
+        query = query.where('projects.status', '=', status);
+    }
+
+    if (visibility) {
+        query = query.where('projects.visibility', '=', visibility);
+    }
+
+    if (isActive !== undefined) {
+        query = query.where('projects.is_active', '=', isActive ? 1 : 0);
+    }
+
+    const orderColumn = sortBy === 'title' ? 'projects.title' : sortBy === 'created_at' ? 'projects.created_at' : 'projects.id';
+    query = query.orderBy(orderColumn, sortOrder);
+
+    const projects = await query.limit(limit).offset(offset).execute();
+
+    let countQuery = db
+        .selectFrom('projects')
+        .innerJoin('users', 'projects.owner_id', 'users.id')
+        .select(sql<number>`count(projects.id)`.as('count'));
+
+    if (owner) {
+        const ownerId = parseInt(owner, 10);
+        countQuery = countQuery.where(eb => {
+            const predicates = [eb('users.email', 'like', `%${owner}%`), eb('users.user_id', 'like', `%${owner}%`)];
+            if (!Number.isNaN(ownerId)) {
+                predicates.push(eb('users.id', '=', ownerId));
+            }
+            return eb.or(predicates);
+        });
+    }
+
+    if (title) {
+        countQuery = countQuery.where('projects.title', 'like', `%${title}%`);
+    }
+
+    if (status) {
+        countQuery = countQuery.where('projects.status', '=', status);
+    }
+
+    if (visibility) {
+        countQuery = countQuery.where('projects.visibility', '=', visibility);
+    }
+
+    if (isActive !== undefined) {
+        countQuery = countQuery.where('projects.is_active', '=', isActive ? 1 : 0);
+    }
+
+    const countResult = await countQuery.executeTakeFirst();
+    const total = Number(countResult?.count ?? 0);
+
+    return { projects: projects as AdminProjectListItem[], total };
 }
 
 /**
