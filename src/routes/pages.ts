@@ -28,6 +28,15 @@ import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
 import { getAuthMethods as getAuthMethodsFromSettings } from '../services/app-settings';
+type AppSettingsTable = {
+    key: string;
+    value: string;
+    type: string;
+    updated_at: string | null;
+    updated_by: number | null;
+};
+
+type AppSettingsDb = Kysely<Database & { app_settings: AppSettingsTable }>;
 import {
     createSession as createSessionDefault,
     generateSessionId as generateSessionIdDefault,
@@ -777,20 +786,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         online_idevices_install: parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
                         app_auth_methods: process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
                         version_control: parseBoolean(process.env.VERSION_CONTROL, true),
-                        default_project_visibility:
-                            process.env.DEFAULT_PROJECT_VISIBILITY || 'private',
-                        user_recent_ode_files_amount: parseNumber(
-                            process.env.USER_RECENT_ODE_FILES_AMOUNT,
-                            3,
-                        ),
-                        collaborative_block_level:
-                            process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice',
+                        default_project_visibility: process.env.DEFAULT_PROJECT_VISIBILITY || 'private',
+                        user_recent_ode_files_amount: parseNumber(process.env.USER_RECENT_ODE_FILES_AMOUNT, 3),
+                        collaborative_block_level: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice',
                     },
                     storage: {
-                        user_storage_max_disk_space: parseNumber(
-                            process.env.USER_STORAGE_MAX_DISK_SPACE,
-                            1024,
-                        ),
+                        user_storage_max_disk_space: parseNumber(process.env.USER_STORAGE_MAX_DISK_SPACE, 1024),
                         default_quota: parseNumber(process.env.DEFAULT_QUOTA, 4096),
                         count_user_autosave_space_ode_files: parseBoolean(
                             process.env.COUNT_USER_AUTOSAVE_SPACE_ODE_FILES,
@@ -807,10 +808,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             process.env.PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES,
                             10,
                         ),
-                        autosave_ode_files_function: parseBoolean(
-                            process.env.AUTOSAVE_ODE_FILES_FUNCTION,
-                            true,
-                        ),
+                        autosave_ode_files_function: parseBoolean(process.env.AUTOSAVE_ODE_FILES_FUNCTION, true),
                     },
                     cas: {
                         url: process.env.CAS_URL || 'https://casserverpac4j.herokuapp.com',
@@ -824,19 +822,15 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             process.env.OIDC_AUTHORIZATION_ENDPOINT ||
                             'https://demo.duendesoftware.com/connect/authorize',
                         token_endpoint:
-                            process.env.OIDC_TOKEN_ENDPOINT ||
-                            'https://demo.duendesoftware.com/connect/token',
+                            process.env.OIDC_TOKEN_ENDPOINT || 'https://demo.duendesoftware.com/connect/token',
                         userinfo_endpoint:
-                            process.env.OIDC_USERINFO_ENDPOINT ||
-                            'https://demo.duendesoftware.com/connect/userinfo',
+                            process.env.OIDC_USERINFO_ENDPOINT || 'https://demo.duendesoftware.com/connect/userinfo',
                         scope: process.env.OIDC_SCOPE || 'openid email',
                         client_id: process.env.OIDC_CLIENT_ID || 'interactive.confidential',
                         client_secret: process.env.OIDC_CLIENT_SECRET || 'secret',
                     },
                     storage_integrations: {
-                        google_client_id:
-                            process.env.GOOGLE_CLIENT_ID ||
-                            'example.com.apps.googleusercontent.com',
+                        google_client_id: process.env.GOOGLE_CLIENT_ID || 'example.com.apps.googleusercontent.com',
                         google_client_secret: process.env.GOOGLE_CLIENT_SECRET || 'example.com',
                         dropbox_client_id: process.env.DROPBOX_CLIENT_ID || 'example.com',
                         dropbox_client_secret: process.env.DROPBOX_CLIENT_SECRET || 'example.com',
@@ -898,7 +892,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 };
 
                 try {
-                    const storedSettings = await getAllSettingsDefault(db as any);
+                    const storedSettings = await getAllSettingsDefault(db as unknown as AppSettingsDb);
                     for (const setting of storedSettings) {
                         const mapping = adminSettingsMap[setting.key];
                         if (!mapping) continue;
@@ -916,9 +910,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             }
                         }
 
-                        let target: any = adminSettings;
+                        let target: Record<string, unknown> = adminSettings as Record<string, unknown>;
                         for (let i = 0; i < mapping.path.length - 1; i++) {
-                            target = target[mapping.path[i]];
+                            target = target[mapping.path[i]] as Record<string, unknown>;
                         }
                         target[mapping.path[mapping.path.length - 1]] = parsedValue;
                     }

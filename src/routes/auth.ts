@@ -385,10 +385,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Not Found', message: 'CAS authentication is not enabled.' };
                 }
 
-                const casUrl = (await getSettingString(db, 'CAS_URL', process.env.CAS_URL || '')).replace(
-                    /\/$/,
-                    '',
-                );
+                const casUrl = (await getSettingString(db, 'CAS_URL', process.env.CAS_URL || '')).replace(/\/$/, '');
                 const casLoginPath = (
                     await getSettingString(db, 'CAS_LOGIN_PATH', process.env.CAS_LOGIN_PATH || '/login')
                 ).replace(/^\//, '');
@@ -432,10 +429,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Bad Request', message: 'Missing CAS ticket.' };
                 }
 
-                const casUrl = (await getSettingString(db, 'CAS_URL', process.env.CAS_URL || '')).replace(
-                    /\/$/,
-                    '',
-                );
+                const casUrl = (await getSettingString(db, 'CAS_URL', process.env.CAS_URL || '')).replace(/\/$/, '');
                 const casValidatePath = (
                     await getSettingString(
                         db,

@@ -6,7 +6,13 @@ import { Elysia } from 'elysia';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { db } from '../db/client';
-import { findAllPreferencesForUser, findPreference, setPreference, findUserById, getUserStorageUsage } from '../db/queries';
+import {
+    findAllPreferencesForUser,
+    findPreference,
+    setPreference,
+    findUserById,
+    getUserStorageUsage,
+} from '../db/queries';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import type { JwtPayload, UserPreferencesRequest } from './types/request-payloads';

@@ -82,16 +82,7 @@ export async function findProjectsPaginated(
         sortOrder?: 'asc' | 'desc';
     } = {},
 ): Promise<{ projects: AdminProjectListItem[]; total: number }> {
-    const {
-        limit = 50,
-        offset = 0,
-        owner,
-        title,
-        status,
-        visibility,
-        sortBy = 'id',
-        sortOrder = 'desc',
-    } = options;
+    const { limit = 50, offset = 0, owner, title, status, visibility, sortBy = 'id', sortOrder = 'desc' } = options;
 
     let query = db
         .selectFrom('projects')
@@ -122,7 +113,8 @@ export async function findProjectsPaginated(
         query = query.where('projects.visibility', '=', visibility);
     }
 
-    const orderColumn = sortBy === 'title' ? 'projects.title' : sortBy === 'created_at' ? 'projects.created_at' : 'projects.id';
+    const orderColumn =
+        sortBy === 'title' ? 'projects.title' : sortBy === 'created_at' ? 'projects.created_at' : 'projects.id';
     query = query.orderBy(orderColumn, sortOrder);
 
     const projects = await query.limit(limit).offset(offset).execute();

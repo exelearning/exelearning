@@ -112,10 +112,7 @@ describe('Config Routes', () => {
         it('should return application settings', async () => {
             const prevThemes = await getSetting(db as any, 'ONLINE_THEMES_INSTALL');
             const prevIdevices = await getSetting(db as any, 'ONLINE_IDEVICES_INSTALL');
-            const prevAutosaveInterval = await getSetting(
-                db as any,
-                'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL',
-            );
+            const prevAutosaveInterval = await getSetting(db as any, 'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL');
 
             await setSetting(db as any, 'ONLINE_THEMES_INSTALL', '0', 'boolean');
             await setSetting(db as any, 'ONLINE_IDEVICES_INSTALL', '0', 'boolean');

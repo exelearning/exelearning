@@ -386,7 +386,7 @@ async function bootstrap() {
         // Use bcryptjs instead of Bun.password.hash
         const hashedPassword = await bcrypt.hash(testPassword, 10);
         const defaultQuota = await getSettingNumber(
-            db as any,
+            db,
             'DEFAULT_QUOTA',
             parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
         );

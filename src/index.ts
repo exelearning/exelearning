@@ -404,7 +404,7 @@ async function bootstrap() {
         console.log('[DB] Creating test user...');
         const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
         const defaultQuota = await getSettingNumber(
-            db as any,
+            db,
             'DEFAULT_QUOTA',
             parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
         );

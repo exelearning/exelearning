@@ -37,6 +37,16 @@ import {
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 
+type AppSettingsTable = {
+    key: string;
+    value: string;
+    type: string;
+    updated_at: string | null;
+    updated_by: number | null;
+};
+
+type AppSettingsDb = Kysely<Database & { app_settings: AppSettingsTable }>;
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -290,7 +300,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
             // GET /api/admin/settings - Get admin settings (defaults + overrides)
             .get('/api/admin/settings', async () => {
-                const stored = await queries.getAllSettings(db as any);
+                const stored = await queries.getAllSettings(db as unknown as AppSettingsDb);
                 const storedMap = new Map(stored.map(item => [item.key, item]));
 
                 const settings: Record<string, { value: string | number | boolean; type: string }> = {};
@@ -343,7 +353,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
                         try {
                             await queries.setSetting(
-                                db as any,
+                                db as unknown as AppSettingsDb,
                                 setting.key,
                                 setting.value,
                                 setting.type as 'string' | 'number' | 'boolean' | 'json',

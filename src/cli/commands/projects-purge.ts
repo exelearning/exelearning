@@ -12,7 +12,13 @@ import { success, error, warning, info, colors, EXIT_CODES } from '../utils/outp
 import { db } from '../../db/client';
 import type { Kysely } from 'kysely';
 import type { Database } from '../../db/types';
-import { getFilesDir, getOdeSessionTempDir, getOdeSessionDistDir, remove, fileExists } from '../../services/file-helper';
+import {
+    getFilesDir,
+    getOdeSessionTempDir,
+    getOdeSessionDistDir,
+    remove,
+    fileExists,
+} from '../../services/file-helper';
 import * as path from 'path';
 
 export interface ProjectsPurgeResult {
@@ -95,7 +101,8 @@ export async function execute(
     if (!dryRun && !confirmed) {
         return {
             success: false,
-            message: 'This command deletes ALL projects and assets. Re-run with --yes to proceed or --dry-run to preview.',
+            message:
+                'This command deletes ALL projects and assets. Re-run with --yes to proceed or --dry-run to preview.',
         };
     }
 

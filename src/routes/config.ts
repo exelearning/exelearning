@@ -567,10 +567,7 @@ const API_ROUTES = {
 };
 
 async function getDefaultParameters(uploadLimits: { maxFileSize: number }) {
-    const authMethods = await getAuthMethods(
-        defaultDb,
-        process.env.APP_AUTH_METHODS || 'password,guest',
-    );
+    const authMethods = await getAuthMethods(defaultDb, process.env.APP_AUTH_METHODS || 'password,guest');
 
     return {
         // General settings

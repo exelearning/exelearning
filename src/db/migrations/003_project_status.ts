@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely';
 
-export async function up(db: Kysely<any>): Promise<void> {
+export async function up(db: Kysely<unknown>): Promise<void> {
     try {
         await db
             .updateTable('projects')
@@ -21,7 +21,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     await db.schema.alterTable('projects').dropColumn('is_active').execute();
 }
 
-export async function down(db: Kysely<any>): Promise<void> {
+export async function down(db: Kysely<unknown>): Promise<void> {
     await db.schema
         .alterTable('projects')
         .addColumn('is_active', 'integer', col => col.notNull().defaultTo(1))
