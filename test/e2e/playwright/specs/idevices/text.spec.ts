@@ -1120,21 +1120,23 @@ test.describe('Text iDevice', () => {
 
                 // Wait for MutationObserver to detect and resolve the asset URL
                 // Use polling instead of fixed timeout to handle race conditions with multiple workers
-                const audioSrc = await frame.waitForFunction(
-                    (expectedAssetUrl) => {
-                        const audio = document.querySelector('audio');
-                        if (!audio) return null;
-                        const src = audio.getAttribute('src');
-                        const dataAssetSrc = audio.getAttribute('data-asset-src');
-                        // Wait until src is resolved to blob:// and data-asset-src is set
-                        if (src && src.startsWith('blob:') && dataAssetSrc === expectedAssetUrl) {
-                            return { src, dataAssetSrc };
-                        }
-                        return null;
-                    },
-                    assetUrl,
-                    { timeout: 10000 },
-                ).then((handle) => handle.jsonValue());
+                const audioSrc = await frame
+                    .waitForFunction(
+                        expectedAssetUrl => {
+                            const audio = document.querySelector('audio');
+                            if (!audio) return null;
+                            const src = audio.getAttribute('src');
+                            const dataAssetSrc = audio.getAttribute('data-asset-src');
+                            // Wait until src is resolved to blob:// and data-asset-src is set
+                            if (src?.startsWith('blob:') && dataAssetSrc === expectedAssetUrl) {
+                                return { src, dataAssetSrc };
+                            }
+                            return null;
+                        },
+                        assetUrl,
+                        { timeout: 10000 },
+                    )
+                    .then(handle => handle.jsonValue());
 
                 // The src should be resolved to blob:// and original asset:// stored in data-asset-src
                 expect(audioSrc.src).toContain('blob:');
@@ -1237,21 +1239,23 @@ test.describe('Text iDevice', () => {
 
                 // Wait for MutationObserver to detect and resolve the asset URL
                 // Use polling instead of fixed timeout to handle race conditions with multiple workers
-                const iframeSrc = await frame.waitForFunction(
-                    (expectedAssetUrl) => {
-                        const iframe = document.querySelector('iframe');
-                        if (!iframe) return null;
-                        const src = iframe.getAttribute('src');
-                        const dataAssetSrc = iframe.getAttribute('data-asset-src');
-                        // Wait until src is resolved to blob:// and data-asset-src is set
-                        if (src && src.startsWith('blob:') && dataAssetSrc === expectedAssetUrl) {
-                            return { src, dataAssetSrc };
-                        }
-                        return null;
-                    },
-                    assetUrl,
-                    { timeout: 10000 },
-                ).then((handle) => handle.jsonValue());
+                const iframeSrc = await frame
+                    .waitForFunction(
+                        expectedAssetUrl => {
+                            const iframe = document.querySelector('iframe');
+                            if (!iframe) return null;
+                            const src = iframe.getAttribute('src');
+                            const dataAssetSrc = iframe.getAttribute('data-asset-src');
+                            // Wait until src is resolved to blob:// and data-asset-src is set
+                            if (src?.startsWith('blob:') && dataAssetSrc === expectedAssetUrl) {
+                                return { src, dataAssetSrc };
+                            }
+                            return null;
+                        },
+                        assetUrl,
+                        { timeout: 10000 },
+                    )
+                    .then(handle => handle.jsonValue());
 
                 // The src should be resolved to blob:// and original asset:// stored in data-asset-src
                 expect(iframeSrc.src).toContain('blob:');

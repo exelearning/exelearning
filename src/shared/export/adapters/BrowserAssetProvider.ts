@@ -218,12 +218,15 @@ export class BrowserAssetProvider implements AssetProvider {
                 const assets = await this.assetManager.getProjectAssets();
                 console.log(`[BrowserAssetProvider] Found ${assets.length} assets from AssetManager`);
                 if (assets.length > 0) {
-                    console.log(`[BrowserAssetProvider] First asset:`, JSON.stringify({
-                        id: assets[0].id,
-                        filename: assets[0].filename,
-                        mime: assets[0].mime,
-                        hasBlob: !!assets[0].blob
-                    }));
+                    console.log(
+                        `[BrowserAssetProvider] First asset:`,
+                        JSON.stringify({
+                            id: assets[0].id,
+                            filename: assets[0].filename,
+                            mime: assets[0].mime,
+                            hasBlob: !!assets[0].blob,
+                        }),
+                    );
                 }
 
                 for (const asset of assets) {
@@ -266,7 +269,9 @@ export class BrowserAssetProvider implements AssetProvider {
                         console.log(`[BrowserAssetProvider] Trying fallback: getAllAssetsRaw...`);
                         const allAssets = await this.assetManager.getAllAssetsRaw();
                         if (allAssets.length > 0) {
-                            console.warn(`[BrowserAssetProvider] FALLBACK: Found ${allAssets.length} assets in DB (different projectIds)`);
+                            console.warn(
+                                `[BrowserAssetProvider] FALLBACK: Found ${allAssets.length} assets in DB (different projectIds)`,
+                            );
                             // Log the projectIds for debugging
                             const projectIds = [...new Set(allAssets.map(a => a.projectId))];
                             console.warn(`[BrowserAssetProvider] ProjectIds in DB: ${projectIds.join(', ')}`);
@@ -295,7 +300,9 @@ export class BrowserAssetProvider implements AssetProvider {
                                 }
                             }
                             if (result.length > 0) {
-                                console.log(`[BrowserAssetProvider] FALLBACK converted ${result.length} assets for export`);
+                                console.log(
+                                    `[BrowserAssetProvider] FALLBACK converted ${result.length} assets for export`,
+                                );
                                 return result;
                             }
                         }
