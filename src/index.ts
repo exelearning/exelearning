@@ -18,6 +18,7 @@ import { gamesRoutes } from './routes/games';
 import { themesRoutes } from './routes/themes';
 import { resourcesRoutes } from './routes/resources';
 import { userRoutes } from './routes/user';
+import { adminRoutes } from './routes/admin';
 import { yjsRoutes } from './routes/yjs';
 import {
     createWebSocketRoutes,
@@ -31,6 +32,7 @@ import { db } from './db/client';
 import { migrateToLatest } from './db/migrations';
 import { findUserByEmail, createUser } from './db/queries/users';
 import { renderTemplate, setRenderLocale } from './services/template';
+import { getSettingNumber } from './services/app-settings';
 import { getBasePath } from './utils/basepath.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
@@ -340,6 +342,7 @@ app.use(healthRoutes)
     .use(themesRoutes)
     .use(resourcesRoutes)
     .use(userRoutes)
+    .use(adminRoutes)
     .use(yjsRoutes)
     .use(createWebSocketRoutes())
     .get('/api', () => ({
@@ -368,6 +371,7 @@ if (routePrefix) {
             .use(idevicesRoutes)
             .use(themesRoutes)
             .use(userRoutes)
+            .use(adminRoutes)
             .use(yjsRoutes)
             .use(createWebSocketRoutes())
             .get('/api', () => ({
@@ -399,13 +403,18 @@ async function bootstrap() {
     if (!existingUser) {
         console.log('[DB] Creating test user...');
         const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
+        const defaultQuota = await getSettingNumber(
+            db,
+            'DEFAULT_QUOTA',
+            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+        );
         await createUser(db, {
             email: testEmail,
             user_id: 'test-user',
             password: hashedPassword,
             roles: '["ROLE_USER"]',
             is_lopd_accepted: 1,
-            quota_mb: 4096,
+            quota_mb: defaultQuota,
             is_active: 1,
         });
         console.log(`[DB] Test user created: ${testEmail}`);

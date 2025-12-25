@@ -75,7 +75,6 @@ export async function findProjectWithOwner(
         license: result.license,
         last_accessed_at: result.last_accessed_at,
         saved_once: result.saved_once,
-        is_active: result.is_active,
         created_at: result.created_at,
         updated_at: result.updated_at,
         owner,
@@ -137,7 +136,6 @@ export async function findProjectByUuidWithOwner(
         license: result.license,
         last_accessed_at: result.last_accessed_at,
         saved_once: result.saved_once,
-        is_active: result.is_active,
         created_at: result.created_at,
         updated_at: result.updated_at,
         owner,
@@ -313,7 +311,6 @@ export async function createProject(db: Kysely<Database>, data: Omit<NewProject,
             uuid: uuidv4(),
             created_at: timestamp,
             updated_at: timestamp,
-            is_active: 1,
         })
         .returningAll()
         .executeTakeFirstOrThrow();
@@ -392,7 +389,7 @@ export async function softDeleteProject(db: Kysely<Database>, id: number): Promi
     await db
         .updateTable('projects')
         .set({
-            status: 'deleted',
+            status: 'inactive',
             updated_at: now(),
         })
         .where('id', '=', id)
@@ -431,8 +428,8 @@ export async function checkProjectAccess(
         return { hasAccess: false, reason: 'PROJECT_NOT_FOUND' };
     }
 
-    if (project.status === 'deleted') {
-        return { hasAccess: false, reason: 'PROJECT_DELETED' };
+    if (project.status === 'inactive') {
+        return { hasAccess: false, reason: 'PROJECT_INACTIVE' };
     }
 
     // Public projects are accessible to everyone
@@ -468,7 +465,7 @@ export async function findSavedProjectsByOwner(db: Kysely<Database>, ownerId: nu
         .selectAll()
         .where('owner_id', '=', ownerId)
         .where('saved_once', '=', 1)
-        .where('is_active', '=', 1)
+        .where('status', 'in', ['active', 'archived'])
         .orderBy('updated_at', 'desc')
         .execute();
 }
@@ -486,7 +483,6 @@ export async function createProjectWithUuid(
             uuid,
             created_at: timestamp,
             updated_at: timestamp,
-            is_active: 1,
         })
         .returningAll()
         .executeTakeFirstOrThrow();

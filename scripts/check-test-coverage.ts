@@ -10,6 +10,7 @@ const IGNORE_PATTERNS = [
     /index-node\.ts$/, // Legacy Node.js entry point
     /\.d\.ts$/,
     /types\.ts$/,
+    /src\/db\/migrations\//, // Migrations are declarative and tested implicitly
 ]
 
 async function getFiles(dir: string): Promise<string[]> {

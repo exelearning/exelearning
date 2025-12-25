@@ -1564,6 +1564,438 @@ describe('Pages Routes', () => {
         });
     });
 
+    describe('GET /admin', () => {
+        it('should redirect to login if not authenticated', async () => {
+            const res = await app.handle(new Request('http://localhost/admin'));
+
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location');
+            expect(location).toContain('/login');
+            expect(location).toContain('returnUrl=/admin');
+        });
+
+        it('should return 403 if user is not admin', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'], // Not admin
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const html = await res.text();
+            expect(html).toContain('security/error');
+        });
+
+        it('should render admin template for admin user', async () => {
+            // Create admin user
+            mockUsers.set(10, {
+                id: 10,
+                email: 'admin@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 10,
+                email: 'admin@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toContain('text/html');
+        });
+
+        it('should detect locale from Accept-Language header', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(11, {
+                id: 11,
+                email: 'admin2@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 11,
+                email: 'admin2@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                        'Accept-Language': 'es-ES,es;q=0.9',
+                    },
+                }),
+            );
+
+            expect(templateData).not.toBeNull();
+            expect(templateData.locale).toBe('es');
+        });
+
+        it('should include all admin translation keys', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(12, {
+                id: 12,
+                email: 'admin3@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 12,
+                email: 'admin3@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            const t = templateData.t;
+            expect(t.admin_panel).toBeDefined();
+            expect(t.dashboard).toBeDefined();
+            expect(t.users).toBeDefined();
+            expect(t.settings).toBeDefined();
+            expect(t.logout).toBeDefined();
+            expect(t.total_users).toBeDefined();
+            expect(t.create_user).toBeDefined();
+            expect(t.edit).toBeDefined();
+            expect(t.delete).toBeDefined();
+        });
+
+        it('should include user info with gravatar', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(13, {
+                id: 13,
+                email: 'admin4@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 13,
+                email: 'admin4@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(templateData.user).toBeDefined();
+            expect(templateData.user.id).toBe(13);
+            expect(templateData.user.email).toBe('admin4@test.com');
+            expect(templateData.user.gravatarUrl).toBeDefined();
+            expect(templateData.user.roles).toContain('ROLE_ADMIN');
+        });
+
+        it('should handle template render error with fallback HTML', async () => {
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, _data: any) => {
+                    throw new Error('Admin template failed');
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(14, {
+                id: 14,
+                email: 'admin5@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 14,
+                email: 'admin5@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            const res = await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const html = await res.text();
+            expect(html).toContain('eXeLearning Admin');
+            expect(html).toContain('Template error');
+        });
+
+        it('should handle user with roles as JSON string', async () => {
+            mockUsers.set(15, {
+                id: 15,
+                email: 'admin6@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]', // JSON string format
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 15,
+                email: 'admin6@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should handle user with roles as array', async () => {
+            mockUsers.set(16, {
+                id: 16,
+                email: 'admin7@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'], // Array format
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 16,
+                email: 'admin7@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should handle user without email', async () => {
+            mockUsers.set(17, {
+                id: 17,
+                email: null, // No email
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 17,
+                email: null,
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Should use fallback email
+            expect(templateData.user.email).toBe('admin@exelearning.net');
+        });
+
+        it('should include version and basePath', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(18, {
+                id: 18,
+                email: 'admin8@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 18,
+                email: 'admin8@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(templateData.version).toBeDefined();
+            expect(templateData.app_version).toBeDefined();
+            expect(templateData.basePath).toBeDefined();
+        });
+    });
+
     describe('edge cases', () => {
         it('should handle empty email in user object', async () => {
             // User without email

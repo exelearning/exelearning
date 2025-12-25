@@ -17,6 +17,8 @@ import * as translations from './commands/translations';
 import * as migrate from './commands/migrate';
 import * as elpConvert from './commands/elp-convert';
 import * as elpExport from './commands/elp-export';
+import * as checkQuota from './commands/check-quota';
+import * as projectsPurge from './commands/projects-purge';
 
 // Command registry
 interface CommandModule {
@@ -36,6 +38,8 @@ const COMMANDS: Record<string, CommandModule> = {
     migrate: migrate,
     'elp:convert': elpConvert,
     'elp:export': elpExport,
+    'check-quota': checkQuota,
+    'projects:purge': projectsPurge,
 };
 
 // Command aliases
@@ -142,6 +146,7 @@ ${colors.cyan('Usage:')} bun cli <command> [arguments] [options]
 ${colors.cyan('User Management:')}
   create-user <email> <password> <user_id>   Create a new user
   user:role <email> [--add|--remove|--list]  Manage user roles
+  check-quota <email>                         Check storage usage and quota
   promote-admin <email>                       Grant ROLE_ADMIN to user
   demote-admin <email>                        Remove ROLE_ADMIN from user
   grant-role <email> <role>                   Add role to user
@@ -156,6 +161,7 @@ ${colors.cyan('Database:')}
 ${colors.cyan('Maintenance:')}
   tmp:cleanup [--max-age=86400]              Clean temporary files
   translations [--locale=en]                  Extract/clean translations
+  projects:purge --yes                        Delete all projects and assets
 
 ${colors.cyan('ELPX Processing:')}
   elp:convert <input> <output>               Convert ELP v2.x to v3.0 (elpx)
@@ -174,10 +180,12 @@ ${colors.cyan('Global Options:')}
 ${colors.cyan('Examples:')}
   bun cli create-user admin@example.com secret123 admin
   bun cli user:role admin@example.com --add=ROLE_ADMIN --add=ROLE_EDITOR
+  bun cli check-quota admin@example.com
   bun cli promote-admin admin@example.com
   bun cli jwt:generate admin@example.com --ttl=86400
   bun cli tmp:cleanup --max-age=3600 --dry-run
   bun cli translations --locale=es
+  bun cli projects:purge --dry-run
 
 ${colors.cyan('Help:')}
   bun cli <command> --help   Show help for specific command

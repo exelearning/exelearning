@@ -8,6 +8,7 @@ import { cookie } from '@elysiajs/cookie';
 import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import type { User, Database } from '../db/types';
+import { parseRoles } from '../db/types';
 import {
     findUserByEmail as findUserByEmailDefault,
     findUserById as findUserByIdDefault,
@@ -18,6 +19,7 @@ import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
+import { getAuthMethods, getSettingString } from '../services/app-settings';
 
 /**
  * Dependency types for auth routes
@@ -153,7 +155,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
                         email: user.email,
-                        roles: user.roles,
+                        roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'local',
                     };
@@ -269,7 +271,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                     sub: user.id,
                     email: user.email,
-                    roles: user.roles,
+                    roles: parseRoles(user.roles),
                     isGuest: false,
                     authMethod: 'local',
                 };
@@ -307,8 +309,15 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 // Handle SSO logout based on auth method
                 if (authMethod === 'cas') {
                     // CAS logout - redirect to CAS server logout endpoint
-                    const casUrl = (process.env.CAS_URL || '').replace(/\/$/, '');
-                    const casLogoutPath = process.env.CAS_LOGOUT_PATH || '/logout';
+                    const casUrl = (await getSettingString(db, 'CAS_URL', process.env.CAS_URL || '')).replace(
+                        /\/$/,
+                        '',
+                    );
+                    const casLogoutPath = await getSettingString(
+                        db,
+                        'CAS_LOGOUT_PATH',
+                        process.env.CAS_LOGOUT_PATH || '/logout',
+                    );
 
                     if (casUrl) {
                         const casLogoutUrl = `${casUrl}${casLogoutPath}?service=${encodeURIComponent(postLogoutUrl)}`;
@@ -319,7 +328,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 if (authMethod === 'openid') {
                     // OpenID Connect logout - redirect to end_session endpoint
                     const endSessionEndpoint = process.env.OIDC_END_SESSION_ENDPOINT;
-                    const clientId = process.env.OIDC_CLIENT_ID;
+                    const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
 
                     if (endSessionEndpoint) {
                         const params = new URLSearchParams({
@@ -370,14 +379,16 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
             // GET /login/cas - CAS (Central Authentication Service) SSO login
             .get('/login/cas', async ({ request, set, query }) => {
-                const authMethods = getAuthMethods();
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('cas')) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'CAS authentication is not enabled.' };
                 }
 
-                const casUrl = (process.env.CAS_URL || '').replace(/\/$/, '');
-                const casLoginPath = (process.env.CAS_LOGIN_PATH || '/login').replace(/^\//, '');
+                const casUrl = (await getSettingString(db, 'CAS_URL', process.env.CAS_URL || '')).replace(/\/$/, '');
+                const casLoginPath = (
+                    await getSettingString(db, 'CAS_LOGIN_PATH', process.env.CAS_LOGIN_PATH || '/login')
+                ).replace(/^\//, '');
 
                 if (!casUrl || !casLoginPath) {
                     set.status = 500;
@@ -406,7 +417,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
             // GET /login/cas/callback - CAS callback after authentication
             .get('/login/cas/callback', async ({ jwt, cookie, request, query, set }) => {
-                const authMethods = getAuthMethods();
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('cas')) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'CAS authentication is not enabled.' };
@@ -418,8 +429,14 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Bad Request', message: 'Missing CAS ticket.' };
                 }
 
-                const casUrl = (process.env.CAS_URL || '').replace(/\/$/, '');
-                const casValidatePath = (process.env.CAS_VALIDATE_PATH || '/p3/serviceValidate').replace(/^\//, '');
+                const casUrl = (await getSettingString(db, 'CAS_URL', process.env.CAS_URL || '')).replace(/\/$/, '');
+                const casValidatePath = (
+                    await getSettingString(
+                        db,
+                        'CAS_VALIDATE_PATH',
+                        process.env.CAS_VALIDATE_PATH || '/p3/serviceValidate',
+                    )
+                ).replace(/^\//, '');
 
                 if (!casUrl || !casValidatePath) {
                     set.status = 500;
@@ -480,7 +497,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
                         email: user.email,
-                        roles: user.roles,
+                        roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'cas',
                     };
@@ -529,13 +546,17 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
             // GET /login/openid - OpenID Connect SSO login
             .get('/login/openid', async ({ request, set, query }) => {
-                const authMethods = getAuthMethods();
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('openid')) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'OpenID authentication is not enabled.' };
                 }
 
-                const authorizeEndpoint = process.env.OIDC_AUTHORIZATION_ENDPOINT;
+                const authorizeEndpoint = await getSettingString(
+                    db,
+                    'OIDC_AUTHORIZATION_ENDPOINT',
+                    process.env.OIDC_AUTHORIZATION_ENDPOINT || '',
+                );
                 if (!authorizeEndpoint) {
                     set.status = 500;
                     return { error: 'Server Error', message: 'OpenID Connect is misconfigured.' };
@@ -554,10 +575,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 // Build callback URL
                 const url = new URL(request.url);
                 const redirectUri = `${url.protocol}//${url.host}/login/openid/callback`;
-                const scope = process.env.OIDC_SCOPE || 'openid email';
+                const scope = await getSettingString(db, 'OIDC_SCOPE', process.env.OIDC_SCOPE || 'openid email');
+                const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
 
                 const params = new URLSearchParams({
-                    client_id: process.env.OIDC_CLIENT_ID || '',
+                    client_id: clientId,
                     redirect_uri: redirectUri,
                     response_type: 'code',
                     scope,
@@ -594,7 +616,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
             // GET /login/openid/callback - OpenID callback after authentication
             .get('/login/openid/callback', async ({ jwt, cookie, request, query, set }) => {
-                const authMethods = getAuthMethods();
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('openid')) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'OpenID authentication is not enabled.' };
@@ -643,7 +665,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     }
                 }
 
-                const tokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+                const tokenEndpoint = await getSettingString(
+                    db,
+                    'OIDC_TOKEN_ENDPOINT',
+                    process.env.OIDC_TOKEN_ENDPOINT || '',
+                );
                 if (!tokenEndpoint) {
                     set.status = 500;
                     return { error: 'Server Error', message: 'OpenID Connect is misconfigured.' };
@@ -654,13 +680,25 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const redirectUri = `${url.protocol}//${url.host}/login/openid/callback`;
 
                     // Exchange code for tokens
+                    const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
+                    const clientSecret = await getSettingString(
+                        db,
+                        'OIDC_CLIENT_SECRET',
+                        process.env.OIDC_CLIENT_SECRET || '',
+                    );
+                    const userinfoEndpoint = await getSettingString(
+                        db,
+                        'OIDC_USERINFO_ENDPOINT',
+                        process.env.OIDC_USERINFO_ENDPOINT || '',
+                    );
+
                     const tokenResponse = await fetch(tokenEndpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: new URLSearchParams({
                             grant_type: 'authorization_code',
-                            client_id: process.env.OIDC_CLIENT_ID || '',
-                            client_secret: process.env.OIDC_CLIENT_SECRET || '',
+                            client_id: clientId,
+                            client_secret: clientSecret,
                             redirect_uri: redirectUri,
                             code,
                             code_verifier: codeVerifier,
@@ -689,7 +727,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
                     // Try userinfo endpoint if email not in ID token
                     if (!userEmail && accessToken) {
-                        const userinfoEndpoint = process.env.OIDC_USERINFO_ENDPOINT;
                         if (userinfoEndpoint) {
                             try {
                                 const userinfoResponse = await fetch(userinfoEndpoint, {
@@ -731,7 +768,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
                         email: user.email,
-                        roles: user.roles,
+                        roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'openid',
                     };
@@ -793,8 +830,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
             // GET /login/saml - SAML SSO login
             // Placeholder - SAML requires more complex setup
-            .get('/login/saml', ({ set }) => {
-                const authMethods = getAuthMethods();
+            .get('/login/saml', async ({ set }) => {
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('saml')) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'SAML authentication is not enabled.' };
@@ -812,7 +849,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
             // POST /login/guest - Guest login
             .post('/login/guest', async ({ jwt, cookie, set, body }) => {
-                const authMethods = getAuthMethods();
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('guest')) {
                     set.status = 403;
                     return { error: 'Forbidden', message: 'Guest login is not enabled' };
@@ -836,7 +873,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                     sub: user.id,
                     email: user.email,
-                    roles: user.roles,
+                    roles: parseRoles(user.roles),
                     isGuest: true,
                     authMethod: 'guest',
                 };
@@ -865,17 +902,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
  * Default auth routes instance using default dependencies
  */
 export const authRoutes = createAuthRoutes();
-
-/**
- * Helper: Get enabled auth methods from environment
- */
-function getAuthMethods(): string[] {
-    const raw = process.env.APP_AUTH_METHODS || 'password,guest';
-    return raw
-        .split(',')
-        .map(m => m.trim().toLowerCase())
-        .filter(Boolean);
-}
 
 /**
  * Helper: Remove sensitive fields from user object

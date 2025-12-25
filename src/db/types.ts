@@ -17,6 +17,7 @@ export interface Database {
     yjs_documents: YjsDocumentsTable;
     yjs_updates: YjsUpdatesTable;
     yjs_version_history: YjsVersionHistoryTable;
+    app_settings: AppSettingsTable;
     // Kysely internal migration tables
     kysely_migration: KyselyMigrationTable;
     kysely_migration_lock: KyselyMigrationLockTable;
@@ -58,14 +59,13 @@ interface ProjectsTable {
     title: string;
     description: string | null;
     owner_id: number;
-    status: string; // 'active' | 'archived' | 'deleted'
+    status: string; // 'active' | 'inactive' | 'archived'
     visibility: string; // 'public' | 'private'
     language: string | null;
     author: string | null;
     license: string | null;
     last_accessed_at: string | null;
     saved_once: number;
-    is_active: number;
     created_at: string | null;
     updated_at: string | null;
 }
@@ -115,6 +115,14 @@ interface YjsVersionHistoryTable {
     description: string | null; // Optional description (e.g., "Manual save", "Auto-backup")
     created_by: number | null; // User ID who created this version
     created_at: string;
+}
+
+interface AppSettingsTable {
+    key: string;
+    value: string;
+    type: string;
+    updated_at: string | null;
+    updated_by: number | null;
 }
 
 // Kysely internal migration tables
@@ -173,7 +181,7 @@ export type NewYjsVersionHistory = Insertable<YjsVersionHistoryTable>;
 // HELPER TYPES
 // ============================================================================
 
-export type ProjectStatus = 'active' | 'archived' | 'deleted';
+export type ProjectStatus = 'active' | 'inactive' | 'archived';
 export type ProjectVisibility = 'public' | 'private';
 
 // Helper to parse JSON roles from string
