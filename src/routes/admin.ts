@@ -25,6 +25,8 @@ import {
     createUserAsAdmin as createUserAsAdminDefault,
     updateUserQuota as updateUserQuotaDefault,
     getSystemStats as getSystemStatsDefault,
+    getAllSettings as getAllSettingsDefault,
+    setSetting as setSettingDefault,
 } from '../db/queries/admin';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
@@ -48,6 +50,8 @@ export interface AdminQueries {
     deleteUser: typeof deleteUserDefault;
     getSystemStats: typeof getSystemStatsDefault;
     getUserStorageUsage: typeof getUserStorageUsageDefault;
+    getAllSettings: typeof getAllSettingsDefault;
+    setSetting: typeof setSettingDefault;
 }
 
 /**
@@ -76,6 +80,8 @@ const defaultDependencies: AdminDependencies = {
         deleteUser: deleteUserDefault,
         getSystemStats: getSystemStatsDefault,
         getUserStorageUsage: getUserStorageUsageDefault,
+        getAllSettings: getAllSettingsDefault,
+        setSetting: setSettingDefault,
     },
 };
 
@@ -121,6 +127,74 @@ const updateStatusSchema = t.Object({
 const updateQuotaSchema = t.Object({
     quota_mb: t.Union([t.Number(), t.Null()]),
 });
+
+const updateSettingsSchema = t.Object({
+    settings: t.Array(
+        t.Object({
+            key: t.String(),
+            value: t.String(),
+            type: t.Union([t.Literal('string'), t.Literal('number'), t.Literal('boolean'), t.Literal('json')]),
+        }),
+    ),
+});
+
+const ADMIN_SETTINGS_DEFAULTS: Record<
+    string,
+    { value: string | number | boolean; type: 'string' | 'number' | 'boolean' | 'json' }
+> = {
+    ONLINE_THEMES_INSTALL: { value: process.env.ONLINE_THEMES_INSTALL ?? '0', type: 'boolean' },
+    ONLINE_IDEVICES_INSTALL: { value: process.env.ONLINE_IDEVICES_INSTALL ?? '0', type: 'boolean' },
+    APP_AUTH_METHODS: { value: process.env.APP_AUTH_METHODS || 'password,cas,openid,guest', type: 'string' },
+    VERSION_CONTROL: { value: process.env.VERSION_CONTROL ?? 'true', type: 'boolean' },
+    DEFAULT_PROJECT_VISIBILITY: { value: process.env.DEFAULT_PROJECT_VISIBILITY || 'private', type: 'string' },
+    USER_RECENT_ODE_FILES_AMOUNT: { value: process.env.USER_RECENT_ODE_FILES_AMOUNT ?? '3', type: 'number' },
+    COLLABORATIVE_BLOCK_LEVEL: { value: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice', type: 'string' },
+    USER_STORAGE_MAX_DISK_SPACE: { value: process.env.USER_STORAGE_MAX_DISK_SPACE ?? '1024', type: 'number' },
+    DEFAULT_QUOTA: { value: process.env.DEFAULT_QUOTA ?? '4096', type: 'number' },
+    COUNT_USER_AUTOSAVE_SPACE_ODE_FILES: {
+        value: process.env.COUNT_USER_AUTOSAVE_SPACE_ODE_FILES ?? 'true',
+        type: 'boolean',
+    },
+    FILE_UPLOAD_MAX_SIZE: { value: process.env.FILE_UPLOAD_MAX_SIZE ?? '1024', type: 'number' },
+    PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL: {
+        value: process.env.PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL ?? '600',
+        type: 'number',
+    },
+    PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES: {
+        value: process.env.PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES ?? '10',
+        type: 'number',
+    },
+    AUTOSAVE_ODE_FILES_FUNCTION: { value: process.env.AUTOSAVE_ODE_FILES_FUNCTION ?? 'true', type: 'boolean' },
+    CAS_URL: { value: process.env.CAS_URL || 'https://casserverpac4j.herokuapp.com', type: 'string' },
+    CAS_VALIDATE_PATH: { value: process.env.CAS_VALIDATE_PATH || '/p3/serviceValidate', type: 'string' },
+    CAS_LOGIN_PATH: { value: process.env.CAS_LOGIN_PATH || '/login', type: 'string' },
+    CAS_LOGOUT_PATH: { value: process.env.CAS_LOGOUT_PATH || '/logout', type: 'string' },
+    OIDC_ISSUER: { value: process.env.OIDC_ISSUER || 'https://demo.duendesoftware.com', type: 'string' },
+    OIDC_AUTHORIZATION_ENDPOINT: {
+        value: process.env.OIDC_AUTHORIZATION_ENDPOINT || 'https://demo.duendesoftware.com/connect/authorize',
+        type: 'string',
+    },
+    OIDC_TOKEN_ENDPOINT: {
+        value: process.env.OIDC_TOKEN_ENDPOINT || 'https://demo.duendesoftware.com/connect/token',
+        type: 'string',
+    },
+    OIDC_USERINFO_ENDPOINT: {
+        value: process.env.OIDC_USERINFO_ENDPOINT || 'https://demo.duendesoftware.com/connect/userinfo',
+        type: 'string',
+    },
+    OIDC_SCOPE: { value: process.env.OIDC_SCOPE || 'openid email', type: 'string' },
+    OIDC_CLIENT_ID: { value: process.env.OIDC_CLIENT_ID || 'interactive.confidential', type: 'string' },
+    OIDC_CLIENT_SECRET: { value: process.env.OIDC_CLIENT_SECRET || 'secret', type: 'string' },
+    GOOGLE_CLIENT_ID: {
+        value: process.env.GOOGLE_CLIENT_ID || 'example.com.apps.googleusercontent.com',
+        type: 'string',
+    },
+    GOOGLE_CLIENT_SECRET: { value: process.env.GOOGLE_CLIENT_SECRET || 'example.com', type: 'string' },
+    DROPBOX_CLIENT_ID: { value: process.env.DROPBOX_CLIENT_ID || 'example.com', type: 'string' },
+    DROPBOX_CLIENT_SECRET: { value: process.env.DROPBOX_CLIENT_SECRET || 'example.com', type: 'string' },
+    OPENEQUELLA_CLIENT_ID: { value: process.env.OPENEQUELLA_CLIENT_ID || 'example.com', type: 'string' },
+    OPENEQUELLA_CLIENT_SECRET: { value: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com', type: 'string' },
+};
 
 // ============================================================================
 // FACTORY FUNCTION
@@ -191,6 +265,54 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     timestamp: new Date().toISOString(),
                 };
             })
+
+            // =====================================================
+            // APP SETTINGS
+            // =====================================================
+
+            // GET /api/admin/settings - Get admin settings (defaults + overrides)
+            .get('/api/admin/settings', async () => {
+                const stored = await queries.getAllSettings(db as any);
+                const storedMap = new Map(stored.map(item => [item.key, item]));
+
+                const settings: Record<string, { value: string | number | boolean; type: string }> = {};
+                for (const [key, def] of Object.entries(ADMIN_SETTINGS_DEFAULTS)) {
+                    const override = storedMap.get(key);
+                    settings[key] = {
+                        value: override ? override.value : def.value,
+                        type: override ? override.type : def.type,
+                    };
+                }
+
+                return { settings };
+            })
+
+            // PUT /api/admin/settings - Update admin settings
+            .put(
+                '/api/admin/settings',
+                async ({ body, set, jwtPayload }) => {
+                    const data = body as { settings: Array<{ key: string; value: string; type: string }> };
+
+                    for (const setting of data.settings) {
+                        const def = ADMIN_SETTINGS_DEFAULTS[setting.key];
+                        if (!def) {
+                            set.status = 400;
+                            return { error: 'Bad Request', message: `Unknown setting: ${setting.key}` };
+                        }
+
+                        await queries.setSetting(
+                            db as any,
+                            setting.key,
+                            setting.value,
+                            setting.type as 'string' | 'number' | 'boolean' | 'json',
+                            jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                        );
+                    }
+
+                    return { success: true };
+                },
+                { body: updateSettingsSchema },
+            )
 
             // =====================================================
             // USER MANAGEMENT

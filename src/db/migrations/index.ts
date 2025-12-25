@@ -6,6 +6,7 @@ import { Kysely, Migrator, sql, type Migration, type MigrationProvider } from 'k
 
 // Import all migrations
 import * as migration001 from './001_initial';
+import * as migration002 from './002_app_settings';
 
 // ============================================================================
 // MIGRATION REGISTRY
@@ -13,6 +14,7 @@ import * as migration001 from './001_initial';
 
 const migrations: Record<string, Migration> = {
     '001_initial': migration001,
+    '002_app_settings': migration002,
 };
 
 // ============================================================================

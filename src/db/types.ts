@@ -17,6 +17,7 @@ export interface Database {
     yjs_documents: YjsDocumentsTable;
     yjs_updates: YjsUpdatesTable;
     yjs_version_history: YjsVersionHistoryTable;
+    app_settings: AppSettingsTable;
     // Kysely internal migration tables
     kysely_migration: KyselyMigrationTable;
     kysely_migration_lock: KyselyMigrationLockTable;
@@ -115,6 +116,14 @@ interface YjsVersionHistoryTable {
     description: string | null; // Optional description (e.g., "Manual save", "Auto-backup")
     created_by: number | null; // User ID who created this version
     created_at: string;
+}
+
+interface AppSettingsTable {
+    key: string;
+    value: string;
+    type: string;
+    updated_at: string | null;
+    updated_by: number | null;
 }
 
 // Kysely internal migration tables

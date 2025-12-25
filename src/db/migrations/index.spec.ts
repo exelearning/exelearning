@@ -110,7 +110,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('001_initial');
+            expect(result.rolledBack).toBe('002_app_settings');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {
@@ -200,7 +200,7 @@ describe('Database Migrations', () => {
             // Down
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('001_initial');
+            expect(down.rolledBack).toBe('002_app_settings');
 
             // Up again
             const up2 = await migrateToLatest(db);
@@ -539,7 +539,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db, mockDeps);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('001_initial');
+            expect(result.rolledBack).toBe('002_app_settings');
         });
 
         it('should return undefined when no successful rollback', async () => {
