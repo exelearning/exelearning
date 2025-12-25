@@ -199,25 +199,40 @@ class YjsTinyMCEBinding {
   }
 
   /**
-   * Convert data-asset-url attributes to proper src values.
+   * Convert data-asset-url and data-asset-src attributes to proper src values.
    * Images inserted via file picker use data: URLs with data-asset-url attribute
    * containing the permanent asset:// reference. This extracts that reference
    * and uses it as the src, then removes the data-asset-url attribute.
    *
-   * @param {string} html - HTML content with data-asset-url attributes
-   * @returns {string} HTML content with data-asset-url converted to src
+   * Also handles data-asset-src which is added by resolveAssetUrlsInEditor for
+   * audio/video/iframe elements that have their src changed to blob:// for preview.
+   *
+   * @param {string} html - HTML content with data-asset-url or data-asset-src attributes
+   * @returns {string} HTML content with asset URLs in src
    */
   convertDataAssetUrlToSrc(html) {
     if (!html || typeof html !== 'string') return html;
 
-    // Match img/video/audio elements with data-asset-url attribute
+    // Match img/video/audio/source elements with data-asset-url attribute
     // Handles cases like: <img src="data:..." data-asset-url="asset://uuid/filename">
     const regex = /(<(?:img|video|audio|source)[^>]*?)(?:src|href)=(["'])([^"']*)\2([^>]*?)data-asset-url=(["'])([^"']+)\5([^>]*>)/gi;
 
-    return html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+    let result = html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
       // Replace src with asset URL and remove data-asset-url attribute
       return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
     });
+
+    // Also handle data-asset-src for audio/video/iframe elements
+    // Added by resolveAssetUrlsInEditor when blob:// is used for preview
+    // Handles: <iframe src="blob:..." data-asset-src="asset://uuid/file.pdf">
+    const assetSrcRegex = /(<(?:audio|video|iframe)[^>]*?)src=(["'])([^"']*)\2([^>]*?)data-asset-src=(["'])([^"']+)\5([^>]*>)/gi;
+
+    result = result.replace(assetSrcRegex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+      // Replace src with asset URL and remove data-asset-src attribute
+      return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
+    });
+
+    return result;
   }
 
   /**

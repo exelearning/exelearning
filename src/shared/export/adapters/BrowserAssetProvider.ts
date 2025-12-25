@@ -58,6 +58,19 @@ interface AssetManagerInterface {
             originalPath?: string;
             hash?: string;
             size?: number;
+            projectId?: string;
+        }>
+    >;
+    getAllAssetsRaw?(): Promise<
+        Array<{
+            id: string;
+            blob: Blob;
+            mime: string;
+            filename?: string;
+            originalPath?: string;
+            hash?: string;
+            size?: number;
+            projectId?: string;
         }>
     >;
     getAsset?(assetId: string): Promise<{ id: string; blob: Blob; mime: string } | null>;
@@ -198,8 +211,20 @@ export class BrowserAssetProvider implements AssetProvider {
             // Try AssetManager first (preferred, contains actual imported assets)
             // AssetManager uses IndexedDB 'exelearning-assets-v2' database
             if (this.assetManager) {
+                // Log projectId if available
+                const projectId = (this.assetManager as unknown as { projectId?: string }).projectId;
+                console.log(`[BrowserAssetProvider] AssetManager available, projectId: ${projectId}`);
+                console.log(`[BrowserAssetProvider] Calling getProjectAssets...`);
                 const assets = await this.assetManager.getProjectAssets();
                 console.log(`[BrowserAssetProvider] Found ${assets.length} assets from AssetManager`);
+                if (assets.length > 0) {
+                    console.log(`[BrowserAssetProvider] First asset:`, JSON.stringify({
+                        id: assets[0].id,
+                        filename: assets[0].filename,
+                        mime: assets[0].mime,
+                        hasBlob: !!assets[0].blob
+                    }));
+                }
 
                 for (const asset of assets) {
                     if (asset.blob) {
@@ -232,12 +257,58 @@ export class BrowserAssetProvider implements AssetProvider {
                 if (result.length > 0) {
                     console.log(`[BrowserAssetProvider] Converted ${result.length} assets for export`);
                     return result;
+                } else {
+                    console.log(`[BrowserAssetProvider] AssetManager returned 0 usable assets (no blobs)`);
+
+                    // FALLBACK: If getProjectAssets returned 0, try getAllAssetsRaw
+                    // This helps debug projectId mismatch issues
+                    if (this.assetManager.getAllAssetsRaw) {
+                        console.log(`[BrowserAssetProvider] Trying fallback: getAllAssetsRaw...`);
+                        const allAssets = await this.assetManager.getAllAssetsRaw();
+                        if (allAssets.length > 0) {
+                            console.warn(`[BrowserAssetProvider] FALLBACK: Found ${allAssets.length} assets in DB (different projectIds)`);
+                            // Log the projectIds for debugging
+                            const projectIds = [...new Set(allAssets.map(a => a.projectId))];
+                            console.warn(`[BrowserAssetProvider] ProjectIds in DB: ${projectIds.join(', ')}`);
+                            console.warn(`[BrowserAssetProvider] Expected projectId: ${projectId}`);
+
+                            // Use these assets anyway - they were stored but with wrong projectId
+                            for (const asset of allAssets) {
+                                if (asset.blob) {
+                                    const arrayBuffer = await asset.blob.arrayBuffer();
+                                    const assetId = String(asset.id);
+                                    const filename = asset.filename || `asset-${assetId}`;
+                                    let originalPath: string;
+                                    if (asset.originalPath?.includes(assetId)) {
+                                        originalPath = asset.originalPath;
+                                    } else {
+                                        originalPath = `${assetId}/${filename}`;
+                                    }
+
+                                    result.push({
+                                        id: assetId,
+                                        filename,
+                                        originalPath,
+                                        mime: asset.mime || 'application/octet-stream',
+                                        data: new Uint8Array(arrayBuffer),
+                                    });
+                                }
+                            }
+                            if (result.length > 0) {
+                                console.log(`[BrowserAssetProvider] FALLBACK converted ${result.length} assets for export`);
+                                return result;
+                            }
+                        }
+                    }
                 }
+            } else {
+                console.log(`[BrowserAssetProvider] AssetManager not available`);
             }
 
             // Fall back to legacy AssetCacheManager if AssetManager returned nothing
             // AssetCacheManager uses IndexedDB 'exelearning-assets' database
             if (this.assetCache) {
+                console.log(`[BrowserAssetProvider] Trying legacy AssetCacheManager...`);
                 const assets = await this.assetCache.getAllAssets();
                 console.log(`[BrowserAssetProvider] Found ${assets.length} assets from AssetCacheManager (legacy)`);
 

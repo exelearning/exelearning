@@ -741,6 +741,46 @@ describe('YjsTinyMCEBinding', () => {
       expect(result).toContain("src='asset://uuid/img.png'");
       expect(result).not.toContain('data-asset-url');
     });
+
+    it('converts data-asset-src for audio elements (used by TinyMCE preview)', () => {
+      const html = '<audio src="blob:http://localhost:8080/abc123" data-asset-src="asset://uuid-audio/recording.webm"></audio>';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://uuid-audio/recording.webm"');
+      expect(result).not.toContain('data-asset-src');
+      expect(result).not.toContain('blob:');
+      expect(result).toContain('</audio>');
+    });
+
+    it('converts data-asset-src for video elements', () => {
+      const html = '<video src="blob:http://localhost:8080/xyz" data-asset-src="asset://uuid-video/video.mp4"></video>';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://uuid-video/video.mp4"');
+      expect(result).not.toContain('data-asset-src');
+      expect(result).not.toContain('blob:');
+    });
+
+    it('converts data-asset-src for iframe elements (PDFs)', () => {
+      const html = '<iframe src="blob:http://localhost:8080/pdf123" width="300" height="150" data-asset-src="asset://uuid-pdf/document.pdf"></iframe>';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://uuid-pdf/document.pdf"');
+      expect(result).not.toContain('data-asset-src');
+      expect(result).not.toContain('blob:');
+      expect(result).toContain('width="300"');
+      expect(result).toContain('height="150"');
+    });
+
+    it('handles both data-asset-url and data-asset-src in same html', () => {
+      const html = '<img src="data:abc" data-asset-url="asset://id1/img.png"><audio src="blob:http://localhost/x" data-asset-src="asset://id2/audio.webm"></audio>';
+      const result = binding.convertDataAssetUrlToSrc(html);
+
+      expect(result).toContain('src="asset://id1/img.png"');
+      expect(result).toContain('src="asset://id2/audio.webm"');
+      expect(result).not.toContain('data-asset-url');
+      expect(result).not.toContain('data-asset-src');
+    });
   });
 
   describe('convertBlobUrlsToAssetUrls', () => {

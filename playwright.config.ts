@@ -7,8 +7,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
     testDir: './test/e2e/playwright/specs',
 
-    /* Run tests in files in parallel - disabled for SQLite */
-    fullyParallel: false,
+    // Run tests in files in parallel
+    // Allows tests WITHIN the same file to run simultaneously.
+    fullyParallel: true,
 
     /* Fail the build on CI if you accidentally left test.only in the source code */
     forbidOnly: !!process.env.CI,
@@ -16,8 +17,12 @@ export default defineConfig({
     /* Retry on CI only */
     retries: process.env.CI ? 2 : 0,
 
-    /* Single worker for SQLite database (prevents locks) */
-    workers: 1,
+    // Number of workers:
+    // undefined = Let Playwright decide (usually CPU cores / 2).
+    // 1 = No parallelism (tests run sequentially).
+    // 4 = Force 4 processes.
+    // '100%' = Use all available CPU cores.
+    workers: '100%',
 
     /* Reporter to use */
     reporter: [['html', { outputFolder: 'playwright-report' }], ['github'], ['list']],

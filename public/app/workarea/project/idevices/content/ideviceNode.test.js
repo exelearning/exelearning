@@ -3330,9 +3330,11 @@ describe('IdeviceNode', () => {
             });
         });
 
-        it('creates asset and returns asset:// URLs when AssetManager is available', async () => {
+        it('creates asset and returns asset:// URLs with previewUrl when AssetManager is available', async () => {
+            const mockBlobUrl = 'blob:http://localhost:8080/mock-blob-id';
             const mockAssetManager = {
                 insertImage: vi.fn().mockResolvedValue('asset://test-uuid-1234/test.png'),
+                resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
             };
             eXeLearning.app.project._yjsBridge = { assetManager: mockAssetManager };
             eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
@@ -3345,9 +3347,11 @@ describe('IdeviceNode', () => {
             const result = await idevice.apiUploadFile(base64Image, 'test.png');
 
             expect(mockAssetManager.insertImage).toHaveBeenCalled();
-            expect(result.savedPath).toBe('asset://test-uuid-1234');
+            expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://test-uuid-1234/test.png');
+            expect(result.savedPath).toBe('asset://test-uuid-1234/');
             expect(result.savedFilename).toBe('test.png');
             expect(result.savedThumbnailName).toBe('test.png');
+            expect(result.previewUrl).toBe(mockBlobUrl);
         });
 
         it('falls back to server paths when AssetManager is not available', async () => {

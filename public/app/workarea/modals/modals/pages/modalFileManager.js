@@ -278,6 +278,7 @@ export default class ModalFilemanager extends Modal {
 
             // Get AssetManager from YjsProjectBridge
             this.assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+            Logger.log(`[MediaLibrary] Opening with assetManager.projectId: ${this.assetManager?.projectId}`);
 
             if (!this.assetManager) {
                 console.error('[MediaLibrary] AssetManager not available');
@@ -874,11 +875,13 @@ export default class ModalFilemanager extends Modal {
     async uploadFiles(files) {
         if (!this.assetManager) return;
 
+        Logger.log(`[MediaLibrary] uploadFiles: assetManager.projectId = ${this.assetManager.projectId}`);
+
         let uploadedCount = 0;
 
         for (const file of files) {
             try {
-                Logger.log(`[MediaLibrary] Uploading: ${file.name}`);
+                Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}`);
                 await this.assetManager.insertImage(file);
                 uploadedCount++;
             } catch (err) {

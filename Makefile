@@ -94,7 +94,7 @@ upd: check-docker check-env
 # Stop Docker
 .PHONY: down
 down: check-docker
-	@docker compose --profile e2e down
+	@docker compose down
 
 # Shell into container
 .PHONY: shell

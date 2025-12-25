@@ -80,6 +80,79 @@ export default class PreviewPanelManager {
                 this.toggle();
             }
         });
+
+        // Listen for postMessage from preview iframe to request PDF blobs
+        // The preview iframe requests the blob, we send it back, and the preview
+        // creates a blob URL in its own context - this works in Chrome
+        window.addEventListener('message', async (event) => {
+            // Handle PDF blob requests (for embedding in preview iframe)
+            if (event.data?.type === 'requestPdfBlob') {
+                const { assetId, requestId } = event.data;
+                Logger.log(`[PreviewPanel] Received requestPdfBlob for ${assetId}`);
+
+                try {
+                    const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (!assetManager) {
+                        throw new Error('AssetManager not available');
+                    }
+
+                    const asset = await assetManager.getAsset(assetId);
+                    if (!asset?.blob) {
+                        throw new Error('Asset not found in IndexedDB');
+                    }
+
+                    // Send blob back to preview iframe (Blobs are cloneable via postMessage)
+                    event.source.postMessage({
+                        type: 'pdfBlobResponse',
+                        requestId: requestId,
+                        blob: asset.blob,
+                        success: true
+                    }, '*');
+
+                    Logger.log(`[PreviewPanel] Sent PDF blob for ${assetId}`);
+                } catch (err) {
+                    Logger.error('[PreviewPanel] Failed to get PDF blob:', err);
+                    event.source.postMessage({
+                        type: 'pdfBlobResponse',
+                        requestId: requestId,
+                        error: err.message,
+                        success: false
+                    }, '*');
+                }
+                return;
+            }
+
+            // Handle PDF popup requests (fallback for clicking cards)
+            if (event.data?.type === 'openPdfPopup') {
+                const { assetId } = event.data;
+                Logger.log(`[PreviewPanel] Received openPdfPopup request for ${assetId}`);
+
+                try {
+                    const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (!assetManager) {
+                        throw new Error('AssetManager not available');
+                    }
+
+                    const asset = await assetManager.getAsset(assetId);
+                    if (!asset?.blob) {
+                        throw new Error('Asset not found in IndexedDB');
+                    }
+
+                    // Create blob URL in parent window context (has proper http: origin)
+                    const blobUrl = URL.createObjectURL(asset.blob);
+
+                    // Open popup from parent window - this works in Chrome
+                    const popup = window.open(blobUrl, '_blank', 'width=900,height=700');
+                    if (!popup) {
+                        window.open(blobUrl, '_blank');
+                    }
+
+                    Logger.log(`[PreviewPanel] Opened PDF popup for ${assetId}`);
+                } catch (err) {
+                    Logger.error('[PreviewPanel] Failed to open PDF popup:', err);
+                }
+            }
+        });
     }
 
     /**
@@ -316,18 +389,571 @@ export default class PreviewPanelManager {
         }
 
         // Resolve asset URLs to blob URLs
-        // Note: We keep blob URLs (don't convert to data URLs) because:
-        // 1. The preview iframe is same-origin, so blob URLs work fine
-        // 2. Large videos as data URLs cause memory issues and MediaElement.js problems
+        // Note: We keep blob URLs for audio/video (don't convert to data URLs) because:
+        // 1. Large videos as data URLs cause memory issues and MediaElement.js problems
+        // We skip iframe asset URLs (PDFs) - they will be handled by the injected script
+        // which accesses AssetManager directly and creates blob URLs in the preview's context
         if (typeof window.resolveAssetUrlsAsync === 'function') {
             try {
-                html = await window.resolveAssetUrlsAsync(html, { convertBlobUrls: false });
+                html = await window.resolveAssetUrlsAsync(html, {
+                    convertBlobUrls: false,       // Keep blob URLs for audio/video
+                    convertIframeBlobUrls: false, // Don't convert iframes
+                    skipIframeSrc: true           // Keep asset:// URLs in iframes for preview script
+                });
             } catch (error) {
                 Logger.warn('[PreviewPanel] Failed to resolve asset URLs:', error);
             }
         }
 
+        // Inject script to handle PDF asset:// URLs inside the preview
+        // The script will:
+        // 1. Find PDF iframes with asset:// URLs
+        // 2. Replace them with clickable cards
+        // 3. On click, fetch asset data from parent window's AssetManager (IndexedDB)
+        // 4. Create blob URL in preview's context and open in popup
+        html = this.injectPdfBlobUrlConverter(html);
+
         return html;
+    }
+
+    /**
+     * Inject a script that renders PDF iframes using PDF.js.
+     *
+     * ## Why PDF.js is needed (only for internal asset:// PDFs in Chrome)
+     *
+     * Chrome has a security limitation where its native PDF viewer cannot render
+     * PDFs inside nested iframes when the parent document is loaded via blob URL.
+     *
+     * The preview panel loads content as a blob URL for proper isolation:
+     *   - Main window (http://localhost:8080)
+     *     └── Preview iframe (blob:http://localhost:8080/...)  ← blob URL
+     *           └── PDF iframe (asset://uuid/file.pdf)         ← BLOCKED in Chrome
+     *
+     * This affects ONLY:
+     *   - Chrome browser (Firefox handles this fine)
+     *   - Internal assets with asset:// URLs (stored in IndexedDB)
+     *   - When the preview container is a blob URL
+     *
+     * This does NOT affect:
+     *   - External PDFs (http/https URLs) - these work fine
+     *   - Firefox browser - no such limitation
+     *   - Exported content - uses real URLs, not blob containers
+     *
+     * ## Solution: PDF.js
+     *
+     * PDF.js (Mozilla) renders PDFs to canvas using pure JavaScript, bypassing
+     * the browser's native PDF viewer entirely. This works regardless of the
+     * blob URL context.
+     *
+     * For asset:// URLs, we:
+     * 1. Load PDF.js library dynamically
+     * 2. Request the PDF blob from parent window via postMessage
+     * 3. Render to canvas with navigation/zoom controls
+     * 4. Fall back to clickable card if PDF.js fails
+     *
+     * @param {string} html - HTML content
+     * @returns {string} HTML with injected script
+     */
+    injectPdfBlobUrlConverter(html) {
+        const basePath = eXeLearning?.app?.config?.basePath || '';
+        // In blob URL context, relative imports don't work - need full absolute URL
+        const origin = window.location.origin;
+        const pdfJsUrl = `${origin}${basePath}/libs/pdfjs/pdf.min.mjs`;
+        const pdfJsWorkerUrl = `${origin}${basePath}/libs/pdfjs/pdf.worker.min.mjs`;
+
+        // Script to render PDFs using PDF.js
+        const converterScript = `
+<script type="module">
+(async function() {
+    // Load PDF.js
+    let pdfjsLib = null;
+    try {
+        const pdfjs = await import('${pdfJsUrl}');
+        pdfjsLib = pdfjs;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '${pdfJsWorkerUrl}';
+        console.log('[PreviewPanel] PDF.js loaded successfully');
+    } catch (e) {
+        console.warn('[PreviewPanel] Failed to load PDF.js:', e.message);
+    }
+
+    // Map to track pending blob requests
+    var pendingRequests = {};
+    var requestIdCounter = 0;
+
+    // Listen for blob responses from parent
+    window.addEventListener('message', function(event) {
+        if (event.data?.type !== 'pdfBlobResponse') return;
+
+        var requestId = event.data.requestId;
+        var pending = pendingRequests[requestId];
+        if (!pending) return;
+
+        delete pendingRequests[requestId];
+
+        if (event.data.success && event.data.blob) {
+            pending.resolve(event.data.blob);
+        } else {
+            pending.reject(new Error(event.data.error || 'Failed to get blob'));
+        }
+    });
+
+    // Request blob from parent and return promise
+    function requestBlobFromParent(assetId) {
+        return new Promise(function(resolve, reject) {
+            var requestId = 'req_' + (++requestIdCounter);
+            pendingRequests[requestId] = { resolve: resolve, reject: reject };
+
+            window.parent.postMessage({
+                type: 'requestPdfBlob',
+                assetId: assetId,
+                requestId: requestId
+            }, '*');
+
+            setTimeout(function() {
+                if (pendingRequests[requestId]) {
+                    delete pendingRequests[requestId];
+                    reject(new Error('Timeout requesting blob'));
+                }
+            }, 15000);
+        });
+    }
+
+    // Zoom levels
+    var ZOOM_LEVELS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+    // Create PDF viewer with controls
+    function createPdfViewer(iframe, assetUrl) {
+        var width = iframe.width || iframe.style.width || '100%';
+        var height = iframe.height || iframe.style.height || '400px';
+        if (typeof width === 'number' || !width.includes('%')) width = width + 'px';
+        if (typeof height === 'number' || !height.includes('%')) height = height + 'px';
+
+        var container = document.createElement('div');
+        container.className = 'exe-pdf-viewer';
+        container.setAttribute('data-asset-url', assetUrl);
+        container.style.cssText = 'width:' + width + ';height:' + height + ';' +
+            'display:flex;flex-direction:column;border:1px solid #ccc;border-radius:4px;' +
+            'background:#525659;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;';
+
+        // Toolbar
+        var toolbar = document.createElement('div');
+        toolbar.className = 'exe-pdf-toolbar';
+        toolbar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;' +
+            'padding:6px 12px;background:#323639;border-bottom:1px solid #1a1a1a;flex-shrink:0;';
+
+        // Navigation buttons
+        var prevBtn = document.createElement('button');
+        prevBtn.innerHTML = '◀';
+        prevBtn.title = 'Previous page';
+        prevBtn.style.cssText = 'background:#525659;border:none;color:#fff;padding:4px 8px;' +
+            'border-radius:3px;cursor:pointer;font-size:12px;';
+        prevBtn.disabled = true;
+
+        var pageInfo = document.createElement('span');
+        pageInfo.className = 'exe-pdf-page-info';
+        pageInfo.textContent = 'Loading...';
+        pageInfo.style.cssText = 'color:#fff;font-size:12px;min-width:80px;text-align:center;';
+
+        var nextBtn = document.createElement('button');
+        nextBtn.innerHTML = '▶';
+        nextBtn.title = 'Next page';
+        nextBtn.style.cssText = prevBtn.style.cssText;
+        nextBtn.disabled = true;
+
+        // Separator
+        var sep1 = document.createElement('span');
+        sep1.style.cssText = 'width:1px;height:16px;background:#666;margin:0 4px;';
+
+        // Zoom controls
+        var zoomOutBtn = document.createElement('button');
+        zoomOutBtn.innerHTML = '−';
+        zoomOutBtn.title = 'Zoom out';
+        zoomOutBtn.style.cssText = prevBtn.style.cssText + 'font-size:16px;font-weight:bold;';
+
+        var zoomInfo = document.createElement('span');
+        zoomInfo.className = 'exe-pdf-zoom-info';
+        zoomInfo.textContent = '100%';
+        zoomInfo.style.cssText = 'color:#fff;font-size:12px;min-width:45px;text-align:center;';
+
+        var zoomInBtn = document.createElement('button');
+        zoomInBtn.innerHTML = '+';
+        zoomInBtn.title = 'Zoom in';
+        zoomInBtn.style.cssText = zoomOutBtn.style.cssText;
+
+        var fitBtn = document.createElement('button');
+        fitBtn.innerHTML = '⛶';
+        fitBtn.title = 'Fit to width';
+        fitBtn.style.cssText = prevBtn.style.cssText + 'font-size:14px;';
+
+        // Separator
+        var sep2 = document.createElement('span');
+        sep2.style.cssText = sep1.style.cssText;
+
+        // Open in popup button
+        var popupBtn = document.createElement('button');
+        popupBtn.innerHTML = '↗';
+        popupBtn.title = 'Open in new window';
+        popupBtn.style.cssText = prevBtn.style.cssText + 'font-size:14px;';
+
+        toolbar.appendChild(prevBtn);
+        toolbar.appendChild(pageInfo);
+        toolbar.appendChild(nextBtn);
+        toolbar.appendChild(sep1);
+        toolbar.appendChild(zoomOutBtn);
+        toolbar.appendChild(zoomInfo);
+        toolbar.appendChild(zoomInBtn);
+        toolbar.appendChild(fitBtn);
+        toolbar.appendChild(sep2);
+        toolbar.appendChild(popupBtn);
+
+        // Canvas container with scroll
+        var canvasContainer = document.createElement('div');
+        canvasContainer.className = 'exe-pdf-canvas-container';
+        canvasContainer.style.cssText = 'flex:1;overflow:auto;display:flex;justify-content:center;' +
+            'align-items:flex-start;padding:10px;';
+
+        var canvas = document.createElement('canvas');
+        canvas.className = 'exe-pdf-canvas';
+        canvas.style.cssText = 'box-shadow:0 2px 8px rgba(0,0,0,0.3);background:#fff;';
+        canvasContainer.appendChild(canvas);
+
+        container.appendChild(toolbar);
+        container.appendChild(canvasContainer);
+
+        // Store references for later use
+        container._elements = {
+            canvas: canvas,
+            canvasContainer: canvasContainer,
+            prevBtn: prevBtn,
+            nextBtn: nextBtn,
+            pageInfo: pageInfo,
+            zoomOutBtn: zoomOutBtn,
+            zoomInBtn: zoomInBtn,
+            zoomInfo: zoomInfo,
+            fitBtn: fitBtn,
+            popupBtn: popupBtn
+        };
+        container._state = {
+            pdfDoc: null,
+            currentPage: 1,
+            totalPages: 0,
+            scale: 1.0,
+            zoomIndex: 3, // Index of 1.0 in ZOOM_LEVELS
+            assetUrl: assetUrl,
+            rendering: false
+        };
+
+        return container;
+    }
+
+    // Render a page
+    async function renderPage(container) {
+        var state = container._state;
+        var els = container._elements;
+
+        if (!state.pdfDoc || state.rendering) return;
+        state.rendering = true;
+
+        try {
+            var page = await state.pdfDoc.getPage(state.currentPage);
+            var viewport = page.getViewport({ scale: state.scale });
+
+            els.canvas.width = viewport.width;
+            els.canvas.height = viewport.height;
+
+            var ctx = els.canvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+            // Update UI
+            els.pageInfo.textContent = state.currentPage + ' / ' + state.totalPages;
+            els.prevBtn.disabled = state.currentPage <= 1;
+            els.nextBtn.disabled = state.currentPage >= state.totalPages;
+            els.zoomInfo.textContent = Math.round(state.scale * 100) + '%';
+            els.zoomOutBtn.disabled = state.zoomIndex <= 0;
+            els.zoomInBtn.disabled = state.zoomIndex >= ZOOM_LEVELS.length - 1;
+        } catch (e) {
+            console.error('[PreviewPanel] Failed to render page:', e);
+            els.pageInfo.textContent = 'Error';
+        }
+
+        state.rendering = false;
+    }
+
+    // Fit to container width
+    async function fitToWidth(container) {
+        var state = container._state;
+        var els = container._elements;
+
+        if (!state.pdfDoc) return;
+
+        var page = await state.pdfDoc.getPage(state.currentPage);
+        var containerWidth = els.canvasContainer.clientWidth - 20; // padding
+        var viewport = page.getViewport({ scale: 1.0 });
+        var newScale = containerWidth / viewport.width;
+
+        // Find closest zoom level
+        var closestIndex = 0;
+        var minDiff = Math.abs(ZOOM_LEVELS[0] - newScale);
+        for (var i = 1; i < ZOOM_LEVELS.length; i++) {
+            var diff = Math.abs(ZOOM_LEVELS[i] - newScale);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIndex = i;
+            }
+        }
+
+        state.scale = newScale;
+        state.zoomIndex = closestIndex;
+        await renderPage(container);
+    }
+
+    // Setup event handlers
+    function setupControls(container) {
+        var state = container._state;
+        var els = container._elements;
+
+        els.prevBtn.onclick = async function() {
+            if (state.currentPage > 1) {
+                state.currentPage--;
+                await renderPage(container);
+            }
+        };
+
+        els.nextBtn.onclick = async function() {
+            if (state.currentPage < state.totalPages) {
+                state.currentPage++;
+                await renderPage(container);
+            }
+        };
+
+        els.zoomOutBtn.onclick = async function() {
+            if (state.zoomIndex > 0) {
+                state.zoomIndex--;
+                state.scale = ZOOM_LEVELS[state.zoomIndex];
+                await renderPage(container);
+            }
+        };
+
+        els.zoomInBtn.onclick = async function() {
+            if (state.zoomIndex < ZOOM_LEVELS.length - 1) {
+                state.zoomIndex++;
+                state.scale = ZOOM_LEVELS[state.zoomIndex];
+                await renderPage(container);
+            }
+        };
+
+        els.fitBtn.onclick = function() {
+            fitToWidth(container);
+        };
+
+        els.popupBtn.onclick = function() {
+            var assetUrl = state.assetUrl;
+            if (assetUrl.startsWith('asset://')) {
+                var match = assetUrl.match(/^asset:\\/\\/([^\\/]+)/);
+                if (match) {
+                    window.parent.postMessage({
+                        type: 'openPdfPopup',
+                        assetId: match[1],
+                        assetUrl: assetUrl
+                    }, '*');
+                }
+            }
+        };
+    }
+
+    // Load PDF into viewer
+    async function loadPdf(container, blob) {
+        var state = container._state;
+        var els = container._elements;
+
+        try {
+            var arrayBuffer = await blob.arrayBuffer();
+            state.pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            state.totalPages = state.pdfDoc.numPages;
+            state.currentPage = 1;
+
+            setupControls(container);
+            await fitToWidth(container);
+
+            console.log('[PreviewPanel] PDF loaded with', state.totalPages, 'pages');
+        } catch (e) {
+            console.error('[PreviewPanel] Failed to load PDF:', e);
+            els.pageInfo.textContent = 'Error loading PDF';
+        }
+    }
+
+    // Create fallback card (when PDF.js not available)
+    function createPdfCard(iframe, assetUrl) {
+        var card = document.createElement('div');
+        card.className = 'exe-pdf-preview-card';
+        card.setAttribute('data-asset-url', assetUrl);
+        card.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+            'width:' + (iframe.width || '300') + 'px;height:' + (iframe.height || '150') + 'px;' +
+            'background:linear-gradient(135deg,#f5f5f5 0%,#e0e0e0 100%);' +
+            'border:1px solid #ccc;border-radius:8px;cursor:pointer;' +
+            'font-family:system-ui,-apple-system,sans-serif;transition:all 0.2s ease;';
+
+        var icon = document.createElement('div');
+        icon.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6M9 11h6"/></svg>';
+        icon.style.cssText = 'margin-bottom:8px;';
+
+        var label = document.createElement('div');
+        label.textContent = 'PDF';
+        label.style.cssText = 'font-size:14px;font-weight:600;color:#dc3545;margin-bottom:4px;';
+
+        var hint = document.createElement('div');
+        hint.textContent = 'Click to open';
+        hint.style.cssText = 'font-size:12px;color:#666;';
+
+        card.appendChild(icon);
+        card.appendChild(label);
+        card.appendChild(hint);
+
+        card.onmouseenter = function() {
+            card.style.background = 'linear-gradient(135deg,#e8e8e8 0%,#d0d0d0 100%)';
+            card.style.transform = 'scale(1.02)';
+        };
+        card.onmouseleave = function() {
+            card.style.background = 'linear-gradient(135deg,#f5f5f5 0%,#e0e0e0 100%)';
+            card.style.transform = 'scale(1)';
+        };
+
+        card.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var url = card.getAttribute('data-asset-url');
+            if (url.startsWith('asset://')) {
+                var match = url.match(/^asset:\\/\\/([^\\/]+)/);
+                if (match) {
+                    window.parent.postMessage({
+                        type: 'openPdfPopup',
+                        assetId: match[1],
+                        assetUrl: url
+                    }, '*');
+                }
+            } else {
+                window.open(url, '_blank', 'width=900,height=700');
+            }
+        };
+
+        return card;
+    }
+
+    // Process PDF iframes and render with PDF.js when needed.
+    //
+    // Why we only use PDF.js for asset:// URLs:
+    // - External URLs (http/https): Chrome's native PDF viewer works fine
+    // - asset:// URLs: These are internal assets stored in IndexedDB. Chrome
+    //   cannot render them with its native viewer because:
+    //   1. The preview is loaded as a blob URL for isolation
+    //   2. Chrome blocks nested PDF rendering in blob URL contexts
+    //   3. We need to fetch the blob via postMessage and render with PDF.js
+    // - data: URLs: Also use PDF.js since Chrome may block in blob context
+    // - blob: URLs (same context): Keep as-is, should work
+    async function resolvePdfIframes() {
+        var iframes = Array.from(document.querySelectorAll('iframe'));
+
+        for (var i = 0; i < iframes.length; i++) {
+            var iframe = iframes[i];
+            try {
+                var src = iframe.getAttribute('src') || '';
+
+                // Skip external URLs (http://, https://) - Chrome's native PDF viewer works
+                // fine for these even inside blob URL context
+                if (src.startsWith('http://') || src.startsWith('https://')) {
+                    continue;
+                }
+
+                // Check for PDF indicators
+                var isPdf = src.includes('.pdf') ||
+                           iframe.getAttribute('type') === 'application/pdf' ||
+                           iframe.getAttribute('data-type') === 'application/pdf' ||
+                           src.startsWith('data:application/pdf');
+
+                // For asset:// URLs, check file extension
+                if (src.startsWith('asset://') && !isPdf) {
+                    if (src.toLowerCase().includes('.pdf')) {
+                        isPdf = true;
+                    }
+                }
+
+                if (!isPdf) continue;
+
+                // Handle asset:// URLs for PDFs
+                // These are internal assets stored in IndexedDB. Chrome cannot load them
+                // directly because: (1) asset:// is not a registered protocol, and (2) even
+                // if we converted to blob URL, Chrome's native PDF viewer doesn't work in
+                // nested blob URL contexts. Solution: use PDF.js to render to canvas.
+                if (src.startsWith('asset://')) {
+                    var match = src.match(/^asset:\\/\\/([^\\/]+)/);
+                    if (!match) continue;
+                    var assetId = match[1];
+
+                    // If PDF.js loaded successfully, render inline with full viewer controls
+                    if (pdfjsLib) {
+                        var viewer = createPdfViewer(iframe, src);
+                        iframe.parentNode.replaceChild(viewer, iframe);
+
+                        try {
+                            var blob = await requestBlobFromParent(assetId);
+                            await loadPdf(viewer, blob);
+                            console.log('[PreviewPanel] Rendered PDF with PDF.js');
+                        } catch (e) {
+                            console.error('[PreviewPanel] Failed to load PDF:', e);
+                            viewer._elements.pageInfo.textContent = 'Error: ' + e.message;
+                        }
+                    } else {
+                        // Fallback to card
+                        var card = createPdfCard(iframe, src);
+                        iframe.parentNode.replaceChild(card, iframe);
+                        console.log('[PreviewPanel] PDF.js not available, using card fallback');
+                    }
+                    continue;
+                }
+
+                // Handle blob:// URLs for PDFs (in same context)
+                if (src.startsWith('blob:')) {
+                    console.log('[PreviewPanel] PDF iframe with blob URL, keeping as-is');
+                    continue;
+                }
+
+                // Handle data:application/pdf URLs
+                if (src.startsWith('data:application/pdf') && pdfjsLib) {
+                    var base64Match = src.match(/^data:application\\/pdf;base64,(.+)$/);
+                    if (base64Match) {
+                        var binaryString = atob(base64Match[1]);
+                        var bytes = new Uint8Array(binaryString.length);
+                        for (var j = 0; j < binaryString.length; j++) {
+                            bytes[j] = binaryString.charCodeAt(j);
+                        }
+                        var dataBlob = new Blob([bytes], { type: 'application/pdf' });
+
+                        var viewer = createPdfViewer(iframe, src);
+                        iframe.parentNode.replaceChild(viewer, iframe);
+                        await loadPdf(viewer, dataBlob);
+                        console.log('[PreviewPanel] Rendered data URL PDF with PDF.js');
+                    }
+                }
+            } catch (e) {
+                console.error('[PreviewPanel] Failed to resolve PDF iframe:', e);
+            }
+        }
+    }
+
+    // Run on DOMContentLoaded or immediately if already loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', resolvePdfIframes);
+    } else {
+        resolvePdfIframes();
+    }
+})();
+</script>`;
+
+        // Inject before </body> or at the end
+        if (html.includes('</body>')) {
+            return html.replace('</body>', converterScript + '</body>');
+        }
+        return html + converterScript;
     }
 
     /**
@@ -342,20 +968,21 @@ export default class PreviewPanelManager {
             return;
         }
 
-        // Create blob URL for the HTML content
-        const blob = new Blob([html], { type: 'text/html' });
-        const blobUrl = URL.createObjectURL(blob);
-
         // Revoke previous blob URL if exists
         if (targetIframe._blobUrl) {
             URL.revokeObjectURL(targetIframe._blobUrl);
+            targetIframe._blobUrl = null;
         }
-        targetIframe._blobUrl = blobUrl;
 
-        // Load the blob URL
+        // Use blob URL for preview - this gives proper origin (http://localhost:...)
+        // which allows popups to use window.opener to access parent window data
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        targetIframe._blobUrl = blobUrl;
+        targetIframe.removeAttribute('srcdoc');
         targetIframe.src = blobUrl;
 
-        Logger.log('[PreviewPanel] Preview content injected');
+        Logger.log('[PreviewPanel] Preview content injected via blob URL');
     }
 
     /**

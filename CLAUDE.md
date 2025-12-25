@@ -600,6 +600,95 @@ await page.click('#head-top-save-button');
 await page.waitForTimeout(2000); // Wait for save to complete
 ```
 
+**8. Insert Image/PDF in Text iDevice (via TinyMCE + Media Library):**
+```javascript
+// Assuming text iDevice is already in edit mode with TinyMCE visible
+const block = page.locator('#node-content article .idevice_node.text').last();
+await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+// --- FOR IMAGES ---
+// Click image button in TinyMCE toolbar
+const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
+await imageBtn.click();
+
+// --- FOR PDF/MULTIMEDIA ---
+// Click multimedia button (label varies: "Insert/Edit media" EN / "Insertar/Editar multimedia" ES)
+const multimediaBtn = page.locator(
+    '.tox-tbtn[aria-label*="media" i], .tox-tbtn[aria-label*="multimedia" i]'
+).first();
+await multimediaBtn.click();
+
+// Wait for TinyMCE dialog
+await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+
+// Click Browse button to open Media Library
+const browseBtn = page.locator('.tox-dialog .tox-browse-url').first();
+await browseBtn.click();
+
+// Wait for Media Library modal
+await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+
+// Upload file from fixture (images: sample-2.jpg, PDFs: sample-1.pdf)
+const fileInput = page.locator('#modalFileManager .media-library-upload-input');
+await fileInput.setInputFiles('test/fixtures/sample-1.pdf'); // or sample-2.jpg
+
+// Wait for upload and select the item
+const mediaItem = page.locator('#modalFileManager .media-library-item').first();
+await mediaItem.waitFor({ state: 'visible', timeout: 10000 });
+await mediaItem.click();
+await page.waitForTimeout(500);
+
+// Click insert button in Media Library
+const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+await insertBtn.click();
+await page.waitForTimeout(1000);
+
+// Save TinyMCE dialog (closes and inserts into editor)
+const saveMediaBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
+if (await saveMediaBtn.count() > 0) {
+    await saveMediaBtn.click();
+}
+await page.waitForTimeout(1000);
+
+// Save iDevice (exit edit mode)
+const saveBtn = block.locator('.btn-save-idevice');
+await saveBtn.click();
+
+// Wait for edition mode to end
+await page.waitForFunction(() => {
+    const idevice = document.querySelector('#node-content article .idevice_node.text');
+    return idevice && idevice.getAttribute('mode') !== 'edition';
+}, { timeout: 15000 });
+```
+
+**9. Verify PDF renders in Preview with PDF.js:**
+```javascript
+// Open preview panel
+await page.click('#head-bottom-preview');
+await page.locator('#previewsidenav').waitFor({ state: 'visible', timeout: 15000 });
+
+// Wait for PDF.js to render (needs time to load library and fetch blob)
+await page.waitForTimeout(5000);
+
+// Check for PDF.js viewer elements
+// Note: PDF.js is used because Chrome blocks native PDF viewer in nested blob URL contexts
+const viewerInfo = await page.evaluate(() => {
+    const previewIframe = document.getElementById('preview-iframe');
+    const doc = previewIframe?.contentDocument;
+    if (!doc) return { error: 'No preview iframe' };
+
+    return {
+        hasPdfJsViewer: !!doc.querySelector('.exe-pdf-viewer'),
+        hasToolbar: !!doc.querySelector('.exe-pdf-toolbar'),
+        hasCanvas: !!doc.querySelector('.exe-pdf-canvas'),
+        hasFallbackCard: !!doc.querySelector('.exe-pdf-preview-card'),
+    };
+});
+
+// Either PDF.js viewer OR fallback card should be present
+expect(viewerInfo.hasPdfJsViewer || viewerInfo.hasFallbackCard).toBe(true);
+```
+
 ### SPA Preview Navigation
 
 The preview is a Single Page Application. Navigation uses anchor links:
@@ -620,6 +709,50 @@ Search data is injected as `window.exeSearchData` object with structure:
   }
 }
 ```
+
+### E2E Best Practices
+
+**NEVER use `waitForTimeout()` for async operations** - it causes race conditions with multiple workers.
+
+Use `waitForFunction()` with polling instead:
+
+```javascript
+// BAD - Race condition with multiple workers
+await page.waitForTimeout(1000);
+const result = await frame.evaluate(() => {
+    const el = document.querySelector('audio');
+    return { src: el?.getAttribute('src') };
+});
+expect(result.src).toContain('blob:'); // May fail if 1s wasn't enough!
+
+// GOOD - Polling until condition is met
+const result = await frame.waitForFunction(
+    (expectedValue) => {
+        const el = document.querySelector('audio');
+        if (!el) return null;
+        const src = el.getAttribute('src');
+        const dataSrc = el.getAttribute('data-asset-src');
+        // Return result only when both conditions are met
+        if (src?.startsWith('blob:') && dataSrc === expectedValue) {
+            return { src, dataSrc };
+        }
+        return null;
+    },
+    expectedAssetUrl,
+    { timeout: 10000 }
+).then(handle => handle.jsonValue());
+
+expect(result.src).toContain('blob:'); // Always works!
+```
+
+**When to use `waitForFunction()`:**
+- Waiting for async DOM mutations (MutationObserver, asset URL resolution)
+- Waiting for dynamic content to load
+- Any operation where timing is unpredictable
+
+**Acceptable uses of `waitForTimeout()`:**
+- Brief pauses after UI interactions for animations (200-500ms)
+- Debounce waits where no observable state change exists
 
 ## External Resources
 
