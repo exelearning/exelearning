@@ -92,22 +92,8 @@ describe('ProjectProperties', () => {
                                 },
                             },
                         },
-                        odeProjectSyncCataloguingConfig: {
-                            cataloguing_general: {
-                                lom_title: {
-                                    title: 'LOM Title',
-                                    value: '',
-                                    type: 'text',
-                                    alwaysVisible: true,
-                                },
-                                lom_description: {
-                                    title: 'LOM Description',
-                                    value: '',
-                                    type: 'textarea',
-                                    alwaysVisible: false,
-                                },
-                            },
-                        },
+                        // LOM fields have been deprecated - cataloguing config is now empty
+                        odeProjectSyncCataloguingConfig: {},
                     },
                 },
                 modals: {
@@ -226,40 +212,27 @@ describe('ProjectProperties', () => {
             });
         });
 
-        it('should load cataloguing config from API parameters', async () => {
+        it('should load cataloguing config from API parameters (now empty)', async () => {
             await projectProperties.load();
 
             expect(projectProperties.cataloguingConfig).toBeDefined();
-            expect(projectProperties.cataloguingConfig).toHaveProperty('cataloguing_general');
+            // LOM fields have been deprecated - cataloguing config is now empty
+            expect(Object.keys(projectProperties.cataloguingConfig)).toHaveLength(0);
         });
 
-        it('should create a deep copy of cataloguingConfig', async () => {
+        it('should create a deep copy of cataloguingConfig (even if empty)', async () => {
             await projectProperties.load();
 
             const originalConfig = window.eXeLearning.app.api.parameters.odeProjectSyncCataloguingConfig;
             expect(projectProperties.cataloguingConfig).not.toBe(originalConfig);
-            expect(projectProperties.cataloguingConfig.cataloguing_general).not.toBe(
-                originalConfig.cataloguing_general
-            );
         });
 
-        it('should flatten cataloguing config into cataloguing object', async () => {
+        it('should flatten cataloguing config into empty cataloguing object', async () => {
             await projectProperties.load();
 
             expect(projectProperties.cataloguing).toBeDefined();
-            expect(projectProperties.cataloguing).toHaveProperty('lom_title');
-            expect(projectProperties.cataloguing).toHaveProperty('lom_description');
-        });
-
-        it('should preserve cataloguing property structure when flattening', async () => {
-            await projectProperties.load();
-
-            expect(projectProperties.cataloguing.lom_title).toMatchObject({
-                title: 'LOM Title',
-                value: '',
-                type: 'text',
-                alwaysVisible: true,
-            });
+            // LOM fields have been deprecated - no properties expected
+            expect(Object.keys(projectProperties.cataloguing)).toHaveLength(0);
         });
 
         it('should call loadPropertiesFromYjs after loading configs', async () => {
@@ -277,12 +250,12 @@ describe('ProjectProperties', () => {
             expect(propertyKeys).toContain('pp_license');
         });
 
-        it('should handle multiple categories in cataloguing config', async () => {
+        it('should handle empty cataloguing config', async () => {
             await projectProperties.load();
 
             const cataloguingKeys = Object.keys(projectProperties.cataloguing);
-            expect(cataloguingKeys).toContain('lom_title');
-            expect(cataloguingKeys).toContain('lom_description');
+            // LOM fields have been deprecated - no properties expected
+            expect(cataloguingKeys).toHaveLength(0);
         });
     });
 
@@ -498,8 +471,8 @@ describe('ProjectProperties', () => {
 
         it('should handle keys without prefix correctly', () => {
             expect(projectProperties.mapPropertyToMetadataKey('author')).toBe('author');
-            expect(projectProperties.mapPropertyToMetadataKey('lom_title')).toBe('lom_title');
             expect(projectProperties.mapPropertyToMetadataKey('custom_field')).toBe('custom_field');
+            expect(projectProperties.mapPropertyToMetadataKey('some_other_key')).toBe('some_other_key');
         });
 
         it('should handle empty string', () => {
