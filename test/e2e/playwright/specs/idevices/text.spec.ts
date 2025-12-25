@@ -717,26 +717,30 @@ test.describe('Text iDevice', () => {
 
             // Wait for mermaid to render (it replaces <pre class="mermaid"> with SVG)
             // Use waitForFunction instead of fixed timeout for reliability
-            const mermaidRendered = await page.waitForFunction(
-                () => {
-                    const content = document.querySelector('#node-content article .idevice_node.text .textIdeviceContent');
-                    if (!content) return null;
+            const mermaidRendered = await page
+                .waitForFunction(
+                    () => {
+                        const content = document.querySelector(
+                            '#node-content article .idevice_node.text .textIdeviceContent',
+                        );
+                        if (!content) return null;
 
-                    const pre = content.querySelector('pre.mermaid');
-                    if (!pre) return null;
+                        const pre = content.querySelector('pre.mermaid');
+                        if (!pre) return null;
 
-                    const svg = content.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
-                    // Mermaid adds data-processed="true" after rendering
-                    const dataProcessed = pre.getAttribute('data-processed') === 'true';
+                        const svg = content.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
+                        // Mermaid adds data-processed="true" after rendering
+                        const dataProcessed = pre.getAttribute('data-processed') === 'true';
 
-                    // Return result only when mermaid has processed (SVG or data-processed)
-                    if (svg || dataProcessed) {
-                        return { hasPre: true, hasSvg: !!svg, hasDataProcessed: dataProcessed };
-                    }
-                    return null;
-                },
-                { timeout: 10000 },
-            ).then(handle => handle.jsonValue());
+                        // Return result only when mermaid has processed (SVG or data-processed)
+                        if (svg || dataProcessed) {
+                            return { hasPre: true, hasSvg: !!svg, hasDataProcessed: dataProcessed };
+                        }
+                        return null;
+                    },
+                    { timeout: 10000 },
+                )
+                .then(handle => handle.jsonValue());
 
             // The <pre class="mermaid"> should exist and be processed
             expect(mermaidRendered.hasPre).toBe(true);
@@ -1119,7 +1123,7 @@ test.describe('Text iDevice', () => {
                 await page.waitForFunction(
                     id => {
                         const editor = id ? (window as any).tinymce?.get(id) : (window as any).tinymce?.activeEditor;
-                        return editor && editor.getBody() && editor.initialized;
+                        return editor?.getBody() && editor.initialized;
                     },
                     editorId,
                     { timeout: 10000 },

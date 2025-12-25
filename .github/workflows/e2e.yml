@@ -48,7 +48,6 @@ jobs:
 
       - name: E2E Tests (${{ matrix.browser }})
         run: npx playwright test --project=${{ matrix.browser }}
-        continue-on-error: false
 
       - name: Upload Playwright Report
         if: always()
