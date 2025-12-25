@@ -233,18 +233,27 @@ export class Epub3Exporter extends BaseExporter {
                 }
             }
 
-            // 8. Fetch and add iDevice assets
+            // 8. Fetch and add iDevice assets (skip .html templates - they're for JS rendering, not EPUB)
             const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
-                    for (const [path, content] of ideviceFiles) {
-                        this.zip.addFile(`EPUB/idevices/${idevice}/${path}`, content);
-                        const ext = this.getFileExtensionFromPath(path);
+                    for (const [filePath, content] of ideviceFiles) {
+                        // Skip .html template files - they contain placeholders like {scorm}
+                        // that are invalid XML and can't be processed by EPUB readers
+                        if (filePath.endsWith('.html')) {
+                            continue;
+                        }
+                        // Skip test files
+                        if (filePath.endsWith('.test.js') || filePath.endsWith('.spec.js')) {
+                            continue;
+                        }
+                        this.zip.addFile(`EPUB/idevices/${idevice}/${filePath}`, content);
+                        const ext = this.getFileExtensionFromPath(filePath);
                         const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
                         this.addManifestItem(
-                            this.generateUniqueId(`idevice-${idevice}-${path}`),
-                            `idevices/${idevice}/${path}`,
+                            this.generateUniqueId(`idevice-${idevice}-${filePath}`),
+                            `idevices/${idevice}/${filePath}`,
                             mimeType,
                         );
                     }
@@ -511,21 +520,38 @@ export class Epub3Exporter extends BaseExporter {
         }
 
         // Add XHTML namespace to html element
-        xhtml = xhtml.replace(
-            /<html([^>]*)>/i,
-            `<html xmlns="${EPUB3_NAMESPACES.XHTML}" xml:lang="${lang}" lang="${lang}"$1>`,
-        );
+        // First, remove any existing lang/xml:lang attributes to avoid duplication
+        xhtml = xhtml.replace(/<html([^>]*)>/i, (match, attrs) => {
+            // Remove existing lang and xml:lang attributes
+            const cleanAttrs = attrs
+                .replace(/\s+xml:lang=["'][^"']*["']/gi, '')
+                .replace(/\s+lang=["'][^"']*["']/gi, '');
+            return `<html xmlns="${EPUB3_NAMESPACES.XHTML}" xml:lang="${lang}" lang="${lang}"${cleanAttrs}>`;
+        });
 
-        // Self-close void elements
+        // Self-close void elements (use word boundary \b to avoid matching substrings like col matching colgroup)
         for (const element of VOID_ELEMENTS) {
-            // Match <element ...> (without closing slash)
-            const regex = new RegExp(`<(${element})([^>]*[^/])>`, 'gi');
+            // Match <element ...> (without closing slash) - word boundary ensures exact element match
+            const regex = new RegExp(`<(${element})\\b([^>]*[^/])>`, 'gi');
             xhtml = xhtml.replace(regex, '<$1$2/>');
 
             // Also handle <element> (no attributes)
             const simpleRegex = new RegExp(`<(${element})>`, 'gi');
             xhtml = xhtml.replace(simpleRegex, '<$1/>');
         }
+
+        // Escape unescaped ampersands in attribute values (for URLs with query params like &download=false)
+        // Match & not followed by a valid entity name and semicolon
+        xhtml = xhtml.replace(/&(?!(?:amp|lt|gt|quot|apos|nbsp|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
+
+        // Fix unquoted boolean attributes like scorm=false → scorm="false"
+        // Match attribute=value where value has no quotes and is alphanumeric
+        xhtml = xhtml.replace(/(\s)([a-zA-Z][a-zA-Z0-9-]*)=(true|false|[a-zA-Z0-9_-]+)(?=[\s>/])/g, '$1$2="$3"');
+
+        // Fix malformed attributes like class=""value> → class="value">
+        // This handles case where opening has double-quote and closing quote is missing before >
+        // Exclude /> to avoid breaking self-closed void elements like alt=""/>
+        xhtml = xhtml.replace(/(\s[a-zA-Z][a-zA-Z0-9-]*)=""([^"<>/]+)>/g, '$1="$2">');
 
         // Convert .html references to .xhtml
         xhtml = xhtml.replace(/\.html(['"#\s])/g, '.xhtml$1');
