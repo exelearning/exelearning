@@ -497,7 +497,6 @@ describe('Admin Queries', () => {
                     status: 'archived',
                     visibility: 'private',
                     saved_once: 0,
-                    is_active: 1,
                     created_at: now,
                     updated_at: now,
                 })

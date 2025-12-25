@@ -78,7 +78,6 @@ export async function findProjectsPaginated(
         title?: string;
         status?: string;
         visibility?: string;
-        isActive?: boolean;
         sortBy?: 'id' | 'title' | 'created_at';
         sortOrder?: 'asc' | 'desc';
     } = {},
@@ -90,7 +89,6 @@ export async function findProjectsPaginated(
         title,
         status,
         visibility,
-        isActive,
         sortBy = 'id',
         sortOrder = 'desc',
     } = options;
@@ -124,10 +122,6 @@ export async function findProjectsPaginated(
         query = query.where('projects.visibility', '=', visibility);
     }
 
-    if (isActive !== undefined) {
-        query = query.where('projects.is_active', '=', isActive ? 1 : 0);
-    }
-
     const orderColumn = sortBy === 'title' ? 'projects.title' : sortBy === 'created_at' ? 'projects.created_at' : 'projects.id';
     query = query.orderBy(orderColumn, sortOrder);
 
@@ -159,10 +153,6 @@ export async function findProjectsPaginated(
 
     if (visibility) {
         countQuery = countQuery.where('projects.visibility', '=', visibility);
-    }
-
-    if (isActive !== undefined) {
-        countQuery = countQuery.where('projects.is_active', '=', isActive ? 1 : 0);
     }
 
     const countResult = await countQuery.executeTakeFirst();

@@ -142,8 +142,8 @@ const updateQuotaSchema = t.Object({
     quota_mb: t.Union([t.Number(), t.Null()]),
 });
 
-const updateProjectActiveSchema = t.Object({
-    is_active: t.Boolean(),
+const updateProjectStatusSchema = t.Object({
+    status: t.Union([t.Literal('active'), t.Literal('inactive'), t.Literal('archived')]),
 });
 
 const updateSettingsSchema = t.Object({
@@ -573,7 +573,6 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 const title = (query.title as string | undefined)?.trim();
                 const status = (query.status as string | undefined)?.trim();
                 const visibility = (query.visibility as string | undefined)?.trim();
-                const isActiveRaw = (query.is_active as string | undefined)?.trim();
                 const sortByRaw = (query.sortBy as string | undefined)?.trim();
                 const sortOrderRaw = (query.sortOrder as string | undefined)?.trim();
                 const allowedSortBy = new Set(['id', 'title', 'created_at']);
@@ -586,19 +585,11 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     | 'asc'
                     | 'desc';
 
-                const allowedStatuses = new Set(['active', 'archived', 'deleted']);
+                const allowedStatuses = new Set(['active', 'inactive', 'archived']);
                 const allowedVisibility = new Set(['public', 'private']);
 
                 const parsedStatus = status && allowedStatuses.has(status) ? status : undefined;
                 const parsedVisibility = visibility && allowedVisibility.has(visibility) ? visibility : undefined;
-                let parsedIsActive: boolean | undefined;
-                if (isActiveRaw !== undefined && isActiveRaw !== '') {
-                    if (['1', 'true', 'yes', 'on'].includes(isActiveRaw.toLowerCase())) {
-                        parsedIsActive = true;
-                    } else if (['0', 'false', 'no', 'off'].includes(isActiveRaw.toLowerCase())) {
-                        parsedIsActive = false;
-                    }
-                }
 
                 const { projects, total } = await queries.findProjectsPaginated(db, {
                     limit,
@@ -607,7 +598,6 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     title,
                     status: parsedStatus,
                     visibility: parsedVisibility,
-                    isActive: parsedIsActive,
                     sortBy,
                     sortOrder,
                 });
@@ -615,9 +605,9 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 return { projects, total };
             })
 
-            // PATCH /api/admin/projects/:id/active - Toggle project active state
+            // PATCH /api/admin/projects/:id/status - Update project status
             .patch(
-                '/api/admin/projects/:id/active',
+                '/api/admin/projects/:id/status',
                 async ({ params, body, set }) => {
                     const projectId = parseInt(params.id, 10);
                     if (isNaN(projectId)) {
@@ -626,7 +616,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     }
 
                     const updated = await queries.updateProject(db, projectId, {
-                        is_active: body.is_active ? 1 : 0,
+                        status: body.status,
                     });
 
                     if (!updated) {
@@ -636,7 +626,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
                     return { project: updated };
                 },
-                { body: updateProjectActiveSchema },
+                { body: updateProjectStatusSchema },
             )
 
             // DELETE /api/admin/projects/:id - Hard delete project

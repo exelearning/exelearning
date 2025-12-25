@@ -1048,18 +1048,13 @@
                             <select class="admin-input" id="projectStatusFilter">
                                 <option value="">{{ t.all_statuses or 'All statuses' }}</option>
                                 <option value="active">active</option>
+                                <option value="inactive">inactive</option>
                                 <option value="archived">archived</option>
-                                <option value="deleted">deleted</option>
                             </select>
                             <select class="admin-input" id="projectVisibilityFilter">
                                 <option value="">{{ t.all_visibility or 'All visibility' }}</option>
                                 <option value="public">public</option>
                                 <option value="private">private</option>
-                            </select>
-                            <select class="admin-input" id="projectIsActiveFilter">
-                                <option value="">{{ t.all_states or 'All states' }}</option>
-                                <option value="true">{{ t.active or 'Active' }}</option>
-                                <option value="false">{{ t.inactive or 'Inactive' }}</option>
                             </select>
                         </div>
                     </div>
@@ -1069,6 +1064,18 @@
                     </div>
                     <div class="bulk-actions-bar" id="projectsBulkActionsBar">
                         <span class="selected-count" id="projectsSelectedCount">0 {{ t.selected or 'selected' }}</span>
+                        <button class="btn-admin-outline" id="projectsBulkActivateBtn">
+                            <span class="mi mi-sm">toggle_on</span>
+                            {{ t.activate or 'Activate' }}
+                        </button>
+                        <button class="btn-admin-outline" id="projectsBulkDeactivateBtn">
+                            <span class="mi mi-sm">toggle_off</span>
+                            {{ t.deactivate or 'Deactivate' }}
+                        </button>
+                        <button class="btn-admin-outline" id="projectsBulkArchiveBtn">
+                            <span class="mi mi-sm">archive</span>
+                            {{ t.archive or 'Archive' }}
+                        </button>
                         <button class="btn-admin-primary btn-admin-danger" id="projectsBulkDeleteBtn">
                             <span class="mi mi-sm">delete</span>
                             {{ t.delete_selected or 'Delete Selected' }}
@@ -1094,7 +1101,6 @@
                                     <th>{{ t.owner or 'Owner' }}</th>
                                     <th>{{ t.status or 'Status' }}</th>
                                     <th>{{ t.visibility or 'Visibility' }}</th>
-                                    <th>{{ t.active or 'Active' }}</th>
                                     <th>{{ t.created or 'Created' }}</th>
                                     <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
                                 </tr>
@@ -1505,7 +1511,10 @@
             selected: '{{ t.selected or "selected" }}',
             deleting: '{{ t.deleting or "Deleting..." }}',
             activate: '{{ t.activate or "Activate" }}',
-            deactivate: '{{ t.deactivate or "Deactivate" }}'
+            deactivate: '{{ t.deactivate or "Deactivate" }}',
+            archiving: '{{ t.archiving or "Archiving..." }}',
+            updating: '{{ t.updating or "Updating..." }}',
+            archive: '{{ t.archive or "Archive" }}'
         };
 
         // State
@@ -1965,7 +1974,6 @@
                 const title = document.getElementById('projectTitleFilter').value.trim();
                 const status = document.getElementById('projectStatusFilter').value;
                 const visibility = document.getElementById('projectVisibilityFilter').value;
-                const isActive = document.getElementById('projectIsActiveFilter').value;
 
                 const url = new URL(`${API_BASE}/projects`, window.location.origin);
                 url.searchParams.set('limit', projectsLimit);
@@ -1976,7 +1984,6 @@
                 if (title) url.searchParams.set('title', title);
                 if (status) url.searchParams.set('status', status);
                 if (visibility) url.searchParams.set('visibility', visibility);
-                if (isActive) url.searchParams.set('is_active', isActive);
 
                 const res = await fetch(url, { credentials: 'include' });
                 if (!res.ok) throw new Error('Failed to load projects');
@@ -1990,12 +1997,13 @@
                         ? 'badge-active'
                         : project.status === 'archived'
                             ? 'badge-archived'
-                            : 'badge-deleted';
+                            : 'badge-inactive';
                     const visibilityClass = 'badge-user';
-                    const activeClass = project.is_active ? 'badge-active' : 'badge-inactive';
-                    const activeText = project.is_active ? T.active : T.inactive;
-                    const toggleLabel = project.is_active ? T.deactivate : T.activate;
-                    const toggleIcon = project.is_active ? 'toggle_off' : 'toggle_on';
+                    const isActive = project.status === 'active';
+                    const toggleLabel = isActive ? T.deactivate : T.activate;
+                    const toggleIcon = isActive ? 'toggle_off' : 'toggle_on';
+                    const nextStatus = isActive ? 'inactive' : 'active';
+                    const canArchive = project.status !== 'archived';
                     const ownerLabel = project.owner_email || project.owner_user_id || `#${project.owner_id}`;
                     const createdAt = project.created_at ? new Date(project.created_at).toLocaleDateString() : '-';
                     const isChecked = selectedProjectIds.has(project.id) ? 'checked' : '';
@@ -2011,12 +2019,16 @@
                         <td>${ownerLabel}</td>
                         <td><span class="badge-role ${statusClass}">${project.status}</span></td>
                         <td><span class="badge-role ${visibilityClass}">${project.visibility}</span></td>
-                        <td><span class="badge-role ${activeClass}">${activeText}</span></td>
                         <td>${createdAt}</td>
                         <td>
-                            <button class="btn-admin-outline" onclick="toggleProjectActive(${project.id}, ${project.is_active ? 'false' : 'true'})" title="${toggleLabel}">
+                            <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, '${nextStatus}')" title="${toggleLabel}">
                                 <span class="mi mi-sm">${toggleIcon}</span>
                             </button>
+                            ${canArchive ? `
+                            <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, 'archived')" title="Archive">
+                                <span class="mi mi-sm">archive</span>
+                            </button>
+                            ` : ''}
                             <button class="btn-admin-outline btn-admin-danger" onclick="deleteProject(${project.id})" title="{{ t.delete or 'Delete' }}">
                                 <span class="mi mi-sm">delete</span>
                             </button>
@@ -2030,7 +2042,7 @@
                 updateProjectsPagination();
             } catch (err) {
                 console.error('Failed to load projects:', err);
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
             } finally {
                 loading.classList.remove('active');
             }
@@ -2204,6 +2216,63 @@
             loadProjects();
         });
 
+        async function updateProjectsBulkStatus(status, buttonId, loadingText) {
+            const count = selectedProjectIds.size;
+            if (count === 0) return;
+
+            const btn = document.getElementById(buttonId);
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<span class="mi mi-sm">hourglass_empty</span> ${loadingText}`;
+            btn.disabled = true;
+
+            let updated = 0;
+            let errors = [];
+
+            for (const projectId of selectedProjectIds) {
+                try {
+                    const res = await fetch(`${API_BASE}/projects/${projectId}/status`, {
+                        method: 'PATCH',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status })
+                    });
+
+                    if (res.ok) {
+                        updated++;
+                    } else {
+                        const data = await res.json();
+                        errors.push(`Project ${projectId}: ${data.message || 'Failed'}`);
+                    }
+                } catch (err) {
+                    errors.push(`Project ${projectId}: ${err.message}`);
+                }
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+
+            if (errors.length > 0) {
+                alert(`Updated ${updated} projects. Errors:\n${errors.join('\n')}`);
+            }
+
+            selectedProjectIds.clear();
+            document.getElementById('selectAllProjects').checked = false;
+            updateProjectsBulkActionsBar();
+            loadProjects();
+        }
+
+        document.getElementById('projectsBulkActivateBtn').addEventListener('click', async () => {
+            await updateProjectsBulkStatus('active', 'projectsBulkActivateBtn', T.updating);
+        });
+
+        document.getElementById('projectsBulkDeactivateBtn').addEventListener('click', async () => {
+            await updateProjectsBulkStatus('inactive', 'projectsBulkDeactivateBtn', T.updating);
+        });
+
+        document.getElementById('projectsBulkArchiveBtn').addEventListener('click', async () => {
+            await updateProjectsBulkStatus('archived', 'projectsBulkArchiveBtn', T.archiving);
+        });
+
         let projectFilterTimeout;
         ['projectOwnerFilter', 'projectTitleFilter'].forEach(id => {
             document.getElementById(id).addEventListener('input', () => {
@@ -2215,20 +2284,20 @@
             });
         });
 
-        ['projectStatusFilter', 'projectVisibilityFilter', 'projectIsActiveFilter'].forEach(id => {
+        ['projectStatusFilter', 'projectVisibilityFilter'].forEach(id => {
             document.getElementById(id).addEventListener('change', () => {
                 projectsOffset = 0;
                 loadProjects();
             });
         });
 
-        async function toggleProjectActive(projectId, isActive) {
+        async function updateProjectStatus(projectId, status) {
             try {
-                const res = await fetch(`${API_BASE}/projects/${projectId}/active`, {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/status`, {
                     method: 'PATCH',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ is_active: isActive })
+                    body: JSON.stringify({ status })
                 });
 
                 if (!res.ok) {

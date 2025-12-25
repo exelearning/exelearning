@@ -80,7 +80,6 @@ function createTestProjectApp(db: Kysely<Database>) {
                         saved_once: 0,
                         status: 'active',
                         visibility: 'private',
-                        is_active: 1,
                         created_at: timestamp,
                         updated_at: timestamp,
                     })
@@ -385,19 +384,18 @@ describe('Project Sharing Authorization', () => {
 
         // Create a test project owned by user1
         const timestamp = now();
-        testProject = await testDb
-            .insertInto('projects')
-            .values({
-                uuid: uuidv4(),
-                title: 'Test Project',
-                owner_id: user1.id,
-                saved_once: 1,
-                status: 'active',
-                visibility: 'private',
-                is_active: 1,
-                created_at: timestamp,
-                updated_at: timestamp,
-            })
+                testProject = await testDb
+                    .insertInto('projects')
+                    .values({
+                        uuid: uuidv4(),
+                        title: 'Test Project',
+                        owner_id: user1.id,
+                        saved_once: 1,
+                        status: 'active',
+                        visibility: 'private',
+                        created_at: timestamp,
+                        updated_at: timestamp,
+                    })
             .returningAll()
             .executeTakeFirstOrThrow();
     });

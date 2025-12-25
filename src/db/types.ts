@@ -59,14 +59,13 @@ interface ProjectsTable {
     title: string;
     description: string | null;
     owner_id: number;
-    status: string; // 'active' | 'archived' | 'deleted'
+    status: string; // 'active' | 'inactive' | 'archived'
     visibility: string; // 'public' | 'private'
     language: string | null;
     author: string | null;
     license: string | null;
     last_accessed_at: string | null;
     saved_once: number;
-    is_active: number;
     created_at: string | null;
     updated_at: string | null;
 }
@@ -182,7 +181,7 @@ export type NewYjsVersionHistory = Insertable<YjsVersionHistoryTable>;
 // HELPER TYPES
 // ============================================================================
 
-export type ProjectStatus = 'active' | 'archived' | 'deleted';
+export type ProjectStatus = 'active' | 'inactive' | 'archived';
 export type ProjectVisibility = 'public' | 'private';
 
 // Helper to parse JSON roles from string

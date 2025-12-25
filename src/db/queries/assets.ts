@@ -37,7 +37,6 @@ export async function findAssetByIdWithProject(
             'projects.license as project_license',
             'projects.last_accessed_at as project_last_accessed_at',
             'projects.saved_once as project_saved_once',
-            'projects.is_active as project_is_active',
             'projects.created_at as project_created_at',
             'projects.updated_at as project_updated_at',
         ])
@@ -59,7 +58,6 @@ export async function findAssetByIdWithProject(
         license: result.project_license,
         last_accessed_at: result.project_last_accessed_at,
         saved_once: result.project_saved_once,
-        is_active: result.project_is_active,
         created_at: result.project_created_at,
         updated_at: result.project_updated_at,
     };

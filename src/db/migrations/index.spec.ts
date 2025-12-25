@@ -53,6 +53,7 @@ describe('Database Migrations', () => {
 
             expect(result.success).toBe(true);
             expect(result.executedMigrations).toContain('001_initial');
+            expect(result.executedMigrations).toContain('003_project_status');
             expect(result.error).toBeUndefined();
         });
 
@@ -110,7 +111,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('002_app_settings');
+            expect(result.rolledBack).toBe('003_project_status');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {

@@ -78,7 +78,6 @@ describe('Project Queries', () => {
             expect(project.status).toBe('active');
             expect(project.visibility).toBe('private');
             expect(project.saved_once).toBe(0);
-            expect(project.is_active).toBe(1);
         });
 
         it('should create a project with optional fields', async () => {
@@ -446,7 +445,7 @@ describe('Project Queries', () => {
     // ============================================================================
 
     describe('softDeleteProject', () => {
-        it('should set status to deleted', async () => {
+        it('should set status to inactive', async () => {
             const project = await createProject(db, {
                 title: 'Delete Me',
                 owner_id: testUser.id,
@@ -455,7 +454,7 @@ describe('Project Queries', () => {
             await softDeleteProject(db, project.id);
 
             const found = await findProjectById(db, project.id);
-            expect(found?.status).toBe('deleted');
+            expect(found?.status).toBe('inactive');
         });
     });
 
@@ -486,13 +485,13 @@ describe('Project Queries', () => {
         it('should return only active/archived projects for owner', async () => {
             await createProject(db, { title: 'Active 1', owner_id: testUser.id });
             await createProject(db, { title: 'Active 2', owner_id: testUser.id });
-            const deleted = await createProject(db, { title: 'Deleted', owner_id: testUser.id });
-            await softDeleteProject(db, deleted.id);
+            const inactive = await createProject(db, { title: 'Inactive', owner_id: testUser.id });
+            await softDeleteProject(db, inactive.id);
 
             const projects = await findProjectsByOwner(db, testUser.id);
 
             expect(projects.length).toBe(2);
-            expect(projects.every(p => p.status !== 'deleted')).toBe(true);
+            expect(projects.every(p => p.status !== 'inactive')).toBe(true);
         });
 
         it('should not return other users projects', async () => {
@@ -694,14 +693,14 @@ describe('Project Queries', () => {
                 expect(result.reason).toBe('PROJECT_NOT_FOUND');
             });
 
-            it('should return hasAccess=false for deleted project', async () => {
-                const project = await createProject(db, { title: 'Deleted', owner_id: testUser.id });
+            it('should return hasAccess=false for inactive project', async () => {
+                const project = await createProject(db, { title: 'Inactive', owner_id: testUser.id });
                 await softDeleteProject(db, project.id);
-                const deletedProject = await findProjectById(db, project.id);
+                const inactiveProject = await findProjectById(db, project.id);
 
-                const result = await checkProjectAccess(db, deletedProject, testUser.id);
+                const result = await checkProjectAccess(db, inactiveProject, testUser.id);
                 expect(result.hasAccess).toBe(false);
-                expect(result.reason).toBe('PROJECT_DELETED');
+                expect(result.reason).toBe('PROJECT_INACTIVE');
             });
 
             it('should return hasAccess=true for public project without user', async () => {
@@ -796,8 +795,8 @@ describe('Project Queries', () => {
             expect(projects).toEqual([]);
         });
 
-        it('should not include deleted saved projects', async () => {
-            const saved = await createProject(db, { title: 'Deleted Saved', owner_id: testUser.id });
+        it('should not include inactive saved projects', async () => {
+            const saved = await createProject(db, { title: 'Inactive Saved', owner_id: testUser.id });
             await markProjectAsSaved(db, saved.id);
             await softDeleteProject(db, saved.id);
 
