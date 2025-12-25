@@ -364,6 +364,27 @@ var $exeDevice = {
         eXe.app.alert(str);
     },
 
+    // Get translated string at runtime (when translations are loaded)
+    // This is needed because ci18n is initialized at load time when translations may not be ready
+    // Uses _() (GUI translations) instead of c_() because c_strings may not be loaded yet
+    getTranslatedString: function (key) {
+        var strings = {
+            activity: 'Activity',
+            name: 'Name',
+            date: 'Date',
+            score: 'Score',
+            notes: 'Notes',
+            reset: 'Reset',
+            print: 'Print',
+            apply: 'Apply',
+            newWindow: 'New Window',
+        };
+        if (strings[key]) {
+            return _(strings[key]);
+        }
+        return key;
+    },
+
     // Get a list of the available rubrics (only one for the moment, that's why there's just a "New rubric" button)
     getRubricModels: function () {
         var html = '';
@@ -573,11 +594,38 @@ var $exeDevice = {
                 info += '</p>';
             }
 
-            // Custom texts
+            // Custom texts - get fresh translations or custom values from form
+            // English defaults (for comparison to detect customization)
+            var englishDefaults = {
+                activity: 'Activity',
+                name: 'Name',
+                date: 'Date',
+                score: 'Score',
+                notes: 'Notes',
+                reset: 'Reset',
+                print: 'Print',
+                apply: 'Apply',
+                newWindow: 'New Window',
+            };
             var lang = '<ul class="exe-rubrics-strings">';
             for (var i in $exeDevice.ci18n) {
+                var customField = $('#ci18n_' + i);
+                var translatedValue = $exeDevice.getTranslatedString(i);
+                var value;
+                if (customField.length === 1 && customField.val() !== '') {
+                    var fieldValue = customField.val();
+                    // Use custom value only if it differs from both English default AND current translation
+                    // This ensures we use translated values when user hasn't customized
+                    if (fieldValue !== englishDefaults[i] && fieldValue !== translatedValue) {
+                        value = fieldValue;
+                    } else {
+                        value = translatedValue;
+                    }
+                } else {
+                    value = translatedValue;
+                }
                 lang +=
-                    '<li class="' + i + '">' + $exeDevice.ci18n[i] + '</li>';
+                    '<li class="' + i + '">' + value + '</li>';
             }
             lang += '</ul>';
 
@@ -880,17 +928,8 @@ var $exeDevice = {
         var license = $('#ri_RubricLicense').val();
         if (license != '') data.license = license;
 
-        // Get the custom strings
-        data.i18n = this.ci18n;
-        var strings = data.i18n;
-        for (var i in strings) {
-            var field = $('#ci18n_' + i);
-            var v = field.val();
-            data.i18n[i] = strings[i][1];
-            if (field.length == 1 && v != '') {
-                data.i18n[i] = v;
-            }
-        }
+        // Note: Custom strings (i18n) are now handled directly in jsonToTable('normal')
+        // by reading from the form fields at save time
 
         // Return the HTML to save
         return this.jsonToTable(data, 'normal');

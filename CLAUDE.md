@@ -499,6 +499,107 @@ const previewPage = await popupPromise;
 await previewPage.waitForLoadState('networkidle');
 ```
 
+### Common E2E Workflows
+
+**1. Login Flow:**
+```javascript
+await page.goto('/login');
+await page.waitForLoadState('networkidle');
+await page.fill('input[type="email"]', 'user@exelearning.net');
+await page.fill('input[type="password"]', '1234');
+await page.click('button[type="submit"]');
+await page.waitForLoadState('networkidle');
+```
+
+**2. Create Project via API (faster than UI):**
+```javascript
+const response = await page.request.post('/api/project/create-quick', {
+    data: { title: 'My Test Project' }
+});
+const result = await response.json();
+const projectUuid = result.uuid;
+```
+
+**3. Navigate to Workarea and Wait for Initialization:**
+```javascript
+await page.goto(`/workarea?project=${projectUuid}`);
+await page.waitForLoadState('networkidle');
+
+// Wait for Yjs bridge initialization
+await page.waitForFunction(() => {
+    const app = window.eXeLearning?.app;
+    return app?.project?._yjsBridge !== undefined;
+}, { timeout: 30000 });
+
+// Wait for loading screen to disappear
+await page.waitForFunction(() => {
+    const loadScreen = document.querySelector('#load-screen-main');
+    return !loadScreen || loadScreen.getAttribute('data-visible') === 'false';
+}, { timeout: 15000 });
+```
+
+**4. Select a Page to Add iDevices (REQUIRED before adding any iDevice):**
+```javascript
+// Pages are inside nav-element nodes. Root node cannot have iDevices.
+// Must select a non-root page first:
+const pageNode = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
+await pageNode.scrollIntoViewIfNeeded();
+await pageNode.click({ force: true });
+await page.waitForTimeout(1500);
+
+// Wait for page content area to be ready (not showing project metadata)
+await page.waitForFunction(() => {
+    const nodeContent = document.querySelector('#node-content');
+    const metadata = document.querySelector('#properties-node-content-form');
+    return nodeContent && (!metadata || !metadata.closest('.show'));
+}, { timeout: 10000 }).catch(() => {});
+```
+
+**5. Expand iDevice Category and Add iDevice:**
+```javascript
+// Expand a category (e.g., Assessment)
+const category = page.locator('.idevice_category')
+    .filter({ has: page.locator('h3.idevice_category_name').filter({ hasText: /Assessment|Evaluación/i }) })
+    .first();
+if (await category.count() > 0) {
+    const isCollapsed = await category.evaluate(el => el.classList.contains('off'));
+    if (isCollapsed) {
+        await category.locator('.label').click();
+        await page.waitForTimeout(800);
+    }
+}
+
+// Click on an iDevice (e.g., rubric)
+const idevice = page.locator('.idevice_item[id="rubric"]').first();
+await idevice.scrollIntoViewIfNeeded();
+await idevice.click();
+
+// Wait for iDevice to appear in content area
+await page.locator('#node-content article .idevice_node.rubric').first().waitFor({ timeout: 15000 });
+```
+
+**6. Open Preview Panel (inline panel, not popup):**
+```javascript
+// Click preview button to open side panel
+await page.click('#head-bottom-preview');
+const previewPanel = page.locator('#previewsidenav');
+await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+
+// Access preview iframe content
+const iframe = page.frameLocator('#preview-iframe');
+await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+// Example: check content in preview
+const tableInPreview = iframe.locator('.exe-table');
+await expect(tableInPreview).toBeVisible();
+```
+
+**7. Save Project:**
+```javascript
+await page.click('#head-top-save-button');
+await page.waitForTimeout(2000); // Wait for save to complete
+```
+
 ### SPA Preview Navigation
 
 The preview is a Single Page Application. Navigation uses anchor links:

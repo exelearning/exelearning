@@ -169,13 +169,24 @@ var $rubric = {
         if (window.location.host == 'localhost:41309') {
             return false; // To review (Electron)
         }
-        var isIndex = $('html').attr('id') == 'exe-index';
-        var basePath = 'idevices/rubric/';
-        if (!isIndex) basePath = '../' + basePath;
-        var rubricStyle = basePath + 'rubric.css';
-        var rubricScript = basePath + 'rubric.js';
-        var jqueryScript = 'libs/jquery/jquery.min.js';
-        if (!isIndex) jqueryScript = '../' + jqueryScript;
+        var rubricStyle, rubricScript, jqueryScript;
+        var isBlob = window.location.protocol === 'blob:';
+        if (isBlob) {
+            // Preview mode: use absolute paths to server assets
+            var origin = window.location.origin.replace('blob:', '');
+            rubricStyle = origin + '/files/perm/idevices/base/rubric/export/rubric.css';
+            rubricScript = origin + '/files/perm/idevices/base/rubric/export/rubric.js';
+            jqueryScript = origin + '/libs/jquery/jquery.min.js';
+        } else {
+            // Export mode: use relative paths
+            var isIndex = $('html').attr('id') == 'exe-index';
+            var basePath = 'idevices/rubric/';
+            if (!isIndex) basePath = '../' + basePath;
+            rubricStyle = basePath + 'rubric.css';
+            rubricScript = basePath + 'rubric.js';
+            jqueryScript = 'libs/jquery/jquery.min.js';
+            if (!isIndex) jqueryScript = '../' + jqueryScript;
+        }
         // Strings
         var i18n = this.ci18n;
         var a = window.open(tit);
