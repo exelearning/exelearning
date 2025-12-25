@@ -26,6 +26,17 @@ import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
+import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
+import { getAuthMethods as getAuthMethodsFromSettings } from '../services/app-settings';
+type AppSettingsTable = {
+    key: string;
+    value: string;
+    type: string;
+    updated_at: string | null;
+    updated_by: number | null;
+};
+
+type AppSettingsDb = Kysely<Database & { app_settings: AppSettingsTable }>;
 import {
     createSession as createSessionDefault,
     generateSessionId as generateSessionIdDefault,
@@ -150,15 +161,6 @@ const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
 // Get JWT secret
 const getJwtSecret = () => {
     return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
-};
-
-// Get auth methods from environment
-const getAuthMethods = (): string[] => {
-    const methods = process.env.APP_AUTH_METHODS || 'form,guest';
-    return methods
-        .split(',')
-        .map(m => m.trim().toLowerCase())
-        .filter(m => m);
 };
 
 // ============================================================================
@@ -300,7 +302,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return Response.redirect(prefixPath('/workarea') || '/workarea', 302);
                 }
 
-                const authMethods = getAuthMethods();
+                const authMethods = await getAuthMethodsFromSettings(
+                    db,
+                    process.env.APP_AUTH_METHODS || 'password,guest',
+                );
                 const guestLoginNonce = authMethods.includes('guest') ? randomBytes(8).toString('hex') : null;
 
                 // Store nonce in cookie for guest login verification
@@ -527,12 +532,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     gravatarUrl: createGravatarUrl(email, null, email),
                 };
 
-                const isOfflineInstallation =
-                    isOfflineMode() ||
-                    (process.env.APP_AUTH_METHODS || '')
-                        .split(',')
-                        .map(m => m.trim().toLowerCase())
-                        .includes('none');
+                const appAuthMethods = await getAuthMethodsFromSettings(
+                    db,
+                    process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
+                );
+                const isOfflineInstallation = isOfflineMode() || appAuthMethods.includes('none');
 
                 const basePath = getBasePath();
 
@@ -675,6 +679,275 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
   </head>
   <body>
     <div id="root">eXeLearning workarea - Template error: ${errorMessage}</div>
+  </body>
+</html>`;
+                    return new Response(fallbackHtml, {
+                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                    });
+                }
+            })
+
+            // =====================================================
+            // Admin Panel
+            // =====================================================
+            .get('/admin', async ({ currentUser, request, set }) => {
+                // Require authentication
+                if (!currentUser) {
+                    return Response.redirect(prefixPath('/login?returnUrl=/admin') || '/login?returnUrl=/admin', 302);
+                }
+
+                // Check for ROLE_ADMIN
+                const userRoles: string[] =
+                    typeof currentUser.roles === 'string'
+                        ? JSON.parse(currentUser.roles || '[]')
+                        : currentUser.roles || [];
+
+                if (!userRoles.includes('ROLE_ADMIN')) {
+                    set.status = 403;
+                    const html = renderTemplate('security/error', {
+                        error: 'You do not have permission to access the admin panel.',
+                        is_authenticated: true,
+                        basePath: getBasePath(),
+                    });
+                    return new Response(html, {
+                        status: 403,
+                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                    });
+                }
+
+                // Detect locale from Accept-Language header
+                const acceptLanguage = request.headers.get('accept-language');
+                const locale = detectLocaleFromHeader(acceptLanguage);
+
+                const email = currentUser.email || 'admin@exelearning.net';
+                const user = {
+                    id: currentUser.id,
+                    email,
+                    username: email,
+                    usernameFirsLetter: (email[0] || 'A').toUpperCase(),
+                    gravatarUrl: createGravatarUrl(email, null, email),
+                    roles: userRoles,
+                };
+
+                const t = {
+                    admin_panel: trans('Admin Panel', {}, locale),
+                    dashboard: trans('Dashboard', {}, locale),
+                    users: trans('Users', {}, locale),
+                    extensions: trans('Extensions', {}, locale),
+                    settings: trans('Settings', {}, locale),
+                    back_to_workarea: trans('Back to Workarea', {}, locale),
+                    logout: trans('Logout', {}, locale),
+                    total_users: trans('Total Users', {}, locale),
+                    active_users: trans('Active Users', {}, locale),
+                    total_projects: trans('Total Projects', {}, locale),
+                    active_projects: trans('Active Projects', {}, locale),
+                    user_management: trans('User Management', {}, locale),
+                    create_user: trans('Create User', {}, locale),
+                    email: trans('Email', {}, locale),
+                    roles: trans('Roles', {}, locale),
+                    status: trans('Status', {}, locale),
+                    actions: trans('Actions', {}, locale),
+                    edit: trans('Edit', {}, locale),
+                    delete: trans('Delete', {}, locale),
+                    save: trans('Save', {}, locale),
+                    cancel: trans('Cancel', {}, locale),
+                    active: trans('Active', {}, locale),
+                    inactive: trans('Inactive', {}, locale),
+                    search: trans('Search', {}, locale),
+                    loading: trans('Loading...', {}, locale),
+                    confirm_delete: trans('Are you sure you want to delete this user?', {}, locale),
+                    styles: trans('Styles', {}, locale),
+                    idevices: trans('iDevices', {}, locale),
+                    templates: trans('Templates', {}, locale),
+                    installed: trans('Installed', {}, locale),
+                    available: trans('Available', {}, locale),
+                    install: trans('Install', {}, locale),
+                    uninstall: trans('Uninstall', {}, locale),
+                    activate: trans('Activate', {}, locale),
+                    deactivate: trans('Deactivate', {}, locale),
+                };
+
+                let defaultQuota = process.env.DEFAULT_QUOTA ? parseInt(process.env.DEFAULT_QUOTA, 10) : 4096;
+                const parseBoolean = (value: string | undefined, fallback: boolean): boolean => {
+                    if (value === undefined) return fallback;
+                    const normalized = value.toLowerCase().trim();
+                    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+                    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+                    return fallback;
+                };
+                const parseNumber = (value: string | undefined, fallback: number): number => {
+                    if (value === undefined) return fallback;
+                    const parsed = parseInt(value, 10);
+                    return Number.isNaN(parsed) ? fallback : parsed;
+                };
+                const adminSettings = {
+                    general: {
+                        online_themes_install: parseBoolean(process.env.ONLINE_THEMES_INSTALL, false),
+                        online_idevices_install: parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
+                        app_auth_methods: process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
+                        version_control: parseBoolean(process.env.VERSION_CONTROL, true),
+                        default_project_visibility: process.env.DEFAULT_PROJECT_VISIBILITY || 'private',
+                        user_recent_ode_files_amount: parseNumber(process.env.USER_RECENT_ODE_FILES_AMOUNT, 3),
+                        collaborative_block_level: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice',
+                    },
+                    storage: {
+                        user_storage_max_disk_space: parseNumber(process.env.USER_STORAGE_MAX_DISK_SPACE, 1024),
+                        default_quota: parseNumber(process.env.DEFAULT_QUOTA, 4096),
+                        count_user_autosave_space_ode_files: parseBoolean(
+                            process.env.COUNT_USER_AUTOSAVE_SPACE_ODE_FILES,
+                            true,
+                        ),
+                        file_upload_max_size: parseNumber(process.env.FILE_UPLOAD_MAX_SIZE, 1024),
+                    },
+                    autosave: {
+                        permanent_save_autosave_time_interval: parseNumber(
+                            process.env.PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL,
+                            600,
+                        ),
+                        permanent_save_autosave_max_number_of_files: parseNumber(
+                            process.env.PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES,
+                            10,
+                        ),
+                        autosave_ode_files_function: parseBoolean(process.env.AUTOSAVE_ODE_FILES_FUNCTION, true),
+                    },
+                    cas: {
+                        url: process.env.CAS_URL || 'https://casserverpac4j.herokuapp.com',
+                        validate_path: process.env.CAS_VALIDATE_PATH || '/p3/serviceValidate',
+                        login_path: process.env.CAS_LOGIN_PATH || '/login',
+                        logout_path: process.env.CAS_LOGOUT_PATH || '/logout',
+                    },
+                    oidc: {
+                        issuer: process.env.OIDC_ISSUER || 'https://demo.duendesoftware.com',
+                        authorization_endpoint:
+                            process.env.OIDC_AUTHORIZATION_ENDPOINT ||
+                            'https://demo.duendesoftware.com/connect/authorize',
+                        token_endpoint:
+                            process.env.OIDC_TOKEN_ENDPOINT || 'https://demo.duendesoftware.com/connect/token',
+                        userinfo_endpoint:
+                            process.env.OIDC_USERINFO_ENDPOINT || 'https://demo.duendesoftware.com/connect/userinfo',
+                        scope: process.env.OIDC_SCOPE || 'openid email',
+                        client_id: process.env.OIDC_CLIENT_ID || 'interactive.confidential',
+                        client_secret: process.env.OIDC_CLIENT_SECRET || 'secret',
+                    },
+                    storage_integrations: {
+                        google_client_id: process.env.GOOGLE_CLIENT_ID || 'example.com.apps.googleusercontent.com',
+                        google_client_secret: process.env.GOOGLE_CLIENT_SECRET || 'example.com',
+                        dropbox_client_id: process.env.DROPBOX_CLIENT_ID || 'example.com',
+                        dropbox_client_secret: process.env.DROPBOX_CLIENT_SECRET || 'example.com',
+                        openequella_client_id: process.env.OPENEQUELLA_CLIENT_ID || 'example.com',
+                        openequella_client_secret: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com',
+                    },
+                };
+
+                const adminSettingsMap: Record<
+                    string,
+                    { path: string[]; type: 'string' | 'number' | 'boolean' | 'json' }
+                > = {
+                    ONLINE_THEMES_INSTALL: { path: ['general', 'online_themes_install'], type: 'boolean' },
+                    ONLINE_IDEVICES_INSTALL: { path: ['general', 'online_idevices_install'], type: 'boolean' },
+                    APP_AUTH_METHODS: { path: ['general', 'app_auth_methods'], type: 'string' },
+                    VERSION_CONTROL: { path: ['general', 'version_control'], type: 'boolean' },
+                    DEFAULT_PROJECT_VISIBILITY: { path: ['general', 'default_project_visibility'], type: 'string' },
+                    USER_RECENT_ODE_FILES_AMOUNT: { path: ['general', 'user_recent_ode_files_amount'], type: 'number' },
+                    COLLABORATIVE_BLOCK_LEVEL: { path: ['general', 'collaborative_block_level'], type: 'string' },
+                    USER_STORAGE_MAX_DISK_SPACE: { path: ['storage', 'user_storage_max_disk_space'], type: 'number' },
+                    DEFAULT_QUOTA: { path: ['storage', 'default_quota'], type: 'number' },
+                    COUNT_USER_AUTOSAVE_SPACE_ODE_FILES: {
+                        path: ['storage', 'count_user_autosave_space_ode_files'],
+                        type: 'boolean',
+                    },
+                    FILE_UPLOAD_MAX_SIZE: { path: ['storage', 'file_upload_max_size'], type: 'number' },
+                    PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL: {
+                        path: ['autosave', 'permanent_save_autosave_time_interval'],
+                        type: 'number',
+                    },
+                    PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES: {
+                        path: ['autosave', 'permanent_save_autosave_max_number_of_files'],
+                        type: 'number',
+                    },
+                    AUTOSAVE_ODE_FILES_FUNCTION: {
+                        path: ['autosave', 'autosave_ode_files_function'],
+                        type: 'boolean',
+                    },
+                    CAS_URL: { path: ['cas', 'url'], type: 'string' },
+                    CAS_VALIDATE_PATH: { path: ['cas', 'validate_path'], type: 'string' },
+                    CAS_LOGIN_PATH: { path: ['cas', 'login_path'], type: 'string' },
+                    CAS_LOGOUT_PATH: { path: ['cas', 'logout_path'], type: 'string' },
+                    OIDC_ISSUER: { path: ['oidc', 'issuer'], type: 'string' },
+                    OIDC_AUTHORIZATION_ENDPOINT: { path: ['oidc', 'authorization_endpoint'], type: 'string' },
+                    OIDC_TOKEN_ENDPOINT: { path: ['oidc', 'token_endpoint'], type: 'string' },
+                    OIDC_USERINFO_ENDPOINT: { path: ['oidc', 'userinfo_endpoint'], type: 'string' },
+                    OIDC_SCOPE: { path: ['oidc', 'scope'], type: 'string' },
+                    OIDC_CLIENT_ID: { path: ['oidc', 'client_id'], type: 'string' },
+                    OIDC_CLIENT_SECRET: { path: ['oidc', 'client_secret'], type: 'string' },
+                    GOOGLE_CLIENT_ID: { path: ['storage_integrations', 'google_client_id'], type: 'string' },
+                    GOOGLE_CLIENT_SECRET: { path: ['storage_integrations', 'google_client_secret'], type: 'string' },
+                    DROPBOX_CLIENT_ID: { path: ['storage_integrations', 'dropbox_client_id'], type: 'string' },
+                    DROPBOX_CLIENT_SECRET: { path: ['storage_integrations', 'dropbox_client_secret'], type: 'string' },
+                    OPENEQUELLA_CLIENT_ID: { path: ['storage_integrations', 'openequella_client_id'], type: 'string' },
+                    OPENEQUELLA_CLIENT_SECRET: {
+                        path: ['storage_integrations', 'openequella_client_secret'],
+                        type: 'string',
+                    },
+                };
+
+                try {
+                    const storedSettings = await getAllSettingsDefault(db as unknown as AppSettingsDb);
+                    for (const setting of storedSettings) {
+                        const mapping = adminSettingsMap[setting.key];
+                        if (!mapping) continue;
+
+                        let parsedValue: string | number | boolean = setting.value;
+                        if (mapping.type === 'boolean') {
+                            parsedValue = parseBoolean(setting.value, false);
+                        } else if (mapping.type === 'number') {
+                            parsedValue = parseNumber(setting.value, 0);
+                        } else if (mapping.type === 'json') {
+                            try {
+                                parsedValue = JSON.parse(setting.value);
+                            } catch {
+                                parsedValue = setting.value;
+                            }
+                        }
+
+                        let target: Record<string, unknown> = adminSettings as Record<string, unknown>;
+                        for (let i = 0; i < mapping.path.length - 1; i++) {
+                            target = target[mapping.path[i]] as Record<string, unknown>;
+                        }
+                        target[mapping.path[mapping.path.length - 1]] = parsedValue;
+                    }
+                } catch (error) {
+                    console.warn('[Admin] Failed to load stored settings:', error);
+                }
+                defaultQuota = parseNumber(adminSettings.storage.default_quota, defaultQuota);
+
+                const viewModel = {
+                    version: getAppVersion(),
+                    app_version: getAppVersion(),
+                    user,
+                    locale,
+                    t,
+                    basePath: getBasePath(),
+                    defaultQuota,
+                    adminSettings,
+                };
+
+                try {
+                    const html = renderTemplate('admin/index', viewModel);
+                    return new Response(html, {
+                        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                    });
+                } catch (error: unknown) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    // Fallback HTML if template fails
+                    const fallbackHtml = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>eXeLearning Admin</title>
+  </head>
+  <body>
+    <div id="root">eXeLearning Admin - Template error: ${errorMessage}</div>
   </body>
 </html>`;
                     return new Response(fallbackHtml, {

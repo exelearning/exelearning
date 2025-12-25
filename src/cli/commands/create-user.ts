@@ -19,6 +19,7 @@ import { success, error, colors, EXIT_CODES } from '../utils/output';
 import { findUserByEmail, createUser } from '../../db/queries/users';
 import { db } from '../../db/client';
 import { stringifyRoles } from '../../db/types';
+import { getSettingNumber } from '../../services/app-settings';
 import type { Kysely } from 'kysely';
 import type { Database } from '../../db/types';
 
@@ -81,7 +82,12 @@ export async function execute(
     const noFail = getBoolean(flags, 'no-fail', false);
     const rolesStr = getString(flags, 'roles', 'ROLE_USER');
     const roles = rolesStr!.split(',').map(r => r.trim().toUpperCase());
-    const quotaMb = getNumber(flags, 'quota', 4096);
+    const defaultQuotaMb = await getSettingNumber(
+        database,
+        'DEFAULT_QUOTA',
+        parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+    );
+    const quotaMb = getNumber(flags, 'quota', defaultQuotaMb);
 
     // Check if user already exists
     const existing = await queries.findUserByEmail(database, email);

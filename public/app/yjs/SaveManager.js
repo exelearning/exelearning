@@ -165,6 +165,81 @@ class SaveManager {
   }
 
   /**
+   * Estimate total bytes for pending assets
+   * @param {Array} assets
+   * @returns {number}
+   */
+  estimatePendingUploadBytes(assets) {
+    if (!Array.isArray(assets) || assets.length === 0) return 0;
+    return assets.reduce((sum, asset) => {
+      const size = asset?.blob?.size || asset?.size || 0;
+      return sum + size;
+    }, 0);
+  }
+
+  /**
+   * Fetch user storage info (used bytes + quota)
+   * @returns {Promise<{quota_mb: number | null, used_bytes: number} | null>}
+   */
+  async fetchUserStorageInfo() {
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (this.token) {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
+
+      const response = await fetch(`${this.apiUrl}/user/storage`, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`Storage info request failed: ${response.status} ${errorText}`);
+      }
+
+      const result = await response.json();
+      return result?.data || null;
+    } catch (error) {
+      console.warn('[SaveManager] Unable to check storage quota:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if pending uploads exceed user quota
+   * @param {Array} pendingAssets
+   * @returns {Promise<{allowed: boolean, message?: string}>}
+   */
+  async checkQuotaBeforeSave(pendingAssets) {
+    const estimatedBytes = this.estimatePendingUploadBytes(pendingAssets);
+    if (!estimatedBytes) {
+      return { allowed: true };
+    }
+
+    const storage = await this.fetchUserStorageInfo();
+    if (!storage || storage.quota_mb === null || storage.quota_mb === undefined) {
+      return { allowed: true };
+    }
+
+    const quotaBytes = storage.quota_mb * 1024 * 1024;
+    const usedBytes = storage.used_bytes || 0;
+    const projectedBytes = usedBytes + estimatedBytes;
+
+    if (projectedBytes <= quotaBytes) {
+      return { allowed: true };
+    }
+
+    return {
+      allowed: false,
+      message:
+        'No se puede guardar el proyecto en el servidor porque se ha excedido la cuota. ' +
+        'Puedes descargar el proyecto en local.',
+    };
+  }
+
+  /**
    * Save the project to the server
    * @param {Object} options - Save options
    * @param {boolean} options.showProgress - Show progress modal (default: true)
@@ -193,9 +268,31 @@ class SaveManager {
     try {
       // Get asset manager
       const assetManager = this.bridge.assetManager;
+      let pendingAssets = null;
 
       if (!projectId || !documentManager) {
         throw new Error('Project not initialized');
+      }
+
+      if (assetManager && assetManager.projectId) {
+        try {
+          pendingAssets = await assetManager.getPendingAssets();
+        } catch (assetError) {
+          console.error('[SaveManager] Failed to load pending assets:', assetError);
+        }
+      }
+
+      if (pendingAssets && pendingAssets.length > 0) {
+        const quotaCheck = await this.checkQuotaBeforeSave(pendingAssets);
+        if (!quotaCheck.allowed) {
+          if (eXeLearning?.app?.modals?.alert) {
+            eXeLearning.app.modals.alert.show({
+              title: 'Cuota excedida',
+              body: quotaCheck.message,
+            });
+          }
+          throw new Error(quotaCheck.message);
+        }
       }
 
       // Step 1: Save Yjs document state (0-30%)
@@ -214,9 +311,11 @@ class SaveManager {
       // Step 2: Upload pending assets (30-90%)
       if (assetManager && assetManager.projectId) {
         try {
-          const pendingAssets = await assetManager.getPendingAssets();
+          if (!pendingAssets) {
+            pendingAssets = await assetManager.getPendingAssets();
+          }
 
-          if (pendingAssets.length > 0) {
+          if (pendingAssets && pendingAssets.length > 0) {
             Logger.log(`[SaveManager] Step 2: Uploading ${pendingAssets.length} assets...`);
             await this.uploadAssets(projectId, assetManager, pendingAssets, toast);
           } else {

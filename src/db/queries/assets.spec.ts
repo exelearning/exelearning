@@ -15,6 +15,7 @@ import {
     findAssetsByHashes,
     findAllAssetsForProject,
     getProjectStorageSize,
+    getUserStorageUsage,
     createAsset,
     createAssets,
     updateAsset,
@@ -23,6 +24,8 @@ import {
     deleteAllAssetsForProject,
     bulkUpdateClientIds,
 } from './assets';
+import { createUser } from './users';
+import { createProject } from './projects';
 
 describe('Asset Queries', () => {
     let db: Kysely<Database>;
@@ -361,6 +364,94 @@ describe('Asset Queries', () => {
         it('should return 0 for project with no assets', async () => {
             const size = await getProjectStorageSize(db, testProjectId);
             expect(size).toBe(0);
+        });
+    });
+
+    describe('getUserStorageUsage', () => {
+        it('should return total size of all user projects assets', async () => {
+            // Create a second project for the same user
+            const project2 = await createProject(db, {
+                title: 'Project 2',
+                owner_id: testUserId,
+            });
+
+            // Add assets to first project
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                file_size: '1000',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.png',
+                storage_path: '/b',
+                file_size: '2000',
+            });
+
+            // Add assets to second project
+            await createAsset(db, {
+                project_id: project2.id,
+                filename: 'c.png',
+                storage_path: '/c',
+                file_size: '3000',
+            });
+
+            const totalSize = await getUserStorageUsage(db, testUserId);
+
+            expect(totalSize).toBe(6000); // 1000 + 2000 + 3000
+        });
+
+        it('should return 0 for user with no projects', async () => {
+            // Create a user with no projects
+            const newUser = await createUser(db, {
+                email: 'noassets@test.com',
+                user_id: 'noassets',
+                password: 'test',
+            });
+
+            const size = await getUserStorageUsage(db, newUser.id);
+            expect(size).toBe(0);
+        });
+
+        it('should return 0 for user with projects but no assets', async () => {
+            const size = await getUserStorageUsage(db, testUserId);
+            expect(size).toBe(0);
+        });
+
+        it('should only count assets from user owned projects', async () => {
+            // Create another user with a project
+            const otherUser = await createUser(db, {
+                email: 'other@test.com',
+                user_id: 'other',
+                password: 'test',
+            });
+            const otherProject = await createProject(db, {
+                title: 'Other Project',
+                owner_id: otherUser.id,
+            });
+
+            // Add assets to test user's project
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'mine.png',
+                storage_path: '/mine',
+                file_size: '1000',
+            });
+
+            // Add assets to other user's project
+            await createAsset(db, {
+                project_id: otherProject.id,
+                filename: 'theirs.png',
+                storage_path: '/theirs',
+                file_size: '5000',
+            });
+
+            const testUserSize = await getUserStorageUsage(db, testUserId);
+            const otherUserSize = await getUserStorageUsage(db, otherUser.id);
+
+            expect(testUserSize).toBe(1000);
+            expect(otherUserSize).toBe(5000);
         });
     });
 

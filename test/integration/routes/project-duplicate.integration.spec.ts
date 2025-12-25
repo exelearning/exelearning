@@ -110,7 +110,6 @@ describe('Project Duplication - YJS Title Update', () => {
                         author: project.author || null,
                         license: project.license || null,
                         status: 'active',
-                        is_active: 1,
                         saved_once: 1,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),

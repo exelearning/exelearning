@@ -509,6 +509,10 @@ test-e2e: check-env ## Run Playwright E2E tests
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 	npx playwright test --ui
 
+.PHONY: test-e2e-firefox
+test-e2e-firefox: check-env ## Run Playwright E2E tests with Firefox
+	npx playwright test --project=firefox
+
 
 # =============================================================================
 # PACKAGING

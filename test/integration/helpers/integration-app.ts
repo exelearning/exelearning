@@ -13,6 +13,8 @@ import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type { Database, User, NewUser } from '../../../src/db/types';
 import * as migration001 from '../../../src/db/migrations/001_initial';
+import * as migration002 from '../../../src/db/migrations/002_app_settings';
+import * as migration003 from '../../../src/db/migrations/003_project_status';
 
 // ============================================================================
 // TEST DATABASE
@@ -28,8 +30,10 @@ export async function createTestDb(): Promise<Kysely<Database>> {
         }),
     });
 
-    // Run migrations
+    // Run all migrations
     await migration001.up(db);
+    await migration002.up(db);
+    await migration003.up(db);
 
     return db;
 }
@@ -358,7 +362,6 @@ export async function createTestProject(
             license: null,
             last_accessed_at: null,
             saved_once: 0,
-            is_active: 1,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         })

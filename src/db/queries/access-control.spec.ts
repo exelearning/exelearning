@@ -134,7 +134,6 @@ describe('WebSocket Access Control', () => {
                 saved_once: 1,
                 status: 'active',
                 visibility: 'private',
-                is_active: 1,
                 created_at: timestamp,
                 updated_at: timestamp,
             })
@@ -151,7 +150,6 @@ describe('WebSocket Access Control', () => {
                 saved_once: 1,
                 status: 'active',
                 visibility: 'public',
-                is_active: 1,
                 created_at: timestamp,
                 updated_at: timestamp,
             })
@@ -213,7 +211,6 @@ describe('WebSocket Access Control', () => {
                 saved_once: 1,
                 status: 'active',
                 visibility: 'private',
-                is_active: 1,
                 created_at: now(),
                 updated_at: now(),
             })
