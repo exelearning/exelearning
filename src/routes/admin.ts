@@ -300,6 +300,29 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                             return { error: 'Bad Request', message: `Unknown setting: ${setting.key}` };
                         }
 
+                        if (setting.key === 'APP_AUTH_METHODS') {
+                            const methods = setting.value
+                                .split(',')
+                                .map(m => m.trim())
+                                .filter(Boolean);
+                            const allowedMethods = new Set(['password', 'cas', 'openid', 'guest']);
+                            const invalid = methods.filter(method => !allowedMethods.has(method));
+                            if (methods.length === 0) {
+                                set.status = 400;
+                                return {
+                                    error: 'Bad Request',
+                                    message: 'APP_AUTH_METHODS must include at least one method',
+                                };
+                            }
+                            if (invalid.length > 0) {
+                                set.status = 400;
+                                return {
+                                    error: 'Bad Request',
+                                    message: `APP_AUTH_METHODS has invalid values: ${invalid.join(', ')}`,
+                                };
+                            }
+                        }
+
                         await queries.setSetting(
                             db as any,
                             setting.key,

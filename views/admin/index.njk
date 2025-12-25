@@ -1148,7 +1148,22 @@
                                 </div>
                                 <div class="admin-field">
                                     <label>APP_AUTH_METHODS</label>
-                                    <input class="admin-input" data-setting-key="APP_AUTH_METHODS" data-setting-type="string" value="{{ adminSettings.general.app_auth_methods }}">
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="password" {% if 'password' in adminSettings.general.app_auth_methods %}checked{% endif %}>
+                                        <span>password</span>
+                                    </div>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="cas" {% if 'cas' in adminSettings.general.app_auth_methods %}checked{% endif %}>
+                                        <span>cas</span>
+                                    </div>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="openid" {% if 'openid' in adminSettings.general.app_auth_methods %}checked{% endif %}>
+                                        <span>openid</span>
+                                    </div>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="guest" {% if 'guest' in adminSettings.general.app_auth_methods %}checked{% endif %}>
+                                        <span>guest</span>
+                                    </div>
                                     <small>Metodos de autenticacion habilitados.</small>
                                 </div>
                                 <div class="admin-field">
@@ -1168,7 +1183,10 @@
                                 </div>
                                 <div class="admin-field">
                                     <label>COLLABORATIVE_BLOCK_LEVEL</label>
-                                    <input class="admin-input" data-setting-key="COLLABORATIVE_BLOCK_LEVEL" data-setting-type="string" value="{{ adminSettings.general.collaborative_block_level }}">
+                                    <select class="admin-input" data-setting-key="COLLABORATIVE_BLOCK_LEVEL" data-setting-type="string">
+                                        <option value="idevice" {% if adminSettings.general.collaborative_block_level == 'idevice' %}selected{% endif %}>idevice</option>
+                                        <option value="page" {% if adminSettings.general.collaborative_block_level == 'page' %}selected{% endif %}>page</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -1516,7 +1534,8 @@
 
                     if (!res.ok) {
                         const errorData = await res.json().catch(() => ({}));
-                        throw new Error(errorData.message || 'Failed to save settings');
+                        const detail = errorData.message || errorData.error || 'Failed to save settings';
+                        throw new Error(detail);
                     }
 
                     if (settingsSaveStatus) {
@@ -1526,7 +1545,7 @@
                 } catch (err) {
                     console.error('Failed to save settings:', err);
                     if (settingsSaveStatus) {
-                        settingsSaveStatus.textContent = 'Error al guardar';
+                        settingsSaveStatus.textContent = err?.message || 'Error al guardar';
                         settingsSaveStatus.classList.add('error');
                     }
                 } finally {
@@ -1537,18 +1556,37 @@
 
         function collectAdminSettings() {
             const inputs = Array.from(document.querySelectorAll('[data-setting-key]'));
-            return inputs.map(input => {
+            const grouped = new Map();
+
+            inputs.forEach(input => {
                 const key = input.dataset.settingKey;
                 const type = input.dataset.settingType || 'string';
-                let value = '';
+                if (!key) return;
 
+                if (type === 'csv') {
+                    if (!grouped.has(key)) {
+                        grouped.set(key, { key, type: 'string', options: [] });
+                    }
+                    if (input.checked) {
+                        grouped.get(key).options.push(input.dataset.settingOption);
+                    }
+                    return;
+                }
+
+                let value = '';
                 if (type === 'boolean') {
                     value = input.checked ? 'true' : 'false';
                 } else {
                     value = input.value ?? '';
                 }
+                grouped.set(key, { key, value: String(value), type });
+            });
 
-                return { key, value: String(value), type };
+            return Array.from(grouped.values()).map(entry => {
+                if (entry.options) {
+                    return { key: entry.key, value: entry.options.join(','), type: 'string' };
+                }
+                return entry;
             });
         }
 
