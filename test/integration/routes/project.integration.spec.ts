@@ -145,7 +145,6 @@ describe('Project Routes Integration', () => {
                         owner_id: currentUser.id,
                         status: 'active',
                         visibility: 'private',
-                        is_active: 1,
                         saved_once: 0,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
@@ -181,7 +180,7 @@ describe('Project Routes Integration', () => {
                     .selectFrom('projects')
                     .selectAll()
                     .where('owner_id', '=', currentUser.id)
-                    .where('is_active', '=', 1)
+                    .where('status', '=', 'active')
                     .where('saved_once', '=', 1)
                     .orderBy('updated_at', 'desc')
                     .execute();
@@ -368,7 +367,6 @@ describe('Project Routes Integration', () => {
                     owner_id: testUser.id,
                     status: 'active',
                     visibility: 'private',
-                    is_active: 1,
                     saved_once: 1,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),

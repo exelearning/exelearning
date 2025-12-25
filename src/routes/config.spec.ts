@@ -2,13 +2,19 @@
  * Configuration Routes Tests
  * Tests for configuration and translation endpoints
  */
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { configRoutes } from './config';
 import { db } from '../db/client';
 import { getSetting, setSetting } from '../db/queries/admin';
+import { migrateToLatest } from '../db/migrations';
 
 describe('Config Routes', () => {
     const app = configRoutes;
+
+    beforeAll(async () => {
+        // Ensure migrations are applied for in-memory test database
+        await migrateToLatest(db);
+    });
 
     describe('GET /api/config/upload-limits', () => {
         it('should return upload limits configuration', async () => {

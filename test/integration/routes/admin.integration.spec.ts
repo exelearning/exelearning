@@ -23,7 +23,12 @@ import {
     createUserAsAdmin,
     updateUserQuota,
     getSystemStats,
+    getAllSettings,
+    setSetting,
+    findProjectsPaginated,
 } from '../../../src/db/queries/admin';
+import { findProjectById, updateProject, hardDeleteProject } from '../../../src/db/queries/projects';
+import { getUserStorageUsage } from '../../../src/db/queries/assets';
 
 const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
 
@@ -60,6 +65,13 @@ describe('Admin Routes Integration', () => {
                 updateUserQuota: (db, id, quota) => updateUserQuota(db, id, quota),
                 deleteUser: (db, id) => deleteUser(db, id),
                 getSystemStats: db => getSystemStats(db),
+                getUserStorageUsage: (db, userId) => getUserStorageUsage(db, userId),
+                getAllSettings: db => getAllSettings(db as any),
+                setSetting: (db, key, value, type, updatedBy) => setSetting(db as any, key, value, type, updatedBy),
+                findProjectsPaginated: (db, opts) => findProjectsPaginated(db, opts),
+                findProjectById: (db, id) => findProjectById(db, id),
+                updateProject: (db, id, data) => updateProject(db, id, data),
+                hardDeleteProject: (db, id) => hardDeleteProject(db, id),
             },
         });
 

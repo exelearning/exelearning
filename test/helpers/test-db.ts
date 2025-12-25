@@ -98,7 +98,6 @@ export async function seedTestProject(
             status: 'active',
             visibility: 'private',
             saved_once: 0,
-            is_active: 1,
             created_at: now,
             updated_at: now,
         })

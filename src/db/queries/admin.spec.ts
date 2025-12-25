@@ -8,6 +8,7 @@ import type { Kysely } from 'kysely';
 import type { Database } from '../types';
 import {
     findUsersPaginated,
+    findProjectsPaginated,
     countAdmins,
     updateUserStatus,
     createUserAsAdmin,
@@ -149,6 +150,224 @@ describe('Admin Queries', () => {
 
             expect(result.users).toHaveLength(1);
             expect(result.total).toBe(2);
+        });
+    });
+
+    // ============================================================================
+    // findProjectsPaginated TESTS
+    // ============================================================================
+
+    describe('findProjectsPaginated', () => {
+        it('should return empty results when no projects', async () => {
+            const result = await findProjectsPaginated(db);
+
+            expect(result.projects).toHaveLength(0);
+            expect(result.total).toBe(0);
+        });
+
+        it('should return all projects with defaults', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Project 1', uuid: 'p1' });
+            await seedTestProject(db, userId, { title: 'Project 2', uuid: 'p2' });
+
+            const result = await findProjectsPaginated(db);
+
+            expect(result.projects).toHaveLength(2);
+            expect(result.total).toBe(2);
+        });
+
+        it('should include owner info in results', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner_user' });
+            await seedTestProject(db, userId, { title: 'My Project', uuid: 'proj-owner' });
+
+            const result = await findProjectsPaginated(db);
+
+            expect(result.projects[0].owner_email).toBe('owner@test.com');
+            expect(result.projects[0].owner_user_id).toBe('owner_user');
+        });
+
+        it('should paginate results with limit', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'P1', uuid: 'proj-pg-1' });
+            await seedTestProject(db, userId, { title: 'P2', uuid: 'proj-pg-2' });
+            await seedTestProject(db, userId, { title: 'P3', uuid: 'proj-pg-3' });
+
+            const result = await findProjectsPaginated(db, { limit: 2, offset: 0 });
+
+            expect(result.projects).toHaveLength(2);
+            expect(result.total).toBe(3);
+        });
+
+        it('should paginate results with offset', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'P1', uuid: 'proj-off-1' });
+            await seedTestProject(db, userId, { title: 'P2', uuid: 'proj-off-2' });
+            await seedTestProject(db, userId, { title: 'P3', uuid: 'proj-off-3' });
+
+            const result = await findProjectsPaginated(db, { limit: 10, offset: 2 });
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.total).toBe(3);
+        });
+
+        it('should filter by owner email', async () => {
+            const user1 = await seedTestUser(db, { email: 'alice@test.com', user_id: 'alice' });
+            const user2 = await seedTestUser(db, { email: 'bob@test.com', user_id: 'bob' });
+            await seedTestProject(db, user1, { title: 'Alice Project', uuid: 'proj-alice' });
+            await seedTestProject(db, user2, { title: 'Bob Project', uuid: 'proj-bob' });
+
+            const result = await findProjectsPaginated(db, { owner: 'alice' });
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.projects[0].title).toBe('Alice Project');
+            expect(result.total).toBe(1);
+        });
+
+        it('should filter by owner user_id', async () => {
+            const user1 = await seedTestUser(db, { email: 'a@test.com', user_id: 'john_doe' });
+            const user2 = await seedTestUser(db, { email: 'b@test.com', user_id: 'jane_smith' });
+            await seedTestProject(db, user1, { title: 'John Project', uuid: 'proj-john' });
+            await seedTestProject(db, user2, { title: 'Jane Project', uuid: 'proj-jane' });
+
+            const result = await findProjectsPaginated(db, { owner: 'john' });
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.projects[0].title).toBe('John Project');
+        });
+
+        it('should filter by owner numeric id', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'My Project', uuid: 'proj-id' });
+
+            const result = await findProjectsPaginated(db, { owner: String(userId) });
+
+            expect(result.projects).toHaveLength(1);
+        });
+
+        it('should filter by title', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Alpha Project', uuid: 'proj-alpha' });
+            await seedTestProject(db, userId, { title: 'Beta Testing', uuid: 'proj-beta' });
+
+            const result = await findProjectsPaginated(db, { title: 'Alpha' });
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.projects[0].title).toBe('Alpha Project');
+            expect(result.total).toBe(1);
+        });
+
+        it('should filter by status', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Active Project', uuid: 'proj-active', status: 'active' });
+
+            const now = new Date().toISOString();
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'proj-archived',
+                    title: 'Archived Project',
+                    owner_id: userId,
+                    status: 'archived',
+                    visibility: 'private',
+                    saved_once: 0,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+
+            const result = await findProjectsPaginated(db, { status: 'archived' });
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.projects[0].title).toBe('Archived Project');
+            expect(result.total).toBe(1);
+        });
+
+        it('should filter by visibility', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Private Project', uuid: 'proj-priv', visibility: 'private' });
+
+            const now = new Date().toISOString();
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'proj-pub',
+                    title: 'Public Project',
+                    owner_id: userId,
+                    status: 'active',
+                    visibility: 'public',
+                    saved_once: 0,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+
+            const result = await findProjectsPaginated(db, { visibility: 'public' });
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.projects[0].title).toBe('Public Project');
+            expect(result.total).toBe(1);
+        });
+
+        it('should sort by title ascending', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Zebra', uuid: 'proj-z' });
+            await seedTestProject(db, userId, { title: 'Alpha', uuid: 'proj-a' });
+
+            const result = await findProjectsPaginated(db, { sortBy: 'title', sortOrder: 'asc' });
+
+            expect(result.projects[0].title).toBe('Alpha');
+            expect(result.projects[1].title).toBe('Zebra');
+        });
+
+        it('should sort by title descending', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Alpha', uuid: 'proj-a2' });
+            await seedTestProject(db, userId, { title: 'Zebra', uuid: 'proj-z2' });
+
+            const result = await findProjectsPaginated(db, { sortBy: 'title', sortOrder: 'desc' });
+
+            expect(result.projects[0].title).toBe('Zebra');
+            expect(result.projects[1].title).toBe('Alpha');
+        });
+
+        it('should sort by created_at', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Older', uuid: 'proj-old' });
+            await new Promise(r => setTimeout(r, 10));
+            await seedTestProject(db, userId, { title: 'Newer', uuid: 'proj-new' });
+
+            const result = await findProjectsPaginated(db, { sortBy: 'created_at', sortOrder: 'desc' });
+
+            expect(result.projects[0].title).toBe('Newer');
+        });
+
+        it('should sort by id (default)', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'First', uuid: 'proj-first' });
+            await seedTestProject(db, userId, { title: 'Second', uuid: 'proj-second' });
+
+            const result = await findProjectsPaginated(db, { sortBy: 'id', sortOrder: 'asc' });
+
+            expect(result.projects[0].title).toBe('First');
+            expect(result.projects[1].title).toBe('Second');
+        });
+
+        it('should combine multiple filters', async () => {
+            const user1 = await seedTestUser(db, { email: 'alice@test.com', user_id: 'alice' });
+            const user2 = await seedTestUser(db, { email: 'bob@test.com', user_id: 'bob' });
+            await seedTestProject(db, user1, { title: 'Alice Active', uuid: 'proj-aa', status: 'active' });
+            await seedTestProject(db, user1, { title: 'Alice Test', uuid: 'proj-at', status: 'active' });
+            await seedTestProject(db, user2, { title: 'Bob Active', uuid: 'proj-ba', status: 'active' });
+
+            const result = await findProjectsPaginated(db, {
+                owner: 'alice',
+                title: 'Test',
+                status: 'active',
+            });
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.projects[0].title).toBe('Alice Test');
+            expect(result.total).toBe(1);
         });
     });
 
