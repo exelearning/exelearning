@@ -197,7 +197,8 @@ export async function execute(
         }
 
         // Write output
-        const outputPath = output.endsWith('.zip') ? output : `${output}${exporter.getFileExtension()}`;
+        const extension = exporter.getFileExtension();
+        const outputPath = output.endsWith('.zip') || output.endsWith(extension) ? output : `${output}${extension}`;
 
         // Ensure output directory exists
         const outputDir = path.dirname(outputPath);
