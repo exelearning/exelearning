@@ -471,9 +471,10 @@ class AssetManager {
     // Extract ID from asset://uuid or asset://uuid/filename
     const assetId = this.extractAssetId(assetUrl);
 
-    // Check cache first
-    if (this.blobURLCache.has(assetId)) {
-      return this.blobURLCache.get(assetId);
+    // Check cache first (using synced method to ensure reverseBlobCache consistency)
+    const cachedBlobUrl = this.getBlobURLSynced(assetId);
+    if (cachedBlobUrl) {
+      return cachedBlobUrl;
     }
 
     // Load from IndexedDB
@@ -501,7 +502,23 @@ class AssetManager {
    */
   resolveAssetURLSync(assetUrl) {
     const assetId = this.extractAssetId(assetUrl);
-    return this.blobURLCache.get(assetId) || null;
+    return this.getBlobURLSynced(assetId) || null;
+  }
+
+  /**
+   * Get blob URL from cache, ensuring reverseBlobCache is synced.
+   * This is critical for convertBlobUrlsToAssetUrls to work correctly.
+   * @param {string} assetId - Asset ID
+   * @returns {string|undefined} Blob URL or undefined
+   */
+  getBlobURLSynced(assetId) {
+    const blobUrl = this.blobURLCache.get(assetId);
+    if (blobUrl && !this.reverseBlobCache.has(blobUrl)) {
+      // Sync reverseBlobCache - ensures convertBlobUrlsToAssetUrls can find it
+      this.reverseBlobCache.set(blobUrl, assetId);
+      Logger.log(`[AssetManager] Synced reverseBlobCache for ${assetId.substring(0, 8)}...`);
+    }
+    return blobUrl;
   }
 
   /**
@@ -520,8 +537,10 @@ class AssetManager {
     // Find all asset:// references (supports both asset://uuid and asset://uuid/filename)
     // Also matches corrupted URLs like asset://asset//uuid/filename
     // NOTE: Filename part can contain spaces, so we match until quote character
-    // Note: [^"'\\] excludes quotes AND backslash to avoid matching JSON escape sequences
-    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(\/[^"'\\]+)?/gi;
+    // Note: [^"'\\&] excludes quotes, backslash, AND ampersand to avoid matching:
+    //   - JSON escape sequences (backslash)
+    //   - HTML entities like &quot; in data-idevice-json-data attributes (ampersand)
+    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(\/[^"'\\&]+)?/gi;
     const matches = [...html.matchAll(assetRegex)];
 
     if (matches.length === 0) return html;
@@ -636,7 +655,8 @@ class AssetManager {
     // Phase 1: Handle <img> tags with asset:// src specially (to add correct tracking per asset)
     // This regex captures: beforeSrc, quote, full assetUrl, assetId, afterSrc
     // Also handles corrupted URLs like asset://asset//uuid/filename
-    const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\/[^"']+)?)\2([^>]*>)/gi;
+    // Note: [^"'&] excludes ampersand for HTML entities in JSON data attributes
+    const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\/[^"'&]+)?)\2([^>]*>)/gi;
 
     resolvedHTML = resolvedHTML.replace(imgAssetRegex, (fullMatch, beforeSrc, quote, assetUrl, assetId, afterSrc) => {
       const blobURL = this.blobURLCache.get(assetId);
@@ -692,18 +712,65 @@ class AssetManager {
   /**
    * Convert blob:// URLs back to asset:// references
    * Called before saving to Y.Doc
+   *
+   * Uses data-asset-id attribute as the primary source for asset ID.
+   * Falls back to reverseBlobCache if data-asset-id is not present.
+   *
    * @param {string} html
    * @returns {string}
    */
   convertBlobURLsToAssetRefs(html) {
-    if (!html) return html;
+    if (!html || typeof html !== 'string') return html;
 
     let convertedHTML = html;
+    let conversions = 0;
 
+    // Strategy 1: Find img/video/audio tags with blob: src and data-asset-id attribute
+    // This is the RELIABLE way - data-asset-id is set when inserting from MediaLibrary
+    // Use \s+ after tag name and non-greedy ([^>]*?) to properly match attributes before src
+    const tagRegex = /<(img|video|audio|source)\s+([^>]*?)src=(["'])(blob:[^"']+)\3([^>]*)>/gi;
+
+    // Use arrow function to preserve 'this' context for reverseBlobCache access
+    const replaceCallback = (match, tagName, before, quote, blobUrl, after) => {
+      // Look for data-asset-id in the attributes
+      const fullAttrs = before + after;
+      const assetIdMatch = fullAttrs.match(/data-asset-id=(["'])([^"']+)\1/i);
+
+      if (assetIdMatch) {
+        const assetId = assetIdMatch[2];
+        // Use 'file' as default filename - the actual filename will be resolved on load
+        conversions++;
+        Logger.log(`[AssetManager] Converted blob→asset via data-asset-id: ${assetId.substring(0, 8)}...`);
+        return `<${tagName}${before} src=${quote}asset://${assetId}${quote}${after}>`;
+      }
+
+      // Strategy 2: Fall back to reverseBlobCache lookup
+      const assetId = this.reverseBlobCache.get(blobUrl);
+      if (assetId) {
+        conversions++;
+        Logger.log(`[AssetManager] Converted blob→asset via cache: ${assetId.substring(0, 8)}...`);
+        return match.replace(blobUrl, `asset://${assetId}`);
+      }
+
+      // Could not convert - log warning
+      console.warn(`[AssetManager] FAILED to convert blob URL (no data-asset-id, not in cache): ${blobUrl.substring(0, 50)}...`);
+      return match;
+    };
+
+    convertedHTML = convertedHTML.replace(tagRegex, replaceCallback);
+
+    // Strategy 3: Handle any remaining blob URLs not in img/video/audio tags (e.g., in CSS or other attributes)
+    // Use reverseBlobCache for these
     for (const [blobURL, assetId] of this.reverseBlobCache.entries()) {
-      // Escape special regex characters in blob URL
-      const escapedBlobURL = blobURL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      convertedHTML = convertedHTML.replace(new RegExp(escapedBlobURL, 'g'), `asset://${assetId}`);
+      if (convertedHTML.includes(blobURL)) {
+        const escapedBlobURL = blobURL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        convertedHTML = convertedHTML.replace(new RegExp(escapedBlobURL, 'g'), `asset://${assetId}`);
+        conversions++;
+      }
+    }
+
+    if (conversions > 0) {
+      Logger.log(`[AssetManager] convertBlobURLsToAssetRefs: ${conversions} conversion(s) made`);
     }
 
     return convertedHTML;
@@ -2317,7 +2384,7 @@ window.resolveAssetUrls = function(html, options = {}) {
       // Get API config
       const config = window.eXeLearning?.config || {};
       const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
-      const token = window.eXeLearning?.symfony?.token || '';
+      const token = window.eXeLearning?.config?.token || '';
       const projectUuid = bridge?.projectId || '';
 
       if (token && projectUuid) {

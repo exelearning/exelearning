@@ -156,7 +156,7 @@ function createMockQueries(): QueriesDeps {
             // Return projects where user is a collaborator (not owner)
             return Array.from(mockProjects.values()).filter(p => {
                 const collabIds = mockCollaborators.get(p.id);
-                return collabIds && collabIds.has(userId);
+                return collabIds?.has(userId);
             });
         },
         updateProjectVisibility: async (_db: any, id: number, visibility: string) => {
@@ -1896,25 +1896,6 @@ describe('Project Routes', () => {
     });
 
     describe('Clone/Duplicate Endpoints', () => {
-        it('should clone iDevice', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/idevice-management/idevices/duplicate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        odeSessionId: 'session-1',
-                        ideviceId: 'idevice-1',
-                        targetBlockId: 'block-1',
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.success).toBe(true);
-            expect(body.newIdeviceId).toBeDefined();
-        });
-
         it('should clone nav-structure (page)', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/nav-structure-management/nav-structures/duplicate', {
@@ -1933,46 +1914,9 @@ describe('Project Routes', () => {
             expect(body.success).toBe(true);
             expect(body.newNavStructureId).toBeDefined();
         });
-
-        it('should clone pag-structure (block)', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/pag-structure-management/pag-structures/duplicate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        odeSessionId: 'session-1',
-                        pagStructureId: 'block-1',
-                        targetPageId: 'page-1',
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.success).toBe(true);
-            expect(body.newPagStructureId).toBeDefined();
-        });
     });
 
     describe('Structure Save/Reorder Endpoints', () => {
-        it('should save nav-structure data', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/api/nav-structure-management/nav-structures/nav/structure/data/save', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        odeSessionId: 'session-1',
-                        navStructureId: 'page-1',
-                        properties: { title: 'New Title' },
-                    }),
-                }),
-            );
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.success).toBe(true);
-        });
-
         it('should reorder nav-structures', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/nav-structure-management/nav-structures/reorder/save', {
@@ -2168,6 +2112,120 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.success).toBe(true);
+        });
+
+        it('should return empty when no session id provided for current-users', async () => {
+            const res = await app.handle(new Request('http://localhost/api/odes/current-users'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.currentUsers).toEqual([]);
+        });
+
+        it('should get user recent projects when authenticated', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            // Create multiple projects with different timestamps
+            const now = new Date();
+            const project1 = {
+                id: 2001,
+                uuid: 'recent-project-1',
+                owner_id: 1,
+                title: 'Recent Project 1',
+                saved_once: 1,
+                created_at: now.toISOString(),
+                updated_at: new Date(now.getTime() - 1000).toISOString(), // 1 second ago
+            };
+            const project2 = {
+                id: 2002,
+                uuid: 'recent-project-2',
+                owner_id: 1,
+                title: 'Recent Project 2',
+                saved_once: 1,
+                created_at: now.toISOString(),
+                updated_at: new Date(now.getTime() - 2000).toISOString(), // 2 seconds ago
+            };
+            mockProjects.set(2001, project1);
+            mockProjects.set(2002, project2);
+            mockProjectsByUuid.set('recent-project-1', project1);
+            mockProjectsByUuid.set('recent-project-2', project2);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/user/recent', {
+                    headers: { 'Cookie': `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(Array.isArray(body)).toBe(true);
+            expect(body.length).toBeGreaterThan(0);
+            expect(body[0].odeId).toBeDefined();
+            expect(body[0].title).toBeDefined();
+        });
+
+        it('should return empty array for recent projects when not authenticated', async () => {
+            const res = await app.handle(new Request('http://localhost/api/projects/user/recent'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body).toEqual([]);
+        });
+
+        it('should include shared projects in user list', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 2, // User 2 is a collaborator
+                email: 'user2@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            // Create a project owned by user 1, shared with user 2
+            const sharedProject = {
+                id: 3001,
+                uuid: 'shared-project-uuid',
+                owner_id: 1,
+                title: 'Shared Project',
+                saved_once: 1,
+                visibility: 'shared',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(3001, sharedProject);
+            mockProjectsByUuid.set('shared-project-uuid', sharedProject);
+
+            // Add user 2 as collaborator
+            mockCollaborators.set(3001, new Set([2]));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/user/list', {
+                    headers: { 'Cookie': `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            // Should include the shared project
+            const sharedProjects = body.odeFiles.odeFilesSync.filter((p: { role: string }) => p.role === 'editor');
+            expect(sharedProjects.length).toBeGreaterThan(0);
         });
     });
 

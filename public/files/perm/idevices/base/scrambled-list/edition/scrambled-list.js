@@ -411,7 +411,7 @@ var $exeDevice = {
                 </li>`;
         }
         $('#sortableListFormList ol').append(inputList);
-        $('.exe-form-tabs li:first-child a').trigger('click');
+        //$('.exe-form-tabs li:first-child a').trigger('click');
     },
 
     /**

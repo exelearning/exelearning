@@ -7,7 +7,7 @@ export default class ThemesManager {
     constructor(app) {
         this.app = app;
         this.list = new ThemeList(this);
-        this.symfonyURL = this.app.eXeLearning.symfony.basePath;
+        this.symfonyURL = this.app.eXeLearning.config.basePath;
         this.selected = null;
 
         // Yjs binding for theme sync

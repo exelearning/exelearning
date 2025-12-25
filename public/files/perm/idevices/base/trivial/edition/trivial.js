@@ -2284,7 +2284,7 @@ var $exeDevice = {
             $exeDevice.changeNumberTemas(game.numeroTemas);
             const instructions = game.instructionsExe || game.instructions;
             tinymce.editors[0].setContent(unescape(instructions));
-            $('.exe-form-tabs li:first-child a').click();
+            //$('.exe-form-tabs li:first-child a').click();
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
         }

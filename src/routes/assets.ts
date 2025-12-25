@@ -314,7 +314,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 }
 
                 const upload = chunkUploads.get(`${projectId}:${identifier}`);
-                if (upload && upload.uploadedChunks.has(chunkNumber)) {
+                if (upload?.uploadedChunks.has(chunkNumber)) {
                     // Chunk exists, skip upload
                     set.status = 200;
                     return { exists: true };

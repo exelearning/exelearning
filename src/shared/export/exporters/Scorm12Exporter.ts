@@ -15,16 +15,7 @@
  * - content/css/ (base CSS)
  */
 
-import type {
-    ExportDocument,
-    ExportPage,
-    ExportMetadata,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ExportOptions,
-    ExportResult,
-} from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { Scorm12ManifestGenerator } from '../generators/Scorm12Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
@@ -32,10 +23,6 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 export class Scorm12Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm12ManifestGenerator | null = null;
     protected lomGenerator: LomMetadataGenerator | null = null;
-
-    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
-        super(document, resources, assets, zip);
-    }
 
     /**
      * Get file suffix for SCORM 1.2 format
@@ -89,8 +76,9 @@ export class Scorm12Exporter extends Html5Exporter {
                 const isIndex = i === 0;
                 let html = this.generateScormPageHtml(page, pages, meta, isIndex);
 
-                // Pre-render LaTeX to SVG+MathML if hook is provided
-                if (options?.preRenderLatex) {
+                // Pre-render LaTeX ONLY if addMathJax is false
+                // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
+                if (!meta.addMathJax && options?.preRenderLatex) {
                     try {
                         const result = await options.preRenderLatex(html);
                         if (result.latexRendered) {

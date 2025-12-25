@@ -794,19 +794,41 @@ class YjsStructureBinding {
 
   /**
    * Clone a block Y.Map (internal helper)
+   * Creates a deep copy with new IDs, including all properties and components
    * @private
    */
   cloneBlockMap(sourceBlock) {
     const newBlockId = this.generateId('block');
     const newBlock = new this.Y.Map();
 
+    // Copy all properties from source block generically (like cloneBlockMapForMove)
+    sourceBlock.forEach((value, key) => {
+      if (key === 'components') {
+        // Handle components separately below
+        return;
+      } else if (key === 'id' || key === 'blockId') {
+        // Skip - we'll set new IDs
+        return;
+      } else if (key === 'createdAt') {
+        // Skip - we'll set new timestamp
+        return;
+      } else if (key === 'properties' && value && typeof value.forEach === 'function') {
+        // Clone Y.Map properties
+        const newProps = new this.Y.Map();
+        value.forEach((v, k) => newProps.set(k, v));
+        newBlock.set(key, newProps);
+      } else if (value !== null && value !== undefined) {
+        // Copy primitive values directly (including iconName, blockType, blockName, order, etc.)
+        newBlock.set(key, value);
+      }
+    });
+
+    // Set new IDs and timestamp
     newBlock.set('id', newBlockId);
     newBlock.set('blockId', newBlockId);
-    newBlock.set('blockName', sourceBlock.get('blockName'));
-    newBlock.set('order', sourceBlock.get('order'));
     newBlock.set('createdAt', new Date().toISOString());
 
-    // Clone components
+    // Clone components with full content
     const sourceComponents = sourceBlock.get('components');
     const newComponents = new this.Y.Array();
 
@@ -954,14 +976,20 @@ class YjsStructureBinding {
       newComp.set('properties', newProps);
     }
 
-    // Clone jsonProperties if exist
+    // Clone jsonProperties - handle both Y.Map and string storage
     const jsonProps = sourceComp.get('jsonProperties');
-    if (jsonProps && typeof jsonProps.forEach === 'function') {
-      const newJsonProps = new this.Y.Map();
-      jsonProps.forEach((value, key) => {
-        newJsonProps.set(key, value);
-      });
-      newComp.set('jsonProperties', newJsonProps);
+    if (jsonProps) {
+      if (typeof jsonProps.forEach === 'function') {
+        // It's a Y.Map, clone it
+        const newJsonProps = new this.Y.Map();
+        jsonProps.forEach((value, key) => {
+          newJsonProps.set(key, value);
+        });
+        newComp.set('jsonProperties', newJsonProps);
+      } else if (typeof jsonProps === 'string') {
+        // It's a string (most common case), just copy it
+        newComp.set('jsonProperties', jsonProps);
+      }
     }
 
     // Clone other simple properties
@@ -978,6 +1006,7 @@ class YjsStructureBinding {
 
   /**
    * Clone a component Y.Map (internal helper)
+   * Creates a deep copy with new IDs, including all content and properties
    * @private
    */
   cloneComponentMap(sourceComp) {
@@ -1007,7 +1036,40 @@ class YjsStructureBinding {
       newComp.set('htmlContent', newHtml);
     }
 
-    // Clone other properties
+    // Clone htmlView if exists (fallback content)
+    const htmlView = sourceComp.get('htmlView');
+    if (htmlView) {
+      newComp.set('htmlView', htmlView);
+    }
+
+    // Clone properties Y.Map if exists (visibility, teacherOnly, etc.)
+    const sourceProps = sourceComp.get('properties');
+    if (sourceProps && typeof sourceProps.forEach === 'function') {
+      const newProps = new this.Y.Map();
+      sourceProps.forEach((value, key) => {
+        newProps.set(key, value);
+      });
+      newComp.set('properties', newProps);
+    }
+
+    // Clone jsonProperties - handle both Y.Map and string storage
+    // CRITICAL for JSON-type iDevices like text, crosswords, MC, etc.
+    const jsonProps = sourceComp.get('jsonProperties');
+    if (jsonProps) {
+      if (typeof jsonProps.forEach === 'function') {
+        // It's a Y.Map, clone it
+        const newJsonProps = new this.Y.Map();
+        jsonProps.forEach((value, key) => {
+          newJsonProps.set(key, value);
+        });
+        newComp.set('jsonProperties', newJsonProps);
+      } else if (typeof jsonProps === 'string') {
+        // It's a string (most common case), just copy it
+        newComp.set('jsonProperties', jsonProps);
+      }
+    }
+
+    // Clone other simple properties
     const keysToClone = ['title', 'subtitle', 'instructions', 'feedback'];
     for (const key of keysToClone) {
       const value = sourceComp.get(key);
@@ -1043,9 +1105,10 @@ class YjsStructureBinding {
    * @param {string} pageId
    * @param {string} blockName
    * @param {string} existingBlockId - Optional existing block ID to use (for syncing with frontend)
+   * @param {number} order - Optional order position (defaults to end)
    * @returns {string} - The new block ID
    */
-  createBlock(pageId, blockName = 'Block', existingBlockId = null) {
+  createBlock(pageId, blockName = 'Block', existingBlockId = null, order = null) {
     const pageMap = this.getPageMap(pageId);
     if (!pageMap) return null;
 
@@ -1061,12 +1124,15 @@ class YjsStructureBinding {
         pageMap.set('blocks', blocks);
       }
 
+      // Determine target order/position
+      const targetOrder = (order !== undefined && order !== null) ? order : blocks.length;
+
       blockMap.set('id', blockId);
       blockMap.set('blockId', blockId);
       blockMap.set('blockName', blockName);
       blockMap.set('iconName', '');
       blockMap.set('blockType', 'default');
-      blockMap.set('order', blocks.length);
+      blockMap.set('order', targetOrder);
       blockMap.set('components', new this.Y.Array());
       blockMap.set('createdAt', new Date().toISOString());
 
@@ -1080,7 +1146,16 @@ class YjsStructureBinding {
       propsMap.set('cssClass', '');
       blockMap.set('properties', propsMap);
 
-      blocks.push([blockMap]);
+      // Insert at correct position and shift existing blocks' order values
+      const insertIndex = Math.min(Math.max(0, targetOrder), blocks.length);
+
+      for (let i = insertIndex; i < blocks.length; i++) {
+        const existingBlock = blocks.get(i);
+        const currentOrder = existingBlock.get('order') ?? i;
+        existingBlock.set('order', currentOrder + 1);
+      }
+
+      blocks.insert(insertIndex, [blockMap]);
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Created block: ${blockName} (${blockId}) in page ${pageId}`);
@@ -1440,10 +1515,15 @@ class YjsStructureBinding {
         blockMap.set('components', components);
       }
 
+      // Determine the target order/position
+      const targetOrder = (initialData.order !== undefined && initialData.order !== null)
+        ? initialData.order
+        : components.length;
+
       compMap.set('id', componentId);
       compMap.set('ideviceId', componentId);
       compMap.set('ideviceType', ideviceType);
-      compMap.set('order', components.length);
+      compMap.set('order', targetOrder);
       compMap.set('createdAt', new Date().toISOString());
 
       // Set lock info - creator starts with the lock
@@ -1451,8 +1531,9 @@ class YjsStructureBinding {
       compMap.set('lockUserName', userInfo.name || 'Unknown');
       compMap.set('lockUserColor', userInfo.color || '#999');
 
-      // Set initial data
+      // Set initial data (except 'order' which was already set)
       Object.entries(initialData).forEach(([key, value]) => {
+        if (key === 'order') return; // Already handled above
         if (typeof value === 'string') {
           // Use Y.Text for rich text content
           if (key === 'htmlContent' || key === 'content') {
@@ -1477,7 +1558,18 @@ class YjsStructureBinding {
         }
       });
 
-      components.push([compMap]);
+      // Insert at the correct position in Y.Array and update orders
+      const insertIndex = Math.min(Math.max(0, targetOrder), components.length);
+
+      // Shift order values of existing components that come after insert position
+      for (let i = insertIndex; i < components.length; i++) {
+        const existingComp = components.get(i);
+        const currentOrder = existingComp.get('order') ?? i;
+        existingComp.set('order', currentOrder + 1);
+      }
+
+      // Insert at the correct position
+      components.insert(insertIndex, [compMap]);
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Created component: ${ideviceType} (${componentId}) in block ${blockId}`);
@@ -1688,7 +1780,13 @@ class YjsStructureBinding {
           targetBlockMap.set('components', targetComponents);
         }
 
-        const finalOrder = newOrder !== null ? newOrder : targetComponents.length;
+        // Calculate max order to place at end (not array length, which may differ from orders)
+        let maxOrder = -1;
+        for (let i = 0; i < targetComponents.length; i++) {
+          const existingOrder = targetComponents.get(i).get('order') ?? 0;
+          if (existingOrder > maxOrder) maxOrder = existingOrder;
+        }
+        const finalOrder = newOrder !== null ? newOrder : maxOrder + 1;
         clonedComp.set('order', finalOrder);
         clonedComp.set('blockId', targetBlockId);
 
@@ -1780,10 +1878,17 @@ class YjsStructureBinding {
         const newBlockMap = new this.Y.Map();
         const newComponents = new this.Y.Array();
 
+        // Calculate max order to place at end (not array length, which may differ from orders)
+        let maxBlockOrder = -1;
+        for (let i = 0; i < targetBlocks.length; i++) {
+          const existingOrder = targetBlocks.get(i).get('order') ?? 0;
+          if (existingOrder > maxBlockOrder) maxBlockOrder = existingOrder;
+        }
+
         newBlockMap.set('id', newBlockId);
         newBlockMap.set('blockId', newBlockId);
         newBlockMap.set('blockName', blockName);
-        newBlockMap.set('order', targetBlocks.length);
+        newBlockMap.set('order', maxBlockOrder + 1);
         newBlockMap.set('createdAt', new Date().toISOString());
 
         // Update cloned component with new block reference
@@ -1877,7 +1982,13 @@ class YjsStructureBinding {
           targetPageMap.set('blocks', targetBlocks);
         }
 
-        const finalOrder = newOrder !== null ? newOrder : targetBlocks.length;
+        // Calculate max order to place at end (not array length, which may differ from orders)
+        let maxBlockOrder = -1;
+        for (let i = 0; i < targetBlocks.length; i++) {
+          const existingOrder = targetBlocks.get(i).get('order') ?? 0;
+          if (existingOrder > maxBlockOrder) maxBlockOrder = existingOrder;
+        }
+        const finalOrder = newOrder !== null ? newOrder : maxBlockOrder + 1;
         clonedBlock.set('order', finalOrder);
         clonedBlock.set('pageId', targetPageId);
 

@@ -595,7 +595,7 @@ var $eXeMathOperations = {
         }
 
         let html = $('#mthoMultimedia-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mthoMultimedia-' + instance

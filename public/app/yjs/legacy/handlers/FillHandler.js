@@ -1,12 +1,13 @@
 /**
  * FillHandler
  *
- * Handles legacy ClozeIdevice and ClozeActivityIdevice.
+ * Handles legacy ClozeIdevice, ClozeActivityIdevice, and ClozeLanguageIdevice.
  * Converts to modern 'form' iDevice with fill-in-blanks questions.
  *
  * Legacy XML structure:
  * - exe.engine.clozeidevice.ClozeIdevice
  * - exe.engine.clozeactivityidevice.ClozeActivityIdevice
+ * - exe.engine.clozelang.ClozeLanguageIdevice (FPD variant)
  *
  * Extracts:
  * - clozeText with gaps marked as {{answer}}
@@ -21,7 +22,10 @@ class FillHandler extends BaseLegacyHandler {
    */
   canHandle(className) {
     return className.includes('ClozeIdevice') ||
-           className.includes('ClozeActivityIdevice');
+           className.includes('ClozeActivityIdevice') ||
+           className.includes('ClozeLanguageIdevice') ||
+           className.includes('ClozeLangIdevice') ||
+           className.includes('ClozelangfpdIdevice');
   }
 
   /**
@@ -47,10 +51,29 @@ class FillHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Extract properties including questionsData
+   * Extract feedback content from legacy format
+   * Maps to eXeIdeviceTextAfter in modern form iDevice
+   */
+  extractFeedback(dict) {
+    if (!dict) return '';
+
+    // ClozeIdevice uses 'feedback' key (TextAreaField)
+    const feedbackField = this.findDictInstance(dict, 'feedback') ||
+                         this.findDictInstance(dict, 'feedbackTextArea');
+
+    if (feedbackField) {
+      return this.extractTextAreaFieldContent(feedbackField);
+    }
+
+    return '';
+  }
+
+  /**
+   * Extract properties including questionsData and eXeFormInstructions
    */
   extractProperties(dict) {
     const questionsData = this.extractClozeQuestions(dict);
+    const instructions = this.extractHtmlView(dict);
 
     // Extract settings
     const autoCapitalize = !this.findDictBoolValue(dict, 'autoCapitalize');
@@ -61,6 +84,11 @@ class FillHandler extends BaseLegacyHandler {
 
     if (questionsData.length > 0) {
       props.questionsData = questionsData;
+    }
+
+    // Add instructions if present
+    if (instructions) {
+      props.eXeFormInstructions = instructions;
     }
 
     // Add settings if present
@@ -74,15 +102,22 @@ class FillHandler extends BaseLegacyHandler {
       props.instantMarking = instantMarking;
     }
 
+    // Extract feedback -> eXeIdeviceTextAfter
+    const feedback = this.extractFeedback(dict);
+    if (feedback) {
+      props.eXeIdeviceTextAfter = feedback;
+    }
+
     return props;
   }
 
   /**
    * Extract cloze questions from the legacy format
    *
-   * Structure:
-   * - ClozeHTMLParser with _clozeText containing text with gaps
-   * - Gaps are identified by underscore patterns or special markers
+   * Structure (Symfony OdeOldXmlFillIdevice.php):
+   * - _content → exe.engine.field.ClozeField
+   * - ClozeField contains _encodedContent with the cloze text
+   * - Gaps are marked with <u> tags
    *
    * @param {Element} dict - Dictionary element of the ClozeIdevice
    * @returns {Array} Array of question objects in form iDevice format
@@ -90,35 +125,72 @@ class FillHandler extends BaseLegacyHandler {
   extractClozeQuestions(dict) {
     const questionsData = [];
 
-    // Find the cloze text content
+    // Try ClozeField via _content key first (Symfony approach)
+    const contentInst = this.findDictInstance(dict, '_content');
+    if (contentInst) {
+      const clozeDict = contentInst.querySelector(':scope > dictionary');
+      if (clozeDict) {
+        // Symfony extracts from _encodedContent
+        const encodedContent = this.findDictStringValue(clozeDict, '_encodedContent');
+        if (encodedContent) {
+          const parsedText = this.parseClozeText(encodedContent);
+          if (parsedText.baseText) {
+            questionsData.push({
+              activityType: 'fill',
+              baseText: parsedText.baseText,
+              answers: parsedText.answers || []
+            });
+            return questionsData;
+          }
+        }
+      }
+    }
+
+    // Try _cloze key
     const clozeInst = this.findDictInstance(dict, '_cloze');
-    if (!clozeInst) {
-      // Try alternative structure
-      return this.extractClozeFromFields(dict);
+    if (clozeInst) {
+      const clozeDict = clozeInst.querySelector(':scope > dictionary');
+      if (clozeDict) {
+        const clozeText = this.findDictStringValue(clozeDict, '_encodedContent') ||
+                          this.findDictStringValue(clozeDict, '_clozeText') ||
+                          this.findDictStringValue(clozeDict, 'clozeText');
+
+        if (clozeText) {
+          const parsedText = this.parseClozeText(clozeText);
+          if (parsedText.baseText) {
+            questionsData.push({
+              activityType: 'fill',
+              baseText: parsedText.baseText,
+              answers: parsedText.answers || []
+            });
+            return questionsData;
+          }
+        }
+      }
     }
 
-    const clozeDict = clozeInst.querySelector(':scope > dictionary');
-    if (!clozeDict) return questionsData;
-
-    // Get the raw cloze text
-    const clozeText = this.findDictStringValue(clozeDict, '_clozeText') ||
-                      this.findDictStringValue(clozeDict, 'clozeText');
-
-    if (!clozeText) return questionsData;
-
-    // Parse the cloze text to extract gaps
-    // Legacy format uses underscores or special delimiters for gaps
-    const parsedText = this.parseClozeText(clozeText);
-
-    if (parsedText.baseText) {
-      questionsData.push({
-        activityType: 'fill',
-        baseText: parsedText.baseText,
-        answers: parsedText.answers || []
-      });
+    // Try ClozeField by class directly
+    const clozeFieldByClass = dict.querySelector(':scope > instance[class*="ClozeField"]');
+    if (clozeFieldByClass) {
+      const clozeDict = clozeFieldByClass.querySelector(':scope > dictionary');
+      if (clozeDict) {
+        const encodedContent = this.findDictStringValue(clozeDict, '_encodedContent');
+        if (encodedContent) {
+          const parsedText = this.parseClozeText(encodedContent);
+          if (parsedText.baseText) {
+            questionsData.push({
+              activityType: 'fill',
+              baseText: parsedText.baseText,
+              answers: parsedText.answers || []
+            });
+            return questionsData;
+          }
+        }
+      }
     }
 
-    return questionsData;
+    // Fallback to alternative structure
+    return this.extractClozeFromFields(dict);
   }
 
   /**
@@ -147,13 +219,17 @@ class FillHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Parse cloze text to extract gaps and convert to modern format
+   * Parse cloze text to normalize format for the form iDevice renderer
    *
-   * Legacy formats:
-   * - Words wrapped in underscores: _answer_
-   * - Words in special tags
+   * The form iDevice renderer (export/form.js getProcessTextFillQuestion)
+   * expects <u>word</u> tags in baseText and converts them to <input> fields.
    *
-   * Modern format uses: {{answer}}
+   * Legacy formats that need normalization:
+   * - <u class="exe-cloze-word">word</u> → <u>word</u>
+   * - <span class="cloze-blank">word</span> → <u>word</u>
+   * - <input data-answer="word"> → <u>word</u>
+   *
+   * Simple <u>word</u> tags are kept as-is (already correct format).
    *
    * @param {string} text - Raw cloze text
    * @returns {Object} { baseText, answers }
@@ -161,40 +237,34 @@ class FillHandler extends BaseLegacyHandler {
   parseClozeText(text) {
     if (!text) return { baseText: '', answers: [] };
 
-    const answers = [];
-
-    // Pattern 1: <u class="exe-cloze-word">word</u>
-    // Pattern 2: <span class="cloze-blank">word</span>
-    // Pattern 3: Legacy underscores _word_
-
     let baseText = text;
 
-    // Replace cloze word spans with {{answer}} placeholders
+    // Step 1: Normalize all variant formats to simple <u>word</u>
+
+    // <u class="exe-cloze-word">word</u> → <u>word</u>
     baseText = baseText.replace(
       /<u[^>]*class="[^"]*exe-cloze-word[^"]*"[^>]*>([^<]+)<\/u>/gi,
-      (match, word) => {
-        answers.push(word.trim());
-        return '{{' + word.trim() + '}}';
-      }
+      (match, word) => '<u>' + word.trim() + '</u>'
     );
 
-    // Replace span-based cloze blanks
+    // <span class="cloze-blank">word</span> → <u>word</u>
     baseText = baseText.replace(
       /<span[^>]*class="[^"]*cloze-blank[^"]*"[^>]*>([^<]+)<\/span>/gi,
-      (match, word) => {
-        answers.push(word.trim());
-        return '{{' + word.trim() + '}}';
-      }
+      (match, word) => '<u>' + word.trim() + '</u>'
     );
 
-    // Replace input-based blanks (legacy rendering)
+    // <input data-answer="word"> → <u>word</u>
     baseText = baseText.replace(
       /<input[^>]*data-answer="([^"]+)"[^>]*>/gi,
-      (match, word) => {
-        answers.push(word);
-        return '{{' + word + '}}';
-      }
+      (match, word) => '<u>' + word + '</u>'
     );
+
+    // Step 2: Extract all answers from normalized <u>word</u> tags
+    const answers = [];
+    baseText.replace(/<u>([^<]+)<\/u>/gi, (match, word) => {
+      answers.push(word.trim());
+      return match; // Don't modify, just extract
+    });
 
     return { baseText, answers };
   }

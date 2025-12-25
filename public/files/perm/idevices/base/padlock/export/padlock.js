@@ -103,7 +103,12 @@ var $padlock = {
             $padlock.addEvents(i);
             $('#candadoMainContainer-' + i).show();
         });
-        $exeDevices.iDevice.gamification.math.updateLatex('.candado-IDevice');
+        const candadoHtml = $('.candado-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(candadoHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.candado-IDevice'
+            );
+        }
     },
 
     createInterfaceCandado: function (instance) {
@@ -381,9 +386,12 @@ var $padlock = {
         $('#candadoMessageInfo-' + instance).hide();
         $('#candadoShowRetro-' + instance).focus();
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#candadoMainContainer-' + instance
-        );
+        const containerHtml = $('#candadoMainContainer-' + instance).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(containerHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#candadoMainContainer-' + instance
+            );
+        }
     },
 
     uptateTime: function (tiempo, instance) {

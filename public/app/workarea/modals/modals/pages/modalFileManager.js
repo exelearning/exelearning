@@ -20,6 +20,8 @@ export default class ModalFilemanager extends Modal {
         this.assets = [];
         this.filteredAssets = [];
         this.selectedAsset = null;
+        this.selectedAssets = []; // For multi-select mode
+        this.multiSelect = false; // Whether to allow multiple selection
         this.onSelectCallback = null;
         this.acceptFilter = null; // 'image', 'audio', 'video', or null for all
         this.typeFilter = ''; // User-selected type filter from dropdown
@@ -248,6 +250,8 @@ export default class ModalFilemanager extends Modal {
      * Show the modal
      * @param {Object} data - Optional configuration
      * @param {Function} data.onSelect - Callback when asset is inserted
+     * @param {boolean} data.multiSelect - Allow multiple selection (default: false)
+     * @param {string} data.accept - Filter by type ('image', 'audio', 'video')
      */
     async show(data = {}) {
         this.titleDefault = _('Media Library');
@@ -258,6 +262,10 @@ export default class ModalFilemanager extends Modal {
 
             // Store callback
             this.onSelectCallback = data.onSelect || null;
+
+            // Store multi-select mode
+            this.multiSelect = data.multiSelect || false;
+            this.selectedAssets = [];
 
             // Store accept filter ('image', 'audio', 'video', or null for all)
             this.acceptFilter = data.accept || null;
@@ -390,9 +398,29 @@ export default class ModalFilemanager extends Modal {
 
         this.updatePagination();
 
-        // Reset selection
-        this.selectedAsset = null;
-        this.showSidebarEmpty();
+        // Restore visual selection for multi-select mode
+        if (this.multiSelect && this.selectedAssets.length > 0) {
+            const selectedIds = new Set(this.selectedAssets.map(a => a.id));
+            // Re-apply selected class to items in current view
+            if (this.viewMode === 'grid' && this.grid) {
+                this.grid.querySelectorAll('.media-library-item').forEach(el => {
+                    if (selectedIds.has(el.dataset.assetId)) {
+                        el.classList.add('selected');
+                    }
+                });
+            } else if (this.listTbody) {
+                this.listTbody.querySelectorAll('tr').forEach(el => {
+                    if (selectedIds.has(el.dataset.assetId)) {
+                        el.classList.add('selected');
+                    }
+                });
+            }
+        } else if (!this.multiSelect) {
+            // Single select mode - reset selection on view change
+            this.selectedAsset = null;
+            this.selectedAssets = [];
+            this.showSidebarEmpty();
+        }
     }
 
     /**
@@ -462,11 +490,14 @@ export default class ModalFilemanager extends Modal {
         row.dataset.assetId = asset.id;
         row.dataset.filename = asset.filename || '';
 
-        // Get or create blob URL
-        let blobUrl = this.assetManager.blobURLCache.get(asset.id);
+        // Get or create blob URL (using synced method to ensure reverseBlobCache consistency)
+        let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
         if (!blobUrl && asset.blob) {
             blobUrl = URL.createObjectURL(asset.blob);
             this.assetManager.blobURLCache.set(asset.id, blobUrl);
+            this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+        } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+            // Ensure reverseBlobCache is synced for existing blob URLs
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
@@ -597,16 +628,41 @@ export default class ModalFilemanager extends Modal {
      * Select asset in list view
      */
     async selectAssetInList(asset, rowElement) {
-        // Update selection UI
-        if (this.listTbody) {
-            this.listTbody.querySelectorAll('tr').forEach(el => {
-                el.classList.remove('selected');
-            });
-        }
-        rowElement.classList.add('selected');
+        if (this.multiSelect) {
+            // Multi-select mode: toggle selection
+            const index = this.selectedAssets.findIndex(a => a.id === asset.id);
+            if (index >= 0) {
+                // Already selected - remove it
+                this.selectedAssets.splice(index, 1);
+                rowElement.classList.remove('selected');
+            } else {
+                // Not selected - add it
+                this.selectedAssets.push(asset);
+                rowElement.classList.add('selected');
+            }
 
-        this.selectedAsset = asset;
-        await this.showSidebarContent(asset);
+            // Update sidebar to show last selected or empty
+            if (this.selectedAssets.length > 0) {
+                const lastSelected = this.selectedAssets[this.selectedAssets.length - 1];
+                this.selectedAsset = lastSelected;
+                await this.showSidebarContent(lastSelected);
+            } else {
+                this.selectedAsset = null;
+                this.showSidebarEmpty();
+            }
+        } else {
+            // Single select mode: clear others and select this one
+            if (this.listTbody) {
+                this.listTbody.querySelectorAll('tr').forEach(el => {
+                    el.classList.remove('selected');
+                });
+            }
+            rowElement.classList.add('selected');
+
+            this.selectedAsset = asset;
+            this.selectedAssets = [asset];
+            await this.showSidebarContent(asset);
+        }
     }
 
     /**
@@ -620,11 +676,14 @@ export default class ModalFilemanager extends Modal {
         item.dataset.assetId = asset.id;
         item.dataset.filename = asset.filename || '';
 
-        // Get or create blob URL
-        let blobUrl = this.assetManager.blobURLCache.get(asset.id);
+        // Get or create blob URL (using synced method to ensure reverseBlobCache consistency)
+        let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
         if (!blobUrl && asset.blob) {
             blobUrl = URL.createObjectURL(asset.blob);
             this.assetManager.blobURLCache.set(asset.id, blobUrl);
+            this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+        } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+            // Ensure reverseBlobCache is synced for existing blob URLs
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
@@ -676,14 +735,39 @@ export default class ModalFilemanager extends Modal {
      * @param {HTMLElement} itemElement
      */
     async selectAsset(asset, itemElement) {
-        // Update selection UI
-        this.grid.querySelectorAll('.media-library-item').forEach(el => {
-            el.classList.remove('selected');
-        });
-        itemElement.classList.add('selected');
+        if (this.multiSelect) {
+            // Multi-select mode: toggle selection
+            const index = this.selectedAssets.findIndex(a => a.id === asset.id);
+            if (index >= 0) {
+                // Already selected - remove it
+                this.selectedAssets.splice(index, 1);
+                itemElement.classList.remove('selected');
+            } else {
+                // Not selected - add it
+                this.selectedAssets.push(asset);
+                itemElement.classList.add('selected');
+            }
 
-        this.selectedAsset = asset;
-        await this.showSidebarContent(asset);
+            // Update sidebar to show last selected or empty
+            if (this.selectedAssets.length > 0) {
+                const lastSelected = this.selectedAssets[this.selectedAssets.length - 1];
+                this.selectedAsset = lastSelected;
+                await this.showSidebarContent(lastSelected);
+            } else {
+                this.selectedAsset = null;
+                this.showSidebarEmpty();
+            }
+        } else {
+            // Single select mode: clear others and select this one
+            this.grid.querySelectorAll('.media-library-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            itemElement.classList.add('selected');
+
+            this.selectedAsset = asset;
+            this.selectedAssets = [asset];
+            await this.showSidebarContent(asset);
+        }
     }
 
     /**
@@ -702,11 +786,14 @@ export default class ModalFilemanager extends Modal {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
 
-        // Get blob URL
-        let blobUrl = this.assetManager.blobURLCache.get(asset.id);
+        // Get blob URL (using synced method to ensure reverseBlobCache consistency)
+        let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
         if (!blobUrl && asset.blob) {
             blobUrl = URL.createObjectURL(asset.blob);
             this.assetManager.blobURLCache.set(asset.id, blobUrl);
+            this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+        } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+            // Ensure reverseBlobCache is synced for existing blob URLs
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
@@ -836,39 +923,61 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
-     * Insert selected asset into editor
+     * Insert selected asset(s) into editor
      */
     insertSelectedAsset() {
-        if (!this.selectedAsset) return;
-
-        const assetUrl = `asset://${this.selectedAsset.id}/${this.selectedAsset.filename || ''}`;
+        const assetsToInsert = this.multiSelect ? this.selectedAssets : (this.selectedAsset ? [this.selectedAsset] : []);
+        if (assetsToInsert.length === 0) return;
 
         // If callback provided, use it
         if (this.onSelectCallback) {
-            // Get blob URL for immediate display
-            let blobUrl = this.assetManager.blobURLCache.get(this.selectedAsset.id);
-            if (!blobUrl && this.selectedAsset.blob) {
-                blobUrl = URL.createObjectURL(this.selectedAsset.blob);
-                this.assetManager.blobURLCache.set(this.selectedAsset.id, blobUrl);
-                this.assetManager.reverseBlobCache.set(blobUrl, this.selectedAsset.id);
-            }
+            // Build array of asset info for callback
+            const assetInfos = assetsToInsert.map(asset => {
+                const assetUrl = `asset://${asset.id}/${asset.filename || ''}`;
 
-            this.onSelectCallback({
-                assetUrl: assetUrl,
-                blobUrl: blobUrl,
-                asset: this.selectedAsset
+                // Get blob URL for immediate display (using synced method to ensure reverseBlobCache consistency)
+                let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
+                if (!blobUrl && asset.blob) {
+                    blobUrl = URL.createObjectURL(asset.blob);
+                    this.assetManager.blobURLCache.set(asset.id, blobUrl);
+                    this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+                } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+                    // CRITICAL: Ensure reverseBlobCache is synced - this is required for convertBlobUrlsToAssetUrls
+                    this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+                }
+
+                return {
+                    assetUrl: assetUrl,
+                    blobUrl: blobUrl,
+                    asset: asset
+                };
             });
+
+            // For backwards compatibility, if single select mode, pass single object
+            // If multi-select, pass array
+            if (this.multiSelect) {
+                this.onSelectCallback(assetInfos);
+            } else {
+                this.onSelectCallback(assetInfos[0]);
+            }
             this.close();
             return;
         }
 
+        // Single asset for non-callback mode
+        const assetUrl = `asset://${this.selectedAsset.id}/${this.selectedAsset.filename || ''}`;
+
         // Default: try to insert into active TinyMCE editor
         const editor = window.tinymce?.activeEditor;
         if (editor) {
-            let blobUrl = this.assetManager.blobURLCache.get(this.selectedAsset.id);
+            // Get blob URL (using synced method to ensure reverseBlobCache consistency)
+            let blobUrl = this.assetManager.getBlobURLSynced?.(this.selectedAsset.id) ?? this.assetManager.blobURLCache.get(this.selectedAsset.id);
             if (!blobUrl && this.selectedAsset.blob) {
                 blobUrl = URL.createObjectURL(this.selectedAsset.blob);
                 this.assetManager.blobURLCache.set(this.selectedAsset.id, blobUrl);
+                this.assetManager.reverseBlobCache.set(blobUrl, this.selectedAsset.id);
+            } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
+                // CRITICAL: Ensure reverseBlobCache is synced - this is required for convertBlobUrlsToAssetUrls
                 this.assetManager.reverseBlobCache.set(blobUrl, this.selectedAsset.id);
             }
 
@@ -917,6 +1026,8 @@ export default class ModalFilemanager extends Modal {
 
         // Clear selection
         this.selectedAsset = null;
+        this.selectedAssets = [];
+        this.multiSelect = false;
         this.onSelectCallback = null;
         this.acceptFilter = null;
         this.typeFilter = '';

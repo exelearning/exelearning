@@ -609,4 +609,360 @@ describe('Resources Routes', () => {
             expect(body.length).toBe(1);
         });
     });
+
+    describe('GET /api/resources/content-css', () => {
+        it('should return CSS files from workarea directory', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        if (filePath === 'public/style/workarea') return true;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        if (typeof dirPath === 'string' && dirPath.includes('style/workarea')) {
+                            return [
+                                { name: 'base.css', isFile: () => true, isDirectory: () => false },
+                                { name: 'main.css', isFile: () => true, isDirectory: () => false },
+                                { name: 'style.js', isFile: () => true, isDirectory: () => false }, // Should be filtered
+                            ] as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/content-css'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.length).toBe(2);
+            expect(body[0].path).toBe('content/css/base.css');
+            expect(body[1].path).toBe('content/css/main.css');
+        });
+
+        it('should return empty array if workarea directory does not exist', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        if (filePath === 'public/style/workarea') return false;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: fs.readdirSync,
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/content-css'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body).toEqual([]);
+        });
+    });
+
+    describe('Bundle Endpoints', () => {
+        describe('GET /api/resources/bundle/manifest', () => {
+            it('should return 404 if manifest does not exist', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('bundles') && filePath.includes('manifest.json')) return false;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: fs.readdirSync,
+                        statSync: fs.statSync,
+                        readFileSync: fs.readFileSync,
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/manifest'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            });
+
+            it('should return manifest JSON when it exists', async () => {
+                const mockManifest = {
+                    version: 'v0.0.0-alpha',
+                    generatedAt: '2024-01-01T00:00:00.000Z',
+                    themes: { base: 'abc123' },
+                };
+
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('bundles') && filePath.includes('manifest.json')) return true;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: fs.readdirSync,
+                        statSync: fs.statSync,
+                        readFileSync: (filePath: string) => {
+                            if (filePath.includes('manifest.json')) {
+                                return JSON.stringify(mockManifest);
+                            }
+                            return fs.readFileSync(filePath, 'utf-8');
+                        },
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/manifest'));
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.version).toBe('v0.0.0-alpha');
+                expect(body.themes.base).toBe('abc123');
+            });
+
+            it('should return 500 if manifest is invalid JSON', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('bundles') && filePath.includes('manifest.json')) return true;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: fs.readdirSync,
+                        statSync: fs.statSync,
+                        readFileSync: (filePath: string) => {
+                            if (filePath.includes('manifest.json')) {
+                                return 'invalid json {{{';
+                            }
+                            return fs.readFileSync(filePath, 'utf-8');
+                        },
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/manifest'));
+
+                expect(res.status).toBe(500);
+                const body = await res.json();
+                expect(body.error).toBe('Internal Error');
+            });
+        });
+
+        describe('GET /api/resources/bundle/theme/:themeName', () => {
+            it('should return 404 if theme bundle does not exist', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('bundles') && filePath.includes('.zip')) return false;
+                            if (filePath.includes('themes/users')) return false;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: fs.readdirSync,
+                        statSync: fs.statSync,
+                        readFileSync: fs.readFileSync,
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/theme/nonexistent'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            });
+
+            it('should return 404 if user theme is empty', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('bundles')) return false;
+                            if (filePath === 'public/files/perm/themes/users/empty-theme') return true;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: (dirPath: any, options?: any) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('users/empty-theme')) {
+                                return [] as unknown as fs.Dirent[];
+                            }
+                            return fs.readdirSync(dirPath, options);
+                        },
+                        statSync: fs.statSync,
+                        readFileSync: fs.readFileSync,
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/theme/empty-theme'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.message).toContain('empty');
+            });
+
+            it('should generate ZIP on-the-fly for user themes', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('bundles')) return false;
+                            if (filePath === 'public/files/perm/themes/users/user-theme') return true;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: (dirPath: any, options?: any) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('users/user-theme')) {
+                                return [
+                                    { name: 'style.css', isFile: () => true, isDirectory: () => false },
+                                ] as unknown as fs.Dirent[];
+                            }
+                            return fs.readdirSync(dirPath, options);
+                        },
+                        statSync: fs.statSync,
+                        readFileSync: (filePath: string) => {
+                            if (filePath.includes('user-theme/style.css')) {
+                                return Buffer.from('body { color: red; }');
+                            }
+                            return fs.readFileSync(filePath, 'utf-8');
+                        },
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/theme/user-theme'));
+
+                expect(res.status).toBe(200);
+                expect(res.headers.get('content-type')).toBe('application/zip');
+                expect(res.headers.get('cache-control')).toContain('private');
+            });
+
+            it('should skip files that cannot be read for user themes', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('bundles')) return false;
+                            if (filePath === 'public/files/perm/themes/users/theme-with-error') return true;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: (dirPath: any, options?: any) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('theme-with-error')) {
+                                return [
+                                    { name: 'style.css', isFile: () => true, isDirectory: () => false },
+                                    { name: 'broken.css', isFile: () => true, isDirectory: () => false },
+                                ] as unknown as fs.Dirent[];
+                            }
+                            return fs.readdirSync(dirPath, options);
+                        },
+                        statSync: fs.statSync,
+                        readFileSync: (filePath: string) => {
+                            if (filePath.includes('style.css')) {
+                                return Buffer.from('body {}');
+                            }
+                            if (filePath.includes('broken.css')) {
+                                throw new Error('Permission denied');
+                            }
+                            return fs.readFileSync(filePath, 'utf-8');
+                        },
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/resources/bundle/theme/theme-with-error'),
+                );
+
+                // Should succeed (skips broken file)
+                expect(res.status).toBe(200);
+                expect(res.headers.get('content-type')).toBe('application/zip');
+            });
+        });
+
+        describe('GET /api/resources/bundle/idevices', () => {
+            it('should return 404 if idevices bundle does not exist', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('idevices.zip')) return false;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: fs.readdirSync,
+                        statSync: fs.statSync,
+                        readFileSync: fs.readFileSync,
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/idevices'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            });
+        });
+
+        describe('GET /api/resources/bundle/libs', () => {
+            it('should return 404 if libs bundle does not exist', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('libs.zip')) return false;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: fs.readdirSync,
+                        statSync: fs.statSync,
+                        readFileSync: fs.readFileSync,
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/libs'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            });
+        });
+
+        describe('GET /api/resources/bundle/common', () => {
+            it('should return 404 if common bundle does not exist', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('common.zip')) return false;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: fs.readdirSync,
+                        statSync: fs.statSync,
+                        readFileSync: fs.readFileSync,
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/common'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            });
+        });
+
+        describe('GET /api/resources/bundle/content-css', () => {
+            it('should return 404 if content-css bundle does not exist', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('content-css.zip')) return false;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: fs.readdirSync,
+                        statSync: fs.statSync,
+                        readFileSync: fs.readFileSync,
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/content-css'));
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            });
+        });
+    });
 });

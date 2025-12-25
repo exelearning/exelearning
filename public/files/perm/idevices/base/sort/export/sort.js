@@ -694,7 +694,7 @@ var $eXeOrdena = {
         $eXeOrdena.addCardsPhrase(shuffledWords, instance);
 
         const html = $('#ordenaPhrasesContainer-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -779,7 +779,7 @@ var $eXeOrdena = {
         const $text = $card.find('.ODNP-EText'),
             latex =
                 $text.find('mjx-container').length > 0 ||
-                /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test($text.text());
+                $exeDevices.iDevice.gamification.math.hasLatex($text.text());
         if (!latex) {
             $eXeOrdena.adjustFontSize($card);
         } else {
@@ -1136,7 +1136,7 @@ var $eXeOrdena = {
         $('#ordenaHistsGame-' + instance).text('');
 
         const html = $multimedia.html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#ordenaMultimedia-' + instance
@@ -1382,11 +1382,19 @@ var $eXeOrdena = {
         $audio.hide();
         $noImage.show();
 
-        const loadImage = (resolvedUrl) => {
+        if (type === 1) {
+            $text.show().css({
+                color: color,
+                'background-color': backcolor,
+            });
+            $textdinamic.css({
+                color: color,
+            });
+        } else if (type === 0 && url.length > 3) {
             $image
                 .attr('alt', alt)
                 .show()
-                .prop('src', resolvedUrl)
+                .prop('src', url)
                 .on('load', function () {
                     if (
                         !this.complete ||
@@ -1403,35 +1411,28 @@ var $eXeOrdena = {
                 .on('error', function () {
                     $cursor.hide();
                 });
-        };
-
-        const resolveAndLoadImage = () => {
-            if (url && url.startsWith('asset://')) {
-                const assetManager =
-                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                if (assetManager) {
-                    assetManager.resolveAssetURL(url).then((blobUrl) => {
-                        loadImage(blobUrl || '');
-                    });
-                }
-            } else {
-                loadImage(url);
-            }
-        };
-
-        if (type === 1) {
-            $text.show().css({
-                color: color,
-                'background-color': backcolor,
-            });
-            $textdinamic.css({
-                color: color,
-            });
-        } else if (type === 0 && url.length > 3) {
-            resolveAndLoadImage();
         } else if (type === 2) {
             if (url.length > 3) {
-                resolveAndLoadImage();
+                $image
+                    .attr('alt', alt)
+                    .show()
+                    .prop('src', url)
+                    .on('load', function () {
+                        if (
+                            !this.complete ||
+                            typeof this.naturalWidth === 'undefined' ||
+                            this.naturalWidth === 0
+                        ) {
+                            $cursor.hide();
+                        } else {
+                            $image.show();
+                            $cursor.hide();
+                            $eXeOrdena.positionPointerCard($cursor, x, y);
+                        }
+                    })
+                    .on('error', function () {
+                        $cursor.hide();
+                    });
                 $text.show().css({
                     color: '#000',
                     'background-color': 'rgba(255, 255, 255, 0.7)',
@@ -1706,7 +1707,7 @@ var $eXeOrdena = {
             $eXeOrdena.showCard($(this));
         });
         const html = $('#ordenaMultimedia-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#ordenaMultimedia-' + instance

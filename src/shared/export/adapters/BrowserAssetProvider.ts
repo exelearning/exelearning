@@ -95,7 +95,7 @@ export class BrowserAssetProvider implements AssetProvider {
             // Try AssetManager first (preferred)
             if (this.assetManager?.getAsset) {
                 const asset = await this.assetManager.getAsset(assetId);
-                if (asset && asset.blob) {
+                if (asset?.blob) {
                     const arrayBuffer = await asset.blob.arrayBuffer();
                     return {
                         id: asset.id,
@@ -110,7 +110,7 @@ export class BrowserAssetProvider implements AssetProvider {
             // Fall back to legacy AssetCacheManager
             if (this.assetCache) {
                 const cached = await this.assetCache.getAssetByPath(assetId);
-                if (cached && cached.blob) {
+                if (cached?.blob) {
                     const arrayBuffer = await cached.blob.arrayBuffer();
                     const filename = (cached.metadata?.filename as string) || assetId.split('/').pop() || 'unknown';
                     return {
@@ -140,7 +140,7 @@ export class BrowserAssetProvider implements AssetProvider {
             // Try AssetManager first
             if (this.assetManager?.getAsset) {
                 const asset = await this.assetManager.getAsset(assetPath);
-                if (asset && asset.blob) {
+                if (asset?.blob) {
                     return true;
                 }
             }
@@ -211,7 +211,7 @@ export class BrowserAssetProvider implements AssetProvider {
                         // Old ELP imports may store just the filename (e.g., "elcid.png")
                         // but HTML references include UUID: "content/resources/{uuid}/{filename}"
                         let originalPath: string;
-                        if (asset.originalPath && asset.originalPath.includes(assetId)) {
+                        if (asset.originalPath?.includes(assetId)) {
                             // Path already includes UUID (e.g., "abc123/elcid.png" or "content/resources/abc123/elcid.png")
                             originalPath = asset.originalPath;
                         } else {

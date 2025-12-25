@@ -2,7 +2,7 @@
  * TrueFalseHandler
  *
  * Handles legacy TrueFalseIdevice.
- * Converts to modern 'form' iDevice with true-false questions.
+ * Converts to modern 'trueorfalse' iDevice with game-compatible format.
  *
  * Legacy XML structure:
  * - exe.engine.truefalseidevice.TrueFalseIdevice
@@ -23,35 +23,108 @@ class TrueFalseHandler extends BaseLegacyHandler {
 
   /**
    * Get the target modern iDevice type
-   * Note: Symfony uses 'trueorfalse' but we map to 'form' for consistency
+   * Matches Symfony: 'trueorfalse'
    */
   getTargetType() {
-    return 'form';
+    return 'trueorfalse';
   }
 
   /**
-   * Extract questionsData from the legacy format
+   * Get default messages for the game
+   * These match the messages used by edition/trueorfalse.js
    */
-  extractProperties(dict) {
-    const questionsData = this.extractQuestions(dict);
-    if (questionsData.length > 0) {
-      return { questionsData };
+  getDefaultMessages() {
+    return {
+      msgStartGame: 'Click here to start',
+      msgTime: 'Time per question',
+      msgNoImage: 'No picture question',
+      msgScoreScorm: "The score can't be saved because this page is not part of a SCORM package.",
+      msgEndGameScore: 'Please start the game before saving your score.',
+      msgOnlySaveScore: 'You can only save the score once!',
+      msgOnlySave: 'You can only save once',
+      msgYouScore: 'Your score',
+      msgAuthor: 'Authorship',
+      msgOnlySaveAuto: 'Your score will be saved after each question. You can only play once.',
+      msgSaveAuto: 'Your score will be automatically saved after each question.',
+      msgSeveralScore: 'You can save the score as many times as you want',
+      msgYouLastScore: 'The last score saved is',
+      msgActityComply: 'You have already done this activity.',
+      msgPlaySeveralTimes: 'You can do this activity as many times as you want',
+      msgUncompletedActivity: 'Incomplete activity',
+      msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+      msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+      msgTypeGame: 'True or false',
+      msgFeedback: 'Feedback',
+      msgSuggestion: 'Suggestion',
+      msgSolution: 'Solution',
+      msgQuestion: 'Question',
+      msgTrue: 'True',
+      msgFalse: 'False',
+      msgOk: 'Correct',
+      msgKO: 'Incorrect',
+      msgShow: 'Show',
+      msgHide: 'Hide',
+      msgCheck: 'Check',
+      msgReboot: 'Try again!',
+      msgScore: 'Score',
+      msgWeight: 'Weight',
+      msgNext: 'Next',
+      msgPrevious: 'Previous'
+    };
+  }
+
+  /**
+   * Extract properties in the game-compatible format expected by the renderer.
+   * This generates the full format with typeGame, questionsGame, msgs, etc.
+   * to avoid the need for transformation at edit time.
+   */
+  extractProperties(dict, ideviceId) {
+    const questionsGame = this.extractQuestionsGame(dict);
+    const instructions = this.extractHtmlView(dict);
+
+    if (questionsGame.length > 0) {
+      return {
+        id: ideviceId || '',
+        typeGame: 'TrueOrFalse',
+        eXeGameInstructions: instructions || '',
+        eXeIdeviceTextAfter: '',
+        msgs: this.getDefaultMessages(),
+        questionsRandom: false,
+        percentageQuestions: 100,
+        isTest: false,
+        time: 0,
+        questionsGame: questionsGame,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        evaluation: false,
+        evaluationID: '',
+        showSlider: false,
+        ideviceId: ideviceId || ''
+      };
     }
     return {};
   }
 
   /**
-   * Extract questions from legacy TrueFalseIdevice format
+   * Extract questions from legacy TrueFalseIdevice format in game-compatible format.
    *
    * Structure:
    * - list of TrueFalseQuestion instances
    * - TrueFalseQuestion has: questionTextArea, isCorrect, hintTextArea, feedbackTextArea
    *
+   * Output format matches what the renderer expects:
+   * - question: HTML content
+   * - feedback: HTML content
+   * - suggestion: HTML content (from hint)
+   * - solution: 1 for true, 0 for false
+   *
    * @param {Element} dict - Dictionary element of the TrueFalseIdevice
-   * @returns {Array} Array of question objects in form iDevice format
+   * @returns {Array} Array of question objects in game format
    */
-  extractQuestions(dict) {
-    const questionsData = [];
+  extractQuestionsGame(dict) {
+    const questionsGame = [];
 
     // Find the list containing TrueFalseQuestion instances
     // Look for <list> elements containing TrueFalseQuestion
@@ -74,7 +147,7 @@ class TrueFalseHandler extends BaseLegacyHandler {
       questionsList = this.findDictList(dict, 'questions');
     }
 
-    if (!questionsList) return questionsData;
+    if (!questionsList) return questionsGame;
 
     // Iterate each TrueFalseQuestion
     const questionInstances = questionsList.querySelectorAll(':scope > instance');
@@ -91,9 +164,9 @@ class TrueFalseHandler extends BaseLegacyHandler {
       // Get isCorrect flag (determines if statement is true or false)
       const isCorrect = this.findDictBoolValue(qDict, 'isCorrect');
 
-      // Extract hint (optional)
+      // Extract hint (optional) - maps to 'suggestion' in game format
       const hintTextArea = this.findDictInstance(qDict, 'hintTextArea');
-      const hint = hintTextArea ? this.extractTextAreaFieldContent(hintTextArea) : '';
+      const suggestion = hintTextArea ? this.extractTextAreaFieldContent(hintTextArea) : '';
 
       // Extract feedback (optional)
       const feedbackTextArea = this.findDictInstance(qDict, 'feedbackTextArea');
@@ -101,17 +174,16 @@ class TrueFalseHandler extends BaseLegacyHandler {
 
       // Only add if we have question text
       if (questionText) {
-        questionsData.push({
-          activityType: 'true-false',
-          baseText: questionText,
-          answer: isCorrect ? 'True' : 'False',
-          hint: hint,
-          feedback: feedback
+        questionsGame.push({
+          question: questionText,
+          feedback: feedback,
+          suggestion: suggestion,
+          solution: isCorrect ? 1 : 0
         });
       }
     }
 
-    return questionsData;
+    return questionsGame;
   }
 
   /**

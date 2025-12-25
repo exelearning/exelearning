@@ -89,20 +89,17 @@ function createMockExportSystem(): ExportSystemDeps {
 
     return {
         ElpDocumentAdapter: class MockElpDocumentAdapter {
-            constructor(_structure: any, _path: string) {}
             getMetadata = () => mockParsedStructure.meta;
             getNavigation = () => mockParsedStructure.pages;
             static fromElpFile = async () => new MockElpDocumentAdapter({}, '');
         } as any,
         FileSystemResourceProvider: class MockResourceProvider {
-            constructor(_publicDir: string) {}
             fetchTheme = async () => new Map();
             fetchBaseLibraries = async () => new Map();
             fetchLibraryFiles = async () => new Map();
             fetchIdeviceResources = async () => new Map();
         } as any,
         FileSystemAssetProvider: class MockAssetProvider {
-            constructor(_tempDir: string) {}
             getProjectAssets = async () => [];
             getAsset = async () => null;
         } as any,

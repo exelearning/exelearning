@@ -97,9 +97,9 @@ const getMaxUploadSize = (): number => {
     const envSize = process.env.MAX_UPLOAD_SIZE;
     if (envSize) {
         if (envSize.endsWith('M')) {
-            return parseInt(envSize) * 1024 * 1024;
+            return parseInt(envSize, 10) * 1024 * 1024;
         }
-        return parseInt(envSize);
+        return parseInt(envSize, 10);
     }
     return 100 * 1024 * 1024; // 100MB
 };

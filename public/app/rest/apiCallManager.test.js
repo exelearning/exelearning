@@ -21,7 +21,7 @@ describe('ApiCallManager', () => {
 
     mockApp = {
       eXeLearning: {
-        symfony: {
+        config: {
           baseURL: 'http://localhost',
           basePath: '/exelearning',
           changelogURL: 'http://localhost/changelog',
@@ -506,6 +506,49 @@ describe('ApiCallManager', () => {
         htmlView: '<p>Ok</p>',
       });
     });
+
+    it('should convert blob URLs to asset URLs before saving to Yjs', async () => {
+      const updateComponent = vi.fn();
+      const convertBlobURLsToAssetRefs = vi.fn((html) =>
+        html.replace('blob:http://localhost/abc-123', 'asset://uuid-image-1234/test.jpg')
+      );
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding: { updateComponent },
+          assetManager: { convertBlobURLsToAssetRefs },
+        },
+      };
+
+      const result = await apiManager.putSaveHtmlView({
+        odeComponentsSyncId: 'comp-1',
+        htmlView: '<p>Test</p><img src="blob:http://localhost/abc-123">',
+      });
+
+      expect(convertBlobURLsToAssetRefs).toHaveBeenCalledWith(
+        '<p>Test</p><img src="blob:http://localhost/abc-123">'
+      );
+      expect(updateComponent).toHaveBeenCalledWith('comp-1', {
+        htmlContent: '<p>Test</p><img src="asset://uuid-image-1234/test.jpg">',
+      });
+      expect(result).toEqual({ responseMessage: 'OK' });
+    });
+
+    it('should not fail if assetManager is not available', async () => {
+      const updateComponent = vi.fn();
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateComponent } },
+      };
+
+      const result = await apiManager.putSaveHtmlView({
+        odeComponentsSyncId: 'comp-1',
+        htmlView: '<p>Test</p>',
+      });
+
+      expect(updateComponent).toHaveBeenCalledWith('comp-1', { htmlContent: '<p>Test</p>' });
+      expect(result).toEqual({ responseMessage: 'OK' });
+    });
   });
 
   describe('_saveIdeviceToYjs', () => {
@@ -578,6 +621,288 @@ describe('ApiCallManager', () => {
       });
       expect(result.newOdePagStructureSync).toBe(false);
       expect(result.odeComponentsSyncId).toBe('comp-1');
+    });
+
+    it('should convert blob URLs to asset URLs when creating new component', () => {
+      const createBlock = vi.fn(() => 'block-new');
+      const createComponent = vi.fn(() => 'comp-new');
+      const convertBlobURLsToAssetRefs = vi.fn((html) =>
+        html.replace('blob:http://localhost/xyz', 'asset://uuid-123/image.jpg')
+      );
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock,
+        createComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding,
+          assetManager: { convertBlobURLsToAssetRefs },
+        },
+      };
+
+      apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'FreeTextIdevice',
+        htmlView: '<img src="blob:http://localhost/xyz">',
+      });
+
+      expect(convertBlobURLsToAssetRefs).toHaveBeenCalledWith(
+        '<img src="blob:http://localhost/xyz">'
+      );
+      expect(createComponent).toHaveBeenCalledWith(
+        'page-1',
+        'block-new',
+        'FreeTextIdevice',
+        expect.objectContaining({
+          htmlContent: '<img src="asset://uuid-123/image.jpg">',
+        })
+      );
+    });
+
+    it('should convert blob URLs to asset URLs when updating existing component', () => {
+      const updateComponent = vi.fn();
+      const convertBlobURLsToAssetRefs = vi.fn((html) =>
+        html.replace('blob:http://localhost/abc', 'asset://uuid-456/photo.png')
+      );
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding,
+          assetManager: { convertBlobURLsToAssetRefs },
+        },
+      };
+
+      apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        htmlView: '<p>Test</p><img src="blob:http://localhost/abc">',
+      });
+
+      expect(convertBlobURLsToAssetRefs).toHaveBeenCalledWith(
+        '<p>Test</p><img src="blob:http://localhost/abc">'
+      );
+      expect(updateComponent).toHaveBeenCalledWith('comp-1', {
+        htmlContent: '<p>Test</p><img src="asset://uuid-456/photo.png">',
+      });
+    });
+
+    it('should not fail if assetManager is not available in _saveIdeviceToYjs', () => {
+      const updateComponent = vi.fn();
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        htmlView: '<p>No conversion</p>',
+      });
+
+      expect(updateComponent).toHaveBeenCalledWith('comp-1', {
+        htmlContent: '<p>No conversion</p>',
+      });
+      expect(result.responseMessage).toBe('OK');
+    });
+
+    // Tests for jsonProperties blob URL conversion (fixes image persistence bug)
+    // JSON-type iDevices like text store content in jsonProperties.textTextarea
+    // which must also be converted from blob:// to asset:// URLs
+
+    it('should convert blob URLs in jsonProperties when updating component', () => {
+      const updateComponent = vi.fn();
+      const convertBlobURLsToAssetRefs = vi.fn((html) =>
+        html.replace(/blob:http:\/\/localhost\/img-\d+/g, (match) => {
+          return match.replace('blob:http://localhost/img-', 'asset://uuid-');
+        })
+      );
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding,
+          assetManager: { convertBlobURLsToAssetRefs },
+        },
+      };
+
+      // Simulate text iDevice saving with blob URL in textTextarea
+      const jsonPropsWithBlob = JSON.stringify({
+        textTextarea: '<p>Hello</p><img src="blob:http://localhost/img-123">',
+        textFeedbackInput: 'Show feedback',
+      });
+
+      apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        htmlView: '<div class="text-content"><img src="blob:http://localhost/img-123"></div>',
+        jsonProperties: jsonPropsWithBlob,
+      });
+
+      // Verify jsonProperties was converted
+      const updateCall = updateComponent.mock.calls[0];
+      const savedJsonProps = JSON.parse(updateCall[1].jsonProperties);
+      expect(savedJsonProps.textTextarea).toContain('asset://uuid-123');
+      expect(savedJsonProps.textTextarea).not.toContain('blob:');
+      expect(savedJsonProps.textFeedbackInput).toBe('Show feedback'); // unchanged
+
+      // Verify htmlContent was also converted
+      expect(updateCall[1].htmlContent).toContain('asset://uuid-123');
+      expect(updateCall[1].htmlContent).not.toContain('blob:');
+    });
+
+    it('should convert blob URLs in jsonProperties when creating new component', () => {
+      const createBlock = vi.fn(() => 'block-new');
+      const createComponent = vi.fn(() => 'comp-new');
+      const convertBlobURLsToAssetRefs = vi.fn((html) =>
+        html.replace('blob:http://localhost/new-img', 'asset://new-uuid/photo.jpg')
+      );
+      const structureBinding = {
+        getComponentMap: vi.fn(() => null),
+        getBlockMap: vi.fn(() => null),
+        createBlock,
+        createComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding,
+          assetManager: { convertBlobURLsToAssetRefs },
+        },
+      };
+
+      const jsonPropsWithBlob = JSON.stringify({
+        textTextarea: '<img src="blob:http://localhost/new-img" alt="test">',
+      });
+
+      apiManager._saveIdeviceToYjs({
+        odeNavStructureSyncId: 'page-1',
+        odePagStructureSyncId: 'new',
+        odeIdeviceTypeName: 'FreeTextIdevice',
+        htmlView: '<img src="blob:http://localhost/new-img">',
+        jsonProperties: jsonPropsWithBlob,
+      });
+
+      // Verify createComponent received converted jsonProperties
+      const createCall = createComponent.mock.calls[0];
+      const savedJsonProps = JSON.parse(createCall[3].jsonProperties);
+      expect(savedJsonProps.textTextarea).toContain('asset://new-uuid/photo.jpg');
+      expect(savedJsonProps.textTextarea).not.toContain('blob:');
+    });
+
+    it('should NOT modify jsonProperties if no blob URLs present', () => {
+      const updateComponent = vi.fn();
+      const convertBlobURLsToAssetRefs = vi.fn((html) => html);
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding,
+          assetManager: { convertBlobURLsToAssetRefs },
+        },
+      };
+
+      const jsonPropsNoBlob = JSON.stringify({
+        textTextarea: '<p>Plain text with asset://existing-uuid/img.jpg</p>',
+        someNumber: 42,
+      });
+
+      apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: jsonPropsNoBlob,
+      });
+
+      // convertBlobURLsToAssetRefs should NOT be called for jsonProperties without blob URLs
+      // (optimization: skip parsing if no 'blob:' substring found)
+      const updateCall = updateComponent.mock.calls[0];
+      const savedJsonProps = JSON.parse(updateCall[1].jsonProperties);
+      expect(savedJsonProps.textTextarea).toBe('<p>Plain text with asset://existing-uuid/img.jpg</p>');
+      expect(savedJsonProps.someNumber).toBe(42);
+    });
+
+    it('should handle invalid JSON in jsonProperties gracefully', () => {
+      const updateComponent = vi.fn();
+      const convertBlobURLsToAssetRefs = vi.fn((html) => html);
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding,
+          assetManager: { convertBlobURLsToAssetRefs },
+        },
+      };
+
+      // Invalid JSON that contains 'blob:' - should not crash
+      const invalidJson = 'not valid json blob:http://localhost/xyz';
+
+      const result = apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: invalidJson,
+      });
+
+      // Should still save (pass through unchanged on parse error)
+      expect(updateComponent).toHaveBeenCalledWith('comp-1', {
+        jsonProperties: invalidJson,
+      });
+      expect(result.responseMessage).toBe('OK');
+    });
+
+    it('should convert multiple blob URLs in different jsonProperties fields', () => {
+      const updateComponent = vi.fn();
+      let callCount = 0;
+      const convertBlobURLsToAssetRefs = vi.fn((html) => {
+        callCount++;
+        return html
+          .replace('blob:http://localhost/img1', 'asset://uuid-1/img1.jpg')
+          .replace('blob:http://localhost/img2', 'asset://uuid-2/img2.jpg');
+      });
+      const structureBinding = {
+        getComponentMap: vi.fn(() => ({})),
+        updateComponent,
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: {
+          structureBinding,
+          assetManager: { convertBlobURLsToAssetRefs },
+        },
+      };
+
+      const jsonPropsMultipleFields = JSON.stringify({
+        textTextarea: '<img src="blob:http://localhost/img1">',
+        textFeedbackTextarea: '<img src="blob:http://localhost/img2">',
+        plainField: 'no blob here',
+      });
+
+      apiManager._saveIdeviceToYjs({
+        odeComponentsSyncId: 'comp-1',
+        jsonProperties: jsonPropsMultipleFields,
+      });
+
+      const updateCall = updateComponent.mock.calls[0];
+      const savedJsonProps = JSON.parse(updateCall[1].jsonProperties);
+
+      // Both fields with blob URLs should be converted
+      expect(savedJsonProps.textTextarea).toContain('asset://uuid-1/img1.jpg');
+      expect(savedJsonProps.textFeedbackTextarea).toContain('asset://uuid-2/img2.jpg');
+      expect(savedJsonProps.plainField).toBe('no blob here');
     });
   });
 
@@ -1081,7 +1406,6 @@ describe('ApiCallManager', () => {
       apiManager.endpoints.api_idevices_upload_large_file_resources = { path: 'http://localhost/file/large' };
 
       await apiManager.putReorderBlock({ id: 1 });
-      await apiManager.postCloneBlock({ id: 1 });
       await apiManager.deleteBlock('block-1');
       await apiManager.putSavePage({ id: 1 });
       await apiManager.putReorderPage({ id: 1 });
@@ -1091,7 +1415,6 @@ describe('ApiCallManager', () => {
       await apiManager.postUploadLargeFileResource({ file: 'b' });
 
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/block/reorder', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/block/clone', { id: 1 });
       expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/block/delete/block-1');
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/page/save', { id: 1 });
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/page/reorder', { id: 1 });
@@ -1148,17 +1471,14 @@ describe('ApiCallManager', () => {
     it('should call idevice save and reorder endpoints', async () => {
       apiManager.endpoints.api_idevices_idevice_data_save = { path: 'http://localhost/idevice/save' };
       apiManager.endpoints.api_idevices_idevice_reorder = { path: 'http://localhost/idevice/reorder' };
-      apiManager.endpoints.api_idevices_idevice_duplicate = { path: 'http://localhost/idevice/clone' };
       apiManager.endpoints.api_ode_export_preview = { path: 'http://localhost/preview/{odeSessionId}' };
 
       await apiManager.putSaveIdevice({ id: 1 });
       await apiManager.putReorderIdevice({ id: 1 });
-      await apiManager.postCloneIdevice({ id: 1 });
       await apiManager.getOdePreviewUrl('sess-1');
 
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/save', { id: 1 });
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/reorder', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevice/clone', { id: 1 });
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/preview/sess-1');
     });
 

@@ -27,6 +27,7 @@ class YjsProjectBridge {
     this.resourceFetcher = null; // ResourceFetcher for fetching themes, libs, iDevices
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
+    this.connectionMonitor = null; // ConnectionMonitor for connection failure handling
     this.initialized = false;
     this.autoSyncEnabled = false;
     this.isNewProject = false; // Track if this is a new project (never saved)
@@ -98,10 +99,29 @@ class YjsProjectBridge {
     // Create legacy asset cache (for backward compatibility)
     this.assetCache = new window.AssetCacheManager(projectId);
 
+    // Create ResourceCache for persistent caching of themes, libraries, iDevices
+    let resourceCache = null;
+    if (window.ResourceCache) {
+      resourceCache = new window.ResourceCache();
+      try {
+        await resourceCache.init();
+        Logger.log('[YjsProjectBridge] ResourceCache initialized');
+
+        // Clean old version entries on startup
+        const currentVersion = window.eXeLearning?.version || 'v0.0.0';
+        await resourceCache.clearOldVersions(currentVersion);
+      } catch (e) {
+        console.warn('[YjsProjectBridge] ResourceCache initialization failed:', e);
+        resourceCache = null;
+      }
+    }
+
     // Create ResourceFetcher for fetching themes, libraries, iDevices for exports
     if (window.ResourceFetcher) {
       this.resourceFetcher = new window.ResourceFetcher();
-      Logger.log('[YjsProjectBridge] ResourceFetcher initialized');
+      // Initialize with ResourceCache for persistent caching
+      await this.resourceFetcher.init(resourceCache);
+      Logger.log('[YjsProjectBridge] ResourceFetcher initialized with bundle support');
     }
 
     // Create AssetWebSocketHandler for peer-to-peer asset synchronization
@@ -138,10 +158,28 @@ class YjsProjectBridge {
       // Wait for connection and sync
       await this.documentManager.waitForWebSocketSync();
 
+      // IMPORTANT: Create blank structure AFTER sync to prevent duplicate pages
+      // When multiple clients join an unsaved project simultaneously, each would
+      // create a blank page before syncing, resulting in duplicates after Yjs merge.
+      // By deferring to after sync, we ensure only the first client creates the page.
+      this.documentManager.ensureBlankStructureIfEmpty();
+
       // Announce assets after WebSocket is connected
       if (this.assetWebSocketHandler && preloadedAssetCount > 0) {
         Logger.log(`[YjsProjectBridge] Announcing ${preloadedAssetCount} assets to server...`);
         await this.assetWebSocketHandler.announceAssetAvailability();
+      }
+
+      // Create ConnectionMonitor for connection failure handling
+      if (window.ConnectionMonitor) {
+        this.connectionMonitor = new window.ConnectionMonitor({
+          wsProvider: this.documentManager.wsProvider,
+          toastsManager: this.app.toasts,
+          sessionMonitor: window.eXeSessionMonitor,
+          maxReconnectAttempts: 5,
+        });
+        this.connectionMonitor.start();
+        Logger.log('[YjsProjectBridge] ConnectionMonitor initialized');
       }
     }
 
@@ -189,7 +227,7 @@ class YjsProjectBridge {
     const hostname = window.location.hostname;
     const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
     // Include basePath from eXeLearning config (set by pages.controller.ts)
-    const basePath = window.eXeLearning?.symfony?.basePath || '';
+    const basePath = window.eXeLearning?.config?.basePath || '';
     // WebSocket server runs on the same port with {basePath}/yjs/ prefix
     return `${protocol}//${hostname}:${port}${basePath}/yjs`;
   }
@@ -199,7 +237,7 @@ class YjsProjectBridge {
    */
   getApiUrl() {
     // Include basePath from eXeLearning config (set by pages.controller.ts)
-    const basePath = window.eXeLearning?.symfony?.basePath || '';
+    const basePath = window.eXeLearning?.config?.basePath || '';
     return `${window.location.origin}${basePath}/api`;
   }
 
@@ -1462,10 +1500,11 @@ class YjsProjectBridge {
    * @param {string} pageId - Page ID
    * @param {string} blockName - Block name
    * @param {string} existingBlockId - Optional existing block ID to use (for syncing with frontend)
+   * @param {number} order - Optional order position (defaults to end)
    * @returns {string} Created block ID
    */
-  addBlock(pageId, blockName = 'Block', existingBlockId = null) {
-    const blockId = this.structureBinding.createBlock(pageId, blockName, existingBlockId);
+  addBlock(pageId, blockName = 'Block', existingBlockId = null, order = null) {
+    const blockId = this.structureBinding.createBlock(pageId, blockName, existingBlockId, order);
     this.updateUndoRedoButtons();
     return blockId;
   }
@@ -1989,6 +2028,12 @@ class YjsProjectBridge {
 
     // Cleanup SaveManager (no explicit cleanup needed, just null reference)
     this.saveManager = null;
+
+    // Cleanup ConnectionMonitor
+    if (this.connectionMonitor) {
+      this.connectionMonitor.destroy();
+      this.connectionMonitor = null;
+    }
 
     this.initialized = false;
     this.documentManager = null;

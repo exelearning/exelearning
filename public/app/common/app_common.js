@@ -74,7 +74,7 @@ export default class Common {
    */
   getVersionTimeStamp() {
       const v = eXeLearning.version;
-      if (eXeLearning.symfony.environment == 'dev' || v == "v0.0.0-alpha") return Date.now();
+      if (eXeLearning.config.environment == 'dev' || v == "v0.0.0-alpha") return Date.now();
       return v;
   }
 

@@ -123,7 +123,7 @@ export class DatabaseAssetProvider implements AssetProvider {
         // Try to find in database
         const dbAsset = await this.queries.findAssetByClientId(this.db, clientId, this.projectId);
 
-        if (dbAsset && dbAsset.storage_path) {
+        if (dbAsset?.storage_path) {
             // Read from storage_path
             if (await fs.pathExists(dbAsset.storage_path)) {
                 const content = await fs.readFile(dbAsset.storage_path);

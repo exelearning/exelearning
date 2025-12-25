@@ -771,4 +771,631 @@ describe('LatexPreRenderer', () => {
             expect(renderOrder[3]).toContain('\\eqref{second}');
         });
     });
+
+    describe('encrypt and decrypt', () => {
+        test('decrypt returns empty string for empty input', () => {
+            expect(LatexPreRenderer._decrypt('')).toBe('');
+        });
+
+        test('decrypt returns empty string for "undefined" string', () => {
+            expect(LatexPreRenderer._decrypt('undefined')).toBe('');
+        });
+
+        test('decrypt returns empty string for "null" string', () => {
+            expect(LatexPreRenderer._decrypt('null')).toBe('');
+        });
+
+        test('encrypt returns empty string for empty input', () => {
+            expect(LatexPreRenderer._encrypt('')).toBe('');
+        });
+
+        test('encrypt and decrypt are reversible', () => {
+            const original = 'Hello World! LaTeX: \\(x^2\\)';
+            const encrypted = LatexPreRenderer._encrypt(original);
+            const decrypted = LatexPreRenderer._decrypt(encrypted);
+            expect(decrypted).toBe(original);
+        });
+
+        test('encrypt produces different output than input', () => {
+            const original = 'test string';
+            const encrypted = LatexPreRenderer._encrypt(original);
+            expect(encrypted).not.toBe(original);
+        });
+
+        test('decrypt handles XOR encoding correctly', () => {
+            // The encrypt function uses XOR with key 146
+            const testStr = 'abc';
+            const encrypted = LatexPreRenderer._encrypt(testStr);
+            expect(encrypted).toBeTruthy();
+            expect(LatexPreRenderer._decrypt(encrypted)).toBe(testStr);
+        });
+    });
+
+    describe('preRenderDataGameLatex', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn((latex, options) => {
+                    const container = {
+                        querySelector: (selector) => {
+                            if (selector === 'svg') {
+                                return { outerHTML: `<svg data-latex="${latex}"><g></g></svg>` };
+                            }
+                            if (selector === 'mjx-assistive-mml math') {
+                                return { outerHTML: `<math><mi>x</mi></math>` };
+                            }
+                            return null;
+                        },
+                    };
+                    return container;
+                }),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('returns unchanged html for empty input', async () => {
+            const result = await LatexPreRenderer.preRenderDataGameLatex('');
+            expect(result.html).toBe('');
+            expect(result.count).toBe(0);
+        });
+
+        test('returns unchanged html for null input', async () => {
+            const result = await LatexPreRenderer.preRenderDataGameLatex(null);
+            expect(result.html).toBe(null);
+            expect(result.count).toBe(0);
+        });
+
+        test('returns unchanged html when no DataGame divs present', async () => {
+            const html = '<div><p>Regular content</p></div>';
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+            expect(result.html).toBe(html);
+            expect(result.count).toBe(0);
+        });
+
+        test('returns unchanged html when MathJax not available', async () => {
+            delete globalThis.MathJax;
+            const html = '<div class="DataGame">encrypted content</div>';
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+            expect(result.html).toBe(html);
+            expect(result.count).toBe(0);
+        });
+
+        test('processes DataGame div with encrypted JSON containing LaTeX', async () => {
+            // Create a JSON object with LaTeX
+            const gameData = { question: 'What is \\(x^2\\)?', answer: '4' };
+            const jsonStr = JSON.stringify(gameData);
+            const encrypted = LatexPreRenderer._encrypt(jsonStr);
+
+            const html = `<div class="quext-DataGame">${encrypted}</div>`;
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+
+            expect(result.count).toBe(1);
+            // The content should be different (re-encrypted with rendered LaTeX)
+            expect(result.html).not.toBe(html);
+        });
+
+        test('skips DataGame div without LaTeX', async () => {
+            const gameData = { question: 'What is 2+2?', answer: '4' };
+            const jsonStr = JSON.stringify(gameData);
+            const encrypted = LatexPreRenderer._encrypt(jsonStr);
+
+            const html = `<div class="DataGame">${encrypted}</div>`;
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+
+            // No LaTeX to process, should return unchanged
+            expect(result.count).toBe(0);
+            expect(result.html).toBe(html);
+        });
+
+        test('handles empty encrypted content', async () => {
+            const html = '<div class="DataGame">   </div>';
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+            expect(result.count).toBe(0);
+        });
+
+        test('handles invalid JSON gracefully', async () => {
+            // Encrypt invalid JSON
+            const encrypted = LatexPreRenderer._encrypt('not valid json \\(x\\)');
+            const html = `<div class="DataGame">${encrypted}</div>`;
+
+            // Should not throw, just return original
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+            expect(result.count).toBe(0);
+            expect(result.html).toBe(html);
+        });
+
+        test('processes nested arrays in game data', async () => {
+            const gameData = {
+                questions: [
+                    { text: 'First: \\(a\\)' },
+                    { text: 'Second: \\(b\\)' },
+                ],
+            };
+            const jsonStr = JSON.stringify(gameData);
+            const encrypted = LatexPreRenderer._encrypt(jsonStr);
+
+            const html = `<div class="DataGame">${encrypted}</div>`;
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+
+            expect(result.count).toBe(1);
+        });
+
+        test('handles multiple DataGame divs', async () => {
+            const gameData1 = { question: '\\(x\\)' };
+            const gameData2 = { question: '\\(y\\)' };
+            const encrypted1 = LatexPreRenderer._encrypt(JSON.stringify(gameData1));
+            const encrypted2 = LatexPreRenderer._encrypt(JSON.stringify(gameData2));
+
+            const html = `
+                <div class="DataGame">${encrypted1}</div>
+                <div class="DataGame">${encrypted2}</div>
+            `;
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+
+            expect(result.count).toBe(2);
+        });
+
+        test('handles game data with primitive values (numbers, booleans, null)', async () => {
+            // Game data that includes primitive values that shouldn't be processed as strings
+            const gameData = {
+                question: '\\(x^2\\)',
+                score: 100,
+                enabled: true,
+                extra: null,
+            };
+            const jsonStr = JSON.stringify(gameData);
+            const encrypted = LatexPreRenderer._encrypt(jsonStr);
+
+            const html = `<div class="DataGame">${encrypted}</div>`;
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+
+            expect(result.count).toBe(1);
+            // Decrypt the result to verify primitive values are preserved
+            const resultMatch = result.html.match(/<div class="DataGame">([^<]+)<\/div>/);
+            expect(resultMatch).toBeTruthy();
+            const decrypted = JSON.parse(LatexPreRenderer._decrypt(resultMatch[1]));
+            expect(decrypted.score).toBe(100);
+            expect(decrypted.enabled).toBe(true);
+            expect(decrypted.extra).toBe(null);
+        });
+
+        test('handles render error in game data string gracefully', async () => {
+            // Make tex2svg throw an error
+            globalThis.MathJax.tex2svg = vi.fn(() => {
+                throw new Error('MathJax failed');
+            });
+
+            const gameData = { question: '\\(invalid\\)' };
+            const jsonStr = JSON.stringify(gameData);
+            const encrypted = LatexPreRenderer._encrypt(jsonStr);
+
+            const html = `<div class="DataGame">${encrypted}</div>`;
+            const result = await LatexPreRenderer.preRenderDataGameLatex(html);
+
+            // Should still process but keep original LaTeX on render error
+            expect(result.count).toBe(1);
+        });
+    });
+
+    describe('renderLatexExpression with tex2svgPromise', () => {
+        let originalMathJax;
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('uses tex2svgPromise when available (async path)', async () => {
+            originalMathJax = globalThis.MathJax;
+
+            const mockContainer = {
+                querySelector: (selector) => {
+                    if (selector === 'svg') {
+                        return { outerHTML: '<svg><g>async</g></svg>' };
+                    }
+                    if (selector === 'mjx-assistive-mml math') {
+                        return { outerHTML: '<math><mi>async</mi></math>' };
+                    }
+                    return null;
+                },
+            };
+
+            globalThis.MathJax = {
+                tex2svg: vi.fn(),
+                tex2svgPromise: vi.fn().mockResolvedValue(mockContainer),
+            };
+
+            const result = await LatexPreRenderer._renderLatexExpression('x^2', 'inline');
+
+            expect(globalThis.MathJax.tex2svgPromise).toHaveBeenCalledWith('x^2', { display: false });
+            expect(globalThis.MathJax.tex2svg).not.toHaveBeenCalled();
+            expect(result.svg).toContain('<svg>');
+            expect(result.mathml).toContain('<math>');
+        });
+
+        test('uses tex2mml fallback when assistive-mml not present', async () => {
+            originalMathJax = globalThis.MathJax;
+
+            const mockContainer = {
+                querySelector: (selector) => {
+                    if (selector === 'svg') {
+                        return { outerHTML: '<svg><g>test</g></svg>' };
+                    }
+                    // No assistive-mml
+                    return null;
+                },
+            };
+
+            globalThis.MathJax = {
+                tex2svg: vi.fn().mockReturnValue(mockContainer),
+                tex2mml: vi.fn().mockReturnValue('<math><mi>fallback</mi></math>'),
+            };
+
+            const result = await LatexPreRenderer._renderLatexExpression('y^2', 'block');
+
+            expect(result.svg).toContain('<svg>');
+            expect(globalThis.MathJax.tex2mml).toHaveBeenCalledWith('y^2', { display: true });
+            expect(result.mathml).toContain('<math>');
+        });
+
+        test('handles tex2mml error gracefully', async () => {
+            originalMathJax = globalThis.MathJax;
+
+            const mockContainer = {
+                querySelector: () => null,
+            };
+
+            globalThis.MathJax = {
+                tex2svg: vi.fn().mockReturnValue(mockContainer),
+                tex2mml: vi.fn().mockImplementation(() => {
+                    throw new Error('tex2mml failed');
+                }),
+            };
+
+            // Should not throw
+            const result = await LatexPreRenderer._renderLatexExpression('z^2', 'inline');
+            expect(result.svg).toBe('');
+            expect(result.mathml).toBe('');
+        });
+
+        test('throws when MathJax not available', async () => {
+            originalMathJax = globalThis.MathJax;
+            delete globalThis.MathJax;
+
+            await expect(LatexPreRenderer._renderLatexExpression('x', 'inline'))
+                .rejects.toThrow('MathJax tex2svg not available');
+        });
+    });
+
+    describe('cleanLatexDelimiters via _renderLatexExpression', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn((latex) => ({
+                    querySelector: (sel) => sel === 'svg' ? { outerHTML: `<svg>${latex}</svg>` } : null,
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('strips \\(...\\) delimiters', async () => {
+            await LatexPreRenderer._renderLatexExpression('\\(x^2\\)', 'inline');
+            expect(globalThis.MathJax.tex2svg).toHaveBeenCalledWith('x^2', { display: false });
+        });
+
+        test('strips \\[...\\] delimiters', async () => {
+            await LatexPreRenderer._renderLatexExpression('\\[y^2\\]', 'block');
+            expect(globalThis.MathJax.tex2svg).toHaveBeenCalledWith('y^2', { display: true });
+        });
+
+        test('strips $$...$$ delimiters', async () => {
+            await LatexPreRenderer._renderLatexExpression('$$z^2$$', 'block');
+            expect(globalThis.MathJax.tex2svg).toHaveBeenCalledWith('z^2', { display: true });
+        });
+
+        test('strips single $...$ delimiters', async () => {
+            await LatexPreRenderer._renderLatexExpression('$a+b$', 'inline');
+            expect(globalThis.MathJax.tex2svg).toHaveBeenCalledWith('a+b', { display: false });
+        });
+
+        test('keeps \\begin...\\end as-is', async () => {
+            await LatexPreRenderer._renderLatexExpression('\\begin{equation}x\\end{equation}', 'block');
+            expect(globalThis.MathJax.tex2svg).toHaveBeenCalledWith('\\begin{equation}x\\end{equation}', { display: true });
+        });
+    });
+
+    describe('preRender with full document', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        if (sel === 'mjx-assistive-mml math') return { outerHTML: '<math></math>' };
+                        return null;
+                    },
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('handles full HTML document with doctype', async () => {
+            const html = '<!DOCTYPE html><html><head></head><body><p>\\(x\\)</p></body></html>';
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('<!DOCTYPE html>');
+            expect(result.html).toContain('<html');
+            expect(result.html).toContain('exe-math-rendered');
+        });
+
+        test('handles full HTML document without doctype but with <html> tag', async () => {
+            const html = '<html><body><p>\\(y\\)</p></body></html>';
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('<html');
+            expect(result.html).not.toContain('<!DOCTYPE');
+        });
+
+        test('preserves content when processing full document with idevices', async () => {
+            const html = `<!DOCTYPE html>
+            <html><body>
+                <div class="idevice_node"><p>\\(a\\)</p></div>
+            </body></html>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('<!DOCTYPE html>');
+        });
+    });
+
+    describe('preserveSkipElementContent', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        return null;
+                    },
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('preserves script tags with <link> inside code blocks', async () => {
+            const html = `<code><script src="test.js"></script></code><p>\\(x\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.html).toContain('<script src="test.js">');
+        });
+
+        test('preserves style tags inside pre blocks', async () => {
+            const html = `<pre><style>.test{}</style></pre><p>\\(y\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.html).toContain('<style>.test{}');
+        });
+
+        test('preserves meta tags inside code blocks', async () => {
+            const html = `<code><meta name="test"></code><p>\\(z\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.html).toContain('<meta name="test">');
+        });
+
+        test('preserves base tags inside code blocks', async () => {
+            const html = `<code><base href="http://test.com"></code><p>\\(a\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.html).toContain('<base href="http://test.com">');
+        });
+    });
+
+    describe('shouldSkipPosition edge cases', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        return null;
+                    },
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('skips LaTeX inside nested script tags', async () => {
+            const html = `<script><script>\\(x\\)</script></script><p>\\(y\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Only \\(y\\) should be rendered
+            expect(result.count).toBe(1);
+        });
+
+        test('skips LaTeX inside textarea', async () => {
+            const html = `<div><textarea>\\(x\\)</textarea><p>\\(y\\)</p></div>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(1);
+            expect(result.html).toContain('<textarea>\\(x\\)</textarea>');
+        });
+
+        test('handles attribute with single quotes', async () => {
+            const html = `<p data-info='\\(x\\)'>\\(y\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(1);
+            // DOM parser may normalize quotes to double quotes
+            expect(result.html).toContain('data-info');
+            expect(result.html).toContain('\\(x\\)');
+        });
+
+        test('handles unquoted attribute values correctly', async () => {
+            // LaTeX in normal text should still be processed
+            const html = `<p data-val=test>\\(z\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(1);
+        });
+    });
+
+    describe('processNode edge cases', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        return null;
+                    },
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('skips svg elements', async () => {
+            const html = `<svg><text>\\(x\\)</text></svg><p>\\(y\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(1);
+        });
+
+        test('skips math elements', async () => {
+            const html = `<math><mi>\\(x\\)</mi></math><p>\\(y\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(1);
+        });
+
+        test('skips elements with exe-math-rendered class', async () => {
+            const html = `<span class="exe-math-rendered">\\(already\\)</span><p>\\(new\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(1);
+        });
+
+        test('processes containers with nested containers recursively', async () => {
+            const html = `<div><p>\\(inner\\)</p></div>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(1);
+            expect(result.html).toContain('exe-math-rendered');
+        });
+
+        test('handles container with nested block elements', async () => {
+            // When a container has nested containers, it processes children recursively
+            const html = `<div><div><p>\\(nested\\)</p></div></div>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(1);
+        });
+    });
+
+    describe('hasLatex with \\ref and \\eqref', () => {
+        test('returns true for \\ref{} references', () => {
+            expect(LatexPreRenderer.hasLatex('See \\ref{eq1}')).toBe(true);
+        });
+
+        test('returns true for \\eqref{} references', () => {
+            expect(LatexPreRenderer.hasLatex('From \\eqref{myeq}')).toBe(true);
+        });
+    });
+
+    describe('overlapping LaTeX patterns', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        return null;
+                    },
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('handles adjacent LaTeX expressions correctly', async () => {
+            const html = `<p>\\(a\\)\\(b\\)</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(2);
+        });
+
+        test('handles LaTeX with no content between', async () => {
+            const html = `<p>\\[x\\]\\[y\\]</p>`;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.count).toBe(2);
+        });
+    });
 });

@@ -173,7 +173,7 @@ export default class ModalIdeviceManager extends Modal {
         ideviceListInputVisibility.forEach((input) => {
             let ideviceName = input.getAttribute('idevice');
             let ideviceVisibilityPreference =
-                eXeLearning.symfony.ideviceVisibilityPreferencePre +
+                eXeLearning.config.ideviceVisibilityPreferencePre +
                 ideviceName;
             // Add to dict param
             preferences[ideviceVisibilityPreference] = input.checked;
@@ -205,7 +205,7 @@ export default class ModalIdeviceManager extends Modal {
     getBaseIdevices(idevices) {
         let baseIdevices = {};
         for (let [key, value] of Object.entries(idevices)) {
-            if (value.type === eXeLearning.symfony.ideviceTypeBase) {
+            if (value.type === eXeLearning.config.ideviceTypeBase) {
                 baseIdevices[key] = value;
             }
         }
@@ -220,7 +220,7 @@ export default class ModalIdeviceManager extends Modal {
     getUserIdevices(idevices) {
         let userIdevices = {};
         for (let [key, value] of Object.entries(idevices)) {
-            if (value.type == eXeLearning.symfony.ideviceTypeUser) {
+            if (value.type == eXeLearning.config.ideviceTypeUser) {
                 userIdevices[key] = value;
             }
         }
@@ -508,7 +508,7 @@ export default class ModalIdeviceManager extends Modal {
         label.classList.add('toggle-label', 'idevice-title');
         label.setAttribute('for', `tgl-${idevice.id}`);
         label.textContent = idevice.title || idevice.id;
-        if (idevice.type === eXeLearning.symfony.ideviceTypeUser) {
+        if (idevice.type === eXeLearning.config.ideviceTypeUser) {
             label.textContent = label.textContent + ' *';
         }
 

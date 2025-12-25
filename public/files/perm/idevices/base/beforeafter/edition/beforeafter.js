@@ -187,7 +187,7 @@ var $exeDevice = {
                                         <span id="bfafETitleImageBack">${_('Image')}</span>
                                         <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImageBack">
                                             <label for="bfafEURLImageBack" class="sr-av">URL</label>
-                                            <input type="text" id="bfafEURLImageBack" class="exe-image-picker BFAFE-EURLImage form-control me-0"/>
+                                            <input type="text" id="bfafEURLImageBack" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
                                             <a href="#" id="bfafEPlayImageBack" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
                                                 <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
                                             </a>
@@ -222,7 +222,7 @@ var $exeDevice = {
                                         <span id="bfafETitleImage">${_('Image')}</span>
                                         <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImage">
                                             <label for="bfafEURLImage" class="sr-av">URL</label>
-                                            <input type="text" id="bfafEURLImage" class="exe-image-picker BFAFE-EURLImage form-control me-0"/>
+                                            <input type="text" id="bfafEURLImage" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
                                             <a href="#" id="bfafEPlayImage" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
                                                 <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
                                             </a>
@@ -535,11 +535,6 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.addEventCard();
-        $exeDevice.addPickerButton();
-    },
-
-    addPickerButton: function () {
-        // Manejado globalmente por $exeDevicesEdition.iDevice.filePicker.init()
     },
 
     addEventCard: function () {
@@ -769,57 +764,36 @@ var $exeDevice = {
         const suffix = type == 0 ? '' : 'Back',
             $image = $(`#bfafEImage${suffix}`),
             $nimage = $(`#bfafENoImage${suffix}`),
-            $input = $(`#bfafEURLImage${suffix}`),
             alt = $(`#bfafEAlt${suffix}`).val(),
-            url = $input.val();
+            url = $(`#bfafEURLImage${suffix}`).val();
 
         $image.hide();
         $image.attr('alt', alt);
         $nimage.show();
 
-        const loadImage = (resolvedUrl) => {
-            $image
-                .prop('src', resolvedUrl)
-                .on('load', function () {
-                    if (
-                        this.complete &&
-                        typeof this.naturalWidth !== 'undefined' &&
-                        this.naturalWidth !== 0
-                    ) {
-                        const mData = $exeDevice.placeImageWindows(
-                            this,
-                            this.naturalWidth,
-                            this.naturalHeight
-                        );
-                        $exeDevice.drawImage(this, mData);
-                        $image.show();
-                        $nimage.hide();
-                        return true;
-                    }
-                    return false;
-                })
-                .on('error', function () {
-                    return false;
-                });
-        };
-
-        // Handle asset:// URLs
-        if (url && url.startsWith('asset://')) {
-            const blobUrl = $input.data('blobUrl');
-            if (blobUrl) {
-                loadImage(blobUrl);
-            } else {
-                const assetManager =
-                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                if (assetManager) {
-                    assetManager.resolveAssetURL(url).then((resolvedUrl) => {
-                        loadImage(resolvedUrl || '');
-                    });
+        $image
+            .prop('src', url)
+            .on('load', function () {
+                if (
+                    this.complete &&
+                    typeof this.naturalWidth !== 'undefined' &&
+                    this.naturalWidth !== 0
+                ) {
+                    const mData = $exeDevice.placeImageWindows(
+                        this,
+                        this.naturalWidth,
+                        this.naturalHeight
+                    );
+                    $exeDevice.drawImage(this, mData);
+                    $image.show();
+                    $nimage.hide();
+                    return true;
                 }
-            }
-        } else {
-            loadImage(url);
-        }
+                return false;
+            })
+            .on('error', function () {
+                return false;
+            });
     },
 
     drawImage: function (image, mData) {

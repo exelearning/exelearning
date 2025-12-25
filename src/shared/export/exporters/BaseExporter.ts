@@ -550,6 +550,7 @@ export abstract class BaseExporter {
             pp_addPagination: String(metadata.addPagination ?? false),
             pp_addSearchBox: String(metadata.addSearchBox ?? false),
             pp_addAccessibilityToolbar: String(metadata.addAccessibilityToolbar ?? false),
+            pp_addMathJax: String(metadata.addMathJax ?? false),
             exportSource: String(metadata.exportSource ?? true),
         };
 

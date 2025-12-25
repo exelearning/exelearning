@@ -20,6 +20,12 @@ var $imagegallery = {
      * @returns {String}
      */
     renderView: function (data, accesibility, template) {
+        // In export context, the HTML is already rendered correctly server-side
+        // Don't re-generate to preserve correct paths (changeDirectory would break them)
+        if (document.body.classList.contains('exe-export')) {
+            return null; // Return null to prevent innerHTML replacement in exe_export.js
+        }
+
         // Generate html content from data values
         let htmlContent = $imagegallery.getStringGallery(data);
         // Insert the html content inside the template
@@ -41,56 +47,33 @@ var $imagegallery = {
      */
     renderBehaviour(data) {
         const $node = $('#' + data.ideviceId),
-            isInExe = eXe.app.isInExe();
+            isInExe = eXe.app.isInExe(),
+            isExport = document.body.classList.contains('exe-export');
 
-        // In export/preview, regenerate gallery HTML with resolved URLs
-        if (!isInExe && $node.length == 1) {
+        // Only re-render gallery in preview panel (not in export, which already has correct HTML)
+        // Export HTML is generated server-side with correct paths; re-rendering would break them
+        if (!isInExe && !isExport && $node.length == 1) {
             let gallery = $imagegallery.getStringGallery(data);
             $node.html(gallery);
         }
 
-        // Initialize lightbox - links have rel="lightbox[gallery-{id}]"
-        // Re-initialize prettyPhoto to pick up new links
-        const initLightbox = () => {
-            const $links = $node.find('.imageGallery-IDevice a.imageLink');
-
-            if ($links.length === 0) {
-                return false;
-            }
-
-            // Check if prettyPhoto is available
-            if (typeof $.fn.prettyPhoto === 'undefined') {
-                console.log('[image-gallery] prettyPhoto not available yet');
-                return false;
-            }
-
-            // Initialize prettyPhoto on gallery links
-            // Using the hook 'rel' to group images by gallery
-            try {
-                $links.prettyPhoto({
-                    hook: 'rel',
-                    theme: 'pp_default',
-                    social_tools: '',
-                    deeplinking: false,
-                    show_title: true,
-                    allow_resize: true,
-                    overlay_gallery: true,
-                    overlay_gallery_max: 30
+        // Disabled links
+        document
+            .querySelectorAll('.image-galleryIdevice .imageGallery-IDevice a')
+            .forEach((img) => {
+                img.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
                 });
-                return true;
-            } catch (e) {
-                console.error('[image-gallery] prettyPhoto init error:', e);
-                return false;
-            }
-        };
+            });
 
-        // Try immediately, then retry with interval (wait for prettyPhoto to load)
-        if (!initLightbox()) {
-            let attempts = 0;
-            const maxAttempts = 25; // 5 seconds max
-            const interval = setInterval(() => {
-                attempts++;
-                if (initLightbox() || attempts >= maxAttempts) {
+        // Simplelightbox
+        if (typeof SimpleLightbox !== 'undefined') {
+            this.createSLightboxGallery(data.ideviceId);
+        } else {
+            var interval = setInterval(function () {
+                if (typeof SimpleLightbox !== 'undefined') {
+                    $imagegallery.createSLightboxGallery(data.ideviceId);
                     clearInterval(interval);
                 }
             }, 200);
@@ -101,24 +84,22 @@ var $imagegallery = {
         const $node = $('#' + data.ideviceId),
             isInExe = eXe.app.isInExe();
 
-        // In editor, don't modify asset:// URLs
-        if (isInExe) return file;
-        if ($node.length == 0) return file;
-
-        const pathMedia = $('html').is('#exe-index')
-            ? 'content/resources/'
-            : '../content/resources/';
-
-        // Handle asset:// URLs
-        if (file && file.startsWith('asset://')) {
-            const assetPath = file.replace('asset://', '');
-            return pathMedia + assetPath;
+        // Keep asset://, blob://, and data: URLs as-is
+        // - asset:// will be resolved by the asset resolver
+        // - blob:// and data: are already resolved URLs (from preview/export)
+        if (file && (file.startsWith('asset://') || file.startsWith('blob:') || file.startsWith('data:'))) {
+            return file;
         }
 
-        // Legacy: server paths
+        if (isInExe || $node.length == 0) return file;
+
+        const pathMedia = $('html').is('#exe-index')
+            ? 'content/resources/' + data.ideviceId + '/'
+            : '../content/resources/' + data.ideviceId + '/';
+
         const parts = file.split(/[/\\]/),
             name = parts.pop(),
-            dir = pathMedia + data.ideviceId;
+            dir = pathMedia.replace(/[/\\]+$/, '');
         return dir + '/' + name;
     },
 
@@ -131,20 +112,20 @@ var $imagegallery = {
         Object.entries(data).forEach(([key, value]) => {
             if (key !== 'ideviceId') {
                 let imageURL = $imagegallery.changeDirectory(value.img, data);
-                // Use same image for thumbnail if no thumbnail field (CSS resize)
-                let thumbnailURL = value.thumbnail
-                    ? $imagegallery.changeDirectory(value.thumbnail, data)
-                    : imageURL;
-                let imageTitle = value.title || '';
-                let imageLinkTitle = value.linktitle || '';
-                let imageAuthor = value.author || '';
-                let imageLinkAuthor = value.linkauthor || '';
-                let imageLicense = value.license || '';
+                let thumbnailURL = $imagegallery.changeDirectory(
+                    value.thumbnail,
+                    data
+                );
+                let imageTitle = value.title;
+                let imageLinkTitle = value.linktitle;
+                let imageAuthor = value.author;
+                let imageLinkAuthor = value.linkauthor;
+                let imageLicense = value.license;
                 let imageLinkLicense = this.getLinkLicense(value.license);
                 htmlContent += `<div id="imageContainer_${idIncremental}" class="imageContainer">`;
-                htmlContent += ` <a idevice-id="${ideviceId}" title="${imageTitle}" href="${imageURL}" class="imageLink" rel="lightbox[gallery-${ideviceId}]">`;
+                htmlContent += ` <a idevice-id="${ideviceId}" title="${imageTitle}" href="${imageURL}" class="imageLink">`;
                 htmlContent += `  <div class="imageElement">`;
-                htmlContent += `   <img src="${thumbnailURL}" class="gallery-thumbnail" title="${imageTitle}" alt="${imageTitle}" titlelink="${imageLinkTitle}" author="${imageAuthor}" authorlink="${imageLinkAuthor}" license="${imageLicense}" licenselink="${imageLinkLicense}"/>`;
+                htmlContent += `   <img src="${thumbnailURL}" height="128" width="128" title="${imageTitle}" alt="${imageTitle}" titlelink="${imageLinkTitle}" author="${imageAuthor}" authorlink="${imageLinkAuthor}" license="${imageLicense}" licenselink="${imageLinkLicense}"/>`;
                 htmlContent += `  </div>`;
                 htmlContent += ` </a>`;
                 htmlContent += `</div>`;
@@ -163,6 +144,28 @@ var $imagegallery = {
      *
      */
     init: function () {},
+
+    /**
+     * Create a new simple ligthbox gallery
+     *
+     */
+    createSLightboxGallery: function (ideviceId) {
+        let selector = `[id="${ideviceId}"] .imageGallery-IDevice a`;
+        new SimpleLightbox(selector, {
+            // Custom lightbox for exe. Now we can take values from multiple attributes
+            captionsData: [
+                'title',
+                'titlelink',
+                'author',
+                'authorlink',
+                'license',
+                'licenselink',
+            ],
+            captionPosition: 'outside',
+            // Disable file extension check to support blob:// URLs in editor
+            fileExt: false,
+        });
+    },
 
     getLinkLicense: function (attrLicense) {
         let linkLicense = '';

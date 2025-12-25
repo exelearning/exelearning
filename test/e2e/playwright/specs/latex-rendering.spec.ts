@@ -266,5 +266,249 @@ test.describe('LaTeX Rendering', () => {
                 );
             }
         });
+
+        // Skip: MathJax context menu requires raw LaTeX content and runtime rendering.
+        // The fixture contains pre-rendered SVG content, so MathJax context menu won't appear.
+        // This test would need a fixture with raw LaTeX (not pre-rendered) to work properly.
+        test.skip('should show MathJax context menu on right-click', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'MathJax Context Menu Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await page.waitForFunction(
+                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+                { timeout: 30000 },
+            );
+
+            // Import the LaTeX fixture first
+            await importElpFixture(page, 'latex.elp');
+
+            // Enable addMathJax AFTER import so MathJax is loaded at runtime (required for context menu)
+            await page.evaluate(() => {
+                const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+                const metadata = bridge.documentManager.getMetadata();
+                metadata.set('addMathJax', 'true');
+            });
+
+            // Open Preview
+            const previewButton = page.locator('#head-bottom-preview');
+            await previewButton.click();
+
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for preview to fully render
+            await page.waitForTimeout(5000);
+
+            const iframe = page.frameLocator('#preview-iframe');
+
+            // Find a rendered math element (exe-math-rendered or mjx-container)
+            const mathElement = iframe.locator('.exe-math-rendered, mjx-container').first();
+            await expect(mathElement).toBeVisible({ timeout: 10000 });
+
+            // Right-click on the math element to trigger MathJax context menu
+            await mathElement.click({ button: 'right' });
+
+            // Wait for the context menu to appear
+            // MathJax uses a specific class for its context menu
+            await page.waitForTimeout(1000);
+
+            // Check if MathJax context menu is visible
+            // The menu is rendered at document level (not in iframe) or in iframe
+            const menuVisible = await page.evaluate(() => {
+                // Check main document for MathJax menu
+                const mainDocMenu = document.querySelector('.MJX_Menu, #MathJax_MenuFrame, [id^="MJX-"][role="menu"]');
+                return mainDocMenu !== null;
+            });
+
+            const menuVisibleInIframe = await iframe.locator('body').evaluate(body => {
+                // Check iframe for MathJax menu
+                const iframeMenu = body.querySelector('.MJX_Menu, #MathJax_MenuFrame, [id^="MJX-"][role="menu"]');
+                return iframeMenu !== null;
+            });
+
+            // MathJax menu should be visible either in main document or iframe
+            expect(menuVisible || menuVisibleInIframe).toBe(true);
+        });
+    });
+
+    test.describe('MathJax Runtime Option (addMathJax)', () => {
+        test('should include MathJax script in preview when addMathJax option is enabled', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'MathJax Option Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await page.waitForFunction(
+                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+                { timeout: 30000 },
+            );
+
+            // Enable addMathJax option in project metadata (Y.Map)
+            await page.evaluate(() => {
+                const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+                const metadata = bridge.documentManager.getMetadata();
+                metadata.set('addMathJax', 'true');
+            });
+
+            // Open Preview
+            const previewButton = page.locator('#head-bottom-preview');
+            await previewButton.click();
+
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for preview to render
+            await page.waitForTimeout(3000);
+
+            const iframe = page.frameLocator('#preview-iframe');
+
+            // Verify MathJax script is included in the preview HTML
+            const hasMathJaxScript = await iframe.locator('body').evaluate(body => {
+                const doc = body.ownerDocument;
+                const scripts = doc.querySelectorAll('script[src*="tex-mml-svg"]');
+                return scripts.length > 0;
+            });
+
+            expect(hasMathJaxScript).toBe(true);
+        });
+
+        test('should configure MathJax with typeset:false for SPA preview', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'MathJax Config Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await page.waitForFunction(
+                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+                { timeout: 30000 },
+            );
+
+            // Enable addMathJax option in metadata (Y.Map)
+            await page.evaluate(() => {
+                const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+                const metadata = bridge.documentManager.getMetadata();
+                metadata.set('addMathJax', 'true');
+            });
+
+            // Open Preview
+            const previewButton = page.locator('#head-bottom-preview');
+            await previewButton.click();
+
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            await page.waitForTimeout(3000);
+
+            const iframe = page.frameLocator('#preview-iframe');
+
+            // Check that MathJax config includes typeset:false for SPA
+            const hasMathJaxConfig = await iframe.locator('body').evaluate(body => {
+                const doc = body.ownerDocument;
+                const html = doc.documentElement.innerHTML;
+                return html.includes('typeset: false') && html.includes('pageReady');
+            });
+
+            expect(hasMathJaxConfig).toBe(true);
+        });
+
+        // Skip: This test requires raw LaTeX content (not pre-rendered SVG) in the fixture.
+        // The latex.elp fixture contains pre-rendered SVG content, so MathJax has nothing to render.
+        // When addMathJax is enabled, pre-rendering is skipped, but the fixture already has SVG.
+        test.skip('should render LaTeX with MathJax at runtime when addMathJax is enabled', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'MathJax Runtime Render Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await page.waitForFunction(
+                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+                { timeout: 30000 },
+            );
+
+            // Import the LaTeX fixture first
+            await importElpFixture(page, 'latex.elp');
+
+            // Enable addMathJax option AFTER import (so it's not overwritten)
+            await page.evaluate(() => {
+                const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+                const metadata = bridge.documentManager.getMetadata();
+                metadata.set('addMathJax', 'true');
+            });
+
+            // Open Preview
+            const previewButton = page.locator('#head-bottom-preview');
+            await previewButton.click();
+
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for MathJax to process content at runtime
+            await page.waitForTimeout(5000);
+
+            const iframe = page.frameLocator('#preview-iframe');
+
+            // When addMathJax is enabled, MathJax should render the content at runtime
+            // Look for mjx-container elements (MathJax output) instead of pre-rendered SVG
+            const mathRendered = await iframe.locator('body').evaluate(body => {
+                const mjxContainers = body.querySelectorAll('mjx-container').length;
+                // Pre-rendered content would have exe-math-rendered class
+                const preRendered = body.querySelectorAll('.exe-math-rendered').length;
+                return {
+                    mjxContainers,
+                    preRendered,
+                };
+            });
+
+            // With addMathJax enabled, we expect MathJax to render at runtime (mjx-container)
+            // rather than using pre-rendered SVG (exe-math-rendered)
+            expect(mathRendered.mjxContainers + mathRendered.preRendered).toBeGreaterThan(0);
+        });
     });
 });

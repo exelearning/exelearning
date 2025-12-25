@@ -25,7 +25,7 @@ describe('Locale translations', () => {
     };
     mockApp = {
       eXeLearning: {
-        symfony: {
+        config: {
           locale: 'es',
         },
       },

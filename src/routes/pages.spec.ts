@@ -50,7 +50,7 @@ function createMockQueries(): PagesQueriesDeps {
                 return { hasAccess: true };
             }
             // Check collaborators
-            if (project.collaborators && project.collaborators.includes(userId)) {
+            if (project.collaborators?.includes(userId)) {
                 return { hasAccess: true };
             }
             // Check visibility
@@ -469,10 +469,7 @@ describe('Pages Routes', () => {
 
                     if (project) {
                         // Check owner or collaborator
-                        if (
-                            project.owner_id === currentUser.id ||
-                            (project.collaborators && project.collaborators.includes(currentUser.id))
-                        ) {
+                        if (project.owner_id === currentUser.id || project.collaborators?.includes(currentUser.id)) {
                             return new Response('OK', { status: 200 });
                         }
                         return new Response('Access Denied', { status: 403 });
@@ -509,10 +506,7 @@ describe('Pages Routes', () => {
                             return new Response('OK', { status: 200 });
                         }
                         // Check owner or collaborator
-                        if (
-                            project.owner_id === currentUser.id ||
-                            (project.collaborators && project.collaborators.includes(currentUser.id))
-                        ) {
+                        if (project.owner_id === currentUser.id || project.collaborators?.includes(currentUser.id)) {
                             return new Response('OK', { status: 200 });
                         }
                         return new Response('Access Denied', { status: 403 });
@@ -1175,7 +1169,6 @@ describe('Pages Routes', () => {
             expect(templateData.user.id).toBe(1);
             expect(templateData.user.email || templateData.user.username).toBeDefined();
             expect(templateData.config).toBeDefined();
-            expect(templateData.symfony).toBeDefined();
             expect(templateData.locale).toBeDefined();
             expect(templateData.projectId).toBe('render-test');
             expect(templateData.t).toBeDefined();
@@ -1322,10 +1315,11 @@ describe('Pages Routes', () => {
                 }),
             );
 
-            const symfony = templateData.symfony;
-            expect(symfony.environment).toBeDefined();
-            expect(symfony.locale).toBeDefined();
-            expect(symfony.token).toBeDefined();
+            // Config now contains all settings (formerly split between config and symfony)
+            const config = templateData.config;
+            expect(config.environment).toBeDefined();
+            expect(config.locale).toBeDefined();
+            expect(config.token).toBeDefined();
         });
 
         it('should handle template render error with fallback HTML', async () => {
@@ -2123,6 +2117,50 @@ describe('Pages Routes', () => {
             );
 
             expect(templateData.config.isOfflineInstallation).toBe(true);
+        });
+    });
+
+    describe('GET /access-denied', () => {
+        it('should render access denied page with 403 status', async () => {
+            const res = await app.handle(new Request('http://localhost/access-denied'));
+
+            expect(res.status).toBe(403);
+            expect(res.headers.get('content-type')).toContain('text/html');
+
+            const html = await res.text();
+            // Mock template includes the template name
+            expect(html).toContain('workarea/access-denied');
+        });
+
+        it('should pass basePath to template', async () => {
+            const originalBasePath = process.env.BASE_PATH;
+            process.env.BASE_PATH = '/web/exelearning';
+
+            try {
+                let templateData: any = null;
+                const customTemplate: PagesTemplateDeps = {
+                    renderTemplate: (template: string, data: any) => {
+                        templateData = data;
+                        return `<html><body>Template: ${template}</body></html>`;
+                    },
+                };
+
+                const customDeps = {
+                    ...mockDeps,
+                    template: customTemplate,
+                };
+                const newApp = new Elysia().use(createPagesRoutes(customDeps));
+                const res = await newApp.handle(new Request('http://localhost/access-denied'));
+
+                expect(res.status).toBe(403);
+                expect(templateData.basePath).toBe('/web/exelearning');
+            } finally {
+                if (originalBasePath !== undefined) {
+                    process.env.BASE_PATH = originalBasePath;
+                } else {
+                    delete process.env.BASE_PATH;
+                }
+            }
         });
     });
 });

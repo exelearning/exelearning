@@ -207,6 +207,10 @@ const $exeExport = window.$exeExport = {
         // Get json data and initializes each page component of the indicated type
         let idevicesNodes = document.querySelectorAll(`.idevice_node.${ideviceType}`);
         idevicesNodes.forEach(ideviceNode => {
+            // Skip if already loaded or loading (prevents duplicate fetches)
+            if (ideviceNode.classList.contains('loaded') || ideviceNode.classList.contains('loading')) {
+                return;
+            }
             // Loading class
             ideviceNode.classList.add('loading');
             // Get json data
@@ -230,21 +234,81 @@ const $exeExport = window.$exeExport = {
             jsonData.ideviceId = ideviceNode.id;
             // Get accesibility
             let accesibility = null;
-            // Get template
-            let template = ideviceNode.getAttribute('data-idevice-template');
+            // Get template filename and path
+            let templateFilename = ideviceNode.getAttribute('data-idevice-template');
+            let idevicePath = ideviceNode.getAttribute('data-idevice-path');
             // Idevice export function 1: renderView
-            if (ideviceNode.classList.contains('db-no-data')) {
-                let htmlIdevice = exportIdevice.renderView(jsonData, accesibility, template);
-                if (htmlIdevice) ideviceNode.innerHTML = htmlIdevice;
+            // JSON iDevices that store ALL content in jsonProperties (not in htmlView) need renderView
+            // to generate the complete interface. These iDevices have empty htmlView by design.
+            // Other JSON iDevices (like text) may have pre-rendered content in htmlView.
+            const isJsonIdevice = ideviceNode.getAttribute('data-idevice-component-type') === 'json';
+            // JSON-only iDevices that store ALL content in jsonProperties (not in htmlView)
+            // and need renderView to generate the complete interface.
+            // 'trueorfalse' added for legacy imports that have empty htmlView.
+            const jsonOnlyIdevices = ['casestudy', 'form', 'image-gallery', 'magnifier', 'trueorfalse'];
+            const ideviceType = ideviceNode.getAttribute('data-idevice-type');
+            const needsJsonRender = isJsonIdevice && jsonOnlyIdevices.includes(ideviceType);
+            if (needsJsonRender || ideviceNode.classList.contains('db-no-data')) {
+                // Load template content if we only have filename
+                this.loadTemplateAndRender(ideviceNode, exportIdevice, jsonData, accesibility, templateFilename, idevicePath);
+            } else {
+                // No renderView needed, just behaviour and init
+                exportIdevice.renderBehaviour(jsonData, accesibility);
+                exportIdevice.init(jsonData, accesibility);
+                ideviceNode.classList.add('loaded');
+                setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
             }
-            // Idevice export function 2: renderBehaviour
-            exportIdevice.renderBehaviour(jsonData, accesibility);
-            // Idevice export function 3: init
-            exportIdevice.init(jsonData, accesibility);
-            // Loaded
-            ideviceNode.classList.add('loaded');
-            setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
         })
+    },
+
+    /**
+     * Load template content and render idevice
+     * Templates are loaded from idevicePath + templateFilename
+     */
+    loadTemplateAndRender: function (ideviceNode, exportIdevice, jsonData, accesibility, templateFilename, idevicePath) {
+        // If template is already full content (contains {content}), use it directly
+        if (templateFilename && templateFilename.includes('{content}')) {
+            this.renderWithTemplate(ideviceNode, exportIdevice, jsonData, accesibility, templateFilename);
+            return;
+        }
+
+        // If we have path and filename, fetch the template
+        if (idevicePath && templateFilename) {
+            const templateUrl = idevicePath + templateFilename;
+            fetch(templateUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Template not found: ${templateUrl}`);
+                    }
+                    return response.text();
+                })
+                .then(templateContent => {
+                    this.renderWithTemplate(ideviceNode, exportIdevice, jsonData, accesibility, templateContent);
+                })
+                .catch(error => {
+                    console.warn(`[exe_export] Could not load template: ${error.message}`);
+                    // Fallback: render without template (just the generated HTML)
+                    this.renderWithTemplate(ideviceNode, exportIdevice, jsonData, accesibility, '{content}');
+                });
+        } else {
+            // No template info, use simple wrapper
+            this.renderWithTemplate(ideviceNode, exportIdevice, jsonData, accesibility, '{content}');
+        }
+    },
+
+    /**
+     * Render idevice with loaded template content
+     */
+    renderWithTemplate: function (ideviceNode, exportIdevice, jsonData, accesibility, templateContent) {
+        let htmlIdevice = exportIdevice.renderView(jsonData, accesibility, templateContent);
+        if (htmlIdevice) ideviceNode.innerHTML = htmlIdevice;
+        // Idevice export function 2: renderBehaviour
+        exportIdevice.renderBehaviour(jsonData, accesibility);
+        // Idevice export function 3: init
+        exportIdevice.init(jsonData, accesibility);
+        // Loaded
+        ideviceNode.classList.add('loaded');
+        setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
     },
 
 

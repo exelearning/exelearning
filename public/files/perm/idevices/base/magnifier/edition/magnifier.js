@@ -68,7 +68,7 @@ var $exeDevice = {
                     </div>
                     <div class="d-flex align-items-center mb-3">
                         <label for="mnfFileInput" class="form-label me-2 mb-0 sr-av">${_('Image URL')}:</label>
-                        <input type="text" class="exe-image-picker form-control w-auto" id="mnfFileInput" />
+                        <input type="text" class="exe-file-picker form-control w-auto" id="mnfFileInput" />
                     </div>
                     <div class="row align-items-center mb-3">
                         <label for="mnfWidthInput" class="col-auto col-form-label">${_('Image width')}:</label>
@@ -114,11 +114,6 @@ var $exeDevice = {
         this.ideviceBody.innerHTML = html;
         this.loadPreviousValues();
         this.addEvents();
-        this.addPickerButton();
-    },
-
-    addPickerButton: function () {
-        // Manejado globalmente por $exeDevicesEdition.iDevice.filePicker.init()
     },
 
     loadPreviousValues: function () {
@@ -143,21 +138,8 @@ var $exeDevice = {
         const image = isDefaultImage == '0' ? imageResource : defaultImage;
 
         $('#mnfFileInput').val(pathImage);
-
-        // Resolve asset:// URL for display
-        if (image && image.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(image).then((blobUrl) => {
-                    $('#mnfPreviewImage').attr('src', blobUrl || defaultImage);
-                });
-            } else {
-                $('#mnfPreviewImage').attr('src', defaultImage);
-            }
-        } else {
-            $exeDevice.loadImageWithFallback(data);
-        }
+        $exeDevice.loadImageWithFallback(data);
+        $('#mnfPreviewImage').attr('src', image);
 
         $('#mnfWidthInput').val(width);
         $('#mnfHeightInput').val(height);
@@ -171,29 +153,14 @@ var $exeDevice = {
         }
     },
     loadImageWithFallback: function (data) {
-        const $preview = $('#mnfPreviewImage');
-        $preview
+        $('#mnfPreviewImage')
             .off('error')
             .on('error', function () {
                 $(this).off('error').attr('src', $exeDevice.defaultImage);
                 data.isDefaultImage = '0';
                 $('#mnfFileInput').val('');
-            });
-
-        // Resolve asset:// URLs to blob URLs
-        if (data.image && data.image.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                assetManager.resolveAssetURL(data.image).then((resolvedUrl) => {
-                    $preview.attr('src', resolvedUrl || $exeDevice.defaultImage);
-                });
-            } else {
-                $preview.attr('src', $exeDevice.defaultImage);
-            }
-        } else {
-            $preview.attr('src', data.image);
-        }
+            })
+            .attr('src', data.image);
     },
     save: function () {
         let dataGame = $exeDevice.validateData();
@@ -205,34 +172,8 @@ var $exeDevice = {
     },
     addEvents: function () {
         $('#mnfFileInput').on('input change', function () {
-            const selectedFile = $(this).val().trim();
-
-            // Handle asset:// URLs from filemanager
-            if (selectedFile.startsWith('asset://')) {
-                const blobUrl = $(this).data('blobUrl');
-                if (blobUrl) {
-                    $('#mnfPreviewImage').attr('src', blobUrl);
-                } else {
-                    // Resolve asset URL if blobUrl not in dataset
-                    const assetManager =
-                        window.eXeLearning?.app?.project?._yjsBridge
-                            ?.assetManager;
-                    if (assetManager) {
-                        assetManager
-                            .resolveAssetURL(selectedFile)
-                            .then((resolvedUrl) => {
-                                $('#mnfPreviewImage').attr(
-                                    'src',
-                                    resolvedUrl || $exeDevice.defaultImage
-                                );
-                            });
-                    }
-                }
-                return;
-            }
-
-            // Legacy file path handling
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'];
+            const selectedFile = $(this).val().trim();
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(

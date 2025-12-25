@@ -1,8 +1,16 @@
 /**
  * ResourceFetcher
  * Fetches server resources (themes, iDevices, libraries) for client-side exports.
- * Uses an API endpoint that returns file lists, then fetches each file individually.
- * Implements in-memory caching to avoid redundant fetches within a session.
+ *
+ * Optimized with:
+ * - ZIP bundle fetching (single request instead of N+1 requests)
+ * - IndexedDB persistent cache via ResourceCache
+ * - Fallback to individual file fetches for user themes
+ *
+ * Usage:
+ *   const fetcher = new ResourceFetcher();
+ *   await fetcher.init();  // Initialize cache
+ *   const files = await fetcher.fetchTheme('base');  // Returns Map<path, Blob>
  */
 
 // Third-party libraries that live in /libs/ not /app/common/
@@ -28,11 +36,142 @@ class ResourceFetcher {
     // In-memory cache for the session
     this.cache = new Map();
     // Get basePath from eXeLearning globals (for subdirectory installs)
-    this.basePath = window.eXeLearning?.symfony?.basePath || '';
+    this.basePath = window.eXeLearning?.config?.basePath || '';
     // Base URL for API endpoints (includes basePath)
     this.apiBase = `${this.basePath}/api/resources`;
     // Version for cache-busting static file URLs
     this.version = window.eXeLearning?.version || 'v0.0.0';
+    // Persistent IndexedDB cache (set via init() or setResourceCache())
+    this.resourceCache = null;
+    // Bundle manifest (loaded on init)
+    this.bundleManifest = null;
+    // Whether bundles are available
+    this.bundlesAvailable = false;
+  }
+
+  /**
+   * Initialize ResourceFetcher with optional ResourceCache
+   * @param {ResourceCache} [resourceCache] - Optional ResourceCache instance
+   * @returns {Promise<void>}
+   */
+  async init(resourceCache = null) {
+    if (resourceCache) {
+      this.resourceCache = resourceCache;
+    }
+
+    // Load bundle manifest to check what bundles are available
+    await this.loadBundleManifest();
+  }
+
+  /**
+   * Set the ResourceCache instance
+   * @param {ResourceCache} resourceCache
+   */
+  setResourceCache(resourceCache) {
+    this.resourceCache = resourceCache;
+  }
+
+  /**
+   * Load bundle manifest from server
+   * @returns {Promise<void>}
+   */
+  async loadBundleManifest() {
+    try {
+      const manifestUrl = `${this.apiBase}/bundle/manifest`;
+      console.log('[ResourceFetcher] Loading bundle manifest from:', manifestUrl);
+      const response = await fetch(manifestUrl);
+      if (response.ok) {
+        this.bundleManifest = await response.json();
+        this.bundlesAvailable = true;
+        console.log('[ResourceFetcher] ✅ Bundle manifest loaded, bundles available:', Object.keys(this.bundleManifest.themes || {}));
+      } else {
+        this.bundlesAvailable = false;
+        console.warn('[ResourceFetcher] ⚠️ No bundle manifest (status:', response.status, '), using fallback mode');
+      }
+    } catch (e) {
+      this.bundlesAvailable = false;
+      console.warn('[ResourceFetcher] ⚠️ Failed to load bundle manifest, using fallback mode:', e.message);
+    }
+  }
+
+  /**
+   * Extract ZIP bundle to Map<path, Blob>
+   * @param {ArrayBuffer} zipBuffer - ZIP file as ArrayBuffer
+   * @returns {Promise<Map<string, Blob>>}
+   */
+  async extractZipBundle(zipBuffer) {
+    const files = new Map();
+
+    // Use fflate (should be loaded globally)
+    if (typeof fflate === 'undefined') {
+      console.warn('[ResourceFetcher] fflate not available, cannot extract ZIP');
+      return files;
+    }
+
+    try {
+      const zipData = new Uint8Array(zipBuffer);
+      const unzipped = fflate.unzipSync(zipData);
+
+      for (const [filePath, content] of Object.entries(unzipped)) {
+        // Skip directories
+        if (filePath.endsWith('/')) continue;
+
+        // Determine MIME type from extension
+        const ext = filePath.split('.').pop()?.toLowerCase() || '';
+        const mimeTypes = {
+          css: 'text/css',
+          js: 'application/javascript',
+          json: 'application/json',
+          html: 'text/html',
+          htm: 'text/html',
+          xml: 'text/xml',
+          svg: 'image/svg+xml',
+          png: 'image/png',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          gif: 'image/gif',
+          webp: 'image/webp',
+          woff: 'font/woff',
+          woff2: 'font/woff2',
+          ttf: 'font/ttf',
+          eot: 'application/vnd.ms-fontobject',
+          mp3: 'audio/mpeg',
+          mp4: 'video/mp4',
+          webm: 'video/webm',
+          ogg: 'audio/ogg',
+        };
+        const mimeType = mimeTypes[ext] || 'application/octet-stream';
+
+        const blob = new Blob([content], { type: mimeType });
+        files.set(filePath, blob);
+      }
+
+      Logger.log(`[ResourceFetcher] Extracted ${files.size} files from ZIP bundle`);
+    } catch (e) {
+      console.error('[ResourceFetcher] Failed to extract ZIP bundle:', e);
+    }
+
+    return files;
+  }
+
+  /**
+   * Fetch ZIP bundle from server
+   * @param {string} bundleUrl - URL to the ZIP bundle
+   * @returns {Promise<Map<string, Blob>|null>} Extracted files or null on failure
+   */
+  async fetchBundle(bundleUrl) {
+    try {
+      const response = await fetch(bundleUrl);
+      if (!response.ok) {
+        return null;
+      }
+
+      const zipBuffer = await response.arrayBuffer();
+      return await this.extractZipBundle(zipBuffer);
+    } catch (e) {
+      console.warn(`[ResourceFetcher] Failed to fetch bundle ${bundleUrl}:`, e);
+      return null;
+    }
   }
 
   // =========================================================================
@@ -41,17 +180,76 @@ class ResourceFetcher {
 
   /**
    * Fetch all files for a theme
+   * Uses optimized bundle fetching when available, with fallback to individual files.
    * @param {string} themeName - Theme name (e.g., 'base', 'blue', 'clean')
    * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
    */
   async fetchTheme(themeName) {
     const cacheKey = `theme:${themeName}`;
+
+    // 1. Check in-memory cache
     if (this.cache.has(cacheKey)) {
-      Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded from cache`);
+      Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded from memory cache`);
       return this.cache.get(cacheKey);
     }
 
+    // 2. Check IndexedDB cache
+    if (this.resourceCache) {
+      try {
+        const cached = await this.resourceCache.get('theme', themeName, this.version);
+        if (cached) {
+          this.cache.set(cacheKey, cached);
+          Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded from IndexedDB cache`);
+          return cached;
+        }
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB cache read failed:', e);
+      }
+    }
+
     Logger.log(`[ResourceFetcher] Fetching theme '${themeName}' from server...`);
+
+    let themeFiles = null;
+
+    // 3. Try ZIP bundle (faster, single request)
+    if (this.bundlesAvailable) {
+      const bundleUrl = `${this.apiBase}/bundle/theme/${themeName}`;
+      console.log(`[ResourceFetcher] 📦 Fetching theme '${themeName}' via bundle:`, bundleUrl);
+      themeFiles = await this.fetchBundle(bundleUrl);
+      if (themeFiles && themeFiles.size > 0) {
+        console.log(`[ResourceFetcher] ✅ Theme '${themeName}' loaded from bundle (${themeFiles.size} files)`);
+      }
+    }
+
+    // 4. Fallback to individual file fetches
+    if (!themeFiles || themeFiles.size === 0) {
+      console.log(`[ResourceFetcher] ⚠️ Falling back to individual file fetches for theme '${themeName}'`);
+      themeFiles = await this.fetchThemeFallback(themeName);
+    }
+
+    // 5. Cache the result (cache even if empty to avoid repeated fetches)
+    this.cache.set(cacheKey, themeFiles);
+
+    // Store in IndexedDB for persistence (only if non-empty)
+    if (themeFiles.size > 0 && this.resourceCache) {
+      try {
+        await this.resourceCache.set('theme', themeName, this.version, themeFiles);
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB cache write failed:', e);
+      }
+    }
+
+    Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded (${themeFiles.size} files)`);
+    return themeFiles;
+  }
+
+  /**
+   * Fallback method to fetch theme files individually (parallel)
+   * @param {string} themeName
+   * @returns {Promise<Map<string, Blob>>}
+   */
+  async fetchThemeFallback(themeName) {
+    const themeFiles = new Map();
 
     try {
       // Get file list from API
@@ -61,30 +259,32 @@ class ResourceFetcher {
       }
 
       const fileList = await response.json();
-      const themeFiles = new Map();
 
-      // Fetch each file
-      for (const file of fileList) {
+      // Fetch all files in parallel
+      const fetchPromises = fileList.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
             const blob = await fileResponse.blob();
-            themeFiles.set(file.path, blob);
-          } else {
-            console.warn(`[ResourceFetcher] Failed to fetch theme file: ${file.url}`);
+            return { path: file.path, blob };
           }
         } catch (e) {
           console.warn(`[ResourceFetcher] Error fetching theme file ${file.url}:`, e);
         }
-      }
+        return null;
+      });
 
-      this.cache.set(cacheKey, themeFiles);
-      Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded (${themeFiles.size} files)`);
-      return themeFiles;
+      const results = await Promise.all(fetchPromises);
+      for (const result of results) {
+        if (result) {
+          themeFiles.set(result.path, result.blob);
+        }
+      }
     } catch (e) {
       console.error(`[ResourceFetcher] Failed to fetch theme '${themeName}':`, e);
-      return new Map();
     }
+
+    return themeFiles;
   }
 
   // =========================================================================
@@ -93,53 +293,147 @@ class ResourceFetcher {
 
   /**
    * Fetch all files for an iDevice type
+   * Uses iDevices bundle when available, with fallback to individual files.
    * @param {string} ideviceType - iDevice type name (e.g., 'FreeTextIdevice', 'QuizActivity')
    * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
    */
   async fetchIdevice(ideviceType) {
     const cacheKey = `idevice:${ideviceType}`;
+
+    // 1. Check in-memory cache
     if (this.cache.has(cacheKey)) {
-      Logger.log(`[ResourceFetcher] iDevice '${ideviceType}' loaded from cache`);
+      Logger.log(`[ResourceFetcher] iDevice '${ideviceType}' loaded from memory cache`);
       return this.cache.get(cacheKey);
     }
 
+    // 2. Check IndexedDB cache
+    if (this.resourceCache) {
+      try {
+        const cached = await this.resourceCache.get('idevice', ideviceType, this.version);
+        if (cached) {
+          this.cache.set(cacheKey, cached);
+          Logger.log(`[ResourceFetcher] iDevice '${ideviceType}' loaded from IndexedDB cache`);
+          return cached;
+        }
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB cache read failed:', e);
+      }
+    }
+
+    // 3. Try to load from iDevices bundle (all iDevices in one ZIP)
+    if (this.bundlesAvailable && !this.cache.has('idevices:all')) {
+      await this.loadIdevicesBundle();
+    }
+
+    // Check if the iDevice is now in memory cache (loaded from bundle)
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    // 4. Fallback to individual file fetches
     Logger.log(`[ResourceFetcher] Fetching iDevice '${ideviceType}' from server...`);
+    const ideviceFiles = await this.fetchIdeviceFallback(ideviceType);
+
+    // 5. Cache the result (cache even if empty to avoid repeated fetches)
+    this.cache.set(cacheKey, ideviceFiles);
+
+    // Store in IndexedDB for persistence (only if non-empty)
+    if (ideviceFiles.size > 0 && this.resourceCache) {
+      try {
+        await this.resourceCache.set('idevice', ideviceType, this.version, ideviceFiles);
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB cache write failed:', e);
+      }
+    }
+
+    Logger.log(`[ResourceFetcher] iDevice '${ideviceType}' loaded (${ideviceFiles.size} files)`);
+    return ideviceFiles;
+  }
+
+  /**
+   * Load all iDevices from bundle and distribute to individual caches
+   * @returns {Promise<void>}
+   */
+  async loadIdevicesBundle() {
+    const bundleUrl = `${this.apiBase}/bundle/idevices`;
+    const allFiles = await this.fetchBundle(bundleUrl);
+
+    if (!allFiles || allFiles.size === 0) {
+      this.cache.set('idevices:all', new Map()); // Mark as tried
+      return;
+    }
+
+    // Distribute files to individual iDevice caches
+    // Files are stored as: ideviceName/path/to/file
+    const ideviceFilesMap = new Map();
+
+    for (const [filePath, blob] of allFiles) {
+      const parts = filePath.split('/');
+      if (parts.length < 2) continue;
+
+      const ideviceName = parts[0];
+      const relativePath = parts.slice(1).join('/');
+
+      if (!ideviceFilesMap.has(ideviceName)) {
+        ideviceFilesMap.set(ideviceName, new Map());
+      }
+      ideviceFilesMap.get(ideviceName).set(relativePath, blob);
+    }
+
+    // Store in memory cache
+    for (const [ideviceName, files] of ideviceFilesMap) {
+      this.cache.set(`idevice:${ideviceName}`, files);
+    }
+
+    this.cache.set('idevices:all', ideviceFilesMap);
+    Logger.log(`[ResourceFetcher] Loaded ${ideviceFilesMap.size} iDevices from bundle`);
+  }
+
+  /**
+   * Fallback method to fetch iDevice files individually (parallel)
+   * @param {string} ideviceType
+   * @returns {Promise<Map<string, Blob>>}
+   */
+  async fetchIdeviceFallback(ideviceType) {
+    const ideviceFiles = new Map();
 
     try {
       const response = await fetch(`${this.apiBase}/idevice/${ideviceType}`);
       if (!response.ok) {
-        // Many iDevices may not have additional files - this is normal
         if (response.status === 404) {
           Logger.log(`[ResourceFetcher] iDevice '${ideviceType}' has no additional files`);
-          const emptyMap = new Map();
-          this.cache.set(cacheKey, emptyMap);
-          return emptyMap;
+          return ideviceFiles;
         }
         throw new Error(`Failed to fetch iDevice list: ${response.status}`);
       }
 
       const fileList = await response.json();
-      const ideviceFiles = new Map();
 
-      for (const file of fileList) {
+      // Fetch all files in parallel
+      const fetchPromises = fileList.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
             const blob = await fileResponse.blob();
-            ideviceFiles.set(file.path, blob);
+            return { path: file.path, blob };
           }
         } catch (e) {
           console.warn(`[ResourceFetcher] Error fetching iDevice file ${file.url}:`, e);
         }
-      }
+        return null;
+      });
 
-      this.cache.set(cacheKey, ideviceFiles);
-      Logger.log(`[ResourceFetcher] iDevice '${ideviceType}' loaded (${ideviceFiles.size} files)`);
-      return ideviceFiles;
+      const results = await Promise.all(fetchPromises);
+      for (const result of results) {
+        if (result) {
+          ideviceFiles.set(result.path, result.blob);
+        }
+      }
     } catch (e) {
       console.error(`[ResourceFetcher] Failed to fetch iDevice '${ideviceType}':`, e);
-      return new Map();
     }
+
+    return ideviceFiles;
   }
 
   /**
@@ -170,16 +464,68 @@ class ResourceFetcher {
 
   /**
    * Fetch base JavaScript libraries (jQuery, common.js, etc.)
+   * Uses libs bundle when available, with fallback to individual files.
    * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
    */
   async fetchBaseLibraries() {
     const cacheKey = 'libs:base';
+
+    // 1. Check in-memory cache
     if (this.cache.has(cacheKey)) {
-      Logger.log('[ResourceFetcher] Base libraries loaded from cache');
+      Logger.log('[ResourceFetcher] Base libraries loaded from memory cache');
       return this.cache.get(cacheKey);
     }
 
+    // 2. Check IndexedDB cache
+    if (this.resourceCache) {
+      try {
+        const cached = await this.resourceCache.get('libs', 'base', this.version);
+        if (cached) {
+          this.cache.set(cacheKey, cached);
+          Logger.log('[ResourceFetcher] Base libraries loaded from IndexedDB cache');
+          return cached;
+        }
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB cache read failed:', e);
+      }
+    }
+
     Logger.log('[ResourceFetcher] Fetching base libraries from server...');
+
+    let libFiles = null;
+
+    // 3. Try ZIP bundle (faster, single request)
+    if (this.bundlesAvailable) {
+      const bundleUrl = `${this.apiBase}/bundle/libs`;
+      libFiles = await this.fetchBundle(bundleUrl);
+    }
+
+    // 4. Fallback to individual file fetches
+    if (!libFiles || libFiles.size === 0) {
+      libFiles = await this.fetchBaseLibrariesFallback();
+    }
+
+    // 5. Cache the result (cache even if empty to avoid repeated fetches)
+    this.cache.set(cacheKey, libFiles);
+
+    if (libFiles.size > 0 && this.resourceCache) {
+      try {
+        await this.resourceCache.set('libs', 'base', this.version, libFiles);
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB cache write failed:', e);
+      }
+    }
+
+    Logger.log(`[ResourceFetcher] Base libraries loaded (${libFiles.size} files)`);
+    return libFiles;
+  }
+
+  /**
+   * Fallback method to fetch base libraries individually (parallel)
+   * @returns {Promise<Map<string, Blob>>}
+   */
+  async fetchBaseLibrariesFallback() {
+    const libFiles = new Map();
 
     try {
       const response = await fetch(`${this.apiBase}/libs/base`);
@@ -188,27 +534,32 @@ class ResourceFetcher {
       }
 
       const fileList = await response.json();
-      const libFiles = new Map();
 
-      for (const file of fileList) {
+      // Fetch all files in parallel
+      const fetchPromises = fileList.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
             const blob = await fileResponse.blob();
-            libFiles.set(file.path, blob);
+            return { path: file.path, blob };
           }
         } catch (e) {
           console.warn(`[ResourceFetcher] Error fetching library file ${file.url}:`, e);
         }
-      }
+        return null;
+      });
 
-      this.cache.set(cacheKey, libFiles);
-      Logger.log(`[ResourceFetcher] Base libraries loaded (${libFiles.size} files)`);
-      return libFiles;
+      const results = await Promise.all(fetchPromises);
+      for (const result of results) {
+        if (result) {
+          libFiles.set(result.path, result.blob);
+        }
+      }
     } catch (e) {
       console.error('[ResourceFetcher] Failed to fetch base libraries:', e);
-      return new Map();
     }
+
+    return libFiles;
   }
 
   // =========================================================================
@@ -237,15 +588,24 @@ class ResourceFetcher {
       const fileList = await response.json();
       const scormFiles = new Map();
 
-      for (const file of fileList) {
+      // Fetch all files in parallel
+      const fetchPromises = fileList.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
             const blob = await fileResponse.blob();
-            scormFiles.set(file.path, blob);
+            return { path: file.path, blob };
           }
         } catch (e) {
           console.warn(`[ResourceFetcher] Error fetching SCORM file ${file.url}:`, e);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(fetchPromises);
+      for (const result of results) {
+        if (result) {
+          scormFiles.set(result.path, result.blob);
         }
       }
 
@@ -284,15 +644,24 @@ class ResourceFetcher {
       const fileList = await response.json();
       const epubFiles = new Map();
 
-      for (const file of fileList) {
+      // Fetch all files in parallel
+      const fetchPromises = fileList.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
             const blob = await fileResponse.blob();
-            epubFiles.set(file.path, blob);
+            return { path: file.path, blob };
           }
         } catch (e) {
           console.warn(`[ResourceFetcher] Error fetching EPUB file ${file.url}:`, e);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(fetchPromises);
+      for (const result of results) {
+        if (result) {
+          epubFiles.set(result.path, result.blob);
         }
       }
 
@@ -332,15 +701,24 @@ class ResourceFetcher {
       const fileList = await response.json();
       const schemaFiles = new Map();
 
-      for (const file of fileList) {
+      // Fetch all files in parallel
+      const fetchPromises = fileList.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
             const blob = await fileResponse.blob();
-            schemaFiles.set(file.path, blob);
+            return { path: file.path, blob };
           }
         } catch (e) {
           console.warn(`[ResourceFetcher] Error fetching schema file ${file.url}:`, e);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(fetchPromises);
+      for (const result of results) {
+        if (result) {
+          schemaFiles.set(result.path, result.blob);
         }
       }
 
@@ -452,15 +830,24 @@ class ResourceFetcher {
       const fileList = await response.json();
       const libFiles = new Map();
 
-      for (const file of fileList) {
+      // Fetch all files in parallel
+      const fetchPromises = fileList.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
             const blob = await fileResponse.blob();
-            libFiles.set(file.path, blob);
+            return { path: file.path, blob };
           }
         } catch (e) {
           console.warn(`[ResourceFetcher] Error fetching library file ${file.url}:`, e);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(fetchPromises);
+      for (const result of results) {
+        if (result) {
+          libFiles.set(result.path, result.blob);
         }
       }
 
@@ -478,11 +865,32 @@ class ResourceFetcher {
   // =========================================================================
 
   /**
-   * Clear all cached resources
+   * Clear all cached resources (in-memory only)
    */
   clearCache() {
     this.cache.clear();
-    Logger.log('[ResourceFetcher] Cache cleared');
+    Logger.log('[ResourceFetcher] In-memory cache cleared');
+  }
+
+  /**
+   * Clear all cached resources including IndexedDB persistent cache
+   * @returns {Promise<void>}
+   */
+  async clearAllCaches() {
+    // Clear in-memory cache
+    this.cache.clear();
+
+    // Clear IndexedDB cache
+    if (this.resourceCache) {
+      try {
+        await this.resourceCache.clear();
+        Logger.log('[ResourceFetcher] All caches cleared (in-memory + IndexedDB)');
+      } catch (e) {
+        console.warn('[ResourceFetcher] Failed to clear IndexedDB cache:', e);
+      }
+    } else {
+      Logger.log('[ResourceFetcher] In-memory cache cleared (no IndexedDB cache)');
+    }
   }
 
   /**
@@ -576,16 +984,69 @@ class ResourceFetcher {
 
   /**
    * Fetch content CSS files (base.css, etc.)
+   * Uses content-css bundle when available, with fallback to individual files.
    * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
    */
   async fetchContentCss() {
     const cacheKey = 'content-css';
+
+    // 1. Check in-memory cache
     if (this.cache.has(cacheKey)) {
-      Logger.log('[ResourceFetcher] Content CSS loaded from cache');
+      Logger.log('[ResourceFetcher] Content CSS loaded from memory cache');
       return this.cache.get(cacheKey);
     }
 
+    // 2. Check IndexedDB cache
+    if (this.resourceCache) {
+      try {
+        const cached = await this.resourceCache.get('css', 'content', this.version);
+        if (cached) {
+          this.cache.set(cacheKey, cached);
+          Logger.log('[ResourceFetcher] Content CSS loaded from IndexedDB cache');
+          return cached;
+        }
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB cache read failed:', e);
+      }
+    }
+
     Logger.log('[ResourceFetcher] Fetching content CSS from server...');
+
+    let cssFiles = null;
+
+    // 3. Try ZIP bundle
+    if (this.bundlesAvailable) {
+      const bundleUrl = `${this.apiBase}/bundle/content-css`;
+      cssFiles = await this.fetchBundle(bundleUrl);
+    }
+
+    // 4. Fallback to individual file fetches
+    if (!cssFiles || cssFiles.size === 0) {
+      cssFiles = await this.fetchContentCssFallback();
+    }
+
+    // 5. Cache the result (cache even if empty to avoid repeated fetches)
+    this.cache.set(cacheKey, cssFiles);
+
+    // Store in IndexedDB for persistence (only if non-empty)
+    if (cssFiles.size > 0 && this.resourceCache) {
+      try {
+        await this.resourceCache.set('css', 'content', this.version, cssFiles);
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB cache write failed:', e);
+      }
+    }
+
+    Logger.log(`[ResourceFetcher] Content CSS loaded (${cssFiles.size} files)`);
+    return cssFiles;
+  }
+
+  /**
+   * Fallback method to fetch content CSS individually (parallel)
+   * @returns {Promise<Map<string, Blob>>}
+   */
+  async fetchContentCssFallback() {
+    const cssFiles = new Map();
 
     try {
       const response = await fetch(`${this.apiBase}/content-css`);
@@ -594,27 +1055,32 @@ class ResourceFetcher {
       }
 
       const fileList = await response.json();
-      const cssFiles = new Map();
 
-      for (const file of fileList) {
+      // Fetch all files in parallel
+      const fetchPromises = fileList.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
             const blob = await fileResponse.blob();
-            cssFiles.set(file.path, blob);
+            return { path: file.path, blob };
           }
         } catch (e) {
           console.warn(`[ResourceFetcher] Error fetching CSS file ${file.url}:`, e);
         }
-      }
+        return null;
+      });
 
-      this.cache.set(cacheKey, cssFiles);
-      Logger.log(`[ResourceFetcher] Content CSS loaded (${cssFiles.size} files)`);
-      return cssFiles;
+      const results = await Promise.all(fetchPromises);
+      for (const result of results) {
+        if (result) {
+          cssFiles.set(result.path, result.blob);
+        }
+      }
     } catch (e) {
       console.error('[ResourceFetcher] Failed to fetch content CSS:', e);
-      return new Map();
     }
+
+    return cssFiles;
   }
 }
 

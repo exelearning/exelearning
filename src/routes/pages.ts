@@ -534,7 +534,18 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         .map(m => m.trim().toLowerCase())
                         .includes('none');
 
+                const basePath = getBasePath();
+
+                // Generate auth token for WebSocket
+                const authToken = await jwt.sign({
+                    sub: userId,
+                    email: email,
+                    isGuest: isGuest,
+                });
+
+                // Unified config object (replaces legacy 'symfony' object)
                 const config = {
+                    // Platform settings
                     platformName: 'exelearning',
                     platformType: 'standalone',
                     platformUrlGet: '',
@@ -551,18 +562,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     appEnv: process.env.APP_ENV || 'prod',
                     appDebug: process.env.APP_DEBUG || '0',
                     onlineMode: String(process.env.APP_ONLINE_MODE || '1') === '1',
-                };
-
-                const basePath = getBasePath();
-
-                // Generate auth token for WebSocket
-                const authToken = await jwt.sign({
-                    sub: userId,
-                    email: email,
-                    isGuest: isGuest,
-                });
-
-                const symfony = {
+                    // URL and path settings (formerly in 'symfony' object)
                     odeSessionId: null,
                     environment: process.env.APP_ENV || 'prod',
                     baseURL: '', // Will be set client-side
@@ -652,7 +652,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     extension: '.elp',
                     user,
                     config,
-                    symfony,
                     locale,
                     projectId: projectUuid || null,
                     t,
@@ -672,7 +671,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
   <head>
     <meta charset="utf-8" />
     <title>eXeLearning Workarea</title>
-    <script>window.eXeLearning = { version: "${getAppVersion()}", user: ${JSON.stringify(user)}, config: ${JSON.stringify(config)}, symfony: ${JSON.stringify(symfony)} };</script>
+    <script>window.eXeLearning = { version: "${getAppVersion()}", user: ${JSON.stringify(user)}, config: ${JSON.stringify(config)} };</script>
   </head>
   <body>
     <div id="root">eXeLearning workarea - Template error: ${errorMessage}</div>
@@ -798,6 +797,21 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         headers: { 'Content-Type': 'text/html; charset=utf-8' },
                     });
                 }
+            })
+
+            // =====================================================
+            // Access Denied Page (standalone route for redirects)
+            // =====================================================
+            .get('/access-denied', () => {
+                const basePath = getBasePath();
+                const html = renderTemplate('workarea/access-denied', {
+                    basePath,
+                    locale: 'en',
+                });
+                return new Response(html, {
+                    status: 403,
+                    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                });
             })
     );
 }

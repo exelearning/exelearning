@@ -413,7 +413,7 @@ function extractIdeviceTitle(inst: LegacyInstanceNode): string {
                     typeof unicodeItem === 'object' && unicodeItem !== null
                         ? (unicodeItem['@_value'] as string)
                         : String(unicodeItem);
-                if (title && title.trim()) {
+                if (title?.trim()) {
                     return title;
                 }
             }

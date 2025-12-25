@@ -21,7 +21,7 @@
 	margin: 0.7em auto;
 	padding: 0;
 	position: relative;
-	width: 100%;
+	width: 100%; 
 }
 
 .CCGM-EOptionsMedia {
@@ -76,6 +76,10 @@
 	height: 200px;
 	display: none;
 	margin-top: 1em;
+}
+
+#ccgmEImageBack {
+	display: none;
 }
 
 .CCGM-EMedia1 {

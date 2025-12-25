@@ -26,6 +26,7 @@ describe('modalOpenUserOdeFiles', () => {
     window.eXeLearning = {
       config: {
         isOfflineInstallation: false,
+        basePath: '/exelearning',
       },
       extension: 'elpx',
       app: {
@@ -101,8 +102,7 @@ describe('modalOpenUserOdeFiles', () => {
             },
           },
         }
-      },
-      symfony: { basePath: '/exelearning' }
+      }
     };
 
     // Mock DOM
@@ -212,6 +212,52 @@ describe('modalOpenUserOdeFiles', () => {
     it('should format bytes correctly', () => {
       expect(modal.formatBytes(1024)).toBe('1.00 KB');
       expect(modal.formatBytes(1024 * 1024)).toBe('1.00 MB');
+    });
+  });
+
+  describe('typesetTitles', () => {
+    it('should call MathJax.typesetPromise for titles with LaTeX', async () => {
+      const mockTypesetPromise = vi.fn().mockResolvedValue();
+      window.MathJax = { typesetPromise: mockTypesetPromise };
+
+      // Add title elements with LaTeX
+      const title = document.createElement('div');
+      title.className = 'ode-file-title';
+      title.textContent = 'Project with \\(x^2\\)';
+      modal.modalElementBodyContent.appendChild(title);
+
+      modal.typesetTitles();
+
+      expect(mockTypesetPromise).toHaveBeenCalled();
+      expect(mockTypesetPromise).toHaveBeenCalledWith([title]);
+    });
+
+    it('should not call MathJax if no titles have LaTeX', () => {
+      const mockTypesetPromise = vi.fn().mockResolvedValue();
+      window.MathJax = { typesetPromise: mockTypesetPromise };
+
+      // Add title without LaTeX
+      const title = document.createElement('div');
+      title.className = 'ode-file-title';
+      title.textContent = 'Normal Project Title';
+      modal.modalElementBodyContent.appendChild(title);
+
+      modal.typesetTitles();
+
+      expect(mockTypesetPromise).not.toHaveBeenCalled();
+    });
+
+    it('should not fail when MathJax is not available', () => {
+      delete window.MathJax;
+
+      // Add title with LaTeX
+      const title = document.createElement('div');
+      title.className = 'ode-file-title';
+      title.textContent = 'Project with \\(x^2\\)';
+      modal.modalElementBodyContent.appendChild(title);
+
+      // Should not throw
+      expect(() => modal.typesetTitles()).not.toThrow();
     });
   });
 
@@ -562,10 +608,10 @@ describe('modalOpenUserOdeFiles', () => {
     it('should fallback to symfony token then localStorage', () => {
       window.eXeLearning.app.auth = null;
       window.eXeLearning.app.project._yjsBridge = null;
-      window.eXeLearning.symfony = { token: 'sym-token' };
+      window.eXeLearning.config = { token: 'sym-token' };
       expect(modal.getAuthToken()).toBe('sym-token');
 
-      window.eXeLearning.symfony = null;
+      window.eXeLearning.config = null;
       localStorage.setItem('authToken', 'local-token');
       expect(modal.getAuthToken()).toBe('local-token');
       localStorage.clear();

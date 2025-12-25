@@ -158,12 +158,10 @@ describe('ModalIdeviceManager', () => {
           },
         },
       },
-      symfony: {
+      config: {
         ideviceVisibilityPreferencePre: 'idevice_visibility_',
         ideviceTypeBase: 'base',
         ideviceTypeUser: 'user',
-      },
-      config: {
         isOfflineInstallation: false,
         userIdevices: true,
       },

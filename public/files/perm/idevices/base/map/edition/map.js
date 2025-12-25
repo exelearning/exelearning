@@ -3204,7 +3204,7 @@ var $exeDevice = {
                 );
                 return false;
             }
-            const url = $(this).data('blobUrl') || selectedFile,
+            const url = selectedFile,
                 alt = $('#mapaAltImageMap').val(),
                 x = parseFloat($('#mapaX').val()),
                 y = parseFloat($('#mapaY').val()),
@@ -3231,7 +3231,7 @@ var $exeDevice = {
                 );
                 return false;
             }
-            const url = $('#mapaURLImageMap').data('blobUrl') || selectedFile,
+            const url = selectedFile,
                 alt = $('#mapaAltImageMap').val(),
                 x = parseFloat($('#mapaX').val()),
                 y = parseFloat($('#mapaY').val()),
@@ -3258,7 +3258,7 @@ var $exeDevice = {
                 );
                 return false;
             }
-            const url = $('#mapaURLImage').data('blobUrl') || selectedFile,
+            const url = selectedFile,
                 alt = $('#mapaAltImageMap').val();
             $exeDevice.showImage(url, alt);
             $('#mapaMultimediaPoint').fadeIn();
@@ -3283,7 +3283,7 @@ var $exeDevice = {
                 );
                 return false;
             }
-            const url = $('#mapaSURLImage').data('blobUrl') || selectedFile,
+            const url = selectedFile,
                 alt = $('#mapaSAltImage').val();
             $exeDevice.showImageSlide(url, alt);
         });
@@ -3300,9 +3300,8 @@ var $exeDevice = {
                 );
                 return false;
             }
-            const url = $(this).data('blobUrl') || selectedFile,
-                alt = $('#mapaSAltImage').val();
-            $exeDevice.showImageSlide(url, alt);
+            const alt = $('#mapaSAltImage').val();
+            $exeDevice.showImageSlide(selectedFile, alt);
         });
 
         $('#mapaMultimediaPoint').on('click', function () {
@@ -3523,8 +3522,7 @@ var $exeDevice = {
             $('#mapaPContainer').css('display', 'flex');
             $('#mapaCubierta').css('display', 'flex');
             $('#mapaCubierta').show();
-            const url = $(this).data('blobUrl') || selectedFile;
-            $exeDevice.showImage(url, alt);
+            $exeDevice.showImage(selectedFile, alt);
         });
 
         $('#mapaPURLImage').on('change', function () {
@@ -3540,12 +3538,11 @@ var $exeDevice = {
                 );
                 return false;
             }
-            const url = $(this).data('blobUrl') || selectedFile,
-                alt = $('#mapaPAltImage').val();
+            const alt = $('#mapaPAltImage').val();
             $('#mapaURLImage').val(selectedFile);
             $('#mapaTitle').val($('#mapaPTitle').val());
             $('#mapaFooter').val($('#mapaPFooter').val());
-            $exeDevice.showImage(url, alt);
+            $exeDevice.showImage(selectedFile, alt);
         });
 
         $('#mapaEShowSolution').on('change', function () {
@@ -3572,15 +3569,14 @@ var $exeDevice = {
                 );
                 return false;
             }
-            let url = $('#mapaURLImage').data('blobUrl') || selectedFile,
-                alt = $('#mapaPAltImage').val();
+            let alt = $('#mapaPAltImage').val();
             $('#mapaPContainer').css('display', 'flex');
             $('#mapaCubierta').css('display', 'flex');
             $('#mapaCubierta').show();
             $('#mapaPURLImage').val(selectedFile);
             $('#mapaPTitle').val($('#mapaTitle').val());
             $('#mapaPFooter').val($('#mapaFooter').val());
-            $exeDevice.showImage(url, alt);
+            $exeDevice.showImage(selectedFile, alt);
         });
 
         $('#mapaPShowImage').on('click', function (e) {
@@ -3602,12 +3598,11 @@ var $exeDevice = {
                 );
                 return false;
             }
-            const url = $('#mapaPURLImage').data('blobUrl') || selectedFile,
-                alt = $('#mapaPAltImage').val();
+            const alt = $('#mapaPAltImage').val();
             $('#mapaURLImage').val(selectedFile);
             $('#mapaTitle').val($('#mapaPTitle').val());
             $('#mapaFooter').val($('#mapaPFooter').val());
-            $exeDevice.showImage(url, alt);
+            $exeDevice.showImage(selectedFile, alt);
         });
 
         $('#mapaPClose').on('click', function (e) {

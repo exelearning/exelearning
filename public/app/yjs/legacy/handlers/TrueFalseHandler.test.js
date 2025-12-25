@@ -2,6 +2,7 @@
  * TrueFalseHandler Tests
  *
  * Unit tests for TrueFalseHandler - handles TrueFalseIdevice.
+ * Updated to test game-compatible format output.
  */
 
 // Load BaseLegacyHandler first and make it global
@@ -47,13 +48,24 @@ describe('TrueFalseHandler', () => {
   });
 
   describe('getTargetType', () => {
-    it('returns form', () => {
-      expect(handler.getTargetType()).toBe('form');
+    it('returns trueorfalse', () => {
+      expect(handler.getTargetType()).toBe('trueorfalse');
+    });
+  });
+
+  describe('getDefaultMessages', () => {
+    it('returns all required message keys', () => {
+      const msgs = handler.getDefaultMessages();
+      expect(msgs.msgStartGame).toBe('Click here to start');
+      expect(msgs.msgTrue).toBe('True');
+      expect(msgs.msgFalse).toBe('False');
+      expect(msgs.msgCheck).toBe('Check');
+      expect(msgs.msgReboot).toBe('Try again!');
     });
   });
 
   describe('extractProperties', () => {
-    it('extracts questionsData from dictionary', () => {
+    it('returns game-compatible format with typeGame and questionsGame', () => {
       const dict = parseDictionary(`
         <dictionary>
           <list>
@@ -74,22 +86,58 @@ describe('TrueFalseHandler', () => {
         </dictionary>
       `);
 
-      const result = handler.extractProperties(dict);
+      const result = handler.extractProperties(dict, 'idevice-123');
 
-      expect(result.questionsData).toBeDefined();
-      expect(result.questionsData.length).toBe(1);
-      expect(result.questionsData[0].activityType).toBe('true-false');
+      expect(result.typeGame).toBe('TrueOrFalse');
+      expect(result.questionsGame).toBeDefined();
+      expect(result.questionsGame.length).toBe(1);
+      expect(result.id).toBe('idevice-123');
+      expect(result.ideviceId).toBe('idevice-123');
+    });
+
+    it('includes all required game properties', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <list>
+            <instance class="exe.engine.truefalseidevice.TrueFalseQuestion">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>Test</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="isCorrect"></string>
+                <bool value="1"></bool>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const result = handler.extractProperties(dict, 'idevice-456');
+
+      expect(result.msgs).toBeDefined();
+      expect(result.msgs.msgTrue).toBe('True');
+      expect(result.isScorm).toBe(0);
+      expect(result.repeatActivity).toBe(true);
+      expect(result.questionsRandom).toBe(false);
+      expect(result.percentageQuestions).toBe(100);
+      expect(result.isTest).toBe(false);
+      expect(result.time).toBe(0);
+      expect(result.evaluation).toBe(false);
     });
 
     it('returns empty object when no questions found', () => {
       const dict = parseDictionary('<dictionary></dictionary>');
-      const result = handler.extractProperties(dict);
+      const result = handler.extractProperties(dict, 'idevice-789');
       expect(result).toEqual({});
     });
   });
 
-  describe('extractQuestions', () => {
-    it('extracts true answer correctly', () => {
+  describe('extractQuestionsGame', () => {
+    it('extracts true answer correctly (solution=1)', () => {
       const dict = parseDictionary(`
         <dictionary>
           <list>
@@ -110,14 +158,14 @@ describe('TrueFalseHandler', () => {
         </dictionary>
       `);
 
-      const questions = handler.extractQuestions(dict);
+      const questions = handler.extractQuestionsGame(dict);
 
       expect(questions.length).toBe(1);
-      expect(questions[0].baseText).toBe('<p>Water is wet</p>');
-      expect(questions[0].answer).toBe('True');
+      expect(questions[0].question).toBe('<p>Water is wet</p>');
+      expect(questions[0].solution).toBe(1);
     });
 
-    it('extracts false answer correctly', () => {
+    it('extracts false answer correctly (solution=0)', () => {
       const dict = parseDictionary(`
         <dictionary>
           <list>
@@ -138,11 +186,11 @@ describe('TrueFalseHandler', () => {
         </dictionary>
       `);
 
-      const questions = handler.extractQuestions(dict);
-      expect(questions[0].answer).toBe('False');
+      const questions = handler.extractQuestionsGame(dict);
+      expect(questions[0].solution).toBe(0);
     });
 
-    it('extracts hint and feedback', () => {
+    it('extracts suggestion (from hint) and feedback', () => {
       const dict = parseDictionary(`
         <dictionary>
           <list>
@@ -177,9 +225,10 @@ describe('TrueFalseHandler', () => {
         </dictionary>
       `);
 
-      const questions = handler.extractQuestions(dict);
+      const questions = handler.extractQuestionsGame(dict);
 
-      expect(questions[0].hint).toBe('<p>This is a hint</p>');
+      // hint maps to suggestion in game format
+      expect(questions[0].suggestion).toBe('<p>This is a hint</p>');
       expect(questions[0].feedback).toBe('<p>This is feedback</p>');
     });
 
@@ -217,8 +266,10 @@ describe('TrueFalseHandler', () => {
         </dictionary>
       `);
 
-      const questions = handler.extractQuestions(dict);
+      const questions = handler.extractQuestionsGame(dict);
       expect(questions.length).toBe(2);
+      expect(questions[0].solution).toBe(1);
+      expect(questions[1].solution).toBe(0);
     });
 
     it('looks for questions in "questions" key', () => {
@@ -243,7 +294,7 @@ describe('TrueFalseHandler', () => {
         </dictionary>
       `);
 
-      const questions = handler.extractQuestions(dict);
+      const questions = handler.extractQuestionsGame(dict);
       expect(questions.length).toBe(1);
     });
 
@@ -261,7 +312,7 @@ describe('TrueFalseHandler', () => {
         </dictionary>
       `);
 
-      const questions = handler.extractQuestions(dict);
+      const questions = handler.extractQuestionsGame(dict);
       expect(questions).toEqual([]);
     });
   });
@@ -290,8 +341,71 @@ describe('TrueFalseHandler', () => {
     });
 
     it('handles null dict', () => {
-      // Handler should check for null
       expect(handler.extractHtmlView(null)).toBe('');
+    });
+  });
+
+  describe('eXeGameInstructions in extractProperties', () => {
+    it('includes eXeGameInstructions when instructions are present', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="instructionsForLearners"></string>
+          <instance class="TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Mark each statement as true or false</p>')}"></unicode>
+            </dictionary>
+          </instance>
+          <list>
+            <instance class="exe.engine.truefalseidevice.TrueFalseQuestion">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>The sun rises in the east</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="isCorrect"></string>
+                <bool value="1"></bool>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const result = handler.extractProperties(dict, 'idevice-test');
+
+      expect(result.eXeGameInstructions).toBe('<p>Mark each statement as true or false</p>');
+      expect(result.questionsGame).toBeDefined();
+      expect(result.questionsGame.length).toBe(1);
+    });
+
+    it('has empty eXeGameInstructions when no instructions', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <list>
+            <instance class="exe.engine.truefalseidevice.TrueFalseQuestion">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>Statement</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="isCorrect"></string>
+                <bool value="1"></bool>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const result = handler.extractProperties(dict, 'idevice-test');
+
+      expect(result.eXeGameInstructions).toBe('');
+      expect(result.questionsGame).toBeDefined();
     });
   });
 });

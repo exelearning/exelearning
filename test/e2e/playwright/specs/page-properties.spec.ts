@@ -294,20 +294,25 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
-        // The page-header div should be hidden (display:none) on first page
-        const pageHeader = iframe.locator('.page-header');
-        await expect(pageHeader).toHaveCSS('display', 'none');
+        // Wait for preview to load - the SPA renders all pages as articles
+        // Use state: 'attached' since the article might be in DOM but not fully visible
+        await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+        // The page-header inside the active article should be hidden (display:none) on first page
+        // Use .spa-page.active to ensure we're targeting SPA article pages
+        const activePageHeader = iframe.locator('article.spa-page.active .page-header-spa');
+        await expect(activePageHeader).toHaveCSS('display', 'none');
 
         // Navigate to the second page
         const secondPageLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Visible Title Page' });
         await secondPageLink.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
-        // The page-header should be visible on the second page
-        await expect(pageHeader).not.toHaveCSS('display', 'none');
+        // The page-header should be visible on the second page (now active)
+        await expect(activePageHeader).not.toHaveCSS('display', 'none');
 
-        // The title should be visible and contain the correct text
-        const pageTitle = iframe.locator('#page-title, .page-title');
+        // The title should be visible and contain the correct text (in active article)
+        const pageTitle = iframe.locator('article.spa-page.active .page-title');
         await expect(pageTitle).toContainText('Visible Title Page');
     });
 
@@ -383,17 +388,22 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
+        // Wait for preview to load - the SPA renders all pages as articles
+        // Use state: 'attached' since the article might be in DOM but not fully visible
+        await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
         // The page title in header should show the custom title (titlePage), not the navigation title
-        const pageTitle = iframe.locator('#page-title, .page-title');
+        // Target only the active article's page title to avoid strict mode violations
+        const pageTitle = iframe.locator('article.spa-page.active .page-title');
         await expect(pageTitle).toContainText('Custom Display Title');
         await expect(pageTitle).not.toContainText('Navigation Title');
 
         // Navigate to the second page
         const secondPageLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Normal Page' });
         await secondPageLink.click();
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
-        // The title should be the normal page title
+        // The title should be the normal page title (now in active article)
         await expect(pageTitle).toContainText('Normal Page');
     });
 
@@ -575,5 +585,138 @@ test.describe('Page Properties', () => {
             .locator('#siteNav a.highlighted-link, nav a.highlighted-link')
             .filter({ hasText: 'Highlighted Page' });
         await expect(highlightedLink).toBeVisible();
+    });
+
+    test('addMathJax metadata property should be stored and retrieved', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        // Create a new project
+        const projectUuid = await createProject(page, 'MathJax Property Persistence Test');
+
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+
+        // Wait for app to fully initialize including Yjs
+        await page.waitForFunction(
+            () => {
+                const app = (window as any).eXeLearning?.app;
+                return app?.project?._yjsBridge !== undefined;
+            },
+            { timeout: 30000 },
+        );
+
+        // Wait for loading screen to hide
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
+
+        // Set addMathJax property to true directly in metadata (Y.Map)
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            metadata.set('addMathJax', 'true');
+        });
+
+        await page.waitForTimeout(300);
+
+        // Verify the property was set in Yjs metadata
+        const valueAfterSet = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            return metadata.get('addMathJax');
+        });
+
+        expect(valueAfterSet).toBe('true');
+
+        // Set it to false
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            metadata.set('addMathJax', 'false');
+        });
+
+        await page.waitForTimeout(300);
+
+        // Verify the property was updated
+        const valueAfterUnset = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            return metadata.get('addMathJax');
+        });
+
+        expect(valueAfterUnset).toBe('false');
+    });
+
+    test('addMathJax property should affect preview MathJax inclusion', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        // Create a new project
+        const projectUuid = await createProject(page, 'MathJax Preview Effect Test');
+
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+
+        // Wait for app to fully initialize
+        await page.waitForFunction(
+            () => {
+                const app = (window as any).eXeLearning?.app;
+                return app?.project?._yjsBridge !== undefined;
+            },
+            { timeout: 30000 },
+        );
+
+        // Wait for loading screen to hide
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
+
+        // Enable addMathJax option directly in metadata (Y.Map)
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const metadata = bridge.documentManager.getMetadata();
+            metadata.set('addMathJax', 'true');
+        });
+
+        await page.waitForTimeout(300);
+
+        // Open Preview
+        const previewButton = page.locator('#head-bottom-preview');
+        await previewButton.click();
+
+        const previewPanel = page.locator('#previewsidenav');
+        await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+        // Wait for preview to render
+        await page.waitForTimeout(3000);
+
+        const iframe = page.frameLocator('#preview-iframe');
+
+        // Verify MathJax script is included when addMathJax is enabled
+        const hasMathJaxScript = await iframe.locator('body').evaluate(body => {
+            const doc = body.ownerDocument;
+            const scripts = doc.querySelectorAll('script[src*="tex-mml-svg"]');
+            return scripts.length > 0;
+        });
+
+        expect(hasMathJaxScript).toBe(true);
+
+        // Verify MathJax config for SPA
+        const hasSpaConfig = await iframe.locator('body').evaluate(body => {
+            const doc = body.ownerDocument;
+            const html = doc.documentElement.innerHTML;
+            return html.includes('typeset: false');
+        });
+
+        expect(hasSpaConfig).toBe(true);
     });
 });

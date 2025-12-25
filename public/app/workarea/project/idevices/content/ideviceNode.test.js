@@ -110,6 +110,16 @@ describe('IdeviceNode', () => {
         eXeLearning.app.project._yjsEnabled = false;
         eXeLearning.app.project._yjsBridge = null;
 
+        // Reset structure in case a test set it to null
+        eXeLearning.app.project.structure = {
+            getSelectNodeNavId: vi.fn(() => 'nav-id-1'),
+            getSelectNodePageId: vi.fn(() => 'page-id-1'),
+            getAllNodesOrderByView: vi.fn(() => [
+                { id: 'page-1', deep: 0, pageName: 'Home' },
+                { id: 'page-2', deep: 1, pageName: 'Chapter 1' },
+            ]),
+        };
+
         // Create mock engine
         mockEngine = {
             generateId: vi.fn(() => `engine-id-${Date.now()}`),
@@ -3271,20 +3281,110 @@ describe('IdeviceNode', () => {
         });
     });
 
+    describe('base64ToFile', () => {
+        it('converts base64 data URL to File object', () => {
+            // 1x1 transparent PNG as base64
+            const base64 =
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+            const file = idevice.base64ToFile(base64, 'test.png');
+
+            expect(file).toBeInstanceOf(File);
+            expect(file.name).toBe('test.png');
+            expect(file.type).toBe('image/png');
+            expect(file.size).toBeGreaterThan(0);
+        });
+
+        it('throws error for invalid base64 data', () => {
+            expect(() => idevice.base64ToFile('not-a-data-url', 'test.png')).toThrow('Invalid base64 data URL');
+        });
+    });
+
     describe('apiUploadFile', () => {
+        const base64Image =
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+        let originalYjsBridge;
+
+        beforeEach(() => {
+            // Save original _yjsBridge state
+            originalYjsBridge = eXeLearning.app.project._yjsBridge;
+        });
+
+        afterEach(() => {
+            // Restore original _yjsBridge state
+            eXeLearning.app.project._yjsBridge = originalYjsBridge;
+        });
+
         it('calls postUploadFileResource with correct params', async () => {
-            const mockFile = new Blob(['test'], { type: 'image/png' });
             eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({ success: true });
             idevice.odeIdeviceId = 'idevice-123';
 
-            await idevice.apiUploadFile(mockFile, 'test.png');
+            await idevice.apiUploadFile(base64Image, 'test.png');
 
             expect(eXeLearning.app.api.postUploadFileResource).toHaveBeenCalledWith({
                 odeIdeviceId: 'idevice-123',
-                file: mockFile,
+                file: base64Image,
                 filename: 'test.png',
                 createThumbnail: true,
             });
+        });
+
+        it('creates asset and returns asset:// URLs when AssetManager is available', async () => {
+            const mockAssetManager = {
+                insertImage: vi.fn().mockResolvedValue('asset://test-uuid-1234/test.png'),
+            };
+            eXeLearning.app.project._yjsBridge = { assetManager: mockAssetManager };
+            eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
+                savedPath: '/v1/files/perm/assets/project123',
+                savedFilename: 'test.png',
+                savedThumbnailName: 'thumb_test.png',
+            });
+            idevice.odeIdeviceId = 'idevice-123';
+
+            const result = await idevice.apiUploadFile(base64Image, 'test.png');
+
+            expect(mockAssetManager.insertImage).toHaveBeenCalled();
+            expect(result.savedPath).toBe('asset://test-uuid-1234');
+            expect(result.savedFilename).toBe('test.png');
+            expect(result.savedThumbnailName).toBe('test.png');
+        });
+
+        it('falls back to server paths when AssetManager is not available', async () => {
+            // Set _yjsBridge to null to simulate AssetManager not available
+            eXeLearning.app.project._yjsBridge = null;
+            eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
+                savedPath: '/v1/files/perm/assets/project123',
+                savedFilename: 'test.png',
+                savedThumbnailName: 'thumb_test.png',
+            });
+            idevice.odeIdeviceId = 'idevice-123';
+
+            const result = await idevice.apiUploadFile(base64Image, 'test.png');
+
+            expect(result.savedPath).toBe('/v1/files/perm/assets/project123');
+            expect(result.savedFilename).toBe('test.png');
+            expect(result.savedThumbnailName).toBe('thumb_test.png');
+        });
+
+        it('falls back to server paths when asset creation fails', async () => {
+            const mockAssetManager = {
+                insertImage: vi.fn().mockRejectedValue(new Error('Asset creation failed')),
+            };
+            eXeLearning.app.project._yjsBridge = { assetManager: mockAssetManager };
+            eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
+                savedPath: '/v1/files/perm/assets/project123',
+                savedFilename: 'test.png',
+                savedThumbnailName: 'thumb_test.png',
+            });
+            idevice.odeIdeviceId = 'idevice-123';
+
+            const result = await idevice.apiUploadFile(base64Image, 'test.png');
+
+            // Should fallback to original server paths
+            expect(result.savedPath).toBe('/v1/files/perm/assets/project123');
+            expect(result.savedFilename).toBe('test.png');
+            expect(result.savedThumbnailName).toBe('thumb_test.png');
         });
     });
 
@@ -3543,23 +3643,66 @@ describe('IdeviceNode', () => {
     describe('apiCloneIdevice', () => {
         beforeEach(() => {
             idevice.id = 'comp-to-clone';
-            idevice.apiSendDataService = vi.fn();
-            mockEngine.cloneIdeviceInContent = vi.fn();
+            idevice.cloneViaYjs = vi.fn();
         });
 
-        it('clones idevice and shows info modal on success', async () => {
-            idevice.apiSendDataService.mockResolvedValue({
+        it('delegates to cloneViaYjs', async () => {
+            idevice.cloneViaYjs.mockResolvedValue({
                 responseMessage: 'OK',
-                odeComponentsSync: { id: 'cloned-id' },
+                clonedComponent: { id: 'cloned-id' },
             });
 
-            await idevice.apiCloneIdevice();
+            const result = await idevice.apiCloneIdevice();
 
-            expect(mockEngine.cloneIdeviceInContent).toHaveBeenCalled();
-            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
-                title: 'Information',
-                body: 'Identical contents in the same page might cause errors. Edit the new one or move it to another page.',
+            expect(idevice.cloneViaYjs).toHaveBeenCalled();
+            expect(result.responseMessage).toBe('OK');
+        });
+    });
+
+    describe('cloneViaYjs', () => {
+        beforeEach(() => {
+            idevice.id = 'comp-to-clone';
+            idevice.pageId = 'page-1';
+            idevice.blockId = 'block-1';
+            mockEngine.loadApiIdevicesInPage = vi.fn().mockResolvedValue(true);
+        });
+
+        it('clones component via Yjs on success', async () => {
+            eXeLearning.app.project.cloneComponentViaYjs = vi.fn().mockReturnValue({
+                id: 'cloned-id',
             });
+
+            const result = await idevice.cloneViaYjs();
+
+            expect(eXeLearning.app.project.cloneComponentViaYjs).toHaveBeenCalledWith(
+                'page-1',
+                'block-1',
+                'comp-to-clone'
+            );
+            expect(mockEngine.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+            expect(result.responseMessage).toBe('OK');
+        });
+
+        it('returns error when cloneComponentViaYjs fails', async () => {
+            eXeLearning.app.project.cloneComponentViaYjs = vi.fn().mockReturnValue(null);
+            idevice.showModalMessageErrorDatabase = vi.fn();
+
+            const result = await idevice.cloneViaYjs();
+
+            expect(result.responseMessage).toBe('ERROR');
+            expect(idevice.showModalMessageErrorDatabase).toHaveBeenCalled();
+        });
+
+        it('returns error when missing pageId or blockId', async () => {
+            idevice.pageId = null;
+            idevice.blockId = null;
+            eXeLearning.app.project.structure = null;
+            idevice.showModalMessageErrorDatabase = vi.fn();
+
+            const result = await idevice.cloneViaYjs();
+
+            expect(result.responseMessage).toBe('ERROR');
+            expect(idevice.showModalMessageErrorDatabase).toHaveBeenCalled();
         });
     });
 
@@ -3947,6 +4090,13 @@ describe('IdeviceNode', () => {
     describe('loadLegacyExeFunctionalitiesExport', () => {
         it('exists as a method', () => {
             expect(typeof idevice.loadLegacyExeFunctionalitiesExport).toBe('function');
+        });
+
+        it('calls $exe.mermaid.init() to render mermaid diagrams', () => {
+            const mermaidInitSpy = vi.spyOn(global.$exe.mermaid, 'init');
+            idevice.loadLegacyExeFunctionalitiesExport();
+            expect(mermaidInitSpy).toHaveBeenCalled();
+            mermaidInitSpy.mockRestore();
         });
     });
 

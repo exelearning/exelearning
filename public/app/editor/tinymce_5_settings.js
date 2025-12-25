@@ -113,8 +113,8 @@ var $exeTinyMCE = {
     getAssetURL: function (url) {
         // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/...)
         let assetUrl =
-            eXeLearning.symfony.baseURL +
-            eXeLearning.symfony.basePath +
+            eXeLearning.config.baseURL +
+            eXeLearning.config.basePath +
             '/' +
             eXeLearning.version;
         return assetUrl + url;
@@ -275,7 +275,7 @@ var $exeTinyMCE = {
                 const filemanager = window.eXeLearning?.app?.modals?.filemanager;
                 if (filemanager) {
                     filemanager.show({
-                        onSelect: async function(result) {
+                        onSelect: function(result) {
                             // result = { assetUrl, blobUrl, asset }
 
                             // For PDFs, use asset:// URL directly (resolved by asset system)
@@ -288,27 +288,26 @@ var $exeTinyMCE = {
                                 return;
                             }
 
-                            // For other files, convert blob to data URL to avoid TinyMCE blob handling issues
-                            try {
-                                const response = await fetch(result.blobUrl);
-                                const blob = await response.blob();
-                                const reader = new FileReader();
-                                reader.onloadend = function() {
-                                    cb(reader.result, {
-                                        title: result.asset.filename || '',
-                                        alt: result.asset.filename || '',
-                                        'data-asset-url': result.assetUrl
-                                    });
-                                };
-                                reader.readAsDataURL(blob);
-                            } catch (err) {
-                                console.error('[TinyMCE] Failed to convert blob to data URL:', err);
-                                // Fallback to blob URL
-                                cb(result.blobUrl, {
-                                    title: result.asset.filename || '',
-                                    alt: result.asset.filename || ''
-                                });
+                            // Use blob URL directly - it's already in AssetManager cache
+                            // When images_upload_handler is triggered by TinyMCE (automatic_uploads: true),
+                            // it will find this blob URL in reverseBlobCache and return immediately
+                            // without re-processing. Later, convertBlobUrlsToAssetUrls() will convert
+                            // blob:// to asset:// for persistence.
+                            const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+
+                            // Ensure blob URL is in cache (it should be, but verify)
+                            if (assetManager && result.blobUrl && result.asset?.id) {
+                                if (!assetManager.reverseBlobCache.has(result.blobUrl)) {
+                                    assetManager.reverseBlobCache.set(result.blobUrl, result.asset.id);
+                                    assetManager.blobURLCache.set(result.asset.id, result.blobUrl);
+                                }
                             }
+
+                            cb(result.blobUrl, {
+                                title: result.asset.filename || '',
+                                alt: result.asset.filename || '',
+                                'data-asset-id': result.asset.id  // CRITICAL: Used by convertBlobURLsToAssetRefs
+                            });
                         }
                     });
                 } else {
@@ -340,18 +339,25 @@ var $exeTinyMCE = {
                     try {
                         const blob = blobInfo.blob();
                         const file = new File([blob], blobInfo.filename() || 'image.png', { type: blob.type });
-                        const assetId = await assetManager.insertImage(file);
+                        const assetUrl = await assetManager.insertImage(file);
 
-                        // Get or create blob URL for the asset
-                        let newBlobUrl = assetManager.blobURLCache.get(assetId);
+                        // Extract UUID from asset:// URL (insertImage returns "asset://uuid/filename")
+                        const assetId = assetManager.extractAssetId(assetUrl);
+
+                        // Get or create blob URL for the asset (using synced method to ensure reverseBlobCache consistency)
+                        let newBlobUrl = assetManager.getBlobURLSynced?.(assetId) ?? assetManager.blobURLCache.get(assetId);
                         if (!newBlobUrl) {
                             // Use the original blob directly (works for both new and deduplicated assets)
                             // since we already have it in memory
                             newBlobUrl = URL.createObjectURL(blob);
                             assetManager.blobURLCache.set(assetId, newBlobUrl);
                             assetManager.reverseBlobCache.set(newBlobUrl, assetId);
+                        } else if (!assetManager.reverseBlobCache.has(newBlobUrl)) {
+                            // CRITICAL: Ensure reverseBlobCache is synced - this is required for convertBlobUrlsToAssetUrls
+                            assetManager.reverseBlobCache.set(newBlobUrl, assetId);
                         }
-                        success(newBlobUrl);
+                        // CRITICAL: Pass data-asset-id so convertBlobURLsToAssetRefs can convert even if blob URL changes
+                        success(newBlobUrl, { 'data-asset-id': assetId });
                     } catch (err) {
                         console.error('[TinyMCE] Failed to store in AssetManager:', err);
                         failure(_('Error storing image'));

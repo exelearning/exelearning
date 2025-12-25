@@ -163,7 +163,28 @@ describe('FreeTextHandler', () => {
 
       const feedback = handler.extractFeedback(dict);
       expect(feedback.content).toBe('<p>Feedback</p>');
-      expect(feedback.buttonCaption).toBe('Show Feedback');
+      // Uses translation function if available, otherwise Spanish default
+      expect(feedback.buttonCaption).toBe(typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+    });
+
+    it('extracts custom buttonCaption from feedbackTextArea', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="feedbackTextArea"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="buttonCaption"></string>
+              <unicode value="Ver respuesta"></unicode>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Feedback</p>')}"></unicode>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const feedback = handler.extractFeedback(dict);
+      expect(feedback.content).toBe('<p>Feedback</p>');
+      expect(feedback.buttonCaption).toBe('Ver respuesta');
     });
 
     it('returns empty when no feedback', () => {
@@ -195,7 +216,8 @@ describe('FreeTextHandler', () => {
 
       const props = handler.extractProperties(dict);
       expect(props.textFeedbackTextarea).toBe('<p>Feedback</p>');
-      expect(props.textFeedbackInput).toBe('Show Feedback');
+      // Uses translation function if available, otherwise Spanish default
+      expect(props.textFeedbackInput).toBe(typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
     });
 
     it('returns empty object when no feedback', () => {

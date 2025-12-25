@@ -678,7 +678,7 @@ var $eXeDragDrop = {
         }
 
         const html = $('#dadPGameContainer-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#dadPGameContainer-' + instance

@@ -14,17 +14,7 @@
  * Pages are XHTML (not HTML5) with self-closing void elements.
  */
 
-import type {
-    ExportDocument,
-    ExportPage,
-    ExportMetadata,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ExportOptions,
-    ExportResult,
-    Epub3ExportOptions,
-} from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Epub3ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 
 /**
@@ -106,10 +96,6 @@ export class Epub3Exporter extends BaseExporter {
     private manifestItems: ManifestItem[] = [];
     private spineItems: SpineItem[] = [];
     private usedIds: Set<string> = new Set();
-
-    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
-        super(document, resources, assets, zip);
-    }
 
     /**
      * Get file extension for EPUB3 format
@@ -218,12 +204,15 @@ export class Epub3Exporter extends BaseExporter {
 
             // 7. Detect and fetch required libraries
             const allHtmlContent = this.collectAllHtmlContent(pages);
-            const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
-                includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-            });
+            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
+                allHtmlContent,
+                {
+                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                },
+            );
 
             try {
-                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles);
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
                 for (const [path, content] of libFiles) {
                     this.zip.addFile(`EPUB/libs/${path}`, content);
                     const ext = this.getFileExtensionFromPath(path);

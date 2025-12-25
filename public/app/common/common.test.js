@@ -1395,7 +1395,8 @@ describe('common.js $exeDevices', () => {
 
     it('has engine property', () => {
       const math = getMath();
-      expect(math.engine).toContain('mathjax');
+      // Engine path points to local exe_math library
+      expect(math.engine).toContain('exe_math');
     });
 
     it('has engineConfig with loader', () => {
@@ -1404,11 +1405,28 @@ describe('common.js $exeDevices', () => {
       expect(math.engineConfig.tex).toBeDefined();
     });
 
-    it('loadMathJax creates script element', () => {
+    it('loadMathJax creates script element when not loaded', () => {
       const math = getMath();
+      // Save originals
+      const originalMathJax = window.MathJax;
+
+      // Remove MathJax completely to force script creation
+      delete window.MathJax;
+
+      // Reset internal loading state
+      math._loading = false;
+      math._callbacks = [];
+
+      // Ensure no existing script tag for tex-mml-svg.js
+      const existingScript = document.querySelector('script[src*="tex-mml-svg.js"]');
+      if (existingScript) existingScript.remove();
+
       const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
       math.loadMathJax();
       expect(appendChildSpy).toHaveBeenCalled();
+
+      // Restore
+      window.MathJax = originalMathJax;
     });
 
     it('updateLatex does not throw for invalid target', () => {

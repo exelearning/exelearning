@@ -34,6 +34,10 @@ import { db as dbDefault } from '../db/client';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
+import {
+    notifyVisibilityChanged as notifyVisibilityChangedDefault,
+    notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
+} from '../websocket/access-notifier';
 import type { Kysely } from 'kysely';
 import type { Database, Project, User } from '../db/types';
 import type {
@@ -43,9 +47,7 @@ import type {
     OdeCurrentUserRequest,
     CheckBeforeLeaveRequest,
     CloseSessionRequest,
-    IdeviceDuplicateRequest,
     NavStructureDuplicateRequest,
-    PagStructureDuplicateRequest,
     StructureSaveRequest,
     ProjectMetadataRequest,
 } from './types/request-payloads';
@@ -118,6 +120,14 @@ export interface UtilsDeps {
 }
 
 /**
+ * Access notifier dependencies (WebSocket notifications)
+ */
+export interface AccessNotifierDeps {
+    notifyVisibilityChanged: typeof notifyVisibilityChangedDefault;
+    notifyCollaboratorRemoved: typeof notifyCollaboratorRemovedDefault;
+}
+
+/**
  * All dependencies for project routes
  */
 export interface ProjectDependencies {
@@ -128,6 +138,7 @@ export interface ProjectDependencies {
     fileHelper?: FileHelperDeps;
     queries?: QueriesDeps;
     utils?: UtilsDeps;
+    accessNotifier?: AccessNotifierDeps;
 }
 
 // Default dependencies
@@ -182,6 +193,11 @@ const defaultUtils: UtilsDeps = {
     createGravatarUrl: createGravatarUrlDefault,
 };
 
+const defaultAccessNotifier: AccessNotifierDeps = {
+    notifyVisibilityChanged: notifyVisibilityChangedDefault,
+    notifyCollaboratorRemoved: notifyCollaboratorRemovedDefault,
+};
+
 const defaultDependencies: ProjectDependencies = {
     db: dbDefault,
     fs: fsDefault,
@@ -190,6 +206,7 @@ const defaultDependencies: ProjectDependencies = {
     fileHelper: defaultFileHelper,
     queries: defaultQueries,
     utils: defaultUtils,
+    accessNotifier: defaultAccessNotifier,
 };
 
 // Get default project visibility from environment
@@ -622,6 +639,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
         createAsset,
     } = deps.queries ?? defaultQueries;
 
+    // Access notifier functions (WebSocket notifications for access revocation)
+    const { notifyVisibilityChanged, notifyCollaboratorRemoved } = deps.accessNotifier ?? defaultAccessNotifier;
+
     return (
         new Elysia()
             .use(cookie())
@@ -745,7 +765,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // GET /api/projects/:projectId/sharing - Get project sharing info
             .get('/api/projects/:projectId/sharing', async ({ params, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
 
                 if (isNaN(projectId)) {
                     set.status = 400;
@@ -769,7 +789,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // PATCH /api/projects/:projectId/visibility - Update project visibility
             .patch('/api/projects/:projectId/visibility', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const { visibility } = body as { visibility: 'public' | 'private' };
 
                 if (isNaN(projectId)) {
@@ -802,12 +822,19 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 await updateProjectVisibility(db, projectId, visibility);
 
+                // If made private, kick non-authorized users via WebSocket
+                if (visibility === 'private') {
+                    const collabs = await getProjectCollaborators(db, projectId);
+                    const collaboratorIds = collabs.map(c => c.user_id);
+                    notifyVisibilityChanged(project.uuid, project.owner_id, collaboratorIds);
+                }
+
                 return { responseMessage: 'OK' };
             })
 
             // POST /api/projects/:projectId/collaborators - Add collaborator
             .post('/api/projects/:projectId/collaborators', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const { email } = body as { email: string };
 
                 if (isNaN(projectId)) {
@@ -861,8 +888,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
             // DELETE /api/projects/:projectId/collaborators/:userId - Remove collaborator
             .delete('/api/projects/:projectId/collaborators/:userId', async ({ params, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
-                const userId = parseInt(params.userId);
+                const projectId = parseInt(params.projectId, 10);
+                const userId = parseInt(params.userId, 10);
 
                 if (isNaN(projectId) || isNaN(userId)) {
                     set.status = 400;
@@ -889,12 +916,15 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 await removeCollaborator(db, projectId, userId);
 
+                // Notify removed user via WebSocket
+                notifyCollaboratorRemoved(project.uuid, userId);
+
                 return { responseMessage: 'OK' };
             })
 
             // PATCH /api/projects/:projectId/owner - Transfer ownership
             .patch('/api/projects/:projectId/owner', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const { newOwnerId } = body as { newOwnerId: number };
 
                 if (isNaN(projectId)) {
@@ -1081,6 +1111,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 await updateProjectVisibilityByUuid(db, uuid, visibility);
 
+                // If made private, kick non-authorized users via WebSocket
+                if (visibility === 'private') {
+                    const collabs = await getProjectCollaborators(db, project.id);
+                    const collaboratorIds = collabs.map(c => c.user_id);
+                    notifyVisibilityChanged(uuid, project.owner_id, collaboratorIds);
+                }
+
                 return { responseMessage: 'OK' };
             })
 
@@ -1135,7 +1172,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // DELETE /api/projects/uuid/:uuid/collaborators/:userId - Remove collaborator by UUID
             .delete('/api/projects/uuid/:uuid/collaborators/:userId', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
-                const userId = parseInt(params.userId);
+                const userId = parseInt(params.userId, 10);
 
                 if (isNaN(userId)) {
                     set.status = 400;
@@ -1161,6 +1198,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 await removeCollaborator(db, project.id, userId);
+
+                // Notify removed user via WebSocket
+                notifyCollaboratorRemoved(uuid, userId);
 
                 return { responseMessage: 'OK' };
             })
@@ -1872,7 +1912,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
                     const k = 1024;
                     const i = Math.floor(Math.log(bytes) / Math.log(k));
-                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + units[i];
+                    return parseFloat((bytes / k ** i).toFixed(2)) + ' ' + units[i];
                 };
 
                 // Extract internal file links from HTML
@@ -2002,30 +2042,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // Clone/Duplicate Endpoints
             // =====================================================
 
-            // POST /api/idevice-management/idevices/duplicate - Clone an iDevice
-            .post('/api/idevice-management/idevices/duplicate', async ({ body }) => {
-                const data = body as IdeviceDuplicateRequest;
-                const { odeSessionId, ideviceId, targetBlockId } = data;
-
-                // In stateless Yjs mode, cloning is handled client-side
-                // This endpoint acknowledges the request and returns a new UUID
-                const newIdeviceId = crypto.randomUUID();
-
-                console.log(
-                    `[Project] Clone iDevice request: ${ideviceId} -> ${newIdeviceId} in block ${targetBlockId}`,
-                );
-
-                return {
-                    responseMessage: 'OK',
-                    success: true,
-                    newIdeviceId,
-                    message: 'iDevice cloned (client-side Yjs mode)',
-                    odeSessionId,
-                    originalIdeviceId: ideviceId,
-                    targetBlockId,
-                };
-            })
-
             // POST /api/nav-structure-management/nav-structures/duplicate - Clone a page (nav-structure)
             .post('/api/nav-structure-management/nav-structures/duplicate', async ({ body }) => {
                 const data = body as NavStructureDuplicateRequest;
@@ -2048,48 +2064,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 };
             })
 
-            // POST /api/pag-structure-management/pag-structures/duplicate - Clone a block (pag-structure)
-            .post('/api/pag-structure-management/pag-structures/duplicate', async ({ body }) => {
-                const data = body as PagStructureDuplicateRequest;
-                const { odeSessionId, pagStructureId, targetPageId } = data;
-
-                // In stateless Yjs mode, cloning is handled client-side
-                // This endpoint acknowledges the request and returns a new UUID
-                const newPagStructureId = crypto.randomUUID();
-
-                console.log(`[Project] Clone pag-structure request: ${pagStructureId} -> ${newPagStructureId}`);
-
-                return {
-                    responseMessage: 'OK',
-                    success: true,
-                    newPagStructureId,
-                    message: 'Block cloned (client-side Yjs mode)',
-                    odeSessionId,
-                    originalPagStructureId: pagStructureId,
-                    targetPageId,
-                };
-            })
-
             // =====================================================
             // Save/Update Endpoints for Structure Management
             // =====================================================
-
-            // PUT /api/nav-structure-management/nav-structures/nav/structure/data/save - Save page properties
-            .put('/api/nav-structure-management/nav-structures/nav/structure/data/save', async ({ body }) => {
-                const data = body as StructureSaveRequest;
-                const { odeSessionId, navStructureId, properties: _properties } = data;
-
-                // In stateless Yjs mode, saving is handled client-side
-                console.log(`[Project] Save nav-structure properties: ${navStructureId}`);
-
-                return {
-                    responseMessage: 'OK',
-                    success: true,
-                    message: 'Page properties saved (client-side Yjs mode)',
-                    odeSessionId,
-                    navStructureId,
-                };
-            })
 
             // PUT /api/nav-structure-management/nav-structures/reorder/save - Reorder pages
             .put('/api/nav-structure-management/nav-structures/reorder/save', async ({ body }) => {

@@ -4,7 +4,7 @@ export default class IdeviceManager {
     constructor(app) {
         this.app = app;
         this.list = new IdevicesList(this);
-        this.symfonyURL = this.app.eXeLearning.symfony.fullURL;
+        this.symfonyURL = this.app.eXeLearning.config.fullURL;
     }
 
     /**

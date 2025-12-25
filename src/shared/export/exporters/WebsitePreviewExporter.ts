@@ -32,6 +32,12 @@ export interface PreviewOptions {
      * The pre-renderer runs on the client using MathJax already loaded in the workarea.
      */
     preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
+    /**
+     * Optional hook to pre-render LaTeX inside encrypted DataGame divs.
+     * Game iDevices store questions in encrypted JSON. This decrypts, pre-renders LaTeX,
+     * and re-encrypts before the main preRenderLatex processes visible content.
+     */
+    preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
 }
 
 /**
@@ -49,7 +55,6 @@ export interface PreviewResult {
  */
 export class WebsitePreviewExporter {
     private document: ExportDocument;
-    private resourceProvider: ResourceProvider;
     private ideviceRenderer: IdeviceRenderer;
 
     /**
@@ -113,7 +118,7 @@ export class WebsitePreviewExporter {
                         return true;
                     }
                     // Also check content for the CSS class (more reliable)
-                    if (component.content && component.content.includes('exe-download-package-link')) {
+                    if (component.content?.includes('exe-download-package-link')) {
                         return true;
                     }
                 }
@@ -178,12 +183,12 @@ export class WebsitePreviewExporter {
     /**
      * Libraries that are located in /libs/ instead of /app/common/
      * The LibraryDetector returns files without the base path, so we need to map them correctly
+     * Note: mermaid is in /app/common/mermaid/, not /libs/
      */
     private static readonly LIBS_FOLDER_LIBRARIES = new Set([
         'jquery-ui',
         'fflate',
         'exe_atools',
-        'mermaid',
         'exe_elpx_download', // Folder in /libs/
     ]);
 
@@ -264,7 +269,7 @@ export class WebsitePreviewExporter {
         const searchDataScript = addSearchBox ? this.generateSearchDataScript(searchDataJson) : '';
 
         // Get first visible page for initial header content
-        const firstPage = visiblePages[0];
+        const _firstPage = visiblePages[0];
         const firstPageIndex = 0;
 
         // Build initial page counter HTML (only if pagination is enabled)
@@ -272,15 +277,12 @@ export class WebsitePreviewExporter {
             ? `<p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${firstPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalVisiblePages}</strong></span></p>`
             : '';
 
-        // Check if first page title should be hidden and get effective title
-        const firstPageTitle = firstPage ? this.getEffectivePageTitle(firstPage) : '';
-        const hideFirstPageTitle = firstPage ? this.shouldHidePageTitle(firstPage) : false;
-        const pageHeaderStyle = hideFirstPageTitle ? ' style="display:none"' : '';
-
         // Build static headers (separate header elements for exe_export.js teacherMode to find)
         // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
+        // NOTE: Page header is now inside each article (see renderPageArticle) to preserve pre-rendered LaTeX
+        // The shared #page-title element is hidden but kept for backwards compatibility with scripts
         const staticHeaderHtml = `${initialPageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
-<header class="page-header"${pageHeaderStyle}><h2 id="page-title" class="page-title">${this.escapeHtml(firstPageTitle)}</h2></header>`;
+<header class="page-header" style="display:none"><h2 id="page-title" class="page-title"></h2></header>`;
 
         // Build the body content that will be pre-rendered
         // Note: head and scripts are added AFTER pre-rendering to avoid corrupting them
@@ -296,21 +298,40 @@ ${this.renderFooterSection({ license, userFooterContent })}
 </div>
 ${madeWithExeHtml}`;
 
-        // Pre-render LaTeX to SVG+MathML if hook is provided
-        // This processes ALL body content including navigation, headers, and pages
-        // The DOM-based pre-renderer safely skips script, style, code, pre elements
+        // Pre-render LaTeX ONLY if addMathJax is false
+        // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
         let finalBodyContent = bodyContent;
         let latexWasRendered = false;
-        if (options.preRenderLatex) {
-            try {
-                const result = await options.preRenderLatex(bodyContent);
-                if (result.latexRendered) {
-                    finalBodyContent = result.html;
-                    latexWasRendered = true;
-                    console.log(`[Preview] Pre-rendered ${result.count} LaTeX expressions to SVG+MathML`);
+        if (!meta.addMathJax) {
+            // Pre-render LaTeX in encrypted DataGame divs FIRST
+            // (game iDevices store questions in encrypted JSON)
+            if (options.preRenderDataGameLatex) {
+                try {
+                    const result = await options.preRenderDataGameLatex(bodyContent);
+                    if (result.count > 0) {
+                        finalBodyContent = result.html;
+                        latexWasRendered = true;
+                        console.log(`[Preview] Pre-rendered LaTeX in ${result.count} DataGame(s)`);
+                    }
+                } catch (error) {
+                    console.warn('[Preview] DataGame LaTeX pre-render failed:', error);
                 }
-            } catch (error) {
-                console.warn('[Preview] LaTeX pre-render failed, falling back to MathJax:', error);
+            }
+
+            // Pre-render visible LaTeX to SVG+MathML if hook is provided
+            // This processes ALL body content including navigation, headers, and pages
+            // The DOM-based pre-renderer safely skips script, style, code, pre elements
+            if (options.preRenderLatex) {
+                try {
+                    const result = await options.preRenderLatex(finalBodyContent);
+                    if (result.latexRendered) {
+                        finalBodyContent = result.html;
+                        latexWasRendered = true;
+                        console.log(`[Preview] Pre-rendered ${result.count} LaTeX expressions to SVG+MathML`);
+                    }
+                } catch (error) {
+                    console.warn('[Preview] LaTeX pre-render failed, falling back to MathJax:', error);
+                }
             }
         }
 
@@ -318,7 +339,8 @@ ${madeWithExeHtml}`;
         const libraryDetector = new LibraryDetector();
         const detectedLibraries = libraryDetector.detectLibraries(finalBodyContent, {
             includeAccessibilityToolbar: addAccessibilityToolbar,
-            skipMathJax: latexWasRendered,
+            includeMathJax: meta.addMathJax === true,
+            skipMathJax: latexWasRendered && !meta.addMathJax,
         });
 
         return `<!DOCTYPE html>
@@ -741,8 +763,14 @@ button.toggler span,
         // Store page title properties as data attributes for SPA navigation to update header
         const effectiveTitle = this.getEffectivePageTitle(page);
         const hideTitle = this.shouldHidePageTitle(page);
+        const headerStyle = hideTitle ? ' style="display:none"' : '';
+
+        // Include page header INSIDE each article so LatexPreRenderer processes each title
+        // This allows each page to have its own pre-rendered LaTeX in the title
+        const pageHeaderHtml = `<header class="page-header page-header-spa"${headerStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></header>`;
 
         return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}" data-page-title="${this.escapeAttr(effectiveTitle)}" data-page-hide-title="${hideTitle}">
+${pageHeaderHtml}
 <div id="page-content-${pageId}" class="page-content">
 ${blockHtml}
 </div>
@@ -872,24 +900,32 @@ ${userFooterHtml}</div></footer>`;
             lib => lib.name === 'exe_math' || lib.name === 'exe_math_datagame',
         );
 
-        // MathJax configuration - must be set BEFORE loading the script
-        // Configure pageReady to catch errors from auto-typeset on hidden SPA pages
-        let mathJaxConfig = '';
+        // MathJax configuration and script - must be set BEFORE loading the script
+        // For SPA preview: disable auto-typeset and only process active pages
+        let mathJaxScripts = '';
         if (needsMathJax) {
-            mathJaxConfig = `\n<script>
+            const mathJaxJs = this.getVersionedPath('/app/common/exe_math/tex-mml-svg.js', options);
+            mathJaxScripts = `\n<script>
 window.MathJax = {
     startup: {
+        typeset: false,  // Disable auto-typeset on page load
         pageReady: function() {
-            return MathJax.startup.defaultPageReady().catch(function(err) {
-                console.warn('[MathJax] Auto-typeset error:', err.message);
-            });
+            // Only typeset the active SPA page (prevents replaceChild errors on hidden pages)
+            var activePage = document.querySelector('.spa-page.active');
+            if (activePage) {
+                return MathJax.typesetPromise([activePage]).catch(function(err) {
+                    console.warn('[MathJax] Typeset error:', err.message);
+                });
+            }
+            return Promise.resolve();
         }
     }
 };
-</script>`;
+</script>
+<script src="${mathJaxJs}"></script>`;
         }
 
-        // Build detected library JS scripts
+        // Build detected library JS scripts (skip exe_math since we handle it above)
         let detectedLibraryScripts = '';
         for (const file of detectedLibraries.files) {
             if (file.endsWith('.js')) {
@@ -938,7 +974,7 @@ if (window.__jQueryShimQueue) {
 <script src="${bootstrapJs}"></script>${jqueryUiScript}${elpxDownloadScripts}
 <script src="${commonJs}"></script>
 <script src="${commonI18nJs}"></script>
-<script src="${exeExportJs}"></script>${mathJaxConfig}${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
+<script src="${exeExportJs}"></script>${mathJaxScripts}${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
 <script src="${themeJs}" onerror="this.remove()"></script>
 <script>
 // Polyfill for confirm/alert/prompt in sandboxed iframes (preview mode)
@@ -1010,25 +1046,8 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   var navLinks = document.querySelectorAll('[data-page-id]');
   var prevBtn = document.querySelector('[data-nav="prev"]');
   var nextBtn = document.querySelector('[data-nav="next"]');
-  var pageTitleEl = document.getElementById('page-title');
-  var pageHeaderEl = document.querySelector('.page-header');
   var pageCounterEl = document.querySelector('.page-counter-current-page');
   var currentIndex = 0;
-
-  // Helper to detect LaTeX patterns in text
-  // Matches \\( or \\[ or \\begin{ (LaTeX delimiters)
-  function hasLatex(text) {
-    return text && /(?:\\\\\\(|\\\\\\[|\\\\begin\\{)/.test(text);
-  }
-
-  // Helper to typeset LaTeX in an element using MathJax
-  function typesetLatex(element) {
-    if (element && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-      MathJax.typesetPromise([element]).catch(function(err) {
-        console.log('[Preview] MathJax typeset error:', err);
-      });
-    }
-  }
 
   function showPage(index) {
     if (index < 0 || index >= pages.length) return;
@@ -1066,23 +1085,17 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
         link.parentElement.classList.toggle('current-page-parent', isAncestor);
       }
     });
-    // Update header with current page info
-    var hideTitle = activePage.dataset.pageHideTitle === 'true';
-    if (pageHeaderEl) {
-      pageHeaderEl.style.display = hideTitle ? 'none' : '';
-    }
-    if (pageTitleEl && activePage.dataset.pageTitle) {
-      var title = activePage.dataset.pageTitle;
-      pageTitleEl.textContent = title;
-      // Re-typeset LaTeX in page title if detected
-      if (hasLatex(title)) {
-        typesetLatex(pageTitleEl);
-      }
-    }
+    // Page header is inside each article (page-header-spa class)
     if (pageCounterEl) {
       pageCounterEl.textContent = (index + 1).toString();
     }
     updateNavButtons();
+    // Typeset MathJax on the active page if MathJax is loaded
+    if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+      MathJax.typesetPromise([activePage]).catch(function(e) {
+        console.warn('[MathJax] Typeset error:', e.message);
+      });
+    }
   }
 
   function updateNavButtons() {
@@ -1133,17 +1146,7 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   // Check initial hash on load
   showPageByHash();
 
-  // Typeset LaTeX in navigation sidebar if detected
-  var navContainer = document.querySelector('nav');
-  if (navContainer && hasLatex(navContainer.textContent)) {
-    typesetLatex(navContainer);
-  }
-
-  // Typeset LaTeX in initial page title if detected
-  if (pageTitleEl && hasLatex(pageTitleEl.textContent)) {
-    typesetLatex(pageTitleEl);
-  }
-
+  // MathJax typesets each page when it becomes active (if MathJax is loaded)
   updateNavButtons();
 })();`;
     }
@@ -1172,19 +1175,6 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
             .replace(/'/g, '&#39;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
-    }
-
-    /**
-     * Sanitize filename for URLs
-     */
-    private sanitizeFilename(title: string): string {
-        return (
-            title
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-|-$/g, '')
-                .substring(0, 50) || 'page'
-        );
     }
 
     /**

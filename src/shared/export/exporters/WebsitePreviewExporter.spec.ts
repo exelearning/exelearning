@@ -221,17 +221,20 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('data-page-title="About"');
         });
 
-        it('should include first page title in static header', async () => {
+        it('should include page header inside each article for pre-rendered LaTeX', async () => {
             const result = await exporter.generatePreview();
-            // First page title should be in the static header (h2#page-title)
-            expect(result.html).toContain('id="page-title" class="page-title">Home</h2>');
+            // Each article should have its own page-header-spa with the title
+            // This ensures LaTeX in titles is pre-rendered and preserved on navigation
+            expect(result.html).toContain('class="page-header page-header-spa"');
+            expect(result.html).toContain('class="page-title">Home</h2>');
+            expect(result.html).toContain('class="page-title">About</h2>');
         });
 
-        it('should update header content in SPA navigation script', async () => {
+        it('should hide shared header since page headers are inside articles', async () => {
             const result = await exporter.generatePreview();
-            // SPA script should update page title when switching pages
-            expect(result.html).toContain('pageTitleEl');
-            expect(result.html).toContain('activePage.dataset.pageTitle');
+            // Shared header is hidden (page headers are now inside each article)
+            expect(result.html).toContain('<header class="page-header" style="display:none">');
+            expect(result.html).toContain('id="page-title" class="page-title"></h2>');
         });
 
         it('should include SPA navigation script', async () => {
@@ -846,39 +849,20 @@ describe('WebsitePreviewExporter', () => {
     });
 
     describe('LaTeX rendering support', () => {
-        it('should include hasLatex helper function in SPA script', async () => {
+        it('should include page header inside each article for LaTeX pre-rendering', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('function hasLatex(text)');
-            // Verify the regex pattern is in the output (checks for \\begin part)
-            expect(result.html).toContain('begin');
-            expect(result.html).toContain('.test(text)');
+            // Page headers are inside articles so LatexPreRenderer can process them
+            // This preserves pre-rendered LaTeX when navigating between pages
+            expect(result.html).toContain('page-header-spa');
+            expect(result.html).toContain('class="page-title">');
         });
 
-        it('should include typesetLatex helper function in SPA script', async () => {
+        it('should not update shared header dynamically since page headers are in articles', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('function typesetLatex(element)');
-            expect(result.html).toContain('MathJax.typesetPromise');
-        });
-
-        it('should call typesetLatex on page title when LaTeX detected', async () => {
-            const result = await exporter.generatePreview();
-            // Check that showPage calls typesetLatex for page title
-            expect(result.html).toContain('if (hasLatex(title))');
-            expect(result.html).toContain('typesetLatex(pageTitleEl)');
-        });
-
-        it('should typeset LaTeX in navigation on initial load', async () => {
-            const result = await exporter.generatePreview();
-            // Check for navigation LaTeX typesetting
-            expect(result.html).toContain('Typeset LaTeX in navigation sidebar');
-            expect(result.html).toContain("var navContainer = document.querySelector('nav')");
-            expect(result.html).toContain('typesetLatex(navContainer)');
-        });
-
-        it('should typeset LaTeX in initial page title on load', async () => {
-            const result = await exporter.generatePreview();
-            expect(result.html).toContain('Typeset LaTeX in initial page title');
-            expect(result.html).toContain('hasLatex(pageTitleEl.textContent)');
+            // showPage() should NOT update pageTitleEl (header is inside each article)
+            // Instead, it just shows/hides articles which display their own headers
+            expect(result.html).toContain('Page header is inside each article');
+            expect(result.html).not.toContain('pageTitleEl.textContent = title');
         });
 
         it('should preserve LaTeX delimiters in page title data attribute', async () => {
@@ -895,6 +879,207 @@ describe('WebsitePreviewExporter', () => {
             const result = await exp.generatePreview();
             // LaTeX delimiters should be preserved in data-page-title attribute
             expect(result.html).toContain('data-page-title="Fórmulas con \\(\\LaTeX\\)"');
+        });
+
+        it('should include LaTeX in page-header-spa for pre-rendering', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page with \\(x^2\\)',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ]);
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+            // Page header inside article should contain the title with LaTeX
+            // LatexPreRenderer will convert this to SVG
+            expect(result.html).toContain('class="page-header page-header-spa"');
+            expect(result.html).toContain('Page with \\(x^2\\)');
+        });
+    });
+
+    describe('MathJax library inclusion', () => {
+        it('should include MathJax script when meta.addMathJax=true', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Test Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'block-1',
+                                name: 'Block 1',
+                                order: 0,
+                                components: [
+                                    {
+                                        id: 'comp-1',
+                                        type: 'text',
+                                        order: 0,
+                                        content: '<p>No math content</p>',
+                                        properties: {},
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+                { addMathJax: true },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('tex-mml-svg.js');
+        });
+
+        it('should configure MathJax for SPA with typeset:false when addMathJax=true', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Test Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [],
+                    },
+                ],
+                { addMathJax: true },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // MathJax should be configured to not auto-typeset (for SPA pages)
+            expect(result.html).toContain('typeset: false');
+        });
+
+        it('should include pageReady handler for active page only when addMathJax=true', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Test Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [],
+                    },
+                ],
+                { addMathJax: true },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // pageReady should only process active page
+            expect(result.html).toContain('pageReady');
+            expect(result.html).toContain('.spa-page.active');
+        });
+
+        it('should not include MathJax script when addMathJax=false and no LaTeX content', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Test Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'block-1',
+                                name: 'Block 1',
+                                order: 0,
+                                components: [
+                                    {
+                                        id: 'comp-1',
+                                        type: 'text',
+                                        order: 0,
+                                        content: '<p>Plain text without math</p>',
+                                        properties: {},
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+                { addMathJax: false },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // MathJax script should NOT be included
+            expect(result.html).not.toContain('tex-mml-svg.js');
+        });
+
+        it('should include MathJax when content has LaTeX even without addMathJax option', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>Math: \\(x^2 + y^2 = z^2\\)</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // MathJax should be detected from content
+            expect(result.html).toContain('tex-mml-svg.js');
+        });
+
+        it('should call MathJax.typesetPromise on SPA page navigation', async () => {
+            const doc = createMockDocument(
+                [
+                    {
+                        id: 'page-1',
+                        title: 'Page 1',
+                        parentId: null,
+                        order: 0,
+                        blocks: [],
+                    },
+                    {
+                        id: 'page-2',
+                        title: 'Page 2',
+                        parentId: null,
+                        order: 1,
+                        blocks: [],
+                    },
+                ],
+                { addMathJax: true },
+            );
+
+            const exp = new WebsitePreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            // SPA navigation should trigger MathJax typeset
+            expect(result.html).toContain('MathJax.typesetPromise');
         });
     });
 });

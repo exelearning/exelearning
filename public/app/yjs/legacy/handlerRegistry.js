@@ -18,6 +18,12 @@
  * - handlers/ExternalUrlHandler.js
  * - handlers/FileAttachHandler.js
  * - handlers/ImageMagnifierHandler.js
+ * - handlers/GameIdeviceHandler.js
+ * - handlers/ScormTestHandler.js
+ * - handlers/FpdSolvedExerciseHandler.js
+ * - handlers/RssHandler.js
+ * - handlers/WikipediaHandler.js
+ * - handlers/GeogebraHandler.js
  * - handlers/DefaultHandler.js
  */
 
@@ -36,14 +42,20 @@ const LegacyHandlerRegistry = {
 
     this.handlers = [
       new MultichoiceHandler(),      // MultichoiceIdevice, MultiSelectIdevice → form
-      new TrueFalseHandler(),        // TrueFalseIdevice → form (true-false questions)
-      new FillHandler(),             // ClozeIdevice → form (fill-in-blanks)
+      new TrueFalseHandler(),        // TrueFalseIdevice → trueorfalse
+      new FillHandler(),             // ClozeIdevice, ClozeLanguageIdevice → form (fill-in-blanks)
       new DropdownHandler(),         // ListaIdevice → form (dropdown questions)
+      new ScormTestHandler(),        // ScormTestIdevice, QuizTestIdevice → form (SCORM quiz)
       new CaseStudyHandler(),        // CaseStudyIdevice → casestudy
       new GalleryHandler(),          // ImageGalleryIdevice, GalleryIdevice → image-gallery
       new ExternalUrlHandler(),      // ExternalUrlIdevice → external-website
-      new FileAttachHandler(),       // FileAttachIdevice, AttachmentIdevice → download-source-file
+      new FileAttachHandler(),       // FileAttachIdevice, AttachmentIdevice → text (with file links)
       new ImageMagnifierHandler(),   // ImageMagnifierIdevice → magnifier
+      new GeogebraHandler(),         // GeogebraIdevice → geogebra-activity
+      new GameIdeviceHandler(),      // flipcards, selecciona, trivial, etc. → game types
+      new FpdSolvedExerciseHandler(),// SolvedExerciseIdevice → text (with Q&A)
+      new WikipediaHandler(),        // WikipediaIdevice → text (with wrapper)
+      new RssHandler(),              // RssIdevice → text
       new FreeTextHandler(),         // FreeTextIdevice, ReflectionIdevice, GenericIdevice → text
       new DefaultHandler(),          // Fallback for unknown types (must be last)
     ];
@@ -52,12 +64,13 @@ const LegacyHandlerRegistry = {
   /**
    * Get the appropriate handler for a legacy iDevice class
    * @param {string} className - Legacy class name (e.g., 'exe.engine.multichoiceidevice.MultichoiceIdevice')
+   * @param {string} [ideviceType] - Optional iDevice type (e.g., 'flipcards-activity') for JsIdevice handlers
    * @returns {BaseLegacyHandler} Handler instance
    */
-  getHandler(className) {
+  getHandler(className, ideviceType) {
     this.init();
     for (const handler of this.handlers) {
-      if (handler.canHandle(className)) {
+      if (handler.canHandle(className, ideviceType)) {
         return handler;
       }
     }
@@ -86,15 +99,25 @@ const LEGACY_TYPE_MAP = {
   'ReflectionIdevice': 'text',
   'ReflectionfpdIdevice': 'text',
   'GenericIdevice': 'text',
+  'SolvedExerciseIdevice': 'text',
+  'EjercicioResueltoFpdIdevice': 'text',
+  'WikipediaIdevice': 'text',
+  'RssIdevice': 'text',
 
   // Quiz/Form iDevices → form
   'MultichoiceIdevice': 'form',
   'MultiSelectIdevice': 'form',
-  'TrueFalseIdevice': 'form',
-  'VerdaderoFalsoFPDIdevice': 'form',
   'ListaIdevice': 'form',
+
+  // TrueFalse → trueorfalse (dedicated iDevice type)
+  'TrueFalseIdevice': 'trueorfalse',
+  'VerdaderoFalsoFPDIdevice': 'trueorfalse',
   'ClozeIdevice': 'form',
   'ClozeActivityIdevice': 'form',
+  'ClozeLanguageIdevice': 'form',
+  'ClozeLangIdevice': 'form',
+  'ScormTestIdevice': 'form',
+  'QuizTestIdevice': 'form',
 
   // Case Study
   'CaseStudyIdevice': 'casestudy',
@@ -104,19 +127,15 @@ const LEGACY_TYPE_MAP = {
   'ImageMagnifierIdevice': 'magnifier',
   'GalleryIdevice': 'image-gallery',
 
-  // File iDevices
-  'FileAttachIdevice': 'download-source-file',
-  'AttachmentIdevice': 'download-source-file',
+  // File iDevices → text with links (Symfony: OdeOldXmlFileAttachIdevice)
+  'FileAttachIdevice': 'text',
+  'FileAttachIdeviceInc': 'text',
+  'AttachmentIdevice': 'text',
 
   // External content
   'ExternalUrlIdevice': 'external-website',
-  'WikipediaIdevice': 'wikipedia',
-  'RssIdevice': 'rss',
-  'GeogebraIdevice': 'geogebra',
+  'GeogebraIdevice': 'geogebra-activity',
   'JavaAppIdevice': 'java-app',
-
-  // Games (placeholder)
-  'ScormTestIdevice': 'scorm-test',
 };
 
 /**

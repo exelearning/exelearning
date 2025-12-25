@@ -359,6 +359,14 @@ const ODE_PROJECT_SYNC_PROPERTIES_CONFIG = {
             category: 'properties',
             groups: { export: GROUPS_TITLE.export },
         },
+        pp_addMathJax: {
+            title: `${TRANS_PREFIX}MathJax (formulas)`,
+            help: `${TRANS_PREFIX}Always include the MathJax library for mathematical formulas. Enables accessibility features and context menus for LaTeX/MathML content.`,
+            value: 'false',
+            type: 'checkbox',
+            category: 'properties',
+            groups: { export: GROUPS_TITLE.export },
+        },
 
         // === GROUP: custom_code (Código personalizado) ===
         pp_extraHeadContent: {
@@ -516,7 +524,7 @@ function formatBytes(bytes: number): string {
     bytes = Math.max(bytes, 0);
     const pow = Math.floor((bytes ? Math.log(bytes) : 0) / Math.log(1024));
     const powCapped = Math.min(pow, units.length - 1);
-    const value = bytes / Math.pow(1024, powCapped);
+    const value = bytes / 1024 ** powCapped;
     return `${value.toFixed(2)} ${units[powCapped]}`;
 }
 

@@ -91,7 +91,7 @@ function createTestProjectApp(db: Kysely<Database>) {
             })
             // Get project sharing info
             .get('/api/projects/:projectId/sharing', async ({ params, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const project = await db
                     .selectFrom('projects')
                     .selectAll()
@@ -113,7 +113,7 @@ function createTestProjectApp(db: Kysely<Database>) {
             })
             // Add collaborator
             .post('/api/projects/:projectId/collaborators', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const { email } = body as { email: string };
 
                 const project = await db
@@ -157,7 +157,7 @@ function createTestProjectApp(db: Kysely<Database>) {
             })
             // Update visibility
             .patch('/api/projects/:projectId/visibility', async ({ params, body, set, currentUser }) => {
-                const projectId = parseInt(params.projectId);
+                const projectId = parseInt(params.projectId, 10);
                 const { visibility } = body as { visibility: 'public' | 'private' };
 
                 const project = await db
@@ -254,7 +254,7 @@ describe('Project Owner Assignment', () => {
         const tempApp = new Elysia()
             .use(jwt({ name: 'jwt', secret: 'test-secret-key-for-testing-only', exp: '7d' }))
             .get('/token/:userId', async ({ jwt, params }) => {
-                return jwt.sign({ sub: parseInt(params.userId) });
+                return jwt.sign({ sub: parseInt(params.userId, 10) });
             });
 
         const res = await tempApp.handle(new Request(`http://localhost/token/${userId}`));
@@ -406,7 +406,7 @@ describe('Project Sharing Authorization', () => {
         const tempApp = new Elysia()
             .use(jwt({ name: 'jwt', secret: 'test-secret-key-for-testing-only', exp: '7d' }))
             .get('/token/:userId', async ({ jwt, params }) => {
-                return jwt.sign({ sub: parseInt(params.userId) });
+                return jwt.sign({ sub: parseInt(params.userId, 10) });
             });
 
         const res = await tempApp.handle(new Request(`http://localhost/token/${userId}`));

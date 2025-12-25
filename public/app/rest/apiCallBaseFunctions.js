@@ -16,7 +16,7 @@ export default class ApiCallBaseFunctions {
         // Prevent multiple redirects
         if (this._accessErrorHandled) return true;
 
-        const basePath = window.eXeLearning?.symfony?.basePath || '';
+        const basePath = window.eXeLearning?.config?.basePath || '';
 
         if (status === 401) {
             this._accessErrorHandled = true;

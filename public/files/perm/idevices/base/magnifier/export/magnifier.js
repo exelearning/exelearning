@@ -70,15 +70,7 @@ var $magnifier = {
             $exe.loadScript(ldata.idevicePath + 'mojomagnify.js', cb);
         }
         const dataString = JSON.stringify(ldata);
-        const hasLatex =
-            $exeDevices.iDevice.gamification.math.hasLatex(dataString);
-
-        if (!hasLatex) return;
-        const mathjaxLoaded = typeof window.MathJax !== 'undefined';
-
-        if (!mathjaxLoaded) {
-            $exeDevices.iDevice.gamification.math.loadMathJax();
-        } else {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '.exe-magnifier-container'
             );
@@ -90,6 +82,13 @@ var $magnifier = {
             isInExe = eXe.app.isInExe();
         if (isInExe || $node.length == 0 || !data.imageResource)
             return data.imageResource;
+
+        // Don't transform blob:, data:, or asset:// URLs - they're already valid or will be resolved
+        if (data.imageResource.startsWith('blob:') ||
+            data.imageResource.startsWith('data:') ||
+            data.imageResource.startsWith('asset://')) {
+            return data.imageResource;
+        }
 
         const pathMedia = $('html').is('#exe-index')
             ? 'content/resources/' + data.ideviceId + '/'
@@ -202,9 +201,8 @@ var $magnifier = {
                 <div class="image-thumbnail" id="image-thumbnail-${instance}">
                     <div style="position: relative; display: block; width:${data.width}; height: auto; margin-bottom: 50px;">
                         <img id="magnifier-${instance}"
-                             src="${data.image && data.image.startsWith('asset://') ? '' : data.image}"
+                             src="${data.image}"
                              data-magnifysrc="${data.image}"
-                             data-asset-url="${data.image}"
                              width="${data.width}"
                              data-size="${data.glassSize}"
                              data-zoom="${data.initialZSize}">
@@ -226,52 +224,25 @@ var $magnifier = {
             $img.attr({
                 src: defaultSrc,
             });
-            return Promise.resolve();
+            return;
         }
 
-        const setImageSrc = (resolvedUrl) => {
-            $img.off('error')
-                .on('error', function () {
-                    $notImage.show();
-                    $imageMagnifier.hide();
-                })
-                .attr({
-                    'data-magnifysrc': resolvedUrl,
-                    src: resolvedUrl,
-                    alt: 'Image',
-                });
-        };
-
-        // Resolve asset:// URLs to blob URLs
-        if (data.image && data.image.startsWith('asset://')) {
-            const assetManager =
-                window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-            if (assetManager) {
-                return assetManager.resolveAssetURL(data.image).then((blobUrl) => {
-                    setImageSrc(blobUrl || defaultSrc);
-                });
-            } else {
-                setImageSrc(defaultSrc);
-                return Promise.resolve();
-            }
-        } else {
-            setImageSrc(data.image);
-            return Promise.resolve();
-        }
+        $img.off('error')
+            .on('error', function () {
+                $notImage.show();
+                $imageMagnifier.hide();
+            })
+            .attr({
+                'data-magnifysrc': data.image,
+                src: data.image,
+                alt: 'Image',
+            });
     },
 
     addEvents: function (data) {
         const instance = data.ideviceId;
 
-        // Wait for image to load/resolve before initializing MojoMagnify
-        $magnifier.loadImageWithFallback(data).then(() => {
-            setTimeout(function () {
-                MojoMagnify.init();
-                $exeDevices.iDevice.gamification.math.updateLatex(
-                    '.exe-magnifier-container'
-                );
-            }, 100);
-        });
+        $magnifier.loadImageWithFallback(data);
 
         $('#mnfPMainContainer-' + instance)
             .off('click', '.MNF-FullLinkImage')
@@ -284,6 +255,13 @@ var $magnifier = {
                     );
                 }
             });
+
+        setTimeout(function () {
+            MojoMagnify.init();
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.exe-magnifier-container'
+            );
+        }, 500);
     },
 
     init: function (data, accesibility) {},

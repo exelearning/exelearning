@@ -706,7 +706,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     }
 
                     if (!userEmail) {
-                        if (subject && subject.includes('@')) {
+                        if (subject?.includes('@')) {
                             // subject is already an email address
                             userEmail = subject;
                         } else {

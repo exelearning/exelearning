@@ -23,6 +23,8 @@
     <script class="exe" src="{{ '/libs/multi-dropdown.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/libs/interact/interact.min.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/libs/showdown/showdown.min.js' | asset }}" defer></script>
+    {# Asset URL Resolver - intercepts asset:// URLs and resolves them to blob URLs #}
+    <script class="exe" src="{{ '/app/common/asset_url_resolver.js' | asset }}" defer></script>
     {# eXeLearning common legacy objects #}
     <script class="exe" type="module" src="{{ '/app/common/app_common.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/common_i18n.js' | asset }}" defer></script>
@@ -51,13 +53,14 @@
             extension: "{{ extension }}",
             user: `{{ user | dump | safe }}`,
             config: `{{ config | dump | safe }}`,
-            symfony: `{{ symfony | dump | safe }}`,
             projectId: {% if projectId %}"{{ projectId }}"{% else %}null{% endif %}
         }
     </script>
     {# TinyMCE #}
     <script class="exe" src="{{ '/libs/tinymce_5/js/tinymce/tinymce.min.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/editor/tinymce_5_settings.js' | asset }}" defer></script>
+    {# Connection monitoring (must load before yjs-loader) #}
+    <script class="exe" type="module" src="{{ '/app/common/connectionMonitor.js' | asset }}" defer></script>
     {# Yjs Collaborative Editing (loaded on-demand via yjs-loader.js) #}
     <script class="exe" src="{{ '/app/yjs/yjs-loader.js' | asset }}" defer></script>
     {# eXeLearning app: use individual modules (debugJs) or bundle #}
@@ -122,7 +125,7 @@
                         </div>
                     </div>
                     <div class="preview-pinned-body">
-                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups"></iframe>
+                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
                     </div>
                 </aside>
             </div>
@@ -185,7 +188,7 @@
                 </div>
             </div>
             <div class="preview-panel-body">
-                <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups"></iframe>
+                <iframe id="preview-iframe" class="preview-iframe" title="{{ t.content_preview or 'Content preview' }}" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
             </div>
         </aside>
     </div>

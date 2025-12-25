@@ -44,8 +44,7 @@ var $exeDevice = {
     },
 
     getId: function () {
-        this._idSequence = (this._idSequence || 0) + 1;
-        return Date.now() * 10000 + (this._idSequence % 10000);
+        return Math.round(new Date().getTime() + Math.random() * 100);
     },
 
     refreshTranslations: function () {
@@ -1021,7 +1020,7 @@ var $exeDevice = {
         $exeDevice.updateFieldGame(game);
         const instructions = game.instructionsExe || game.instructions;
         tinymce.editors[0].setContent(instructions);
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
     },
 
     getIdeviceID: function () {
