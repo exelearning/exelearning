@@ -201,9 +201,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
      * @returns Numeric project ID or null if not found
      */
     async function getNumericProjectId(projectIdOrUuid: string): Promise<number | null> {
-        // Check if it's already a numeric ID
-        const numericId = parseInt(projectIdOrUuid, 10);
-        if (!isNaN(numericId) && numericId > 0) {
+        // Check if it's already a numeric ID (must be digits only to avoid UUID prefix collisions)
+        if (/^\d+$/.test(projectIdOrUuid)) {
+            const numericId = parseInt(projectIdOrUuid, 10);
             return numericId;
         }
 
