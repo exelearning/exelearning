@@ -1028,4 +1028,407 @@ describe('Admin Routes', () => {
             expect(response.status).toBe(403);
         });
     });
+
+    // ========================================================================
+    // SETTINGS TESTS
+    // ========================================================================
+
+    describe('GET /api/admin/settings', () => {
+        it('should return settings with defaults', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        getAllSettings: async () => [],
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.settings).toBeDefined();
+        });
+
+        it('should merge stored settings with defaults', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        getAllSettings: async () => [{ key: 'ONLINE_THEMES_INSTALL', value: '0', type: 'boolean' }],
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.settings.ONLINE_THEMES_INSTALL.value).toBe('0');
+        });
+    });
+
+    describe('PUT /api/admin/settings', () => {
+        it('should update settings successfully', async () => {
+            const token = await generateAdminToken();
+            const savedSettings: Array<{ key: string; value: string }> = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        setSetting: async (_db, key, value) => {
+                            savedSettings.push({ key, value });
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        settings: [{ key: 'ONLINE_THEMES_INSTALL', value: '1', type: 'boolean' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(savedSettings).toHaveLength(1);
+            expect(savedSettings[0].key).toBe('ONLINE_THEMES_INSTALL');
+        });
+
+        it('should reject unknown setting key', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        settings: [{ key: 'UNKNOWN_KEY', value: 'test', type: 'string' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const data = await response.json();
+            expect(data.message).toContain('Unknown setting');
+        });
+
+        it('should validate APP_AUTH_METHODS requires at least one method', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        settings: [{ key: 'APP_AUTH_METHODS', value: '', type: 'string' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const data = await response.json();
+            expect(data.message).toContain('at least one method');
+        });
+
+        it('should validate APP_AUTH_METHODS for invalid values', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        settings: [{ key: 'APP_AUTH_METHODS', value: 'password,invalid_method', type: 'string' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const data = await response.json();
+            expect(data.message).toContain('invalid values');
+        });
+
+        it('should handle setSetting failure', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        setSetting: async () => {
+                            throw new Error('Database error');
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        settings: [{ key: 'ONLINE_THEMES_INSTALL', value: '1', type: 'boolean' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(500);
+            const data = await response.json();
+            expect(data.error).toBe('Internal Server Error');
+        });
+    });
+
+    // ========================================================================
+    // PROJECT MANAGEMENT TESTS
+    // ========================================================================
+
+    describe('GET /api/admin/projects', () => {
+        it('should return paginated projects list', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectsPaginated: async () => ({
+                            projects: [{ id: 1, title: 'Test Project', status: 'active' } as any],
+                            total: 1,
+                        }),
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.projects).toHaveLength(1);
+            expect(data.total).toBe(1);
+        });
+
+        it('should pass filter parameters', async () => {
+            const token = await generateAdminToken();
+            let receivedOpts: any = {};
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectsPaginated: async (_db, opts) => {
+                            receivedOpts = opts;
+                            return { projects: [], total: 0 };
+                        },
+                    }),
+                ),
+            );
+
+            await app.handle(
+                new Request(
+                    'http://localhost/api/admin/projects?owner=alice&title=test&status=active&visibility=public&sortBy=title&sortOrder=asc',
+                    {
+                        method: 'GET',
+                        headers: { Authorization: `Bearer ${token}` },
+                    },
+                ),
+            );
+
+            expect(receivedOpts.owner).toBe('alice');
+            expect(receivedOpts.title).toBe('test');
+            expect(receivedOpts.status).toBe('active');
+            expect(receivedOpts.visibility).toBe('public');
+            expect(receivedOpts.sortBy).toBe('title');
+            expect(receivedOpts.sortOrder).toBe('asc');
+        });
+
+        it('should sanitize invalid sort parameters', async () => {
+            const token = await generateAdminToken();
+            let receivedOpts: any = {};
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectsPaginated: async (_db, opts) => {
+                            receivedOpts = opts;
+                            return { projects: [], total: 0 };
+                        },
+                    }),
+                ),
+            );
+
+            await app.handle(
+                new Request('http://localhost/api/admin/projects?sortBy=invalid&sortOrder=invalid', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(receivedOpts.sortBy).toBe('id');
+            expect(receivedOpts.sortOrder).toBe('desc');
+        });
+    });
+
+    describe('PATCH /api/admin/projects/:id/status', () => {
+        it('should update project status', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        updateProject: async () => ({ id: 1, status: 'archived' }) as any,
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/1/status', {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: 'archived' }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.project.status).toBe('archived');
+        });
+
+        it('should return 400 for invalid project id', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/invalid/status', {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: 'archived' }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should return 404 for non-existent project', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        updateProject: async () => undefined,
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/999/status', {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: 'archived' }),
+                }),
+            );
+
+            expect(response.status).toBe(404);
+        });
+    });
+
+    describe('DELETE /api/admin/projects/:id', () => {
+        it('should delete project successfully', async () => {
+            const token = await generateAdminToken();
+            let deletedId: number | null = null;
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectById: async () => ({ id: 1, title: 'Test' }) as any,
+                        hardDeleteProject: async (_db, id) => {
+                            deletedId = id;
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/1', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data.success).toBe(true);
+            expect(deletedId).toBe(1);
+        });
+
+        it('should return 400 for invalid project id', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/invalid', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(400);
+        });
+
+        it('should return 404 for non-existent project', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectById: async () => undefined,
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/999', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(404);
+        });
+    });
 });

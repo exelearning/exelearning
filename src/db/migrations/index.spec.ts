@@ -125,8 +125,10 @@ describe('Database Migrations', () => {
             // Migrate up
             await migrateToLatest(db);
 
-            // Rollback
-            await migrateDown(db);
+            // Rollback all 3 migrations to remove all tables
+            await migrateDown(db); // rollback 003_project_status
+            await migrateDown(db); // rollback 002_app_settings
+            await migrateDown(db); // rollback 001_initial
 
             // Check users table is gone
             const tables = await db
@@ -179,15 +181,17 @@ describe('Database Migrations', () => {
         });
 
         it('should correctly track partial migrations', async () => {
-            // Migrate up then down
+            // Migrate up then down one step
             await migrateToLatest(db);
             await migrateDown(db);
 
             const status = await getMigrationStatus(db);
 
-            // After rollback, migration should be pending again
-            expect(status.pending).toContain('001_initial');
-            expect(status.executed).toHaveLength(0);
+            // After one rollback, only 003_project_status should be pending
+            // 001_initial and 002_app_settings are still executed
+            expect(status.pending).toContain('003_project_status');
+            expect(status.executed).toContain('001_initial');
+            expect(status.executed).toContain('002_app_settings');
         });
     });
 
@@ -197,16 +201,17 @@ describe('Database Migrations', () => {
             const up1 = await migrateToLatest(db);
             expect(up1.success).toBe(true);
             expect(up1.executedMigrations).toContain('001_initial');
+            expect(up1.executedMigrations).toContain('003_project_status');
 
-            // Down
+            // Down - rolls back the last migration (003_project_status)
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('002_app_settings');
+            expect(down.rolledBack).toBe('003_project_status');
 
-            // Up again
+            // Up again - should re-apply 003_project_status
             const up2 = await migrateToLatest(db);
             expect(up2.success).toBe(true);
-            expect(up2.executedMigrations).toContain('001_initial');
+            expect(up2.executedMigrations).toContain('003_project_status');
         });
     });
 
@@ -348,8 +353,17 @@ describe('Database Migrations', () => {
         });
 
         it('should detect legacy database and register migration without re-creating tables', async () => {
-            // Manually create users table WITHOUT kysely_migration
+            // Manually create 001_initial tables WITHOUT kysely_migration (simulates legacy DB)
+            // Note: projects table must have is_active column for 003_project_status migration to work
             await sql`CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT)`.execute(db);
+            await sql`CREATE TABLE projects (id INTEGER PRIMARY KEY, title TEXT, status TEXT DEFAULT 'active', is_active INTEGER DEFAULT 1)`.execute(
+                db,
+            );
+            await sql`CREATE TABLE assets (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE yjs_documents (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE yjs_updates (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE yjs_version_history (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE project_collaborators (id INTEGER PRIMARY KEY)`.execute(db);
 
             // Run migration (which internally calls syncLegacyMigrations)
             const result = await migrateToLatest(db);
@@ -357,11 +371,12 @@ describe('Database Migrations', () => {
             expect(result.success).toBe(true);
             // Should NOT have executed 001_initial because syncLegacyMigrations registered it
             expect(result.executedMigrations).not.toContain('001_initial');
+            // But should have executed 002 and 003
+            expect(result.executedMigrations).toContain('002_app_settings');
 
-            // Verify migration is marked as executed
+            // Verify 001_initial is marked as executed
             const status = await getMigrationStatus(db);
             expect(status.executed).toContain('001_initial');
-            expect(status.pending).toHaveLength(0);
 
             // Verify kysely_migration table was created
             const migrationTableExists = await tableExists(db, 'kysely_migration');
@@ -369,8 +384,17 @@ describe('Database Migrations', () => {
         });
 
         it('should handle partial state - migration table exists but record missing', async () => {
-            // Create users table manually (simulating legacy DB)
+            // Create 001_initial tables manually (simulating legacy DB)
+            // Note: projects table must have is_active column for 003_project_status migration to work
             await sql`CREATE TABLE users (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE projects (id INTEGER PRIMARY KEY, title TEXT, status TEXT DEFAULT 'active', is_active INTEGER DEFAULT 1)`.execute(
+                db,
+            );
+            await sql`CREATE TABLE assets (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE yjs_documents (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE yjs_updates (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE yjs_version_history (id INTEGER PRIMARY KEY)`.execute(db);
+            await sql`CREATE TABLE project_collaborators (id INTEGER PRIMARY KEY)`.execute(db);
 
             // Create kysely tables manually without the migration record
             await sql`CREATE TABLE kysely_migration (name VARCHAR(255) PRIMARY KEY, timestamp VARCHAR(255))`.execute(
@@ -385,8 +409,10 @@ describe('Database Migrations', () => {
             const result = await migrateToLatest(db);
 
             expect(result.success).toBe(true);
-            // Migration should be registered but not executed
+            // 001_initial should be registered but not executed
             expect(result.executedMigrations).not.toContain('001_initial');
+            // 002 and 003 should be executed
+            expect(result.executedMigrations).toContain('002_app_settings');
 
             const status = await getMigrationStatus(db);
             expect(status.executed).toContain('001_initial');
@@ -531,7 +557,7 @@ describe('Database Migrations', () => {
                     ({
                         migrateToLatest: async () => ({ results: [] }),
                         migrateDown: async () => ({
-                            results: [{ migrationName: '001_initial', status: 'Success' }],
+                            results: [{ migrationName: '003_project_status', status: 'Success' }],
                         }),
                         getMigrations: async () => [],
                     }) as unknown as Migrator,
@@ -540,7 +566,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db, mockDeps);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('002_app_settings');
+            expect(result.rolledBack).toBe('003_project_status');
         });
 
         it('should return undefined when no successful rollback', async () => {
