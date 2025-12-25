@@ -39,6 +39,7 @@ import {
     Scorm12Exporter,
     Scorm2004Exporter,
     ImsExporter,
+    Epub3Exporter,
     ElpxExporter,
 } from '../../shared/export';
 
@@ -169,10 +170,8 @@ export async function execute(
                 exporter = new ImsExporter(document, resourceProvider, assetProvider, zipProvider);
                 break;
             case 'epub3':
-                return {
-                    success: false,
-                    message: 'EPUB3 export not yet implemented',
-                };
+                exporter = new Epub3Exporter(document, resourceProvider, assetProvider, zipProvider);
+                break;
             case 'elpx':
                 exporter = new ElpxExporter(document, resourceProvider, assetProvider, zipProvider);
                 break;
@@ -198,7 +197,8 @@ export async function execute(
         }
 
         // Write output
-        const outputPath = output.endsWith('.zip') ? output : `${output}${exporter.getFileExtension()}`;
+        const extension = exporter.getFileExtension();
+        const outputPath = output.endsWith('.zip') || output.endsWith(extension) ? output : `${output}${extension}`;
 
         // Ensure output directory exists
         const outputDir = path.dirname(outputPath);
@@ -253,8 +253,8 @@ ${colors.cyan('Formats:')}
   scorm12     SCORM 1.2 package
   scorm2004   SCORM 2004 package
   ims         IMS Content Package
-  epub3       EPUB 3 e-book (not yet implemented)
-  elpx        Re-export as ELPX (not yet implemented)
+  epub3       EPUB 3 e-book
+  elpx        Re-export as ELPX
 
 ${colors.cyan('Options:')}
   --format, -f    Export format (alternative to positional)

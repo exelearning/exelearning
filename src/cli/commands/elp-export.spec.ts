@@ -128,11 +128,11 @@ describe('elp:export command', () => {
             expect(result.message).toContain('not found');
         });
 
-        it('should fail for epub3 format (not implemented)', async () => {
+        it('should succeed for epub3 format', async () => {
             await createTestElpFile();
             const result = await execute([TEST_ELP_PATH, TEST_OUTPUT_DIR, 'epub3'], {});
-            expect(result.success).toBe(false);
-            expect(result.message).toContain('not yet implemented');
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('Export completed');
             await cleanupTestDir();
         });
 
@@ -199,6 +199,26 @@ describe('elp:export command', () => {
             const result = await execute([TEST_ELP_PATH, outputPath, 'ims'], {});
             expect(result.success).toBe(true);
             expect(result.message).toContain('ims');
+        });
+
+        it('should export to epub3 format', async () => {
+            const outputPath = path.join(TEST_OUTPUT_DIR, 'test_epub.epub');
+            const result = await execute([TEST_ELP_PATH, outputPath, 'epub3'], {});
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('epub3');
+
+            // Verify output file exists
+            const exists = await fs
+                .access(outputPath)
+                .then(() => true)
+                .catch(() => false);
+            expect(exists).toBe(true);
+
+            // Verify output contains EPUB-required files
+            const zipBuffer = await fs.readFile(outputPath);
+            const zip = unzipSync(new Uint8Array(zipBuffer));
+            expect(zip['mimetype']).toBeDefined();
+            expect(zip['META-INF/container.xml']).toBeDefined();
         });
 
         it('should accept --format flag', async () => {

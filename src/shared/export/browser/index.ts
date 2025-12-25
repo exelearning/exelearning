@@ -31,6 +31,7 @@ import { PageExporter } from '../exporters/PageExporter';
 import { Scorm12Exporter } from '../exporters/Scorm12Exporter';
 import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
+import { Epub3Exporter } from '../exporters/Epub3Exporter';
 import { ElpxExporter } from '../exporters/ElpxExporter';
 import { WebsitePreviewExporter } from '../exporters/WebsitePreviewExporter';
 import type { PreviewOptions, PreviewResult } from '../exporters/WebsitePreviewExporter';
@@ -199,7 +200,7 @@ export function createExporter(
 
         case 'epub3':
         case 'epub':
-            throw new Error('EPUB3 export not yet implemented in shared code');
+            return new Epub3Exporter(document, resources, assets, zip);
 
         case 'elpx':
         case 'elp':
@@ -451,6 +452,7 @@ export {
     Scorm12Exporter,
     Scorm2004Exporter,
     ImsExporter,
+    Epub3Exporter,
     ElpxExporter,
     WebsitePreviewExporter,
     ComponentExporter,
@@ -494,6 +496,7 @@ if (typeof window !== 'undefined') {
         Scorm12Exporter,
         Scorm2004Exporter,
         ImsExporter,
+        Epub3Exporter,
         ElpxExporter,
         WebsitePreviewExporter,
         ComponentExporter,
