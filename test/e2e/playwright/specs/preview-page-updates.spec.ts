@@ -218,6 +218,7 @@ test.describe('Preview Page Updates', () => {
             { names: pageNames },
         );
 
+        // Wait for pages to be created in Yjs
         await page.waitForTimeout(500);
 
         // Open Preview
@@ -229,8 +230,12 @@ test.describe('Preview Page Updates', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
+        // Wait for the navigation to be loaded in the iframe
+        // The iframe needs time to render after the panel becomes visible
+        const navLinks = iframe.locator('nav ul li a, #siteNav ul li a');
+        await navLinks.first().waitFor({ state: 'attached', timeout: 10000 });
+
         // Verify all pages are in the preview navigation in correct order
-        const navLinks = iframe.locator('#siteNav > ul > li > a, nav > ul > li > a');
         const count = await navLinks.count();
         expect(count).toBeGreaterThanOrEqual(pageNames.length);
 
@@ -313,6 +318,7 @@ test.describe('Preview Page Updates', () => {
             { ids: pageIds },
         );
 
+        // Wait for move operation to complete
         await page.waitForTimeout(500);
 
         // Open Preview
@@ -324,9 +330,11 @@ test.describe('Preview Page Updates', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
-        // Verify order is C, A, B
-        const navLinks = iframe.locator('#siteNav > ul > li > a, nav > ul > li > a');
+        // Wait for the navigation to be loaded in the iframe
+        const navLinks = iframe.locator('nav ul li a, #siteNav ul li a');
+        await navLinks.first().waitFor({ state: 'attached', timeout: 10000 });
 
+        // Verify order is C, A, B
         const firstLink = await navLinks.nth(0).textContent();
         const secondLink = await navLinks.nth(1).textContent();
         const thirdLink = await navLinks.nth(2).textContent();
