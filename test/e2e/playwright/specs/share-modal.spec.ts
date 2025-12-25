@@ -65,7 +65,11 @@ test.describe('Share Modal', () => {
         test('should copy link to clipboard when clicking copy button', async ({
             authenticatedPage,
             createProject,
+            browserName,
         }) => {
+            // Skip clipboard content verification on Firefox - it doesn't support clipboard permissions
+            test.skip(browserName === 'firefox', 'Firefox does not support clipboard permissions');
+
             const projectUuid = await createProject(authenticatedPage, 'Copy Link Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -79,7 +83,7 @@ test.describe('Share Modal', () => {
             // Get the link before copying
             const expectedLink = await shareModal.getShareLink();
 
-            // Grant clipboard permissions
+            // Grant clipboard permissions (Chromium only)
             await authenticatedPage.context().grantPermissions(['clipboard-read', 'clipboard-write']);
 
             // Click copy button
@@ -93,7 +97,11 @@ test.describe('Share Modal', () => {
             expect(clipboardContent).toBe(expectedLink);
         });
 
-        test('should show "Copied!" feedback after copying', async ({ authenticatedPage, createProject }) => {
+        test('should show "Copied!" feedback after copying', async ({
+            authenticatedPage,
+            createProject,
+            browserName,
+        }) => {
             const projectUuid = await createProject(authenticatedPage, 'Feedback Test Project');
 
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
@@ -104,7 +112,11 @@ test.describe('Share Modal', () => {
 
             await shareModal.waitForOpen();
 
-            await authenticatedPage.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+            // Grant clipboard permissions only on Chromium-based browsers
+            // Firefox doesn't support this, but the UI feedback should still work
+            if (browserName !== 'firefox') {
+                await authenticatedPage.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+            }
 
             await shareModal.clickCopyLink();
 
