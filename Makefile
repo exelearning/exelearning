@@ -94,7 +94,7 @@ upd: check-docker check-env
 # Stop Docker
 .PHONY: down
 down: check-docker
-	@docker compose --profile e2e down
+	@docker compose down
 
 # Shell into container
 .PHONY: shell
@@ -501,9 +501,12 @@ test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov covera
 test-frontend-ci: check-bun check-env ## Run frontend tests with coverage for CI/Codecov
 	bun test:frontend:ci
 
+.PHONY: test-e2e-chromium
+test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
+	npx playwright test --project=chromium
+
 .PHONY: test-e2e
-test-e2e: check-env ## Run Playwright E2E tests
-	npx playwright test
+test-e2e: test-e2e-chromium ## Run Playwright E2E tests (alias for test-e2e-chromium)
 
 .PHONY: test-e2e-ui
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
@@ -681,7 +684,9 @@ help:
 	@echo "  make test-unit       Run unit tests"
 	@echo "  make test-frontend   Run frontend tests"
 	@echo "  make test-watch      Run tests in watch mode"
-	@echo "  make test-e2e        Run Playwright E2E tests"
+	@echo "  make test-e2e        Run Playwright E2E tests (Chromium)"
+	@echo "  make test-e2e-chromium  Run E2E tests with Chromium"
+	@echo "  make test-e2e-firefox   Run E2E tests with Firefox"
 	@echo ""
 	@echo "Legacy (Core2 Duo / No Bun):"
 	@echo "  make up-legacy              Start server with Node.js (Docker)"

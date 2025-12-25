@@ -160,18 +160,21 @@ describe('PreviewPanelManager', () => {
   });
 
   describe('refresh', () => {
-    it('should generate and inject preview HTML', async () => {
+    it('should generate and inject preview HTML via blob URL', async () => {
       await manager.refresh();
 
       expect(window.SharedExporters.generatePreview).toHaveBeenCalled();
+      // Uses blob URL for proper origin (allows popups to access PDF data)
       expect(global.URL.createObjectURL).toHaveBeenCalled();
       expect(mockElements['preview-iframe'].src).toBe('blob:test-url');
     });
 
-    it('should use pinned iframe when pinned', async () => {
+    it('should use pinned iframe blob URL when pinned', async () => {
       manager.isPinned = true;
       await manager.refresh();
 
+      // Uses blob URL for proper origin
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
       expect(mockElements['preview-pinned-iframe'].src).toBe('blob:test-url');
     });
 
@@ -202,7 +205,9 @@ describe('PreviewPanelManager', () => {
     it('should keep html when resolveAssetUrlsAsync fails', async () => {
       window.resolveAssetUrlsAsync = vi.fn().mockRejectedValue(new Error('fail'));
       const result = await manager.generatePreviewHtml();
-      expect(result).toBe('<html><body>Preview</body></html>');
+      // The PDF preview card script is always injected
+      expect(result).toContain('Preview');
+      expect(result).toContain('resolvePdfIframes');
     });
   });
 
@@ -210,6 +215,161 @@ describe('PreviewPanelManager', () => {
     it('should escape HTML', () => {
       const escaped = manager.escapeHtml('<script>alert(1)</script>');
       expect(escaped).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+    });
+  });
+
+  describe('injectPdfBlobUrlConverter', () => {
+    it('should inject converter script before </body>', () => {
+      const html = '<html><body><p>Content</p></body></html>';
+      const result = manager.injectPdfBlobUrlConverter(html);
+
+      expect(result).toContain('resolvePdfIframes');
+      expect(result).toContain('</script></body></html>');
+    });
+
+    it('should append script if no </body> tag', () => {
+      const html = '<p>Content</p>';
+      const result = manager.injectPdfBlobUrlConverter(html);
+
+      expect(result).toContain('resolvePdfIframes');
+      expect(result).toContain('<p>Content</p>');
+    });
+
+    it('should include PDF.js integration for rendering PDFs', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectPdfBlobUrlConverter(html);
+
+      // Should load PDF.js library
+      expect(result).toContain('pdf.min.mjs');
+      expect(result).toContain('pdf.worker.min.mjs');
+      // Should create PDF viewer with controls
+      expect(result).toContain('exe-pdf-viewer');
+      expect(result).toContain('exe-pdf-toolbar');
+      expect(result).toContain('exe-pdf-canvas');
+    });
+
+    it('should include fallback card when PDF.js fails', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectPdfBlobUrlConverter(html);
+
+      // Should have fallback card logic
+      expect(result).toContain('exe-pdf-preview-card');
+      expect(result).toContain('PDF.js not available');
+      expect(result).toContain('Click to open');
+    });
+
+    it('should use postMessage for asset:// URLs to request blob from parent', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectPdfBlobUrlConverter(html);
+
+      // Should use postMessage to parent for requesting PDF blobs
+      expect(result).toContain('postMessage');
+      expect(result).toContain('requestPdfBlob');
+      expect(result).toContain("type: 'requestPdfBlob'");
+      expect(result).toContain('assetId:');
+    });
+
+    it('should include navigation and zoom controls', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectPdfBlobUrlConverter(html);
+
+      // Should have navigation controls
+      expect(result).toContain('Previous page');
+      expect(result).toContain('Next page');
+      // Should have zoom controls
+      expect(result).toContain('Zoom out');
+      expect(result).toContain('Zoom in');
+      expect(result).toContain('Fit to width');
+      // Should have popup button
+      expect(result).toContain('Open in new window');
+    });
+  });
+
+  describe('postMessage handling for PDF blobs', () => {
+    it('should handle requestPdfBlob messages and send blob back', async () => {
+      const mockBlob = new Blob(['test'], { type: 'application/pdf' });
+      const mockAssetManager = {
+        getAsset: vi.fn().mockResolvedValue({
+          blob: mockBlob,
+        }),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      // Mock postMessage on source
+      const mockSource = { postMessage: vi.fn() };
+
+      // Simulate the postMessage event
+      manager.bindEvents();
+      const messageEvent = new MessageEvent('message', {
+        data: {
+          type: 'requestPdfBlob',
+          assetId: 'test-asset-id',
+          requestId: 'req_1',
+        },
+        source: mockSource,
+      });
+      window.dispatchEvent(messageEvent);
+
+      // Wait for async handling
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockAssetManager.getAsset).toHaveBeenCalledWith('test-asset-id');
+      expect(mockSource.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'pdfBlobResponse',
+          requestId: 'req_1',
+          success: true,
+          blob: mockBlob,
+        }),
+        '*'
+      );
+    });
+
+    it('should handle openPdfPopup messages for popup fallback', async () => {
+      const mockAssetManager = {
+        getAsset: vi.fn().mockResolvedValue({
+          blob: new Blob(['test'], { type: 'application/pdf' }),
+        }),
+      };
+      mockBridge.assetManager = mockAssetManager;
+      global.URL.createObjectURL = vi.fn(() => 'blob:test-pdf-url');
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
+
+      // Simulate the postMessage event
+      manager.bindEvents();
+      const messageEvent = new MessageEvent('message', {
+        data: {
+          type: 'openPdfPopup',
+          assetId: 'test-asset-id',
+          assetUrl: 'asset://test-asset-id/file.pdf',
+        },
+      });
+      window.dispatchEvent(messageEvent);
+
+      // Wait for async handling
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockAssetManager.getAsset).toHaveBeenCalledWith('test-asset-id');
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-pdf-url', '_blank', 'width=900,height=700');
+    });
+
+    it('should ignore unrelated messages', async () => {
+      const mockAssetManager = {
+        getAsset: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      manager.bindEvents();
+      const messageEvent = new MessageEvent('message', {
+        data: { type: 'other-message' },
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockAssetManager.getAsset).not.toHaveBeenCalled();
     });
   });
 

@@ -2462,11 +2462,17 @@ export default class IdeviceNode {
                     const assetFilename = assetMatch[2];
 
                     // Update response to use asset:// URLs
-                    // savedPath + savedFilename will become asset://uuid/filename
-                    response.savedPath = `asset://${assetId}`;
+                    // savedPath ends with / so savedPath + savedFilename = asset://uuid/filename
+                    response.savedPath = `asset://${assetId}/`;
                     response.savedFilename = assetFilename;
                     // Use same asset for thumbnail (full image works as thumbnail)
                     response.savedThumbnailName = assetFilename;
+
+                    // Provide a blob URL for preview in dialogs (audio/video players can't use asset:// directly)
+                    const blobUrl = await assetManager.resolveAssetURL(assetUrl);
+                    if (blobUrl) {
+                        response.previewUrl = blobUrl;
+                    }
 
                     Logger.log(`[IdeviceNode] Created asset for upload: ${assetUrl}`);
                 }

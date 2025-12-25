@@ -240,13 +240,50 @@ class AssetManager {
       return [];
     }
 
+    Logger.log(`[AssetManager] getProjectAssets: Querying for projectId: ${this.projectId}`);
+
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
       const store = tx.objectStore(AssetManager.STORE_NAME);
       const index = store.index('projectId');
       const request = index.getAll(this.projectId);
 
-      request.onsuccess = () => resolve(request.result || []);
+      request.onsuccess = () => {
+        const assets = request.result || [];
+        Logger.log(`[AssetManager] getProjectAssets: Found ${assets.length} assets for projectId: ${this.projectId}`);
+        if (assets.length === 0) {
+          // Debug: Log all assets in DB to see what projectIds exist
+          const allRequest = store.getAll();
+          allRequest.onsuccess = () => {
+            const allAssets = allRequest.result || [];
+            const projectIds = [...new Set(allAssets.map(a => a.projectId))];
+            console.warn(`[AssetManager] getProjectAssets: 0 assets found. Total assets in DB: ${allAssets.length}. Unique projectIds: ${projectIds.join(', ')}`);
+          };
+        }
+        resolve(assets);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get ALL assets from IndexedDB without filtering by projectId.
+   * Used as a fallback when getProjectAssets returns 0 assets (for debugging).
+   * @returns {Promise<Array>}
+   */
+  async getAllAssetsRaw() {
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
+      const store = tx.objectStore(AssetManager.STORE_NAME);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const assets = request.result || [];
+        Logger.log(`[AssetManager] getAllAssetsRaw: Found ${assets.length} total assets in DB`);
+        resolve(assets);
+      };
       request.onerror = () => reject(request.error);
     });
   }
@@ -336,6 +373,7 @@ class AssetManager {
    */
   async insertImage(file) {
     Logger.log(`[AssetManager] Inserting image: ${file.name} (${file.size} bytes, ${file.type})`);
+    Logger.log(`[AssetManager] Current projectId: ${this.projectId}`);
 
     // 1. Create blob
     const blob = new Blob([await file.arrayBuffer()], { type: file.type });
@@ -2467,10 +2505,24 @@ window.resolveAssetUrlsAsync = async function(html, options = {}) {
   const wsHandler = bridge?.assetWebSocketHandler;
 
   let result = html;
+  let iframePlaceholders = [];
+
+  // If skipIframeSrc is true, temporarily replace iframe asset:// URLs with placeholders
+  // This allows PDFs to be handled separately in the preview (accessing AssetManager directly)
+  if (options.skipIframeSrc) {
+    const iframeAssetPattern = /(<iframe[^>]*\ssrc=["'])(asset:\/\/[^"']+)(["'][^>]*>)/gi;
+    let placeholderIndex = 0;
+    result = result.replace(iframeAssetPattern, (match, before, assetUrl, after) => {
+      const placeholder = `__IFRAME_ASSET_PLACEHOLDER_${placeholderIndex}__`;
+      iframePlaceholders.push({ placeholder, before, assetUrl, after });
+      placeholderIndex++;
+      return `${before}${placeholder}${after}`;
+    });
+  }
 
   // First: resolve asset:// URLs to blob:// URLs
   if (assetManager && typeof assetManager.resolveHTMLAssets === 'function') {
-    result = await assetManager.resolveHTMLAssets(html, {
+    result = await assetManager.resolveHTMLAssets(result, {
       wsHandler,
       addTrackingAttrs: options.addTrackingAttrs,
     });
@@ -2478,13 +2530,20 @@ window.resolveAssetUrlsAsync = async function(html, options = {}) {
     // Legacy fallback
     const assetCache = bridge?.assetCache;
     if (assetCache && typeof assetCache.resolveHtmlAssetUrls === 'function') {
-      result = await assetCache.resolveHtmlAssetUrls(html);
+      result = await assetCache.resolveHtmlAssetUrls(result);
     }
+  }
+
+  // Restore iframe asset:// URLs from placeholders
+  for (const { placeholder, before, assetUrl, after } of iframePlaceholders) {
+    result = result.replace(`${before}${placeholder}${after}`, `${before}${assetUrl}${after}`);
   }
 
   // Second: Convert blob:// URLs to data:// URLs for cross-window compatibility
   // This is needed for preview popups where blob: URLs from the main window don't work
   const convertBlobUrls = options.convertBlobUrls !== false;
+  const convertIframeBlobUrls = options.convertIframeBlobUrls !== false;
+
   if (convertBlobUrls) {
     // Find all blob: URLs in src and href attributes
     const blobUrlPattern = /(?:src|href)="(blob:[^"]+)"/g;
@@ -2502,6 +2561,40 @@ window.resolveAssetUrlsAsync = async function(html, options = {}) {
       );
 
       // OPTIMIZATION: Single-pass replacement using regex instead of multiple split/join
+      const blobReplacements = new Map(
+        conversions.filter(c => c.original !== c.converted)
+                   .map(c => [c.original, c.converted])
+      );
+      if (blobReplacements.size > 0) {
+        const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(
+          Array.from(blobReplacements.keys()).map(escapeRegex).join('|'),
+          'g'
+        );
+        result = result.replace(pattern, (m) => blobReplacements.get(m) || m);
+      }
+    }
+  } else if (convertIframeBlobUrls) {
+    // When convertBlobUrls is false (to avoid memory issues with large videos),
+    // we still need to convert iframe blob URLs to data URLs because:
+    // - Nested blob:// URLs in iframes can't access the parent window's blob cache
+    // - PDFs embedded as iframes will show ERR_BLOCKED_BY_CLIENT otherwise
+    // - PDFs are typically smaller than videos, so data URLs are acceptable
+    const iframeBlobPattern = /<iframe[^>]*\ssrc="(blob:[^"]+)"[^>]*>/gi;
+    const matches = [...result.matchAll(iframeBlobPattern)];
+    const blobUrls = matches.map(m => m[1]);
+    const uniqueBlobUrls = [...new Set(blobUrls)];
+
+    if (uniqueBlobUrls.length > 0) {
+      // Convert all unique iframe blob URLs to data URLs in parallel
+      const conversions = await Promise.all(
+        uniqueBlobUrls.map(async url => ({
+          original: url,
+          converted: await blobUrlToDataUrl(url),
+        })),
+      );
+
+      // Replace only in iframe elements
       const blobReplacements = new Map(
         conversions.filter(c => c.original !== c.converted)
                    .map(c => [c.original, c.converted])

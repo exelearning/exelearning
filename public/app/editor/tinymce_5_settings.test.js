@@ -252,10 +252,18 @@ describe('TinyMCE 5 Settings', () => {
       globalThis.$exeTinyMCE.init('multiple', '#editor', true);
       const config = globalThis.tinymce.init.mock.calls[0][0];
 
-      config.init_instance_callback({ id: 'editor' });
+      // Mock editor with required methods for the new asset URL resolution code
+      const mockEditor = {
+        id: 'editor',
+        on: vi.fn(),
+        getBody: () => document.createElement('div'),
+      };
+      config.init_instance_callback(mockEditor);
 
       expect(initSpy).toHaveBeenCalledWith('editor', true);
       expect(hookSpy).toHaveBeenCalled();
+      // Verify SetContent handler was registered
+      expect(mockEditor.on).toHaveBeenCalledWith('SetContent', expect.any(Function));
       initSpy.mockRestore();
       delete globalThis.$exeTinyMCE.onEditorInit;
     });
@@ -631,6 +639,251 @@ describe('TinyMCE 5 Settings', () => {
       await config.images_upload_handler(blobInfo, success, failure);
 
       expect(failure).toHaveBeenCalledWith('Media library not available');
+    });
+
+    describe('resolveAssetUrlsInEditor', () => {
+      it('exists as a function', () => {
+        expect(typeof globalThis.$exeTinyMCE.resolveAssetUrlsInEditor).toBe('function');
+      });
+
+      it('does nothing when AssetManager is not available', () => {
+        const mockEditor = {
+          getBody: () => document.createElement('div'),
+        };
+        window.eXeLearning.app.project = null;
+
+        // Should not throw
+        expect(() => globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor)).not.toThrow();
+      });
+
+      it('does nothing when editor body is not available', () => {
+        const mockEditor = {
+          getBody: () => null,
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: {} },
+        };
+
+        // Should not throw
+        expect(() => globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor)).not.toThrow();
+      });
+
+      it('resolves audio element asset:// URLs to blob:// URLs', async () => {
+        const body = document.createElement('div');
+        const audio = document.createElement('audio');
+        audio.setAttribute('src', 'asset://test-uuid-1234/audio.webm');
+        body.appendChild(audio);
+
+        const mockBlobUrl = 'blob:http://localhost/mock-blob';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://test-uuid-1234/audio.webm');
+        expect(audio.getAttribute('src')).toBe(mockBlobUrl);
+        expect(audio.getAttribute('data-asset-src')).toBe('asset://test-uuid-1234/audio.webm');
+      });
+
+      it('resolves video element asset:// URLs to blob:// URLs', async () => {
+        const body = document.createElement('div');
+        const video = document.createElement('video');
+        video.setAttribute('src', 'asset://video-uuid/video.mp4');
+        body.appendChild(video);
+
+        const mockBlobUrl = 'blob:http://localhost/video-blob';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(video.getAttribute('src')).toBe(mockBlobUrl);
+        expect(video.getAttribute('data-asset-src')).toBe('asset://video-uuid/video.mp4');
+      });
+
+      it('skips elements that already have data-asset-src', async () => {
+        const body = document.createElement('div');
+        const audio = document.createElement('audio');
+        audio.setAttribute('src', 'blob:already-resolved');
+        audio.setAttribute('data-asset-src', 'asset://already-resolved/file.webm');
+        body.appendChild(audio);
+
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue('blob:new'),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Should not call resolveAssetURL for already-resolved elements
+        expect(mockAssetManager.resolveAssetURL).not.toHaveBeenCalled();
+        expect(audio.getAttribute('src')).toBe('blob:already-resolved');
+      });
+
+      it('handles mce-preview-object spans with asset:// URLs', async () => {
+        const body = document.createElement('div');
+        const span = document.createElement('span');
+        span.classList.add('mce-preview-object');
+        span.setAttribute('data-mce-p-src', 'asset://preview-uuid/audio.webm');
+        const audio = document.createElement('audio');
+        audio.setAttribute('src', 'asset://preview-uuid/audio.webm');
+        span.appendChild(audio);
+        body.appendChild(span);
+
+        const mockBlobUrl = 'blob:http://localhost/preview-blob';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // The inner audio should be resolved
+        expect(audio.getAttribute('src')).toBe(mockBlobUrl);
+        expect(audio.getAttribute('data-asset-src')).toBe('asset://preview-uuid/audio.webm');
+      });
+
+      it('handles resolution errors gracefully', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const body = document.createElement('div');
+        const audio = document.createElement('audio');
+        audio.setAttribute('src', 'asset://error-uuid/audio.webm');
+        body.appendChild(audio);
+
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockRejectedValue(new Error('Resolution failed')),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Should log warning but not throw
+        expect(warnSpy).toHaveBeenCalled();
+        // Original URL should remain if resolution fails
+        expect(audio.getAttribute('data-asset-src')).toBe('asset://error-uuid/audio.webm');
+
+        warnSpy.mockRestore();
+      });
+
+      it('resolves iframe element asset:// URLs to blob:// URLs but does NOT add data-asset-src', async () => {
+        // Iframes (PDFs) ARE resolved to blob URLs for display in the editor.
+        // However, we do NOT add data-asset-src because TinyMCE preserves the
+        // original URL via data-mce-p-src on the parent span.mce-preview-object.
+        const body = document.createElement('div');
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('src', 'asset://pdf-uuid-1234/document.pdf');
+        iframe.setAttribute('width', '300');
+        iframe.setAttribute('height', '150');
+        body.appendChild(iframe);
+
+        const mockBlobUrl = 'blob:http://localhost/pdf-blob';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Iframe SHOULD be resolved to blob URL for display
+        expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://pdf-uuid-1234/document.pdf');
+        expect(iframe.getAttribute('src')).toBe(mockBlobUrl);
+        // But data-asset-src should NOT be added (TinyMCE uses data-mce-p-src)
+        expect(iframe.getAttribute('data-asset-src')).toBeNull();
+        // Verify other attributes preserved
+        expect(iframe.getAttribute('width')).toBe('300');
+        expect(iframe.getAttribute('height')).toBe('150');
+      });
+
+      it('resolves mce-preview-object spans with iframe for PDFs but does NOT add data-asset-src', async () => {
+        // Iframes in mce-preview-object spans are resolved for display.
+        // The span's data-mce-p-src preserves the original URL.
+        const body = document.createElement('div');
+        const span = document.createElement('span');
+        span.classList.add('mce-preview-object');
+        span.setAttribute('data-mce-p-src', 'asset://pdf-preview-uuid/file.pdf');
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('src', 'asset://pdf-preview-uuid/file.pdf');
+        span.appendChild(iframe);
+        body.appendChild(span);
+
+        const mockBlobUrl = 'blob:http://localhost/preview-pdf-blob';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // The inner iframe SHOULD be resolved for display
+        expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://pdf-preview-uuid/file.pdf');
+        expect(iframe.getAttribute('src')).toBe(mockBlobUrl);
+        // But data-asset-src should NOT be added
+        expect(iframe.getAttribute('data-asset-src')).toBeNull();
+      });
     });
   });
 

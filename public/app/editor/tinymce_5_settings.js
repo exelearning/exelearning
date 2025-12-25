@@ -483,6 +483,44 @@ var $exeTinyMCE = {
                 if (typeof $exeTinyMCE.onEditorInit === 'function') {
                     $exeTinyMCE.onEditorInit(ed);
                 }
+
+                // Resolve asset:// URLs to blob:// for media preview in editor
+                // This allows audio/video elements to play within TinyMCE
+                ed.on('SetContent', function() {
+                    $exeTinyMCE.resolveAssetUrlsInEditor(ed);
+                });
+
+                // Also observe DOM changes for dynamically inserted media (e.g., audio recorder, PDF embed)
+                const editorBody = ed.getBody();
+                if (editorBody) {
+                    const observer = new MutationObserver(function(mutations) {
+                        let hasNewMedia = false;
+                        for (const mutation of mutations) {
+                            if (mutation.type === 'childList') {
+                                for (const node of mutation.addedNodes) {
+                                    if (node.nodeType === 1) {
+                                        const hasAssetUrl = node.querySelector?.('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]') ||
+                                            (node.matches?.('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]'));
+                                        if (hasAssetUrl) {
+                                            hasNewMedia = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (hasNewMedia) break;
+                        }
+                        if (hasNewMedia) {
+                            $exeTinyMCE.resolveAssetUrlsInEditor(ed);
+                        }
+                    });
+                    observer.observe(editorBody, { childList: true, subtree: true });
+
+                    // Clean up observer when editor is removed
+                    ed.on('remove', function() {
+                        observer.disconnect();
+                    });
+                }
             },
         }); //End tinymce
     },
@@ -543,6 +581,90 @@ var $exeTinyMCE = {
             delete loadScreen.style.top;
             delete loadScreen.style.left;
         }, delay);
+    },
+
+    /**
+     * Resolve asset:// URLs to blob:// URLs for audio/video elements in TinyMCE editor
+     * This allows media to play within the editor while keeping asset:// URLs for persistence
+     *
+     * NOTE: We intentionally DO NOT resolve iframes (PDFs) because:
+     * 1. TinyMCE strips custom attributes like data-asset-src when processing media elements
+     * 2. This causes the blob:// URL to be saved instead of asset://
+     * 3. PDFs don't need playback preview in the editor - they display correctly in preview mode
+     *
+     * @param {Object} ed - TinyMCE editor instance
+     */
+    resolveAssetUrlsInEditor: function (ed) {
+        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        if (!assetManager) return;
+
+        const body = ed.getBody();
+        if (!body) return;
+
+        // Find audio, video, and iframe elements with asset:// URLs
+        const mediaElements = body.querySelectorAll('audio[src^="asset://"], video[src^="asset://"], iframe[src^="asset://"]');
+
+        for (const media of mediaElements) {
+            const assetUrl = media.getAttribute('src');
+            if (!assetUrl || !assetUrl.startsWith('asset://')) continue;
+
+            const isIframe = media.tagName.toLowerCase() === 'iframe';
+
+            // For audio/video: Skip if already resolved (has data-asset-src)
+            // For iframes: Skip if src is already a blob URL (already resolved)
+            if (!isIframe && media.getAttribute('data-asset-src')) continue;
+            if (isIframe && media.getAttribute('src').startsWith('blob:')) continue;
+
+            // For audio/video: Store the original asset URL in data-asset-src
+            // For iframes: DON'T add data-asset-src - TinyMCE preserves the URL via data-mce-p-src
+            // on the parent span.mce-preview-object
+            if (!isIframe) {
+                media.setAttribute('data-asset-src', assetUrl);
+            }
+
+            // Resolve to blob URL asynchronously
+            assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
+                if (blobUrl) {
+                    media.setAttribute('src', blobUrl);
+                }
+            }).catch(function(err) {
+                console.warn('[TinyMCE] Failed to resolve asset URL:', assetUrl, err);
+            });
+        }
+
+        // Also handle TinyMCE's mce-preview-object spans (used for media preview)
+        const previewSpans = body.querySelectorAll('span.mce-preview-object[data-mce-p-src^="asset://"]');
+
+        for (const span of previewSpans) {
+            const assetUrl = span.getAttribute('data-mce-p-src');
+            if (!assetUrl || !assetUrl.startsWith('asset://')) continue;
+
+            // Find the inner media element (audio, video, or iframe)
+            const innerMedia = span.querySelector('audio, video, iframe');
+            if (!innerMedia) continue;
+
+            const isIframe = innerMedia.tagName.toLowerCase() === 'iframe';
+
+            // For audio/video: Skip if already resolved (has data-asset-src)
+            // For iframes: Skip if src is already a blob URL
+            if (!isIframe && innerMedia.getAttribute('data-asset-src')) continue;
+            if (isIframe && innerMedia.getAttribute('src')?.startsWith('blob:')) continue;
+
+            // For audio/video: Store the original asset URL in data-asset-src
+            // For iframes: The span's data-mce-p-src already preserves it
+            if (!isIframe) {
+                innerMedia.setAttribute('data-asset-src', assetUrl);
+            }
+
+            // Resolve to blob URL asynchronously
+            assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
+                if (blobUrl) {
+                    innerMedia.setAttribute('src', blobUrl);
+                }
+            }).catch(function(err) {
+                console.warn('[TinyMCE] Failed to resolve asset URL in preview:', assetUrl, err);
+            });
+        }
     },
 };
 

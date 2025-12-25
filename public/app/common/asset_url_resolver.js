@@ -74,6 +74,9 @@
         return null;
     }
 
+    // List of media element tag names that should have src resolved
+    const MEDIA_TAGS = ['IMG', 'SOURCE', 'VIDEO', 'AUDIO', 'IFRAME'];
+
     /**
      * Interceptor for $.fn.attr('src', value) - handles both forms:
      * - .attr('src', 'asset://...')
@@ -98,7 +101,7 @@
                 resolveAssetUrl(assetSrc).then(resolved => {
                     if (resolved) {
                         $elements.each(function() {
-                            if (this.tagName === 'IMG' || this.tagName === 'SOURCE' || this.tagName === 'VIDEO' || this.tagName === 'AUDIO') {
+                            if (MEDIA_TAGS.includes(this.tagName)) {
                                 originalAttr.call($(this), 'src', resolved);
                             }
                         });
@@ -118,7 +121,7 @@
                 // Only set src if we got a valid resolved URL (not null)
                 if (resolved) {
                     $elements.each(function() {
-                        if (this.tagName === 'IMG' || this.tagName === 'SOURCE' || this.tagName === 'VIDEO' || this.tagName === 'AUDIO') {
+                        if (MEDIA_TAGS.includes(this.tagName)) {
                             originalAttr.call($(this), 'src', resolved);
                         }
                     });
@@ -157,7 +160,7 @@
                 resolveAssetUrl(assetSrc).then(resolved => {
                     if (resolved) {
                         $elements.each(function() {
-                            if (this.tagName === 'IMG' || this.tagName === 'SOURCE' || this.tagName === 'VIDEO' || this.tagName === 'AUDIO') {
+                            if (MEDIA_TAGS.includes(this.tagName)) {
                                 originalProp.call($(this), 'src', resolved);
                             }
                         });
@@ -176,7 +179,7 @@
                 // Only set src if we got a valid resolved URL (not null)
                 if (resolved) {
                     $elements.each(function() {
-                        if (this.tagName === 'IMG' || this.tagName === 'SOURCE' || this.tagName === 'VIDEO' || this.tagName === 'AUDIO') {
+                        if (MEDIA_TAGS.includes(this.tagName)) {
                             originalProp.call($(this), 'src', resolved);
                         }
                     });
@@ -194,7 +197,7 @@
      * Intercept vanilla JS property assignments: img.src = 'asset://...'
      * This catches libraries like mojomagnify.js that set src directly.
      */
-    const mediaElements = ['HTMLImageElement', 'HTMLVideoElement', 'HTMLAudioElement', 'HTMLSourceElement'];
+    const mediaElements = ['HTMLImageElement', 'HTMLVideoElement', 'HTMLAudioElement', 'HTMLSourceElement', 'HTMLIFrameElement'];
 
     mediaElements.forEach(elementType => {
         const ElementClass = window[elementType];
@@ -240,21 +243,21 @@
                 if (node.nodeType !== Node.ELEMENT_NODE) return;
 
                 // Find all media elements with asset:// src (including the node itself)
-                const mediaSelector = 'img[src^="asset://"], video[src^="asset://"], audio[src^="asset://"], source[src^="asset://"]';
-                const mediaElements = [];
+                const mediaSelector = 'img[src^="asset://"], video[src^="asset://"], audio[src^="asset://"], source[src^="asset://"], iframe[src^="asset://"]';
+                const mediaElementsList = [];
 
                 // Check if the node itself matches
                 if (node.matches && node.matches(mediaSelector)) {
-                    mediaElements.push(node);
+                    mediaElementsList.push(node);
                 }
 
                 // Check descendants
                 if (node.querySelectorAll) {
-                    mediaElements.push(...node.querySelectorAll(mediaSelector));
+                    mediaElementsList.push(...node.querySelectorAll(mediaSelector));
                 }
 
                 // Resolve each asset:// URL for media elements
-                mediaElements.forEach((el) => {
+                mediaElementsList.forEach((el) => {
                     const assetUrl = el.getAttribute('src');
                     if (!assetUrl) return;
 
@@ -262,8 +265,12 @@
                     el.setAttribute('data-asset-url', assetUrl);
 
                     // Clear the invalid src immediately to prevent error events
-                    // Use a transparent 1x1 GIF as placeholder
-                    el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                    // Use a transparent 1x1 GIF as placeholder for images, about:blank for iframes
+                    if (el.tagName === 'IFRAME') {
+                        el.src = 'about:blank';
+                    } else {
+                        el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                    }
 
                     // Resolve asynchronously and set the real src
                     resolveAssetUrl(assetUrl).then(resolved => {
@@ -356,9 +363,7 @@
         const value = originalGetAttribute.call(this, name);
 
         // For media elements reading 'src', check if we have a stored asset URL
-        if (name === 'src' &&
-            (this.tagName === 'IMG' || this.tagName === 'VIDEO' ||
-             this.tagName === 'AUDIO' || this.tagName === 'SOURCE')) {
+        if (name === 'src' && MEDIA_TAGS.includes(this.tagName)) {
             // If value is a blob:// URL and we have the original asset:// URL stored
             const assetUrl = originalGetAttribute.call(this, 'data-asset-url');
             if (assetUrl && value && value.startsWith('blob:')) {
@@ -367,9 +372,7 @@
         }
 
         // For media elements reading 'origin' (used by image-gallery for full-size image)
-        if (name === 'origin' &&
-            (this.tagName === 'IMG' || this.tagName === 'VIDEO' ||
-             this.tagName === 'AUDIO' || this.tagName === 'SOURCE')) {
+        if (name === 'origin' && MEDIA_TAGS.includes(this.tagName)) {
             // If value is a blob:// URL and we have the original asset:// URL stored
             const assetOrigin = originalGetAttribute.call(this, 'data-asset-origin');
             if (assetOrigin && value && value.startsWith('blob:')) {

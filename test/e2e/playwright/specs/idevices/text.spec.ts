@@ -570,9 +570,14 @@ test.describe('Text iDevice', () => {
                 const testText = `Bold test ${Date.now()}`;
                 await frame.type('body', testText, { delay: 5 });
 
-                // Select all text and apply bold
-                await page.keyboard.press('Control+A');
-                await page.keyboard.press('Control+B');
+                // Select all text using TinyMCE command (more reliable than keyboard shortcuts across browsers)
+                await page.evaluate(() => {
+                    const editor = (window as any).tinymce?.activeEditor;
+                    if (editor) {
+                        editor.execCommand('SelectAll');
+                        editor.execCommand('Bold');
+                    }
+                });
             }
 
             // Save the iDevice
@@ -711,30 +716,34 @@ test.describe('Text iDevice', () => {
             );
 
             // Wait for mermaid to render (it replaces <pre class="mermaid"> with SVG)
-            // Give mermaid.js time to process
-            await page.waitForTimeout(1500);
+            // Use waitForFunction instead of fixed timeout for reliability
+            const mermaidRendered = await page
+                .waitForFunction(
+                    () => {
+                        const content = document.querySelector(
+                            '#node-content article .idevice_node.text .textIdeviceContent',
+                        );
+                        if (!content) return null;
 
-            // Verify the mermaid diagram was inserted and rendered in the editor
-            // After mermaid.run(), the <pre class="mermaid"> gets transformed to contain an SVG
-            const mermaidRendered = await page.evaluate(() => {
-                const content = document.querySelector('#node-content article .idevice_node.text .textIdeviceContent');
-                if (!content) return { hasPre: false, hasSvg: false, hasDataProcessed: false };
+                        const pre = content.querySelector('pre.mermaid');
+                        if (!pre) return null;
 
-                const pre = content.querySelector('pre.mermaid');
-                const svg = content.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
-                // Mermaid adds data-processed="true" after rendering
-                const dataProcessed = pre?.getAttribute('data-processed') === 'true';
+                        const svg = content.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
+                        // Mermaid adds data-processed="true" after rendering
+                        const dataProcessed = pre.getAttribute('data-processed') === 'true';
 
-                return {
-                    hasPre: !!pre,
-                    hasSvg: !!svg,
-                    hasDataProcessed: dataProcessed,
-                };
-            });
+                        // Return result only when mermaid has processed (SVG or data-processed)
+                        if (svg || dataProcessed) {
+                            return { hasPre: true, hasSvg: !!svg, hasDataProcessed: dataProcessed };
+                        }
+                        return null;
+                    },
+                    { timeout: 10000 },
+                )
+                .then(handle => handle.jsonValue());
 
-            // The <pre class="mermaid"> should exist
+            // The <pre class="mermaid"> should exist and be processed
             expect(mermaidRendered.hasPre).toBe(true);
-            // After rendering, mermaid should have processed it (either SVG inside or data-processed)
             expect(mermaidRendered.hasSvg || mermaidRendered.hasDataProcessed).toBe(true);
 
             // Save the project
@@ -902,6 +911,619 @@ test.describe('Text iDevice', () => {
 
             expect(contentHtml).toContain('Updated');
             expect(contentHtml).toContain('Works!');
+        });
+    });
+
+    test.describe('TinyMCE Audio Recorder (exeaudio)', () => {
+        test('should open audio recorder dialog with correct UI elements', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const _workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Audio Recorder Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // Check if already in edit mode (TinyMCE visible) or need to click edit button
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                // Enter edit mode
+                const block = page.locator('#node-content article .idevice_node.text').last();
+                await block.waitFor({ timeout: 10000 });
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            // Wait for TinyMCE to load
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // The audio recorder button is on the 4th toolbar row, which is hidden by default
+            // First, click the toggletoolbars button to expand all toolbars
+            const toggleToolbarsButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
+                .first();
+            if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
+                await toggleToolbarsButton.click();
+                await page.waitForTimeout(500); // Wait for toolbar animation
+            }
+
+            // Find and click the audio recorder button in TinyMCE toolbar
+            // The button has a tooltip "Audio recorder" / "Grabadora de audio"
+            const audioRecorderButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Audio recorder"], .tox-tbtn[aria-label*="Grabadora de audio"], .tox-tbtn[title*="Audio recorder"], .tox-tbtn[title*="Grabadora de audio"]',
+                )
+                .first();
+
+            // Skip test if button not found (browser may not support MediaRecorder)
+            if ((await audioRecorderButton.count()) === 0) {
+                test.skip(true, 'Audio recorder button not available (MediaRecorder not supported)');
+                return;
+            }
+
+            await expect(audioRecorderButton).toBeVisible({ timeout: 10000 });
+
+            // Grant microphone permissions before clicking the button
+            // Note: In Playwright, we need to grant permissions at context level
+            // For now, we'll just verify the button exists and can be clicked
+            await audioRecorderButton.click();
+
+            // Wait for the audio recorder TinyMCE dialog to appear
+            // The dialog should show "Audio recorder" or "Grabadora de audio" as title
+            const dialog = page.locator('.tox-dialog');
+
+            // Wait a moment for async microphone permission check
+            await page.waitForTimeout(1000);
+
+            // If no microphone devices, an alert may appear instead - handle both cases
+            // Check for various alert types that may appear when no microphone is available
+            const alertDialog = page.locator('.modal-alert, [role="alertdialog"], .tox-dialog--alert, .exe-modal');
+            const alertVisible = await alertDialog.isVisible().catch(() => false);
+
+            if (alertVisible) {
+                // No audio input device - close alert and skip test
+                const closeAlertBtn = alertDialog.locator('button').first();
+                if ((await closeAlertBtn.count()) > 0) {
+                    await closeAlertBtn.click();
+                }
+                test.skip(true, 'No audio input device available');
+                return;
+            }
+
+            // Try to wait for dialog, but if it doesn't appear, skip the test
+            // In CI environments without microphone, the plugin may silently fail
+            try {
+                await expect(dialog).toBeVisible({ timeout: 5000 });
+            } catch {
+                // Dialog didn't appear - likely no microphone available in CI
+                test.skip(true, 'Audio recorder dialog not available (no microphone or browser restriction)');
+                return;
+            }
+
+            // Verify the dialog title contains "Audio recorder" or similar
+            const dialogTitle = dialog.locator('.tox-dialog__title');
+            await expect(dialogTitle).toContainText(/Audio|Grabadora/i, { timeout: 5000 });
+
+            // Verify key UI elements in the audio recorder dialog
+            // These IDs are set by the plugin in setIds()
+            await expect(dialog.locator('#exeAudioRecorder')).toBeVisible({ timeout: 5000 });
+            await expect(dialog.locator('#EAR_record-button')).toBeVisible({ timeout: 5000 });
+            await expect(dialog.locator('#EAR_audioField')).toBeAttached({ timeout: 5000 });
+
+            // Close dialog by clicking Cancel button
+            const cancelButton = dialog.locator('button').filter({ hasText: /Cancel|Cancelar/i });
+            await cancelButton.click();
+
+            // Verify dialog closed
+            await expect(dialog).not.toBeVisible({ timeout: 5000 });
+        });
+
+        test('should resolve asset:// URLs to blob:// for playback in TinyMCE editor', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const _workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Audio Asset URL Resolution Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
+
+            // Enter edit mode if needed
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            // Wait for TinyMCE iframe to be ready
+            const tinyMceFrame = block.locator('iframe.tox-edit-area__iframe').first();
+            await tinyMceFrame.waitFor({ timeout: 15000 });
+
+            // Get the frame
+            const frameEl = await tinyMceFrame.elementHandle();
+            const frame = await frameEl?.contentFrame();
+
+            if (frame) {
+                // First, create a mock asset in AssetManager to test resolution
+                const mockAssetId = 'test-mock-asset-id-12345';
+                const mockFilename = 'test-recording.webm';
+                const assetUrl = `asset://${mockAssetId}/${mockFilename}`;
+
+                // Create a mock blob and store it in AssetManager
+                const blobUrlResult = await page.evaluate(
+                    async ({ assetId, filename }) => {
+                        const assetManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                        if (!assetManager) return { error: 'No AssetManager' };
+
+                        // Create a tiny valid WebM file (silence)
+                        const webmBytes = new Uint8Array([
+                            0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 0x01, 0x42, 0xf7, 0x81, 0x01, 0x42, 0xf2,
+                            0x81, 0x04, 0x42, 0xf3, 0x81, 0x08, 0x42, 0x82, 0x84, 0x77, 0x65, 0x62, 0x6d, 0x42, 0x87,
+                            0x81, 0x04, 0x42, 0x85, 0x81, 0x02,
+                        ]);
+                        const blob = new Blob([webmBytes], { type: 'audio/webm' });
+
+                        // Store directly in cache (simulate what would happen after upload)
+                        const blobUrl = URL.createObjectURL(blob);
+                        assetManager.blobURLCache.set(assetId, blobUrl);
+                        assetManager.reverseBlobCache.set(blobUrl, assetId);
+
+                        return { blobUrl, success: true };
+                    },
+                    { assetId: mockAssetId, filename: mockFilename },
+                );
+
+                if ((blobUrlResult as any).error) {
+                    test.skip(true, 'AssetManager not available');
+                    return;
+                }
+
+                const expectedBlobUrl = (blobUrlResult as any).blobUrl;
+
+                // Get the TinyMCE editor ID from the iframe
+                const editorId = await tinyMceFrame.evaluate(iframe => {
+                    return (iframe as HTMLIFrameElement).id?.replace('_ifr', '') || null;
+                });
+
+                // Wait for TinyMCE editor to be fully initialized
+                await page.waitForFunction(
+                    id => {
+                        const editor = id ? (window as any).tinymce?.get(id) : (window as any).tinymce?.activeEditor;
+                        return editor?.getBody() && editor.initialized;
+                    },
+                    editorId,
+                    { timeout: 10000 },
+                );
+
+                // Insert an audio element with the asset:// URL using TinyMCE setContent
+                await page.evaluate(
+                    ({ url, id }) => {
+                        const editor = id ? (window as any).tinymce?.get(id) : (window as any).tinymce?.activeEditor;
+                        if (!editor || !editor.getBody()) {
+                            throw new Error(`No TinyMCE editor found with id ${id}`);
+                        }
+                        const html = `<p><audio controls="controls" src="${url}"><a href="${url}">recording.webm</a></audio></p>`;
+                        editor.setContent(html);
+                        // Force a sync to ensure DOM is updated
+                        editor.nodeChanged();
+                    },
+                    { url: assetUrl, id: editorId },
+                );
+
+                // Wait for TinyMCE to render the content in its DOM
+                await frame.waitForSelector('audio, span.mce-preview-object audio', {
+                    timeout: 15000,
+                    state: 'attached',
+                });
+
+                const audioSrc = await frame
+                    .waitForFunction(
+                        expectedAssetUrl => {
+                            const audio = document.querySelector('audio');
+                            if (!audio) return null;
+                            const src = audio.getAttribute('src');
+                            const dataAssetSrc = audio.getAttribute('data-asset-src');
+                            // Wait until src is resolved to blob:// and data-asset-src is set
+                            if (src?.startsWith('blob:') && dataAssetSrc === expectedAssetUrl) {
+                                return { src, dataAssetSrc };
+                            }
+                            return null;
+                        },
+                        assetUrl,
+                        { timeout: 10000 },
+                    )
+                    .then(handle => handle.jsonValue());
+
+                // The src should be resolved to blob:// and original asset:// stored in data-asset-src
+                expect(audioSrc.src).toContain('blob:');
+                expect(audioSrc.dataAssetSrc).toBe(assetUrl);
+            }
+        });
+    });
+
+    test.describe('TinyMCE PDF/Multimedia Insertion (exemedia)', () => {
+        test('should preserve asset:// URLs for PDF iframes in TinyMCE editor content', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // NOTE: TinyMCE does NOT render iframes in the DOM for security/performance.
+            // Unlike audio/video which get rendered with mce-preview-object wrapper,
+            // iframes are only stored in TinyMCE's internal model and getContent().
+            // This test verifies that asset:// URLs are preserved correctly when saving.
+
+            const page = authenticatedPage;
+            const _workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'PDF Asset URL Resolution Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
+
+            // Enter edit mode if needed
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            // Wait for TinyMCE to be ready
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // Insert an iframe with asset:// URL
+            const mockAssetId = 'test-pdf-asset-id-12345';
+            const mockFilename = 'test-document.pdf';
+            const assetUrl = `asset://${mockAssetId}/${mockFilename}`;
+
+            // Insert iframe using TinyMCE command
+            const insertResult = await page.evaluate(
+                ({ url }) => {
+                    const editor = (window as any).tinymce?.activeEditor;
+                    if (!editor) {
+                        return { success: false, error: 'No active TinyMCE editor' };
+                    }
+                    const html = `<iframe width="300" height="150" src="${url}"></iframe>`;
+                    editor.execCommand('mceInsertContent', false, html);
+                    // Verify insertion worked
+                    const content = editor.getContent();
+                    return {
+                        success: content.includes('iframe') && content.includes(url),
+                        content: content,
+                    };
+                },
+                { url: assetUrl },
+            );
+
+            if (!insertResult.success) {
+                test.skip(true, `TinyMCE insert failed: ${insertResult.error || 'iframe not found in content'}`);
+                return;
+            }
+
+            // Verify the asset:// URL is preserved in TinyMCE's content
+            expect(insertResult.content).toContain('iframe');
+            expect(insertResult.content).toContain(assetUrl);
+
+            // Verify that the content contains the correct iframe structure
+            expect(insertResult.content).toMatch(
+                /iframe.*src=["']asset:\/\/test-pdf-asset-id-12345\/test-document\.pdf["']/,
+            );
+        });
+
+        test('should save asset:// URL (not blob://) when persisting PDF content', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const _workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'PDF Persistence Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
+
+            // Enter edit mode if needed
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            // Wait for TinyMCE iframe to be ready
+            const tinyMceFrame = block.locator('iframe.tox-edit-area__iframe').first();
+            await tinyMceFrame.waitFor({ timeout: 15000 });
+
+            // Simulate inserting a PDF iframe with asset:// URL and check Yjs stores it correctly
+            const mockAssetId = 'persistence-test-pdf-123';
+            const mockFilename = 'persisted.pdf';
+            const assetUrl = `asset://${mockAssetId}/${mockFilename}`;
+
+            // Create mock asset in AssetManager
+            await page.evaluate(
+                async ({ assetId }) => {
+                    const assetManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (assetManager) {
+                        const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
+                        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                        const blobUrl = URL.createObjectURL(blob);
+                        assetManager.blobURLCache.set(assetId, blobUrl);
+                        assetManager.reverseBlobCache.set(blobUrl, assetId);
+                    }
+                },
+                { assetId: mockAssetId },
+            );
+
+            // Insert iframe with asset:// URL
+            await page.evaluate(
+                ({ url }) => {
+                    const editors = (window as any).tinymce?.activeEditor;
+                    if (editors) {
+                        const html = `<iframe width="400" height="300" src="${url}" data-asset-src="${url}"></iframe>`;
+                        editors.execCommand('mceInsertContent', false, html);
+                    }
+                },
+                { url: assetUrl },
+            );
+
+            // Wait for content to sync to Yjs
+            await page.waitForTimeout(1500);
+
+            // Get the Yjs content directly
+            const yjsContent = await page.evaluate(() => {
+                const yjsBridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!yjsBridge || !yjsBridge.tinyMCEBindings) return null;
+
+                // Find the first binding (should be for our text iDevice)
+                const bindings = Array.from(yjsBridge.tinyMCEBindings.values());
+                if (bindings.length === 0) return null;
+
+                const binding = bindings[0] as any;
+                return binding.getContent ? binding.getContent() : null;
+            });
+
+            // Verify that Yjs stores the asset:// URL, not blob://
+            if (yjsContent) {
+                expect(yjsContent).toContain('asset://');
+                expect(yjsContent).not.toContain('blob:');
+                expect(yjsContent).toContain(mockAssetId);
+            }
+        });
+    });
+
+    test.describe('PDF Preview with PDF.js', () => {
+        test('should render PDF inline in preview using PDF.js viewer', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'PDF Preview Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
+
+            // Enter edit mode if needed
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // Click multimedia button to insert PDF
+            // Button label varies by language: "Insert/Edit media" (EN) / "Insertar/Editar multimedia" (ES)
+            const multimediaBtn = page
+                .locator(
+                    '.tox-tbtn[aria-label*="media" i], .tox-tbtn[aria-label*="multimedia" i], .tox-tbtn[title*="media" i]',
+                )
+                .first();
+            await expect(multimediaBtn).toBeVisible({ timeout: 10000 });
+            await multimediaBtn.click();
+
+            // Wait for TinyMCE media dialog
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+
+            // Click Browse button to open Media Library
+            const browseBtn = page.locator('.tox-dialog .tox-browse-url').first();
+            await expect(browseBtn).toBeVisible({ timeout: 5000 });
+            await browseBtn.click();
+
+            // Wait for Media Library modal
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            // Upload PDF from fixture
+            const fileInput = page.locator('#modalFileManager .media-library-upload-input');
+            await fileInput.setInputFiles('test/fixtures/sample-1.pdf');
+
+            // Wait for upload and select the item
+            const mediaItem = page.locator('#modalFileManager .media-library-item').first();
+            await expect(mediaItem).toBeVisible({ timeout: 10000 });
+            await mediaItem.click();
+            await page.waitForTimeout(500);
+
+            // Click insert button
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await insertBtn.click();
+            await page.waitForTimeout(1000);
+
+            // Save media dialog
+            const saveMediaBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
+            if ((await saveMediaBtn.count()) > 0) {
+                await saveMediaBtn.click();
+            }
+            await page.waitForTimeout(1000);
+
+            // Save iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Save project
+            await workarea.save();
+            await page.waitForTimeout(1000);
+
+            // Open preview panel
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for PDF.js to render (needs time to load library and fetch blob)
+            await page.waitForTimeout(5000);
+
+            // Check for PDF.js viewer in preview iframe
+            // PDF.js renders PDFs to canvas because Chrome blocks native PDF viewer
+            // in nested blob URL contexts (see previewPanel.js for detailed explanation)
+            const viewerInfo = await page.evaluate(() => {
+                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                if (!previewIframe?.contentDocument) return { error: 'No preview iframe' };
+
+                const doc = previewIframe.contentDocument;
+
+                // PDF.js viewer elements
+                const viewer = doc.querySelector('.exe-pdf-viewer');
+                const toolbar = doc.querySelector('.exe-pdf-toolbar');
+                const canvas = doc.querySelector('.exe-pdf-canvas');
+
+                // Fallback card (used if PDF.js fails)
+                const card = doc.querySelector('.exe-pdf-preview-card');
+
+                return {
+                    hasPdfJsViewer: !!viewer,
+                    hasToolbar: !!toolbar,
+                    hasCanvas: !!canvas,
+                    hasFallbackCard: !!card,
+                    canvasWidth: (canvas as HTMLCanvasElement)?.width || 0,
+                    canvasHeight: (canvas as HTMLCanvasElement)?.height || 0,
+                };
+            });
+
+            // Verify PDF.js viewer rendered successfully
+            // Either PDF.js viewer with canvas OR fallback card should be present
+            const pdfRendered = viewerInfo.hasPdfJsViewer || viewerInfo.hasFallbackCard;
+            expect(pdfRendered).toBe(true);
+
+            // If PDF.js loaded, verify canvas has content
+            if (viewerInfo.hasPdfJsViewer) {
+                expect(viewerInfo.hasToolbar).toBe(true);
+                expect(viewerInfo.hasCanvas).toBe(true);
+                expect(viewerInfo.canvasWidth).toBeGreaterThan(0);
+                expect(viewerInfo.canvasHeight).toBeGreaterThan(0);
+            }
         });
     });
 

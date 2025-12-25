@@ -278,8 +278,11 @@ export abstract class BaseExporter {
 
         try {
             const assets = await this.assets.getAllAssets();
+            console.log(`[BaseExporter] addAssetsToZipWithResourcePath: Found ${assets.length} assets to add`);
 
             for (const asset of assets) {
+                console.log(`[BaseExporter] Adding asset: ${asset.id}/${asset.filename} (${asset.mime})`);
+
                 // Use originalPath if available
                 // Strip content/resources/ prefix if present (ELP files include it)
                 let assetPath = asset.originalPath || `${asset.id}/${asset.filename || `asset-${asset.id}`}`;

@@ -2427,6 +2427,81 @@ describe('window.resolveAssetUrlsAsync global function', () => {
     expect(mockResolve).toHaveBeenCalled();
     expect(result).toBe('<p>Resolved</p>');
   });
+
+  it('attempts to convert iframe blob URLs when convertBlobUrls: false but convertIframeBlobUrls: true', async () => {
+    // Skip test if function wasn't registered (module load issues)
+    if (!resolveAssetUrlsAsyncFunc) {
+      return;
+    }
+
+    // Mock resolveHTMLAssets to return content with blob URL in iframe and video
+    // The function will try to convert iframe blob URLs but not video blob URLs
+    const mockResolve = mock(() => undefined).mockResolvedValue(
+      '<p>Text</p><iframe src="blob:http://localhost/test-blob"></iframe><video src="blob:http://localhost/video-blob"></video>'
+    );
+
+    // Mock fetch to fail (simulating blob URL not accessible in test env)
+    const originalFetch = global.fetch;
+    global.fetch = mock(() => undefined).mockRejectedValue(new Error('Not accessible'));
+
+    global.window.eXeLearning = {
+      app: {
+        project: {
+          _yjsBridge: {
+            assetManager: {
+              resolveHTMLAssets: mockResolve,
+            },
+          },
+        },
+      },
+    };
+
+    const result = await resolveAssetUrlsAsyncFunc('<p>Test</p>', {
+      convertBlobUrls: false,
+      convertIframeBlobUrls: true
+    });
+
+    // Restore fetch
+    global.fetch = originalFetch;
+
+    // The function should have been called with the HTML
+    expect(mockResolve).toHaveBeenCalled();
+    // Since fetch fails, blob URLs remain unchanged
+    // But the important thing is the video blob URL was NOT attempted to be converted
+    expect(result).toContain('blob:http://localhost/video-blob');
+  });
+
+  it('does not convert iframe blob URLs when convertIframeBlobUrls: false', async () => {
+    // Skip test if function wasn't registered (module load issues)
+    if (!resolveAssetUrlsAsyncFunc) {
+      return;
+    }
+
+    // Mock resolveHTMLAssets to return content with blob URL in iframe
+    const mockResolve = mock(() => undefined).mockResolvedValue(
+      '<p>Text</p><iframe src="blob:http://localhost/test-blob"></iframe>'
+    );
+
+    global.window.eXeLearning = {
+      app: {
+        project: {
+          _yjsBridge: {
+            assetManager: {
+              resolveHTMLAssets: mockResolve,
+            },
+          },
+        },
+      },
+    };
+
+    const result = await resolveAssetUrlsAsyncFunc('<p>Test</p>', {
+      convertBlobUrls: false,
+      convertIframeBlobUrls: false
+    });
+
+    // The iframe blob URL should remain as blob (not converted)
+    expect(result).toContain('blob:http://localhost/test-blob');
+  });
 });
 
 describe('window.escapePreCodeContent', () => {

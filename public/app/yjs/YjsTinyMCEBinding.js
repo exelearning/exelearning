@@ -47,12 +47,99 @@ class YjsTinyMCEBinding {
     // Listen to TinyMCE changes
     this.bindEditorEvents();
 
+    // Set up MutationObserver to resolve asset:// URLs in TinyMCE iframe
+    this._setupAssetUrlObserver();
+
     // Set up awareness for cursor positions
     if (this.awareness) {
       this.setupAwareness();
     }
 
     Logger.log('[YjsTinyMCEBinding] Initialized');
+  }
+
+  /**
+   * Set up MutationObserver to resolve asset:// URLs in TinyMCE iframe.
+   * This handles cases where content is inserted directly (e.g., via mceInsertContent)
+   * rather than through Yjs sync which uses convertAssetUrlsToBlobUrls.
+   */
+  _setupAssetUrlObserver() {
+    const editorBody = this.editor.getBody();
+    if (!editorBody) return;
+
+    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+
+    const resolveAssetUrl = async (url) => {
+      if (!url || !url.startsWith('asset://')) return null;
+
+      // Check cache first
+      if (assetManager?.blobURLCache) {
+        const parts = url.replace('asset://', '').split('/');
+        const assetId = parts[0];
+        if (assetManager.blobURLCache.has(assetId)) {
+          return assetManager.blobURLCache.get(assetId);
+        }
+      }
+
+      // Try to resolve via AssetManager
+      if (assetManager?.resolveAssetURL) {
+        try {
+          return await assetManager.resolveAssetURL(url);
+        } catch (e) {
+          console.warn('[YjsTinyMCEBinding] Error resolving asset URL:', url, e);
+        }
+      }
+      return null;
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+          // Selector for media elements with asset:// src
+          const mediaSelector = 'img[src^="asset://"], video[src^="asset://"], audio[src^="asset://"], source[src^="asset://"], iframe[src^="asset://"]';
+          const elements = [];
+
+          // Check if the node itself matches
+          if (node.matches && node.matches(mediaSelector)) {
+            elements.push(node);
+          }
+
+          // Check descendants
+          if (node.querySelectorAll) {
+            elements.push(...node.querySelectorAll(mediaSelector));
+          }
+
+          // Resolve each asset:// URL
+          elements.forEach((el) => {
+            const assetUrl = el.getAttribute('src');
+            if (!assetUrl) return;
+
+            // Store the original asset URL for persistence (used by convertDataAssetUrlToSrc)
+            el.setAttribute('data-asset-src', assetUrl);
+
+            // Set placeholder immediately to prevent errors
+            if (el.tagName === 'IFRAME') {
+              el.src = 'about:blank';
+            } else if (el.tagName === 'IMG') {
+              el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+            }
+
+            // Resolve asynchronously and set real src
+            resolveAssetUrl(assetUrl).then((resolved) => {
+              if (resolved) {
+                el.src = resolved;
+              }
+            });
+          });
+        });
+      });
+    });
+
+    observer.observe(editorBody, { childList: true, subtree: true });
+    this._assetUrlObserver = observer;
+    this._observers.push(() => observer.disconnect());
   }
 
   /**
@@ -199,25 +286,40 @@ class YjsTinyMCEBinding {
   }
 
   /**
-   * Convert data-asset-url attributes to proper src values.
+   * Convert data-asset-url and data-asset-src attributes to proper src values.
    * Images inserted via file picker use data: URLs with data-asset-url attribute
    * containing the permanent asset:// reference. This extracts that reference
    * and uses it as the src, then removes the data-asset-url attribute.
    *
-   * @param {string} html - HTML content with data-asset-url attributes
-   * @returns {string} HTML content with data-asset-url converted to src
+   * Also handles data-asset-src which is added by resolveAssetUrlsInEditor for
+   * audio/video/iframe elements that have their src changed to blob:// for preview.
+   *
+   * @param {string} html - HTML content with data-asset-url or data-asset-src attributes
+   * @returns {string} HTML content with asset URLs in src
    */
   convertDataAssetUrlToSrc(html) {
     if (!html || typeof html !== 'string') return html;
 
-    // Match img/video/audio elements with data-asset-url attribute
+    // Match img/video/audio/source elements with data-asset-url attribute
     // Handles cases like: <img src="data:..." data-asset-url="asset://uuid/filename">
     const regex = /(<(?:img|video|audio|source)[^>]*?)(?:src|href)=(["'])([^"']*)\2([^>]*?)data-asset-url=(["'])([^"']+)\5([^>]*>)/gi;
 
-    return html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+    let result = html.replace(regex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
       // Replace src with asset URL and remove data-asset-url attribute
       return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
     });
+
+    // Also handle data-asset-src for audio/video/iframe elements
+    // Added by resolveAssetUrlsInEditor when blob:// is used for preview
+    // Handles: <iframe src="blob:..." data-asset-src="asset://uuid/file.pdf">
+    const assetSrcRegex = /(<(?:audio|video|iframe)[^>]*?)src=(["'])([^"']*)\2([^>]*?)data-asset-src=(["'])([^"']+)\5([^>]*>)/gi;
+
+    result = result.replace(assetSrcRegex, (match, beforeSrc, quote1, oldSrc, middle, quote2, assetUrl, afterAttr) => {
+      // Replace src with asset URL and remove data-asset-src attribute
+      return `${beforeSrc}src=${quote1}${assetUrl}${quote1}${middle}${afterAttr}`;
+    });
+
+    return result;
   }
 
   /**
