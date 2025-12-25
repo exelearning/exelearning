@@ -20,6 +20,11 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -39,14 +44,14 @@ jobs:
         run: make bundle
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: E2E Tests
-        run: make test-e2e
+      - name: E2E Tests (${{ matrix.browser }})
+        run: npx playwright test --project=${{ matrix.browser }}
 
       - name: Upload Playwright Report
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: playwright-report/
