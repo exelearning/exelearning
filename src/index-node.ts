@@ -58,6 +58,7 @@ import { getFilesDir } from './services/file-helper';
 import { db } from './db/client';
 import { migrateToLatest } from './db/migrations';
 import { findUserByEmail, createUser } from './db/queries/users';
+import { getSettingNumber } from './services/app-settings';
 import { renderTemplate, setRenderLocale } from './services/template';
 import { getBasePath } from './utils/basepath.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
@@ -384,13 +385,18 @@ async function bootstrap() {
         console.log('[DB] Creating test user...');
         // Use bcryptjs instead of Bun.password.hash
         const hashedPassword = await bcrypt.hash(testPassword, 10);
+        const defaultQuota = await getSettingNumber(
+            db as any,
+            'DEFAULT_QUOTA',
+            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+        );
         await createUser(db, {
             email: testEmail,
             user_id: 'test-user',
             password: hashedPassword,
             roles: '["ROLE_USER"]',
             is_lopd_accepted: 1,
-            quota_mb: 4096,
+            quota_mb: defaultQuota,
             is_active: 1,
         });
         console.log(`[DB] Test user created: ${testEmail}`);

@@ -323,13 +323,22 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                             }
                         }
 
-                        await queries.setSetting(
-                            db as any,
-                            setting.key,
-                            setting.value,
-                            setting.type as 'string' | 'number' | 'boolean' | 'json',
-                            jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
-                        );
+                        try {
+                            await queries.setSetting(
+                                db as any,
+                                setting.key,
+                                setting.value,
+                                setting.type as 'string' | 'number' | 'boolean' | 'json',
+                                jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                            );
+                        } catch (error) {
+                            set.status = 500;
+                            const errorMessage = error instanceof Error ? error.message : String(error);
+                            return {
+                                error: 'Internal Server Error',
+                                message: `Failed to save ${setting.key}: ${errorMessage}`,
+                            };
+                        }
                     }
 
                     return { success: true };

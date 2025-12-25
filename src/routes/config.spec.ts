@@ -4,6 +4,8 @@
  */
 import { describe, it, expect } from 'bun:test';
 import { configRoutes } from './config';
+import { db } from '../db/client';
+import { getSetting, setSetting } from '../db/queries/admin';
 
 describe('Config Routes', () => {
     const app = configRoutes;
@@ -108,15 +110,50 @@ describe('Config Routes', () => {
         });
 
         it('should return application settings', async () => {
+            const prevThemes = await getSetting(db as any, 'ONLINE_THEMES_INSTALL');
+            const prevIdevices = await getSetting(db as any, 'ONLINE_IDEVICES_INSTALL');
+            const prevAutosaveInterval = await getSetting(
+                db as any,
+                'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL',
+            );
+
+            await setSetting(db as any, 'ONLINE_THEMES_INSTALL', '0', 'boolean');
+            await setSetting(db as any, 'ONLINE_IDEVICES_INSTALL', '0', 'boolean');
+            await setSetting(db as any, 'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL', '600', 'number');
+
             const response = await app.handle(
                 new Request('http://localhost/api/parameter-management/parameters/data/list'),
             );
 
             const data = await response.json();
-            expect(data.canInstallThemes).toBe(1);
-            expect(data.canInstallIdevices).toBe(1);
+            expect(data.canInstallThemes).toBe(0);
+            expect(data.canInstallIdevices).toBe(0);
             expect(data.autosaveOdeFilesFunction).toBe(true);
-            expect(data.autosaveIntervalTime).toBe(30);
+            expect(data.autosaveIntervalTime).toBe(600);
+
+            if (prevThemes) {
+                await setSetting(db as any, 'ONLINE_THEMES_INSTALL', prevThemes.value, prevThemes.type as any);
+            } else {
+                await db.deleteFrom('app_settings').where('key', '=', 'ONLINE_THEMES_INSTALL').execute();
+            }
+            if (prevIdevices) {
+                await setSetting(db as any, 'ONLINE_IDEVICES_INSTALL', prevIdevices.value, prevIdevices.type as any);
+            } else {
+                await db.deleteFrom('app_settings').where('key', '=', 'ONLINE_IDEVICES_INSTALL').execute();
+            }
+            if (prevAutosaveInterval) {
+                await setSetting(
+                    db as any,
+                    'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL',
+                    prevAutosaveInterval.value,
+                    prevAutosaveInterval.type as any,
+                );
+            } else {
+                await db
+                    .deleteFrom('app_settings')
+                    .where('key', '=', 'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL')
+                    .execute();
+            }
         });
 
         it('should return API routes', async () => {

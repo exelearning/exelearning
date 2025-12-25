@@ -16,6 +16,14 @@ import {
     translateObject,
 } from '../services/translation';
 import { getAppVersion } from '../utils/version';
+import { db as defaultDb } from '../db/client';
+import {
+    getAuthMethods,
+    getSettingBoolean,
+    getSettingNumber,
+    parseBoolean,
+    parseNumber,
+} from '../services/app-settings';
 
 /**
  * Available licenses for content
@@ -528,36 +536,36 @@ function formatBytes(bytes: number): string {
     return `${value.toFixed(2)} ${units[powCapped]}`;
 }
 
-/**
- * Read upload max size from environment (in MB, defaults to 1024 MB = 1 GB)
- */
-const FILE_UPLOAD_MAX_SIZE_MB = parseInt(process.env.FILE_UPLOAD_MAX_SIZE || '1024', 10);
-const FILE_UPLOAD_MAX_SIZE_BYTES = FILE_UPLOAD_MAX_SIZE_MB * 1024 * 1024;
+async function getUploadLimits() {
+    const maxSizeMb = await getSettingNumber(
+        defaultDb,
+        'FILE_UPLOAD_MAX_SIZE',
+        parseInt(process.env.FILE_UPLOAD_MAX_SIZE || '1024', 10),
+    );
+    const maxSizeBytes = maxSizeMb * 1024 * 1024;
 
-/**
- * Default upload limits configuration
- */
-const DEFAULT_UPLOAD_LIMITS = {
-    maxFileSize: FILE_UPLOAD_MAX_SIZE_BYTES,
-    maxFileSizeFormatted: formatBytes(FILE_UPLOAD_MAX_SIZE_BYTES),
-    maxUploadSize: FILE_UPLOAD_MAX_SIZE_BYTES,
-    allowedMimeTypes: [
-        'image/*',
-        'audio/*',
-        'video/*',
-        'application/pdf',
-        'application/zip',
-        'application/x-zip-compressed',
-        'text/plain',
-        'text/html',
-        'text/css',
-        'text/javascript',
-        'application/javascript',
-        'application/json',
-        'application/xml',
-        'font/*',
-    ],
-};
+    return {
+        maxFileSize: maxSizeBytes,
+        maxFileSizeFormatted: formatBytes(maxSizeBytes),
+        maxUploadSize: maxSizeBytes,
+        allowedMimeTypes: [
+            'image/*',
+            'audio/*',
+            'video/*',
+            'application/pdf',
+            'application/zip',
+            'application/x-zip-compressed',
+            'text/plain',
+            'text/html',
+            'text/css',
+            'text/javascript',
+            'application/javascript',
+            'application/json',
+            'application/xml',
+            'font/*',
+        ],
+    };
+}
 
 /**
  * API Routes configuration
@@ -677,79 +685,103 @@ const API_ROUTES = {
     },
 };
 
-/**
- * Default application parameters
- */
-const DEFAULT_PARAMETERS = {
-    // General settings
-    appName: 'eXeLearning',
-    appVersion: '4.0.0',
-    locale: 'es',
+async function getDefaultParameters(uploadLimits: { maxFileSize: number }) {
+    const authMethods = await getAuthMethods(
+        defaultDb,
+        process.env.APP_AUTH_METHODS || 'password,guest',
+    );
 
-    // Feature flags
-    enableCollaboration: true,
-    enableGuestAccess: process.env.APP_AUTH_METHODS?.includes('guest') ?? true,
-    enableCas: process.env.APP_AUTH_METHODS?.includes('cas') ?? false,
-    enableOidc: process.env.APP_AUTH_METHODS?.includes('oidc') ?? false,
+    return {
+        // General settings
+        appName: 'eXeLearning',
+        appVersion: '4.0.0',
+        locale: 'es',
 
-    // Export settings
-    defaultExportFormat: 'html5',
-    availableExportFormats: ['html5', 'scorm12', 'scorm2004', 'epub3', 'ims'],
+        // Feature flags
+        enableCollaboration: true,
+        enableGuestAccess: authMethods.includes('guest'),
+        enableCas: authMethods.includes('cas'),
+        enableOidc: authMethods.includes('openid'),
 
-    // Editor settings
-    autoSaveInterval: 30000, // 30 seconds
-    maxAutoSaveRetries: 3,
+        // Export settings
+        defaultExportFormat: 'html5',
+        availableExportFormats: ['html5', 'scorm12', 'scorm2004', 'epub3', 'ims'],
 
-    // Theme settings
-    defaultTheme: 'base',
+        // Editor settings
+        autoSaveInterval: 30000, // 30 seconds
+        maxAutoSaveRetries: 3,
 
-    // File settings
-    maxFileSize: DEFAULT_UPLOAD_LIMITS.maxFileSize,
-    allowedExtensions: [
-        'jpg',
-        'jpeg',
-        'png',
-        'gif',
-        'svg',
-        'webp',
-        'mp3',
-        'ogg',
-        'wav',
-        'm4a',
-        'mp4',
-        'webm',
-        'ogv',
-        'pdf',
-        'zip',
-        'txt',
-        'html',
-        'htm',
-        'css',
-        'js',
-        'json',
-        'xml',
-        'ttf',
-        'woff',
-        'woff2',
-        'eot',
-    ],
-};
+        // Theme settings
+        defaultTheme: 'base',
+
+        // File settings
+        maxFileSize: uploadLimits.maxFileSize,
+        allowedExtensions: [
+            'jpg',
+            'jpeg',
+            'png',
+            'gif',
+            'svg',
+            'webp',
+            'mp3',
+            'ogg',
+            'wav',
+            'm4a',
+            'mp4',
+            'webm',
+            'ogv',
+            'pdf',
+            'zip',
+            'txt',
+            'html',
+            'htm',
+            'css',
+            'js',
+            'json',
+            'xml',
+            'ttf',
+            'woff',
+            'woff2',
+            'eot',
+        ],
+    };
+}
 
 /**
  * Configuration routes
  */
 export const configRoutes = new Elysia({ name: 'config-routes' })
     // GET /api/config/upload-limits - Get upload limits
-    .get('/api/config/upload-limits', () => {
-        return DEFAULT_UPLOAD_LIMITS;
+    .get('/api/config/upload-limits', async () => {
+        return await getUploadLimits();
     })
 
     // GET /api/parameter-management/parameters/data/list - Get ALL parameters (expected by frontend)
     // Applies translations based on Accept-Language header
-    .get('/api/parameter-management/parameters/data/list', ({ request }) => {
+    .get('/api/parameter-management/parameters/data/list', async ({ request }) => {
         // Detect locale from Accept-Language header
         const acceptLanguage = request.headers.get('accept-language');
         const locale = detectLocaleFromHeader(acceptLanguage);
+        const canInstallThemes = await getSettingBoolean(
+            defaultDb,
+            'ONLINE_THEMES_INSTALL',
+            parseBoolean(process.env.ONLINE_THEMES_INSTALL, false),
+        );
+        const canInstallIdevices = await getSettingBoolean(
+            defaultDb,
+            'ONLINE_IDEVICES_INSTALL',
+            parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
+        );
+        const autosaveOdeFilesFunction = await getSettingBoolean(
+            defaultDb,
+            'AUTOSAVE_ODE_FILES_FUNCTION',
+            parseBoolean(process.env.AUTOSAVE_ODE_FILES_FUNCTION, true),
+        );
+        const autosaveIntervalTime = await getSettingNumber(
+            defaultDb,
+            'PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL',
+            parseNumber(process.env.PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL, 600),
+        );
 
         return {
             // Property configurations (required by frontend) - translated
@@ -764,10 +796,10 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
             odeProjectSyncCataloguingConfig: translateObject(ODE_PROJECT_SYNC_CATALOGUING_CONFIG, locale),
 
             // Application settings
-            canInstallThemes: 1,
-            canInstallIdevices: 1,
-            autosaveOdeFilesFunction: true,
-            autosaveIntervalTime: 30,
+            canInstallThemes: canInstallThemes ? 1 : 0,
+            canInstallIdevices: canInstallIdevices ? 1 : 0,
+            autosaveOdeFilesFunction,
+            autosaveIntervalTime,
             generateNewItemKey: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 
             // API routes
@@ -776,15 +808,18 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
     })
 
     // GET /api/config/parameters - Alternative endpoint for parameters
-    .get('/api/config/parameters', () => {
-        return DEFAULT_PARAMETERS;
+    .get('/api/config/parameters', async () => {
+        const uploadLimits = await getUploadLimits();
+        return await getDefaultParameters(uploadLimits);
     })
 
     // GET /api/config - General configuration endpoint
-    .get('/api/config', () => {
+    .get('/api/config', async () => {
+        const uploadLimits = await getUploadLimits();
+        const parameters = await getDefaultParameters(uploadLimits);
         return {
-            uploadLimits: DEFAULT_UPLOAD_LIMITS,
-            parameters: DEFAULT_PARAMETERS,
+            uploadLimits,
+            parameters,
         };
     })
 

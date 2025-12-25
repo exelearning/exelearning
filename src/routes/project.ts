@@ -34,6 +34,7 @@ import { db as dbDefault } from '../db/client';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
+import { getSettingString } from '../services/app-settings';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
@@ -210,8 +211,12 @@ const defaultDependencies: ProjectDependencies = {
 };
 
 // Get default project visibility from environment
-function getDefaultProjectVisibility(): 'public' | 'private' {
-    const visibility = process.env.DEFAULT_PROJECT_VISIBILITY;
+async function getDefaultProjectVisibility(db: Kysely<Database>): Promise<'public' | 'private'> {
+    const visibility = await getSettingString(
+        db,
+        'DEFAULT_PROJECT_VISIBILITY',
+        process.env.DEFAULT_PROJECT_VISIBILITY || 'private',
+    );
     return visibility === 'public' ? 'public' : 'private';
 }
 
@@ -1065,7 +1070,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     project = await createProjectWithUuid(db, uuid, {
                         title: 'Untitled',
                         owner_id: currentUser.id,
-                        visibility: getDefaultProjectVisibility(),
+                        visibility: await getDefaultProjectVisibility(db),
                         saved_once: 0,
                     });
 

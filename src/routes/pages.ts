@@ -27,6 +27,7 @@ import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
+import { getAuthMethods as getAuthMethodsFromSettings } from '../services/app-settings';
 import {
     createSession as createSessionDefault,
     generateSessionId as generateSessionIdDefault,
@@ -151,15 +152,6 @@ const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
 // Get JWT secret
 const getJwtSecret = () => {
     return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
-};
-
-// Get auth methods from environment
-const getAuthMethods = (): string[] => {
-    const methods = process.env.APP_AUTH_METHODS || 'form,guest';
-    return methods
-        .split(',')
-        .map(m => m.trim().toLowerCase())
-        .filter(m => m);
 };
 
 // ============================================================================
@@ -301,7 +293,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return Response.redirect(prefixPath('/workarea') || '/workarea', 302);
                 }
 
-                const authMethods = getAuthMethods();
+                const authMethods = await getAuthMethodsFromSettings(
+                    db,
+                    process.env.APP_AUTH_METHODS || 'password,guest',
+                );
                 const guestLoginNonce = authMethods.includes('guest') ? randomBytes(8).toString('hex') : null;
 
                 // Store nonce in cookie for guest login verification
@@ -528,12 +523,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     gravatarUrl: createGravatarUrl(email, null, email),
                 };
 
-                const isOfflineInstallation =
-                    isOfflineMode() ||
-                    (process.env.APP_AUTH_METHODS || '')
-                        .split(',')
-                        .map(m => m.trim().toLowerCase())
-                        .includes('none');
+                const appAuthMethods = await getAuthMethodsFromSettings(
+                    db,
+                    process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
+                );
+                const isOfflineInstallation = isOfflineMode() || appAuthMethods.includes('none');
 
                 const basePath = getBasePath();
 
@@ -931,7 +925,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 } catch (error) {
                     console.warn('[Admin] Failed to load stored settings:', error);
                 }
-                defaultQuota = Number(adminSettings.storage.default_quota) || defaultQuota;
+                defaultQuota = parseNumber(adminSettings.storage.default_quota, defaultQuota);
 
                 const viewModel = {
                     version: getAppVersion(),

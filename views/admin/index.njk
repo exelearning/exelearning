@@ -1542,6 +1542,7 @@
                         settingsSaveStatus.textContent = 'Guardado';
                         settingsSaveStatus.classList.add('success');
                     }
+                    updateCreateUserDefaultQuota(settings);
                 } catch (err) {
                     console.error('Failed to save settings:', err);
                     if (settingsSaveStatus) {
@@ -1588,6 +1589,14 @@
                 }
                 return entry;
             });
+        }
+
+        function updateCreateUserDefaultQuota(settings) {
+            const defaultQuotaSetting = settings.find(setting => setting.key === 'DEFAULT_QUOTA');
+            if (!defaultQuotaSetting) return;
+            const quotaInput = document.querySelector('#createUserForm [name="quota_mb"]');
+            if (!quotaInput) return;
+            quotaInput.value = defaultQuotaSetting.value ?? '';
         }
 
         // Load stats
