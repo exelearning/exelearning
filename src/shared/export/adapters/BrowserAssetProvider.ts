@@ -277,8 +277,19 @@ export class BrowserAssetProvider implements AssetProvider {
                             console.warn(`[BrowserAssetProvider] ProjectIds in DB: ${projectIds.join(', ')}`);
                             console.warn(`[BrowserAssetProvider] Expected projectId: ${projectId}`);
 
-                            // Use these assets anyway - they were stored but with wrong projectId
-                            for (const asset of allAssets) {
+                            // Only use assets that match the expected projectId
+                            // This prevents cross-project contamination in exports
+                            const filteredAssets = allAssets.filter(a => a.projectId === projectId);
+                            if (filteredAssets.length < allAssets.length) {
+                                console.warn(
+                                    `[BrowserAssetProvider] Filtered out ${allAssets.length - filteredAssets.length} assets from other projects`,
+                                );
+                            }
+                            console.log(
+                                `[BrowserAssetProvider] FALLBACK filtered to ${filteredAssets.length} assets matching projectId: ${projectId}`,
+                            );
+
+                            for (const asset of filteredAssets) {
                                 if (asset.blob) {
                                     const arrayBuffer = await asset.blob.arrayBuffer();
                                     const assetId = String(asset.id);

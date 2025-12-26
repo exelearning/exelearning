@@ -122,26 +122,35 @@ function isLegacyElp(p) {
     }
 }
 
-function proposeElpxPath(currentPath) {
+function proposeElpxPath(currentPath, suggestedName = null) {
     try {
         const dir = currentPath ? path.dirname(currentPath) : app.getPath('documents');
-        const base = currentPath ? path.basename(currentPath, path.extname(currentPath)) : 'document';
+        // Use suggestedName if provided and no currentPath, otherwise extract from currentPath
+        let base;
+        if (currentPath) {
+            base = path.basename(currentPath, path.extname(currentPath));
+        } else if (suggestedName) {
+            // Extract base name from suggestedName (remove extension if present)
+            base = path.basename(suggestedName, path.extname(suggestedName));
+        } else {
+            base = 'document';
+        }
         return path.join(dir, `${base}.elpx`);
     } catch (_e) {
-        return 'document.elpx';
+        return suggestedName || 'document.elpx';
     }
 }
 
-async function promptElpxSave(owner, currentPath, titleKey, buttonKey) {
+async function promptElpxSave(owner, currentPath, titleKey, buttonKey, suggestedName = null) {
     const { filePath, canceled } = await dialog.showSaveDialog(owner, {
         title: tOrDefault(titleKey, defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
-        defaultPath: proposeElpxPath(currentPath),
+        defaultPath: proposeElpxPath(currentPath, suggestedName),
         buttonLabel: tOrDefault(buttonKey, defaultLocale === 'es' ? 'Guardar' : 'Save'),
         filters: [{ name: 'eXeLearning project', extensions: ['elpx'] }],
     });
     if (canceled || !filePath) return null;
-    // force .elpx if not incluted
-    return ensureExt(filePath, 'document.elpx');
+    // force .elpx if not included
+    return ensureExt(filePath, suggestedName || 'document.elpx');
 }
 
 // ──────────────  Simple settings (no external deps)  ──────────────
@@ -945,6 +954,47 @@ ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, sugges
     }
 });
 
+// Export base64 ZIP data to a chosen folder by unzipping (for client-side exports)
+ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirName }) => {
+    const senderWindow = BrowserWindow.fromWebContents(e.sender);
+    try {
+        // Pick destination folder
+        const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
+            title: tOrDefault(
+                'export.folder.dialogTitle',
+                defaultLocale === 'es' ? 'Exportar a carpeta' : 'Export to folder',
+            ),
+            properties: ['openDirectory', 'createDirectory'],
+        });
+        if (canceled || !filePaths || !filePaths.length) return { ok: false, canceled: true };
+        const destDir = filePaths[0];
+
+        // Decode base64 and unzip using fflate
+        const buffer = Buffer.from(base64Data, 'base64');
+        const uint8Data = new Uint8Array(buffer);
+        const unzipped = fflate.unzipSync(uint8Data);
+
+        for (const [relativePath, content] of Object.entries(unzipped)) {
+            const fullPath = path.join(destDir, relativePath);
+            if (relativePath.endsWith('/')) {
+                fs.mkdirSync(fullPath, { recursive: true });
+            } else {
+                fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+                fs.writeFileSync(fullPath, Buffer.from(content));
+            }
+        }
+
+        // Notify renderer with final destination
+        const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
+        try {
+            if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: true, path: destDir });
+        } catch (_e) {}
+        return { ok: true, dir: destDir };
+    } catch (err) {
+        return { ok: false, error: err?.message || 'unknown' };
+    }
+});
+
 // Every time any window is created, we apply the handler to it
 app.on('browser-window-created', (_event, window) => {
     attachOpenHandler(window);
@@ -1129,14 +1179,14 @@ ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName })
         const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
 
         if (!targetPath) {
-            // non remembered path → ask
-            const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button');
+            // non remembered path → ask (use suggestedName for default filename)
+            const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
         } else if (isLegacyElp(targetPath)) {
-            // remembered path is .elp → forzar "Save as...” to .elpx
-            const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button');
+            // remembered path is .elp → forzar "Save as..." to .elpx
+            const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
@@ -1208,6 +1258,78 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
         return { ok: true, base64: data.toString('base64'), mtimeMs: stat.mtimeMs };
     } catch (err) {
         return { ok: false, error: err.message };
+    }
+});
+
+// Save binary data directly (for Yjs exports that generate data client-side)
+ipcMain.handle('app:saveBuffer', async (e, { base64Data, projectKey, suggestedName }) => {
+    if (!base64Data) return false;
+    try {
+        const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
+        let key = projectKey || 'default';
+        try {
+            if (!projectKey && wc && !wc.isDestroyed?.()) {
+                key = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
+            }
+        } catch (_er) {}
+
+        const owner = BrowserWindow.fromWebContents(wc);
+        let targetPath = getSavedPath(key);
+        if (!targetPath) {
+            // No remembered path → ask (use suggestedName for default filename)
+            const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
+            if (!picked) return false;
+            targetPath = picked;
+            setSavedPath(key, targetPath);
+        } else if (isLegacyElp(targetPath)) {
+            // Remembered path is .elp → force "Save as..." to .elpx
+            const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
+            if (!picked) return false;
+            targetPath = picked;
+            setSavedPath(key, targetPath);
+        } else {
+            // Remembered path not .elp; ensure ext
+            const fixed = ensureExt(targetPath, suggestedName || 'document.elpx');
+            if (fixed !== targetPath) {
+                targetPath = fixed;
+                setSavedPath(key, targetPath);
+            }
+        }
+
+        // Write buffer directly to file
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(targetPath, buffer);
+        return true;
+    } catch (err) {
+        console.error('[app:saveBuffer] Error:', err);
+        return false;
+    }
+});
+
+ipcMain.handle('app:saveBufferAs', async (e, { base64Data, projectKey, suggestedName }) => {
+    if (!base64Data) return false;
+    try {
+        const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
+        const senderWindow = BrowserWindow.fromWebContents(wc);
+        const key = projectKey || 'default';
+
+        const { filePath, canceled } = await dialog.showSaveDialog(senderWindow, {
+            title: tOrDefault('saveAs.dialogTitle', defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
+            defaultPath: suggestedName || 'document.elpx',
+            buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
+        });
+        if (canceled || !filePath) return false;
+
+        const finalPath = ensureExt(filePath, suggestedName || 'document.elpx');
+        setSavedPath(key, finalPath);
+
+        // Write buffer directly to file
+        const buffer = Buffer.from(base64Data, 'base64');
+        fs.writeFileSync(finalPath, buffer);
+        return true;
+    } catch (err) {
+        console.error('[app:saveBufferAs] Error:', err);
+        return false;
     }
 });
 

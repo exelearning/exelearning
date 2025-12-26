@@ -1734,8 +1734,10 @@ class YjsProjectBridge {
    * Export project to .elpx file
    * Uses SharedExporters (TypeScript unified pipeline) when available
    * Filename is automatically generated from project title (sanitized: lowercase, no accents, no special chars)
+   * @param {Object} options - Export options
+   * @param {boolean} options.saveAs - If true, always prompt for save location (Save As behavior)
    */
-  async exportToElpx() {
+  async exportToElpx(options = {}) {
     // Ensure exelearning_version is set in metadata before export
     if (this.documentManager?._updateVersionMetadata) {
       await this.documentManager._updateVersionMetadata();
@@ -1755,17 +1757,41 @@ class YjsProjectBridge {
         if (result.success && result.data) {
           // Use sanitized filename from exporter (lowercase, no accents, no special chars)
           const exportFilename = result.filename || 'export.elpx';
-          // Trigger download
-          const blob = new Blob([result.data], { type: 'application/zip' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = exportFilename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-          Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
+
+          // Check if Electron mode - use Electron save API for desktop behavior
+          // eslint-disable-next-line no-undef
+          if (eXeLearning?.config?.isOfflineInstallation && window.electronAPI?.saveBuffer) {
+            // Convert ArrayBuffer to base64 for IPC transfer
+            const uint8Array = new Uint8Array(result.data);
+            let binary = '';
+            for (let i = 0; i < uint8Array.length; i++) {
+              binary += String.fromCharCode(uint8Array[i]);
+            }
+            const base64Data = btoa(binary);
+            const key = window.__currentProjectId || 'default';
+
+            if (options.saveAs) {
+              // Save As: always prompt for new location
+              await window.electronAPI.saveBufferAs(base64Data, key, exportFilename);
+            } else {
+              // Save: use remembered path or prompt first time
+              // If opened from legacy .elp, main.js will prompt for new .elpx location
+              await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
+            }
+            Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
+          } else {
+            // Browser mode: direct download
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = exportFilename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
+          }
         } else {
           throw new Error(result.error || 'Export failed');
         }

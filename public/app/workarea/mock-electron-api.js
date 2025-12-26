@@ -16,6 +16,14 @@ window.electronAPI = {
         Logger.log('MOCK [saveAs] called with:', options);
         return Promise.resolve(true);
     },
+    saveBuffer: (base64Data, projectKey, suggestedName) => {
+        Logger.log('MOCK [saveBuffer] called with:', { projectKey, suggestedName, dataLength: base64Data?.length });
+        return Promise.resolve(true);
+    },
+    saveBufferAs: (base64Data, projectKey, suggestedName) => {
+        Logger.log('MOCK [saveBufferAs] called with:', { projectKey, suggestedName, dataLength: base64Data?.length });
+        return Promise.resolve(true);
+    },
     setSavedPath: (options) => {
         Logger.log('MOCK [setSavedPath] called with:', options);
         return Promise.resolve(true);

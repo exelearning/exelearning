@@ -90,10 +90,8 @@
 
                 #head-top-download-button,
                 #exe-last-edition,
-                #navbar-button-preview,
                 #navbar-button-idevice-manager {
                     display: none;
-
                 }
 
                 .auto-icon {
@@ -195,6 +193,13 @@
         position: relative;
         border-radius: 50%;
         border: 1px solid var(--head-icon-border-color);
+
+        // Offline mode: scale down logo to fit inside circle
+        &.exe-gravatar--offline {
+            width: 32px;
+            padding: 4px;
+            background-color: #fff;
+        }
     }
 
     #exe-concurrent-users {

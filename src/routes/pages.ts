@@ -653,7 +653,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     version: getAppVersion(),
                     app_version: getAppVersion(),
                     expires: '',
-                    extension: '.elp',
+                    extension: 'elpx',
                     user,
                     config,
                     locale,
