@@ -610,5 +610,102 @@ test.describe('UDL Content iDevice', () => {
                 expect(cannotPlayCount).toBe(0);
             }
         });
+
+        test('should not have double MEJS initialization (mejs-audio and mejs-video classes)', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'UDL MEJS Double Init Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add and configure UDL Content iDevice
+            await addUdlContentIdeviceFromPanel(page);
+            await enterEditMode(page);
+
+            // Wait for TinyMCE to be ready
+            await page.waitForTimeout(1000);
+
+            // Get the TinyMCE iframe and insert audio
+            const idevice = page.locator('#node-content article .idevice_node.udl-content').first();
+            const tinyMceFrame = idevice.locator('iframe.tox-edit-area__iframe').first();
+
+            const frameEl = await tinyMceFrame.elementHandle();
+            const frame = await frameEl?.contentFrame();
+
+            if (frame) {
+                // Insert audio element with mediaelement class (like real content)
+                await frame.evaluate(() => {
+                    const body = document.body;
+                    const audioHtml =
+                        '<p>Audio test for MEJS</p><audio class="mediaelement" controls type="audio/mpeg" src="data:audio/mpeg;base64,//uQxAAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"></audio>';
+                    body.innerHTML = audioHtml;
+                });
+            }
+
+            // Set button text
+            await setButtonText(page, 'Play Audio');
+
+            // Save the iDevice
+            await saveIdevice(page);
+
+            // Save project
+            await workarea.save();
+            await page.waitForTimeout(1000);
+
+            // Open preview panel
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Access preview iframe
+            const previewIframe = page.frameLocator('#preview-iframe');
+
+            // Wait for page to load
+            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+            // Click the button to reveal content
+            const button = previewIframe.locator('.udl-btn, .udl-character').first();
+            await expect(button).toBeVisible({ timeout: 10000 });
+            await button.click();
+            await page.waitForTimeout(1500);
+
+            // Check MEJS container classes
+            const mejsContainer = previewIframe.locator('.exe-udlContent-content-main .mejs-container').first();
+            const mejsCount = await mejsContainer.count();
+
+            if (mejsCount > 0) {
+                const mejsClass = await mejsContainer.getAttribute('class');
+
+                // Verify MEJS container does NOT have both mejs-audio and mejs-video classes
+                // This was a bug where double initialization would add both classes
+                const hasAudioClass = mejsClass?.includes('mejs-audio') ?? false;
+                const hasVideoClass = mejsClass?.includes('mejs-video') ?? false;
+
+                // Should have audio class (since it's an audio element)
+                expect(hasAudioClass).toBe(true);
+
+                // Should NOT have video class (that would indicate double initialization bug)
+                expect(hasVideoClass).toBe(false);
+
+                // Note: We do NOT check for me-cannotplay here because data URI audio
+                // may legitimately fail to play in MEJS. The key verification is that
+                // we don't have double initialization (both mejs-audio and mejs-video classes).
+                // Real audio files with proper blob URLs should play correctly.
+            }
+        });
     });
 });

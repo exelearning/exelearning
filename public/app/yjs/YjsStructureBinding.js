@@ -2338,6 +2338,14 @@ class YjsStructureBinding {
       jsonProperties = '{}';
     }
 
+    // Add MIME types to media elements BEFORE resolving URLs
+    // (while asset:// URLs still contain filename with extension)
+    if (typeof window.addMediaTypes === 'function') {
+      if (htmlContent && (htmlContent.includes('<audio') || htmlContent.includes('<video'))) {
+        htmlContent = window.addMediaTypes(htmlContent);
+      }
+    }
+
     // Resolve asset:// URLs to blob:// URLs for browser rendering
     // The asset:// URLs are kept in Yjs for cross-client sync
     if (typeof window.resolveAssetUrls === 'function') {

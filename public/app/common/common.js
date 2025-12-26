@@ -374,7 +374,18 @@ var $exe = {
             // Multimedia galleries
             $exe.mediaelements = $(".mediaelement");
             $exe.mediaelements.each(function () {
-                if (typeof this.localName != "undefined" && this.localName == "video") {
+                // Only process actual audio/video elements, not MEJS wrapper containers
+                // When MEJS wraps an element, the container also gets class 'mediaelement'
+                // which can cause double-initialization issues
+                var tagName = this.localName || this.tagName?.toLowerCase();
+                if (tagName !== "audio" && tagName !== "video") {
+                    return; // Skip non-media elements (like mejs-container divs)
+                }
+                // Skip if already processed by MEJS
+                if (this.player !== undefined) {
+                    return;
+                }
+                if (tagName === "video") {
                     var e = this.width;
                     var t = $(window).width();
                     if (e > t) {
