@@ -320,6 +320,11 @@ var $eXeRelaciona = {
         if (mOptions.gameStarted) return;
 
         $('#rlcContainerGame-' + instance).show();
+
+        // Fix: Adjust canvas dimensions after showing the container
+        // Without this, the canvas has 0x0 dimensions and arrows don't render
+        $eXeRelaciona.ajustarCanvas(instance);
+
         $(`#rlcImgTime-${instance}`).hide();
         $(`#rlcPTime-${instance}`).hide();
         $(`#rlcButtons-${instance}`).hide();
