@@ -171,7 +171,9 @@ async function fillWords(
  */
 async function setGameDuration(page: Page, duration: string): Promise<void> {
     // First, expand the Options fieldset by clicking its header link
-    const optionsHeader = page.locator('fieldset legend a:has-text("Options"), fieldset legend a:has-text("Opciones")').first();
+    const optionsHeader = page
+        .locator('fieldset legend a:has-text("Options"), fieldset legend a:has-text("Opciones")')
+        .first();
     if ((await optionsHeader.count()) > 0) {
         await optionsHeader.click();
         await page.waitForTimeout(500);
@@ -293,10 +295,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             expect(wordBlockCount).toBeGreaterThanOrEqual(26); // A-Z = 26 letters
         });
 
-        test('should fill words and definitions for multiple letters', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('should fill words and definitions for multiple letters', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'AZ Quiz Fill Test');
@@ -522,14 +521,17 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await page.waitForTimeout(2000);
 
             // Check canvas has proper dimensions (not 0x0)
-            const canvasInfo = await iframe.locator('[id^="roscoCanvas-"]').first().evaluate(el => {
-                const canvas = el as HTMLCanvasElement;
-                return {
-                    width: canvas.width,
-                    height: canvas.height,
-                    hasContext: !!canvas.getContext('2d'),
-                };
-            });
+            const canvasInfo = await iframe
+                .locator('[id^="roscoCanvas-"]')
+                .first()
+                .evaluate(el => {
+                    const canvas = el as HTMLCanvasElement;
+                    return {
+                        width: canvas.width,
+                        height: canvas.height,
+                        hasContext: !!canvas.getContext('2d'),
+                    };
+                });
 
             expect(canvasInfo.width).toBeGreaterThan(0);
             expect(canvasInfo.height).toBeGreaterThan(0);
