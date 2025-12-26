@@ -45,8 +45,9 @@ class MockDocument implements ExportDocument {
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('content.css', Buffer.from('/* theme css */'));
-        files.set('default.js', Buffer.from('// theme js'));
+        // Use original names to trigger renaming logic
+        files.set('style.css', Buffer.from('/* theme css */'));
+        files.set('style.js', Buffer.from('// theme js'));
         return files;
     }
 
@@ -74,7 +75,7 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchExeLogo(): Promise<Buffer | null> {
-        return null;
+        return Buffer.from('fake-logo-data');
     }
 
     async fetchContentCss(): Promise<Map<string, Buffer>> {
@@ -109,6 +110,10 @@ class MockZipProvider implements ZipProvider {
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
+    }
+
+    hasFile(path: string): boolean {
+        return this.files.has(path);
     }
 
     async generateAsync(): Promise<Buffer> {
@@ -607,6 +612,307 @@ describe('ElpxExporter', () => {
             // Version ID format: YYYYMMDDHHmmss + 6 alphanumeric
             const versionIdMatch = contentXml.match(/<key>odeVersionId<\/key>\s*<value>(\d{14}[A-Z0-9]{6})<\/value>/);
             expect(versionIdMatch).toBeTruthy();
+        });
+    });
+
+    describe('Search Box Feature', () => {
+        it('should include search_index.js when addSearchBox is true', async () => {
+            document = new MockDocument(
+                {
+                    addSearchBox: true,
+                },
+                samplePages,
+            );
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('search_index.js')).toBe(true);
+            const searchIndex = zip.files.get('search_index.js') as string;
+            expect(searchIndex).toContain('exeSearchData');
+        });
+
+        it('should not include search_index.js when addSearchBox is false', async () => {
+            document = new MockDocument(
+                {
+                    addSearchBox: false,
+                },
+                samplePages,
+            );
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('search_index.js')).toBe(false);
+        });
+    });
+
+    describe('Base CSS Error Handling', () => {
+        it('should fail when base.css is not available', async () => {
+            // Override fetchContentCss to return empty map
+            resources.fetchContentCss = async () => {
+                return new Map(); // No base.css
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Failed to fetch content/css/base.css');
+        });
+    });
+
+    describe('Library File Deduplication', () => {
+        it('should not add duplicate library files', async () => {
+            // Set up fetchLibraryFiles to return a file that's already in base libraries
+            resources.fetchLibraryFiles = async () => {
+                const files = new Map<string, Buffer>();
+                // This file is already added by fetchBaseLibraries
+                files.set('jquery/jquery.min.js', Buffer.from('// duplicate jquery'));
+                // This file is new
+                files.set('new-lib.js', Buffer.from('// new library'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // The duplicate should be ignored, but new-lib.js should be added
+            expect(zip.files.has('libs/new-lib.js')).toBe(true);
+            // jQuery should still be the original version from base libraries
+            const jquery = zip.files.get('libs/jquery/jquery.min.js');
+            expect(jquery?.toString()).toBe('// jquery');
+        });
+    });
+
+    describe('Page Properties', () => {
+        it('should export page properties when defined', async () => {
+            const pagesWithProperties: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page with Properties',
+                    parentId: null,
+                    order: 0,
+                    properties: {
+                        customClass: 'special-page',
+                        icon: 'star',
+                        hidden: false,
+                    },
+                    blocks: [],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithProperties);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<key>customClass</key>');
+            expect(contentXml).toContain('<value>special-page</value>');
+            expect(contentXml).toContain('<key>icon</key>');
+            expect(contentXml).toContain('<value>star</value>');
+        });
+    });
+
+    describe('Block Properties', () => {
+        it('should export all block properties', async () => {
+            const pagesWithAllBlockProps: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Full Properties Block',
+                            order: 0,
+                            properties: {
+                                visibility: true,
+                                teacherOnly: true,
+                                allowToggle: true,
+                                minimized: false,
+                                identifier: 'custom-id',
+                                cssClass: 'custom-class',
+                            },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithAllBlockProps);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<key>teacherOnly</key>');
+            expect(contentXml).toContain('<key>allowToggle</key>');
+            expect(contentXml).toContain('<key>minimized</key>');
+            expect(contentXml).toContain('<key>identifier</key>');
+            expect(contentXml).toContain('<value>custom-id</value>');
+            expect(contentXml).toContain('<key>cssClass</key>');
+            expect(contentXml).toContain('<value>custom-class</value>');
+        });
+    });
+
+    describe('Component Structure Properties', () => {
+        it('should export component structureProperties when defined', async () => {
+            const pagesWithComponentProps: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Test</p>',
+                                    structureProperties: {
+                                        visibility: true,
+                                        teacherOnly: false,
+                                        identifier: 'comp-custom-id',
+                                        cssClass: 'comp-custom-class',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithComponentProps);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odeComponentsProperties>');
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<key>teacherOnly</key>');
+            expect(contentXml).toContain('<key>identifier</key>');
+            expect(contentXml).toContain('<value>comp-custom-id</value>');
+            expect(contentXml).toContain('<key>cssClass</key>');
+            expect(contentXml).toContain('<value>comp-custom-class</value>');
+        });
+
+        it('should use default visibility when no structureProperties defined', async () => {
+            // The existing samplePages don't have structureProperties
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            // Should have default visibility property
+            expect(contentXml).toContain('<odeComponentsProperties>');
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<value>true</value>');
+        });
+    });
+
+    describe('Additional Metadata Properties', () => {
+        it('should export all metadata properties when defined', async () => {
+            document = new MockDocument(
+                {
+                    title: 'Full Metadata Project',
+                    author: 'Test Author',
+                    language: 'es',
+                    description: 'A complete project',
+                    license: 'CC-BY-NC',
+                    theme: 'modern',
+                    keywords: 'test, project, metadata',
+                    category: 'Education',
+                    addAccessibilityToolbar: true,
+                    addMathJax: true,
+                    customStyles: '.custom { color: red; }',
+                    exelearningVersion: '3.1.0',
+                },
+                samplePages,
+            );
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<key>pp_keywords</key>');
+            expect(contentXml).toContain('<value>test, project, metadata</value>');
+            expect(contentXml).toContain('<key>pp_category</key>');
+            expect(contentXml).toContain('<value>Education</value>');
+            expect(contentXml).toContain('<key>pp_addAccessibilityToolbar</key>');
+            expect(contentXml).toContain('<value>true</value>');
+            expect(contentXml).toContain('<key>pp_addMathJax</key>');
+            expect(contentXml).toContain('<key>pp_customStyles</key>');
+            expect(contentXml).toContain('<key>pp_exelearning_version</key>');
+        });
+    });
+
+    describe('Logo Handling', () => {
+        it('should include logo when fetchExeLogo returns data', async () => {
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should continue export when fetchExeLogo throws', async () => {
+            // Override fetchExeLogo to throw
+            resources.fetchExeLogo = async () => {
+                throw new Error('Logo not found');
+            };
+
+            const result = await exporter.export();
+
+            // Should still succeed despite logo error
+            expect(result.success).toBe(true);
+            // Logo file should not be in ZIP
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should not include logo when fetchExeLogo returns null', async () => {
+            // Override fetchExeLogo to return null
+            resources.fetchExeLogo = async () => null;
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+    });
+
+    describe('iDevice Resources', () => {
+        it('should add iDevice resource files when available', async () => {
+            // Override fetchIdeviceResources to return files
+            resources.fetchIdeviceResources = async (_type: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* idevice css */'));
+                files.set('script.js', Buffer.from('// idevice js'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // FreeTextIdevice normalized to 'freetext'
+            expect(zip.files.has('idevices/freetext/style.css')).toBe(true);
+            expect(zip.files.has('idevices/freetext/script.js')).toBe(true);
+        });
+    });
+
+    describe('Theme File Renaming', () => {
+        it('should rename style.css to content.css and style.js to default.js', async () => {
+            await exporter.export();
+
+            // Original names should be renamed
+            expect(zip.files.has('theme/content.css')).toBe(true);
+            expect(zip.files.has('theme/default.js')).toBe(true);
+            // Original names should NOT exist
+            expect(zip.files.has('theme/style.css')).toBe(false);
+            expect(zip.files.has('theme/style.js')).toBe(false);
         });
     });
 });

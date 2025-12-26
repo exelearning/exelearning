@@ -2,7 +2,7 @@
  * Tests for version utility
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { getAppVersion } from './version';
+import { getAppVersion, configure, resetDependencies } from './version';
 
 describe('version utility', () => {
     const originalEnv = process.env.APP_VERSION;
@@ -19,6 +19,7 @@ describe('version utility', () => {
         } else {
             delete process.env.APP_VERSION;
         }
+        resetDependencies();
     });
 
     describe('getAppVersion', () => {
@@ -55,6 +56,89 @@ describe('version utility', () => {
             const version1 = getAppVersion();
             const version2 = getAppVersion();
             expect(version1).toBe(version2);
+        });
+    });
+
+    describe('dependency injection', () => {
+        it('should return v0.0.0 when package.json is not found', () => {
+            configure({
+                existsSync: () => false,
+                dirname: '/nonexistent',
+            });
+
+            const version = getAppVersion();
+            expect(version).toBe('v0.0.0');
+        });
+
+        it('should return v0.0.0 when package.json contains invalid JSON', () => {
+            configure({
+                existsSync: () => true,
+                readFileSync: () => 'not valid json {{{',
+                dirname: '/test',
+            });
+
+            const version = getAppVersion();
+            expect(version).toBe('v0.0.0');
+        });
+
+        it('should return version from mock package.json', () => {
+            configure({
+                existsSync: () => true,
+                readFileSync: () => JSON.stringify({ version: '1.2.3' }),
+                dirname: '/test',
+            });
+
+            const version = getAppVersion();
+            expect(version).toBe('v1.2.3');
+        });
+
+        it('should search up directory tree until package.json is found', () => {
+            let callCount = 0;
+            configure({
+                existsSync: path => {
+                    callCount++;
+                    // Return true only on the 3rd call (simulating finding package.json 2 dirs up)
+                    return callCount === 3;
+                },
+                readFileSync: () => JSON.stringify({ version: '2.0.0' }),
+                dirname: '/a/b/c',
+            });
+
+            const version = getAppVersion();
+            expect(version).toBe('v2.0.0');
+            expect(callCount).toBe(3);
+        });
+
+        it('should reset dependencies correctly', () => {
+            configure({
+                existsSync: () => false,
+                dirname: '/nonexistent',
+            });
+
+            // First call with mocked deps
+            expect(getAppVersion()).toBe('v0.0.0');
+
+            // Reset and call again
+            resetDependencies();
+            const version = getAppVersion();
+
+            // After reset, should find the real package.json
+            expect(version).toMatch(/^v\d+\.\d+\.\d+/);
+        });
+
+        it('should stop searching after 10 directories', () => {
+            let callCount = 0;
+            configure({
+                existsSync: () => {
+                    callCount++;
+                    return false; // Never find package.json
+                },
+                dirname: '/a/b/c/d/e/f/g/h/i/j/k/l/m',
+            });
+
+            const version = getAppVersion();
+            expect(version).toBe('v0.0.0');
+            expect(callCount).toBe(10); // Should stop after 10 iterations
         });
     });
 });

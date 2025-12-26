@@ -14,7 +14,35 @@ import { mkdirSync, existsSync } from 'fs';
  * Check if we're running in Bun
  */
 // biome-ignore lint/suspicious/noExplicitAny: globalThis doesn't have Bun type
-const isBun = typeof (globalThis as any).Bun !== 'undefined';
+const defaultIsBun = typeof (globalThis as any).Bun !== 'undefined';
+
+// ============================================================================
+// DEPENDENCY INJECTION
+// ============================================================================
+
+export interface DialectDependencies {
+    isBun: boolean;
+}
+
+const defaultDeps: DialectDependencies = {
+    isBun: defaultIsBun,
+};
+
+let deps = { ...defaultDeps };
+
+/**
+ * Configure dependencies for testing
+ */
+export function configure(newDeps: Partial<DialectDependencies>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+/**
+ * Reset dependencies to defaults
+ */
+export function resetDependencies(): void {
+    deps = { ...defaultDeps };
+}
 
 // ============================================================================
 // TYPES
@@ -78,20 +106,17 @@ function createSqliteDialect(dbPath: string): Dialect {
         }
     }
 
-    if (isBun) {
+    if (deps.isBun) {
         // Bun runtime: use kysely-bun-worker
         const { BunSqliteDialect } = require('kysely-bun-worker/normal');
         return new BunSqliteDialect({ url: fullPath });
-        /* v8 ignore start - Node.js runtime branch (not covered in Bun tests) */
-    } else {
-        // Node.js runtime: use better-sqlite3
-        // Dynamic require to prevent Bun's bundler from trying to resolve these modules
-        const dynamicRequire = (mod: string) => require(mod);
-        const { SqliteDialect } = dynamicRequire('kysely');
-        const Database = dynamicRequire('better-sqlite3');
-        return new SqliteDialect({
-            database: new Database(fullPath),
-        });
     }
-    /* v8 ignore stop */
+    // Node.js runtime: use better-sqlite3
+    // Dynamic require to prevent Bun's bundler from trying to resolve these modules
+    const dynamicRequire = (mod: string) => require(mod);
+    const { SqliteDialect } = dynamicRequire('kysely');
+    const Database = dynamicRequire('better-sqlite3');
+    return new SqliteDialect({
+        database: new Database(fullPath),
+    });
 }
