@@ -791,19 +791,466 @@ describe('modalOpenUserOdeFiles', () => {
   });
 
   describe('makeDeleteButtonFooter', () => {
-    it('should set delete mode and wire confirm', () => {
+    it('should set delete mode, enable button, and wire confirm to show confirmation', () => {
       const confirmSpy = vi.spyOn(modal, 'setConfirmExec');
+      modal.confirmButton.disabled = true;
+      modal.confirmButton.classList.add('disabled');
+
       modal.makeDeleteButtonFooter(['a']);
+
       expect(modal.confirmButton.textContent).toBe('Delete');
+      expect(modal.confirmButton.disabled).toBe(false);
+      expect(modal.confirmButton.classList.contains('disabled')).toBe(false);
       expect(confirmSpy).toHaveBeenCalled();
     });
   });
 
+  describe('showMassDeleteConfirmation', () => {
+    it('should show confirm modal with single project message', () => {
+      modal.showMassDeleteConfirmation(['proj-1']);
+      expect(window.eXeLearning.app.modals.confirm.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Delete projects',
+          confirmLabel: 'Delete',
+          confirmClass: 'btn-danger',
+        })
+      );
+    });
+
+    it('should show confirm modal with multiple projects message', () => {
+      modal.showMassDeleteConfirmation(['proj-1', 'proj-2', 'proj-3']);
+      expect(window.eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+      const call = window.eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+      expect(call.body).toContain('3');
+    });
+
+    it('should call massiveDeleteOdeFileEvent on confirm', async () => {
+      const deleteSpy = vi.spyOn(modal, 'massiveDeleteOdeFileEvent').mockResolvedValue();
+      let confirmCallback;
+      window.eXeLearning.app.modals.confirm.show.mockImplementation(({ confirmExec }) => {
+        confirmCallback = confirmExec;
+      });
+
+      modal.showMassDeleteConfirmation(['proj-1']);
+      await confirmCallback();
+
+      expect(deleteSpy).toHaveBeenCalledWith(['proj-1']);
+    });
+  });
+
+  describe('updateDeleteButtonState', () => {
+    it('should call makeDeleteButtonFooter when odeFiles is not empty', () => {
+      const makeSpy = vi.spyOn(modal, 'makeDeleteButtonFooter');
+      modal.odeFiles = ['a', 'b'];
+      modal.updateDeleteButtonState();
+      expect(makeSpy).toHaveBeenCalledWith(['a', 'b']);
+    });
+
+    it('should call removeDeleteButtonFooter when odeFiles is empty', () => {
+      const removeSpy = vi.spyOn(modal, 'removeDeleteButtonFooter');
+      modal.odeFiles = [];
+      modal.updateDeleteButtonState();
+      expect(removeSpy).toHaveBeenCalledWith([]);
+    });
+
+    it('should pass a copy of odeFiles to avoid reference issues', () => {
+      const makeSpy = vi.spyOn(modal, 'makeDeleteButtonFooter');
+      modal.odeFiles = ['a', 'b'];
+      modal.updateDeleteButtonState();
+
+      // Verify it was called with a different array (copy)
+      const passedArray = makeSpy.mock.calls[0][0];
+      expect(passedArray).toEqual(['a', 'b']);
+      expect(passedArray).not.toBe(modal.odeFiles); // Should be a different reference
+    });
+
+    it('should update delete button with correct list after deselecting one item', () => {
+      // Setup: render projects
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: {
+            odeId: 'a',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project A',
+            fileName: 'a.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+          b1: {
+            odeId: 'b',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project B',
+            fileName: 'b.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+          c1: {
+            odeId: 'c',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project C',
+            fileName: 'c.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+        },
+      };
+
+      modal.currentTab = 'my-projects';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      // Spy on makeDeleteButtonFooter to capture the arrays passed
+      const makeSpy = vi.spyOn(modal, 'makeDeleteButtonFooter');
+
+      // Select all (3 projects)
+      modal.toggleSelectAll(true);
+      expect(modal.odeFiles.length).toBe(3);
+
+      // Verify makeDeleteButtonFooter was called with all 3 projects
+      expect(makeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['a', 'b', 'c']));
+
+      // Manually deselect one checkbox
+      const checkboxB = modal.modalElementBodyContent.querySelector('#check-b');
+      checkboxB.checked = false;
+      checkboxB.dispatchEvent(new Event('change'));
+
+      // Should now have only 2 projects
+      expect(modal.odeFiles.length).toBe(2);
+      expect(modal.odeFiles).toContain('a');
+      expect(modal.odeFiles).toContain('c');
+      expect(modal.odeFiles).not.toContain('b');
+
+      // Verify makeDeleteButtonFooter was called again with only 2 projects
+      const lastCall = makeSpy.mock.calls[makeSpy.mock.calls.length - 1][0];
+      expect(lastCall).toHaveLength(2);
+      expect(lastCall).toContain('a');
+      expect(lastCall).toContain('c');
+      expect(lastCall).not.toContain('b');
+    });
+  });
+
+  describe('toggleSelectAll', () => {
+    it('should check all project checkboxes when called with true', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: {
+            odeId: 'a',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project A',
+            fileName: 'a.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+          b1: {
+            odeId: 'b',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project B',
+            fileName: 'b.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+        },
+      };
+
+      modal.currentTab = 'my-projects';
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      modal.toggleSelectAll(true);
+
+      const checkboxes = modal.modalElementBodyContent.querySelectorAll('.ode-check');
+      checkboxes.forEach((cb) => {
+        expect(cb.checked).toBe(true);
+      });
+      expect(modal.odeFiles).toContain('a');
+      expect(modal.odeFiles).toContain('b');
+    });
+
+    it('should uncheck all project checkboxes when called with false', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: {
+            odeId: 'a',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project A',
+            fileName: 'a.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+        },
+      };
+
+      modal.currentTab = 'my-projects';
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      modal.toggleSelectAll(true);
+      modal.toggleSelectAll(false);
+
+      const checkboxes = modal.modalElementBodyContent.querySelectorAll('.ode-check');
+      checkboxes.forEach((cb) => {
+        expect(cb.checked).toBe(false);
+      });
+      expect(modal.odeFiles).toEqual([]);
+    });
+
+    it('should do nothing for shared-with-me tab', () => {
+      modal.currentTab = 'shared-with-me';
+      modal.odeFiles = [];
+      modal.toggleSelectAll(true);
+      expect(modal.odeFiles).toEqual([]);
+    });
+  });
+
+  describe('updateSelectAllCheckbox', () => {
+    it('should set indeterminate when some are selected', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: {
+            odeId: 'a',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project A',
+            fileName: 'a.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+          b1: {
+            odeId: 'b',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project B',
+            fileName: 'b.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+        },
+      };
+
+      modal.currentTab = 'my-projects';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      // Check only one checkbox
+      const firstCheckbox = modal.modalElementBodyContent.querySelector('.ode-check');
+      firstCheckbox.checked = true;
+      firstCheckbox.dispatchEvent(new Event('change'));
+
+      const selectAll = modal.modalElementBodyContent.querySelector('#ode-select-all-checkbox');
+      expect(selectAll.indeterminate).toBe(true);
+    });
+
+    it('should set checked when all are selected', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: {
+            odeId: 'a',
+            role: 'owner',
+            versionName: '1',
+            title: 'Project A',
+            fileName: 'a.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+        },
+      };
+
+      modal.currentTab = 'my-projects';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      // Check the only checkbox
+      const checkbox = modal.modalElementBodyContent.querySelector('.ode-check');
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change'));
+
+      const selectAll = modal.modalElementBodyContent.querySelector('#ode-select-all-checkbox');
+      expect(selectAll.checked).toBe(true);
+      expect(selectAll.indeterminate).toBe(false);
+    });
+  });
+
+  describe('Select All visibility in tabs', () => {
+    it('should show Select All checkbox for my-projects tab', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: { odeId: 'a', role: 'owner' },
+        },
+      };
+      modal.currentTab = 'my-projects';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+
+      const selectAllWrap = modal.modalElementBodyContent.querySelector('.ode-select-all-wrap');
+      expect(selectAllWrap.style.display).toBe('flex');
+    });
+
+    it('should hide Select All checkbox for shared-with-me tab', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: { odeId: 'a', role: 'editor' },
+        },
+      };
+      modal.currentTab = 'shared-with-me';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+
+      const selectAllWrap = modal.modalElementBodyContent.querySelector('.ode-select-all-wrap');
+      expect(selectAllWrap.style.display).toBe('none');
+    });
+
+    it('should toggle Select All visibility when switching tabs', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: {
+            odeId: 'a',
+            role: 'owner',
+            versionName: '1',
+            title: 'Owned Project',
+            fileName: 'owned.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+          b1: {
+            odeId: 'b',
+            role: 'editor',
+            versionName: '1',
+            title: 'Shared Project',
+            fileName: 'shared.elp',
+            sizeFormatted: '2 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'public',
+            ownerEmail: 'owner@example.com',
+            isManualSave: false,
+          },
+        },
+      };
+
+      modal.currentTab = 'my-projects';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      modal.switchTab('shared-with-me');
+
+      const selectAllWrap = modal.modalElementBodyContent.querySelector('.ode-select-all-wrap');
+      expect(selectAllWrap.style.display).toBe('none');
+
+      modal.switchTab('my-projects');
+      expect(selectAllWrap.style.display).toBe('flex');
+    });
+
+    it('should reset Select All checkbox when switching tabs', () => {
+      modal.allOdeFilesData = {
+        odeFilesSync: {
+          a1: {
+            odeId: 'a',
+            role: 'owner',
+            versionName: '1',
+            title: 'Owned Project',
+            fileName: 'owned.elp',
+            sizeFormatted: '1 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'private',
+            isManualSave: true,
+          },
+          b1: {
+            odeId: 'b',
+            role: 'editor',
+            versionName: '1',
+            title: 'Shared Project',
+            fileName: 'shared.elp',
+            sizeFormatted: '2 MB',
+            updatedAt: new Date().toISOString(),
+            visibility: 'public',
+            ownerEmail: 'owner@example.com',
+            isManualSave: false,
+          },
+        },
+      };
+
+      modal.currentTab = 'my-projects';
+      const actions = modal.makeModalActions();
+      modal.setBodyElement(actions);
+      const list = modal.makeElementListOdeFiles(modal.allOdeFilesData);
+      modal.setBodyElement(list);
+
+      // Select all
+      modal.toggleSelectAll(true);
+      const selectAllCheckbox = modal.modalElementBodyContent.querySelector('#ode-select-all-checkbox');
+      selectAllCheckbox.checked = true;
+
+      // Switch tabs
+      modal.switchTab('shared-with-me');
+
+      // Switch back
+      modal.switchTab('my-projects');
+
+      const newSelectAllCheckbox = modal.modalElementBodyContent.querySelector('#ode-select-all-checkbox');
+      expect(newSelectAllCheckbox.checked).toBe(false);
+      expect(modal.odeFiles).toEqual([]);
+    });
+  });
+
   describe('removeDeleteButtonFooter', () => {
-    it('should restore open button when empty', () => {
+    it('should restore open button and disable when empty and no project selected', () => {
       const confirmSpy = vi.spyOn(modal, 'setConfirmExec');
+      modal.selectedProjectUuid = null;
+      modal.confirmButton.disabled = false;
+      modal.confirmButton.classList.remove('disabled');
+
       modal.removeDeleteButtonFooter([]);
+
       expect(modal.confirmButton.textContent).toBe('Open');
+      expect(modal.confirmButton.disabled).toBe(true);
+      expect(modal.confirmButton.classList.contains('disabled')).toBe(true);
+      expect(confirmSpy).toHaveBeenCalled();
+    });
+
+    it('should restore open button but keep enabled when a project is selected', () => {
+      const confirmSpy = vi.spyOn(modal, 'setConfirmExec');
+      modal.selectedProjectUuid = 'proj-1';
+      modal.confirmButton.disabled = false;
+      modal.confirmButton.classList.remove('disabled');
+
+      modal.removeDeleteButtonFooter([]);
+
+      expect(modal.confirmButton.textContent).toBe('Open');
+      expect(modal.confirmButton.disabled).toBe(false);
+      expect(modal.confirmButton.classList.contains('disabled')).toBe(false);
       expect(confirmSpy).toHaveBeenCalled();
     });
   });

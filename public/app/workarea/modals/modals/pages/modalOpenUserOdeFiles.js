@@ -232,6 +232,23 @@ export default class modalOpenUserOdeFiles extends Modal {
             tab.classList.toggle('active', tab.getAttribute('data-tab') === tabName);
         });
 
+        // Show/hide Select All checkbox based on tab
+        const selectAllWrap = this.modalElementBodyContent.querySelector('.ode-select-all-wrap');
+        if (selectAllWrap) {
+            selectAllWrap.style.display = tabName === 'my-projects' ? 'flex' : 'none';
+        }
+
+        // Reset Select All checkbox state
+        const selectAllCheckbox = this.modalElementBodyContent.querySelector('#ode-select-all-checkbox');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+
+        // Clear selection when switching tabs
+        this.odeFiles = [];
+        this.removeDeleteButtonFooter(this.odeFiles);
+
         // Remove existing list container
         const existingList = this.modalElementBodyContent.querySelector('.ode-files-list-container');
         if (existingList) {
@@ -377,11 +394,13 @@ export default class modalOpenUserOdeFiles extends Modal {
             const projectUuid = ode.odeId;
             if (check.checked) {
                 if (!this.odeFiles.includes(projectUuid)) this.odeFiles.push(projectUuid);
-                this.makeDeleteButtonFooter(this.odeFiles);
             } else {
                 this.odeFiles = this.odeFiles.filter((id) => id !== projectUuid);
-                this.removeDeleteButtonFooter(this.odeFiles);
             }
+            // Update button state based on selection
+            this.updateDeleteButtonState();
+            // Update the Select All checkbox state
+            this.updateSelectAllCheckbox();
         });
 
         let label = document.createElement('label');
@@ -547,6 +566,22 @@ export default class modalOpenUserOdeFiles extends Modal {
     makeFilterForList(selector, placeholder) {
         const wrap = document.createElement('div');
         wrap.classList.add('ode-filter-wrap');
+
+        // Select All checkbox (only visible for "My Projects" tab)
+        const selectAllWrap = document.createElement('div');
+        selectAllWrap.classList.add('ode-select-all-wrap');
+        selectAllWrap.style.display = this.currentTab === 'my-projects' ? 'flex' : 'none';
+
+        const selectAllCheckbox = document.createElement('input');
+        selectAllCheckbox.type = 'checkbox';
+        selectAllCheckbox.id = 'ode-select-all-checkbox';
+        selectAllCheckbox.classList.add('ode-select-all-checkbox');
+        selectAllCheckbox.title = _('Select all');
+        selectAllCheckbox.setAttribute('aria-label', _('Select all'));
+        selectAllCheckbox.addEventListener('change', () => this.toggleSelectAll(selectAllCheckbox.checked));
+
+        selectAllWrap.append(selectAllCheckbox);
+        wrap.append(selectAllWrap);
 
         const input = document.createElement('input');
         input.type = 'text';
@@ -772,6 +807,74 @@ export default class modalOpenUserOdeFiles extends Modal {
     }
 
     /**
+     * Toggle selection of all projects in the current tab
+     * Only works for "My Projects" tab (owned projects)
+     * @param {boolean} checked - Whether to select or deselect all
+     */
+    toggleSelectAll(checked) {
+        // Only allow selection in "My Projects" tab
+        if (this.currentTab !== 'my-projects') {
+            return;
+        }
+
+        const checkboxes = this.modalElementBodyContent.querySelectorAll(
+            '.ode-files-list .ode-row.principal-version .ode-check'
+        );
+
+        this.odeFiles = [];
+
+        checkboxes.forEach((checkbox) => {
+            checkbox.checked = checked;
+            if (checked) {
+                const row = checkbox.closest('.ode-row');
+                const projectUuid = row?.getAttribute('ode-id');
+                if (projectUuid && !this.odeFiles.includes(projectUuid)) {
+                    this.odeFiles.push(projectUuid);
+                }
+            }
+        });
+
+        // Update button state
+        this.updateDeleteButtonState();
+    }
+
+    /**
+     * Update the delete/open button state based on current selection
+     * This ensures the button always reflects the current odeFiles array
+     */
+    updateDeleteButtonState() {
+        if (this.odeFiles.length > 0) {
+            this.makeDeleteButtonFooter([...this.odeFiles]); // Pass a copy to avoid reference issues
+        } else {
+            this.removeDeleteButtonFooter(this.odeFiles);
+        }
+    }
+
+    /**
+     * Update the Select All checkbox state based on individual selections
+     */
+    updateSelectAllCheckbox() {
+        const selectAllCheckbox = this.modalElementBodyContent.querySelector('#ode-select-all-checkbox');
+        if (!selectAllCheckbox) return;
+
+        const checkboxes = this.modalElementBodyContent.querySelectorAll(
+            '.ode-files-list .ode-row.principal-version .ode-check'
+        );
+        const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+        if (checkedCount === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else if (checkedCount === checkboxes.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
+
+    /**
      * Select a project in the list by its UUID
      * @param {string} projectUuid - The project UUID to select
      */
@@ -982,14 +1085,48 @@ export default class modalOpenUserOdeFiles extends Modal {
     }
 
     makeDeleteButtonFooter(odeFiles) {
-        this.confirmButton.innerHTML = 'Delete';
-        this.setConfirmExec(() => this.massiveDeleteOdeFileEvent(odeFiles));
+        this.confirmButton.innerHTML = _('Delete');
+        this.confirmButton.disabled = false;
+        this.confirmButton.classList.remove('disabled');
+        this.setConfirmExec(() => this.showMassDeleteConfirmation(odeFiles));
+    }
+
+    /**
+     * Show confirmation dialog before mass deleting projects
+     * @param {string[]} projectUuids - Array of project UUIDs to delete
+     */
+    showMassDeleteConfirmation(projectUuids) {
+        const count = projectUuids.length;
+        const message = count === 1
+            ? _('Are you sure you want to delete this project?')
+            : _('Are you sure you want to delete %s projects?').replace('%s', count);
+
+        eXeLearning.app.modals.confirm.show({
+            title: _('Delete projects'),
+            body: `<p>${message}</p><p class="text-danger"><strong>${_('This action cannot be undone.')}</strong></p>`,
+            confirmExec: async () => {
+                await this.massiveDeleteOdeFileEvent(projectUuids);
+                // Reset Select All checkbox after deletion
+                const selectAllCheckbox = this.modalElementBodyContent.querySelector('#ode-select-all-checkbox');
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                }
+            },
+            confirmLabel: _('Delete'),
+            confirmClass: 'btn-danger',
+        });
     }
 
     removeDeleteButtonFooter(odeFiles) {
         if (odeFiles.length === 0) {
             this.confirmButton.innerHTML = _('Open');
             this.setConfirmExec(() => this.openSelectedOdeFile());
+            // Disable the button if no project is selected for opening
+            if (!this.selectedProjectUuid) {
+                this.confirmButton.disabled = true;
+                this.confirmButton.classList.add('disabled');
+            }
         }
     }
 

@@ -1614,16 +1614,37 @@
                         }
                     }
                     .ode-filter-wrap {
-                        width: 35%;
-                        position: relative;
-                        .ode-search-field {
-                            height: 20px;
-                            width: 20px;
-                            position: absolute;
-                            top: 8px;
-                            left: 10px;
-                            pointer-events: none;
+                        width: 45%;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+
+                        .ode-select-all-wrap {
+                            display: flex;
+                            align-items: center;
+                            flex-shrink: 0;
+
+                            .ode-select-all-checkbox {
+                                width: 16px;
+                                height: 16px;
+                                cursor: pointer;
+                                accent-color: var(--brand-primary-400, #0BA1A1);
+                            }
                         }
+
+                        .ode-search-field {
+                            position: relative;
+                            flex: 1;
+
+                            .search-icon {
+                                position: absolute;
+                                top: 50%;
+                                left: 10px;
+                                transform: translateY(-50%);
+                                pointer-events: none;
+                            }
+                        }
+
                         .ode-filter-input {
                             padding-inline-start: 40px;
                             width: 100%;
