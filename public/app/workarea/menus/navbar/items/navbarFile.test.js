@@ -1066,62 +1066,37 @@ describe('NavbarFile', () => {
     describe('openPrintPreview', () => {
         beforeEach(() => {
             navbarFile = new NavbarFile(mockMenu);
-            vi.useFakeTimers();
         });
 
-        afterEach(() => {
-            vi.useRealTimers();
+        it('should open print preview modal when available', () => {
+            const mockPrintPreviewModal = {
+                show: vi.fn(),
+            };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+
+            navbarFile.openPrintPreview();
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalled();
         });
 
-        it('should use client preview when available', async () => {
-            vi.spyOn(navbarFile, 'openClientPreview').mockResolvedValue(true);
-
-            await navbarFile.openPrintPreview();
-
-            expect(navbarFile.openClientPreview).toHaveBeenCalled();
-        });
-
-        it('should fall back to server preview when client preview not available', async () => {
-            vi.spyOn(navbarFile, 'openClientPreview').mockResolvedValue(false);
-
-            // Mock global fetch (not window.fetch) as the source uses the global
-            global.fetch = vi.fn().mockResolvedValue({
-                ok: true,
-                json: async () => ({ url: 'http://localhost/preview' }),
-            });
-
-            await navbarFile.openPrintPreview();
-
-            expect(global.fetch).toHaveBeenCalled();
-
-            await vi.runAllTimersAsync();
-        });
-
-        it('should show error when preview fails', async () => {
-            vi.spyOn(navbarFile, 'openClientPreview').mockResolvedValue(false);
-
-            // Mock global fetch with a failed response
-            global.fetch = vi.fn().mockResolvedValue({
-                ok: false,
-                status: 500,
-            });
-
-            await navbarFile.openPrintPreview();
-
-            // After fetch fails, the method handles the error internally
-            expect(global.fetch).toHaveBeenCalled();
-
-            await vi.runAllTimersAsync();
-        });
-
-        it('should show error when no session ID available', async () => {
-            vi.spyOn(navbarFile, 'openClientPreview').mockResolvedValue(false);
-            eXeLearning.app.project.odeSession = null;
+        it('should show error when print preview modal is not available', () => {
+            eXeLearning.app.modals.printpreview = null;
             const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-            await navbarFile.openPrintPreview();
+            navbarFile.openPrintPreview();
 
-            expect(consoleWarnSpy).toHaveBeenCalledWith('Print preview requires an active session id.');
+            expect(consoleWarnSpy).toHaveBeenCalledWith('[NavbarFile] Print preview modal not available');
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+            consoleWarnSpy.mockRestore();
+        });
+
+        it('should show error when modals object is missing printpreview', () => {
+            delete eXeLearning.app.modals.printpreview;
+            const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            navbarFile.openPrintPreview();
+
+            expect(consoleWarnSpy).toHaveBeenCalledWith('[NavbarFile] Print preview modal not available');
             consoleWarnSpy.mockRestore();
         });
     });

@@ -35,6 +35,8 @@ import { Epub3Exporter } from '../exporters/Epub3Exporter';
 import { ElpxExporter } from '../exporters/ElpxExporter';
 import { WebsitePreviewExporter } from '../exporters/WebsitePreviewExporter';
 import type { PreviewOptions, PreviewResult } from '../exporters/WebsitePreviewExporter';
+import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
+import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
 
 // Import renderers
@@ -436,6 +438,57 @@ export function createPreviewExporter(
     return new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
 }
 
+/**
+ * Generate print preview HTML from Yjs document
+ * Creates a single-page HTML with all pages visible for printing
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
+ * @param options - Preview options (baseUrl, basePath, version)
+ * @returns Preview result with HTML string
+ */
+export async function generatePrintPreview(
+    documentManager: YjsDocumentManagerLike,
+    resourceFetcher: ResourceFetcherLike | null,
+    options?: PrintPreviewOptions,
+): Promise<PrintPreviewResult> {
+    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    const resources = resourceFetcher
+        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+        : createNullResourceProvider();
+    const exporter = new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
+
+    // Wire up LaTeX pre-renderer hooks if available in browser context
+    const latexHooks = getLatexPreRendererHooks();
+    if (latexHooks) {
+        options = {
+            ...options,
+            preRenderLatex: latexHooks.preRenderLatex,
+            preRenderDataGameLatex: latexHooks.preRenderDataGameLatex,
+        };
+    }
+
+    return exporter.generatePreview(options);
+}
+
+/**
+ * Create a print preview exporter for advanced usage
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @returns PrintPreviewExporter instance
+ */
+export function createPrintPreviewExporter(
+    documentManager: YjsDocumentManagerLike,
+    resourceFetcher: ResourceFetcherLike | null,
+): PrintPreviewExporter {
+    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    const resources = resourceFetcher
+        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+        : createNullResourceProvider();
+    return new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
+}
+
 // Export classes for advanced usage
 export {
     // Adapters
@@ -455,6 +508,7 @@ export {
     Epub3Exporter,
     ElpxExporter,
     WebsitePreviewExporter,
+    PrintPreviewExporter,
     ComponentExporter,
     // Renderers
     IdeviceRenderer,
@@ -470,6 +524,7 @@ export {
 
 // Export types for TypeScript consumers
 export type { PreviewOptions, PreviewResult };
+export type { PrintPreviewOptions, PrintPreviewResult };
 
 // Expose to window for browser use
 if (typeof window !== 'undefined') {
@@ -482,6 +537,9 @@ if (typeof window !== 'undefined') {
         generatePreview,
         openPreviewWindow,
         createPreviewExporter,
+        // Print preview functions
+        generatePrintPreview,
+        createPrintPreviewExporter,
         // Adapters
         YjsDocumentAdapter,
         BrowserResourceProvider,
@@ -499,6 +557,7 @@ if (typeof window !== 'undefined') {
         Epub3Exporter,
         ElpxExporter,
         WebsitePreviewExporter,
+        PrintPreviewExporter,
         ComponentExporter,
         // Renderers
         IdeviceRenderer,
@@ -511,6 +570,12 @@ if (typeof window !== 'undefined') {
         // Utilities
         LibraryDetector,
     };
+
+    // Also expose PrintPreviewExporter at window level for direct access
+    (window as unknown as { PrintPreviewExporter: typeof PrintPreviewExporter }).PrintPreviewExporter =
+        PrintPreviewExporter;
+    (window as unknown as { generatePrintPreview: typeof generatePrintPreview }).generatePrintPreview =
+        generatePrintPreview;
 
     // Export as SharedExporters namespace
     (window as unknown as { SharedExporters: typeof windowExports }).SharedExporters = windowExports;

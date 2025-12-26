@@ -139,5 +139,7 @@ export { Epub3Exporter } from './exporters/Epub3Exporter';
 export { ElpxExporter } from './exporters/ElpxExporter';
 export { WebsitePreviewExporter } from './exporters/WebsitePreviewExporter';
 export type { PreviewOptions, PreviewResult } from './exporters/WebsitePreviewExporter';
+export { PrintPreviewExporter } from './exporters/PrintPreviewExporter';
+export type { PrintPreviewOptions, PrintPreviewResult } from './exporters/PrintPreviewExporter';
 export { ComponentExporter } from './exporters/ComponentExporter';
 export type { ComponentExportResult, ComponentExportOptions } from './exporters/ComponentExporter';
