@@ -3349,5 +3349,41 @@ describe('YjsStructureBinding', () => {
       expect(result.htmlContent).toContain('type="audio/webm"');
       expect(result.htmlContent).toContain('blob://');
     });
+
+    it('does not call addMediaTypes when htmlContent is empty', () => {
+      window.addMediaTypes = vi.fn((html) => html);
+      window.resolveAssetUrls = vi.fn((html) => html);
+
+      compMap.set('htmlView', '');
+
+      binding.mapToComponent(compMap, 0);
+
+      // Should not call addMediaTypes for empty content
+      expect(window.addMediaTypes).not.toHaveBeenCalled();
+    });
+
+    it('does not call addMediaTypes when htmlContent is null', () => {
+      window.addMediaTypes = vi.fn((html) => html);
+      window.resolveAssetUrls = vi.fn((html) => html);
+
+      compMap.set('htmlView', null);
+
+      binding.mapToComponent(compMap, 0);
+
+      // Should not call addMediaTypes for null content
+      expect(window.addMediaTypes).not.toHaveBeenCalled();
+    });
+
+    it('handles content with both audio and video elements', () => {
+      window.addMediaTypes = vi.fn((html) => html);
+      window.resolveAssetUrls = vi.fn((html) => html);
+
+      compMap.set('htmlView', '<audio src="asset://uuid/audio.mp3"></audio><video src="asset://uuid/video.mp4"></video>');
+
+      binding.mapToComponent(compMap, 0);
+
+      // Should call addMediaTypes since it has both audio and video
+      expect(window.addMediaTypes).toHaveBeenCalled();
+    });
   });
 });

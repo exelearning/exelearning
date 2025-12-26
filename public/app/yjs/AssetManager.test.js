@@ -2774,6 +2774,76 @@ describe('window.addMediaTypes global function', () => {
     const result = addMediaTypesFunc(input);
     expect(result).toContain('type="audio/mp4"');
   });
+
+  it('does not add type for unknown file extensions', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.xyz"></audio>';
+    const result = addMediaTypesFunc(input);
+    // Should not contain any type attribute since xyz is unknown
+    expect(result).not.toContain('type=');
+  });
+
+  it('handles source element without parent by defaulting to video', () => {
+    if (!addMediaTypesFunc) return;
+    // Just source element (edge case - normally has parent)
+    const input = '<source src="asset://uuid/media.webm">';
+    const result = addMediaTypesFunc(input);
+    // Should default to video/webm when parent is not determinable
+    expect(result).toContain('type="video/webm"');
+  });
+
+  it('preserves full document structure when input starts with <html tag', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<html><body><audio src="asset://uuid/audio.mp3"></audio></body></html>';
+    const result = addMediaTypesFunc(input);
+    // Should preserve document structure because input starts with <html
+    expect(result).toContain('<!DOCTYPE');
+    expect(result).toContain('<html');
+  });
+
+  it('handles audio element with no src attribute', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio controls></audio>';
+    const result = addMediaTypesFunc(input);
+    // Should not add type since there's no src
+    expect(result).not.toContain('type=');
+  });
+
+  it('handles URL with query string', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.mp3?v=123"></audio>';
+    const result = addMediaTypesFunc(input);
+    // Should extract extension before query string
+    expect(result).toContain('type="audio/mpeg"');
+  });
+
+  it('handles flac audio files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/lossless.flac"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/flac"');
+  });
+
+  it('handles aac audio files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.aac"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/aac"');
+  });
+
+  it('handles mkv video files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<video src="asset://uuid/video.mkv"></video>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="video/x-matroska"');
+  });
+
+  it('handles avi video files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<video src="asset://uuid/video.avi"></video>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="video/x-msvideo"');
+  });
 });
 
 describe('window.simplifyMediaElements global function', () => {
