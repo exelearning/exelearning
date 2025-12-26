@@ -60,6 +60,7 @@ export default class ModalFilemanager extends Modal {
         this.listContainer = this.modalElement.querySelector('.media-library-list-container');
         this.listTable = this.modalElement.querySelector('.media-library-list');
         this.listTbody = this.listTable?.querySelector('tbody');
+        this.emptyState = this.modalElement.querySelector('.media-library-empty');
         this.sidebar = this.modalElement.querySelector('.media-library-sidebar');
         this.sidebarEmpty = this.modalElement.querySelector('.media-library-sidebar-empty');
         this.sidebarContent = this.modalElement.querySelector('.media-library-sidebar-content');
@@ -68,6 +69,7 @@ export default class ModalFilemanager extends Modal {
         this.searchInput = this.modalElement.querySelector('.media-library-search');
         this.deleteBtn = this.modalElement.querySelector('.media-library-delete-btn');
         this.insertBtn = this.modalElement.querySelector('.media-library-insert-btn');
+        this.unzipBtn = this.modalElement.querySelector('.media-library-unzip-btn');
 
         // View controls
         this.viewBtns = this.modalElement.querySelectorAll('.media-library-view-btn');
@@ -75,6 +77,7 @@ export default class ModalFilemanager extends Modal {
         this.filterSelect = this.modalElement.querySelector('.media-library-filter');
 
         // Pagination
+        this.pagination = this.modalElement.querySelector('.media-library-pagination');
         this.paginationInfo = this.modalElement.querySelector('.media-library-page-info');
         this.prevBtn = this.modalElement.querySelector('.media-library-page-btn[data-action="prev"]');
         this.nextBtn = this.modalElement.querySelector('.media-library-page-btn[data-action="next"]');
@@ -116,6 +119,9 @@ export default class ModalFilemanager extends Modal {
             });
         }
 
+        // Drag & drop support
+        this.initDragAndDrop();
+
         // Search input
         if (this.searchInput) {
             this.searchInput.addEventListener('input', (e) => {
@@ -134,6 +140,13 @@ export default class ModalFilemanager extends Modal {
         if (this.insertBtn) {
             this.insertBtn.addEventListener('click', () => {
                 this.insertSelectedAsset();
+            });
+        }
+
+        // Unzip button
+        if (this.unzipBtn) {
+            this.unzipBtn.addEventListener('click', () => {
+                this.extractZipAsset();
             });
         }
 
@@ -450,10 +463,11 @@ export default class ModalFilemanager extends Modal {
         const assetsToRender = pageAssets || this.filteredAssets;
 
         if (assetsToRender.length === 0) {
-            this.grid.innerHTML = `<div class="media-library-empty">${_('No media files yet. Click "Add file" to upload.')}</div>`;
+            this.showEmptyState();
             return;
         }
 
+        this.hideEmptyState();
         this.grid.innerHTML = '';
 
         for (const asset of assetsToRender) {
@@ -471,10 +485,11 @@ export default class ModalFilemanager extends Modal {
         const assetsToRender = pageAssets || this.filteredAssets;
 
         if (assetsToRender.length === 0) {
-            this.listTbody.innerHTML = `<tr><td colspan="5" class="media-library-empty">${_('No media files yet. Click "Add file" to upload.')}</td></tr>`;
+            this.showEmptyState();
             return;
         }
 
+        this.hideEmptyState();
         this.listTbody.innerHTML = '';
 
         for (const asset of assetsToRender) {
@@ -507,14 +522,9 @@ export default class ModalFilemanager extends Modal {
         thumbCell.className = 'col-thumb';
         if (asset.mime && asset.mime.startsWith('image/')) {
             thumbCell.innerHTML = `<img src="${blobUrl}" alt="" loading="lazy">`;
-        } else if (asset.mime && asset.mime.startsWith('video/')) {
-            thumbCell.innerHTML = `<span class="exe-icon">videocam</span>`;
-        } else if (asset.mime && asset.mime.startsWith('audio/')) {
-            thumbCell.innerHTML = `<span class="exe-icon">audiotrack</span>`;
-        } else if (asset.mime === 'application/pdf') {
-            thumbCell.innerHTML = `<span class="exe-icon">picture_as_pdf</span>`;
         } else {
-            thumbCell.innerHTML = `<span class="exe-icon">description</span>`;
+            const icon = this.getFileIcon(asset.mime, asset.filename);
+            thumbCell.innerHTML = `<div class="list-thumb-icon"><span class="exe-icon">${icon}</span></div>`;
         }
         row.appendChild(thumbCell);
 
@@ -566,6 +576,79 @@ export default class ModalFilemanager extends Modal {
         if (mime.startsWith('audio/')) return 'Audio';
         if (mime.includes('pdf')) return 'PDF';
         return 'File';
+    }
+
+    /**
+     * Get icon name for file type based on mime type and filename
+     * @param {string} mime - MIME type
+     * @param {string} filename - Filename with extension
+     * @returns {string} Material icon name
+     */
+    getFileIcon(mime, filename) {
+        // Check by MIME type first
+        if (mime) {
+            if (mime.startsWith('image/')) return 'image';
+            if (mime.startsWith('video/')) return 'videocam';
+            if (mime.startsWith('audio/')) return 'audiotrack';
+            if (mime === 'application/pdf') return 'picture_as_pdf';
+            if (mime === 'application/zip' || mime === 'application/x-zip-compressed') return 'folder_zip';
+            if (mime === 'model/stl' || mime === 'application/sla') return 'view_in_ar';
+        }
+
+        // Check by file extension
+        if (filename) {
+            const ext = filename.split('.').pop()?.toLowerCase();
+            switch (ext) {
+                case 'pdf':
+                    return 'picture_as_pdf';
+                case 'zip':
+                case 'rar':
+                case '7z':
+                case 'tar':
+                case 'gz':
+                    return 'folder_zip';
+                case 'elp':
+                case 'elpx':
+                    return 'school';
+                case 'stl':
+                case 'obj':
+                case 'fbx':
+                case 'gltf':
+                case 'glb':
+                    return 'view_in_ar';
+                case 'doc':
+                case 'docx':
+                case 'odt':
+                    return 'description';
+                case 'xls':
+                case 'xlsx':
+                case 'ods':
+                case 'csv':
+                    return 'table_chart';
+                case 'ppt':
+                case 'pptx':
+                case 'odp':
+                    return 'slideshow';
+                case 'txt':
+                case 'md':
+                    return 'article';
+                case 'html':
+                case 'htm':
+                case 'xml':
+                case 'json':
+                    return 'code';
+                case 'js':
+                case 'css':
+                case 'py':
+                case 'java':
+                case 'php':
+                    return 'terminal';
+                default:
+                    return 'insert_drive_file';
+            }
+        }
+
+        return 'insert_drive_file';
     }
 
     /**
@@ -691,28 +774,12 @@ export default class ModalFilemanager extends Modal {
         // Determine content based on type
         if (asset.mime && asset.mime.startsWith('image/')) {
             item.innerHTML = `<img src="${blobUrl}" alt="${asset.filename || 'Image'}" loading="lazy">`;
-        } else if (asset.mime && asset.mime.startsWith('video/')) {
-            item.innerHTML = `
-                <div class="media-thumbnail video-thumbnail">
-                    <span class="media-icon video-icon"></span>
-                    <span class="media-label">${asset.filename || 'Video'}</span>
-                </div>`;
-        } else if (asset.mime && asset.mime.startsWith('audio/')) {
-            item.innerHTML = `
-                <div class="media-thumbnail audio-thumbnail">
-                    <span class="media-icon audio-icon"></span>
-                    <span class="media-label">${asset.filename || 'Audio'}</span>
-                </div>`;
-        } else if (asset.mime === 'application/pdf') {
-            item.innerHTML = `
-                <div class="media-thumbnail pdf-thumbnail">
-                    <span class="exe-icon">picture_as_pdf</span>
-                    <span class="media-label">${asset.filename || 'PDF'}</span>
-                </div>`;
         } else {
+            // Use icon for non-image files
+            const icon = this.getFileIcon(asset.mime, asset.filename);
             item.innerHTML = `
                 <div class="media-thumbnail file-thumbnail">
-                    <span class="media-icon file-icon"></span>
+                    <span class="exe-icon">${icon}</span>
                     <span class="media-label">${asset.filename || 'File'}</span>
                 </div>`;
         }
@@ -768,6 +835,43 @@ export default class ModalFilemanager extends Modal {
             this.selectedAsset = asset;
             this.selectedAssets = [asset];
             await this.showSidebarContent(asset);
+        }
+    }
+
+    /**
+     * Show empty state (no files)
+     */
+    showEmptyState() {
+        if (this.emptyState) {
+            this.emptyState.classList.add('visible');
+        }
+        if (this.grid) {
+            this.grid.style.display = 'none';
+        }
+        if (this.listContainer) {
+            this.listContainer.style.display = 'none';
+        }
+        if (this.pagination) {
+            this.pagination.style.display = 'none';
+        }
+    }
+
+    /**
+     * Hide empty state (has files)
+     */
+    hideEmptyState() {
+        if (this.emptyState) {
+            this.emptyState.classList.remove('visible');
+        }
+        if (this.viewMode === 'grid') {
+            if (this.grid) this.grid.style.display = 'grid';
+            if (this.listContainer) this.listContainer.style.display = 'none';
+        } else {
+            if (this.grid) this.grid.style.display = 'none';
+            if (this.listContainer) this.listContainer.style.display = 'flex';
+        }
+        if (this.pagination) {
+            this.pagination.style.display = 'flex';
         }
     }
 
@@ -865,6 +969,14 @@ export default class ModalFilemanager extends Modal {
             } else {
                 this.dimensionsRow.style.display = 'none';
             }
+        }
+
+        // Show/hide unzip button based on file type
+        if (this.unzipBtn) {
+            const isZip = asset.mime === 'application/zip' ||
+                          asset.mime === 'application/x-zip-compressed' ||
+                          asset.filename?.toLowerCase().endsWith('.zip');
+            this.unzipBtn.style.display = isZip ? 'inline-flex' : 'none';
         }
     }
 
@@ -1010,6 +1122,253 @@ export default class ModalFilemanager extends Modal {
                 navigator.clipboard.writeText(assetUrl);
                 alert(_('Asset URL copied to clipboard'));
             }
+        }
+    }
+
+    /**
+     * Extract contents of a ZIP file and add them as assets
+     */
+    async extractZipAsset() {
+        if (!this.selectedAsset || !this.assetManager) return;
+
+        const asset = this.selectedAsset;
+        const isZip = asset.mime === 'application/zip' ||
+                      asset.mime === 'application/x-zip-compressed' ||
+                      asset.filename?.toLowerCase().endsWith('.zip');
+
+        if (!isZip) {
+            console.warn('[MediaLibrary] Selected file is not a ZIP');
+            return;
+        }
+
+        // Confirm extraction
+        const confirmExtract = confirm(_('Extract all files from this ZIP archive?\n\nThis will add all files from the ZIP to your media library.'));
+        if (!confirmExtract) return;
+
+        try {
+            // Get the blob for this asset
+            let blob = asset.blob;
+            if (!blob) {
+                // Try to get from IndexedDB
+                const fullAsset = await this.assetManager.getAsset(asset.id);
+                blob = fullAsset?.blob;
+            }
+
+            if (!blob) {
+                alert(_('Could not read ZIP file'));
+                return;
+            }
+
+            // Check if fflate is available
+            if (!window.fflate) {
+                alert(_('ZIP extraction is not available'));
+                return;
+            }
+
+            // Show loading state
+            if (this.unzipBtn) {
+                this.unzipBtn.disabled = true;
+                this.unzipBtn.innerHTML = `<span class="exe-icon">hourglass_empty</span> ${_('Extracting...')}`;
+            }
+
+            // Convert blob to Uint8Array
+            const arrayBuffer = await blob.arrayBuffer();
+            const uint8Data = new Uint8Array(arrayBuffer);
+
+            // Extract ZIP using fflate
+            const unzipped = window.fflate.unzipSync(uint8Data);
+            const files = Object.keys(unzipped);
+            let extractedCount = 0;
+            let skippedCount = 0;
+
+            for (const filepath of files) {
+                const content = unzipped[filepath];
+
+                // Skip empty entries (directories)
+                if (!content || content.length === 0) continue;
+
+                // Get basename
+                const basename = filepath.split('/').pop();
+
+                // Skip hidden files and system files
+                if (!basename || basename.startsWith('.') || basename.startsWith('__')) {
+                    skippedCount++;
+                    continue;
+                }
+
+                try {
+                    // Create blob from extracted content
+                    const mimeType = this.getMimeTypeFromFilename(basename);
+                    const fileBlob = new Blob([content], { type: mimeType });
+
+                    // Create a File object with the correct name
+                    const file = new File([fileBlob], basename, { type: mimeType });
+
+                    // Upload to asset manager
+                    await this.assetManager.insertImage(file);
+                    extractedCount++;
+                    Logger.log(`[MediaLibrary] Extracted: ${basename}`);
+                } catch (err) {
+                    console.error(`[MediaLibrary] Failed to extract ${filepath}:`, err);
+                    skippedCount++;
+                }
+            }
+
+            // Restore button state
+            if (this.unzipBtn) {
+                this.unzipBtn.disabled = false;
+                this.unzipBtn.innerHTML = `<span class="exe-icon">folder_zip</span> ${_('Extract')}`;
+            }
+
+            // Show result
+            if (extractedCount > 0) {
+                Logger.log(`[MediaLibrary] Extracted ${extractedCount} files from ZIP`);
+                // Reload assets to show new files
+                await this.loadAssets();
+            }
+
+            // Notify user
+            if (skippedCount > 0) {
+                alert(_('Extracted %1 files. %2 files were skipped.').replace('%1', extractedCount).replace('%2', skippedCount));
+            } else if (extractedCount > 0) {
+                alert(_('Extracted %1 files successfully.').replace('%1', extractedCount));
+            } else {
+                alert(_('No files were extracted from the ZIP.'));
+            }
+
+        } catch (err) {
+            console.error('[MediaLibrary] Failed to extract ZIP:', err);
+            alert(_('Failed to extract ZIP file'));
+
+            // Restore button state
+            if (this.unzipBtn) {
+                this.unzipBtn.disabled = false;
+                this.unzipBtn.innerHTML = `<span class="exe-icon">folder_zip</span> ${_('Extract')}`;
+            }
+        }
+    }
+
+    /**
+     * Get MIME type from filename extension
+     */
+    getMimeTypeFromFilename(filename) {
+        const ext = filename.split('.').pop()?.toLowerCase();
+        const mimeTypes = {
+            // Images
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'png': 'image/png',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'svg': 'image/svg+xml',
+            'ico': 'image/x-icon',
+            'bmp': 'image/bmp',
+            // Video
+            'mp4': 'video/mp4',
+            'webm': 'video/webm',
+            'ogg': 'video/ogg',
+            'mov': 'video/quicktime',
+            'avi': 'video/x-msvideo',
+            // Audio
+            'mp3': 'audio/mpeg',
+            'wav': 'audio/wav',
+            'ogg': 'audio/ogg',
+            'flac': 'audio/flac',
+            'm4a': 'audio/mp4',
+            // Documents
+            'pdf': 'application/pdf',
+            'doc': 'application/msword',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls': 'application/vnd.ms-excel',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt': 'application/vnd.ms-powerpoint',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            // Other
+            'zip': 'application/zip',
+            'json': 'application/json',
+            'xml': 'application/xml',
+            'html': 'text/html',
+            'css': 'text/css',
+            'js': 'application/javascript',
+            'txt': 'text/plain',
+            'md': 'text/markdown',
+            'csv': 'text/csv',
+            'stl': 'model/stl',
+        };
+        return mimeTypes[ext] || 'application/octet-stream';
+    }
+
+    /**
+     * Initialize drag & drop support for file uploads
+     */
+    initDragAndDrop() {
+        const mainArea = this.modalElement.querySelector('.media-library-main');
+        if (!mainArea) return;
+
+        let dragCounter = 0;
+
+        // Prevent default drag behaviors on the whole modal
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            mainArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        // Handle dragenter
+        mainArea.addEventListener('dragenter', (e) => {
+            dragCounter++;
+            if (dragCounter === 1) {
+                mainArea.classList.add('drag-over');
+                // Only show overlay when there are files (empty state already shows drop hint)
+                if (!this.emptyState?.classList.contains('visible')) {
+                    this.showDropzoneOverlay(mainArea);
+                }
+            }
+        });
+
+        // Handle dragleave
+        mainArea.addEventListener('dragleave', (e) => {
+            dragCounter--;
+            if (dragCounter === 0) {
+                mainArea.classList.remove('drag-over');
+                this.hideDropzoneOverlay(mainArea);
+            }
+        });
+
+        // Handle drop
+        mainArea.addEventListener('drop', async (e) => {
+            dragCounter = 0;
+            mainArea.classList.remove('drag-over');
+            this.hideDropzoneOverlay(mainArea);
+
+            const files = e.dataTransfer?.files;
+            if (files && files.length > 0) {
+                await this.uploadFiles(files);
+            }
+        });
+    }
+
+    /**
+     * Show dropzone overlay when dragging files
+     */
+    showDropzoneOverlay(container) {
+        // Remove existing overlay if any
+        this.hideDropzoneOverlay(container);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'media-library-dropzone-overlay';
+        overlay.innerHTML = `<p>${_('Drop files here to upload')}</p>`;
+        container.appendChild(overlay);
+    }
+
+    /**
+     * Hide dropzone overlay
+     */
+    hideDropzoneOverlay(container) {
+        const overlay = container.querySelector('.media-library-dropzone-overlay');
+        if (overlay) {
+            overlay.remove();
         }
     }
 

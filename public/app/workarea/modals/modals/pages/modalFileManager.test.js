@@ -38,8 +38,12 @@ describe('ModalFilemanager', () => {
     mockElement = document.createElement('div');
     mockElement.id = 'modalFileManager';
     mockElement.innerHTML = `
-      <div class="media-library-grid"></div>
-      <div class="media-library-list-container" style="display:none;"><table class="media-library-list"><thead><th data-sort="name"></th></thead><tbody></tbody></table></div>
+      <div class="media-library-main">
+        <div class="media-library-empty"></div>
+        <div class="media-library-grid"></div>
+        <div class="media-library-list-container" style="display:none;"><table class="media-library-list"><thead><th data-sort="name"></th></thead><tbody></tbody></table></div>
+        <div class="media-library-pagination"></div>
+      </div>
       <div class="media-library-sidebar">
         <div class="media-library-sidebar-empty"></div>
         <div class="media-library-sidebar-content"></div>
@@ -253,10 +257,19 @@ describe('ModalFilemanager', () => {
   });
 
   describe('setViewMode', () => {
-    it('should switch to list view', () => {
+    it('should switch to list view when has assets', () => {
+      // Need assets to see list container (otherwise empty state is shown)
+      modal.filteredAssets = [{ id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) }];
       modal.setViewMode('list');
       expect(modal.grid.style.display).toBe('none');
       expect(modal.listContainer.style.display).toBe('flex');
+    });
+
+    it('should show empty state when switching to list view with no assets', () => {
+      modal.filteredAssets = [];
+      modal.setViewMode('list');
+      expect(modal.emptyState.classList.contains('visible')).toBe(true);
+      expect(modal.listContainer.style.display).toBe('none');
     });
   });
 
@@ -309,9 +322,17 @@ describe('ModalFilemanager', () => {
   describe('renderGrid/renderList', () => {
     it('should show empty state when no assets', () => {
       modal.renderGrid([]);
-      expect(modal.grid.innerHTML).toContain('No media files yet');
-      modal.renderList([]);
-      expect(modal.listTbody.innerHTML).toContain('No media files yet');
+      expect(modal.emptyState.classList.contains('visible')).toBe(true);
+      expect(modal.grid.style.display).toBe('none');
+      expect(modal.pagination.style.display).toBe('none');
+    });
+
+    it('should hide empty state when has assets', () => {
+      const asset = { id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.renderGrid([asset]);
+      expect(modal.emptyState.classList.contains('visible')).toBe(false);
+      expect(modal.grid.style.display).toBe('grid');
+      expect(modal.pagination.style.display).toBe('flex');
     });
 
     it('should render grid and list items', () => {
@@ -320,6 +341,34 @@ describe('ModalFilemanager', () => {
       expect(modal.grid.querySelectorAll('.media-library-item').length).toBe(1);
       modal.renderList([asset]);
       expect(modal.listTbody.querySelectorAll('tr').length).toBe(1);
+    });
+  });
+
+  describe('showEmptyState/hideEmptyState', () => {
+    it('should show empty state and hide grid/list/pagination', () => {
+      modal.showEmptyState();
+      expect(modal.emptyState.classList.contains('visible')).toBe(true);
+      expect(modal.grid.style.display).toBe('none');
+      expect(modal.listContainer.style.display).toBe('none');
+      expect(modal.pagination.style.display).toBe('none');
+    });
+
+    it('should hide empty state and show grid in grid mode', () => {
+      modal.viewMode = 'grid';
+      modal.hideEmptyState();
+      expect(modal.emptyState.classList.contains('visible')).toBe(false);
+      expect(modal.grid.style.display).toBe('grid');
+      expect(modal.listContainer.style.display).toBe('none');
+      expect(modal.pagination.style.display).toBe('flex');
+    });
+
+    it('should hide empty state and show list in list mode', () => {
+      modal.viewMode = 'list';
+      modal.hideEmptyState();
+      expect(modal.emptyState.classList.contains('visible')).toBe(false);
+      expect(modal.grid.style.display).toBe('none');
+      expect(modal.listContainer.style.display).toBe('flex');
+      expect(modal.pagination.style.display).toBe('flex');
     });
   });
 
@@ -601,6 +650,142 @@ describe('ModalFilemanager', () => {
       expect(modal.filteredAssets[0].mime).toBe('video/mp4');
       expect(modal.filteredAssets[1].mime).toBe('image/png');
       expect(modal.filteredAssets[2].mime).toBe('audio/mpeg');
+    });
+  });
+
+  describe('extractZipAsset', () => {
+    it('should not extract if no asset selected', async () => {
+      modal.selectedAsset = null;
+      await modal.extractZipAsset();
+      // Should return early without error
+    });
+
+    it('should not extract if file is not a ZIP', async () => {
+      modal.selectedAsset = { id: '1', filename: 'test.png', mime: 'image/png' };
+      const warnSpy = vi.spyOn(console, 'warn');
+      await modal.extractZipAsset();
+      expect(warnSpy).toHaveBeenCalledWith('[MediaLibrary] Selected file is not a ZIP');
+    });
+
+    it('should show unzip button only for ZIP files', async () => {
+      // Mock unzip button
+      const unzipBtn = document.createElement('button');
+      unzipBtn.className = 'media-library-unzip-btn';
+      mockElement.appendChild(unzipBtn);
+      modal.unzipBtn = unzipBtn;
+
+      // Test with ZIP file
+      const zipAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['x']) };
+      await modal.showSidebarContent(zipAsset);
+      expect(unzipBtn.style.display).toBe('inline-flex');
+
+      // Test with non-ZIP file
+      const pngAsset = { id: '2', filename: 'test.png', mime: 'image/png', blob: new Blob(['x']) };
+      await modal.showSidebarContent(pngAsset);
+      expect(unzipBtn.style.display).toBe('none');
+    });
+  });
+
+  describe('getMimeTypeFromFilename', () => {
+    it('should return correct mime types for common extensions', () => {
+      expect(modal.getMimeTypeFromFilename('test.jpg')).toBe('image/jpeg');
+      expect(modal.getMimeTypeFromFilename('test.png')).toBe('image/png');
+      expect(modal.getMimeTypeFromFilename('test.mp4')).toBe('video/mp4');
+      expect(modal.getMimeTypeFromFilename('test.mp3')).toBe('audio/mpeg');
+      expect(modal.getMimeTypeFromFilename('test.pdf')).toBe('application/pdf');
+      expect(modal.getMimeTypeFromFilename('test.zip')).toBe('application/zip');
+    });
+
+    it('should return octet-stream for unknown extensions', () => {
+      expect(modal.getMimeTypeFromFilename('test.xyz')).toBe('application/octet-stream');
+      expect(modal.getMimeTypeFromFilename('noextension')).toBe('application/octet-stream');
+    });
+  });
+
+  describe('getFileIcon', () => {
+    it('should return correct icon for mime types', () => {
+      expect(modal.getFileIcon('image/png', 'test.png')).toBe('image');
+      expect(modal.getFileIcon('video/mp4', 'test.mp4')).toBe('videocam');
+      expect(modal.getFileIcon('audio/mpeg', 'test.mp3')).toBe('audiotrack');
+      expect(modal.getFileIcon('application/pdf', 'test.pdf')).toBe('picture_as_pdf');
+      expect(modal.getFileIcon('application/zip', 'test.zip')).toBe('folder_zip');
+    });
+
+    it('should return correct icon for file extensions', () => {
+      expect(modal.getFileIcon(null, 'test.zip')).toBe('folder_zip');
+      expect(modal.getFileIcon(null, 'test.elp')).toBe('school');
+      expect(modal.getFileIcon(null, 'test.elpx')).toBe('school');
+      expect(modal.getFileIcon(null, 'test.stl')).toBe('view_in_ar');
+      expect(modal.getFileIcon(null, 'test.docx')).toBe('description');
+      expect(modal.getFileIcon(null, 'test.xlsx')).toBe('table_chart');
+      expect(modal.getFileIcon(null, 'test.pptx')).toBe('slideshow');
+      expect(modal.getFileIcon(null, 'test.txt')).toBe('article');
+      expect(modal.getFileIcon(null, 'test.html')).toBe('code');
+      expect(modal.getFileIcon(null, 'test.js')).toBe('terminal');
+    });
+
+    it('should return default icon for unknown types', () => {
+      expect(modal.getFileIcon(null, 'test.unknown')).toBe('insert_drive_file');
+      expect(modal.getFileIcon(null, null)).toBe('insert_drive_file');
+      expect(modal.getFileIcon('application/octet-stream', 'file')).toBe('insert_drive_file');
+    });
+  });
+
+  describe('drag and drop', () => {
+    it('should initialize drag and drop on main area', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      expect(mainArea).not.toBeNull();
+    });
+
+    it('should add drag-over class on dragenter', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      const event = new Event('dragenter', { bubbles: true });
+      event.preventDefault = vi.fn();
+      event.stopPropagation = vi.fn();
+      mainArea.dispatchEvent(event);
+      expect(mainArea.classList.contains('drag-over')).toBe(true);
+    });
+
+    it('should remove drag-over class on dragleave', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      // First enter
+      const enterEvent = new Event('dragenter', { bubbles: true });
+      enterEvent.preventDefault = vi.fn();
+      enterEvent.stopPropagation = vi.fn();
+      mainArea.dispatchEvent(enterEvent);
+      // Then leave
+      const leaveEvent = new Event('dragleave', { bubbles: true });
+      leaveEvent.preventDefault = vi.fn();
+      leaveEvent.stopPropagation = vi.fn();
+      mainArea.dispatchEvent(leaveEvent);
+      expect(mainArea.classList.contains('drag-over')).toBe(false);
+    });
+
+    it('should upload files on drop', async () => {
+      const uploadSpy = vi.spyOn(modal, 'uploadFiles').mockResolvedValue();
+      const mainArea = mockElement.querySelector('.media-library-main');
+      const file = new File(['x'], 'test.png', { type: 'image/png' });
+
+      const dropEvent = new Event('drop', { bubbles: true });
+      dropEvent.preventDefault = vi.fn();
+      dropEvent.stopPropagation = vi.fn();
+      dropEvent.dataTransfer = { files: [file] };
+
+      mainArea.dispatchEvent(dropEvent);
+      expect(uploadSpy).toHaveBeenCalledWith([file]);
+    });
+
+    it('should show dropzone overlay on drag', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      modal.showDropzoneOverlay(mainArea);
+      expect(mainArea.querySelector('.media-library-dropzone-overlay')).not.toBeNull();
+    });
+
+    it('should hide dropzone overlay', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      modal.showDropzoneOverlay(mainArea);
+      modal.hideDropzoneOverlay(mainArea);
+      expect(mainArea.querySelector('.media-library-dropzone-overlay')).toBeNull();
     });
   });
 });

@@ -40,7 +40,7 @@ export default defineConfig({
         ],
 
         // Worker isolation - critical for memory management
-        pool: 'forks',
+        pool: 'threads',
         singleFork: false,
         isolate: true,
 
