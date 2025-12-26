@@ -3253,4 +3253,137 @@ describe('YjsStructureBinding', () => {
       });
     });
   });
+
+  describe('mapToComponent media type handling', () => {
+    let compMap;
+
+    beforeEach(() => {
+      compMap = new Y.Map();
+      integrateYType(compMap);
+      compMap.set('id', 'idevice-1');
+      compMap.set('ideviceId', 'idevice-1');
+      compMap.set('ideviceType', 'udl-content');
+      compMap.set('order', 0);
+    });
+
+    afterEach(() => {
+      delete window.addMediaTypes;
+      delete window.resolveAssetUrls;
+    });
+
+    it('calls addMediaTypes before resolveAssetUrls for audio content', () => {
+      const callOrder = [];
+
+      window.addMediaTypes = vi.fn((html) => {
+        callOrder.push('addMediaTypes');
+        return html.replace('<audio', '<audio type="audio/webm"');
+      });
+
+      window.resolveAssetUrls = vi.fn((html) => {
+        callOrder.push('resolveAssetUrls');
+        return html.replace('asset://', 'blob://');
+      });
+
+      compMap.set('htmlView', '<audio src="asset://uuid/audio.webm"></audio>');
+
+      const result = binding.mapToComponent(compMap, 0);
+
+      expect(callOrder).toEqual(['addMediaTypes', 'resolveAssetUrls']);
+      expect(window.addMediaTypes).toHaveBeenCalled();
+      expect(window.resolveAssetUrls).toHaveBeenCalled();
+    });
+
+    it('calls addMediaTypes for video content', () => {
+      window.addMediaTypes = vi.fn((html) => html);
+      window.resolveAssetUrls = vi.fn((html) => html);
+
+      compMap.set('htmlView', '<video src="asset://uuid/video.mp4"></video>');
+
+      binding.mapToComponent(compMap, 0);
+
+      expect(window.addMediaTypes).toHaveBeenCalled();
+    });
+
+    it('does not call addMediaTypes when no audio or video present', () => {
+      window.addMediaTypes = vi.fn((html) => html);
+      window.resolveAssetUrls = vi.fn((html) => html);
+
+      compMap.set('htmlView', '<p>No media content</p>');
+
+      binding.mapToComponent(compMap, 0);
+
+      expect(window.addMediaTypes).not.toHaveBeenCalled();
+    });
+
+    it('still resolves asset URLs when addMediaTypes is not available', () => {
+      window.resolveAssetUrls = vi.fn((html) => html.replace('asset://', 'blob://'));
+
+      compMap.set('htmlView', '<audio src="asset://uuid/audio.webm"></audio>');
+
+      const result = binding.mapToComponent(compMap, 0);
+
+      expect(result.htmlContent).toContain('blob://');
+    });
+
+    it('type attribute is added before URL resolution', () => {
+      // Simulates the fix: addMediaTypes extracts extension from asset:// URL
+      // before resolveAssetUrls converts it to blob:// (losing the extension)
+      window.addMediaTypes = vi.fn((html) => {
+        // Can extract .webm extension from asset:// URL
+        if (html.includes('asset://') && html.includes('.webm')) {
+          return html.replace('<audio', '<audio type="audio/webm"');
+        }
+        return html;
+      });
+
+      window.resolveAssetUrls = vi.fn((html) => {
+        // After this, extension info is lost
+        return html.replace(/asset:\/\/[^"]+\.webm/g, 'blob://test-blob-url');
+      });
+
+      compMap.set('htmlView', '<audio src="asset://uuid/audio.webm" class="mediaelement"></audio>');
+
+      const result = binding.mapToComponent(compMap, 0);
+
+      // Type should be present because addMediaTypes ran before resolveAssetUrls
+      expect(result.htmlContent).toContain('type="audio/webm"');
+      expect(result.htmlContent).toContain('blob://');
+    });
+
+    it('does not call addMediaTypes when htmlContent is empty', () => {
+      window.addMediaTypes = vi.fn((html) => html);
+      window.resolveAssetUrls = vi.fn((html) => html);
+
+      compMap.set('htmlView', '');
+
+      binding.mapToComponent(compMap, 0);
+
+      // Should not call addMediaTypes for empty content
+      expect(window.addMediaTypes).not.toHaveBeenCalled();
+    });
+
+    it('does not call addMediaTypes when htmlContent is null', () => {
+      window.addMediaTypes = vi.fn((html) => html);
+      window.resolveAssetUrls = vi.fn((html) => html);
+
+      compMap.set('htmlView', null);
+
+      binding.mapToComponent(compMap, 0);
+
+      // Should not call addMediaTypes for null content
+      expect(window.addMediaTypes).not.toHaveBeenCalled();
+    });
+
+    it('handles content with both audio and video elements', () => {
+      window.addMediaTypes = vi.fn((html) => html);
+      window.resolveAssetUrls = vi.fn((html) => html);
+
+      compMap.set('htmlView', '<audio src="asset://uuid/audio.mp3"></audio><video src="asset://uuid/video.mp4"></video>');
+
+      binding.mapToComponent(compMap, 0);
+
+      // Should call addMediaTypes since it has both audio and video
+      expect(window.addMediaTypes).toHaveBeenCalled();
+    });
+  });
 });

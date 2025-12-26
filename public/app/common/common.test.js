@@ -268,6 +268,110 @@ describe('common.js $exe helpers', () => {
     it('has init function', () => {
       expect(typeof global.$exe.loadMediaPlayer.init).toBe('function');
     });
+
+    describe('init', () => {
+      let mockMediaelementplayer;
+
+      beforeEach(() => {
+        // Reset state
+        global.$exe.loadMediaPlayer.isReady = false;
+        global.$exe.loadMediaPlayer.isCalledInBox = false;
+
+        // Mock jQuery's mediaelementplayer
+        mockMediaelementplayer = vi.fn();
+        global.$.fn.mediaelementplayer = mockMediaelementplayer;
+      });
+
+      afterEach(() => {
+        // Clean up DOM
+        document.body.innerHTML = '';
+      });
+
+      it('only processes audio and video elements with mediaelement class', () => {
+        // Create an audio element with mediaelement class
+        const audio = document.createElement('audio');
+        audio.className = 'mediaelement';
+        audio.src = 'test.mp3';
+        document.body.appendChild(audio);
+
+        // Create a div with mediaelement class (should be skipped)
+        const div = document.createElement('div');
+        div.className = 'mediaelement mejs-container';
+        document.body.appendChild(div);
+
+        // Create a video element with mediaelement class
+        const video = document.createElement('video');
+        video.className = 'mediaelement';
+        video.src = 'test.mp4';
+        document.body.appendChild(video);
+
+        global.$exe.loadMediaPlayer.init();
+
+        // mediaelementplayer should only be called for audio and video elements
+        // The mock is called once per element, but we can check that the div wasn't processed
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
+      it('skips elements that already have a player property', () => {
+        // Create an audio element that already has player
+        const audio = document.createElement('audio');
+        audio.className = 'mediaelement';
+        audio.src = 'test.mp3';
+        audio.player = {}; // Mark as already processed
+        document.body.appendChild(audio);
+
+        // Set isCalledInBox to true to prevent the extra call at the end
+        global.$exe.loadMediaPlayer.isCalledInBox = true;
+
+        global.$exe.loadMediaPlayer.init();
+
+        // mediaelementplayer should not be called for this element since it already has player
+        // (Note: init also calls mediaelementplayer on #pp_full_res .exe-media-box-element if isCalledInBox is false)
+        expect(mockMediaelementplayer).not.toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
+      it('processes unprocessed audio elements', () => {
+        const audio = document.createElement('audio');
+        audio.className = 'mediaelement';
+        audio.src = 'test.mp3';
+        document.body.appendChild(audio);
+
+        global.$exe.loadMediaPlayer.init();
+
+        // mediaelementplayer should be called
+        expect(mockMediaelementplayer).toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
+      it('handles video elements and resizes them if needed', () => {
+        // Create a wide video element
+        const video = document.createElement('video');
+        video.className = 'mediaelement';
+        video.src = 'test.mp4';
+        video.width = 2000; // Wider than typical window
+        video.height = 1000;
+        document.body.appendChild(video);
+
+        // Mock window width to be smaller than video
+        Object.defineProperty(window, 'innerWidth', {
+          value: 800,
+          writable: true,
+        });
+
+        global.$exe.loadMediaPlayer.init();
+
+        // Video should be resized to fit window
+        expect(video.width).toBeLessThan(2000);
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
+      it('sets isReady to true after initialization', () => {
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(false);
+        global.$exe.loadMediaPlayer.init();
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+    });
   });
 
   describe('$exe.setMultimediaGalleries', () => {

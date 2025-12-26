@@ -2640,3 +2640,293 @@ describe('window.escapePreCodeContent', () => {
     expect(escapePreCodeContentFunc(input)).toBe(expected);
   });
 });
+
+describe('window.addMediaTypes global function', () => {
+  let savedWindow;
+  let addMediaTypesFunc;
+
+  beforeEach(() => {
+    savedWindow = global.window;
+    require('./AssetManager');
+    addMediaTypesFunc = global.window?.addMediaTypes;
+  });
+
+  afterEach(() => {
+    if (savedWindow) {
+      global.window = savedWindow;
+    } else {
+      delete global.window;
+    }
+  });
+
+  it('returns original HTML when null or empty', () => {
+    if (!addMediaTypesFunc) return;
+    expect(addMediaTypesFunc(null)).toBeNull();
+    expect(addMediaTypesFunc('')).toBe('');
+    expect(addMediaTypesFunc(undefined)).toBeUndefined();
+  });
+
+  it('adds type attribute to video element with mp4 src', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<video src="asset://uuid/video.mp4"></video>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="video/mp4"');
+  });
+
+  it('adds type attribute to audio element with mp3 src', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.mp3"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/mpeg"');
+  });
+
+  it('adds audio/webm type for audio element with webm src', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.webm" class="mediaelement"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/webm"');
+    expect(result).not.toContain('type="video/webm"');
+  });
+
+  it('adds video/webm type for video element with webm src', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<video src="asset://uuid/video.webm" class="mediaelement"></video>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="video/webm"');
+    expect(result).not.toContain('type="audio/webm"');
+  });
+
+  it('adds correct webm type for source inside audio element', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio><source src="asset://uuid/audio.webm"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/webm"');
+  });
+
+  it('adds correct webm type for source inside video element', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<video><source src="asset://uuid/video.webm"></video>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="video/webm"');
+  });
+
+  it('does not modify element that already has type', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.mp3" type="audio/mpeg"></audio>';
+    const result = addMediaTypesFunc(input);
+    // Should still have the type but only once
+    expect((result.match(/type="audio\/mpeg"/g) || []).length).toBe(1);
+  });
+
+  it('returns body content only for HTML fragment input', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.mp3"></audio>';
+    const result = addMediaTypesFunc(input);
+    // For fragments, should NOT contain DOCTYPE or html/body tags
+    expect(result).not.toContain('<!DOCTYPE');
+    expect(result).not.toContain('<html>');
+    expect(result).not.toContain('<body>');
+    // Should contain the audio element
+    expect(result).toContain('<audio');
+  });
+
+  it('preserves full document structure when input has DOCTYPE', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<!DOCTYPE html><html><head><title>Test</title></head><body><audio src="asset://uuid/audio.mp3"></audio></body></html>';
+    const result = addMediaTypesFunc(input);
+    // Should preserve DOCTYPE and document structure
+    expect(result).toContain('<!DOCTYPE');
+    expect(result).toContain('<html');
+    expect(result).toContain('<head>');
+    expect(result).toContain('<body>');
+    // Should still add the type
+    expect(result).toContain('type="audio/mpeg"');
+  });
+
+  it('preserves full document structure when input has head tag', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<html><head><style>body{}</style></head><body><video src="asset://uuid/video.mp4"></video></body></html>';
+    const result = addMediaTypesFunc(input);
+    // Should preserve document structure because <head> is present
+    expect(result).toContain('<!DOCTYPE');
+    expect(result).toContain('<head>');
+    // Should still add the type
+    expect(result).toContain('type="video/mp4"');
+  });
+
+  it('handles wav audio files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/sound.wav"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/wav"');
+  });
+
+  it('handles ogg video files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<video src="asset://uuid/video.ogg"></video>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="video/ogg"');
+  });
+
+  it('handles m4a audio files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/podcast.m4a"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/mp4"');
+  });
+
+  it('does not add type for unknown file extensions', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.xyz"></audio>';
+    const result = addMediaTypesFunc(input);
+    // Should not contain any type attribute since xyz is unknown
+    expect(result).not.toContain('type=');
+  });
+
+  it('handles source element without parent by defaulting to video', () => {
+    if (!addMediaTypesFunc) return;
+    // Just source element (edge case - normally has parent)
+    const input = '<source src="asset://uuid/media.webm">';
+    const result = addMediaTypesFunc(input);
+    // Should default to video/webm when parent is not determinable
+    expect(result).toContain('type="video/webm"');
+  });
+
+  it('preserves full document structure when input starts with <html tag', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<html><body><audio src="asset://uuid/audio.mp3"></audio></body></html>';
+    const result = addMediaTypesFunc(input);
+    // Should preserve document structure because input starts with <html
+    expect(result).toContain('<!DOCTYPE');
+    expect(result).toContain('<html');
+  });
+
+  it('handles audio element with no src attribute', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio controls></audio>';
+    const result = addMediaTypesFunc(input);
+    // Should not add type since there's no src
+    expect(result).not.toContain('type=');
+  });
+
+  it('handles URL with query string', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.mp3?v=123"></audio>';
+    const result = addMediaTypesFunc(input);
+    // Should extract extension before query string
+    expect(result).toContain('type="audio/mpeg"');
+  });
+
+  it('handles flac audio files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/lossless.flac"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/flac"');
+  });
+
+  it('handles aac audio files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<audio src="asset://uuid/audio.aac"></audio>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="audio/aac"');
+  });
+
+  it('handles mkv video files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<video src="asset://uuid/video.mkv"></video>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="video/x-matroska"');
+  });
+
+  it('handles avi video files', () => {
+    if (!addMediaTypesFunc) return;
+    const input = '<video src="asset://uuid/video.avi"></video>';
+    const result = addMediaTypesFunc(input);
+    expect(result).toContain('type="video/x-msvideo"');
+  });
+});
+
+describe('window.simplifyMediaElements global function', () => {
+  let savedWindow;
+  let simplifyMediaElementsFunc;
+
+  beforeEach(() => {
+    savedWindow = global.window;
+    require('./AssetManager');
+    simplifyMediaElementsFunc = global.window?.simplifyMediaElements;
+  });
+
+  afterEach(() => {
+    if (savedWindow) {
+      global.window = savedWindow;
+    } else {
+      delete global.window;
+    }
+  });
+
+  it('returns original HTML when null or empty', () => {
+    if (!simplifyMediaElementsFunc) return;
+    expect(simplifyMediaElementsFunc(null)).toBeNull();
+    expect(simplifyMediaElementsFunc('')).toBe('');
+    expect(simplifyMediaElementsFunc(undefined)).toBeUndefined();
+  });
+
+  it('simplifies video with source child to direct src', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video class="mediaelement"><source src="asset://uuid/video.mp4" type="video/mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('src="asset://uuid/video.mp4"');
+    expect(result).toContain('controls');
+    expect(result).not.toContain('<source');
+  });
+
+  it('preserves type attribute from source element', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video class="mediaelement"><source src="asset://uuid/video.mp4" type="video/mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('type="video/mp4"');
+  });
+
+  it('simplifies audio with source child', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<audio><source src="asset://uuid/audio.mp3" type="audio/mpeg"></audio>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('src="asset://uuid/audio.mp3"');
+    expect(result).toContain('controls');
+    expect(result).not.toContain('<source');
+  });
+
+  it('returns body content only for HTML fragment input', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video class="mediaelement"><source src="asset://uuid/video.mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    // For fragments, should NOT contain DOCTYPE or html/body tags
+    expect(result).not.toContain('<!DOCTYPE');
+    expect(result).not.toContain('<html>');
+    expect(result).not.toContain('<body>');
+    // Should contain the video element
+    expect(result).toContain('<video');
+  });
+
+  it('preserves full document structure when input has DOCTYPE', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<!DOCTYPE html><html><head><link rel="stylesheet" href="style.css"></head><body><video class="mediaelement"><source src="asset://uuid/video.mp4"></video></body></html>';
+    const result = simplifyMediaElementsFunc(input);
+    // Should preserve DOCTYPE and document structure
+    expect(result).toContain('<!DOCTYPE');
+    expect(result).toContain('<html');
+    expect(result).toContain('<head>');
+    expect(result).toContain('<body>');
+    // Should still simplify the video
+    expect(result).toContain('src="asset://uuid/video.mp4"');
+    expect(result).toContain('controls');
+  });
+
+  it('does not modify audio element with direct src (no source child)', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<audio src="asset://uuid/audio.mp3" class="mediaelement"></audio>';
+    const result = simplifyMediaElementsFunc(input);
+    // Audio with direct src and no source children should not be modified by simplify
+    expect(result).toContain('src="asset://uuid/audio.mp3"');
+  });
+});

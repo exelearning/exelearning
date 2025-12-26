@@ -2189,7 +2189,6 @@ window.addMediaTypes = function(html) {
     // Video
     mp4: 'video/mp4',
     m4v: 'video/mp4',
-    webm: 'video/webm',
     ogg: 'video/ogg',
     ogv: 'video/ogg',
     mov: 'video/quicktime',
@@ -2202,6 +2201,13 @@ window.addMediaTypes = function(html) {
     oga: 'audio/ogg',
     aac: 'audio/aac',
     flac: 'audio/flac',
+    // WebM can be audio or video - determine by element tag
+    webm: null, // Special handling below
+  };
+
+  // Special handling for webm - can be audio or video
+  const getWebmType = (tagName) => {
+    return tagName.toLowerCase() === 'audio' ? 'audio/webm' : 'video/webm';
   };
 
   // Extract file extension from URL
@@ -2231,9 +2237,22 @@ window.addMediaTypes = function(html) {
 
     const src = el.getAttribute('src') || '';
     const ext = getExtension(src);
-    if (ext && mimeTypes[ext]) {
-      el.setAttribute('type', mimeTypes[ext]);
-      modified++;
+    if (ext) {
+      let mimeType;
+      if (ext === 'webm') {
+        // Determine parent element for webm - could be audio or video
+        const parentTag = el.tagName === 'SOURCE'
+          ? el.parentElement?.tagName || 'video'
+          : el.tagName;
+        mimeType = getWebmType(parentTag);
+      } else {
+        mimeType = mimeTypes[ext];
+      }
+
+      if (mimeType) {
+        el.setAttribute('type', mimeType);
+        modified++;
+      }
     }
   });
 
@@ -2241,7 +2260,17 @@ window.addMediaTypes = function(html) {
     Logger.log(`[addMediaTypes] Added MIME types to ${modified} media element(s)`);
   }
 
-  return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  // Check if input was a full document (has DOCTYPE or html/head tags)
+  // If so, preserve the document structure. Otherwise, return body content only.
+  const isFullDocument = html.trim().startsWith('<!DOCTYPE') ||
+                         html.trim().startsWith('<html') ||
+                         html.includes('<head>');
+  if (isFullDocument) {
+    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  }
+
+  // For fragments, return only the body content
+  return doc.body.innerHTML;
 };
 
 /**
@@ -2330,7 +2359,17 @@ window.simplifyMediaElements = function(html) {
     Logger.log(`[simplifyMediaElements] Simplified ${modified} media element(s)`);
   }
 
-  return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  // Check if input was a full document (has DOCTYPE or html/head tags)
+  // If so, preserve the document structure. Otherwise, return body content only.
+  const isFullDocument = html.trim().startsWith('<!DOCTYPE') ||
+                         html.trim().startsWith('<html') ||
+                         html.includes('<head>');
+  if (isFullDocument) {
+    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  }
+
+  // For fragments, return only the body content
+  return doc.body.innerHTML;
 };
 
 /**
