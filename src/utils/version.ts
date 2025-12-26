@@ -12,6 +12,42 @@ interface PackageJson {
     name?: string;
 }
 
+// ============================================================================
+// DEPENDENCY INJECTION
+// ============================================================================
+
+export interface VersionDependencies {
+    existsSync: typeof existsSync;
+    readFileSync: typeof readFileSync;
+    dirname: string;
+}
+
+const defaultDeps: VersionDependencies = {
+    existsSync,
+    readFileSync,
+    dirname: __dirname,
+};
+
+let deps = { ...defaultDeps };
+
+/**
+ * Configure dependencies for testing
+ */
+export function configure(newDeps: Partial<VersionDependencies>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+/**
+ * Reset dependencies to defaults
+ */
+export function resetDependencies(): void {
+    deps = { ...defaultDeps };
+}
+
+// ============================================================================
+// VERSION FUNCTIONS
+// ============================================================================
+
 /**
  * Get app version from environment or package.json
  * Returns the version string (e.g., "v3.1.0")
@@ -21,14 +57,14 @@ export const getAppVersion = (): string => {
         return process.env.APP_VERSION;
     }
     // Try to find package.json by searching up the directory tree
-    let currentDir = __dirname;
+    let currentDir = deps.dirname;
     for (let i = 0; i < 10; i++) {
         const packagePath = join(currentDir, 'package.json');
-        if (existsSync(packagePath)) {
+        if (deps.existsSync(packagePath)) {
             try {
-                const pkg = JSON.parse(readFileSync(packagePath, 'utf-8')) as PackageJson;
+                const pkg = JSON.parse(deps.readFileSync(packagePath, 'utf-8')) as PackageJson;
                 return `v${pkg.version}`;
-            } catch /* istanbul ignore next */ {
+            } catch {
                 // If JSON is invalid, stop searching
                 break;
             }

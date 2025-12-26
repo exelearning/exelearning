@@ -2,7 +2,7 @@
  * Tests for Kysely Dialect Factory
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { getDbConfig, getDialectFromEnv, createDialect, type DbDialect } from './dialect';
+import { getDbConfig, getDialectFromEnv, createDialect, configure, resetDependencies, type DbDialect } from './dialect';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -19,6 +19,7 @@ describe('Kysely Dialect Factory', () => {
 
     afterEach(() => {
         process.env = { ...originalEnv };
+        resetDependencies();
         // Clean up test directory
         if (fs.existsSync(testDbDir)) {
             fs.rmSync(testDbDir, { recursive: true, force: true });
@@ -111,6 +112,56 @@ describe('Kysely Dialect Factory', () => {
 
             const dialect = createDialect(config);
             expect(dialect).toBeDefined();
+        });
+
+        it('should handle :memory: database without creating directories', () => {
+            const config = {
+                dialect: 'sqlite' as DbDialect,
+                sqlitePath: ':memory:',
+            };
+
+            const dialect = createDialect(config);
+            expect(dialect).toBeDefined();
+        });
+    });
+
+    describe('dependency injection', () => {
+        it('should allow configuring isBun to false for Node.js branch', () => {
+            configure({ isBun: false });
+
+            const config = {
+                dialect: 'sqlite' as DbDialect,
+                sqlitePath: ':memory:',
+            };
+
+            // In Bun environment, better-sqlite3 is not available
+            // So this should throw when trying to require it
+            expect(() => createDialect(config)).toThrow();
+        });
+
+        it('should reset dependencies after test', () => {
+            configure({ isBun: false });
+            resetDependencies();
+
+            // After reset, should use Bun dialect again
+            const config = {
+                dialect: 'sqlite' as DbDialect,
+                sqlitePath: ':memory:',
+            };
+            const dialect = createDialect(config);
+            expect(dialect).toBeDefined();
+        });
+
+        it('should use Node.js dialect with file-based database', () => {
+            configure({ isBun: false });
+
+            const config = {
+                dialect: 'sqlite' as DbDialect,
+                sqlitePath: path.join(testDbDir, 'node-file.db'),
+            };
+
+            // In Bun environment, better-sqlite3 is not available
+            expect(() => createDialect(config)).toThrow();
         });
     });
 });
