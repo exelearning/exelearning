@@ -1,0 +1,25 @@
+<!-- Print Preview Overlay (not using Bootstrap modal) -->
+<div id="printPreviewOverlay" class="print-preview-overlay" data-visible="false">
+    <div class="print-preview-header">
+        <div class="print-preview-title">
+            <span class="exe-icon">print</span>
+            <span>Print preview</span>
+        </div>
+        <div class="print-preview-actions">
+            <button type="button" class="print-preview-print-btn" title="Print">
+                <span class="exe-icon">print</span>
+                <span class="btn-text">Print</span>
+            </button>
+            <button type="button" class="print-preview-close-btn" title="Close">
+                <span class="exe-icon">close</span>
+            </button>
+        </div>
+    </div>
+    <div class="print-preview-content">
+        <div class="print-preview-loading">
+            <div class="spinner-border" role="status"></div>
+            <p>Generating preview...</p>
+        </div>
+        <iframe class="print-preview-iframe" title="Print preview"></iframe>
+    </div>
+</div>
