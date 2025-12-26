@@ -185,6 +185,13 @@ If a feature touches frontend JavaScript files, you MUST update the correspondin
 - Files below coverage threshold should be prioritized for improvement
 - When creating new `.js` files, always create accompanying unit tests
 
+**IMPORTANT: When developing new features, you MUST:**
+1. Write tests for ALL new functions and methods
+2. Ensure patch coverage is at least 80% for new code
+3. Run `make test-coverage` before committing to verify coverage
+4. If coverage drops below thresholds, add more tests before proceeding
+5. Test edge cases, error handling, and all code branches
+
 ### Test Patterns - Dependency Injection
 
 **NEVER use `mock.module()`** - it causes test pollution in Bun.

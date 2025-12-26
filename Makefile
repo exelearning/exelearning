@@ -487,7 +487,7 @@ test-integration: check-bun check-env ## Run integration tests
 	$(TEST_ENV) bun test:integration
 
 .PHONY: test-frontend
-test-frontend: check-bun check-env ## Run frontend tests (with Vitest + happy-dom)
+test-frontend: check-bun check-env ## Run frontend tests (with Vitest + happy-dom) with coverage
 	bun test:frontend
 
 .PHONY: test-unit-ci
@@ -496,10 +496,6 @@ test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov covera
 	@mkdir -p coverage/bun
 	$(TEST_ENV) bun test:unit:ci
 	@bun run scripts/check-coverage.ts < coverage/bun/lcov.info || true
-
-.PHONY: test-frontend-ci
-test-frontend-ci: check-bun check-env ## Run frontend tests with coverage for CI/Codecov
-	bun test:frontend:ci
 
 .PHONY: test-e2e-chromium
 test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium

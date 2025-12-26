@@ -75,7 +75,7 @@ jobs:
         run: make bundle
 
       - name: Frontend Tests + Coverage
-        run: make test-frontend-ci
+        run: make test-frontend
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

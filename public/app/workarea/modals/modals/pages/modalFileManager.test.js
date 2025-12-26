@@ -684,21 +684,149 @@ describe('ModalFilemanager', () => {
       await modal.showSidebarContent(pngAsset);
       expect(unzipBtn.style.display).toBe('none');
     });
+
+    it('should not extract if user cancels confirmation', async () => {
+      modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['x']) };
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const loadSpy = vi.spyOn(modal, 'loadAssets');
+      await modal.extractZipAsset();
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('should show error if blob is not available', async () => {
+      modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: null };
+      modal.assetManager.getAsset = vi.fn().mockResolvedValue(null);
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      await modal.extractZipAsset();
+      expect(alertSpy).toHaveBeenCalled();
+    });
+
+    it('should show error if fflate is not available', async () => {
+      modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['x']) };
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const originalFflate = window.fflate;
+      window.fflate = undefined;
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      await modal.extractZipAsset();
+      expect(alertSpy).toHaveBeenCalled();
+      window.fflate = originalFflate;
+    });
+
+    it('should extract files from ZIP and reload assets', async () => {
+      // Setup unzip button
+      const unzipBtn = document.createElement('button');
+      unzipBtn.innerHTML = '<span class="exe-icon">folder_zip</span> Extract';
+      mockElement.appendChild(unzipBtn);
+      modal.unzipBtn = unzipBtn;
+
+      // Mock fflate
+      window.fflate = {
+        unzipSync: vi.fn().mockReturnValue({
+          'file1.png': new Uint8Array([1, 2, 3]),
+          'folder/file2.jpg': new Uint8Array([4, 5, 6]),
+          '.hidden': new Uint8Array([7, 8, 9]),
+          '__system': new Uint8Array([10, 11, 12]),
+        })
+      };
+
+      modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['zipdata']) };
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      vi.spyOn(window, 'alert').mockImplementation(() => {});
+      modal.assetManager.insertImage = vi.fn().mockResolvedValue({ id: 'new-id' });
+      const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+
+      await modal.extractZipAsset();
+
+      expect(window.fflate.unzipSync).toHaveBeenCalled();
+      // Should have inserted 2 files (skipping hidden and system files)
+      expect(modal.assetManager.insertImage).toHaveBeenCalledTimes(2);
+      expect(loadSpy).toHaveBeenCalled();
+    });
+
+    it('should handle extraction errors gracefully', async () => {
+      window.fflate = {
+        unzipSync: vi.fn().mockImplementation(() => { throw new Error('Invalid ZIP'); })
+      };
+
+      modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['bad']) };
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await modal.extractZipAsset();
+
+      expect(consoleSpy).toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalled();
+    });
+
+    it('should detect ZIP by extension when mime is not set', async () => {
+      modal.selectedAsset = { id: '1', filename: 'archive.ZIP', mime: 'application/octet-stream', blob: new Blob(['x']) };
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      // Should not warn about non-ZIP (means it detected it as ZIP)
+      const warnSpy = vi.spyOn(console, 'warn');
+      await modal.extractZipAsset();
+      expect(warnSpy).not.toHaveBeenCalledWith('[MediaLibrary] Selected file is not a ZIP');
+    });
   });
 
   describe('getMimeTypeFromFilename', () => {
-    it('should return correct mime types for common extensions', () => {
+    it('should return correct mime types for image extensions', () => {
       expect(modal.getMimeTypeFromFilename('test.jpg')).toBe('image/jpeg');
+      expect(modal.getMimeTypeFromFilename('test.jpeg')).toBe('image/jpeg');
       expect(modal.getMimeTypeFromFilename('test.png')).toBe('image/png');
+      expect(modal.getMimeTypeFromFilename('test.gif')).toBe('image/gif');
+      expect(modal.getMimeTypeFromFilename('test.webp')).toBe('image/webp');
+      expect(modal.getMimeTypeFromFilename('test.svg')).toBe('image/svg+xml');
+      expect(modal.getMimeTypeFromFilename('test.bmp')).toBe('image/bmp');
+      expect(modal.getMimeTypeFromFilename('test.ico')).toBe('image/x-icon');
+    });
+
+    it('should return correct mime types for video extensions', () => {
       expect(modal.getMimeTypeFromFilename('test.mp4')).toBe('video/mp4');
+      expect(modal.getMimeTypeFromFilename('test.webm')).toBe('video/webm');
+      expect(modal.getMimeTypeFromFilename('test.mov')).toBe('video/quicktime');
+      expect(modal.getMimeTypeFromFilename('test.avi')).toBe('video/x-msvideo');
+    });
+
+    it('should return correct mime types for audio extensions', () => {
       expect(modal.getMimeTypeFromFilename('test.mp3')).toBe('audio/mpeg');
+      expect(modal.getMimeTypeFromFilename('test.wav')).toBe('audio/wav');
+      expect(modal.getMimeTypeFromFilename('test.flac')).toBe('audio/flac');
+      expect(modal.getMimeTypeFromFilename('test.m4a')).toBe('audio/mp4');
+    });
+
+    it('should return correct mime types for document extensions', () => {
       expect(modal.getMimeTypeFromFilename('test.pdf')).toBe('application/pdf');
+      expect(modal.getMimeTypeFromFilename('test.doc')).toBe('application/msword');
+      expect(modal.getMimeTypeFromFilename('test.docx')).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      expect(modal.getMimeTypeFromFilename('test.xls')).toBe('application/vnd.ms-excel');
+      expect(modal.getMimeTypeFromFilename('test.xlsx')).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      expect(modal.getMimeTypeFromFilename('test.ppt')).toBe('application/vnd.ms-powerpoint');
+      expect(modal.getMimeTypeFromFilename('test.pptx')).toBe('application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    });
+
+    it('should return correct mime types for other extensions', () => {
       expect(modal.getMimeTypeFromFilename('test.zip')).toBe('application/zip');
+      expect(modal.getMimeTypeFromFilename('test.json')).toBe('application/json');
+      expect(modal.getMimeTypeFromFilename('test.xml')).toBe('application/xml');
+      expect(modal.getMimeTypeFromFilename('test.html')).toBe('text/html');
+      expect(modal.getMimeTypeFromFilename('test.css')).toBe('text/css');
+      expect(modal.getMimeTypeFromFilename('test.js')).toBe('application/javascript');
+      expect(modal.getMimeTypeFromFilename('test.txt')).toBe('text/plain');
+      expect(modal.getMimeTypeFromFilename('test.md')).toBe('text/markdown');
+      expect(modal.getMimeTypeFromFilename('test.csv')).toBe('text/csv');
+      expect(modal.getMimeTypeFromFilename('test.stl')).toBe('model/stl');
     });
 
     it('should return octet-stream for unknown extensions', () => {
       expect(modal.getMimeTypeFromFilename('test.xyz')).toBe('application/octet-stream');
       expect(modal.getMimeTypeFromFilename('noextension')).toBe('application/octet-stream');
+    });
+
+    it('should handle uppercase extensions', () => {
+      expect(modal.getMimeTypeFromFilename('TEST.JPG')).toBe('image/jpeg');
+      expect(modal.getMimeTypeFromFilename('TEST.PDF')).toBe('application/pdf');
     });
   });
 
@@ -786,6 +914,83 @@ describe('ModalFilemanager', () => {
       modal.showDropzoneOverlay(mainArea);
       modal.hideDropzoneOverlay(mainArea);
       expect(mainArea.querySelector('.media-library-dropzone-overlay')).toBeNull();
+    });
+
+    it('should not show overlay when empty state is visible', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      // Make empty state visible
+      modal.emptyState.classList.add('visible');
+
+      // Trigger dragenter
+      const event = new Event('dragenter', { bubbles: true });
+      event.preventDefault = vi.fn();
+      event.stopPropagation = vi.fn();
+      mainArea.dispatchEvent(event);
+
+      // Should add drag-over class but NOT show overlay
+      expect(mainArea.classList.contains('drag-over')).toBe(true);
+      expect(mainArea.querySelector('.media-library-dropzone-overlay')).toBeNull();
+    });
+
+    it('should show overlay when empty state is not visible', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      // Ensure empty state is not visible
+      modal.emptyState.classList.remove('visible');
+
+      // Trigger dragenter
+      const event = new Event('dragenter', { bubbles: true });
+      event.preventDefault = vi.fn();
+      event.stopPropagation = vi.fn();
+      mainArea.dispatchEvent(event);
+
+      expect(mainArea.classList.contains('drag-over')).toBe(true);
+      expect(mainArea.querySelector('.media-library-dropzone-overlay')).not.toBeNull();
+    });
+
+    it('should prevent default on dragover', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      const event = new Event('dragover', { bubbles: true });
+      event.preventDefault = vi.fn();
+      event.stopPropagation = vi.fn();
+      mainArea.dispatchEvent(event);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(event.stopPropagation).toHaveBeenCalled();
+    });
+
+    it('should handle drop with no files gracefully', async () => {
+      const uploadSpy = vi.spyOn(modal, 'uploadFiles').mockResolvedValue();
+      const mainArea = mockElement.querySelector('.media-library-main');
+
+      const dropEvent = new Event('drop', { bubbles: true });
+      dropEvent.preventDefault = vi.fn();
+      dropEvent.stopPropagation = vi.fn();
+      dropEvent.dataTransfer = { files: [] };
+
+      mainArea.dispatchEvent(dropEvent);
+      expect(uploadSpy).not.toHaveBeenCalled();
+    });
+
+    it('should handle drop with null dataTransfer', async () => {
+      const uploadSpy = vi.spyOn(modal, 'uploadFiles').mockResolvedValue();
+      const mainArea = mockElement.querySelector('.media-library-main');
+
+      const dropEvent = new Event('drop', { bubbles: true });
+      dropEvent.preventDefault = vi.fn();
+      dropEvent.stopPropagation = vi.fn();
+      dropEvent.dataTransfer = null;
+
+      mainArea.dispatchEvent(dropEvent);
+      expect(uploadSpy).not.toHaveBeenCalled();
+    });
+
+    it('should remove existing overlay before showing new one', () => {
+      const mainArea = mockElement.querySelector('.media-library-main');
+      // Show overlay twice
+      modal.showDropzoneOverlay(mainArea);
+      modal.showDropzoneOverlay(mainArea);
+      // Should only have one overlay
+      const overlays = mainArea.querySelectorAll('.media-library-dropzone-overlay');
+      expect(overlays.length).toBe(1);
     });
   });
 });
