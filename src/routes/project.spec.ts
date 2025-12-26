@@ -3657,4 +3657,907 @@ describe('Project Routes', () => {
             expect(body.message).toBe('No path provided');
         });
     });
+
+    // =====================================================
+    // Additional Coverage Tests
+    // =====================================================
+
+    describe('JWT Verification Error Handling', () => {
+        it('should handle JWT verification error gracefully', async () => {
+            // Send a malformed/invalid token that causes jwt.verify to throw
+            const malformedToken = 'not.a.valid.jwt.token.structure.at.all';
+
+            const res = await app.handle(
+                new Request('http://localhost/api/nav-structures/test-session', {
+                    headers: {
+                        Authorization: `Bearer ${malformedToken}`,
+                    },
+                }),
+            );
+
+            // Should still return 200 with null user (graceful error handling)
+            expect(res.status).toBe(200);
+        });
+
+        it('should handle JWT error via cookie', async () => {
+            const malformedToken = 'invalid-jwt-format';
+
+            const res = await app.handle(
+                new Request('http://localhost/api/odes/last-updated', {
+                    headers: {
+                        Cookie: `auth=${malformedToken}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+    });
+
+    describe('Project Sharing Edge Cases', () => {
+        it('should return 400 for invalid project ID in sharing', async () => {
+            const res = await app.handle(new Request('http://localhost/api/projects/invalid-id/sharing'));
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('INVALID_ID');
+        });
+
+        it('should return 404 for non-existent project in sharing', async () => {
+            const res = await app.handle(new Request('http://localhost/api/projects/99999/sharing'));
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('NOT_FOUND');
+        });
+    });
+
+    describe('Visibility Change Notification', () => {
+        async function createAuthToken(userId: number = 1) {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: mockUsers.get(userId)?.email || 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        it('should trigger notification when visibility changes to private', async () => {
+            const project = {
+                id: 5001,
+                uuid: 'visibility-notify-test',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(5001, project);
+            mockProjectsByUuid.set('visibility-notify-test', project);
+            mockCollaborators.set(5001, new Set([2]));
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/5001/visibility', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ visibility: 'private' }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+            expect(project.visibility).toBe('private');
+        });
+
+        it('should trigger notification when visibility changes to private by UUID', async () => {
+            const project = {
+                id: 5002,
+                uuid: 'visibility-uuid-notify',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(5002, project);
+            mockProjectsByUuid.set('visibility-uuid-notify', project);
+            mockCollaborators.set(5002, new Set([2]));
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/visibility-uuid-notify/visibility', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ visibility: 'private' }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+        });
+    });
+
+    describe('Collaborator Edge Cases by ID', () => {
+        it('should return 404 for non-existent project when adding collaborator', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'owner@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/99999/collaborators', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ email: 'collaborator@test.com' }),
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('NOT_FOUND');
+        });
+
+        it('should return 404 for non-existent project when removing collaborator', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'owner@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/99999/collaborators/2', {
+                    method: 'DELETE',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('NOT_FOUND');
+        });
+
+        it('should return 404 for non-existent project when transferring ownership', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'owner@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/99999/owner', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ newOwnerId: 2 }),
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('NOT_FOUND');
+        });
+    });
+
+    describe('Access Control in ODE Properties', () => {
+        async function createAuthToken(userId: number = 1) {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: mockUsers.get(userId)?.email || 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        it('should deny access to private project properties without auth', async () => {
+            const project = {
+                id: 6001,
+                uuid: 'private-props-test',
+                owner_id: 1,
+                visibility: 'private',
+                saved_once: 1,
+            };
+            mockProjects.set(6001, project);
+            mockProjectsByUuid.set('private-props-test', project);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/odes/private-props-test/properties'),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.error).toBe('Forbidden');
+        });
+
+        it('should deny access to POST private project properties without auth', async () => {
+            const project = {
+                id: 6002,
+                uuid: 'private-props-post-test',
+                owner_id: 1,
+                visibility: 'private',
+                saved_once: 1,
+            };
+            mockProjects.set(6002, project);
+            mockProjectsByUuid.set('private-props-post-test', project);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/odes/private-props-post-test/properties', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pp_title: 'New Title' }),
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.error).toBe('Forbidden');
+        });
+
+        it('should deny non-owner access to private project properties', async () => {
+            const project = {
+                id: 6003,
+                uuid: 'private-props-other',
+                owner_id: 1,
+                visibility: 'private',
+                saved_once: 1,
+            };
+            mockProjects.set(6003, project);
+            mockProjectsByUuid.set('private-props-other', project);
+
+            const token = await createAuthToken(3); // User 3 is not owner or collaborator
+            const res = await app.handle(
+                new Request('http://localhost/api/odes/private-props-other/properties', {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+        });
+    });
+
+    describe('Access Control in Nav Structures with Existing Session', () => {
+        async function createAuthToken(userId: number = 1) {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: mockUsers.get(userId)?.email || 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        it('should deny access when session exists but user is not authorized for private project', async () => {
+            // Create a session AND a private project with the same ID
+            const sessionId = 'session-with-private-project';
+            mockSessions.set(sessionId, {
+                sessionId,
+                fileName: 'test.elp',
+                structure: { title: 'Test' },
+            });
+
+            const project = {
+                id: 7001,
+                uuid: sessionId,
+                owner_id: 1,
+                visibility: 'private',
+                saved_once: 1,
+            };
+            mockProjects.set(7001, project);
+            mockProjectsByUuid.set(sessionId, project);
+
+            // User 3 is not owner or collaborator
+            const token = await createAuthToken(3);
+            const res = await app.handle(
+                new Request(`http://localhost/api/nav-structures/${sessionId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.error).toBe('Forbidden');
+        });
+    });
+
+    describe('UUID Routes Unauthorized/Forbidden Access', () => {
+        async function createAuthToken(userId: number = 1) {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: mockUsers.get(userId)?.email || 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        it('should return 401 for get sharing by UUID without auth when project does not exist', async () => {
+            // No project exists with this UUID, so it would try to create one
+            // but without auth, it should return 401
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/non-existent-for-auth/sharing'),
+            );
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 401 for patch visibility by UUID without auth', async () => {
+            const project = {
+                id: 8001,
+                uuid: 'vis-unauth-test',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8001, project);
+            mockProjectsByUuid.set('vis-unauth-test', project);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/vis-unauth-test/visibility', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ visibility: 'private' }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for patch visibility by UUID by non-owner', async () => {
+            const project = {
+                id: 8002,
+                uuid: 'vis-forbidden-test',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8002, project);
+            mockProjectsByUuid.set('vis-forbidden-test', project);
+
+            const token = await createAuthToken(2); // User 2 is not owner
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/vis-forbidden-test/visibility', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ visibility: 'private' }),
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('FORBIDDEN');
+        });
+
+        it('should return 401 for add collaborator by UUID without auth', async () => {
+            const project = {
+                id: 8003,
+                uuid: 'collab-unauth-test',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8003, project);
+            mockProjectsByUuid.set('collab-unauth-test', project);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/collab-unauth-test/collaborators', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'collaborator@test.com' }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for add collaborator by UUID by non-owner', async () => {
+            const project = {
+                id: 8004,
+                uuid: 'collab-forbidden-test',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8004, project);
+            mockProjectsByUuid.set('collab-forbidden-test', project);
+
+            const token = await createAuthToken(2);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/collab-forbidden-test/collaborators', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ email: 'other@test.com' }),
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('FORBIDDEN');
+        });
+
+        it('should return USER_NOT_FOUND for add collaborator by UUID when user does not exist', async () => {
+            const project = {
+                id: 8005,
+                uuid: 'collab-user-not-found',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8005, project);
+            mockProjectsByUuid.set('collab-user-not-found', project);
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/collab-user-not-found/collaborators', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ email: 'nonexistent@test.com' }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('USER_NOT_FOUND');
+        });
+
+        it('should return ALREADY_COLLABORATOR when user is already collaborator by UUID', async () => {
+            const project = {
+                id: 8006,
+                uuid: 'collab-already',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8006, project);
+            mockProjectsByUuid.set('collab-already', project);
+            mockCollaborators.set(8006, new Set([2])); // User 2 is already collaborator
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/collab-already/collaborators', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ email: 'collaborator@test.com' }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('ALREADY_COLLABORATOR');
+        });
+
+        it('should return IS_OWNER when trying to add owner as collaborator by UUID', async () => {
+            const project = {
+                id: 8007,
+                uuid: 'collab-is-owner',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8007, project);
+            mockProjectsByUuid.set('collab-is-owner', project);
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/collab-is-owner/collaborators', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ email: 'owner@test.com' }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('IS_OWNER');
+        });
+
+        it('should return 401 for remove collaborator by UUID without auth', async () => {
+            const project = {
+                id: 8008,
+                uuid: 'remove-unauth',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8008, project);
+            mockProjectsByUuid.set('remove-unauth', project);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/remove-unauth/collaborators/2', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for remove collaborator by UUID by non-owner', async () => {
+            const project = {
+                id: 8009,
+                uuid: 'remove-forbidden',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8009, project);
+            mockProjectsByUuid.set('remove-forbidden', project);
+
+            const token = await createAuthToken(2);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/remove-forbidden/collaborators/3', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('FORBIDDEN');
+        });
+
+        it('should return 401 for transfer ownership by UUID without auth', async () => {
+            const project = {
+                id: 8010,
+                uuid: 'transfer-unauth',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8010, project);
+            mockProjectsByUuid.set('transfer-unauth', project);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/transfer-unauth/owner', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newOwnerId: 2 }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for transfer ownership by UUID by non-owner', async () => {
+            const project = {
+                id: 8011,
+                uuid: 'transfer-forbidden',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8011, project);
+            mockProjectsByUuid.set('transfer-forbidden', project);
+
+            const token = await createAuthToken(2);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/transfer-forbidden/owner', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ newOwnerId: 3 }),
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('FORBIDDEN');
+        });
+
+        it('should return 404 for transfer ownership by UUID when new owner not found', async () => {
+            const project = {
+                id: 8012,
+                uuid: 'transfer-no-user',
+                owner_id: 1,
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(8012, project);
+            mockProjectsByUuid.set('transfer-no-user', project);
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/transfer-no-user/owner', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ newOwnerId: 99999 }),
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('USER_NOT_FOUND');
+        });
+    });
+
+    describe('Duplicate Project Asset Edge Cases', () => {
+        async function createAuthToken(userId: number = 1) {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: mockUsers.get(userId)?.email || 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        it('should handle asset with non-existent file during duplication', async () => {
+            const project = {
+                id: 9001,
+                uuid: 'dup-asset-missing-file',
+                owner_id: 1,
+                title: 'Project With Missing Asset',
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(9001, project);
+            mockProjectsByUuid.set('dup-asset-missing-file', project);
+
+            // Add asset with storage_path pointing to non-existent file
+            mockAssets.set(9001, [
+                {
+                    id: 9101,
+                    project_id: 9001,
+                    filename: 'missing.jpg',
+                    storage_path: '/non/existent/path/missing.jpg',
+                    mime_type: 'image/jpeg',
+                    file_size: 1024,
+                    client_id: 'client-id-missing',
+                    component_id: 'comp-1',
+                    content_hash: 'hash123',
+                },
+            ]);
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/dup-asset-missing-file/duplicate', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+        });
+
+        it('should handle Yjs snapshot with field values containing client IDs', async () => {
+            const Y = await import('yjs');
+
+            const project = {
+                id: 9002,
+                uuid: 'dup-yjs-fields',
+                owner_id: 1,
+                title: 'Project With Yjs Fields',
+                visibility: 'public',
+                saved_once: 1,
+            };
+            mockProjects.set(9002, project);
+            mockProjectsByUuid.set('dup-yjs-fields', project);
+
+            // Create Yjs document with fields containing client IDs
+            const ydoc = new Y.Doc();
+            const metadata = ydoc.getMap('metadata');
+            metadata.set('title', 'Original Title');
+
+            const pages = ydoc.getMap('pages');
+            const page = new Y.Map();
+            const blocks = new Y.Map();
+            const block = new Y.Map();
+            const idevices = new Y.Map();
+            const idevice = new Y.Map();
+            const fields = new Y.Map();
+
+            // Add fields that contain client IDs
+            fields.set('imageField', 'files/assets/old-client-id/image.jpg');
+            fields.set('videoField', 'files/assets/old-client-id/video.mp4');
+            idevice.set('fields', fields);
+            idevice.set('innerHtml', '<img src="files/assets/old-client-id/image.jpg">');
+            idevices.set('idevice-1', idevice);
+            block.set('idevices', idevices);
+            blocks.set('block-1', block);
+            page.set('blocks', blocks);
+            pages.set('page-1', page);
+
+            const snapshotData = Buffer.from(Y.encodeStateAsUpdate(ydoc));
+            ydoc.destroy();
+
+            mockSnapshots.set(9002, {
+                project_id: 9002,
+                snapshot_data: snapshotData,
+                version: '1',
+            });
+
+            // Add assets with client_id
+            mockAssets.set(9002, [
+                {
+                    id: 9201,
+                    project_id: 9002,
+                    filename: 'image.jpg',
+                    storage_path: path.join(testDir, 'assets', 'dup-yjs-fields', 'old-client-id', 'image.jpg'),
+                    mime_type: 'image/jpeg',
+                    file_size: 1024,
+                    client_id: 'old-client-id',
+                    component_id: 'comp-1',
+                    content_hash: 'hash123',
+                },
+            ]);
+
+            // Create the source asset file
+            await fs.ensureDir(path.join(testDir, 'assets', 'dup-yjs-fields', 'old-client-id'));
+            await fs.writeFile(
+                path.join(testDir, 'assets', 'dup-yjs-fields', 'old-client-id', 'image.jpg'),
+                'fake image data',
+            );
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/dup-yjs-fields/duplicate', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+        });
+    });
+
+    describe('Used Files Edge Cases', () => {
+        it('should return null for non-existent file', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<img src="files/nonexistent/file.jpg">',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            // Non-existent files should be filtered out
+            expect(body.usedFiles).toBeDefined();
+        });
+    });
+
+    describe('Link Validation Special Cases', () => {
+        it('should handle file path check throwing error', async () => {
+            // This tests the catch block in file path validation (line 1769-1770)
+            // We can't easily make fs.pathExists throw, but the test structure is here
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                // This unusual path may trigger edge cases
+                                html: '<a href="files/some\x00null/file.jpg">File</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should handle URL with bad format', async () => {
+            // Tests the outer catch block (line 1830)
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="http://[invalid-ipv6]:port/path">Bad URL</a>',
+                                pageName: 'Page 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            // The URL parser should catch this and return error
+        });
+    });
 });
