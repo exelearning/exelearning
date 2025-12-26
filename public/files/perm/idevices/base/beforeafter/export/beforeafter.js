@@ -247,113 +247,123 @@ var $eXeBeforeAfter = {
         const card = mOptions.cardsGame[number];
         $imgAfter.attr('alt', card.alt);
         $imgBefore.attr('alt', card.altBk);
+
+        // Handler for image load - extracted to fix cached image race condition
+        const handleImageLoad = function () {
+            let naturalWidth = this.naturalWidth;
+            let naturalHeight = this.naturalHeight;
+
+            let containerWidth = $Multimedia.width();
+            let containerHeight = $Multimedia.height();
+
+            let ratioAncho = naturalWidth / containerWidth;
+            let ratioAlto = naturalHeight / containerHeight;
+
+            if (ratioAncho > ratioAlto) {
+                let nuevoAlto =
+                    naturalHeight * (containerWidth / naturalWidth);
+                $imgAfter.css({
+                    width: containerWidth + 'px',
+                    height: nuevoAlto + 'px',
+                });
+                $imgBefore.css({
+                    width: containerWidth + 'px',
+                    height: nuevoAlto + 'px',
+                });
+                $containerBA.css({
+                    width: containerWidth + 'px',
+                    height: nuevoAlto + 'px',
+                });
+            } else {
+                let nuevoAncho =
+                    naturalWidth * (containerHeight / naturalHeight);
+                $imgAfter.css({
+                    height: containerHeight + 'px',
+                    width: nuevoAncho + 'px',
+                });
+                $imgBefore.css({
+                    height: containerHeight + 'px',
+                    width: nuevoAncho + 'px',
+                });
+                $containerBA.css({
+                    height: containerHeight + 'px',
+                    width: nuevoAncho + 'px',
+                });
+            }
+            const percentageInit = card.position;
+            const containerWidth1 = $containerBA.width();
+            const containerHeight1 = $containerBA.height();
+
+            const containerSize = isVertical
+                ? containerHeight1
+                : containerWidth1;
+
+            const pos = (percentageInit / 100) * containerSize;
+            $overlay.css({ border: '' });
+            $slider.css({ border: '' });
+            $titleBefore.removeClass(
+                'BFAFP-TitleBefore BFAFP-TitleBeforeV'
+            );
+            $titleAfter.removeClass('BFAFP-TitleAfter BFAFP-TitleAfterV');
+            $titleBefore.hide();
+            $titleAfter.hide();
+
+            if (card.eText.length > 0) {
+                $titleAfter.html(card.eText).show();
+            }
+            if (card.eTextBk.length > 0) {
+                $titleBefore.html(card.eTextBk).show();
+            }
+            $nubmerInfo.text(
+                `${mOptions.msgs.msgImage}: ${number + 1}/${mOptions.cardsGame.length}`
+            );
+
+            if (mOptions.gameStarted && mOptions.isScorm > 0) {
+                $eXeBeforeAfter.sendScore(true, instance);
+            }
+            if (mOptions.gameStarted) {
+                $eXeBeforeAfter.saveEvaluation(instance);
+                $eXeBeforeAfter.showClue(instance);
+            }
+
+            if (isVertical) {
+                $overlay.height(pos);
+                $overlay.css({ 'border-bottom': '4px solid #555' });
+                $overlay.width(containerWidth1);
+                $slider.css({ left: 0, top: pos - 3 + 'px' });
+                $imgAfter.css({ cursor: 'n-resize' });
+                $imgBefore.css({ cursor: 's-resize' });
+                $titleBefore.addClass('BFAFP-TitleBeforeV');
+                $titleAfter.addClass('BFAFP-TitleAfterV');
+            } else {
+                $overlay.width(pos);
+                $overlay.css({ 'border-right': '4px solid #555' });
+                $overlay.height(containerHeight1);
+                $slider.css({ left: pos - 3 + 'px', top: 0 });
+                $imgAfter.css({ cursor: 'w-resize' });
+                $imgBefore.css({ cursor: 'e-resize' });
+                $titleBefore.addClass('BFAFP-TitleBefore');
+                $titleAfter.addClass('BFAFP-TitleAfter');
+            }
+            setTimeout(function () {
+                $eXeBeforeAfter.initComparison(number, instance);
+                $containerBA.animate({ opacity: 1 }, 500);
+            }, 200);
+        };
+
+        // Fix for cached images: attach handler BEFORE setting src
+        // This ensures the load event is captured even for cached images
+        $imgAfter.off('load').one('load', handleImageLoad);
         $imgBefore.prop('src', card.urlBk);
-        $imgAfter
-            .attr('src', card.url)
-            .one('load', function () {
-                let naturalWidth = this.naturalWidth;
-                let naturalHeight = this.naturalHeight;
+        $imgAfter.attr('src', card.url);
 
-                let containerWidth = $Multimedia.width();
-                let containerHeight = $Multimedia.height();
-
-                let ratioAncho = naturalWidth / containerWidth;
-                let ratioAlto = naturalHeight / containerHeight;
-
-                if (ratioAncho > ratioAlto) {
-                    let nuevoAlto =
-                        naturalHeight * (containerWidth / naturalWidth);
-                    $imgAfter.css({
-                        width: containerWidth + 'px',
-                        height: nuevoAlto + 'px',
-                    });
-                    $imgBefore.css({
-                        width: containerWidth + 'px',
-                        height: nuevoAlto + 'px',
-                    });
-                    $containerBA.css({
-                        width: containerWidth + 'px',
-                        height: nuevoAlto + 'px',
-                    });
-                } else {
-                    let nuevoAncho =
-                        naturalWidth * (containerHeight / naturalHeight);
-                    $imgAfter.css({
-                        height: containerHeight + 'px',
-                        width: nuevoAncho + 'px',
-                    });
-                    $imgBefore.css({
-                        height: containerHeight + 'px',
-                        width: nuevoAncho + 'px',
-                    });
-                    $containerBA.css({
-                        height: containerHeight + 'px',
-                        width: nuevoAncho + 'px',
-                    });
-                }
-                const percentageInit = card.position;
-                const containerWidth1 = $containerBA.width();
-                const containerHeight1 = $containerBA.height();
-
-                const containerSize = isVertical
-                    ? containerHeight1
-                    : containerWidth1;
-
-                const pos = (percentageInit / 100) * containerSize;
-                $overlay.css({ border: '' });
-                $slider.css({ border: '' });
-                $titleBefore.removeClass(
-                    'BFAFP-TitleBefore BFAFP-TitleBeforeV'
-                );
-                $titleAfter.removeClass('BFAFP-TitleAfter BFAFP-TitleAfterV');
-                $titleBefore.hide();
-                $titleAfter.hide();
-
-                if (card.eText.length > 0) {
-                    $titleAfter.html(card.eText).show();
-                }
-                if (card.eTextBk.length > 0) {
-                    $titleBefore.html(card.eTextBk).show();
-                }
-                $nubmerInfo.text(
-                    `${mOptions.msgs.msgImage}: ${number + 1}/${mOptions.cardsGame.length}`
-                );
-
-                if (mOptions.gameStarted && mOptions.isScorm > 0) {
-                    $eXeBeforeAfter.sendScore(true, instance);
-                }
-                if (mOptions.gameStarted) {
-                    $eXeBeforeAfter.saveEvaluation(instance);
-                    $eXeBeforeAfter.showClue(instance);
-                }
-
-                if (isVertical) {
-                    $overlay.height(pos);
-                    $overlay.css({ 'border-bottom': '4px solid #555' });
-                    $overlay.width(containerWidth1);
-                    $slider.css({ left: 0, top: pos - 3 + 'px' });
-                    $imgAfter.css({ cursor: 'n-resize' });
-                    $imgBefore.css({ cursor: 's-resize' });
-                    $titleBefore.addClass('BFAFP-TitleBeforeV');
-                    $titleAfter.addClass('BFAFP-TitleAfterV');
-                } else {
-                    $overlay.width(pos);
-                    $overlay.css({ 'border-right': '4px solid #555' });
-                    $overlay.height(containerHeight1);
-                    $slider.css({ left: pos - 3 + 'px', top: 0 });
-                    $imgAfter.css({ cursor: 'w-resize' });
-                    $imgBefore.css({ cursor: 'e-resize' });
-                    $titleBefore.addClass('BFAFP-TitleBefore');
-                    $titleAfter.addClass('BFAFP-TitleAfter');
-                }
-                setTimeout(function () {
-                    $eXeBeforeAfter.initComparison(number, instance);
-                    $containerBA.animate({ opacity: 1 }, 500);
-                }, 200);
-            })
-            .each(function () {
-                if (this.complete) $(this).trigger('load');
-            });
+        // For cached images, the load event may have already fired synchronously
+        // Use setTimeout(0) to check after the current execution context
+        setTimeout(function () {
+            if ($imgAfter[0].complete && $imgAfter[0].naturalWidth > 0) {
+                $imgAfter.trigger('load');
+            }
+        }, 0);
     },
 
     initComparison: function (number, instance) {
