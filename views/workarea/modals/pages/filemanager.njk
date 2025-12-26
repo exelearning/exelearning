@@ -12,7 +12,7 @@
                     <button type="button" class="btn btn-primary media-library-upload-btn">
                         <span class="exe-icon">add</span> Add file
                     </button>
-                    <input type="file" class="media-library-upload-input" accept="image/*,video/*,audio/*,.pdf" multiple style="display:none;">
+                    <input type="file" class="media-library-upload-input" accept="image/*,video/*,audio/*,.pdf,.zip,.elp,.elpx" multiple style="display:none;">
 
                     <div class="media-library-view-controls">
                         <button type="button" class="media-library-view-btn active" data-view="grid" title="Grid view">
@@ -49,6 +49,10 @@
 
                 <div class="media-library-container">
                     <div class="media-library-main">
+                        <div class="media-library-empty">
+                            <p>No media files yet</p>
+                            <p class="media-library-empty-hint">Click "Add file" or drop files here to upload</p>
+                        </div>
                         <div class="media-library-grid">
                             <div class="media-library-loading">Loading assets...</div>
                         </div>
@@ -66,7 +70,6 @@
                                 <tbody></tbody>
                             </table>
                         </div>
-                        <div class="media-library-empty" style="display:none;">No media files yet. Click "Add file" to upload.</div>
 
                         <div class="media-library-pagination">
                             <button type="button" class="media-library-page-btn" data-action="prev" disabled>
@@ -120,6 +123,9 @@
                                 </div>
                             </div>
                             <div class="media-library-actions">
+                                <button type="button" class="btn btn-secondary media-library-unzip-btn" style="display:none;" title="Extract ZIP contents">
+                                    <span class="exe-icon">folder_zip</span> Extract
+                                </button>
                                 <button type="button" class="btn btn-danger media-library-delete-btn">
                                     <span class="exe-icon">delete</span> Delete
                                 </button>
