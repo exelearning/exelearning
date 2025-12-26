@@ -1236,12 +1236,13 @@ describe('NavbarFile', () => {
             navbarFile = new NavbarFile(mockMenu);
         });
 
-        it('should export via Yjs and update UI on success', async () => {
+        it('should export via Yjs with saveAs: false and update UI on success', async () => {
             eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue();
 
             await navbarFile.downloadProjectViaYjs();
 
-            expect(eXeLearning.app.project.exportToElpxViaYjs).toHaveBeenCalled();
+            // Should pass saveAs: false for regular save (uses remembered path in Electron)
+            expect(eXeLearning.app.project.exportToElpxViaYjs).toHaveBeenCalledWith({ saveAs: false });
             expect(eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface).toHaveBeenCalled();
         });
 
@@ -1633,7 +1634,19 @@ describe('NavbarFile', () => {
             vi.useRealTimers();
         });
 
-        it('should use electron saveAs when available', async () => {
+        it('should use Yjs export with saveAs: true when Yjs is enabled', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue();
+
+            await navbarFile.saveAsElpOffline();
+
+            // Should pass saveAs: true for Save As (always prompts)
+            expect(eXeLearning.app.project.exportToElpxViaYjs).toHaveBeenCalledWith({ saveAs: true });
+            expect(eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface).toHaveBeenCalled();
+        });
+
+        it('should use electron saveAs when available (legacy mode)', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
             window.electronAPI = { saveAs: vi.fn() };
             eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
                 responseMessage: 'OK',
@@ -1646,10 +1659,20 @@ describe('NavbarFile', () => {
             expect(window.electronAPI.saveAs).toHaveBeenCalled();
         });
 
-        it('should show alert on export error', async () => {
+        it('should show alert on export error (legacy mode)', async () => {
+            eXeLearning.app.project._yjsEnabled = false;
             eXeLearning.app.api.getOdeExportDownload.mockResolvedValue({
                 responseMessage: 'ERR',
             });
+
+            await navbarFile.saveAsElpOffline();
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+        });
+
+        it('should show alert on Yjs export error', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockRejectedValue(new Error('Yjs error'));
 
             await navbarFile.saveAsElpOffline();
 

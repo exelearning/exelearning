@@ -96,6 +96,142 @@ describe('LogoutButton', () => {
       expect(mockButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
     });
 
+    describe('offline mode (Electron)', () => {
+      let mockWindowClose;
+
+      beforeEach(() => {
+        mockWindowClose = vi.fn();
+        window.close = mockWindowClose;
+        window.eXeLearning.config = { isOfflineInstallation: true };
+      });
+
+      it('should call handleOfflineExit in offline mode', async () => {
+        const spy = vi.spyOn(logoutButton, 'handleOfflineExit');
+        logoutButton.addEventClick();
+
+        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        await clickHandler(new Event('click'));
+
+        expect(spy).toHaveBeenCalled();
+      });
+
+      it('should not call API in offline mode', async () => {
+        logoutButton.addEventClick();
+
+        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        await clickHandler(new Event('click'));
+
+        expect(mockPostCheckCurrentOdeUsers).not.toHaveBeenCalled();
+        expect(mockPostCloseSession).not.toHaveBeenCalled();
+      });
+
+      describe('handleOfflineExit', () => {
+        it('should close directly when no unsaved changes', () => {
+          window.eXeLearning.app.project = {
+            _yjsBridge: {
+              documentManager: {
+                hasUnsavedChanges: vi.fn(() => false),
+                isDirty: false,
+              },
+            },
+          };
+
+          logoutButton.handleOfflineExit();
+
+          expect(mockWindowClose).toHaveBeenCalled();
+          expect(window.onbeforeunload).toBeNull();
+        });
+
+        it('should show confirmation when hasUnsavedChanges returns true', () => {
+          window.eXeLearning.app.project = {
+            _yjsBridge: {
+              documentManager: {
+                hasUnsavedChanges: vi.fn(() => true),
+                isDirty: false,
+              },
+            },
+          };
+
+          logoutButton.handleOfflineExit();
+
+          expect(mockSessionLogoutModal.show).toHaveBeenCalledWith({
+            title: 'Exit',
+            offlineExit: true,
+          });
+          expect(mockWindowClose).not.toHaveBeenCalled();
+        });
+
+        it('should show confirmation when isDirty is true', () => {
+          window.eXeLearning.app.project = {
+            _yjsBridge: {
+              documentManager: {
+                hasUnsavedChanges: vi.fn(() => false),
+                isDirty: true,
+              },
+            },
+          };
+
+          logoutButton.handleOfflineExit();
+
+          expect(mockSessionLogoutModal.show).toHaveBeenCalledWith({
+            title: 'Exit',
+            offlineExit: true,
+          });
+        });
+
+        it('should close directly when no yjsBridge', () => {
+          window.eXeLearning.app.project = {};
+
+          logoutButton.handleOfflineExit();
+
+          expect(mockWindowClose).toHaveBeenCalled();
+        });
+      });
+
+      describe('closeOfflineApp', () => {
+        it('should clear onbeforeunload and close window', () => {
+          logoutButton.closeOfflineApp();
+
+          expect(window.onbeforeunload).toBeNull();
+          expect(mockWindowClose).toHaveBeenCalled();
+        });
+      });
+
+      describe('saveAndCloseOffline', () => {
+        it('should call exportToElpxViaYjs and close', async () => {
+          const mockExport = vi.fn().mockResolvedValue();
+          window.eXeLearning.app.project = {
+            _yjsEnabled: true,
+            exportToElpxViaYjs: mockExport,
+          };
+
+          await logoutButton.saveAndCloseOffline();
+
+          expect(mockExport).toHaveBeenCalledWith({ saveAs: false });
+          expect(mockWindowClose).toHaveBeenCalled();
+        });
+
+        it('should show error on save failure', async () => {
+          const mockExport = vi.fn().mockRejectedValue(new Error('Save failed'));
+          const mockAlert = { show: vi.fn() };
+          window.eXeLearning.app.project = {
+            _yjsEnabled: true,
+            exportToElpxViaYjs: mockExport,
+          };
+          window.eXeLearning.app.modals.alert = mockAlert;
+
+          await logoutButton.saveAndCloseOffline();
+
+          expect(mockAlert.show).toHaveBeenCalledWith({
+            title: 'Error saving',
+            body: 'An error occurred while saving the project',
+            contentId: 'error',
+          });
+          expect(mockWindowClose).not.toHaveBeenCalled();
+        });
+      });
+    });
+
     it('should call postCheckCurrentOdeUsers with correct params', async () => {
       logoutButton.addEventClick();
 

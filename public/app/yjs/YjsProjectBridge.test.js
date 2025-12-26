@@ -2439,6 +2439,145 @@ describe('YjsProjectBridge', () => {
 
       await expect(bridge.exportToElpx()).rejects.toThrow('Export failed');
     });
+
+    it('uses electronAPI.saveBuffer() in Electron mode with saveAs: false', async () => {
+      const mockExporter = {
+        export: mock(() => Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'project.elpx',
+        })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+      };
+
+      // Set up Electron mode
+      global.eXeLearning = { config: { isOfflineInstallation: true } };
+      global.window.__currentProjectId = 'test-project-123';
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve(true)),
+        saveBufferAs: mock(() => Promise.resolve(true)),
+      };
+
+      await bridge.exportToElpx({ saveAs: false });
+
+      expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
+        expect.any(String), // base64 data
+        'test-project-123',
+        'project.elpx'
+      );
+      expect(global.window.electronAPI.saveBufferAs).not.toHaveBeenCalled();
+
+      // Cleanup
+      delete global.eXeLearning;
+      delete global.window.__currentProjectId;
+      delete global.window.electronAPI;
+    });
+
+    it('uses electronAPI.saveBufferAs() in Electron mode with saveAs: true', async () => {
+      const mockExporter = {
+        export: mock(() => Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'project.elpx',
+        })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+      };
+
+      // Set up Electron mode
+      global.eXeLearning = { config: { isOfflineInstallation: true } };
+      global.window.__currentProjectId = 'test-project-456';
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve(true)),
+        saveBufferAs: mock(() => Promise.resolve(true)),
+      };
+
+      await bridge.exportToElpx({ saveAs: true });
+
+      expect(global.window.electronAPI.saveBufferAs).toHaveBeenCalledWith(
+        expect.any(String), // base64 data
+        'test-project-456',
+        'project.elpx'
+      );
+      expect(global.window.electronAPI.saveBuffer).not.toHaveBeenCalled();
+
+      // Cleanup
+      delete global.eXeLearning;
+      delete global.window.__currentProjectId;
+      delete global.window.electronAPI;
+    });
+
+    it('uses default key when __currentProjectId is not set', async () => {
+      const mockExporter = {
+        export: mock(() => Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'project.elpx',
+        })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+      };
+
+      // Set up Electron mode without project ID
+      global.eXeLearning = { config: { isOfflineInstallation: true } };
+      delete global.window.__currentProjectId;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve(true)),
+      };
+
+      await bridge.exportToElpx({ saveAs: false });
+
+      expect(global.window.electronAPI.saveBuffer).toHaveBeenCalledWith(
+        expect.any(String), // base64 data
+        'default',
+        'project.elpx'
+      );
+
+      // Cleanup
+      delete global.eXeLearning;
+      delete global.window.electronAPI;
+    });
+
+    it('falls back to browser download when not in Electron mode', async () => {
+      const mockExporter = {
+        export: mock(() => Promise.resolve({
+          success: true,
+          data: new ArrayBuffer(8),
+          filename: 'test.elpx',
+        })),
+      };
+      global.window.SharedExporters = {
+        createExporter: mock(() => mockExporter),
+      };
+
+      // Not in Electron mode
+      global.eXeLearning = { config: { isOfflineInstallation: false } };
+
+      const mockLink = {
+        href: '',
+        download: '',
+        click: mock(() => {}),
+      };
+      global.URL.createObjectURL = mock(() => 'blob:test');
+      global.URL.revokeObjectURL = mock(() => {});
+      global.document.createElement = mock(() => mockLink);
+      global.document.body = {
+        appendChild: mock(() => {}),
+        removeChild: mock(() => {}),
+      };
+
+      await bridge.exportToElpx({ saveAs: false });
+
+      expect(mockLink.click).toHaveBeenCalled();
+      expect(mockLink.download).toBe('test.elpx');
+
+      // Cleanup
+      delete global.eXeLearning;
+    });
   });
 
   describe('blank structure creation after sync', () => {

@@ -667,4 +667,189 @@ describe('BrowserAssetProvider', () => {
             }
         });
     });
+
+    describe('Project isolation (cross-project contamination prevention)', () => {
+        it('should only return assets matching the expected projectId in fallback', async () => {
+            // Create mock that returns empty from getProjectAssets but has assets in getAllAssetsRaw
+            const mockAssetManagerWithFallback = {
+                projectId: 'project-A',
+                async getProjectAssets() {
+                    return []; // Returns empty to trigger fallback
+                },
+                async getAllAssetsRaw() {
+                    return [
+                        {
+                            id: 'asset-1',
+                            projectId: 'project-A',
+                            blob: createMockBlob('content A'),
+                            mime: 'text/plain',
+                            filename: 'a.txt',
+                        },
+                        {
+                            id: 'asset-2',
+                            projectId: 'project-B',
+                            blob: createMockBlob('content B'),
+                            mime: 'text/plain',
+                            filename: 'b.txt',
+                        },
+                        {
+                            id: 'asset-3',
+                            projectId: 'project-C',
+                            blob: createMockBlob('content C'),
+                            mime: 'text/plain',
+                            filename: 'c.txt',
+                        },
+                    ];
+                },
+            };
+
+            const providerWithFallback = new BrowserAssetProvider(null, mockAssetManagerWithFallback as never);
+            const assets = await providerWithFallback.getAllAssets();
+
+            // Should only include asset from project-A
+            expect(assets).toHaveLength(1);
+            expect(assets[0].id).toBe('asset-1');
+            expect(new TextDecoder().decode(assets[0].data as Uint8Array)).toBe('content A');
+        });
+
+        it('should not include any assets when projectId does not match in fallback', async () => {
+            const mockAssetManagerNoMatch = {
+                projectId: 'project-X', // No assets for this project
+                async getProjectAssets() {
+                    return []; // Returns empty to trigger fallback
+                },
+                async getAllAssetsRaw() {
+                    return [
+                        {
+                            id: 'asset-1',
+                            projectId: 'project-A',
+                            blob: createMockBlob('content A'),
+                            mime: 'text/plain',
+                            filename: 'a.txt',
+                        },
+                        {
+                            id: 'asset-2',
+                            projectId: 'project-B',
+                            blob: createMockBlob('content B'),
+                            mime: 'text/plain',
+                            filename: 'b.txt',
+                        },
+                    ];
+                },
+            };
+
+            const providerNoMatch = new BrowserAssetProvider(null, mockAssetManagerNoMatch as never);
+            const assets = await providerNoMatch.getAllAssets();
+
+            // Should return empty array - no cross-contamination
+            expect(assets).toHaveLength(0);
+        });
+
+        it('should return all project assets when getProjectAssets succeeds (no fallback needed)', async () => {
+            // This test ensures the normal flow still works when getProjectAssets returns assets
+            const mockAssetManagerNormal = {
+                projectId: 'project-A',
+                async getProjectAssets() {
+                    return [
+                        {
+                            id: 'asset-1',
+                            projectId: 'project-A',
+                            blob: createMockBlob('content A1'),
+                            mime: 'text/plain',
+                            filename: 'a1.txt',
+                        },
+                        {
+                            id: 'asset-2',
+                            projectId: 'project-A',
+                            blob: createMockBlob('content A2'),
+                            mime: 'text/plain',
+                            filename: 'a2.txt',
+                        },
+                    ];
+                },
+                // getAllAssetsRaw should NOT be called when getProjectAssets succeeds
+                async getAllAssetsRaw() {
+                    return [
+                        // Include assets from other projects - these should NOT appear
+                        {
+                            id: 'asset-other',
+                            projectId: 'project-B',
+                            blob: createMockBlob('content B'),
+                            mime: 'text/plain',
+                            filename: 'b.txt',
+                        },
+                    ];
+                },
+            };
+
+            const providerNormal = new BrowserAssetProvider(null, mockAssetManagerNormal as never);
+            const assets = await providerNormal.getAllAssets();
+
+            // Should return only the 2 assets from getProjectAssets, not the fallback
+            expect(assets).toHaveLength(2);
+            expect(assets.map(a => a.id)).toEqual(['asset-1', 'asset-2']);
+        });
+
+        it('should filter multiple assets correctly in fallback', async () => {
+            const mockAssetManagerMultiple = {
+                projectId: 'target-project',
+                async getProjectAssets() {
+                    return []; // Trigger fallback
+                },
+                async getAllAssetsRaw() {
+                    return [
+                        // Target project assets
+                        {
+                            id: 'target-1',
+                            projectId: 'target-project',
+                            blob: createMockBlob('target 1'),
+                            mime: 'image/png',
+                            filename: 'image1.png',
+                        },
+                        {
+                            id: 'target-2',
+                            projectId: 'target-project',
+                            blob: createMockBlob('target 2'),
+                            mime: 'image/jpg',
+                            filename: 'image2.jpg',
+                        },
+                        // Other project assets - should be filtered out
+                        {
+                            id: 'other-1',
+                            projectId: 'other-project-1',
+                            blob: createMockBlob('other 1'),
+                            mime: 'text/plain',
+                            filename: 'file1.txt',
+                        },
+                        {
+                            id: 'other-2',
+                            projectId: 'other-project-2',
+                            blob: createMockBlob('other 2'),
+                            mime: 'text/plain',
+                            filename: 'file2.txt',
+                        },
+                        {
+                            id: 'target-3',
+                            projectId: 'target-project',
+                            blob: createMockBlob('target 3'),
+                            mime: 'application/pdf',
+                            filename: 'document.pdf',
+                        },
+                    ];
+                },
+            };
+
+            const providerMultiple = new BrowserAssetProvider(null, mockAssetManagerMultiple as never);
+            const assets = await providerMultiple.getAllAssets();
+
+            // Should only include 3 assets from target-project
+            expect(assets).toHaveLength(3);
+            const ids = assets.map(a => a.id);
+            expect(ids).toContain('target-1');
+            expect(ids).toContain('target-2');
+            expect(ids).toContain('target-3');
+            expect(ids).not.toContain('other-1');
+            expect(ids).not.toContain('other-2');
+        });
+    });
 });

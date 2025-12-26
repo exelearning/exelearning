@@ -1682,26 +1682,28 @@ export default class NavbarFile {
     /**
      * Download project via Yjs collaborative system
      * Exports the Y.Doc to .elpx format directly in browser
+     * In Electron mode: uses remembered path (or prompts first time)
      */
     async downloadProjectViaYjs() {
         let toastData = {
-            title: _('Download'),
+            title: _('Save'),
             body: _('Generating file from collaborative document...'),
             icon: 'downloading',
         };
         let toast = eXeLearning.app.toasts.createToast(toastData);
 
         try {
-            // Export via Yjs - filename is auto-generated from project title (sanitized)
-            await eXeLearning.app.project.exportToElpxViaYjs();
+            // Export via Yjs - saveAs: false means use remembered path (or prompt first time)
+            // In Electron mode, legacy .elp files will trigger prompt for new .elpx location
+            await eXeLearning.app.project.exportToElpxViaYjs({ saveAs: false });
 
-            toast.toastBody.innerHTML = _('File generated and downloaded.');
-            Logger.log('[NavbarFile] Project exported via Yjs');
+            toast.toastBody.innerHTML = _('File saved.');
+            Logger.log('[NavbarFile] Project saved via Yjs');
 
         } catch (error) {
-            console.error('[NavbarFile] Yjs export error:', error);
+            console.error('[NavbarFile] Yjs save error:', error);
             toast.toastBody.innerHTML = _(
-                'An error occurred while generating the file.'
+                'An error occurred while saving the file.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -1725,9 +1727,11 @@ export default class NavbarFile {
      * Runs entirely in the browser using the Yjs document and assets
      * @param {string} format - Export format: 'HTML5', 'PAGE', 'SCORM12', 'SCORM2004', 'IMS', 'EPUB3'
      * @param {string} fallbackApiFormat - API format string for server-side fallback
+     * @param {Object} options - Export options
+     * @param {boolean} options.saveAs - If true, always prompt for save location (Electron only)
      * @returns {Promise<boolean>} - True if export was handled client-side
      */
-    async exportViaYjs(format, fallbackApiFormat) {
+    async exportViaYjs(format, fallbackApiFormat, options = {}) {
         // Check if Yjs mode is enabled and required components are available
         if (!eXeLearning.app.project?._yjsEnabled) {
             return false; // Fall back to server-side
@@ -1788,19 +1792,59 @@ export default class NavbarFile {
             );
 
             if (result.success && result.data) {
-                // Trigger browser download
-                const blob = new Blob([result.data], { type: 'application/zip' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = result.filename || `export.zip`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+                // Check if Electron mode - use Electron save API for desktop behavior
+                if (
+                    eXeLearning?.config?.isOfflineInstallation &&
+                    window.electronAPI?.saveBuffer
+                ) {
+                    // Convert ArrayBuffer to base64 for IPC transfer
+                    const uint8Array = new Uint8Array(result.data);
+                    let binary = '';
+                    for (let i = 0; i < uint8Array.length; i++) {
+                        binary += String.fromCharCode(uint8Array[i]);
+                    }
+                    const base64Data = btoa(binary);
+                    const key = window.__currentProjectId || 'default';
+                    const exportKey = `${key}:${fallbackApiFormat}`;
+                    const exportFilename = result.filename || 'export.zip';
+
+                    if (options.saveAs) {
+                        // Save As: always prompt for new location
+                        await window.electronAPI.saveBufferAs(
+                            base64Data,
+                            exportKey,
+                            exportFilename
+                        );
+                    } else {
+                        // Save: use remembered path or prompt first time
+                        await window.electronAPI.saveBuffer(
+                            base64Data,
+                            exportKey,
+                            exportFilename
+                        );
+                    }
+                    Logger.log(
+                        `[NavbarFile] Unified export via Electron: ${exportFilename}`
+                    );
+                } else {
+                    // Browser mode: use blob URL download
+                    const blob = new Blob([result.data], {
+                        type: 'application/zip',
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = result.filename || `export.zip`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    Logger.log(
+                        `[NavbarFile] Unified export complete: ${result.filename}`
+                    );
+                }
 
                 toast.toastBody.innerHTML = _('The project has been exported.');
-                Logger.log(`[NavbarFile] Unified export complete: ${result.filename}`);
             } else {
                 throw new Error(result.error || 'Export failed');
             }
@@ -1831,8 +1875,43 @@ export default class NavbarFile {
 
     /**
      * Offline-only: Save As for ELP using Electron persistent path
+     * Always prompts for new save location
      */
     async saveAsElpOffline() {
+        // Use Yjs mode if available (preferred path)
+        if (eXeLearning.app.project?._yjsEnabled &&
+            eXeLearning.app.project?.exportToElpxViaYjs) {
+            let toastData = {
+                title: _('Save as'),
+                body: _('Generating file from collaborative document...'),
+                icon: 'downloading',
+            };
+            let toast = eXeLearning.app.toasts.createToast(toastData);
+
+            try {
+                // saveAs: true always prompts for new location
+                await eXeLearning.app.project.exportToElpxViaYjs({ saveAs: true });
+                toast.toastBody.innerHTML = _('File saved.');
+                Logger.log('[NavbarFile] Project saved via Yjs (Save As)');
+            } catch (error) {
+                console.error('[NavbarFile] Yjs Save As error:', error);
+                toast.toastBody.innerHTML = _(
+                    'An error occurred while saving the file.'
+                );
+                toast.toastBody.classList.add('error');
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error'),
+                    body: error.message || _('Unknown error.'),
+                    contentId: 'error',
+                });
+            }
+
+            setTimeout(() => toast.remove(), 1000);
+            eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+            return;
+        }
+
+        // Legacy: REST API path for non-Yjs mode
         try {
             let toastData = {
                 title: _('Save as'),
@@ -1956,6 +2035,15 @@ export default class NavbarFile {
      * Export HTML5 (Save As...)
      */
     async exportHTML5AsEvent() {
+        // Try client-side export first (Yjs mode) with saveAs behavior
+        const handledClientSide = await this.exportViaYjs('HTML5', 'html5', {
+            saveAs: true,
+        });
+        if (handledClientSide) {
+            return;
+        }
+
+        // Fall back to server-side export
         let toastData = {
             title: _('Export'),
             body: _('Generating export files...'),
@@ -2028,6 +2116,88 @@ export default class NavbarFile {
                 setTimeout(() => toast.remove(), 1200);
                 return;
             }
+
+            // Try client-side export first (Yjs mode)
+            if (
+                eXeLearning.app.project?._yjsEnabled &&
+                window.SharedExporters?.quickExport
+            ) {
+                const yjsBridge = eXeLearning.app.project._yjsBridge;
+                if (yjsBridge?.documentManager) {
+                    const documentManager = yjsBridge.documentManager;
+                    const assetManager = yjsBridge.assetManager || null;
+                    const assetCache = yjsBridge.assetCache || null;
+                    let resourceFetcher = null;
+                    if (typeof window.ResourceFetcher !== 'undefined') {
+                        resourceFetcher = new window.ResourceFetcher();
+                    }
+
+                    const result = await window.SharedExporters.quickExport(
+                        'HTML5',
+                        documentManager,
+                        assetCache,
+                        resourceFetcher,
+                        {},
+                        assetManager
+                    );
+
+                    if (result.success && result.data) {
+                        // Convert ArrayBuffer to base64 for IPC transfer
+                        const uint8Array = new Uint8Array(result.data);
+                        let binary = '';
+                        for (let i = 0; i < uint8Array.length; i++) {
+                            binary += String.fromCharCode(uint8Array[i]);
+                        }
+                        const base64Data = btoa(binary);
+                        const suggestedBase = (
+                            result.filename || 'export'
+                        ).replace(/\.zip$/i, '');
+
+                        if (
+                            typeof window.electronAPI.exportBufferToFolder ===
+                            'function'
+                        ) {
+                            const folderResult =
+                                await window.electronAPI.exportBufferToFolder(
+                                    base64Data,
+                                    suggestedBase
+                                );
+                            if (folderResult && folderResult.ok) {
+                                toast.toastBody.innerHTML = _(
+                                    'The project has been exported.'
+                                );
+                            } else if (folderResult && folderResult.canceled) {
+                                toast.toastBody.innerHTML = _('Export canceled.');
+                            } else {
+                                throw new Error(
+                                    folderResult?.error || 'Folder export failed'
+                                );
+                            }
+                        } else {
+                            // Fallback: download as zip
+                            const blob = new Blob([result.data], {
+                                type: 'application/zip',
+                            });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = result.filename || 'export.zip';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                            toast.toastBody.innerHTML = _(
+                                'The project has been exported.'
+                            );
+                        }
+                        setTimeout(() => toast.remove(), 1000);
+                        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+                        return;
+                    }
+                }
+            }
+
+            // Fall back to server-side export
             let odeSessionId = eXeLearning.app.project.odeSession;
             let response = await eXeLearning.app.api.getOdeExportDownload(
                 odeSessionId,
@@ -2076,6 +2246,7 @@ export default class NavbarFile {
                 });
             }
         } catch (e) {
+            console.error('[NavbarFile] Folder export error:', e);
             toast.toastBody.innerHTML = _('Unexpected error.');
             toast.toastBody.classList.add('error');
         }

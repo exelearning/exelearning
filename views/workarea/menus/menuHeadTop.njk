@@ -40,7 +40,9 @@
             </div>
             <div id="head-bottom-user-logged" class="dropdown" title="{{ user.username }}" data-testid="user-menu" data-user-email="{{ user.username }}">
                 <button class="btn btn-link" type="button" id="exeUserMenuToggler" data-bs-toggle="dropdown" aria-expanded="false" title="{{ t.user_menu or 'User menu' }}">
-                    {% if user.gravatarUrl %}
+                    {% if config.isOfflineInstallation %}
+                    <img class="exe-gravatar exe-gravatar--offline" src="{{ basePath }}/exelearning.png" alt="eXeLearning" width="50" height="50" data-testid="user-avatar">
+                    {% elif user.gravatarUrl %}
                     <img class="exe-gravatar" src="{{ user.gravatarUrl }}" alt="{{ user.username }}" width="50" height="50" data-testid="user-avatar" onerror="this.onerror=null;this.src='/images/default-avatar.svg';this.classList.add('exe-gravatar--fallback');">
                     {% else %}
                     <span class="exe-avatar" title="{{ user.username }}" data-testid="user-avatar-initial">{{ user.usernameFirsLetter }}</span>

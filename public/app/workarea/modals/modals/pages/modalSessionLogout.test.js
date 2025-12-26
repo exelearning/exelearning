@@ -198,6 +198,101 @@ describe('ModalSessionLogout', () => {
     });
   });
 
+  describe('offline exit (Electron)', () => {
+    let mockWindowClose;
+
+    beforeEach(() => {
+      mockWindowClose = vi.fn();
+      window.close = mockWindowClose;
+      window.onbeforeunload = vi.fn();
+    });
+
+    describe('closeOfflineApp', () => {
+      it('should clear onbeforeunload and close window', () => {
+        modal.closeOfflineApp();
+
+        expect(window.onbeforeunload).toBeNull();
+        expect(mockWindowClose).toHaveBeenCalled();
+      });
+    });
+
+    describe('saveAndCloseOffline', () => {
+      it('should call exportToElpxViaYjs and close', async () => {
+        const mockExport = vi.fn().mockResolvedValue();
+        window.eXeLearning.app.project = {
+          _yjsEnabled: true,
+          exportToElpxViaYjs: mockExport,
+        };
+
+        await modal.saveAndCloseOffline();
+
+        expect(mockExport).toHaveBeenCalledWith({ saveAs: false });
+        expect(mockWindowClose).toHaveBeenCalled();
+      });
+
+      it('should show error on save failure', async () => {
+        const mockExport = vi.fn().mockRejectedValue(new Error('Save failed'));
+        window.eXeLearning.app.project = {
+          _yjsEnabled: true,
+          exportToElpxViaYjs: mockExport,
+        };
+
+        await modal.saveAndCloseOffline();
+
+        expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+          title: 'Error saving',
+          body: 'An error occurred while saving the project',
+          contentId: 'error',
+        });
+        expect(mockWindowClose).not.toHaveBeenCalled();
+      });
+
+      it('should close directly if Yjs not enabled', async () => {
+        window.eXeLearning.app.project = {
+          _yjsEnabled: false,
+        };
+
+        await modal.saveAndCloseOffline();
+
+        expect(mockWindowClose).toHaveBeenCalled();
+      });
+    });
+
+    describe('buttons with offlineExit', () => {
+      it('should save and close when Yes clicked with offlineExit', async () => {
+        vi.useFakeTimers();
+        const saveSpy = vi.spyOn(modal, 'saveAndCloseOffline').mockResolvedValue();
+        const closeSpy = vi.spyOn(modal, 'close');
+
+        modal.show({ offlineExit: true });
+        vi.advanceTimersByTime(500);
+
+        const yesButton = mockElement.querySelector('.modal-footer .session-logout-save');
+        await yesButton.click();
+
+        expect(closeSpy).toHaveBeenCalled();
+        expect(saveSpy).toHaveBeenCalled();
+        vi.useRealTimers();
+      });
+
+      it('should close without saving when No clicked with offlineExit', () => {
+        vi.useFakeTimers();
+        const closeAppSpy = vi.spyOn(modal, 'closeOfflineApp');
+        const closeSpy = vi.spyOn(modal, 'close');
+
+        modal.show({ offlineExit: true });
+        vi.advanceTimersByTime(500);
+
+        const noButton = mockElement.querySelector('.modal-footer .session-logout-without-save');
+        noButton.click();
+
+        expect(closeSpy).toHaveBeenCalled();
+        expect(closeAppSpy).toHaveBeenCalled();
+        vi.useRealTimers();
+      });
+    });
+  });
+
   describe('closeSession', () => {
     it('should create session when newFile is true', async () => {
       const closeSpy = vi.spyOn(modal, 'close');
