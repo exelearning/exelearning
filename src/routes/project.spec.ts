@@ -3905,9 +3905,7 @@ describe('Project Routes', () => {
             mockProjects.set(6001, project);
             mockProjectsByUuid.set('private-props-test', project);
 
-            const res = await app.handle(
-                new Request('http://localhost/api/odes/private-props-test/properties'),
-            );
+            const res = await app.handle(new Request('http://localhost/api/odes/private-props-test/properties'));
 
             expect(res.status).toBe(403);
             const body = await res.json();
