@@ -150,6 +150,7 @@ endif
 .PHONY: run-app
 run-app: check-bun deps css bundle
 	@echo "Launching eXeLearning App (Electron + Elysia)..."
+	@bun run build:standalone
 	@bun run dev:app
 
 
