@@ -446,13 +446,10 @@ else
 	}
 endif
 
-.PHONY: test-frontend-node
-test-frontend-node: check-node check-env ## Run frontend tests with Node.js (Vitest) - for systems without Bun
-	npm run test:frontend:node
 
-.PHONY: test-frontend-node-ci
-test-frontend-node-ci: check-node check-env ## Run frontend tests with Node.js + coverage (CI)
-	npm run test:frontend:node:ci
+.PHONY: test-frontend-node
+test-frontend-node: check-node check-env ## Run frontend tests with Node.js (Vitest) + coverage (CI) - for systems without Bun
+	npm run test:frontend:node
 
 
 # =============================================================================
@@ -527,10 +524,10 @@ endif
 	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
 	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
 	@echo "Packaging version $(VERSION) (npm version: $(PACKAGE_VERSION))..."
-	@node -e "let pkg=require('./package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+	@bun -e "let pkg=require('./package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
 	bun run package:app $(if $(PUBLISH),-- --publish $(PUBLISH),)
 	@echo "Restoring version to 0.0.0-alpha..."
-	@node -e "let pkg=require('./package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+	@bun -e "let pkg=require('./package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
 	@echo "Package created successfully with version $(VERSION)"
 
 
@@ -550,7 +547,7 @@ check-release-env:
 
 # Inject ephemeral config into package.json (win.certificateSha1)
 eb-inject-config:
-	node -e "const fs=require('fs');const pth='package.json';\
+	bun -e "const fs=require('fs');const pth='package.json';\
 	 const s=fs.readFileSync(pth,'utf8'); const pj=JSON.parse(s); \
 	 pj.build=pj.build||{}; \
 	 pj.build.win=pj.build.win||{}; \
@@ -562,7 +559,7 @@ eb-inject-config:
 # Remove only what we injected (win.certificateSha1)
 eb-cleanup-config:
 	@if [ -f .eb-injected.sentinel ]; then \
-	  node -e "const fs=require('fs');const pth='package.json';\
+	  bun -e "const fs=require('fs');const pth='package.json';\
 	    const pj=JSON.parse(fs.readFileSync(pth,'utf8')); \
 	    if(pj.build && pj.build.win){ delete pj.build.win.certificateSha1; } \
 	    fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
@@ -598,7 +595,7 @@ clean: check-docker
 # Clean local data (database + assets) for fresh start
 .PHONY: clean-local
 clean-local: check-bun
-	node scripts/setup-local.js --clean
+	bun scripts/setup-local.js --clean
 
 # Clean test artifacts
 .PHONY: test-clean
@@ -688,8 +685,7 @@ help:
 	@echo "  make up-legacy              Start server with Node.js (Docker)"
 	@echo "  make upd-legacy             Start server with Node.js detached"
 	@echo "  make down-legacy            Stop legacy server"
-	@echo "  make test-frontend-node     Run frontend tests with Node.js"
-	@echo "  make test-frontend-node-ci  Run frontend tests with Node.js + coverage"
+	@echo "  make test-frontend-node     Run frontend tests with Node.js + coverage"
 	@echo ""
 	@echo "Linting (Biome):"
 	@echo "  make lint            Run lint on all files"
