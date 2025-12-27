@@ -12997,10 +12997,6 @@
         <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
         <target>~Fitxategi hau eXeLearning-en bertsio berriagoarekin sortu da. Funtzio batzuk agian ez dira ondo funtzionatuko. Mesedez, eguneratu aplikazioa.</target>
       </trans-unit>
-      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
-        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
-        <target>~Fitxategi hau eXeLearning-en bertsio berriagoarekin sortu da. Funtzio batzuk agian ez dira ondo funtzionatuko. Mesedez, eguneratu aplikazioa.</target>
-      </trans-unit>
     </body>
   </file>
 </xliff>
