@@ -595,10 +595,10 @@ package-windows-local-sign: fail-on-windows check-release-env eb-inject-config
 clean: check-docker
 	docker compose down -v --remove-orphans
 
-# Clean local cache
+# Clean local data (database + assets) for fresh start
 .PHONY: clean-local
 clean-local: check-bun
-	bun run predev
+	node scripts/setup-local.js --clean
 
 # Clean test artifacts
 .PHONY: test-clean
