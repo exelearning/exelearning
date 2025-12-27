@@ -173,13 +173,24 @@ describe('ApiCallBaseFunctions', () => {
       expect(api.doAjax).toHaveBeenCalledWith('/api/test', 'GET', { id: 1 }, true);
     });
 
-    it('returns empty object on error', async () => {
+    it('returns error response on error with responseJSON', async () => {
       const api = new ApiCallBaseFunctions();
-      vi.spyOn(api, 'doAjax').mockRejectedValue(new Error('Network error'));
+      vi.spyOn(api, 'doAjax').mockRejectedValue({
+        responseJSON: { responseMessage: 'ERROR', error: 'Server error' },
+      });
 
       const result = await api.get('/api/test', {});
 
-      expect(result).toEqual({});
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Server error' });
+    });
+
+    it('returns generic error when no responseJSON', async () => {
+      const api = new ApiCallBaseFunctions();
+      vi.spyOn(api, 'doAjax').mockRejectedValue({ statusText: 'Network error' });
+
+      const result = await api.get('/api/test', {});
+
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Network error' });
     });
 
     it('passes waiting parameter', async () => {
@@ -202,13 +213,15 @@ describe('ApiCallBaseFunctions', () => {
       expect(api.doAjax).toHaveBeenCalledWith('/api/test', 'POST', { name: 'test' }, true);
     });
 
-    it('returns empty object on error', async () => {
+    it('returns error response on error', async () => {
       const api = new ApiCallBaseFunctions();
-      vi.spyOn(api, 'doAjax').mockRejectedValue(new Error('Error'));
+      vi.spyOn(api, 'doAjax').mockRejectedValue({
+        responseJSON: { responseMessage: 'ERROR', error: 'Bad request' },
+      });
 
       const result = await api.post('/api/test', {});
 
-      expect(result).toEqual({});
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Bad request' });
     });
   });
 
@@ -222,13 +235,15 @@ describe('ApiCallBaseFunctions', () => {
       expect(api.doJsonAjax).toHaveBeenCalledWith('/api/test', 'POST', { complex: [1, 2, 3] }, true);
     });
 
-    it('returns empty object on error', async () => {
+    it('returns error response on error', async () => {
       const api = new ApiCallBaseFunctions();
-      vi.spyOn(api, 'doJsonAjax').mockRejectedValue(new Error('Error'));
+      vi.spyOn(api, 'doJsonAjax').mockRejectedValue({
+        responseJSON: { responseMessage: 'ERROR', error: 'Validation error' },
+      });
 
       const result = await api.postJson('/api/test', {});
 
-      expect(result).toEqual({});
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Validation error' });
     });
   });
 
@@ -242,13 +257,15 @@ describe('ApiCallBaseFunctions', () => {
       expect(api.doAjax).toHaveBeenCalledWith('/api/test/1', 'PUT', { name: 'updated' }, true);
     });
 
-    it('returns empty object on error', async () => {
+    it('returns error response on error', async () => {
       const api = new ApiCallBaseFunctions();
-      vi.spyOn(api, 'doAjax').mockRejectedValue(new Error('Error'));
+      vi.spyOn(api, 'doAjax').mockRejectedValue({
+        responseJSON: { responseMessage: 'ERROR', error: 'Update failed' },
+      });
 
       const result = await api.put('/api/test', {});
 
-      expect(result).toEqual({});
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Update failed' });
     });
   });
 
@@ -262,13 +279,15 @@ describe('ApiCallBaseFunctions', () => {
       expect(api.doAjax).toHaveBeenCalledWith('/api/test/1', 'DELETE', {}, true);
     });
 
-    it('returns empty object on error', async () => {
+    it('returns error response on error', async () => {
       const api = new ApiCallBaseFunctions();
-      vi.spyOn(api, 'doAjax').mockRejectedValue(new Error('Error'));
+      vi.spyOn(api, 'doAjax').mockRejectedValue({
+        responseJSON: { responseMessage: 'ERROR', error: 'Delete failed' },
+      });
 
       const result = await api.delete('/api/test', {});
 
-      expect(result).toEqual({});
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Delete failed' });
     });
   });
 
@@ -294,13 +313,15 @@ describe('ApiCallBaseFunctions', () => {
       expect(api.doFileSendAjax).toHaveBeenCalledWith('/api/upload', 'POST', formData, true);
     });
 
-    it('returns empty object on error', async () => {
+    it('returns error response on error', async () => {
       const api = new ApiCallBaseFunctions();
-      vi.spyOn(api, 'doFileSendAjax').mockRejectedValue(new Error('Error'));
+      vi.spyOn(api, 'doFileSendAjax').mockRejectedValue({
+        responseJSON: { responseMessage: 'ERROR', error: 'Upload failed' },
+      });
 
       const result = await api.fileSendPost('/api/upload', new FormData());
 
-      expect(result).toEqual({});
+      expect(result).toEqual({ responseMessage: 'ERROR', error: 'Upload failed' });
     });
   });
 

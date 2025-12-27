@@ -2,7 +2,7 @@
  * Configuration Routes for Elysia
  * Handles application configuration and parameter endpoints
  */
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import {
     TRANS_PREFIX,
     LOCALES,
@@ -24,6 +24,9 @@ import {
     parseBoolean,
     parseNumber,
 } from '../services/app-settings';
+import { getEnabledTemplatesByLocale } from '../db/queries/templates';
+import { getDefaultTheme, getDefaultThemeRecord } from '../db/queries/themes';
+import { SUPPORTED_LOCALES } from '../services/admin-upload-validator';
 
 /**
  * Available licenses for content
@@ -566,8 +569,28 @@ const API_ROUTES = {
     },
 };
 
+/**
+ * Template item structure returned by /api/templates endpoint
+ */
+interface TemplateItem {
+    name: string;
+    displayName: string;
+    path: string;
+    source: 'admin';
+    description?: string;
+}
+
 async function getDefaultParameters(uploadLimits: { maxFileSize: number }) {
     const authMethods = await getAuthMethods(defaultDb, process.env.APP_AUTH_METHODS || 'password,guest');
+
+    // Get global default theme (can be builtin or admin)
+    let defaultThemeDirName = 'base';
+    try {
+        const defaultThemeSetting = await getDefaultTheme(defaultDb);
+        defaultThemeDirName = defaultThemeSetting.dirName;
+    } catch {
+        // If table doesn't exist yet (pre-migration), use 'base'
+    }
 
     return {
         // General settings
@@ -590,7 +613,7 @@ async function getDefaultParameters(uploadLimits: { maxFileSize: number }) {
         maxAutoSaveRetries: 3,
 
         // Theme settings
-        defaultTheme: 'base',
+        defaultTheme: defaultThemeDirName,
 
         // File settings
         maxFileSize: uploadLimits.maxFileSize,
@@ -758,4 +781,99 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
     // GET /api/version - Get application version
     .get('/api/version', () => {
         return { version: getAppVersion() };
+    })
+
+    // GET /api/templates - Get templates for a specific locale
+    // Returns admin-managed templates from the database
+    .get(
+        '/api/templates',
+        async ({ query, set }) => {
+            const { locale } = query;
+
+            if (!locale) {
+                set.status = 400;
+                return { error: 'Bad Request', message: 'Locale parameter is required' };
+            }
+
+            // Validate locale
+            if (!SUPPORTED_LOCALES.includes(locale)) {
+                set.status = 400;
+                return {
+                    error: 'Bad Request',
+                    message: `Invalid locale. Supported: ${SUPPORTED_LOCALES.join(', ')}`,
+                };
+            }
+
+            // Get templates from database
+            let templates: TemplateItem[] = [];
+            try {
+                const templatesDb = await getEnabledTemplatesByLocale(defaultDb, locale);
+                templates = templatesDb.map(t => ({
+                    name: t.filename,
+                    displayName: t.display_name,
+                    path: `/api/admin/templates/${t.id}/download`,
+                    source: 'admin' as const,
+                    description: t.description || undefined,
+                }));
+            } catch {
+                // Silently ignore if admin_templates table doesn't exist yet
+            }
+
+            // Sort by displayName
+            templates.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+            return {
+                templates,
+                locale,
+                supportedLocales: SUPPORTED_LOCALES,
+            };
+        },
+        {
+            query: t.Object({
+                locale: t.String(),
+            }),
+        },
+    )
+
+    // GET /api/config/default-theme - Get the global default theme (base or site)
+    .get('/api/config/default-theme', async () => {
+        try {
+            const defaultThemeSetting = await getDefaultTheme(defaultDb);
+            const version = getAppVersion();
+
+            if (defaultThemeSetting.type === 'site') {
+                // Get site theme details from themes table
+                const siteTheme = await getDefaultThemeRecord(defaultDb);
+                if (siteTheme && siteTheme.is_builtin === 0) {
+                    return {
+                        defaultTheme: {
+                            type: 'site',
+                            dirName: siteTheme.dir_name,
+                            displayName: siteTheme.display_name,
+                            url: `/${version}/site-files/themes/${siteTheme.dir_name}`,
+                        },
+                    };
+                }
+            }
+
+            // Base theme
+            return {
+                defaultTheme: {
+                    type: 'base',
+                    dirName: defaultThemeSetting.dirName,
+                    displayName: defaultThemeSetting.dirName,
+                    url: `/files/perm/themes/base/${defaultThemeSetting.dirName}`,
+                },
+            };
+        } catch {
+            // If table doesn't exist yet, return default 'base' theme
+            return {
+                defaultTheme: {
+                    type: 'base',
+                    dirName: 'base',
+                    displayName: 'base',
+                    url: '/files/perm/themes/base/base',
+                },
+            };
+        }
     });

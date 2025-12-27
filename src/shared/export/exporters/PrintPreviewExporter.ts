@@ -28,6 +28,11 @@ export interface PrintPreviewOptions {
     /** Base path for URLs (e.g., '/exelearning') */
     basePath?: string;
     /**
+     * Full theme URL from the themes manager (e.g., '/v1/site-files/themes/chiquito/')
+     * When provided, this is used instead of constructing the path from theme name.
+     */
+    themeUrl?: string;
+    /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
      * When provided and successful, MathJax library will NOT be included in the output.
      */
@@ -288,7 +293,11 @@ ${this.generateScripts(themeName, usedIdevices, options, addAccessibilityToolbar
         const headerStyle = hideTitle ? ' style="display:none"' : '';
 
         const ideviceBasePath = this.getVersionedPath('/files/perm/idevices/base/', options);
-        const themeIconBasePath = this.getVersionedPath(`/files/perm/themes/base/${themeName}/icons/`, options);
+        // Use themeUrl from options if provided (handles admin themes)
+        const themeBase = options.themeUrl
+            ? options.themeUrl.replace(/\/$/, '')
+            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
+        const themeIconBasePath = `${themeBase}/icons/`;
 
         let blockHtml = '';
         for (const block of page.blocks || []) {
@@ -414,7 +423,11 @@ ${userFooterHtml}</div></footer>`;
         },
     ): string {
         const bootstrapCss = this.getVersionedPath('/libs/bootstrap/bootstrap.min.css', options);
-        const themeCss = this.getVersionedPath(`/files/perm/themes/base/${themeName}/style.css`, options);
+        // Use themeUrl from options if provided (handles admin themes)
+        const themeBasePath = options.themeUrl
+            ? options.themeUrl.replace(/\/$/, '')
+            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
+        const themeCss = `${themeBasePath}/style.css`;
         const fallbackCss = this.getVersionedPath('/style/content.css', options);
 
         // Check if jQuery UI CSS is needed
@@ -662,7 +675,11 @@ html:not(.mode-teacher) .js .teacher-only {
         const commonJs = this.getVersionedPath('/app/common/common.js', options);
         const commonI18nJs = this.getVersionedPath('/app/common/common_i18n.js', options);
         const exeExportJs = this.getVersionedPath('/app/common/exe_export.js', options);
-        const themeJs = this.getVersionedPath(`/files/perm/themes/base/${themeName}/style.js`, options);
+        // Use themeUrl from options if provided (handles admin themes), otherwise construct from name
+        const themeJsBasePath = options.themeUrl
+            ? options.themeUrl.replace(/\/$/, '') // Remove trailing slash if present
+            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
+        const themeJs = `${themeJsBasePath}/style.js`;
 
         // Check if jQuery UI is needed
         const jqueryUiRequiredTypes = new Set([

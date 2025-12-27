@@ -35,7 +35,10 @@ export async function getAllUsers(db: Kysely<Database>): Promise<User[]> {
 }
 
 export async function countUsers(db: Kysely<Database>): Promise<number> {
-    const result = await db.selectFrom('users').select(db.fn.count<number>('id').as('count')).executeTakeFirst();
+    const result = await db
+        .selectFrom('users')
+        .select(eb => eb.fn.count<number>('id').as('count'))
+        .executeTakeFirst();
     return result?.count ?? 0;
 }
 

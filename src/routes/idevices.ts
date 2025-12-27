@@ -323,11 +323,21 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Security: prevent path traversal
         const cleanResource = resource.replace(/\.\./g, '').replace(/^\/+/, '');
-        const filePath = path.join('public/files', cleanResource);
+        let filePath = path.join('public/files', cleanResource);
+        let resolvedPath = path.resolve(filePath);
+        let basePath = path.resolve('public/files');
+
+        // Check if file exists in public/files, if not check FILES_DIR for user themes
+        if (!fs.existsSync(filePath) && cleanResource.startsWith('perm/themes/users/')) {
+            // User themes may be in FILES_DIR/themes/users/ instead of public/files/perm/themes/users/
+            const filesDir = process.env.ELYSIA_FILES_DIR || process.env.FILES_DIR || '/mnt/data';
+            const themeRelativePath = cleanResource.replace('perm/themes/users/', '');
+            filePath = path.join(filesDir, 'themes', 'users', themeRelativePath);
+            resolvedPath = path.resolve(filePath);
+            basePath = path.resolve(path.join(filesDir, 'themes', 'users'));
+        }
 
         // Additional security check
-        const resolvedPath = path.resolve(filePath);
-        const basePath = path.resolve('public/files');
         if (!resolvedPath.startsWith(basePath)) {
             set.status = 403;
             return { error: 'Forbidden', message: 'Access denied' };

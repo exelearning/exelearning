@@ -187,40 +187,24 @@ server {
 
 ## Custom templates
 
-eXeLearning supports project templates that users can select via **File → New from Template**. Templates are `.elpx` files organized by language code under `public/templates/<lang>/`.
+eXeLearning supports project templates that users can select via **File → New from Template**. Templates are managed through the **Admin Panel** under the **Extensions** tab.
 
-### Mounting custom templates
+### Adding templates via Admin Panel
 
-To provide custom templates in a Docker deployment, mount a volume to the templates directory:
+1. Log in as an administrator
+2. Navigate to **Admin Panel → Extensions → Templates**
+3. Select the target language from the dropdown
+4. Click **Upload Template** and select an `.elpx` file
+5. Provide a display name and optional description
+6. The template will be available to users with that language setting
 
-```yaml
-services:
-  exelearning:
-    volumes:
-      # Mount custom templates for all languages
-      - ./my-templates:/app/public/templates
+### Template storage
 
-      # Or mount templates for a specific language
-      - ./my-en-templates:/app/public/templates/en
-      - ./my-es-templates:/app/public/templates/es
-```
+Templates uploaded through the admin panel are stored in `FILES_DIR/admin/templates/<locale>/` and their metadata is stored in the database.
 
-### Template structure
+### Enabling/Disabling templates
 
-Templates are organized by language code:
-
-```
-templates/
-├── en/          # English templates
-│   ├── basic.elpx
-│   └── course.elpx
-├── es/          # Spanish templates
-│   ├── basic.elpx
-│   └── course.elpx
-└── ...
-```
-
-The filename (without `.elpx` extension) is displayed as the template name in the UI. You can use spaces and special characters in filenames (e.g., `My Course Template.elpx`).
+Administrators can enable or disable templates through the admin panel. Disabled templates won't appear in the "New from Template" menu for users.
 
 ### Creating templates
 

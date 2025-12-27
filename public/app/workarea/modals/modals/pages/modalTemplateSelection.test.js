@@ -16,10 +16,14 @@ describe('modalTemplateSelection', () => {
       app: {
         locale: { lang: 'en' },
         api: {
-          getTemplates: vi.fn().mockResolvedValue([
-            { name: 'Template 1', path: 'path/1' },
-            { name: 'Template 2', path: 'path/2' }
-          ]),
+          getTemplates: vi.fn().mockResolvedValue({
+            templates: [
+              { name: 'Template 1', path: 'path/1' },
+              { name: 'Template 2', path: 'path/2' }
+            ],
+            locale: 'en',
+            supportedLocales: ['en', 'es']
+          }),
         },
         modals: {
           openuserodefiles: {

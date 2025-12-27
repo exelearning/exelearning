@@ -27,7 +27,11 @@ import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
-import { getAuthMethods as getAuthMethodsFromSettings } from '../services/app-settings';
+import {
+    getAuthMethods as getAuthMethodsFromSettings,
+    getSettingBoolean,
+    parseBoolean as parseAppSettingBoolean,
+} from '../services/app-settings';
 type AppSettingsTable = {
     key: string;
     value: string;
@@ -45,6 +49,7 @@ import {
 import { createSessionDirectories as createSessionDirectoriesDefault } from '../services/file-helper';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
 import type { JwtPayload } from './types/request-payloads';
+import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 
 /**
  * Login page query parameters
@@ -69,6 +74,7 @@ export interface PagesQueriesDeps {
     findProjectByUuid: typeof findProjectByUuidDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
     createProject: typeof createProjectDefault;
+    getDefaultTheme: typeof getDefaultThemeDefault;
 }
 
 /**
@@ -122,6 +128,7 @@ const defaultQueries: PagesQueriesDeps = {
     findProjectByUuid: findProjectByUuidDefault,
     checkProjectAccess: checkProjectAccessDefault,
     createProject: createProjectDefault,
+    getDefaultTheme: getDefaultThemeDefault,
 };
 
 // Default session manager
@@ -181,6 +188,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         findProjectByUuid,
         checkProjectAccess,
         createProject,
+        getDefaultTheme,
     } = deps.queries ?? defaultQueries;
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
     const { renderTemplate } = deps.template ?? defaultTemplate;
@@ -547,6 +555,27 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     isGuest: isGuest,
                 });
 
+                // Get default theme from database
+                let defaultThemeDirName = 'base';
+                try {
+                    const defaultThemeSetting = await getDefaultTheme(db);
+                    defaultThemeDirName = defaultThemeSetting.dirName;
+                } catch {
+                    // If table doesn't exist yet (pre-migration), use 'base'
+                }
+
+                // Get user styles/idevices settings from DB or env
+                // SECURITY NOTE: When userStyles is enabled (ONLINE_THEMES_INSTALL=1),
+                // users can import custom themes from ELP files. Themes may contain
+                // JavaScript code that runs in the exported content context.
+                // This is intentional for custom interactivity but administrators
+                // should be aware of this when enabling the feature.
+                const userStylesEnabled = await getSettingBoolean(
+                    db,
+                    'ONLINE_THEMES_INSTALL',
+                    parseAppSettingBoolean(process.env.ONLINE_THEMES_INSTALL, false),
+                );
+
                 // Unified config object (replaces legacy 'symfony' object)
                 const config = {
                     // Platform settings
@@ -557,10 +586,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     clientCallWaitingTime: 120000,
                     clientIntervalGetLastEdition: 5000,
                     clientIntervalUpdate: 3000,
-                    defaultTheme: 'default',
+                    defaultTheme: defaultThemeDirName,
                     isOfflineInstallation,
                     platformIntegration: false,
-                    userStyles: 0,
+                    userStyles: userStylesEnabled ? 1 : 0,
                     userIdevices: 0,
                     debugJs: process.env.APP_ENV === 'dev',
                     appEnv: process.env.APP_ENV || 'prod',

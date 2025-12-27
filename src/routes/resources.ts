@@ -17,6 +17,12 @@ const LIBS_PATH = 'public/libs';
 const COMMON_PATH = 'public/app/common';
 const BUNDLES_PATH = 'public/bundles';
 
+// Get site themes directory (from FILES_DIR)
+const getSiteThemesPath = (): string => {
+    const filesDir = deps.getEnv('ELYSIA_FILES_DIR') || deps.getEnv('FILES_DIR') || '/mnt/data';
+    return path.join(filesDir, 'themes/site');
+};
+
 /**
  * Dependency injection for testing
  */
@@ -132,14 +138,31 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     // GET /api/resources/theme/:themeName - Get all files for a theme
     .get('/api/resources/theme/:themeName', ({ params, set }) => {
         const { themeName } = params;
+        const version = getAppVersion();
+        const basePath = getBasePath();
 
-        // Check user themes first, then base themes
+        // Check user themes first, then base themes, then admin themes
         let themePath = path.join(THEMES_USERS_PATH, themeName);
         let urlPrefix = `/files/perm/themes/users/${themeName}`;
 
         if (!deps.fs.existsSync(themePath)) {
             themePath = path.join(THEMES_BASE_PATH, themeName);
             urlPrefix = `/files/perm/themes/base/${themeName}`;
+        }
+
+        // Check site themes (from FILES_DIR)
+        if (!deps.fs.existsSync(themePath)) {
+            const siteThemesPath = getSiteThemesPath();
+            themePath = path.join(siteThemesPath, themeName);
+            if (deps.fs.existsSync(themePath)) {
+                // Site themes are served via /site-files/themes/
+                // Return file list with direct URLs (not through /files/ prefix)
+                const files = scanDirectory(themePath);
+                return files.map(filePath => ({
+                    path: filePath,
+                    url: `${basePath}/${version}/site-files/themes/${themeName}/${filePath}`,
+                }));
+            }
         }
 
         if (!deps.fs.existsSync(themePath)) {
@@ -453,6 +476,38 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
 
             set.headers['content-type'] = 'application/zip';
             set.headers['cache-control'] = 'private, max-age=3600'; // Shorter cache for user themes
+            return new Response(zipBuffer);
+        }
+
+        // Check if this is a site theme that needs on-demand ZIP generation
+        const siteThemesPath = getSiteThemesPath();
+        const siteThemePath = path.join(siteThemesPath, themeName);
+        if (deps.fs.existsSync(siteThemePath)) {
+            // Generate ZIP on-the-fly for site themes
+            const files = scanDirectory(siteThemePath);
+            if (files.length === 0) {
+                set.status = 404;
+                return { error: 'Not Found', message: `Theme ${themeName} is empty` };
+            }
+
+            // Use fflate to create ZIP dynamically
+            const { zipSync } = await import('fflate');
+            const zipData: { [key: string]: Uint8Array } = {};
+
+            for (const filePath of files) {
+                const fullPath = path.join(siteThemePath, filePath);
+                try {
+                    const content = deps.fs.readFileSync(fullPath) as Buffer;
+                    zipData[filePath] = new Uint8Array(content);
+                } catch {
+                    // Skip files that can't be read
+                }
+            }
+
+            const zipBuffer = zipSync(zipData, { level: 6 });
+
+            set.headers['content-type'] = 'application/zip';
+            set.headers['cache-control'] = 'private, max-age=3600'; // Shorter cache for admin themes
             return new Response(zipBuffer);
         }
 

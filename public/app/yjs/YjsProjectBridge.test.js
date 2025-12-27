@@ -473,6 +473,8 @@ describe('YjsProjectBridge', () => {
         },
         config: {
           defaultTheme: 'base',
+          userStyles: 1, // Enable user styles
+          isOfflineInstallation: false,
         },
       };
 
@@ -483,7 +485,7 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('test-theme', true);
     });
 
-    it('should fall back to default theme when theme is not installed', async () => {
+    it('should fall back to default theme when theme is not installed and package has no theme folder', async () => {
       const mockSelectTheme = mock(() => Promise.resolve());
 
       global.eXeLearning = {
@@ -497,19 +499,22 @@ describe('YjsProjectBridge', () => {
         },
         config: {
           defaultTheme: 'base',
+          userStyles: 1, // Enable user styles
+          isOfflineInstallation: false,
         },
       };
 
-      // Mock JSZip to avoid trying to read the file
-      global.window.JSZip = {
-        loadAsync: mock(() =>
-          Promise.resolve({
-            file: mock(() => null), // No theme/config.xml in package
-          })
-        ),
+      // Mock fflate for ZIP handling (used instead of JSZip now)
+      global.window.fflate = {
+        unzipSync: mock(() => ({})), // Empty ZIP, no theme/config.xml
       };
 
-      await bridge._checkAndImportTheme('unknown-theme', new Blob());
+      // Create a mock file with arrayBuffer
+      const mockFile = {
+        arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(10))),
+      };
+
+      await bridge._checkAndImportTheme('unknown-theme', mockFile);
 
       // selectTheme should be called with default theme (fallback)
       expect(mockSelectTheme).toHaveBeenCalledWith('base', false);
@@ -531,6 +536,81 @@ describe('YjsProjectBridge', () => {
 
       // selectTheme should NOT be called
       expect(mockSelectTheme).not.toHaveBeenCalled();
+    });
+
+    it('should use default theme when userStyles is disabled and not offline', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: {}, // Theme not installed
+            },
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+          userStyles: 0, // Disabled
+          isOfflineInstallation: false,
+        },
+      };
+
+      await bridge._checkAndImportTheme('custom-theme', new Blob());
+
+      // Should use default theme immediately without prompting
+      expect(mockSelectTheme).toHaveBeenCalledWith('base', false);
+    });
+
+    it('should allow theme import when userStyles is enabled', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: { 'custom-theme': { id: 'custom-theme' } },
+            },
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+          userStyles: 1, // Enabled
+          isOfflineInstallation: false,
+        },
+      };
+
+      await bridge._checkAndImportTheme('custom-theme', new Blob());
+
+      // Should select the theme normally (theme is installed)
+      expect(mockSelectTheme).toHaveBeenCalledWith('custom-theme', true);
+    });
+
+    it('should allow theme import in offline installation even if userStyles is 0', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: { 'custom-theme': { id: 'custom-theme' } },
+            },
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+          userStyles: 0, // Disabled
+          isOfflineInstallation: true, // But offline
+        },
+      };
+
+      await bridge._checkAndImportTheme('custom-theme', new Blob());
+
+      // Should select the theme normally (offline allows all)
+      expect(mockSelectTheme).toHaveBeenCalledWith('custom-theme', true);
     });
   });
 
@@ -2342,7 +2422,40 @@ describe('YjsProjectBridge', () => {
 
       expect(result.assets).toBe(5);
       expect(bridge.announceAssets).toHaveBeenCalled();
+      // Theme import is called when clearExisting is true (default)
       expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('base', file);
+    });
+
+    it('imports theme when clearExisting is explicitly true', async () => {
+      const mockImporter = {
+        importFromFile: mock(() => Promise.resolve({ assets: 0, theme: 'custom-theme' })),
+      };
+      global.window.ElpxImporter = mock(function() { return mockImporter; });
+
+      bridge._checkAndImportTheme = mock(() => Promise.resolve());
+
+      const file = new Blob(['test'], { type: 'application/zip' });
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('custom-theme', file);
+    });
+
+    it('does NOT import theme when clearExisting is false (importing into existing project)', async () => {
+      const mockImporter = {
+        importFromFile: mock(() => Promise.resolve({ assets: 3, theme: 'imported-theme' })),
+      };
+      global.window.ElpxImporter = mock(function() { return mockImporter; });
+
+      bridge.announceAssets = mock(() => Promise.resolve());
+      bridge._checkAndImportTheme = mock(() => Promise.resolve());
+
+      const file = new Blob(['test'], { type: 'application/zip' });
+      const result = await bridge.importFromElpx(file, { clearExisting: false });
+
+      expect(result.assets).toBe(3);
+      expect(bridge.announceAssets).toHaveBeenCalled();
+      // Theme should NOT be imported when merging into existing project
+      expect(bridge._checkAndImportTheme).not.toHaveBeenCalled();
     });
 
     it('uses assetManager when available', async () => {

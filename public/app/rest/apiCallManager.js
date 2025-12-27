@@ -404,14 +404,71 @@ export default class ApiCallManager {
     }
 
     /**
-     * Import ode theme
+     * Import theme from ELP file
      *
-     * @param {*} params
-     * @returns
+     * Uploads a packaged theme ZIP to the server for installation.
+     * The caller must package the theme files before calling this method.
+     *
+     * @param {Object} params
+     * @param {string} params.themeDirname - Directory name of the theme
+     * @param {Blob|File} params.themeZip - Packaged theme ZIP file (required)
+     * @returns {Promise<Object>} Response with updated theme list
      */
     async postOdeImportTheme(params) {
-        let url = this.endpoints.api_ode_theme_import.path;
-        return await this.func.post(url, params);
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/themes/import`;
+
+        // Theme ZIP is required - callers must package theme before calling
+        if (!params.themeZip) {
+            console.error('[API] postOdeImportTheme: themeZip parameter is required');
+            return {
+                responseMessage: 'ERROR',
+                error: 'Theme import requires the theme files. Please package the theme before calling this method.',
+            };
+        }
+
+        if (!params.themeDirname) {
+            console.error('[API] postOdeImportTheme: themeDirname parameter is required');
+            return {
+                responseMessage: 'ERROR',
+                error: 'Theme directory name is required.',
+            };
+        }
+
+        // Get auth token
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            eXeLearning?.config?.token ||
+            localStorage.getItem('authToken');
+
+        // Create FormData
+        const formData = new FormData();
+        formData.append('themeDirname', params.themeDirname);
+        formData.append('themeZip', params.themeZip, `${params.themeDirname}.zip`);
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    error: errorData.error || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] postOdeImportTheme error:', error);
+            return { responseMessage: 'ERROR', error: error.message };
+        }
     }
 
     /**

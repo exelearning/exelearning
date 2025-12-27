@@ -349,6 +349,62 @@ describe('NavbarFile', () => {
             expect(mockButtons.newFromTemplateButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
         });
 
+        it('checkAndShowNewFromTemplateButton should show button when templates exist', async () => {
+            // Setup: wrap button in a list item with d-none class
+            const li = document.createElement('li');
+            li.classList.add('d-none');
+            li.appendChild(mockButtons.newFromTemplateButton);
+            navbarElement.appendChild(li);
+
+            // Mock fetch to return templates
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({
+                    templates: [{ name: 'Test Template', path: '/path/to/template' }],
+                    locale: 'en',
+                    supportedLocales: ['en', 'es']
+                })
+            });
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            expect(li.classList.contains('d-none')).toBe(false);
+        });
+
+        it('checkAndShowNewFromTemplateButton should keep button hidden when no templates', async () => {
+            const li = document.createElement('li');
+            li.classList.add('d-none');
+            li.appendChild(mockButtons.newFromTemplateButton);
+            navbarElement.appendChild(li);
+
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({
+                    templates: [],
+                    locale: 'en',
+                    supportedLocales: ['en', 'es']
+                })
+            });
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            expect(li.classList.contains('d-none')).toBe(true);
+        });
+
+        it('checkAndShowNewFromTemplateButton should handle fetch error gracefully', async () => {
+            const li = document.createElement('li');
+            li.classList.add('d-none');
+            li.appendChild(mockButtons.newFromTemplateButton);
+            navbarElement.appendChild(li);
+
+            global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            // Button should stay hidden on error
+            expect(li.classList.contains('d-none')).toBe(true);
+        });
+
         it('setSaveProjectEvent should add click listener', () => {
             navbarFile.setSaveProjectEvent();
             expect(mockButtons.saveButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));

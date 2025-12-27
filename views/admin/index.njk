@@ -449,6 +449,141 @@
             border-bottom: none;
         }
 
+        /* Theme row styles - distinguish base from site themes */
+        .admin-table tbody tr.theme-row-base {
+            background: linear-gradient(to right, rgba(59, 130, 246, 0.08), transparent);
+            border-left: 3px solid var(--primary, #3b82f6);
+        }
+        .admin-table tbody tr.theme-row-base:hover {
+            background: linear-gradient(to right, rgba(59, 130, 246, 0.12), var(--gray-50, #f9fafb));
+        }
+        .admin-table tbody tr.theme-row-site {
+            border-left: 3px solid transparent;
+        }
+
+        .ext-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.5rem 0;
+            gap: 1rem;
+        }
+
+        .ext-toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ext-toolbar-left label {
+            font-weight: 500;
+            color: var(--admin-text-light);
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.3s;
+            border-radius: 22px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--admin-primary);
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(18px);
+        }
+
+        /* Small buttons */
+        .btn-admin-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            border: 1px solid var(--admin-border);
+            background: white;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-admin-sm:hover {
+            background: var(--gray-50);
+        }
+
+        .btn-admin-sm.btn-danger {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .btn-admin-sm.btn-danger:hover {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-admin-sm:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border-radius: 4px;
+        }
+
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        /* Spin animation */
+        @keyframes mi-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .mi-spin {
+            animation: mi-spin 1s linear infinite;
+        }
+
         /* Buttons */
         .btn-admin-primary {
             background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-primary-dark) 100%);
@@ -765,37 +900,6 @@
             cursor: pointer;
         }
 
-        /* Tabs */
-        .admin-tabs {
-            display: flex;
-            gap: 0.25rem;
-            padding: 0 1rem;
-            border-bottom: 1px solid var(--admin-border);
-            background: var(--gray-50, #f9fafb);
-        }
-
-        .admin-tab {
-            padding: 0.75rem 1rem;
-            font-weight: 500;
-            font-size: 0.875rem;
-            color: var(--admin-text-muted);
-            text-decoration: none;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .admin-tab:hover {
-            color: var(--admin-primary);
-        }
-
-        .admin-tab.active {
-            color: var(--admin-primary);
-            border-bottom-color: var(--admin-primary);
-        }
-
         /* Storage quota progress bar */
         .quota-container {
             min-width: 180px;
@@ -867,9 +971,13 @@
                 <span class="mi">folder</span>
                 {{ t.projects or 'Projects' }}
             </a>
-            <a href="#extensions" class="admin-nav-link" data-section="extensions">
-                <span class="mi">extension</span>
-                {{ t.extensions or 'Extensions' }}
+            <a href="#styles" class="admin-nav-link" data-section="styles">
+                <span class="mi">palette</span>
+                {{ t.styles or 'Styles' }}
+            </a>
+            <a href="#templates" class="admin-nav-link" data-section="templates">
+                <span class="mi">description</span>
+                {{ t.templates or 'Templates' }}
             </a>
             <a href="#settings" class="admin-nav-link" data-section="settings">
                 <span class="mi">tune</span>
@@ -1123,27 +1231,111 @@
                 </div>
             </section>
 
-            <!-- Extensions Section -->
-            <section id="extensions" class="admin-section">
+            <!-- Styles Section -->
+            <section id="styles" class="admin-section">
                 <div class="admin-card">
-                    <div class="admin-tabs">
-                        <a href="#" class="admin-tab active" data-ext-type="styles">
+                    <div class="admin-card-header">
+                        <h5>
                             <span class="mi mi-sm">palette</span>
-                            {{ t.styles or 'Styles' }}
-                        </a>
-                        <a href="#" class="admin-tab" data-ext-type="idevices">
-                            <span class="mi mi-sm">widgets</span>
-                            {{ t.idevices or 'iDevices' }}
-                        </a>
-                        <a href="#" class="admin-tab" data-ext-type="templates">
-                            <span class="mi mi-sm">description</span>
-                            {{ t.templates or 'Templates' }}
-                        </a>
+                            {{ t.themes_management or 'Themes Management' }}
+                        </h5>
                     </div>
                     <div class="admin-card-body">
-                        <div class="empty-state">
-                            <span class="mi">extension</span>
-                            <p>{{ t.extensions_coming_soon or 'Extensions management coming soon...' }}</p>
+                        <div class="ext-toolbar">
+                            <button id="uploadThemeBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">upload</span>
+                                {{ t.upload_theme or 'Upload Theme' }}
+                            </button>
+                            <input type="file" id="themeFileInput" accept=".zip" style="display: none;">
+                        </div>
+                        <div id="themesTableContainer">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px;">{{ t.preview or 'Preview' }}</th>
+                                        <th>{{ t.name or 'Name' }}</th>
+                                        <th style="width: 80px;">{{ t.source or 'Source' }}</th>
+                                        <th>{{ t.version or 'Version' }}</th>
+                                        <th>{{ t.author or 'Author' }}</th>
+                                        <th style="width: 80px;">{{ t.enabled or 'Enabled' }}</th>
+                                        <th style="width: 80px;">{{ t.default or 'Default' }}</th>
+                                        <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="themesTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center">
+                                            <span class="mi mi-spin">sync</span>
+                                            {{ t.loading or 'Loading...' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Templates Section -->
+            <section id="templates" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">description</span>
+                            {{ t.templates_management or 'Templates Management' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="ext-toolbar">
+                            <div class="ext-toolbar-left">
+                                <label for="templateLocaleSelect">{{ t.locale or 'Locale' }}:</label>
+                                <select id="templateLocaleSelect" class="admin-input" style="width: auto; min-width: 120px;">
+                                    <option value="es">Español (es)</option>
+                                    <option value="en">English (en)</option>
+                                    <option value="fr">Français (fr)</option>
+                                    <option value="de">Deutsch (de)</option>
+                                    <option value="it">Italiano (it)</option>
+                                    <option value="pt">Português (pt)</option>
+                                    <option value="ca">Català (ca)</option>
+                                    <option value="eu">Euskara (eu)</option>
+                                    <option value="gl">Galego (gl)</option>
+                                    <option value="va">Valencià (va)</option>
+                                    <option value="eo">Esperanto (eo)</option>
+                                    <option value="nl">Nederlands (nl)</option>
+                                    <option value="pl">Polski (pl)</option>
+                                    <option value="ru">Русский (ru)</option>
+                                    <option value="zh">中文 (zh)</option>
+                                    <option value="ja">日本語 (ja)</option>
+                                    <option value="ko">한국어 (ko)</option>
+                                    <option value="ar">العربية (ar)</option>
+                                </select>
+                            </div>
+                            <button id="uploadTemplateBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">upload</span>
+                                {{ t.upload_template or 'Upload Template' }}
+                            </button>
+                            <input type="file" id="templateFileInput" accept=".elpx" style="display: none;">
+                        </div>
+                        <div id="templatesTableContainer">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>{{ t.filename or 'Filename' }}</th>
+                                        <th>{{ t.display_name or 'Display Name' }}</th>
+                                        <th>{{ t.description or 'Description' }}</th>
+                                        <th style="width: 80px;">{{ t.enabled or 'Enabled' }}</th>
+                                        <th style="width: 120px;">{{ t.actions or 'Actions' }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="templatesTableBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center">
+                                            <span class="mi mi-spin">sync</span>
+                                            {{ t.loading or 'Loading...' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -1494,6 +1686,7 @@
     <script>
         // Configuration
         const API_BASE = '{{ basePath }}/api/admin';
+        const BASE_PATH = '{{ basePath }}';
         const T = {
             confirm_delete: '{{ t.confirm_delete or "Are you sure you want to delete this user?" }}',
             confirm_delete_bulk: '{{ t.confirm_delete_bulk or "Are you sure you want to delete {count} users?" }}',
@@ -2500,13 +2693,365 @@
             document.getElementById('sidebarOverlay').classList.remove('show');
         });
 
-        // Extension tabs
-        document.querySelectorAll('.admin-tab[data-ext-type]').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                e.preventDefault();
-                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-            });
+        // ==========================================
+        // Admin Themes Management
+        // ==========================================
+
+        async function loadAdminThemes() {
+            const tbody = document.getElementById('themesTableBody');
+            try {
+                const response = await fetch('/api/admin/themes', { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load themes');
+
+                const data = await response.json();
+
+                if (!data.themes || data.themes.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center">{{ t.no_themes or 'No themes available.' }}</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = data.themes.map(theme => {
+                    // Determine screenshot path based on source
+                    // 'base' = builtin themes from public/files/perm/themes/base/
+                    // 'site' = admin-uploaded themes from FILES_DIR/themes/site/
+                    const screenshotPath = theme.source === 'base'
+                        ? BASE_PATH + '/files/perm/themes/base/' + theme.dirName + '/screenshot.png'
+                        : (theme.storagePath ? BASE_PATH + '/site-files/themes/' + theme.dirName + '/screenshot.png' : '');
+
+                    // Source badge - different colors for base vs site themes
+                    const sourceBadge = theme.source === 'base'
+                        ? '<span class="badge badge-primary">Base</span>'
+                        : '<span class="badge badge-secondary">Site</span>';
+
+                    // Toggle for base vs site themes (both can be toggled now)
+                    const toggleHtml = theme.source === 'base'
+                        ? `<label class="toggle-switch" ${theme.isDefault ? 'title="{{ t.cannot_disable_default or "Cannot disable the default theme" }}"' : ''}>
+                               <input type="checkbox" ${theme.isEnabled ? 'checked' : ''} ${theme.isDefault ? 'disabled' : ''} onchange="toggleBuiltinThemeEnabled('${theme.dirName}', this.checked)">
+                               <span class="toggle-slider"></span>
+                           </label>`
+                        : `<label class="toggle-switch" ${theme.isDefault ? 'title="{{ t.cannot_disable_default or "Cannot disable the default theme" }}"' : ''}>
+                               <input type="checkbox" ${theme.isEnabled ? 'checked' : ''} ${theme.isDefault ? 'disabled' : ''} onchange="toggleThemeEnabled(${theme.id}, this.checked)">
+                               <span class="toggle-slider"></span>
+                           </label>`;
+
+                    // Set default button for both base and site themes
+                    let defaultHtml;
+                    if (theme.isDefault) {
+                        defaultHtml = '<span class="badge badge-success">{{ t.default or "Default" }}</span>';
+                    } else if (theme.source === 'base') {
+                        defaultHtml = `<button class="btn-admin-sm" onclick="setDefaultBuiltinTheme('${theme.dirName}')" ${!theme.isEnabled ? 'disabled' : ''}>{{ t.set_default or "Set" }}</button>`;
+                    } else {
+                        defaultHtml = `<button class="btn-admin-sm" onclick="setDefaultTheme(${theme.id})" ${!theme.isEnabled ? 'disabled' : ''}>{{ t.set_default or "Set" }}</button>`;
+                    }
+
+                    // Delete button only for site themes (base themes cannot be deleted)
+                    const deleteHtml = theme.source === 'base'
+                        ? ''
+                        : `<button class="btn-admin-sm btn-danger" onclick="deleteTheme(${theme.id}, '${escapeHtml(theme.displayName)}')">
+                               <span class="mi mi-sm">delete</span>
+                           </button>`;
+
+                    // Add class for base themes to style them differently
+                    const rowClass = theme.source === 'base' ? 'theme-row-base' : 'theme-row-site';
+
+                    return `
+                    <tr data-theme-id="${theme.id || theme.dirName}" class="${rowClass}">
+                        <td><img src="${screenshotPath}" alt="" style="width: 50px; height: 40px; object-fit: cover; border-radius: 4px;" onerror="this.style.display='none'"></td>
+                        <td><strong>${escapeHtml(theme.displayName)}</strong><br><small class="text-muted">${escapeHtml(theme.dirName)}</small></td>
+                        <td>${sourceBadge}</td>
+                        <td>${escapeHtml(theme.version || '-')}</td>
+                        <td>${escapeHtml(theme.author || '-')}</td>
+                        <td>${toggleHtml}</td>
+                        <td>${defaultHtml}</td>
+                        <td>${deleteHtml}</td>
+                    </tr>
+                `}).join('');
+            } catch (error) {
+                console.error('Error loading themes:', error);
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">{{ t.error_loading or 'Error loading data' }}</td></tr>`;
+            }
+        }
+
+        async function uploadTheme(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/admin/themes/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'Upload failed');
+                }
+
+                showNotification('{{ t.theme_uploaded or "Theme uploaded successfully" }}', 'success');
+                loadAdminThemes();
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function toggleThemeEnabled(id, enabled) {
+            try {
+                const response = await fetch(`/api/admin/themes/${id}/enabled`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isEnabled: enabled }),
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Failed to update');
+                loadAdminThemes();
+            } catch (error) {
+                showNotification(error.message, 'error');
+                loadAdminThemes(); // Reload to reset checkbox state
+            }
+        }
+
+        async function setDefaultTheme(id) {
+            try {
+                const response = await fetch(`/api/admin/themes/${id}/default`, {
+                    method: 'PATCH',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.message || 'Failed to set default');
+                }
+
+                showNotification('{{ t.default_theme_set or "Default theme set" }}', 'success');
+                loadAdminThemes();
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function toggleBuiltinThemeEnabled(dirName, isEnabled) {
+            try {
+                const response = await fetch(`/api/admin/themes/builtin/${encodeURIComponent(dirName)}/enabled`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ isEnabled })
+                });
+
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.message || 'Failed to update');
+                }
+
+                loadAdminThemes();
+            } catch (error) {
+                showNotification(error.message, 'error');
+                loadAdminThemes(); // Reload to reset checkbox state
+            }
+        }
+
+        async function setDefaultBuiltinTheme(dirName) {
+            try {
+                const response = await fetch(`/api/admin/themes/builtin/${encodeURIComponent(dirName)}/default`, {
+                    method: 'PATCH',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.message || 'Failed to set default');
+                }
+
+                showNotification('{{ t.default_theme_set or "Default theme set" }}', 'success');
+                loadAdminThemes();
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function deleteTheme(id, name) {
+            if (!confirm(`{{ t.confirm_delete_theme or "Are you sure you want to delete the theme" }} "${name}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/themes/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete');
+
+                showNotification('{{ t.theme_deleted or "Theme deleted" }}', 'success');
+                loadAdminThemes();
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // Theme upload button handlers
+        document.getElementById('uploadThemeBtn')?.addEventListener('click', () => {
+            document.getElementById('themeFileInput').click();
+        });
+
+        document.getElementById('themeFileInput')?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadTheme(file);
+                e.target.value = ''; // Reset input
+            }
+        });
+
+        // ==========================================
+        // Admin Templates Management
+        // ==========================================
+
+        let currentTemplateLocale = 'es';
+
+        async function loadAdminTemplates() {
+            const tbody = document.getElementById('templatesTableBody');
+            try {
+                const response = await fetch(`/api/admin/templates?locale=${currentTemplateLocale}`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load templates');
+
+                const data = await response.json();
+
+                if (!data.templates || data.templates.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center">{{ t.no_templates or 'No templates for this locale.' }}</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = data.templates.map(template => `
+                    <tr data-template-id="${template.id}">
+                        <td><code>${escapeHtml(template.filename)}</code></td>
+                        <td>${escapeHtml(template.displayName)}</td>
+                        <td>${escapeHtml(template.description || '-')}</td>
+                        <td>
+                            <label class="toggle-switch">
+                                <input type="checkbox" ${template.isEnabled ? 'checked' : ''} onchange="toggleTemplateEnabled(${template.id}, this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            <a href="/api/admin/templates/${template.id}/download" class="btn-admin-sm" title="{{ t.download or 'Download' }}">
+                                <span class="mi mi-sm">download</span>
+                            </a>
+                            <button class="btn-admin-sm btn-danger" onclick="deleteTemplate(${template.id}, '${escapeHtml(template.displayName)}')">
+                                <span class="mi mi-sm">delete</span>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">{{ t.error_loading or 'Error loading data' }}</td></tr>`;
+            }
+        }
+
+        async function uploadTemplate(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('locale', currentTemplateLocale);
+
+            try {
+                const response = await fetch('/api/admin/templates/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'Upload failed');
+                }
+
+                showNotification('{{ t.template_uploaded or "Template uploaded successfully" }}', 'success');
+                loadAdminTemplates();
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function toggleTemplateEnabled(id, enabled) {
+            try {
+                const response = await fetch(`/api/admin/templates/${id}/enabled`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isEnabled: enabled }),
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Failed to update');
+                loadAdminTemplates();
+            } catch (error) {
+                showNotification(error.message, 'error');
+                loadAdminTemplates();
+            }
+        }
+
+        async function deleteTemplate(id, name) {
+            if (!confirm(`{{ t.confirm_delete_template or "Are you sure you want to delete the template" }} "${name}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/templates/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete');
+
+                showNotification('{{ t.template_deleted or "Template deleted" }}', 'success');
+                loadAdminTemplates();
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // Template locale selector
+        document.getElementById('templateLocaleSelect')?.addEventListener('change', (e) => {
+            currentTemplateLocale = e.target.value;
+            loadAdminTemplates();
+        });
+
+        // Template upload button handlers
+        document.getElementById('uploadTemplateBtn')?.addEventListener('click', () => {
+            document.getElementById('templateFileInput').click();
+        });
+
+        document.getElementById('templateFileInput')?.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                uploadTemplate(file);
+                e.target.value = '';
+            }
+        });
+
+        // Utility function for escaping HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Notification helper
+        function showNotification(message, type = 'info') {
+            // Simple notification - can be enhanced with a toast library
+            alert(message);
+        }
+
+        // Load themes when Styles section is shown
+        document.querySelector('.admin-nav-link[data-section="styles"]')?.addEventListener('click', () => {
+            setTimeout(() => loadAdminThemes(), 100);
+        });
+
+        // Load templates when Templates section is shown
+        document.querySelector('.admin-nav-link[data-section="templates"]')?.addEventListener('click', () => {
+            setTimeout(() => loadAdminTemplates(), 100);
         });
 
         // Initial load

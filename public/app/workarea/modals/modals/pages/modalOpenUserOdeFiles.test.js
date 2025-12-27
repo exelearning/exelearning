@@ -1640,18 +1640,24 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.themes.selectTheme).toHaveBeenCalledWith('base');
     });
 
-    it('should prompt for missing theme and install on confirm', () => {
+    it('should show alert for missing theme and use default on confirm', () => {
       const confirmExec = vi.fn();
-      window.eXeLearning.app.modals.confirm.show.mockImplementation(({ confirmExec: exec }) => {
-        confirmExec.mockImplementation(exec);
-      });
+      window.eXeLearning.app.modals.alert = {
+        show: vi.fn().mockImplementation(({ confirmExec: exec }) => {
+          if (exec) confirmExec.mockImplementation(exec);
+        }),
+      };
       modal.loadOdeTheme({
         theme: 'missing',
         themeDir: 'missing',
         authorized: true,
       });
-      confirmExec();
-      expect(window.eXeLearning.app.api.postOdeImportTheme).toHaveBeenCalled();
+      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+      // Confirm callback selects default theme
+      if (confirmExec.getMockImplementation()) {
+        confirmExec();
+        expect(window.eXeLearning.app.themes.selectTheme).toHaveBeenCalledWith('base', false);
+      }
     });
   });
 });

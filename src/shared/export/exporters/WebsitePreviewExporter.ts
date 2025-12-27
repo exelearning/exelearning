@@ -27,6 +27,12 @@ export interface PreviewOptions {
     /** Base path for URLs (e.g., '/exelearning') */
     basePath?: string;
     /**
+     * Full theme URL from the themes manager (e.g., '/v1/site-files/themes/chiquito/')
+     * When provided, this is used instead of constructing the path from theme name.
+     * This is needed to correctly handle site themes vs base themes.
+     */
+    themeUrl?: string;
+    /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
      * When provided and successful, MathJax library will NOT be included in the output.
      * The pre-renderer runs on the client using MathJax already loaded in the workarea.
@@ -374,7 +380,11 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
         },
     ): string {
         const bootstrapCss = this.getVersionedPath('/libs/bootstrap/bootstrap.min.css', options);
-        const themeCss = this.getVersionedPath(`/files/perm/themes/base/${themeName}/style.css`, options);
+        // Use themeUrl from options if provided (handles admin themes), otherwise construct from name
+        const themeBasePath = options.themeUrl
+            ? options.themeUrl.replace(/\/$/, '') // Remove trailing slash if present
+            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
+        const themeCss = `${themeBasePath}/style.css`;
         const fallbackCss = this.getVersionedPath('/style/content.css', options);
 
         // iDevices that require jQuery UI CSS
@@ -745,8 +755,11 @@ button.toggler span,
 
         // Build theme icon path for preview
         // Theme icons are at /files/perm/themes/{themeBase}/{themeVariant}/icons/
-        // For now, use base theme with same variant name (e.g., base/base, base/flux)
-        const themeIconBasePath = this.getVersionedPath(`/files/perm/themes/base/${themeName}/icons/`, options);
+        // Use themeUrl from options if provided (handles admin themes)
+        const themeBase = options.themeUrl
+            ? options.themeUrl.replace(/\/$/, '')
+            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
+        const themeIconBasePath = `${themeBase}/icons/`;
 
         // Render blocks and components
         for (const block of page.blocks || []) {
@@ -854,7 +867,11 @@ ${userFooterHtml}</div></footer>`;
         const commonJs = this.getVersionedPath('/app/common/common.js', options);
         const commonI18nJs = this.getVersionedPath('/app/common/common_i18n.js', options);
         const exeExportJs = this.getVersionedPath('/app/common/exe_export.js', options);
-        const themeJs = this.getVersionedPath(`/files/perm/themes/base/${themeName}/style.js`, options);
+        // Use themeUrl from options if provided (handles admin themes)
+        const themeBasePath = options.themeUrl
+            ? options.themeUrl.replace(/\/$/, '')
+            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
+        const themeJs = `${themeBasePath}/style.js`;
 
         // Check if jQuery UI is needed
         const jqueryUiRequiredTypes = new Set([

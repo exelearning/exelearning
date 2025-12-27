@@ -111,7 +111,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('003_project_status');
+            expect(result.rolledBack).toBe('005_builtin_theme_settings');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {
@@ -125,7 +125,9 @@ describe('Database Migrations', () => {
             // Migrate up
             await migrateToLatest(db);
 
-            // Rollback all 3 migrations to remove all tables
+            // Rollback all 5 migrations to remove all tables
+            await migrateDown(db); // rollback 005_builtin_theme_settings
+            await migrateDown(db); // rollback 004_admin_themes_templates
             await migrateDown(db); // rollback 003_project_status
             await migrateDown(db); // rollback 002_app_settings
             await migrateDown(db); // rollback 001_initial
@@ -187,11 +189,13 @@ describe('Database Migrations', () => {
 
             const status = await getMigrationStatus(db);
 
-            // After one rollback, only 003_project_status should be pending
-            // 001_initial and 002_app_settings are still executed
-            expect(status.pending).toContain('003_project_status');
+            // After one rollback, only 005_builtin_theme_settings should be pending
+            // 001_initial, 002_app_settings, 003_project_status, and 004_admin_themes_templates are still executed
+            expect(status.pending).toContain('005_builtin_theme_settings');
             expect(status.executed).toContain('001_initial');
             expect(status.executed).toContain('002_app_settings');
+            expect(status.executed).toContain('003_project_status');
+            expect(status.executed).toContain('004_admin_themes_templates');
         });
     });
 
@@ -201,17 +205,17 @@ describe('Database Migrations', () => {
             const up1 = await migrateToLatest(db);
             expect(up1.success).toBe(true);
             expect(up1.executedMigrations).toContain('001_initial');
-            expect(up1.executedMigrations).toContain('003_project_status');
+            expect(up1.executedMigrations).toContain('005_builtin_theme_settings');
 
-            // Down - rolls back the last migration (003_project_status)
+            // Down - rolls back the last migration (005_builtin_theme_settings)
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('003_project_status');
+            expect(down.rolledBack).toBe('005_builtin_theme_settings');
 
-            // Up again - should re-apply 003_project_status
+            // Up again - should re-apply 005_builtin_theme_settings
             const up2 = await migrateToLatest(db);
             expect(up2.success).toBe(true);
-            expect(up2.executedMigrations).toContain('003_project_status');
+            expect(up2.executedMigrations).toContain('005_builtin_theme_settings');
         });
     });
 

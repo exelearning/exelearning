@@ -427,7 +427,9 @@ class YjsDocumentManager {
       metadata.set('description', '');
       metadata.set('language', userLanguage);
       metadata.set('license', 'creative commons: attribution - share alike 4.0');
-      metadata.set('theme', 'base'); // Default theme
+      // Use configured default theme from admin panel, fallback to 'base'
+      const defaultTheme = window.eXeLearning?.config?.defaultTheme || 'base';
+      metadata.set('theme', defaultTheme);
       metadata.set('createdAt', Date.now());
       metadata.set('modifiedAt', Date.now());
 

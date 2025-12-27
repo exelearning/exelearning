@@ -19,6 +19,8 @@ import { themesRoutes } from './routes/themes';
 import { resourcesRoutes } from './routes/resources';
 import { userRoutes } from './routes/user';
 import { adminRoutes } from './routes/admin';
+import { adminThemesRoutes } from './routes/admin-themes';
+import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
 import {
     createWebSocketRoutes,
@@ -31,6 +33,7 @@ import { getFilesDir } from './services/file-helper';
 import { db } from './db/client';
 import { migrateToLatest } from './db/migrations';
 import { findUserByEmail, createUser } from './db/queries/users';
+import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
 import { getBasePath } from './utils/basepath.util';
@@ -218,9 +221,62 @@ const app = new Elysia()
             }
         }
 
-        // Match /v{version}/* and rewrite to /* (except /libs which is handled above)
+        // Match /v{version}/site-files/themes/* and serve from FILES_DIR
+        const versionedSiteFilesMatch = pathname.match(/^\/v[\d.]+[^/]*\/site-files\/themes\/(.+)$/);
+        if (versionedSiteFilesMatch) {
+            const relativePath = versionedSiteFilesMatch[1];
+            const filesDir = getFilesDir();
+            const filePath = path.join(filesDir, 'themes', 'site', relativePath);
+
+            // Security check
+            const resolvedPath = path.resolve(filePath);
+            const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
+            if (resolvedPath.startsWith(resolvedBase) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                const content = fs.readFileSync(filePath);
+                const ext = path.extname(filePath).toLowerCase();
+                const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+                return new Response(content, {
+                    headers: {
+                        'Content-Type': contentType,
+                        'Cache-Control': 'public, max-age=31536000',
+                    },
+                });
+            }
+        }
+
+        // Match /v{version}/user-files/themes/* and serve from FILES_DIR
+        const versionedUserFilesMatch = pathname.match(/^\/v[\d.]+[^/]*\/user-files\/themes\/(.+)$/);
+        if (versionedUserFilesMatch) {
+            const relativePath = versionedUserFilesMatch[1];
+            const filesDir = getFilesDir();
+            const filePath = path.join(filesDir, 'themes', 'users', relativePath);
+
+            // Security check
+            const resolvedPath = path.resolve(filePath);
+            const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'users'));
+            if (resolvedPath.startsWith(resolvedBase) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                const content = fs.readFileSync(filePath);
+                const ext = path.extname(filePath).toLowerCase();
+                const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+                return new Response(content, {
+                    headers: {
+                        'Content-Type': contentType,
+                        'Cache-Control': 'public, max-age=31536000',
+                    },
+                });
+            }
+        }
+
+        // Match /v{version}/* and rewrite to /* (except /libs, /admin-files, /user-files which are handled above)
         const versionedMatch = pathname.match(/^\/v[\d.]+[^/]*\/(.+)$/);
-        if (versionedMatch && !versionedMatch[1].startsWith('libs/')) {
+        if (
+            versionedMatch &&
+            !versionedMatch[1].startsWith('libs/') &&
+            !versionedMatch[1].startsWith('admin-files/') &&
+            !versionedMatch[1].startsWith('user-files/')
+        ) {
             const filePath = path.join(process.cwd(), 'public', versionedMatch[1]);
             if (fs.existsSync(filePath)) {
                 const content = fs.readFileSync(filePath);
@@ -312,6 +368,64 @@ const app = new Elysia()
         set.status = 404;
         return 'Not Found';
     })
+    // Serve site theme files from FILES_DIR/themes/site/
+    // URL pattern: /site-files/themes/{dirName}/* or /{version}/site-files/themes/{dirName}/*
+    .get('/site-files/themes/*', ({ params, set }) => {
+        const relativePath = params['*'] || '';
+        const filesDir = getFilesDir();
+        const filePath = path.join(filesDir, 'themes', 'site', relativePath);
+
+        // Security: ensure path is within the themes/site directory
+        const resolvedPath = path.resolve(filePath);
+        const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
+        if (!resolvedPath.startsWith(resolvedBase)) {
+            set.status = 403;
+            return 'Forbidden';
+        }
+
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            const content = fs.readFileSync(filePath);
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+            set.headers['Content-Type'] = contentType;
+            set.headers['Content-Length'] = content.length.toString();
+            set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
+            return content;
+        }
+
+        set.status = 404;
+        return 'Not Found';
+    })
+    // Serve user theme files from FILES_DIR/themes/users/
+    // URL pattern: /user-files/themes/{dirName}/* or /{version}/user-files/themes/{dirName}/*
+    .get('/user-files/themes/*', ({ params, set }) => {
+        const relativePath = params['*'] || '';
+        const filesDir = getFilesDir();
+        const filePath = path.join(filesDir, 'themes', 'users', relativePath);
+
+        // Security: ensure path is within the themes/users directory
+        const resolvedPath = path.resolve(filePath);
+        const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'users'));
+        if (!resolvedPath.startsWith(resolvedBase)) {
+            set.status = 403;
+            return 'Forbidden';
+        }
+
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            const content = fs.readFileSync(filePath);
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+            set.headers['Content-Type'] = contentType;
+            set.headers['Content-Length'] = content.length.toString();
+            set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
+            return content;
+        }
+
+        set.status = 404;
+        return 'Not Found';
+    })
     // Static files from public directory (served at root, BASE_PATH handled in onRequest)
     .use(
         staticPlugin({
@@ -343,6 +457,8 @@ app.use(healthRoutes)
     .use(resourcesRoutes)
     .use(userRoutes)
     .use(adminRoutes)
+    .use(adminThemesRoutes)
+    .use(adminTemplatesRoutes)
     .use(yjsRoutes)
     .use(createWebSocketRoutes())
     .get('/api', () => ({
@@ -385,6 +501,69 @@ if (routePrefix) {
     );
 }
 
+/**
+ * Sync builtin themes from filesystem to database
+ * Scans public/files/perm/themes/base/ and registers each theme in the DB
+ */
+async function syncBuiltinThemes() {
+    const baseThemesPath = path.join(process.cwd(), 'public', 'files', 'perm', 'themes', 'base');
+
+    if (!fs.existsSync(baseThemesPath)) {
+        console.log('[Themes] Base themes directory not found, skipping sync');
+        return;
+    }
+
+    const entries = fs.readdirSync(baseThemesPath, { withFileTypes: true });
+    const themeDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+
+    console.log(`[Themes] Syncing ${themeDirs.length} base themes...`);
+
+    for (const dirName of themeDirs) {
+        const configPath = path.join(baseThemesPath, dirName, 'config.xml');
+        let displayName = dirName;
+        let description: string | null = null;
+        let version: string | null = null;
+        let author: string | null = null;
+        let license: string | null = null;
+
+        // Try to read config.xml for metadata
+        if (fs.existsSync(configPath)) {
+            try {
+                const xmlContent = fs.readFileSync(configPath, 'utf-8');
+                // Simple regex parsing for common fields
+                const nameMatch = xmlContent.match(/<name[^>]*>([^<]+)<\/name>/i);
+                const titleMatch = xmlContent.match(/<title[^>]*>([^<]+)<\/title>/i);
+                const descMatch = xmlContent.match(/<description[^>]*>([^<]+)<\/description>/i);
+                const versionMatch = xmlContent.match(/<version[^>]*>([^<]+)<\/version>/i);
+                const authorMatch = xmlContent.match(/<author[^>]*>([^<]+)<\/author>/i);
+                const licenseMatch = xmlContent.match(/<license[^>]*>([^<]+)<\/license>/i);
+
+                displayName = titleMatch?.[1] || nameMatch?.[1] || dirName;
+                description = descMatch?.[1] || null;
+                version = versionMatch?.[1] || null;
+                author = authorMatch?.[1] || null;
+                license = licenseMatch?.[1] || null;
+            } catch {
+                // Ignore parse errors, use defaults
+            }
+        }
+
+        await upsertBaseTheme(db, {
+            dir_name: dirName,
+            display_name: displayName,
+            description,
+            version,
+            author,
+            license,
+        });
+    }
+
+    // Remove themes that no longer exist in filesystem
+    await removeOrphanedBaseThemes(db, themeDirs);
+
+    console.log(`[Themes] Base themes synced`);
+}
+
 // Bootstrap: run migrations, seed, and start server
 async function bootstrap() {
     // 1. Run migrations
@@ -395,7 +574,10 @@ async function bootstrap() {
         process.exit(1);
     }
 
-    // 2. Seed test user if not exists
+    // 2. Sync builtin themes from filesystem to database
+    await syncBuiltinThemes();
+
+    // 3. Seed test user if not exists
     const testEmail = process.env.TEST_USER_EMAIL || 'user@exelearning.net';
     const testPassword = process.env.TEST_USER_PASSWORD || '1234';
 
@@ -420,7 +602,7 @@ async function bootstrap() {
         console.log(`[DB] Test user created: ${testEmail}`);
     }
 
-    // 3. Start server
+    // 4. Start server
     app.listen(PORT);
     initWebSocket();
 

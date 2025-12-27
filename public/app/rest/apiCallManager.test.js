@@ -1331,7 +1331,7 @@ describe('ApiCallManager', () => {
       apiManager.endpoints.api_user_preferences_save = { path: 'http://localhost/prefs/save' };
 
       await apiManager.postUploadTheme({ data: 'theme' });
-      await apiManager.postOdeImportTheme({ data: 'theme' });
+      // postOdeImportTheme uses fetch directly (not mockFunc), tested separately
       await apiManager.deleteTheme({ id: 1 });
       await apiManager.postNewTheme({ name: 'new' });
       await apiManager.postUploadIdevice({ data: 'idevice' });
@@ -1341,7 +1341,6 @@ describe('ApiCallManager', () => {
       await apiManager.putSaveUserPreferences({ mode: 'dark' });
 
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/upload', { data: 'theme' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/import', { data: 'theme' });
       expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/theme/delete', { id: 1 });
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/new', { name: 'new' });
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevices/upload', { data: 'idevice' });
@@ -1499,6 +1498,75 @@ describe('ApiCallManager', () => {
       await apiManager.getOdeDownload('sess-1');
 
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/export/sess-1/html5');
+    });
+  });
+
+  describe('postOdeImportTheme', () => {
+    it('should return error when themeZip is not provided', async () => {
+      const result = await apiManager.postOdeImportTheme({ themeDirname: 'test-theme' });
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toContain('Theme import requires the theme files');
+    });
+
+    it('should return error when themeDirname is not provided', async () => {
+      const mockBlob = new Blob(['test'], { type: 'application/zip' });
+      const result = await apiManager.postOdeImportTheme({ themeZip: mockBlob });
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toContain('Theme directory name is required');
+    });
+
+    it('should successfully upload theme with FormData', async () => {
+      const mockBlob = new Blob(['test'], { type: 'application/zip' });
+      const mockResponse = { responseMessage: 'OK', themes: { themes: [] } };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await apiManager.postOdeImportTheme({
+        themeDirname: 'test-theme',
+        themeZip: mockBlob,
+      });
+
+      expect(result.responseMessage).toBe('OK');
+      expect(global.fetch).toHaveBeenCalled();
+      const fetchCall = global.fetch.mock.calls[0];
+      expect(fetchCall[0]).toBe('http://localhost/exelearning/api/themes/import');
+      expect(fetchCall[1].method).toBe('POST');
+      expect(fetchCall[1].body).toBeInstanceOf(FormData);
+    });
+
+    it('should handle fetch errors gracefully', async () => {
+      const mockBlob = new Blob(['test'], { type: 'application/zip' });
+
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+      const result = await apiManager.postOdeImportTheme({
+        themeDirname: 'test-theme',
+        themeZip: mockBlob,
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toBe('Network error');
+    });
+
+    it('should handle HTTP error responses', async () => {
+      const mockBlob = new Blob(['test'], { type: 'application/zip' });
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ error: 'Invalid theme' }),
+      });
+
+      const result = await apiManager.postOdeImportTheme({
+        themeDirname: 'test-theme',
+        themeZip: mockBlob,
+      });
+
+      expect(result.responseMessage).toBe('ERROR');
+      expect(result.error).toBe('Invalid theme');
     });
   });
 });

@@ -108,6 +108,45 @@ describe('Resources Routes', () => {
             const body = await res.json();
             expect(body[0].url).toContain('/themes/users/custom-theme');
         });
+
+        it('should return admin themes from FILES_DIR', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        // User and base themes don't exist
+                        if (filePath === 'public/files/perm/themes/users/site-custom-theme') return false;
+                        if (filePath === 'public/files/perm/themes/base/site-custom-theme') return false;
+                        // Site theme exists
+                        if (filePath === '/tmp/test-files/themes/site/site-custom-theme') return true;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        if (typeof dirPath === 'string' && dirPath.includes('themes/site/site-custom-theme')) {
+                            return [
+                                { name: 'style.css', isFile: () => true, isDirectory: () => false },
+                                { name: 'config.xml', isFile: () => true, isDirectory: () => false },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+                getEnv: (key: string) => {
+                    if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
+                    return process.env[key];
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/theme/site-custom-theme'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.length).toBe(2);
+            // Site themes use /site-files/themes/ URL path
+            expect(body[0].url).toContain('/site-files/themes/site-custom-theme');
+        });
     });
 
     describe('GET /api/resources/idevice/:ideviceType', () => {
@@ -870,6 +909,86 @@ describe('Resources Routes', () => {
                 // Should succeed (skips broken file)
                 expect(res.status).toBe(200);
                 expect(res.headers.get('content-type')).toBe('application/zip');
+            });
+
+            it('should generate ZIP on-the-fly for admin themes', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            // No prebuilt bundle
+                            if (filePath.includes('bundles')) return false;
+                            // No user theme
+                            if (filePath.includes('themes/users')) return false;
+                            // Site theme exists
+                            if (filePath === '/tmp/test-files/themes/site/site-theme') return true;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: (dirPath: any, options?: any) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('themes/site/site-theme')) {
+                                return [
+                                    { name: 'style.css', isFile: () => true, isDirectory: () => false },
+                                    { name: 'config.xml', isFile: () => true, isDirectory: () => false },
+                                ] as unknown as fs.Dirent[];
+                            }
+                            return fs.readdirSync(dirPath, options);
+                        },
+                        statSync: fs.statSync,
+                        readFileSync: (filePath: string) => {
+                            if (filePath.includes('site-theme/style.css')) {
+                                return Buffer.from('body { background: blue; }');
+                            }
+                            if (filePath.includes('site-theme/config.xml')) {
+                                return Buffer.from('<theme><name>Site Theme</name></theme>');
+                            }
+                            return fs.readFileSync(filePath, 'utf-8');
+                        },
+                    },
+                    getEnv: (key: string) => {
+                        if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
+                        return process.env[key];
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/resources/bundle/theme/site-theme'));
+
+                expect(res.status).toBe(200);
+                expect(res.headers.get('content-type')).toBe('application/zip');
+                expect(res.headers.get('cache-control')).toContain('private');
+            });
+
+            it('should return 404 if site theme is empty', async () => {
+                configure({
+                    fs: {
+                        existsSync: (filePath: string) => {
+                            if (filePath.includes('bundles')) return false;
+                            if (filePath.includes('themes/users')) return false;
+                            if (filePath === '/tmp/test-files/themes/site/empty-site-theme') return true;
+                            return fs.existsSync(filePath);
+                        },
+                        readdirSync: (dirPath: any, options?: any) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('empty-site-theme')) {
+                                return [] as unknown as fs.Dirent[];
+                            }
+                            return fs.readdirSync(dirPath, options);
+                        },
+                        statSync: fs.statSync,
+                        readFileSync: fs.readFileSync,
+                    },
+                    getEnv: (key: string) => {
+                        if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
+                        return process.env[key];
+                    },
+                });
+                app = new Elysia().use(resourcesRoutes);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/resources/bundle/theme/empty-site-theme'),
+                );
+
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.message).toContain('empty');
             });
         });
 
