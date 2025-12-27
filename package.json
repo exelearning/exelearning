@@ -21,7 +21,7 @@
         "bundle:exporters": "node scripts/build-exporters-bundle.js",
         "bundle:resources": "node scripts/build-resource-bundles.js",
         "upload:bundles": "node scripts/upload-bundle-analysis.js",
-        "predev": "node scripts/setup-local.js && (kill-port 8080 || true)",
+        "predev": "node scripts/setup-local.js",
         "seed": "bun run src/db/seed.ts",
         "cli": "bun run dist/cli.js",
         "convert-elp": "bun run dist/cli.js elp:convert",

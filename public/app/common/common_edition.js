@@ -819,7 +819,7 @@ var $exeDevicesEdition = {
                             alert(`The following lines are invalid:\n\n${questions.invalidLines.join('\n')}`);
                         } else {
                             alert('The questions have been added successfully');
-                            $('.exe-form-tabs li:first-child a').trigger("click")
+                            //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
                     $iaButton.on('click', function () {
@@ -836,7 +836,7 @@ var $exeDevicesEdition = {
                             alert(`The following lines are invalid:\n\n${questions.invalidLines.join('\n')}`);
                         } else {
                             alert('The questions have been added successfully');
-                            $('.exe-form-tabs li:first-child a').click();
+                            //$('.exe-form-tabs li:first-child a').click();
                         }
                     });
                     $copyButton.on('click', function () {

@@ -1834,6 +1834,9 @@ export default class IdevicesEngine {
                     Logger.log('[IdevicesEngine] MathJax typeset error:', err);
                 });
             }
+            if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
+                $exe.math.refresh(pageTitleElement);
+            }
         }
     }
 

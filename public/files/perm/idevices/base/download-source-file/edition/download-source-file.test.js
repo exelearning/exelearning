@@ -30,7 +30,7 @@ describe('download-source-file iDevice (edition)', () => {
       pp_title: { value: 'Test Project' },
       pp_description: { value: 'A test description' },
       pp_author: { value: 'Test Author' },
-      license: { value: 'creative commons: attribution 4.0' },
+      pp_license: { value: 'creative commons: attribution 4.0' },
     }));
 
   });
@@ -256,7 +256,7 @@ describe('download-source-file iDevice (edition)', () => {
         pp_title: { value: '' },
         pp_description: { value: '' },
         pp_author: { value: '' },
-        license: { value: '' },
+        pp_license: { value: '' },
       }));
 
       $exeDevice.createForm();

@@ -380,6 +380,9 @@
 *   Package: symfony/polyfill-php84
     *   Copyright: Nicolas Grekas, Symfony Community
     *   License: MIT
+*   Package: symfony/polyfill-php85
+    *   Copyright: Nicolas Grekas, Symfony Community
+    *   License: MIT
 *   Package: symfony/polyfill-uuid
     *   Copyright: Grégoire Pineau, Symfony Community
     *   License: MIT

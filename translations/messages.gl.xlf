@@ -12989,6 +12989,10 @@
         <source>Adds additional information to the main title.</source>
         <target>~Engade información adicional ao título principal.</target>
       </trans-unit>
+      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
+        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
+        <target>~Este ficheiro foi creado cunha versión máis recente de eXeLearning. Algunhas funcións poderían non funcionar correctamente. Por favor, actualiza a aplicación.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

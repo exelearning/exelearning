@@ -1487,6 +1487,20 @@ describe('ElpxImporter', () => {
 
       expect(compData.id).toMatch(/^idevice-/);
     });
+
+    it('normalizes legacy type download-package to download-source-file', () => {
+      const xmlStr = `<odeComponent odeComponentId="comp-1" odeIdeviceTypeDirName="download-package" odeComponentsOrder="0">
+        <htmlView>&lt;p&gt;Download&lt;/p&gt;</htmlView>
+      </odeComponent>`;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlStr, 'text/xml');
+      const compNode = doc.documentElement;
+
+      const compData = importer.buildComponentData(compNode, {});
+
+      expect(compData.ideviceType).toBe('download-source-file');
+      expect(compData.type).toBe('download-source-file');
+    });
   });
 
   describe('buildPageData', () => {

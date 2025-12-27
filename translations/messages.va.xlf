@@ -12993,6 +12993,10 @@
         <source>Adds additional information to the main title.</source>
         <target>~Afig informació addicional al títol principal.</target>
       </trans-unit>
+      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
+        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
+        <target>~Este fitxer ha sigut creat amb una versió més recent d'eXeLearning. Algunes funcions podrien no funcionar correctament. Per favor, actualitza l'aplicació.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
