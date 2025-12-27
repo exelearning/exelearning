@@ -5,11 +5,14 @@ namespace App\Util\net\exelearning\Util\OdeOldXmlIdevices;
 use App\Constants;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
+use App\Util\net\exelearning\Util\JsonSanitizer;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
 
 /**
  * OdeOldXmlWikipediaIdevice.
+ *
+ * Handles import of Wikipedia iDevice content from legacy ELP XML files.
  */
 class OdeOldXmlWikipediaIdevice
 {
@@ -31,9 +34,19 @@ class OdeOldXmlWikipediaIdevice
     public const OLD_ODE_XML_LIST = 'list';
     public const OLD_ODE_XML_UNICODE = 'unicode';
     public const OLD_ODE_XML_ATTRIBUTES = '@attributes';
-    // const OLD_ODE_XML_IDEVICE_TEXT = 'instance';
     public const OLD_ODE_XML_IDEVICE_TEXT_CONTENT = 'string role="key" value="content_w_resourcePaths"';
 
+    /**
+     * Processes Wikipedia iDevice structure from legacy ELP XML.
+     *
+     * @param string $odeSessionId   The session ID
+     * @param string $odePageId      The page ID
+     * @param array  $wikipediaNodes XML nodes containing Wikipedia content data
+     * @param array  $generatedIds   Array of already generated IDs to avoid duplicates
+     * @param string $xpathNamespace XML namespace for XPath queries
+     *
+     * @return array Result containing odeComponentsSync and srcRoutes
+     */
     public static function oldElpWikipediaStructure($odeSessionId, $odePageId, $wikipediaNodes, $generatedIds, $xpathNamespace)
     {
         $result['odeComponentsSync'] = [];
@@ -71,14 +84,16 @@ class OdeOldXmlWikipediaIdevice
                     'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
                 ];
 
+                // Safe extraction of HTML content
+                $rawHtmlContent = !empty($nodeIdeviceHtmlContent) && isset($nodeIdeviceHtmlContent[0]['value'])
+                    ? (string) $nodeIdeviceHtmlContent[0]['value']
+                    : '';
+
                 if (isset($commonReplaces)) {
-                    $odeComponentsSyncHtmlView = self::applyReplaces(
-                        $commonReplaces,
-                        (string) $nodeIdeviceHtmlContent[0]['value']
-                    );
+                    $odeComponentsSyncHtmlView = self::applyReplaces($commonReplaces, $rawHtmlContent);
                     array_push($fullHtmlView, $odeComponentsSyncHtmlView);
                 } else {
-                    $odeComponentsSyncHtmlView = (string) $nodeIdeviceHtmlContent[0]['value'];
+                    $odeComponentsSyncHtmlView = $rawHtmlContent;
                     array_push($fullHtmlView, $odeComponentsSyncHtmlView);
                 }
 
@@ -87,7 +102,7 @@ class OdeOldXmlWikipediaIdevice
                 $doc = new \DOMDocument();
                 @$doc->loadHTML($html);
                 $xpath = new \DOMXPath($doc);
-                $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
+                $src = $xpath->evaluate('//img/@src', $doc);
                 foreach ($src as $srcValue) {
                     $srcString = (string) $srcValue->value;
                     array_push($result['srcRoutes'], $srcString);
@@ -111,23 +126,21 @@ class OdeOldXmlWikipediaIdevice
                 $subOdePagStructureSync->setOdeSessionId($odeSessionId);
                 $subOdePagStructureSync->setOdePageId($odePageId);
                 $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-                // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
 
-                // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
-                $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
+                // Sanitize block name from XML with null check
+                $blockName = !empty($blockNameNode)
+                    ? JsonSanitizer::sanitizeValue((string) $blockNameNode[0])
+                    : '';
+                $subOdePagStructureSync->setBlockName($blockName);
 
-                $orderPage = (string) $nodeIdevice['reference'];
-                $subOdePagStructureSync->setOdePagStructureSyncOrder(intval($orderPage));
+                // Handle missing reference attribute safely
+                $orderPage = isset($nodeIdevice['reference']) && !empty((string) $nodeIdevice['reference'])
+                    ? intval((string) $nodeIdevice['reference'])
+                    : 0;
+                $subOdePagStructureSync->setOdePagStructureSyncOrder($orderPage);
 
                 // Get pagStructureSync properties
                 $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
-                // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
-                //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
-                //     if($oldXmlListInstDictUnicode["value"]) {
-                //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
-                //     }
-
-                // }
 
                 $odeComponentsSync = new OdeComponentsSync();
 
@@ -137,8 +150,6 @@ class OdeOldXmlWikipediaIdevice
                 $odeComponentsSync->setOdeBlockId($odeBlockId);
                 $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
 
-                // $odeComponentsSync->setJsonProperties("");
-
                 $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
                 // Set type
                 $odeComponentsSync->setOdeIdeviceTypeName('text');
@@ -147,17 +158,24 @@ class OdeOldXmlWikipediaIdevice
 
                 $jsonProperties = self::JSON_PROPERTIES;
                 $jsonProperties['ideviceId'] = $odeIdeviceId;
-                $jsonProperties['textTextarea'] = $fullOdeComponentsSyncHtmlView;
-                $jsonProperties['textFeedbackTextarea'] = $fullOdeComponentsSyncHtmlFeedbackView;
 
-                // Create jsonProperties for idevice
-                $jsonProperties = json_encode($jsonProperties);
-                $odeComponentsSync->setJsonProperties($jsonProperties);
+                // Sanitize HTML content for JSON encoding
+                $jsonProperties['textTextarea'] = JsonSanitizer::sanitizeHtmlForJson($fullOdeComponentsSyncHtmlView);
+                $jsonProperties['textFeedbackTextarea'] = JsonSanitizer::sanitizeHtmlForJson($fullOdeComponentsSyncHtmlFeedbackView);
+
+                // Create jsonProperties for idevice with safe encoding
+                $jsonPropertiesEncoded = JsonSanitizer::safeJsonEncode($jsonProperties);
+
+                // Validate and repair JSON if needed
+                if (!JsonSanitizer::isValidJson($jsonPropertiesEncoded)) {
+                    $jsonPropertiesEncoded = JsonSanitizer::repairJson($jsonPropertiesEncoded);
+                }
+
+                $odeComponentsSync->setJsonProperties($jsonPropertiesEncoded);
 
                 // OdeComponentsSync property fields
                 $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
 
-                // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
                 $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
 
                 array_push($result['odeComponentsSync'], $subOdePagStructureSync);
@@ -168,10 +186,12 @@ class OdeOldXmlWikipediaIdevice
     }
 
     /**
-     * Applies the replaces passed as param.
+     * Applies string replacements to text.
      *
-     * @param array  $replaces
-     * @param string $text
+     * @param array  $replaces Key-value pairs of search => replace
+     * @param string $text     The text to process
+     *
+     * @return string Text with replacements applied
      */
     private static function applyReplaces($replaces, $text)
     {

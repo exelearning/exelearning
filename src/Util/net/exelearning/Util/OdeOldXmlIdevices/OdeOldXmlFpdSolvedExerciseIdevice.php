@@ -5,11 +5,14 @@ namespace App\Util\net\exelearning\Util\OdeOldXmlIdevices;
 use App\Constants;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
+use App\Util\net\exelearning\Util\JsonSanitizer;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
 
 /**
  * OdeOldXmlFpdSolvedExerciseIdevice.
+ *
+ * Handles import of FPD Solved Exercise iDevice content from legacy ELP XML files.
  */
 class OdeOldXmlFpdSolvedExerciseIdevice
 {
@@ -31,9 +34,19 @@ class OdeOldXmlFpdSolvedExerciseIdevice
     public const OLD_ODE_XML_LIST = 'list';
     public const OLD_ODE_XML_UNICODE = 'unicode';
     public const OLD_ODE_XML_ATTRIBUTES = '@attributes';
-    // const OLD_ODE_XML_IDEVICE_TEXT = 'instance';
     public const OLD_ODE_XML_IDEVICE_TEXT_CONTENT = 'string role="key" value="content_w_resourcePaths"';
 
+    /**
+     * Processes FPD Solved Exercise iDevice structure from legacy ELP XML.
+     *
+     * @param string $odeSessionId   The session ID
+     * @param string $odePageId      The page ID
+     * @param array  $freeTextNodes  XML nodes containing exercise data
+     * @param array  $generatedIds   Array of already generated IDs to avoid duplicates
+     * @param string $xpathNamespace XML namespace for XPath queries
+     *
+     * @return array Result containing odeComponentsSync and srcRoutes
+     */
     public static function oldElpFpdSolvedExerciseIdeviceStructure($odeSessionId, $odePageId, $freeTextNodes, $generatedIds, $xpathNamespace)
     {
         $result['odeComponentsSync'] = [];
@@ -66,21 +79,15 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                 $subOdePagStructureSync->setOdeSessionId($odeSessionId);
                 $subOdePagStructureSync->setOdePageId($odePageId);
                 $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-                // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
 
-                // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
-                $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
+                // Sanitize block name from XML with null check
+                $blockName = !empty($blockNameNode)
+                    ? JsonSanitizer::sanitizeValue((string) $blockNameNode[0])
+                    : '';
+                $subOdePagStructureSync->setBlockName($blockName);
 
                 // Get pagStructureSync properties
                 $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
-
-                // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
-                //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
-                //     if($oldXmlListInstDictUnicode["value"]) {
-                //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
-                //     }
-
-                // }
 
                 // IDEVICE TEXT CONTENT
                 if (isset($nodeIdeviceStoryText)) {
@@ -99,15 +106,9 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                     $odeComponentsSync->setOdeBlockId($odeBlockId);
                     $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
 
-                    // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
-
                     $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
                     // Set type
                     $odeComponentsSync->setOdeIdeviceTypeName('text');
-
-                    // $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
-                    // $fileTextPathToChange = $oldXmlListDictListInstDictListInstDict->xpath('//f:unicode[@content="true"]starts-with(@src,"resources/")]');
-                    // src="resources/
 
                     $sessionPath = null;
 
@@ -121,21 +122,29 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                     ];
 
                     if (!empty($contentHtmlText)) {
+                        // Safe extraction of content value
+                        $rawHtmlContent = isset($contentHtmlText[0]['value'])
+                            ? (string) $contentHtmlText[0]['value']
+                            : (string) $contentHtmlText;
+
                         if (isset($commonReplaces)) {
                             $odeComponentsSyncHtmlView = self::applyReplaces(
                                 $commonReplaces,
-                                $contentHtmlText[0]['value']
+                                $rawHtmlContent
                             );
                         } else {
-                            $contentHtmlText[0]['value'];
+                            $odeComponentsSyncHtmlView = $rawHtmlContent;
                         }
+
+                        // Sanitize HTML content for JSON encoding
+                        $odeComponentsSyncHtmlView = JsonSanitizer::sanitizeHtmlForJson($odeComponentsSyncHtmlView);
 
                         $prologue = '<?xml encoding="UTF-8">';
                         $html = $prologue.$odeComponentsSyncHtmlView;
                         $doc = new \DOMDocument();
                         @$doc->loadHTML($html);
                         $xpath = new \DOMXPath($doc);
-                        $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
+                        $src = $xpath->evaluate('//img/@src', $doc);
                         foreach ($src as $srcValue) {
                             $srcString = (string) $srcValue->value;
                             array_push($result['srcRoutes'], $srcString);
@@ -144,20 +153,25 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                         $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
 
                         // Create json properties
-
                         $jsonProperties = self::JSON_PROPERTIES;
                         $jsonProperties['ideviceId'] = $odeIdeviceId;
                         $jsonProperties['textTextarea'] = $odeComponentsSyncHtmlView;
 
-                        // Create jsonProperties for idevice
-                        $jsonProperties = json_encode($jsonProperties);
-                        $odeComponentsSync->setJsonProperties($jsonProperties);
+                        // Create jsonProperties for idevice with safe encoding
+                        $jsonPropertiesEncoded = JsonSanitizer::safeJsonEncode($jsonProperties);
 
-                        // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
+                        // Validate and repair JSON if needed
+                        if (!JsonSanitizer::isValidJson($jsonPropertiesEncoded)) {
+                            $jsonPropertiesEncoded = JsonSanitizer::repairJson($jsonPropertiesEncoded);
+                        }
+
+                        $odeComponentsSync->setJsonProperties($jsonPropertiesEncoded);
+
                         $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
                     }
                     array_push($result['odeComponentsSync'], $subOdePagStructureSync);
                 }
+
                 foreach ($nodeIdevices as $nodeIdevice) {
                     $nodeIdevice->registerXPathNamespace('f', $xpathNamespace);
                     $nodeIdeviceHtmlText = $nodeIdevice->xpath("f:dictionary/f:string[@value='questionTextArea']/
@@ -169,8 +183,11 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                         following-sibling::f:unicode[1]");
                     }
 
-                    $orderPage = (string) $nodeIdeviceHtmlText['reference'];
-                    $subOdePagStructureSync->setOdePagStructureSyncOrder(intval($orderPage));
+                    // Handle missing reference attribute safely
+                    $orderPage = isset($nodeIdeviceHtmlText['reference']) && !empty((string) $nodeIdeviceHtmlText['reference'])
+                        ? intval((string) $nodeIdeviceHtmlText['reference'])
+                        : 0;
+                    $subOdePagStructureSync->setOdePagStructureSyncOrder($orderPage);
 
                     $odeComponentsSync = new OdeComponentsSync();
                     $odeIdeviceId = Util::generateIdCheckUnique($generatedIds);
@@ -183,15 +200,9 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                     $odeComponentsSync->setOdeBlockId($odeBlockId);
                     $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
 
-                    // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
-
                     $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
                     // Set type
                     $odeComponentsSync->setOdeIdeviceTypeName('text');
-
-                    // $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
-                    // $fileTextPathToChange = $oldXmlListDictListInstDictListInstDict->xpath('//f:unicode[@content="true"]starts-with(@src,"resources/")]');
-                    // src="resources/
 
                     $sessionPath = null;
 
@@ -205,21 +216,29 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                     ];
 
                     if (!empty($contentHtmlText)) {
+                        // Safe extraction of content value
+                        $rawHtmlContent = isset($contentHtmlText[0]['value'])
+                            ? (string) $contentHtmlText[0]['value']
+                            : '';
+
                         if (isset($commonReplaces)) {
                             $odeComponentsSyncHtmlView = self::applyReplaces(
                                 $commonReplaces,
-                                $contentHtmlText[0]['value']
+                                $rawHtmlContent
                             );
                         } else {
-                            $contentHtmlText[0]['value'];
+                            $odeComponentsSyncHtmlView = $rawHtmlContent;
                         }
+
+                        // Sanitize HTML content for JSON encoding
+                        $odeComponentsSyncHtmlView = JsonSanitizer::sanitizeHtmlForJson($odeComponentsSyncHtmlView);
 
                         $prologue = '<?xml encoding="UTF-8">';
                         $html = $prologue.$odeComponentsSyncHtmlView;
                         $doc = new \DOMDocument();
                         @$doc->loadHTML($html);
                         $xpath = new \DOMXPath($doc);
-                        $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
+                        $src = $xpath->evaluate('//img/@src', $doc);
                         foreach ($src as $srcValue) {
                             $srcString = (string) $srcValue->value;
                             array_push($result['srcRoutes'], $srcString);
@@ -228,7 +247,6 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                         $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
 
                         // Create json properties
-
                         $jsonProperties = self::JSON_PROPERTIES;
                         $jsonProperties['ideviceId'] = $odeIdeviceId;
                         $jsonProperties['textTextarea'] = $odeComponentsSyncHtmlView;
@@ -237,8 +255,14 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                         $nodeFeedbackIdevice = $nodeIdevice->xpath('f:dictionary/f:string[@value="feedbackTextArea"]/following-sibling::f:instance[1]');
                         if (!empty($nodeFeedbackIdevice)) {
                             $nodeFeedbackIdevice[0]->registerXPathNamespace('f', $xpathNamespace);
-                            $nodeHtmltextFeedback = $nodeFeedbackIdevice[0]->xpath('f:dictionary/f:string[@value="content_w_resourcePaths"]/
-                                    following-sibling::f:unicode[1]/@value')[0];
+                            $nodeHtmltextFeedbackResult = $nodeFeedbackIdevice[0]->xpath('f:dictionary/f:string[@value="content_w_resourcePaths"]/
+                                    following-sibling::f:unicode[1]/@value');
+
+                            // Safe extraction of feedback value
+                            $nodeHtmltextFeedback = !empty($nodeHtmltextFeedbackResult)
+                                ? (string) $nodeHtmltextFeedbackResult[0]
+                                : '';
+
                             $sessionPath = null;
 
                             if (!empty($odeSessionId)) {
@@ -253,18 +277,21 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                             if (isset($commonReplaces)) {
                                 $odeComponentsSyncFeedbackHtmlView = self::applyReplaces(
                                     $commonReplaces,
-                                    (string) $nodeHtmltextFeedback
+                                    $nodeHtmltextFeedback
                                 );
                             } else {
-                                $odeComponentsSyncFeedbackHtmlView = (string) $nodeHtmltextFeedback;
+                                $odeComponentsSyncFeedbackHtmlView = $nodeHtmltextFeedback;
                             }
+
+                            // Sanitize feedback HTML for JSON encoding
+                            $odeComponentsSyncFeedbackHtmlView = JsonSanitizer::sanitizeHtmlForJson($odeComponentsSyncFeedbackHtmlView);
 
                             $prologue = '<?xml encoding="UTF-8">';
                             $html = $prologue.$odeComponentsSyncFeedbackHtmlView;
                             $doc = new \DOMDocument();
                             @$doc->loadHTML($html);
                             $xpath = new \DOMXPath($doc);
-                            $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
+                            $src = $xpath->evaluate('//img/@src', $doc);
                             foreach ($src as $srcValue) {
                                 $srcString = (string) $srcValue->value;
                                 array_push($result['srcRoutes'], $srcString);
@@ -273,14 +300,19 @@ class OdeOldXmlFpdSolvedExerciseIdevice
                             $jsonProperties['textFeedbackTextarea'] = $odeComponentsSyncFeedbackHtmlView;
                         }
 
-                        // Create jsonProperties for idevice
-                        $jsonProperties = json_encode($jsonProperties);
-                        $odeComponentsSync->setJsonProperties($jsonProperties);
+                        // Create jsonProperties for idevice with safe encoding
+                        $jsonPropertiesEncoded = JsonSanitizer::safeJsonEncode($jsonProperties);
+
+                        // Validate and repair JSON if needed
+                        if (!JsonSanitizer::isValidJson($jsonPropertiesEncoded)) {
+                            $jsonPropertiesEncoded = JsonSanitizer::repairJson($jsonPropertiesEncoded);
+                        }
+
+                        $odeComponentsSync->setJsonProperties($jsonPropertiesEncoded);
 
                         // OdeComponentsSync property fields
                         $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
 
-                        // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
                         $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
                     }
 
@@ -293,10 +325,12 @@ class OdeOldXmlFpdSolvedExerciseIdevice
     }
 
     /**
-     * Applies the replaces passed as param.
+     * Applies string replacements to text.
      *
-     * @param array  $replaces
-     * @param string $text
+     * @param array  $replaces Key-value pairs of search => replace
+     * @param string $text     The text to process
+     *
+     * @return string Text with replacements applied
      */
     private static function applyReplaces($replaces, $text)
     {

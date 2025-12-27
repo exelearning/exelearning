@@ -5,6 +5,7 @@ namespace App\Util\net\exelearning\Util\OdeOldXmlIdevices;
 use App\Constants;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
+use App\Util\net\exelearning\Util\JsonSanitizer;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
 
@@ -42,7 +43,6 @@ class OdeOldXmlMultipleAnswerIdevice
     public const OLD_ODE_XML_LIST = 'list';
     public const OLD_ODE_XML_UNICODE = 'unicode';
     public const OLD_ODE_XML_ATTRIBUTES = '@attributes';
-    // const OLD_ODE_XML_IDEVICE_TEXT = 'instance';
     public const OLD_ODE_XML_IDEVICE_TEXT_CONTENT = 'string role="key" value="content_w_resourcePaths"';
 
     public static function oldElpMultipleAnswerStructure($odeSessionId, $odePageId, $caseStudyNodes, $generatedIds, $xpathNamespace)
@@ -101,27 +101,26 @@ class OdeOldXmlMultipleAnswerIdevice
                     array_push($fullHtmlView, $odeComponentsSyncHtmlView);
                 }
 
+                $odeComponentsSyncHtmlView = JsonSanitizer::sanitizeHtmlForJson($odeComponentsSyncHtmlView);
+
                 $prologue = '<?xml encoding="UTF-8">';
                 $html = $prologue.$odeComponentsSyncHtmlView;
                 $doc = new \DOMDocument();
                 @$doc->loadHTML($html);
                 $xpath = new \DOMXPath($doc);
-                $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
+                $src = $xpath->evaluate('//img/@src', $doc);
                 foreach ($src as $srcValue) {
                     $srcString = (string) $srcValue->value;
                     array_push($result['srcRoutes'], $srcString);
                 }
 
                 foreach ($fullHtmlView as $htmlView) {
-                    $truefalseIdeviceHtmlIstructions = $htmlView;
+                    $truefalseIdeviceHtmlIstructions = JsonSanitizer::sanitizeHtmlForJson($htmlView);
                 }
 
                 // Answers
                 foreach ($nodeIdeviceQuestionAnswers as $nodeIdeviceQuestionAnswer) {
                     $nodeIdeviceQuestionAnswer->registerXPathNamespace('f', $xpathNamespace);
-
-                    // $nodeReferenceKey = $nodeIdeviceQuestionAnswer->xpath("f:dictionary/f:string[@value='_idevice']/
-                    // following-sibling::f:reference[1]/@key");
 
                     $nodeIdeviceQuestionAnswerHtmlContent = $nodeIdeviceQuestionAnswer->xpath("f:dictionary/f:string[@value='answerTextArea']/following-sibling::f:instance[1]/
                     f:dictionary/f:string[@value='content_w_resourcePaths']/following-sibling::f:unicode[@content='true']")[0];
@@ -135,25 +134,25 @@ class OdeOldXmlMultipleAnswerIdevice
                         $nodeIdeviceQuestionAnswersIsCorrect = 'true';
                     }
 
-                    $questionsAnswerArrayStructure = [$nodeIdeviceQuestionAnswersIsCorrect, '"'.$nodeIdeviceQuestionAnswerHtmlContent['value'].'"'];
+                    $answerContent = JsonSanitizer::sanitizeValue((string) $nodeIdeviceQuestionAnswerHtmlContent['value']);
+                    $questionsAnswerArrayStructure = [$nodeIdeviceQuestionAnswersIsCorrect, $answerContent];
                     array_push($questionAnswers, $questionsAnswerArrayStructure);
                 }
 
-                // Apply changes to json properties to add questions
-                $ideviceAnswers = '';
+                // Apply changes to json properties to add questions - Construir answers como array PHP
+                $answersArray = [];
                 foreach ($questionAnswers as $questionAnswer) {
                     $answerValue = strip_tags($questionAnswer[1]);
-                    $ideviceAnswers .= '['.$questionAnswer[0].','.$answerValue.'],';
+                    $answersArray[] = ['true' === $questionAnswer[0], $answerValue];
                 }
-                $jsonAnswers = rtrim($ideviceAnswers, ',');
-                $changes = ['"{{selectionAnswers}}"' => $jsonAnswers];
 
                 $jsonQuestions = self::JSON_QUESTIONS;
                 $jsonQuestions['baseText'] = $truefalseIdeviceHtmlIstructions;
-                $jsonQuestions = json_encode($jsonQuestions);
-                $jsonQuestions = self::applyHtmlChange($changes, $jsonQuestions);
+                $jsonQuestions['answers'] = $answersArray;
 
-                array_push($nodeTasks, $jsonQuestions);
+                $jsonQuestionsEncoded = JsonSanitizer::safeJsonEncode($jsonQuestions);
+
+                array_push($nodeTasks, $jsonQuestionsEncoded);
             }
 
             // IDEVICE TEXT CONTENT
@@ -166,9 +165,7 @@ class OdeOldXmlMultipleAnswerIdevice
                 $subOdePagStructureSync->setOdeSessionId($odeSessionId);
                 $subOdePagStructureSync->setOdePageId($odePageId);
                 $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-                // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
 
-                // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
                 $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
 
                 $orderPage = (string) $nodeIdevice['reference'];
@@ -176,13 +173,6 @@ class OdeOldXmlMultipleAnswerIdevice
 
                 // Get pagStructureSync properties
                 $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
-                // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
-                //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
-                //     if($oldXmlListInstDictUnicode["value"]) {
-                //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
-                //     }
-
-                // }
 
                 $odeComponentsSync = new OdeComponentsSync();
 
@@ -192,21 +182,16 @@ class OdeOldXmlMultipleAnswerIdevice
                 $odeComponentsSync->setOdeBlockId($odeBlockId);
                 $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
 
-                // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
-
                 $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
                 // Set type
                 $odeComponentsSync->setOdeIdeviceTypeName('form');
 
-                // $odeComponentsSync->setHtmlView($fullOdeComponentsSyncHtmlView);
-
                 $jsonProperties = self::JSON_PROPERTIES;
                 $jsonProperties['ideviceId'] = $odeIdeviceId;
                 $truefalseIdeviceHtmlIstructions = strip_tags($truefalseIdeviceHtmlIstructions);
-                // $jsonProperties["eXeFormInstructions"] = $truefalseIdeviceHtmlIstructions;
-                // $jsonProperties["textFeedbackTextarea"] = $fullOdeComponentsSyncHtmlFeedbackView;
 
-                $jsonProperties = json_encode($jsonProperties);
+                $jsonProperties = JsonSanitizer::safeJsonEncode($jsonProperties);
+
                 $fullJsonQuestions = '';
                 foreach ($nodeTasks as $nodeTask) {
                     $fullJsonQuestions .= $nodeTask.',';
@@ -215,13 +200,16 @@ class OdeOldXmlMultipleAnswerIdevice
                 $changesJson = ['"{{addQuestions}}"' => $fullJsonQuestions];
                 $jsonProperties = self::applyHtmlChange($changesJson, $jsonProperties);
 
+                if (!JsonSanitizer::isValidJson($jsonProperties)) {
+                    $jsonProperties = JsonSanitizer::repairJson($jsonProperties);
+                }
+
                 // Create jsonProperties for idevice
                 $odeComponentsSync->setJsonProperties($jsonProperties);
 
                 // OdeComponentsSync property fields
                 $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
 
-                // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
                 $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
 
                 array_push($result['odeComponentsSync'], $subOdePagStructureSync);
@@ -274,12 +262,10 @@ class OdeOldXmlMultipleAnswerIdevice
      */
     private static function transformTrueFalseCorrectValue($trueFalseCorrectValue)
     {
-        // By default on empty value we return False as correct value
         if (empty($trueFalseCorrectValue)) {
             return 'False';
         }
 
-        // Check value is "0" or "1" to set "False" or "True"
         if ('0' == $trueFalseCorrectValue) {
             return 'False';
         } else {

@@ -24,7 +24,7 @@ class OdeOldXmlExternalUrlIdevice
     // Create div external url
     public const SET_EXTERNAL_URL_DIV = '
         <div id="iframeWebsiteIdevice">
-            <iframe src="{{changeUrl}}" size="2" width="600" height="300" style="width:100%;"></iframe>
+            <iframe src="{{changeUrl}}" size="2" width="600" height="{{changeHeight}}" style="width:100%;"></iframe>
             <div class="iframe-error-message" style="display:none;">Unable to display an iframe loaded over HTTP on a website that uses HTTPS.</div>
         </div>';
 
@@ -33,13 +33,22 @@ class OdeOldXmlExternalUrlIdevice
         $result['odeComponentsSync'] = [];
         $result['srcRoutes'] = [];
 
+        $orderCounter = 1;
+
         foreach ($externalUrlNodes as $externalUrlNode) {
             $externalUrlNode->registerXPathNamespace('f', $xpathNamespace);
-            // Get blockName
+
+            // Get blockName using XPath
             $blockNameNode = $externalUrlNode->xpath("f:dictionary/f:string[@value='_title']/following-sibling::f:unicode[1]/@value");
 
-            // IDEVICE EXTERNAL URL
-            if ($externalUrlNode->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}) {
+            // Get URL using XPath - this is the correct way to get the url field
+            $urlNode = $externalUrlNode->xpath("f:dictionary/f:string[@value='url']/following-sibling::f:unicode[1]/@value");
+
+            // Get height using XPath
+            $heightNode = $externalUrlNode->xpath("f:dictionary/f:string[@value='height']/following-sibling::f:unicode[1]/@value");
+
+            // Check if we have a valid URL
+            if (!empty($urlNode) && isset($urlNode[0])) {
                 $subOdePagStructureSync = new OdePagStructureSync();
                 $odeBlockId = Util::generateIdCheckUnique($generatedIds);
                 $generatedIds[] = $odeBlockId;
@@ -48,23 +57,18 @@ class OdeOldXmlExternalUrlIdevice
                 $subOdePagStructureSync->setOdeSessionId($odeSessionId);
                 $subOdePagStructureSync->setOdePageId($odePageId);
                 $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-                // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
 
-                // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
-                $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
+                $blockName = !empty($blockNameNode) ? (string) $blockNameNode[0] : 'External Web Site';
+                $subOdePagStructureSync->setBlockName($blockName);
 
-                $orderPage = (string) $externalUrlNode['reference'];
-                $subOdePagStructureSync->setOdePagStructureSyncOrder(intval($orderPage));
+                // Get order from reference attribute, or use counter if not available
+                $orderPage = isset($externalUrlNode['reference']) && !empty((string) $externalUrlNode['reference'])
+                    ? intval((string) $externalUrlNode['reference'])
+                    : $orderCounter;
+                $subOdePagStructureSync->setOdePagStructureSyncOrder($orderPage);
 
                 // Get pagStructureSync properties
                 $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
-                // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
-                //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
-                //     if($oldXmlListInstDictUnicode["value"]) {
-                //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
-                //     }
-
-                // }
 
                 $odeComponentsSync = new OdeComponentsSync();
                 $odeIdeviceId = Util::generateIdCheckUnique($generatedIds);
@@ -77,15 +81,9 @@ class OdeOldXmlExternalUrlIdevice
                 $odeComponentsSync->setOdeBlockId($odeBlockId);
                 $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
 
-                // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
-
                 $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
                 // Set type
                 $odeComponentsSync->setOdeIdeviceTypeName('external-website');
-
-                // $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
-                // $fileTextPathToChange = $oldXmlListDictListInstDictListInstDict->xpath('//f:unicode[@content="true"]starts-with(@src,"resources/")]');
-                // src="resources/
 
                 $sessionPath = null;
 
@@ -98,42 +96,40 @@ class OdeOldXmlExternalUrlIdevice
                     'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
                 ];
 
-                if (isset($externalUrlNode->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}[6]['value'])) {
-                    if (isset($commonReplaces)) {
-                        $odeComponentsSyncHtmlView = self::applyReplaces(
-                            $commonReplaces,
-                            $externalUrlNode->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}[6]['value']
-                        );
-                    } else {
-                        $odeComponentsSyncHtmlView = $externalUrlNode->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}[6]['value'];
-                    }
+                // Get URL value from XPath result
+                $externalUrl = (string) $urlNode[0];
 
-                    $externalUrlDiv = self::SET_EXTERNAL_URL_DIV;
-
-                    $htmlReplace = ['{{changeUrl}}' => $odeComponentsSyncHtmlView];
-                    $externalUrlDiv = self::applyHtmlChange($htmlReplace, $externalUrlDiv);
-
-                    $prologue = '<?xml encoding="UTF-8">';
-                    $html = $prologue.$odeComponentsSyncHtmlView;
-                    $doc = new \DOMDocument();
-                    @$doc->loadHTML($html);
-                    $xpath = new \DOMXPath($doc);
-                    $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
-                    foreach ($src as $srcValue) {
-                        $srcString = (string) $srcValue->value;
-                        array_push($result['srcRoutes'], $srcString);
-                    }
-
-                    $odeComponentsSync->setHtmlView($externalUrlDiv);
-
-                    // OdeComponentsSync property fields
-                    $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
-
-                    // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
-                    $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
+                if (isset($commonReplaces)) {
+                    $odeComponentsSyncHtmlView = self::applyReplaces(
+                        $commonReplaces,
+                        $externalUrl
+                    );
+                } else {
+                    $odeComponentsSyncHtmlView = $externalUrl;
                 }
+
+                // Get height value, default to 300 if not found
+                $height = !empty($heightNode) && isset($heightNode[0]) ? (string) $heightNode[0] : '300';
+
+                $externalUrlDiv = self::SET_EXTERNAL_URL_DIV;
+
+                $htmlReplace = [
+                    '{{changeUrl}}' => $odeComponentsSyncHtmlView,
+                    '{{changeHeight}}' => $height,
+                ];
+                $externalUrlDiv = self::applyHtmlChange($htmlReplace, $externalUrlDiv);
+
+                $odeComponentsSync->setHtmlView($externalUrlDiv);
+
+                // OdeComponentsSync property fields
+                $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
+
+                $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
+
+                array_push($result['odeComponentsSync'], $subOdePagStructureSync);
+
+                ++$orderCounter;
             }
-            array_push($result['odeComponentsSync'], $subOdePagStructureSync);
         }
 
         return $result;

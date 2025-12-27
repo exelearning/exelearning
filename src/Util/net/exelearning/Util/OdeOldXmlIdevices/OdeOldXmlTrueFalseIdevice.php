@@ -5,11 +5,14 @@ namespace App\Util\net\exelearning\Util\OdeOldXmlIdevices;
 use App\Constants;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
+use App\Util\net\exelearning\Util\JsonSanitizer;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
 
 /**
  * OdeOldXmlTrueFalseIdevice.
+ *
+ * Handles import of True/False iDevice content from legacy ELP XML files.
  */
 class OdeOldXmlTrueFalseIdevice
 {
@@ -43,9 +46,19 @@ class OdeOldXmlTrueFalseIdevice
     public const OLD_ODE_XML_LIST = 'list';
     public const OLD_ODE_XML_UNICODE = 'unicode';
     public const OLD_ODE_XML_ATTRIBUTES = '@attributes';
-    // const OLD_ODE_XML_IDEVICE_TEXT = 'instance';
     public const OLD_ODE_XML_IDEVICE_TEXT_CONTENT = 'string role="key" value="content_w_resourcePaths"';
 
+    /**
+     * Processes True/False iDevice structure from legacy ELP XML.
+     *
+     * @param string $odeSessionId   The session ID
+     * @param string $odePageId      The page ID
+     * @param array  $caseStudyNodes XML nodes containing True/False questions
+     * @param array  $generatedIds   Array of already generated IDs to avoid duplicates
+     * @param string $xpathNamespace XML namespace for XPath queries
+     *
+     * @return array Result containing odeComponentsSync and srcRoutes
+     */
     public static function oldElpTrueFalseStructure($odeSessionId, $odePageId, $caseStudyNodes, $generatedIds, $xpathNamespace)
     {
         $result['odeComponentsSync'] = [];
@@ -153,13 +166,15 @@ class OdeOldXmlTrueFalseIdevice
                     self::applyReplaces($commonReplaces, (string) $hintHtmlContent[0]['value']) :
                     (!empty($hintHtmlContent) ? (string) $hintHtmlContent[0]['value'] : '');
 
+                // Build question JSON with sanitized HTML content
                 $jsonQuestion = self::JSON_QUESTIONS;
-                $jsonQuestion['baseText'] = $odeComponentsSyncHtmlView;
+                $jsonQuestion['baseText'] = JsonSanitizer::sanitizeHtmlForJson($odeComponentsSyncHtmlView);
                 $jsonQuestion['answer'] = self::transformTrueFalseCorrectValue($nodeAnswerQuestion);
-                $jsonQuestion['feedback'] = $feedbackProcessed;
-                $jsonQuestion['hint'] = $hintProcessed;
+                $jsonQuestion['feedback'] = JsonSanitizer::sanitizeHtmlForJson($feedbackProcessed);
+                $jsonQuestion['hint'] = JsonSanitizer::sanitizeHtmlForJson($hintProcessed);
 
-                array_push($nodeQuestions, json_encode($jsonQuestion));
+                // Use safe JSON encoding for each question
+                array_push($nodeQuestions, JsonSanitizer::safeJsonEncode($jsonQuestion));
             }
 
             // IDEVICE TEXT CONTENT
@@ -172,23 +187,19 @@ class OdeOldXmlTrueFalseIdevice
                 $subOdePagStructureSync->setOdeSessionId($odeSessionId);
                 $subOdePagStructureSync->setOdePageId($odePageId);
                 $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-                // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
 
-                // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
-                $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
+                // Sanitize block name from XML
+                $blockName = !empty($blockNameNode) ? JsonSanitizer::sanitizeValue((string) $blockNameNode[0]) : '';
+                $subOdePagStructureSync->setBlockName($blockName);
 
-                $orderPage = (string) $nodeIdevice['reference'];
-                $subOdePagStructureSync->setOdePagStructureSyncOrder(intval($orderPage));
+                // Handle missing reference attribute safely
+                $orderPage = isset($nodeIdevice['reference']) && !empty((string) $nodeIdevice['reference'])
+                    ? intval((string) $nodeIdevice['reference'])
+                    : 0;
+                $subOdePagStructureSync->setOdePagStructureSyncOrder($orderPage);
 
                 // Get pagStructureSync properties
                 $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
-                // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
-                //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
-                //     if($oldXmlListInstDictUnicode["value"]) {
-                //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
-                //     }
-
-                // }
 
                 $odeComponentsSync = new OdeComponentsSync();
 
@@ -198,19 +209,16 @@ class OdeOldXmlTrueFalseIdevice
                 $odeComponentsSync->setOdeBlockId($odeBlockId);
                 $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
 
-                // $odeComponentsSync->setJsonProperties("");
-
                 $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
                 // Set type
                 $odeComponentsSync->setOdeIdeviceTypeName('trueorfalse');
 
-                // $odeComponentsSync->setHtmlView($fullOdeComponentsSyncHtmlView);
-
                 $jsonProperties = self::JSON_PROPERTIES;
                 $jsonProperties['ideviceId'] = $odeIdeviceId;
-                $jsonProperties['eXeFormInstructions'] = $truefalseIdeviceHtmlIstructions;
-                // $jsonProperties["textFeedbackTextarea"] = $fullOdeComponentsSyncHtmlFeedbackView;
+                // Sanitize instructions HTML content
+                $jsonProperties['eXeFormInstructions'] = JsonSanitizer::sanitizeHtmlForJson($truefalseIdeviceHtmlIstructions);
 
+                // Build questions JSON string
                 $jsonQuestions = '';
                 foreach ($nodeQuestions as $nodeQuestion) {
                     $jsonQuestions .= $nodeQuestion.',';
@@ -219,16 +227,20 @@ class OdeOldXmlTrueFalseIdevice
 
                 // Apply changes to json properties to add questions
                 $changes = ['"{{addQuestions}}"' => $jsonQuestions];
-                $jsonProperties = json_encode($jsonProperties);
-                $jsonProperties = self::applyHtmlChange($changes, $jsonProperties);
+                $jsonPropertiesEncoded = JsonSanitizer::safeJsonEncode($jsonProperties);
+                $jsonPropertiesEncoded = self::applyHtmlChange($changes, $jsonPropertiesEncoded);
+
+                // Validate and repair JSON if needed
+                if (!JsonSanitizer::isValidJson($jsonPropertiesEncoded)) {
+                    $jsonPropertiesEncoded = JsonSanitizer::repairJson($jsonPropertiesEncoded);
+                }
 
                 // Create jsonProperties for idevice
-                $odeComponentsSync->setJsonProperties($jsonProperties);
+                $odeComponentsSync->setJsonProperties($jsonPropertiesEncoded);
 
                 // OdeComponentsSync property fields
                 $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
 
-                // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
                 $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
 
                 array_push($result['odeComponentsSync'], $subOdePagStructureSync);
@@ -239,10 +251,12 @@ class OdeOldXmlTrueFalseIdevice
     }
 
     /**
-     * Applies the replaces passed as param.
+     * Applies string replacements to text.
      *
-     * @param array  $replaces
-     * @param string $text
+     * @param array  $replaces Key-value pairs of search => replace
+     * @param string $text     The text to process
+     *
+     * @return string Text with replacements applied
      */
     private static function applyReplaces($replaces, $text)
     {
@@ -256,10 +270,12 @@ class OdeOldXmlTrueFalseIdevice
     }
 
     /**
-     * Applies the replaces passed as param.
+     * Applies HTML-related string replacements.
      *
-     * @param array  $replaces
-     * @param string $text
+     * @param array  $replaces Key-value pairs of search => replace
+     * @param string $text     The text to process
+     *
+     * @return string Text with replacements applied
      */
     private static function applyHtmlChange($replaces, $text)
     {
@@ -273,11 +289,11 @@ class OdeOldXmlTrueFalseIdevice
     }
 
     /**
-     * Change correct value to "True" or "False".
+     * Transforms boolean value to "True" or "False" string.
      *
-     * @param string $trueFalseCorrectValue
+     * @param string $trueFalseCorrectValue The value to transform ("0" or "1")
      *
-     * @return string
+     * @return string "True" or "False"
      */
     private static function transformTrueFalseCorrectValue($trueFalseCorrectValue)
     {
