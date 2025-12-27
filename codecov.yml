@@ -3,16 +3,31 @@ coverage:
     project:
       default:
         target: 80%
+
     patch:
       default:
         target: 80%
+        threshold: 2%
 
 flags:
   unittests:
     paths:
       - src/
+    coverage:
+      status:
+        patch:
+          default:
+            target: 80%
+            threshold: 2%
+
   frontend:
     paths:
       - public/app/
       - public/files/perm/idevices/base/
       - public/libs/
+    coverage:
+      status:
+        patch:
+          default:
+            target: 80%
+            threshold: 2%
