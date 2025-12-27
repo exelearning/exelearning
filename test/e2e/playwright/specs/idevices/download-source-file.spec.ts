@@ -122,8 +122,18 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
 async function setButtonText(page: Page, text: string): Promise<void> {
     const buttonTextInput = page.locator('#dpiButtonText');
     await buttonTextInput.waitFor({ state: 'visible', timeout: 5000 });
-    await buttonTextInput.clear();
-    await buttonTextInput.fill(text);
+
+    // Use JavaScript to set value directly - more reliable across browsers
+    await buttonTextInput.evaluate((input, newText) => {
+        const el = input as HTMLInputElement;
+        el.value = newText;
+        // Trigger input and change events so the iDevice picks up the change
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+    }, text);
+
+    // Wait for the change to be processed
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -133,6 +143,8 @@ async function setButtonBgColor(page: Page, color: string): Promise<void> {
     const colorInput = page.locator('#dpiButtonBGcolor');
     await colorInput.waitFor({ state: 'visible', timeout: 5000 });
     await colorInput.fill(color);
+    // Wait for input to be processed (Firefox needs more time)
+    await page.waitForTimeout(300);
 }
 
 /**
@@ -142,6 +154,8 @@ async function setButtonTextColor(page: Page, color: string): Promise<void> {
     const colorInput = page.locator('#dpiButtonTextColor');
     await colorInput.waitFor({ state: 'visible', timeout: 5000 });
     await colorInput.fill(color);
+    // Wait for input to be processed (Firefox needs more time)
+    await page.waitForTimeout(300);
 }
 
 /**
@@ -151,6 +165,8 @@ async function setFontSize(page: Page, option: '1' | '1.1' | '1.2' | '1.3' | '1.
     const fontSizeSelect = page.locator('#dpiButtonFontSize');
     await fontSizeSelect.waitFor({ state: 'visible', timeout: 5000 });
     await fontSizeSelect.selectOption(option);
+    // Wait for selection to be processed (Firefox needs more time)
+    await page.waitForTimeout(300);
 }
 
 /**
