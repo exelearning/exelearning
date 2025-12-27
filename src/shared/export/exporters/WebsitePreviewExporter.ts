@@ -105,7 +105,7 @@ export class WebsitePreviewExporter {
 
     /**
      * Check if any page contains the download-source-file iDevice
-     * (needs fflate and exe_elpx_download.js)
+     * (needs special handling in preview - postMessage to parent)
      */
     private needsElpxDownloadSupport(pages: ExportPage[]): boolean {
         for (const page of pages) {

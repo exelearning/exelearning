@@ -228,7 +228,7 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 10. Add project assets (with tracking)
-            await this.addAssetsToZipWithResourcePathTracked(fileList);
+            await this.addAssetsToZipWithResourcePath(fileList);
 
             // 11. Generate ELPX manifest file if download-source-file is used
             if (needsElpxDownload && fileList) {
@@ -272,45 +272,6 @@ export class Html5Exporter extends BaseExporter {
                 error: error instanceof Error ? error.message : String(error),
             };
         }
-    }
-
-    /**
-     * Add assets to ZIP with resource path, tracking for ELPX manifest
-     */
-    private async addAssetsToZipWithResourcePathTracked(fileList: string[] | null): Promise<number> {
-        let assetsAdded = 0;
-
-        try {
-            const assets = await this.assets.getAllAssets();
-            console.log(`[Html5Exporter] addAssetsToZipWithResourcePathTracked: Found ${assets.length} assets to add`);
-
-            for (const asset of assets) {
-                console.log(`[Html5Exporter] Adding asset: ${asset.id}/${asset.filename} (${asset.mime})`);
-
-                // Use originalPath if available
-                // Strip content/resources/ prefix if present (ELP files include it)
-                let assetPath = asset.originalPath || `${asset.id}/${asset.filename || `asset-${asset.id}`}`;
-
-                // Normalize: remove content/resources/ prefix if already present
-                if (assetPath.startsWith('content/resources/')) {
-                    assetPath = assetPath.substring('content/resources/'.length);
-                }
-                if (assetPath.startsWith('content/')) {
-                    assetPath = assetPath.substring('content/'.length);
-                }
-
-                // Store in content/resources/{path}
-                const zipPath = `content/resources/${assetPath}`;
-
-                this.zip.addFile(zipPath, asset.data);
-                if (fileList) fileList.push(zipPath);
-                assetsAdded++;
-            }
-        } catch (e) {
-            console.warn('[Html5Exporter] Failed to add assets to ZIP:', e);
-        }
-
-        return assetsAdded;
     }
 
     /**
@@ -380,33 +341,5 @@ export class Html5Exporter extends BaseExporter {
 .exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
 /* Hide MathML visually but keep accessible for screen readers */
 .exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
-    }
-
-    /**
-     * Check if any page contains the download-source-file iDevice
-     * (needs ELPX manifest for client-side ZIP recreation)
-     */
-    private needsElpxDownloadSupport(pages: ExportPage[]): boolean {
-        return pages.some(page => this.pageHasDownloadSourceFile(page));
-    }
-
-    /**
-     * Check if a specific page contains the download-source-file iDevice
-     */
-    private pageHasDownloadSourceFile(page: ExportPage): boolean {
-        for (const block of page.blocks || []) {
-            for (const component of block.components || []) {
-                // Check by iDevice type
-                const type = (component.type || '').toLowerCase();
-                if (type.includes('download-source-file') || type.includes('downloadsourcefile')) {
-                    return true;
-                }
-                // Also check content for the CSS class (more reliable)
-                if (component.content?.includes('exe-download-package-link')) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 }

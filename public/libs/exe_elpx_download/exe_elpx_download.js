@@ -88,11 +88,6 @@
                             return null;
                         }
 
-                        // Skip content.xml in preview if it's embedded in manifest
-                        if (manifest.isPreview && path === 'content.xml' && manifest.contentXml) {
-                            return null;
-                        }
-
                         try {
                             var url = basePath + path;
                             var response = await fetch(url);
@@ -120,12 +115,7 @@
                 });
             }
 
-            // 4. Add content.xml (from manifest.contentXml for preview, or already fetched for exports)
-            if (manifest.contentXml) {
-                files['content.xml'] = stringToUint8Array(manifest.contentXml);
-            }
-
-            // 5. Create ZIP and download
+            // 4. Create ZIP and download
             var projectName = options.filename || manifest.projectTitle || 'eXeLearning-project';
             await createZipAndDownload(files, sanitizeFilename(projectName));
 

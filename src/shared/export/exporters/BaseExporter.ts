@@ -272,8 +272,9 @@ export abstract class BaseExporter {
 
     /**
      * Add assets to ZIP with content/resources/ prefix
+     * @param trackingList - Optional array to track added file paths (for ELPX manifest)
      */
-    async addAssetsToZipWithResourcePath(): Promise<number> {
+    async addAssetsToZipWithResourcePath(trackingList?: string[] | null): Promise<number> {
         let assetsAdded = 0;
 
         try {
@@ -299,6 +300,7 @@ export abstract class BaseExporter {
                 const zipPath = `content/resources/${assetPath}`;
 
                 this.zip.addFile(zipPath, asset.data);
+                if (trackingList) trackingList.push(zipPath);
                 assetsAdded++;
             }
         } catch (e) {
@@ -512,42 +514,40 @@ export abstract class BaseExporter {
     }
 
     // =========================================================================
-    // ELPX Manifest Generation (for download-source-file iDevice)
+    // Download Source File iDevice Detection
     // =========================================================================
 
     /**
-     * Generate ELPX manifest for client-side ZIP recreation
-     * Used by exe_elpx_download.js to recreate the complete export package
-     *
-     * @param fileList - List of file paths in the export
-     * @param options - Additional options for the manifest
-     * @returns Script tag with embedded manifest
+     * Check if any page contains the download-source-file iDevice
+     * (needs ELPX manifest for client-side ZIP recreation)
      */
-    protected generateElpxManifest(fileList: string[], options?: { basePath?: string; isPreview?: boolean }): string {
-        const manifest: {
-            version: number;
-            files: string[];
-            projectTitle: string;
-            basePath?: string;
-            isPreview?: boolean;
-        } = {
-            version: 1,
-            files: fileList,
-            projectTitle: this.getMetadata().title || 'eXeLearning-project',
-        };
-
-        if (options?.basePath) {
-            manifest.basePath = options.basePath;
-        }
-        if (options?.isPreview) {
-            manifest.isPreview = true;
-        }
-
-        // Escape </script> and <!-- sequences in JSON to prevent HTML parser from breaking
-        const jsonStr = JSON.stringify(manifest).replace(/<\//g, '<\\/').replace(/<!--/g, '<\\!--');
-
-        return `<script>window.__ELPX_MANIFEST__=${jsonStr};</script>`;
+    protected needsElpxDownloadSupport(pages: ExportPage[]): boolean {
+        return pages.some(page => this.pageHasDownloadSourceFile(page));
     }
+
+    /**
+     * Check if a specific page contains the download-source-file iDevice
+     */
+    protected pageHasDownloadSourceFile(page: ExportPage): boolean {
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                // Check by iDevice type
+                const type = (component.type || '').toLowerCase();
+                if (type.includes('download-source-file') || type.includes('downloadsourcefile')) {
+                    return true;
+                }
+                // Also check content for the CSS class (more reliable)
+                if (component.content?.includes('exe-download-package-link')) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // =========================================================================
+    // ELPX Manifest Generation (for download-source-file iDevice)
+    // =========================================================================
 
     /**
      * Generate ELPX manifest as a standalone JS file

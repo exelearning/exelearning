@@ -149,10 +149,6 @@ class TestExporter extends BaseExporter {
     }
 
     // Expose protected methods for testing
-    testGenerateElpxManifest(fileList: string[], options?: { basePath?: string; isPreview?: boolean }): string {
-        return this.generateElpxManifest(fileList, options);
-    }
-
     testGenerateElpxManifestFile(fileList: string[]): string {
         return this.generateElpxManifestFile(fileList);
     }
@@ -752,85 +748,6 @@ describe('BaseExporter', () => {
     });
 
     describe('ELPX Manifest Generation', () => {
-        describe('generateElpxManifest', () => {
-            it('should generate script tag with manifest JSON', () => {
-                const fileList = ['index.html', 'libs/jquery.js', 'theme/content.css'];
-                const result = exporter.testGenerateElpxManifest(fileList);
-
-                expect(result).toContain('<script>');
-                expect(result).toContain('window.__ELPX_MANIFEST__=');
-                expect(result).toContain('</script>');
-                expect(result).toContain('"version":1');
-                expect(result).toContain('"files":');
-                expect(result).toContain('"projectTitle":"Test Project"');
-            });
-
-            it('should include basePath when provided', () => {
-                const fileList = ['index.html'];
-                const result = exporter.testGenerateElpxManifest(fileList, { basePath: '/v1.0.0' });
-
-                expect(result).toContain('"basePath":"/v1.0.0"');
-            });
-
-            it('should include isPreview flag when true', () => {
-                const fileList = ['index.html'];
-                const result = exporter.testGenerateElpxManifest(fileList, { isPreview: true });
-
-                expect(result).toContain('"isPreview":true');
-            });
-
-            it('should not include isPreview when false or not provided', () => {
-                const fileList = ['index.html'];
-
-                const result1 = exporter.testGenerateElpxManifest(fileList, { isPreview: false });
-                expect(result1).not.toContain('isPreview');
-
-                const result2 = exporter.testGenerateElpxManifest(fileList);
-                expect(result2).not.toContain('isPreview');
-            });
-
-            it('should escape </script> sequences in JSON', () => {
-                // Create exporter with metadata containing </script>
-                const docWithScript = new MockDocument({ title: '</script><script>alert(1)</script>' });
-                const exporterWithScript = new TestExporter(docWithScript, resources, assets, zip);
-                const result = exporterWithScript.testGenerateElpxManifest(['index.html']);
-
-                // Should not contain literal </script> inside the JSON
-                // The pattern should be escaped to <\/script>
-                expect(result).not.toMatch(/<\/script>.*<\/script>/);
-                expect(result).toContain('<\\/script>');
-            });
-
-            it('should escape HTML comments in JSON', () => {
-                const docWithComment = new MockDocument({ title: '<!-- comment -->' });
-                const exporterWithComment = new TestExporter(docWithComment, resources, assets, zip);
-                const result = exporterWithComment.testGenerateElpxManifest(['index.html']);
-
-                // HTML comments should be escaped
-                expect(result).toContain('<\\!--');
-            });
-
-            it('should use default project title when not set', () => {
-                const docNoTitle = new MockDocument({ title: '' });
-                const exporterNoTitle = new TestExporter(docNoTitle, resources, assets, zip);
-                const result = exporterNoTitle.testGenerateElpxManifest(['index.html']);
-
-                expect(result).toContain('"projectTitle":"eXeLearning-project"');
-            });
-
-            it('should include all options together', () => {
-                const fileList = ['index.html', 'content.xml'];
-                const result = exporter.testGenerateElpxManifest(fileList, {
-                    basePath: '/app/v2',
-                    isPreview: true,
-                });
-
-                expect(result).toContain('"basePath":"/app/v2"');
-                expect(result).toContain('"isPreview":true');
-                expect(result).toContain('"files":["index.html","content.xml"]');
-            });
-        });
-
         describe('generateElpxManifestFile', () => {
             it('should generate standalone JS file content', () => {
                 const fileList = ['index.html', 'libs/jquery.js'];

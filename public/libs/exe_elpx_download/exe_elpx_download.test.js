@@ -127,10 +127,6 @@ describe('exe_elpx_download', () => {
         it('handles manifest.isPreview for preview mode', () => {
             expect(scriptContent).toContain('manifest.isPreview');
         });
-
-        it('uses manifest.contentXml for embedded content.xml in preview', () => {
-            expect(scriptContent).toContain('manifest.contentXml');
-        });
     });
 
     describe('file:// protocol detection', () => {
@@ -313,10 +309,6 @@ describe('exe_elpx_download', () => {
         it('skips HTML files in preview (already captured)', () => {
             expect(scriptContent).toContain("path === 'index.html'");
             expect(scriptContent).toContain("path.startsWith('html/')");
-        });
-
-        it('skips content.xml if embedded in manifest', () => {
-            expect(scriptContent).toContain("path === 'content.xml' && manifest.contentXml");
         });
     });
 
@@ -529,46 +521,6 @@ describe('exe_elpx_download', () => {
 
             // The filename option should be used
             expect(global.fflate.zip).toHaveBeenCalled();
-        });
-
-        it('uses embedded content.xml from manifest in preview mode', async () => {
-            document.body.innerHTML = `<p class="exe-download-package-link"><a href="#">Download</a></p>`;
-
-            const embeddedXml = '<ode><key>pp_title</key><value>Embedded Project</value></ode>';
-            window.__ELPX_MANIFEST__ = {
-                version: 1,
-                files: ['content.xml', 'theme/content.css'],
-                projectTitle: 'Embedded Project',
-                basePath: 'http://localhost:8080/v1.0.0/',
-                isPreview: true,
-                contentXml: embeddedXml,
-            };
-
-            // Mock fetch for theme files
-            global.fetch.mockResolvedValue({
-                ok: true,
-                arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
-            });
-
-            // Execute script
-            // eslint-disable-next-line no-eval
-            eval(scriptContent);
-
-            // Call downloadElpx
-            await window.downloadElpx();
-
-            // Verify fflate.zip was called
-            expect(global.fflate.zip).toHaveBeenCalled();
-
-            // Verify the files passed to zip include content.xml
-            const zipCall = global.fflate.zip.mock.calls[0];
-            const files = zipCall[0];
-
-            // content.xml should be present (from manifest.contentXml)
-            expect(files['content.xml']).toBeDefined();
-
-            // Verify blob URL was created
-            expect(global.URL.createObjectURL).toHaveBeenCalled();
         });
 
         it('uses folder picker for file:// protocol', async () => {
