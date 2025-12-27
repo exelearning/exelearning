@@ -2,7 +2,7 @@
  * exe_elpx_download.js Tests
  *
  * Unit tests for the client-side ELPX generator that creates .elpx files
- * on-the-fly from exported HTML sites.
+ * on-the-fly from exported HTML sites using a manifest-based approach.
  *
  * This library is included in exports when the download-source-file iDevice is present.
  *
@@ -19,455 +19,568 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 describe('exe_elpx_download', () => {
-  let scriptContent;
-  let originalFflate;
-  let originalFetch;
+    let scriptContent;
+    let originalFflate;
+    let originalFetch;
 
-  beforeAll(() => {
-    // Read the script content
-    const scriptPath = join(__dirname, 'exe_elpx_download.js');
-    scriptContent = readFileSync(scriptPath, 'utf-8');
-  });
-
-  beforeEach(() => {
-    // Store originals
-    originalFflate = global.fflate;
-    originalFetch = global.fetch;
-
-    // Mock fflate
-    global.fflate = {
-      zip: vi.fn((files, options, callback) => {
-        const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // ZIP magic bytes
-        setTimeout(() => callback(null, mockZipData), 0);
-      }),
-    };
-
-    // Mock fetch
-    global.fetch = vi.fn();
-
-    // Mock window.location
-    Object.defineProperty(window, 'location', {
-      value: {
-        pathname: '/index.html',
-        href: 'http://localhost/index.html',
-      },
-      writable: true,
-      configurable: true,
+    beforeAll(() => {
+        // Read the script content
+        const scriptPath = join(__dirname, 'exe_elpx_download.js');
+        scriptContent = readFileSync(scriptPath, 'utf-8');
     });
 
-    // Mock URL.createObjectURL and revokeObjectURL
-    global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-    global.URL.revokeObjectURL = vi.fn();
+    beforeEach(() => {
+        // Store originals
+        originalFflate = global.fflate;
+        originalFetch = global.fetch;
 
-    // Mock alert
-    global.alert = vi.fn();
+        // Mock fflate
+        global.fflate = {
+            zip: vi.fn((files, options, callback) => {
+                const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // ZIP magic bytes
+                setTimeout(() => callback(null, mockZipData), 0);
+            }),
+        };
 
-    // Reset downloadElpx
-    delete global.downloadElpx;
-  });
+        // Mock fetch
+        global.fetch = vi.fn();
 
-  afterEach(() => {
-    // Restore originals
-    global.fflate = originalFflate;
-    global.fetch = originalFetch;
-    delete global.downloadElpx;
-    vi.clearAllMocks();
-  });
+        // Mock window.location
+        Object.defineProperty(window, 'location', {
+            value: {
+                pathname: '/index.html',
+                href: 'http://localhost/index.html',
+                protocol: 'http:',
+            },
+            writable: true,
+            configurable: true,
+        });
 
-  describe('script structure', () => {
-    it('is wrapped in an IIFE', () => {
-      expect(scriptContent).toContain('(function (global)');
-      expect(scriptContent).toMatch(/\}\)\(typeof window/);
+        // Mock URL.createObjectURL and revokeObjectURL
+        global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+        global.URL.revokeObjectURL = vi.fn();
+
+        // Mock alert
+        global.alert = vi.fn();
+
+        // Reset downloadElpx and manifest
+        delete global.downloadElpx;
+        delete window.__ELPX_MANIFEST__;
     });
 
-    it('uses strict mode', () => {
-      expect(scriptContent).toContain("'use strict'");
+    afterEach(() => {
+        // Restore originals
+        global.fflate = originalFflate;
+        global.fetch = originalFetch;
+        delete global.downloadElpx;
+        delete window.__ELPX_MANIFEST__;
+        vi.clearAllMocks();
     });
 
-    it('checks for fflate availability', () => {
-      expect(scriptContent).toContain("typeof fflate === 'undefined'");
+    describe('script structure', () => {
+        it('is wrapped in an IIFE', () => {
+            expect(scriptContent).toContain('(function (global)');
+            expect(scriptContent).toMatch(/\}\)\(typeof window/);
+        });
+
+        it('uses strict mode', () => {
+            expect(scriptContent).toContain("'use strict'");
+        });
+
+        it('checks for fflate availability', () => {
+            expect(scriptContent).toContain("typeof fflate === 'undefined'");
+        });
+
+        it('exposes downloadElpx globally', () => {
+            expect(scriptContent).toContain('global.downloadElpx = downloadElpx');
+        });
+
+        it('exports helper functions for CommonJS', () => {
+            expect(scriptContent).toContain('module.exports');
+            expect(scriptContent).toContain('sanitizeFilename');
+            expect(scriptContent).toContain('getBasePath');
+            expect(scriptContent).toContain('isFileProtocol');
+        });
     });
 
-    it('exposes downloadElpx globally', () => {
-      expect(scriptContent).toContain('global.downloadElpx = downloadElpx');
+    describe('manifest-based approach', () => {
+        it('reads manifest from window.__ELPX_MANIFEST__', () => {
+            expect(scriptContent).toContain('window.__ELPX_MANIFEST__');
+        });
+
+        it('throws error when manifest is not found', () => {
+            expect(scriptContent).toContain('ELPX manifest not found');
+        });
+
+        it('uses manifest.basePath for fetching files', () => {
+            expect(scriptContent).toContain('manifest.basePath');
+        });
+
+        it('uses manifest.files for file list', () => {
+            expect(scriptContent).toContain('manifest.files');
+        });
+
+        it('uses manifest.projectTitle for filename', () => {
+            expect(scriptContent).toContain('manifest.projectTitle');
+        });
+
+        it('handles manifest.isPreview for preview mode', () => {
+            expect(scriptContent).toContain('manifest.isPreview');
+        });
     });
 
-    it('exports helper functions for CommonJS', () => {
-      expect(scriptContent).toContain('module.exports');
-      expect(scriptContent).toContain('fetchContentXml');
-      expect(scriptContent).toContain('extractProjectName');
-      expect(scriptContent).toContain('discoverAssets');
-      expect(scriptContent).toContain('sanitizeFilename');
-    });
-  });
+    describe('file:// protocol detection', () => {
+        it('has isFileProtocol function', () => {
+            expect(scriptContent).toContain('function isFileProtocol()');
+        });
 
-  describe('downloadElpx function', () => {
-    it('is exposed on window after script execution', () => {
-      // eslint-disable-next-line no-eval
-      eval(scriptContent);
-      expect(typeof window.downloadElpx).toBe('function');
+        it('checks for file:// protocol', () => {
+            expect(scriptContent).toContain("window.location.protocol === 'file:'");
+        });
+
+        it('calls folder picker for file:// protocol', () => {
+            expect(scriptContent).toContain('downloadElpxViaFolderPicker(options)');
+        });
     });
 
-    it('is not defined when fflate is unavailable', () => {
-      // Remove fflate and re-execute script
-      delete global.fflate;
-      delete global.downloadElpx;
+    describe('file:// protocol warning tooltip', () => {
+        it('has addFileProtocolWarning function', () => {
+            expect(scriptContent).toContain('function addFileProtocolWarning()');
+        });
 
-      // Suppress console.error for this test
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        it('only adds warning in file:// context', () => {
+            expect(scriptContent).toContain('if (!isFileProtocol()) return');
+        });
 
-      // Re-execute script
-      // eslint-disable-next-line no-eval
-      eval(scriptContent);
+        it('targets download-source-file iDevice buttons', () => {
+            expect(scriptContent).toContain('.exe-download-package-link a, .exe-download-package-link button');
+        });
 
-      // downloadElpx should not be defined
-      expect(global.downloadElpx).toBeUndefined();
+        it('has translations object for multiple languages', () => {
+            expect(scriptContent).toContain('var FILE_PROTOCOL_WARNINGS = {');
+            expect(scriptContent).toContain("en: 'Local mode:");
+            expect(scriptContent).toContain("es: 'Modo local:");
+            expect(scriptContent).toContain("ca: 'Mode local:");
+            expect(scriptContent).toContain("eu: 'Modu lokala:");
+            expect(scriptContent).toContain("gl: 'Modo local:");
+            expect(scriptContent).toContain("fr: 'Mode local :");
+            expect(scriptContent).toContain("de: 'Lokaler Modus:");
+            expect(scriptContent).toContain("it: 'Modalità locale:");
+            expect(scriptContent).toContain("pt: 'Modo local:");
+        });
 
-      consoleSpy.mockRestore();
-    });
-  });
+        it('has getFileProtocolWarning function for translation', () => {
+            expect(scriptContent).toContain('function getFileProtocolWarning()');
+            expect(scriptContent).toContain('document.documentElement.lang');
+        });
 
-  describe('extractProjectName logic', () => {
-    it('extracts title from ODE format in script', () => {
-      // Verify the regex pattern exists (note: script has escaped slashes)
-      expect(scriptContent).toContain('pp_title');
-      expect(scriptContent).toContain('<value>([^<]*)');
-    });
+        it('falls back to English for unknown languages', () => {
+            expect(scriptContent).toContain('FILE_PROTOCOL_WARNINGS[lang] || FILE_PROTOCOL_WARNINGS.en');
+        });
 
-    it('has fallback for older XML format', () => {
-      // The script has escaped slashes in the regex
-      expect(scriptContent).toContain('<pp_title>([^<]*)');
-    });
+        it('adds native tooltip to entire button', () => {
+            expect(scriptContent).toContain('btn.title = warningMessage');
+        });
 
-    it('returns default name as fallback', () => {
-      expect(scriptContent).toContain("'eXeLearning-project'");
-    });
-  });
+        it('prevents duplicate warnings with data attribute', () => {
+            expect(scriptContent).toContain("btn.hasAttribute('data-file-protocol-warning')");
+            expect(scriptContent).toContain("btn.setAttribute('data-file-protocol-warning', 'true')");
+        });
 
-  describe('sanitizeFilename logic', () => {
-    it('handles null/empty input', () => {
-      expect(scriptContent).toContain("if (!str) return 'eXeLearning-project'");
-    });
+        it('adds warning icon with emoji', () => {
+            expect(scriptContent).toContain("warning.innerHTML = ' ⚠️'");
+        });
 
-    it('removes invalid filename characters', () => {
-      // Check for character replacement pattern
-      expect(scriptContent).toContain('[<>:"/\\\\|?*]');
-    });
+        it('has CSS class for warning icon', () => {
+            expect(scriptContent).toContain("warning.className = 'exe-file-protocol-warning'");
+        });
 
-    it('normalizes whitespace', () => {
-      expect(scriptContent).toContain('\\s+');
-    });
+        it('adds Bootstrap tooltip attributes to warning icon', () => {
+            expect(scriptContent).toContain("data-bs-toggle', 'tooltip'");
+            expect(scriptContent).toContain("data-bs-placement', 'right'");
+        });
 
-    it('truncates to 100 characters', () => {
-      expect(scriptContent).toContain('.substring(0, 100)');
-    });
+        it('inserts warning icon after button', () => {
+            expect(scriptContent).toContain('btn.parentNode.insertBefore(warning, btn.nextSibling)');
+            expect(scriptContent).toContain('btn.parentNode.appendChild(warning)');
+        });
 
-    it('decodes HTML entities', () => {
-      expect(scriptContent).toContain('textContent');
-      expect(scriptContent).toContain('innerText');
-    });
-  });
+        it('initializes Bootstrap tooltip if available', () => {
+            expect(scriptContent).toContain("typeof bootstrap !== 'undefined'");
+            expect(scriptContent).toContain('new bootstrap.Tooltip(warning)');
+        });
 
-  describe('getBasePath logic', () => {
-    it('detects html subdirectory', () => {
-      expect(scriptContent).toContain("/html/");
-      expect(scriptContent).toContain("'../'");
-    });
+        it('is called on DOMContentLoaded', () => {
+            expect(scriptContent).toContain("document.addEventListener('DOMContentLoaded', addFileProtocolWarning)");
+        });
 
-    it('returns empty string for root', () => {
-      expect(scriptContent).toContain("return ''");
-    });
-  });
-
-  describe('extractAssetsFromXml patterns', () => {
-    it('handles {{context_path}} assets', () => {
-      expect(scriptContent).toContain('{{context_path}}');
-      expect(scriptContent).toContain('contextPathPattern');
-    });
-
-    it('handles asset:// protocol', () => {
-      expect(scriptContent).toContain('asset://');
-      expect(scriptContent).toContain('assetProtocolPattern');
+        it('handles already loaded DOM', () => {
+            expect(scriptContent).toContain("document.readyState === 'loading'");
+            expect(scriptContent).toContain('setTimeout(addFileProtocolWarning, 100)');
+        });
     });
 
-    it('handles direct resources paths', () => {
-      expect(scriptContent).toContain('resourcesPattern');
-      expect(scriptContent).toContain('resources/');
+    describe('folder picker (webkitdirectory)', () => {
+        it('has downloadElpxViaFolderPicker function', () => {
+            expect(scriptContent).toContain('function downloadElpxViaFolderPicker(options)');
+        });
+
+        it('creates input with webkitdirectory attribute', () => {
+            expect(scriptContent).toContain('input.webkitdirectory = true');
+        });
+
+        it('sets input type to file', () => {
+            expect(scriptContent).toContain("input.type = 'file'");
+        });
+
+        it('enables multiple file selection', () => {
+            expect(scriptContent).toContain('input.multiple = true');
+        });
+
+        it('opens folder picker immediately without alert', () => {
+            // Verify no alert is shown before input.click() (would consume user activation in Chrome)
+            expect(scriptContent).toContain('// Open folder picker immediately (no alert - would consume user activation)');
+            expect(scriptContent).toContain('input.click()');
+        });
+
+        it('strips folder prefix from webkitRelativePath', () => {
+            expect(scriptContent).toContain('webkitRelativePath');
+            expect(scriptContent).toContain('folderPrefix');
+        });
+
+        it('skips hidden files and system files', () => {
+            expect(scriptContent).toContain("relativePath.startsWith('.')");
+            expect(scriptContent).toContain("relativePath.includes('/.')");
+        });
+
+        it('reads files as arrayBuffer', () => {
+            expect(scriptContent).toContain('file.arrayBuffer()');
+        });
+
+        it('handles cancel event', () => {
+            expect(scriptContent).toContain("'cancel'");
+        });
+
+        it('cleans up input element after use', () => {
+            expect(scriptContent).toContain('document.body.removeChild(input)');
+        });
+
+        it('exports downloadElpxViaFolderPicker for testing', () => {
+            expect(scriptContent).toContain('downloadElpxViaFolderPicker: downloadElpxViaFolderPicker');
+        });
     });
 
-    it('uses content/resources/ prefix', () => {
-      expect(scriptContent).toContain("'content/resources/'");
-    });
-  });
+    describe('downloadElpx function', () => {
+        it('is exposed on window after script execution', () => {
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+            expect(typeof window.downloadElpx).toBe('function');
+        });
 
-  describe('extractAssetsFromDOM patterns', () => {
-    it('extracts from img elements', () => {
-      expect(scriptContent).toContain("img[src]");
-    });
+        it('is not defined when fflate is unavailable', () => {
+            // Remove fflate and re-execute script
+            delete global.fflate;
+            delete global.downloadElpx;
 
-    it('extracts from link elements', () => {
-      expect(scriptContent).toContain('link[rel="stylesheet"][href]');
-    });
+            // Suppress console.error for this test
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    it('extracts from script elements', () => {
-      expect(scriptContent).toContain("script[src]");
-    });
+            // Re-execute script
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
 
-    it('extracts from audio/video sources', () => {
-      expect(scriptContent).toContain('audio source[src]');
-      expect(scriptContent).toContain('video source[src]');
-      expect(scriptContent).toContain('audio[src]');
-      expect(scriptContent).toContain('video[src]');
-    });
+            // downloadElpx should not be defined
+            expect(global.downloadElpx).toBeUndefined();
 
-    it('extracts from object/embed', () => {
-      expect(scriptContent).toContain('object[data]');
-      expect(scriptContent).toContain('embed[src]');
+            consoleSpy.mockRestore();
+        });
     });
 
-    it('extracts background images from inline styles', () => {
-      expect(scriptContent).toContain('[style*="background"]');
-      expect(scriptContent).toContain("url\\(['\"");
-    });
-  });
+    describe('preview mode handling', () => {
+        it('captures current HTML as index.html in preview mode', () => {
+            expect(scriptContent).toContain('document.documentElement.cloneNode(true)');
+        });
 
-  describe('addAssetFromSrc filtering', () => {
-    it('skips external URLs', () => {
-      expect(scriptContent).toContain("src.indexOf('http://') === 0");
-      expect(scriptContent).toContain("src.indexOf('https://') === 0");
-    });
+        it('removes manifest script from captured HTML', () => {
+            expect(scriptContent).toContain("'__ELPX_MANIFEST__'");
+            expect(scriptContent).toContain('script.remove()');
+        });
 
-    it('skips data URLs', () => {
-      expect(scriptContent).toContain("src.indexOf('data:') === 0");
-    });
-
-    it('skips blob URLs', () => {
-      expect(scriptContent).toContain("src.indexOf('blob:') === 0");
+        it('skips HTML files in preview (already captured)', () => {
+            expect(scriptContent).toContain("path === 'index.html'");
+            expect(scriptContent).toContain("path.startsWith('html/')");
+        });
     });
 
-    it('skips anchors', () => {
-      expect(scriptContent).toContain("src.indexOf('#') === 0");
+    describe('sanitizeFilename logic', () => {
+        it('handles null/empty input', () => {
+            expect(scriptContent).toContain("if (!str) return 'eXeLearning-project'");
+        });
+
+        it('removes invalid filename characters', () => {
+            // Check for character replacement pattern
+            expect(scriptContent).toContain('[<>:"/\\\\|?*]');
+        });
+
+        it('normalizes whitespace', () => {
+            expect(scriptContent).toContain('\\s+');
+        });
+
+        it('truncates to 100 characters', () => {
+            expect(scriptContent).toContain('.substring(0, 100)');
+        });
+
+        it('decodes HTML entities', () => {
+            expect(scriptContent).toContain('textContent');
+            expect(scriptContent).toContain('innerText');
+        });
     });
 
-    it('skips javascript URLs', () => {
-      expect(scriptContent).toContain("src.indexOf('javascript:') === 0");
-    });
-  });
+    describe('getBasePath logic', () => {
+        it('detects html subdirectory', () => {
+            expect(scriptContent).toContain('/html/');
+            expect(scriptContent).toContain("'../'");
+        });
 
-  describe('fetchAllAssets', () => {
-    it('limits concurrent requests to 6', () => {
-      expect(scriptContent).toContain('var concurrency = 6');
-    });
-
-    it('handles failed fetches gracefully', () => {
-      expect(scriptContent).toContain("console.warn('[ELPX Download] Failed to fetch:");
-      expect(scriptContent).toContain('return null');
+        it('returns empty string for root', () => {
+            expect(scriptContent).toContain("return ''");
+        });
     });
 
-    it('tracks progress', () => {
-      expect(scriptContent).toContain('updateProgress(completed, total)');
+    describe('fetchAllAssets', () => {
+        it('limits concurrent requests to 6', () => {
+            expect(scriptContent).toContain('var concurrency = 6');
+        });
+
+        it('handles failed fetches gracefully', () => {
+            expect(scriptContent).toContain("[ELPX Download] Failed to fetch:");
+            expect(scriptContent).toContain('return null');
+        });
+
+        it('tracks progress', () => {
+            expect(scriptContent).toContain('updateProgress(completed, total)');
+        });
+
+        it('processes in batches', () => {
+            expect(scriptContent).toContain('manifest.files.slice(i, i + concurrency)');
+        });
     });
 
-    it('processes in batches', () => {
-      expect(scriptContent).toContain('entries.slice(i, i + concurrency)');
-    });
-  });
+    describe('createZipAndDownload', () => {
+        it('uses fflate.zip with compression level 6', () => {
+            expect(scriptContent).toContain('fflate.zip(files, { level: 6 }');
+        });
 
-  describe('createZipAndDownload', () => {
-    it('uses fflate.zip with compression level 6', () => {
-      expect(scriptContent).toContain('fflate.zip(files, { level: 6 }');
-    });
+        it('creates blob with application/zip type', () => {
+            expect(scriptContent).toContain("type: 'application/zip'");
+        });
 
-    it('creates blob with application/zip type', () => {
-      expect(scriptContent).toContain("type: 'application/zip'");
-    });
+        it('triggers download with .elpx extension', () => {
+            expect(scriptContent).toContain("projectName + '.elpx'");
+        });
 
-    it('triggers download with .elpx extension', () => {
-      expect(scriptContent).toContain("projectName + '.elpx'");
-    });
+        it('uses download attribute', () => {
+            expect(scriptContent).toContain('a.download =');
+        });
 
-    it('uses download attribute', () => {
-      expect(scriptContent).toContain('a.download =');
-    });
-
-    it('cleans up blob URL after download', () => {
-      expect(scriptContent).toContain('URL.revokeObjectURL');
-      expect(scriptContent).toContain('setTimeout');
-    });
-  });
-
-  describe('stringToUint8Array', () => {
-    it('uses TextEncoder when available', () => {
-      expect(scriptContent).toContain('TextEncoder');
-      expect(scriptContent).toContain('.encode(str)');
+        it('cleans up blob URL after download', () => {
+            expect(scriptContent).toContain('URL.revokeObjectURL');
+            expect(scriptContent).toContain('setTimeout');
+        });
     });
 
-    it('has fallback for older browsers', () => {
-      expect(scriptContent).toContain('unescape(encodeURIComponent(str))');
-    });
-  });
-
-  describe('showLoadingIndicator', () => {
-    it('targets download-source-file iDevice buttons', () => {
-      expect(scriptContent).toContain('.exe-download-package-link');
+    describe('stringToUint8Array', () => {
+        it('uses TextEncoder', () => {
+            expect(scriptContent).toContain('TextEncoder');
+            expect(scriptContent).toContain('.encode(str)');
+        });
     });
 
-    it('stores original text', () => {
-      expect(scriptContent).toContain('data-original-text');
+    describe('showLoadingIndicator', () => {
+        it('targets download-source-file iDevice buttons', () => {
+            expect(scriptContent).toContain('.exe-download-package-link');
+        });
+
+        it('stores original text', () => {
+            expect(scriptContent).toContain('data-original-text');
+        });
+
+        it('shows generating message', () => {
+            expect(scriptContent).toContain("'Generating...'");
+        });
+
+        it('disables button during generation', () => {
+            expect(scriptContent).toContain("style.opacity = '0.7'");
+            expect(scriptContent).toContain("style.pointerEvents = 'none'");
+        });
+
+        it('restores original state', () => {
+            expect(scriptContent).toContain("btn.getAttribute('data-original-text')");
+        });
     });
 
-    it('shows generating message', () => {
-      expect(scriptContent).toContain("'Generating...'");
+    describe('updateProgress', () => {
+        it('supports debug mode', () => {
+            expect(scriptContent).toContain('window.__ELPX_DEBUG__');
+        });
+
+        it('logs progress in debug mode', () => {
+            expect(scriptContent).toContain('[ELPX Download] Progress:');
+        });
     });
 
-    it('disables button during generation', () => {
-      expect(scriptContent).toContain("style.opacity = '0.7'");
-      expect(scriptContent).toContain("style.pointerEvents = 'none'");
+    describe('error handling', () => {
+        it('shows alert on error', () => {
+            expect(scriptContent).toContain("alert('Error generating ELPX file:");
+        });
+
+        it('logs errors to console', () => {
+            expect(scriptContent).toContain("console.error('[ELPX Download] Error:'");
+        });
+
+        it('hides loading indicator on error', () => {
+            expect(scriptContent).toContain('showLoadingIndicator(false)');
+        });
     });
 
-    it('restores original state', () => {
-      expect(scriptContent).toContain("btn.getAttribute('data-original-text')");
-    });
-  });
-
-  describe('updateProgress', () => {
-    it('supports debug mode', () => {
-      expect(scriptContent).toContain('window.__ELPX_DEBUG__');
-    });
-
-    it('logs progress in debug mode', () => {
-      // Note: there's a space after the colon in the actual script
-      expect(scriptContent).toContain('[ELPX Download] Progress:');
-    });
-  });
-
-  describe('error handling', () => {
-    it('shows alert on error', () => {
-      expect(scriptContent).toContain("alert('Error generating ELPX file:");
-    });
-
-    it('logs errors to console', () => {
-      expect(scriptContent).toContain("console.error('[ELPX Download] Error:'");
-    });
-
-    it('hides loading indicator on error', () => {
-      expect(scriptContent).toContain('showLoadingIndicator(false)');
-    });
-
-    it('handles missing content.xml', () => {
-      expect(scriptContent).toContain('Could not fetch content.xml');
-    });
-  });
-
-  describe('fetchContentXml', () => {
-    it('fetches from calculated base path', () => {
-      expect(scriptContent).toContain("basePath + 'content.xml'");
-    });
-
-    it('handles HTTP errors', () => {
-      expect(scriptContent).toContain("'HTTP ' + response.status");
-    });
-
-    it('returns null on failure', () => {
-      expect(scriptContent).toContain('return null');
-    });
-  });
-
-  describe('integration requirements', () => {
-    it('depends on fflate library', () => {
-      expect(scriptContent).toContain('fflate.zip');
-    });
-
-    it('handles download-source-file iDevice class', () => {
-      expect(scriptContent).toContain('.exe-download-package-link');
-    });
-
-    it('creates proper ELPX structure with content.xml', () => {
-      expect(scriptContent).toContain("files['content.xml']");
-    });
-  });
-
-  describe('full workflow execution', () => {
-    it('executes downloadElpx function successfully', async () => {
-      // Setup DOM for loading indicator
-      document.body.innerHTML = `
+    describe('full workflow execution', () => {
+        it('executes downloadElpx function successfully with manifest', async () => {
+            // Setup DOM for loading indicator
+            document.body.innerHTML = `
         <p class="exe-download-package-link">
           <a href="#">Download</a>
         </p>
       `;
 
-      // Mock successful content.xml fetch
-      global.fetch
-        .mockResolvedValueOnce({
-          ok: true,
-          text: () =>
-            Promise.resolve(`
-            <ode>
-              <key>pp_title</key>
-              <value>Test Project</value>
-            </ode>
-          `),
-        })
-        // Mock asset fetches
-        .mockResolvedValue({
-          ok: true,
-          arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+            // Setup manifest
+            window.__ELPX_MANIFEST__ = {
+                version: 1,
+                files: ['content.xml', 'libs/jquery.js', 'theme/content.css'],
+                projectTitle: 'Test Project',
+                basePath: '',
+            };
+
+            // Mock successful file fetches
+            global.fetch.mockResolvedValue({
+                ok: true,
+                arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+            });
+
+            // Execute script
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+
+            // Call downloadElpx
+            await window.downloadElpx();
+
+            // Verify fetch was called for manifest files
+            expect(global.fetch).toHaveBeenCalled();
+
+            // Verify fflate.zip was called
+            expect(global.fflate.zip).toHaveBeenCalled();
+
+            // Verify blob URL was created
+            expect(global.URL.createObjectURL).toHaveBeenCalled();
         });
 
-      // Execute script
-      // eslint-disable-next-line no-eval
-      eval(scriptContent);
+        it('shows alert when manifest is missing', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      // Call downloadElpx
-      await window.downloadElpx();
+            // Execute script (no manifest set)
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
 
-      // Verify fetch was called
-      expect(global.fetch).toHaveBeenCalled();
+            // Call downloadElpx - should show alert
+            await window.downloadElpx();
 
-      // Verify fflate.zip was called
-      expect(global.fflate.zip).toHaveBeenCalled();
+            // Verify alert was called
+            expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('ELPX manifest not found'));
 
-      // Verify blob URL was created
-      expect(global.URL.createObjectURL).toHaveBeenCalled();
+            consoleSpy.mockRestore();
+        });
+
+        it('accepts options with custom filename', async () => {
+            document.body.innerHTML = `<p class="exe-download-package-link"><a href="#">Download</a></p>`;
+
+            window.__ELPX_MANIFEST__ = {
+                version: 1,
+                files: ['content.xml'],
+                projectTitle: 'Default Name',
+                basePath: '',
+            };
+
+            global.fetch.mockResolvedValue({
+                ok: true,
+                arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
+            });
+
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+
+            await window.downloadElpx({ filename: 'custom-name' });
+
+            // The filename option should be used
+            expect(global.fflate.zip).toHaveBeenCalled();
+        });
+
+        it('uses folder picker for file:// protocol', async () => {
+            // Simulate file:// protocol
+            Object.defineProperty(window, 'location', {
+                value: {
+                    pathname: '/index.html',
+                    href: 'file:///path/to/index.html',
+                    protocol: 'file:',
+                },
+                writable: true,
+                configurable: true,
+            });
+
+            window.__ELPX_MANIFEST__ = {
+                version: 1,
+                files: ['content.xml'],
+                projectTitle: 'Test',
+                basePath: '',
+            };
+
+            // Mock createElement to capture the input element
+            const originalCreateElement = document.createElement.bind(document);
+            let folderInput = null;
+            vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+                const el = originalCreateElement(tag);
+                if (tag === 'input') {
+                    folderInput = el;
+                    // Mock click to prevent actual file dialog
+                    el.click = vi.fn();
+                }
+                return el;
+            });
+
+            // eslint-disable-next-line no-eval
+            eval(scriptContent);
+
+            // Start downloadElpx (won't complete because we mock the click)
+            const downloadPromise = window.downloadElpx();
+
+            // Wait a tick for the promise to set up
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            // Verify NO alert was shown (removed to fix Chrome user activation issue)
+            expect(global.alert).not.toHaveBeenCalled();
+
+            // Verify input element was created with webkitdirectory
+            expect(folderInput).not.toBeNull();
+            expect(folderInput.webkitdirectory).toBe(true);
+            expect(folderInput.type).toBe('file');
+
+            // Verify fetch was NOT called (folder picker is used instead)
+            expect(global.fetch).not.toHaveBeenCalled();
+
+            // Simulate cancel to resolve the promise
+            if (folderInput) {
+                folderInput.dispatchEvent(new Event('cancel'));
+            }
+
+            await downloadPromise;
+        });
     });
-
-    it('handles content.xml fetch failure', async () => {
-      // Mock failed content.xml fetch
-      global.fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-      });
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      // Execute script
-      // eslint-disable-next-line no-eval
-      eval(scriptContent);
-
-      // Call downloadElpx - should show alert
-      await window.downloadElpx();
-
-      // Verify alert was called
-      expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Error generating ELPX'));
-
-      consoleSpy.mockRestore();
-    });
-
-    it('accepts options with custom filename', async () => {
-      document.body.innerHTML = `<p class="exe-download-package-link"><a href="#">Download</a></p>`;
-
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        text: () => Promise.resolve('<ode></ode>'),
-      });
-
-      // eslint-disable-next-line no-eval
-      eval(scriptContent);
-
-      await window.downloadElpx({ filename: 'custom-name' });
-
-      // The filename option should be used
-      expect(global.fflate.zip).toHaveBeenCalled();
-    });
-  });
 });

@@ -122,6 +122,24 @@ export default class PreviewPanelManager {
                 return;
             }
 
+            // Handle ELPX download requests from preview iframe (download-source-file iDevice)
+            if (event.data?.type === 'exe-download-elpx') {
+                Logger.log('[PreviewPanel] Received exe-download-elpx request');
+                try {
+                    const project = eXeLearning?.app?.project;
+                    if (project?.exportToElpxViaYjs) {
+                        await project.exportToElpxViaYjs({ saveAs: true });
+                    } else {
+                        Logger.error('[PreviewPanel] exportToElpxViaYjs not available');
+                        alert('ELPX export not available. Please save your project first.');
+                    }
+                } catch (err) {
+                    Logger.error('[PreviewPanel] ELPX export failed:', err);
+                    alert('Error generating ELPX file: ' + err.message);
+                }
+                return;
+            }
+
             // Handle PDF popup requests (fallback for clicking cards)
             if (event.data?.type === 'openPdfPopup') {
                 const { assetId } = event.data;

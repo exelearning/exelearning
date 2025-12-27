@@ -371,6 +371,89 @@ describe('PreviewPanelManager', () => {
 
       expect(mockAssetManager.getAsset).not.toHaveBeenCalled();
     });
+
+    it('should handle exe-download-elpx messages and call exportToElpxViaYjs', async () => {
+      const mockExport = vi.fn().mockResolvedValue({ success: true });
+      const mockProject = {
+        exportToElpxViaYjs: mockExport,
+      };
+
+      // Setup global eXeLearning object
+      window.eXeLearning = {
+        app: {
+          project: mockProject,
+        },
+      };
+
+      manager.bindEvents();
+
+      // Simulate the exe-download-elpx postMessage event
+      const messageEvent = new MessageEvent('message', {
+        data: { type: 'exe-download-elpx' },
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockExport).toHaveBeenCalledWith({ saveAs: true });
+
+      // Cleanup
+      delete window.eXeLearning;
+    });
+
+    it('should show alert if exportToElpxViaYjs is not available', async () => {
+      const mockAlert = vi.fn();
+      window.alert = mockAlert;
+
+      // Setup global eXeLearning object without exportToElpxViaYjs
+      window.eXeLearning = {
+        app: {
+          project: {},
+        },
+      };
+
+      manager.bindEvents();
+
+      const messageEvent = new MessageEvent('message', {
+        data: { type: 'exe-download-elpx' },
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(mockAlert).toHaveBeenCalledWith('ELPX export not available. Please save your project first.');
+
+      // Cleanup
+      delete window.eXeLearning;
+    });
+
+    it('should show error alert if exportToElpxViaYjs throws', async () => {
+      const mockAlert = vi.fn();
+      window.alert = mockAlert;
+
+      const mockExport = vi.fn().mockRejectedValue(new Error('Export failed'));
+      window.eXeLearning = {
+        app: {
+          project: {
+            exportToElpxViaYjs: mockExport,
+          },
+        },
+      };
+
+      manager.bindEvents();
+
+      const messageEvent = new MessageEvent('message', {
+        data: { type: 'exe-download-elpx' },
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAlert).toHaveBeenCalledWith('Error generating ELPX file: Export failed');
+
+      // Cleanup
+      delete window.eXeLearning;
+    });
   });
 
   describe('auto-refresh', () => {

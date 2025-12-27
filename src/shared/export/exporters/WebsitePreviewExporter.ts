@@ -64,7 +64,6 @@ export class WebsitePreviewExporter {
      */
     constructor(document: ExportDocument, resourceProvider: ResourceProvider) {
         this.document = document;
-        this.resourceProvider = resourceProvider;
         this.ideviceRenderer = new IdeviceRenderer(resourceProvider);
     }
 
@@ -106,7 +105,7 @@ export class WebsitePreviewExporter {
 
     /**
      * Check if any page contains the download-source-file iDevice
-     * (needs fflate and exe_elpx_download.js)
+     * (needs special handling in preview - postMessage to parent)
      */
     private needsElpxDownloadSupport(pages: ExportPage[]): boolean {
         for (const page of pages) {
@@ -343,6 +342,10 @@ ${madeWithExeHtml}`;
             skipMathJax: latexWasRendered && !meta.addMathJax,
         });
 
+        // For preview with download-source-file: use postMessage to parent instead of embedding manifest
+        // This is much simpler than embedding the full contentXml in the preview
+        const elpxDownloadScript = needsElpxDownload ? this.generatePreviewDownloadScript() : '';
+
         return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
@@ -352,6 +355,7 @@ ${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customS
 <script>document.body.className+=" js"</script>
 ${finalBodyContent}
 ${searchDataScript}
+${elpxDownloadScript}
 ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpxDownload, addAccessibilityToolbar, detectedLibraries)}
 </body>
 </html>`;
@@ -887,13 +891,9 @@ ${userFooterHtml}</div></footer>`;
             jqueryUiScript = `\n<script src="${jqueryUiJs}"></script>`;
         }
 
-        // ELPX download scripts (fflate + exe_elpx_download.js) for download-source-file iDevice
-        let elpxDownloadScripts = '';
-        if (needsElpxDownload) {
-            const fflateJs = this.getVersionedPath('/libs/fflate/fflate.umd.js', options);
-            const elpxDownloadJs = this.getVersionedPath('/libs/exe_elpx_download/exe_elpx_download.js', options);
-            elpxDownloadScripts = `\n<script src="${fflateJs}"></script>\n<script src="${elpxDownloadJs}"></script>`;
-        }
+        // ELPX download: In preview mode, we use postMessage to parent (defined in generatePreviewDownloadScript)
+        // No need for fflate or exe_elpx_download.js - they are only needed in actual HTML5 exports
+        const elpxDownloadScripts = ''; // Kept for signature compatibility
 
         // Check if MathJax is needed (exe_math library detected)
         const needsMathJax = detectedLibraries.libraries.some(
@@ -925,10 +925,15 @@ window.MathJax = {
 <script src="${mathJaxJs}"></script>`;
         }
 
-        // Build detected library JS scripts (skip exe_math since we handle it above)
+        // Build detected library JS scripts
+        // Skip exe_elpx_download and fflate in preview - we use postMessage instead
         let detectedLibraryScripts = '';
         for (const file of detectedLibraries.files) {
             if (file.endsWith('.js')) {
+                // Skip ELPX download libraries in preview - we define inline downloadElpx via postMessage
+                if (needsElpxDownload && (file.includes('exe_elpx_download') || file.includes('fflate'))) {
+                    continue;
+                }
                 // Map library path to correct server path (/libs/ or /app/common/)
                 const serverPath = this.getLibraryServerPath(file, options);
                 detectedLibraryScripts += `\n<script src="${serverPath}" onerror="this.remove()"></script>`;
@@ -1251,5 +1256,26 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
         }
 
         return JSON.stringify(pagesData);
+    }
+
+    /**
+     * Generate inline script for preview that uses postMessage to request ELPX download
+     * This is simpler than embedding the full manifest with contentXml
+     */
+    private generatePreviewDownloadScript(): string {
+        return `<script>
+// Preview mode: request ELPX download from parent app via postMessage
+window.downloadElpx = function(options) {
+    options = options || {};
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+            type: 'exe-download-elpx',
+            filename: options.filename
+        }, '*');
+    } else {
+        alert('Download is only available when viewing from the eXeLearning editor.');
+    }
+};
+</script>`;
     }
 }

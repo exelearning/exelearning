@@ -48,6 +48,16 @@ export class Html5Exporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Check if download-source-file iDevice is used (needs ELPX manifest for client-side ZIP)
+            const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // File tracking for ELPX manifest (only when download-source-file is used)
+            const fileList: string[] | null = needsElpxDownload ? [] : null;
+            const addFile = (path: string, content: Uint8Array | string) => {
+                this.zip.addFile(path, content);
+                if (fileList) fileList.push(path);
+            };
+
             // 1. Generate HTML pages (with optional LaTeX pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -102,21 +112,16 @@ export class Html5Exporter extends BaseExporter {
                 pageHtmlMap.set(pageFilename, html);
             }
 
-            // Add all pages to ZIP
-            for (const [filename, html] of pageHtmlMap) {
-                this.zip.addFile(filename, html);
-            }
-
             // 2. Add search_index.js if search box is enabled
             if (meta.addSearchBox) {
                 const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
-                this.zip.addFile('search_index.js', searchIndexContent);
+                addFile('search_index.js', searchIndexContent);
             }
 
             // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
             if (meta.exportSource !== false) {
                 const contentXml = this.generateContentXml();
-                this.zip.addFile('content.xml', contentXml);
+                addFile('content.xml', contentXml);
             }
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
@@ -133,13 +138,13 @@ export class Html5Exporter extends BaseExporter {
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText + '\n' + latexCss);
             }
-            this.zip.addFile('content/css/base.css', baseCss);
+            addFile('content/css/base.css', baseCss);
 
             // 5. Add eXeLearning logo for "Made with eXeLearning" footer
             try {
                 const logoData = await this.resources.fetchExeLogo();
                 if (logoData) {
-                    this.zip.addFile('content/img/exe_powered_logo.png', logoData);
+                    addFile('content/img/exe_powered_logo.png', logoData);
                 }
             } catch {
                 // Logo not available - footer will still render but without background image
@@ -158,20 +163,20 @@ export class Html5Exporter extends BaseExporter {
                         exportPath = 'default.js';
                     }
                     console.log(`[Html5Exporter] Adding theme file: theme/${exportPath}`);
-                    this.zip.addFile(`theme/${exportPath}`, content);
+                    addFile(`theme/${exportPath}`, content);
                 }
             } catch (e) {
                 // Add fallback theme if fetch fails (use legacy names)
                 console.warn(`[Html5Exporter] Failed to fetch theme: ${themeName}`, e);
-                this.zip.addFile('theme/content.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
+                addFile('theme/content.css', this.getFallbackThemeCss());
+                addFile('theme/default.js', this.getFallbackThemeJs());
             }
 
             // 7. Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
             try {
                 const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [libPath, content] of baseLibs) {
-                    this.zip.addFile(`libs/${libPath}`, content);
+                    addFile(`libs/${libPath}`, content);
                 }
             } catch {
                 // Base libraries not available - continue anyway
@@ -199,14 +204,14 @@ export class Html5Exporter extends BaseExporter {
                     // Only add if not already added by base libraries
                     const zipPath = `libs/${libPath}`;
                     if (!this.zip.hasFile(zipPath)) {
-                        this.zip.addFile(zipPath, content);
+                        addFile(zipPath, content);
                     }
                 }
             } catch {
                 // Additional libraries not available - continue anyway
             }
 
-            // 8. Fetch and add iDevice assets
+            // 9. Fetch and add iDevice assets
             const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
@@ -215,17 +220,45 @@ export class Html5Exporter extends BaseExporter {
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [filePath, content] of ideviceFiles) {
                         // Use normalized type for ZIP path
-                        this.zip.addFile(`idevices/${normalizedType}/${filePath}`, content);
+                        addFile(`idevices/${normalizedType}/${filePath}`, content);
                     }
                 } catch {
                     // Many iDevices don't have extra files - this is normal
                 }
             }
 
-            // 9. Add project assets
-            await this.addAssetsToZipWithResourcePath();
+            // 10. Add project assets (with tracking)
+            await this.addAssetsToZipWithResourcePath(fileList);
 
-            // 10. Generate ZIP buffer
+            // 11. Generate ELPX manifest file if download-source-file is used
+            if (needsElpxDownload && fileList) {
+                // Add HTML pages to file list
+                for (const [htmlFile] of pageHtmlMap) {
+                    if (!fileList.includes(htmlFile)) {
+                        fileList.push(htmlFile);
+                    }
+                }
+                // Create separate manifest JS file
+                const manifestJs = this.generateElpxManifestFile(fileList);
+                addFile('libs/elpx-manifest.js', manifestJs);
+            }
+
+            // 12. Add all HTML pages to ZIP (with manifest script only on pages with download-source-file)
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const filename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                let html = pageHtmlMap.get(filename) || '';
+
+                // Only add manifest script to pages that have download-source-file iDevice
+                if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
+                    const basePath = i === 0 ? '' : '../';
+                    const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
+                    html = html.replace(/<\/body>/i, `${manifestScriptTag}\n</body>`);
+                }
+                this.zip.addFile(filename, html);
+            }
+
+            // 13. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 
             return {

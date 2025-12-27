@@ -146,7 +146,7 @@ var $exeDevice = {
         if (_data3 && _data3.value && _data3.value != '') {
             data3 = _data3.value;
         }
-        var _data4 = properties.license;
+        var _data4 = properties.pp_license;
         if (_data4 && _data4.value && _data4.value != '') {
             data4 = this.completeLicense(_data4.value);
         }

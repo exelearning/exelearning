@@ -1211,7 +1211,14 @@ class LegacyXmlParser {
       // Based on Symfony OdeXmlUtil.php lines 2427-2433
       if (idevice.htmlView && idevice.htmlView.includes('exe-download-package-instructions')) {
         idevice.type = 'download-source-file';
-        Logger.log('[LegacyXmlParser] Detected download-source-file iDevice');
+        // Convert legacy .elp references to .elpx in button text
+        // Common patterns: "Download .elp file", "Descargar archivo .elp", etc.
+        idevice.htmlView = idevice.htmlView
+          .replace(/\.elp([^x])/gi, '.elpx$1')
+          .replace(/\.elp(['"])/gi, '.elpx$1')
+          .replace(/\.elp(<)/gi, '.elpx$1')
+          .replace(/\.elp$/gi, '.elpx');
+        Logger.log('[LegacyXmlParser] Detected download-source-file iDevice, converted .elp to .elpx');
       }
 
       // INTERACTIVE VIDEO DETECTION

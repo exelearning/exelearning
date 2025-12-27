@@ -147,6 +147,11 @@ class TestExporter extends BaseExporter {
     async export(): Promise<ExportResult> {
         return { success: true, filename: 'test.zip' };
     }
+
+    // Expose protected methods for testing
+    testGenerateElpxManifestFile(fileList: string[]): string {
+        return this.generateElpxManifestFile(fileList);
+    }
 }
 
 describe('BaseExporter', () => {
@@ -739,6 +744,63 @@ describe('BaseExporter', () => {
             expect(result).toContain('download="My Course.elpx"');
             expect(result).toContain('style="background-color:#107275;color:#ffffff;"');
             expect(result).toContain('Download .elp file');
+        });
+    });
+
+    describe('ELPX Manifest Generation', () => {
+        describe('generateElpxManifestFile', () => {
+            it('should generate standalone JS file content', () => {
+                const fileList = ['index.html', 'libs/jquery.js'];
+                const result = exporter.testGenerateElpxManifestFile(fileList);
+
+                expect(result).toContain('ELPX Manifest');
+                expect(result).toContain('window.__ELPX_MANIFEST__=');
+                expect(result).toContain('"version": 1');
+                expect(result).toContain('"projectTitle": "Test Project"');
+            });
+
+            it('should include all files in manifest', () => {
+                const fileList = [
+                    'index.html',
+                    'html/page2.html',
+                    'content.xml',
+                    'theme/content.css',
+                    'libs/jquery.js',
+                ];
+                const result = exporter.testGenerateElpxManifestFile(fileList);
+
+                for (const file of fileList) {
+                    expect(result).toContain(`"${file}"`);
+                }
+            });
+
+            it('should be valid JavaScript that sets window property', () => {
+                const fileList = ['index.html'];
+                const result = exporter.testGenerateElpxManifestFile(fileList);
+
+                // Should start with a comment
+                expect(result.trim().startsWith('/**')).toBe(true);
+                // Should set window.__ELPX_MANIFEST__
+                expect(result).toContain('window.__ELPX_MANIFEST__=');
+            });
+
+            it('should use default project title when not set', () => {
+                const docNoTitle = new MockDocument({ title: '' });
+                const exporterNoTitle = new TestExporter(docNoTitle, resources, assets, zip);
+                const result = exporterNoTitle.testGenerateElpxManifestFile(['index.html']);
+
+                expect(result).toContain('"projectTitle": "eXeLearning-project"');
+            });
+
+            it('should format JSON with indentation', () => {
+                const fileList = ['index.html'];
+                const result = exporter.testGenerateElpxManifestFile(fileList);
+
+                // JSON.stringify with indent should have newlines
+                expect(result).toContain('\n');
+                // Should have 2-space indentation
+                expect(result).toMatch(/"files": \[/);
+            });
         });
     });
 });
