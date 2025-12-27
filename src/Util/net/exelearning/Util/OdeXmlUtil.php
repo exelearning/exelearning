@@ -1434,8 +1434,15 @@ class OdeXmlUtil
                     $nodeIdevicesNotaInfo = $oldXmlListInstDictList->xpath("f:instance[@class='exe.engine.old_idevices.notainformacionidevice.NotaInformacionIdevice']");
 
                     // Get component sync by node type
-                    $types = $oldXmlListInstDictList->xpath('f:instance/@class');
-                    $references = $oldXmlListInstDictList->xpath('f:instance/@reference');
+                    // Fix: Get all instance nodes and extract class/reference from each to maintain alignment
+                    // This prevents misalignment when some idevices (like ExternalUrlIdevice) lack the reference attribute
+                    $instanceNodes = $oldXmlListInstDictList->xpath('f:instance');
+                    $types = [];
+                    $references = [];
+                    foreach ($instanceNodes as $instanceNode) {
+                        $types[] = isset($instanceNode['class']) ? (string) $instanceNode['class'] : '';
+                        $references[] = isset($instanceNode['reference']) ? (string) $instanceNode['reference'] : '';
+                    }
                     $results = self::getComponentSyncFromNode($types, $references, $oldXmlListInstDictList, $xml, $odeSessionId, $odePageId, $generatedIds, $xpathNamespace, $translator);
                     if (!empty($results)) {
                         foreach ($results as $result) {
@@ -2725,18 +2732,33 @@ class OdeXmlUtil
         $result = [];
 
         for ($i = 0; $i < count($types); ++$i) {
-            if (!empty($references[$i])) {
-                $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$types[$i][0]."'][@reference= '".$references[$i][0]."']");
+            // Fix: Handle both SimpleXMLElement attributes and plain strings
+            // After the fix in the caller, $types and $references are already strings
+            $typeClass = is_object($types[$i]) ? (string) $types[$i] : $types[$i];
+            $reference = isset($references[$i]) ? (is_object($references[$i]) ? (string) $references[$i] : $references[$i]) : '';
+
+            if (!empty($reference)) {
+                $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$typeClass."'][@reference='".$reference."']");
             } else {
-                $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$types[$i][0]."']");
+                // Fix: For idevices without reference attribute (like ExternalUrlIdevice),
+                // search by class only, prioritizing nodes without reference attribute
+                $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$typeClass."'][not(@reference)]");
+                if (!$node || empty($node)) {
+                    $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$typeClass."']");
+                }
             }
             if (!$node || empty($node)) {
-                $xpath = "//f:instance[@class='".$types[$i]."'][@reference= '".$references[$i]."']";
+                // Fallback: search in full XML document
                 $xml->registerXPathNamespace('f', $xpathNamespace);
+                if (!empty($reference)) {
+                    $xpath = "//f:instance[@class='".$typeClass."'][@reference='".$reference."']";
+                } else {
+                    $xpath = "//f:instance[@class='".$typeClass."']";
+                }
                 $node = $xml->xpath($xpath);
             }
 
-            switch ($types[$i]) {
+            switch ($typeClass) {
                 // Get fill idevices
                 case 'exe.engine.clozeidevice.ClozeIdevice':
                     $odeComponentSyncResult = OdeOldXmlFillIdevice::oldElpFillIdeviceStructure($odeSessionId, $odePageId, $node, $generatedIds, $xpathNamespace);
