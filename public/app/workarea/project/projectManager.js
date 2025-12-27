@@ -1268,6 +1268,8 @@ export default class projectManager {
         };
         // Project properties
         window.eXe.app.getProjectProperties = () => {
+            // Sync from Yjs to ensure current values
+            this.properties.loadPropertiesFromYjs();
             return this.properties.properties;
         };
         // Idevice with editing active
