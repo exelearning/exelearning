@@ -696,4 +696,354 @@ describe('Html5Exporter', () => {
             expect(cssContent).not.toContain('.exe-math-rendered');
         });
     });
+
+    describe('Download Source File Support (ELPX manifest)', () => {
+        it('should not create manifest file when download-source-file is not used', async () => {
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // Should NOT have manifest script reference
+            expect(indexHtml).not.toContain('elpx-manifest.js');
+            // Should NOT have manifest file
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(false);
+        });
+
+        it('should create manifest file when download-source-file iDevice is used (by type)', async () => {
+            // Create pages with download-source-file iDevice
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download content</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // Should have script tag referencing manifest file
+            expect(indexHtml).toContain('<script src="libs/elpx-manifest.js">');
+
+            // Should have manifest file
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+            expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
+            // Should contain file list
+            expect(manifestJs).toContain('"files"');
+            expect(manifestJs).toContain('"content.xml"');
+            expect(manifestJs).toContain('"index.html"');
+        });
+
+        it('should create manifest file when download-source-file class is in content', async () => {
+            // Create pages with download-source-file class in content
+            const pagesWithDownloadClass: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p class="exe-download-package-link"><a href="#">Download</a></p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownloadClass);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // Should have script tag referencing manifest file
+            expect(indexHtml).toContain('<script src="libs/elpx-manifest.js">');
+            // Should have manifest file
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(true);
+        });
+
+        it('should not include content.xml in manifest when exportSource=false', async () => {
+            // Create pages with download-source-file but exportSource disabled
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ exportSource: false }, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Should have manifest file
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+            expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
+            // But content.xml should NOT be in the file list
+            expect(manifestJs).not.toContain('"content.xml"');
+        });
+
+        it('should properly escape special characters in manifest JSON', async () => {
+            // Create pages with content containing special characters
+            const pagesWithSpecialChars: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Test\'s "Project" <Symbols>',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Click to download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ title: 'Test\'s "Project"' }, pagesWithSpecialChars);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // Should have script reference
+            expect(indexHtml).toContain('<script src="libs/elpx-manifest.js">');
+
+            // Check manifest file
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+            expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
+            // Project title should be properly escaped in JSON (quotes escaped)
+            expect(manifestJs).toContain('"projectTitle": "Test\'s \\"Project\\""');
+        });
+
+        it('should track all exported files in manifest', async () => {
+            // Create pages with download-source-file iDevice
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download content</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Check manifest file
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+
+            // Extract manifest from JS file
+            const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const manifest = JSON.parse(manifestMatch![1]);
+
+            // Verify manifest structure
+            expect(manifest.version).toBe(1);
+            expect(manifest.files).toBeInstanceOf(Array);
+            expect(manifest.projectTitle).toBe('Test Project');
+
+            // Verify essential files are tracked
+            expect(manifest.files).toContain('content.xml');
+            expect(manifest.files).toContain('content/css/base.css');
+            expect(manifest.files).toContain('index.html');
+        });
+
+        it('should only add manifest script to pages with download-source-file iDevice', async () => {
+            // Create multiple pages, only one with download-source-file
+            const mixedPages: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>Regular text content</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page2',
+                    title: 'Page 2',
+                    parentId: null,
+                    order: 1,
+                    blocks: [
+                        {
+                            id: 'block2',
+                            name: 'Block 2',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp2',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p class="exe-download-package-link">Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, mixedPages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Manifest file should exist
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(true);
+
+            // First page (no download-source-file) should NOT have manifest script
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('elpx-manifest.js');
+
+            // Second page (has download-source-file) SHOULD have manifest script
+            // sanitizePageFilename converts "Page 2" to "page-2"
+            const page2Html = zip.files.get('html/page-2.html') as string;
+            expect(page2Html).toContain('elpx-manifest.js');
+        });
+    });
+
+    describe('Search Box Support', () => {
+        it('should create search_index.js when addSearchBox is enabled', async () => {
+            // Create document with addSearchBox enabled
+            document = new MockDocument({ addSearchBox: true }, [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>Some searchable content</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Should have search_index.js file
+            expect(zip.files.has('search_index.js')).toBe(true);
+            const searchIndex = zip.files.get('search_index.js') as string;
+            expect(searchIndex).toContain('exeSearchData');
+        });
+
+        it('should not create search_index.js when addSearchBox is disabled', async () => {
+            // Create document with addSearchBox disabled (default)
+            document = new MockDocument({ addSearchBox: false }, [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Should NOT have search_index.js file
+            expect(zip.files.has('search_index.js')).toBe(false);
+        });
+    });
 });

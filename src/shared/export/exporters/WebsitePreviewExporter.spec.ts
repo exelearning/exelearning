@@ -631,8 +631,11 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('download="Test Project.elpx"');
             // Should NOT have original protocol
             expect(result.html).not.toContain('href="exe-package:elp"');
-            // Should include the elpx download script
-            expect(result.html).toContain('exe_elpx_download.js');
+            // Preview mode uses inline postMessage script instead of exe_elpx_download.js
+            expect(result.html).toContain('window.parent.postMessage');
+            expect(result.html).toContain("type: 'exe-download-elpx'");
+            // Should NOT include external exe_elpx_download.js in preview (uses postMessage instead)
+            expect(result.html).not.toContain('exe_elpx_download/exe_elpx_download.js');
         });
 
         it('should not modify content without download-source-file iDevice', async () => {

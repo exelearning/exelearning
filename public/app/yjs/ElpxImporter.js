@@ -553,10 +553,19 @@ class ElpxImporter {
     const componentId = compNode.getAttribute('odeComponentId') ||
                         this.getTextContent(compNode, 'odeIdeviceId') ||
                         this.generateId('idevice');
-    const ideviceType = compNode.getAttribute('odeIdeviceTypeDirName') ||
+    let ideviceType = compNode.getAttribute('odeIdeviceTypeDirName') ||
                         compNode.getAttribute('odeIdeviceTypeName') ||
                         this.getTextContent(compNode, 'odeIdeviceTypeName') ||
                         'FreeTextIdevice';
+
+    // Normalize legacy type names to modern names
+    const LEGACY_TYPE_ALIASES = {
+      'download-package': 'download-source-file',
+    };
+    if (LEGACY_TYPE_ALIASES[ideviceType]) {
+      ideviceType = LEGACY_TYPE_ALIASES[ideviceType];
+    }
+
     const order = this.getComponentOrder(compNode);
 
     const compData = {

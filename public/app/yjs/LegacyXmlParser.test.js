@@ -2439,6 +2439,43 @@ describe('LegacyXmlParser', () => {
       expect(idevices.length).toBe(1);
       expect(idevices[0].htmlView).toContain('<p>Package download content</p>');
     });
+
+    it('should convert .elp to .elpx in button text', () => {
+      const xml = `<?xml version="1.0"?>
+        <list>
+          <instance class="exe.engine.jsidevice.JsIdevice" reference="dl1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Download"/>
+              <string role="key" value="_iDeviceDir"/>
+              <unicode value="download-package"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="f1">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&amp;lt;div class=&amp;quot;exe-download-package-instructions&amp;quot;&amp;gt;Info&amp;lt;/div&amp;gt;&amp;lt;p class=&amp;quot;exe-download-package-link&amp;quot;&amp;gt;&amp;lt;a href=&amp;quot;exe-package:elp&amp;quot;&amp;gt;Download .elp file&amp;lt;/a&amp;gt;&amp;lt;/p&amp;gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      parser.xmlDoc = doc;
+
+      const listEl = doc.querySelector('list');
+      const idevices = parser.extractIDevicesWithTitles(listEl);
+
+      expect(idevices.length).toBe(1);
+      expect(idevices[0].type).toBe('download-source-file');
+      // Should have converted .elp to .elpx
+      expect(idevices[0].htmlView).toContain('.elpx');
+      expect(idevices[0].htmlView).toContain('Download .elpx file');
+      // Should not have unconverted .elp (except in exe-package:elp protocol which is fine)
+      expect(idevices[0].htmlView).not.toContain('.elp file');
+    });
   });
 
   describe('reference-based iDevice extraction', () => {

@@ -512,6 +512,66 @@ export abstract class BaseExporter {
     }
 
     // =========================================================================
+    // ELPX Manifest Generation (for download-source-file iDevice)
+    // =========================================================================
+
+    /**
+     * Generate ELPX manifest for client-side ZIP recreation
+     * Used by exe_elpx_download.js to recreate the complete export package
+     *
+     * @param fileList - List of file paths in the export
+     * @param options - Additional options for the manifest
+     * @returns Script tag with embedded manifest
+     */
+    protected generateElpxManifest(fileList: string[], options?: { basePath?: string; isPreview?: boolean }): string {
+        const manifest: {
+            version: number;
+            files: string[];
+            projectTitle: string;
+            basePath?: string;
+            isPreview?: boolean;
+        } = {
+            version: 1,
+            files: fileList,
+            projectTitle: this.getMetadata().title || 'eXeLearning-project',
+        };
+
+        if (options?.basePath) {
+            manifest.basePath = options.basePath;
+        }
+        if (options?.isPreview) {
+            manifest.isPreview = true;
+        }
+
+        // Escape </script> and <!-- sequences in JSON to prevent HTML parser from breaking
+        const jsonStr = JSON.stringify(manifest).replace(/<\//g, '<\\/').replace(/<!--/g, '<\\!--');
+
+        return `<script>window.__ELPX_MANIFEST__=${jsonStr};</script>`;
+    }
+
+    /**
+     * Generate ELPX manifest as a standalone JS file
+     * Used for HTML5 exports where the manifest is a separate file
+     *
+     * @param fileList - List of file paths in the export
+     * @returns JavaScript file content
+     */
+    protected generateElpxManifestFile(fileList: string[]): string {
+        const manifest = {
+            version: 1,
+            files: fileList,
+            projectTitle: this.getMetadata().title || 'eXeLearning-project',
+        };
+
+        return `/**
+ * ELPX Manifest - Auto-generated for download-source-file iDevice
+ * Used by exe_elpx_download.js to recreate the complete export package
+ */
+window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
+`;
+    }
+
+    // =========================================================================
     // Content XML Generation (for re-import capability)
     // =========================================================================
 
