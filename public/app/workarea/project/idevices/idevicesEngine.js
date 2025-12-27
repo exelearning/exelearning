@@ -1837,6 +1837,9 @@ export default class IdevicesEngine {
             if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
                 $exe.math.refresh(pageTitleElement);
             }
+            if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
+                $exe.math.refresh(pageTitleElement);
+            }
         }
     }
 
