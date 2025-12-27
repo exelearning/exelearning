@@ -478,18 +478,38 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 // If no project UUID, create a new project and redirect
                 if (!projectUuid) {
+                    // Offline mode: create in-memory session only (no DB persistence)
+                    if (isOfflineMode()) {
+                        const newSessionId = crypto.randomUUID();
+
+                        createSession({
+                            sessionId: newSessionId,
+                            fileName: 'New Project.elp',
+                            filePath: '',
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                            structure: null,
+                            userId: currentUser.id,
+                        });
+
+                        console.log(`[Pages] Created ephemeral session ${newSessionId} for offline mode`);
+
+                        return Response.redirect(
+                            prefixPath(`/workarea?project=${newSessionId}`) || `/workarea?project=${newSessionId}`,
+                            302,
+                        );
+                    }
+
+                    // Online mode: create project in DB (ensures persistence across reloads)
                     try {
-                        // 1. Create project in database FIRST (ensures persistence across reloads)
                         const projectRecord = await createProject(db, {
                             title: 'New Project',
                             owner_id: currentUser.id,
                             saved_once: 0,
                         });
 
-                        // 2. Use project UUID as session ID
                         const newSessionId = projectRecord.uuid;
 
-                        // 3. Create session in memory (directories created lazily when files are written)
                         createSession({
                             sessionId: newSessionId,
                             fileName: 'New Project.elp',
@@ -502,7 +522,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                         console.log(`[Pages] Created new project ${newSessionId} for user ${currentUser.id}`);
 
-                        // Redirect to workarea with the new project ID
                         return Response.redirect(
                             prefixPath(`/workarea?project=${newSessionId}`) || `/workarea?project=${newSessionId}`,
                             302,
