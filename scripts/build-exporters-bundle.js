@@ -16,8 +16,10 @@ const browserAliasPlugin = {
     setup(build) {
         // Intercept imports of idevice-config
         build.onResolve({ filter: /idevice-config$/ }, (args) => {
+            // Normalize path separators for Windows compatibility
+            const normalizedPath = args.importer.replace(/\\/g, '/');
             // Only redirect if coming from our source files
-            if (args.importer.includes('src/shared/export') || args.importer.includes('src/services')) {
+            if (normalizedPath.includes('src/shared/export') || normalizedPath.includes('src/services')) {
                 return {
                     path: path.join(projectRoot, 'src/shared/export/browser/idevice-config-browser.ts'),
                 };
@@ -26,7 +28,9 @@ const browserAliasPlugin = {
 
         // Intercept imports of xml-parser (uses fs-extra which doesn't work in browser)
         build.onResolve({ filter: /xml-parser$/ }, (args) => {
-            if (args.importer.includes('src/shared/export') || args.importer.includes('src/services')) {
+            // Normalize path separators for Windows compatibility
+            const normalizedPath = args.importer.replace(/\\/g, '/');
+            if (normalizedPath.includes('src/shared/export') || normalizedPath.includes('src/services')) {
                 return {
                     path: path.join(projectRoot, 'src/shared/export/browser/xml-validator-shim.ts'),
                 };
