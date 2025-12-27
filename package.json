@@ -48,8 +48,6 @@
         "electron:pack:dir": "electron-builder --dir",
         "package:prepare": "bun run build:all && bun run build:standalone",
         "package:app": "bun run package:prepare && bun run electron:pack",
-        "lint": "biome check .",
-        "lint:fix": "biome check --write .",
         "lint:src": "biome check src/",
         "lint:src:fix": "biome check --write src/",
         "lint:test": "biome check test/",

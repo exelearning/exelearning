@@ -446,11 +446,23 @@ else
 	}
 endif
 
-
-.PHONY: test-frontend-node
-test-frontend-node: check-node check-env ## Run frontend tests with Node.js (Vitest) + coverage (CI) - for systems without Bun
+.PHONY: test-frontend-legacy
+test-frontend-legacy: check-node check-env ## Run frontend tests with Node.js (Vitest) + coverage (CI) - for systems without Bun
 	npm run test:frontend:node
 
+.PHONY: lint-legacy
+lint-legacy: check-node
+	@echo "[LEGACY] Running full lint with npm"
+	npm run lint:src
+	npm run lint:public
+	npm run lint:test
+
+.PHONY: fix-legacy
+fix-legacy: check-node
+	@echo "[LEGACY] Running full lint fix with npm"
+	npm run lint:src:fix
+	npm run lint:public:fix
+	npm run lint:test:fix
 
 # =============================================================================
 # TESTING
@@ -685,7 +697,9 @@ help:
 	@echo "  make up-legacy              Start server with Node.js (Docker)"
 	@echo "  make upd-legacy             Start server with Node.js detached"
 	@echo "  make down-legacy            Stop legacy server"
-	@echo "  make test-frontend-node     Run frontend tests with Node.js + coverage"
+	@echo "  make test-frontend-legacy   Run frontend tests with Node.js + coverage"
+	@echo "  make lint-legacy            Run lint using npm (no Bun required)"
+	@echo "  make fix-legacy             Fix lint issues using npm"
 	@echo ""
 	@echo "Linting (Biome):"
 	@echo "  make lint            Run lint on all files"
