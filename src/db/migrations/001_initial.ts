@@ -10,6 +10,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('users')
+        .ifNotExists()
         .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
         .addColumn('email', 'varchar(180)', col => col.notNull().unique())
         .addColumn('user_id', 'varchar(40)', col => col.notNull())
@@ -29,6 +30,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('users_preferences')
+        .ifNotExists()
         .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
         .addColumn('user_id', 'varchar(255)', col => col.notNull())
         .addColumn('preference_key', 'varchar(255)', col => col.notNull())
@@ -39,13 +41,19 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('updated_at', 'text')
         .execute();
 
-    await db.schema.createIndex('idx_users_preferences_user_id').on('users_preferences').column('user_id').execute();
+    await db.schema
+        .createIndex('idx_users_preferences_user_id')
+        .ifNotExists()
+        .on('users_preferences')
+        .column('user_id')
+        .execute();
 
     // ========================================================================
     // PROJECTS
     // ========================================================================
     await db.schema
         .createTable('projects')
+        .ifNotExists()
         .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
         .addColumn('uuid', 'varchar(36)', col => col.notNull().unique())
         .addColumn('title', 'varchar(255)', col => col.notNull())
@@ -68,12 +76,14 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('project_collaborators')
+        .ifNotExists()
         .addColumn('project_id', 'integer', col => col.notNull().references('projects.id').onDelete('cascade'))
         .addColumn('user_id', 'integer', col => col.notNull().references('users.id').onDelete('cascade'))
         .execute();
 
     await db.schema
         .createIndex('idx_project_collaborators_pk')
+        .ifNotExists()
         .on('project_collaborators')
         .columns(['project_id', 'user_id'])
         .unique()
@@ -84,6 +94,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('assets')
+        .ifNotExists()
         .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
         .addColumn('project_id', 'integer', col => col.notNull().references('projects.id').onDelete('cascade'))
         .addColumn('filename', 'varchar(255)', col => col.notNull())
@@ -99,6 +110,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 
     await db.schema
         .createIndex('idx_asset_client_project')
+        .ifNotExists()
         .on('assets')
         .columns(['client_id', 'project_id'])
         .unique()
@@ -109,6 +121,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('yjs_documents')
+        .ifNotExists()
         .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
         .addColumn('project_id', 'integer', col => col.notNull().unique().references('projects.id').onDelete('cascade'))
         .addColumn('snapshot_data', 'blob', col => col.notNull())
@@ -122,6 +135,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('yjs_updates')
+        .ifNotExists()
         .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
         .addColumn('project_id', 'integer', col => col.notNull().references('projects.id').onDelete('cascade'))
         .addColumn('update_data', 'blob', col => col.notNull())
@@ -132,6 +146,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 
     await db.schema
         .createIndex('idx_yjs_updates_project_version')
+        .ifNotExists()
         .on('yjs_updates')
         .columns(['project_id', 'version'])
         .execute();
@@ -141,6 +156,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('yjs_version_history')
+        .ifNotExists()
         .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
         .addColumn('project_id', 'integer', col => col.notNull().references('projects.id').onDelete('cascade'))
         .addColumn('snapshot_data', 'blob', col => col.notNull())
@@ -152,6 +168,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 
     await db.schema
         .createIndex('idx_yjs_version_history_project')
+        .ifNotExists()
         .on('yjs_version_history')
         .column('project_id')
         .execute();

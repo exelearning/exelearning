@@ -88,11 +88,13 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
  * If so, register existing migrations as already applied.
  */
 async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
-    // 1. Check if application tables exist (users is the first one created)
+    // 1. Check if BOTH core tables exist (users AND projects)
+    // If either is missing, this is either a fresh DB or an old version that needs full migration
     const usersTableExists = await tableExists(db, 'users');
+    const projectsTableExists = await tableExists(db, 'projects');
 
-    // If no application tables, this is a fresh database - nothing to sync
-    if (!usersTableExists) {
+    // If any core table is missing, run all migrations (001_initial uses ifNotExists)
+    if (!usersTableExists || !projectsTableExists) {
         return;
     }
 
