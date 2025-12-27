@@ -30,7 +30,7 @@ COPY package.json package-lock.json* bun.lock* ./
 RUN npm install
 
 # Install Node.js-specific dependencies (not in package.json)
-RUN npm install @elysiajs/node better-sqlite3 tsx --legacy-peer-deps
+RUN npm install @elysiajs/node better-sqlite3 tsx
 
 # Copy source code
 COPY . .
