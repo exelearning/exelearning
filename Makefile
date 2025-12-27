@@ -150,6 +150,7 @@ endif
 .PHONY: run-app
 run-app: check-bun deps css bundle
 	@echo "Launching eXeLearning App (Electron + Elysia)..."
+	@bun run build:standalone
 	@bun run dev:app
 
 
@@ -419,13 +420,13 @@ up-legacy: check-docker check-env ## Start server with Node.js (for systems with
 	@echo ""
 	@docker compose -f docker-compose.legacy.yml up --build --remove-orphans
 
-# Start Docker with Node.js in background
-.PHONY: upd-legacy
-upd-legacy: check-docker check-env ## Start server with Node.js detached
+# Clean legacy Docker volumes
+.PHONY: clean-legacy
+clean-legacy: check-docker check-env
 	@echo ""
 	@echo "[LEGACY MODE] Starting with Node.js (no WebSocket, offline mode)"
 	@echo ""
-	@docker compose -f docker-compose.legacy.yml up -d --build --remove-orphans
+	@docker compose -f docker-compose.legacy.yml down -v --remove-orphans
 
 # Stop legacy Docker
 .PHONY: down-legacy
@@ -694,9 +695,9 @@ help:
 	@echo "  make test-e2e-firefox   Run E2E tests with Firefox"
 	@echo ""
 	@echo "Legacy (Core2 Duo / No Bun):"
-	@echo "  make up-legacy              Start server with Node.js (Docker)"
-	@echo "  make upd-legacy             Start server with Node.js detached"
+	@echo "  make up-legacy              Start legacy server with Node.js (Docker)"
 	@echo "  make down-legacy            Stop legacy server"
+	@echo "  make clean-legacy           Stop and remove legacy volumes"
 	@echo "  make test-frontend-legacy   Run frontend tests with Node.js + coverage"
 	@echo "  make lint-legacy            Run lint using npm (no Bun required)"
 	@echo "  make fix-legacy             Fix lint issues using npm"

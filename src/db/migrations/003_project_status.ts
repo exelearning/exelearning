@@ -18,7 +18,11 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         // Ignore if status column is missing
     }
 
-    await db.schema.alterTable('projects').dropColumn('is_active').execute();
+    try {
+        await db.schema.alterTable('projects').dropColumn('is_active').execute();
+    } catch {
+        // Ignore if column doesn't exist (fresh DB or already migrated)
+    }
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {

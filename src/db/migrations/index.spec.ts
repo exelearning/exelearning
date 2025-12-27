@@ -441,6 +441,30 @@ describe('Database Migrations', () => {
             expect(statusAfter.executed).toEqual(statusBefore.executed);
         });
 
+        it('should run all migrations when users exists but projects is missing (very old DB)', async () => {
+            // Simulate a very old database that only has users table but no projects
+            // This can happen with pre-v3.0 databases
+            await sql`CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT)`.execute(db);
+            // Note: No projects table - simulating very old version
+
+            // Run migration
+            const result = await migrateToLatest(db);
+
+            expect(result.success).toBe(true);
+            // Should execute ALL migrations including 001_initial (which uses ifNotExists)
+            expect(result.executedMigrations).toContain('001_initial');
+            expect(result.executedMigrations).toContain('002_app_settings');
+            expect(result.executedMigrations).toContain('003_project_status');
+
+            // Verify projects table was created
+            const projectsExists = await tableExists(db, 'projects');
+            expect(projectsExists).toBe(true);
+
+            // Verify users table still exists (not duplicated due to ifNotExists)
+            const usersExists = await tableExists(db, 'users');
+            expect(usersExists).toBe(true);
+        });
+
         it('should create both kysely_migration and kysely_migration_lock tables for legacy DB', async () => {
             // Create legacy DB with users table
             await sql`CREATE TABLE users (id INTEGER PRIMARY KEY)`.execute(db);

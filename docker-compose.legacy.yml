@@ -35,14 +35,11 @@ services:
       - ./tests:/app/tests
       - ./templates:/app/templates
       - ./translations:/app/translations
-      - ./public:/app/public
+      - ./public/files:/app/public/files
       - ./assets:/app/assets
       - ./scripts:/app/scripts
       - ./views:/app/views
       - ./package.json:/app/package.json
-
-      # Anonymous volumes - faster
-      - /app/node_modules
 
       # Persistent data
       - mnt-data-legacy:/mnt/data:rw

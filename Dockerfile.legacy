@@ -27,10 +27,10 @@ RUN apk add --no-cache python3 make g++ dumb-init
 COPY package.json package-lock.json* bun.lock* ./
 
 # Install dependencies with npm
-RUN npm install --legacy-peer-deps
+RUN npm install
 
 # Install Node.js-specific dependencies (not in package.json)
-RUN npm install @elysiajs/node better-sqlite3 tsx --legacy-peer-deps
+RUN npm install @elysiajs/node better-sqlite3 tsx
 
 # Copy source code
 COPY . .
