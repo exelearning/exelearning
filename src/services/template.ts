@@ -5,6 +5,7 @@
 import * as nunjucks from 'nunjucks';
 import * as path from 'path';
 import { getBasePath } from '../utils/basepath.util';
+import { getAppVersion } from '../utils/version';
 import { trans as translateFn } from './translation';
 
 // Stores the locale for current rendering (thread-safe in single-threaded Bun)
@@ -32,12 +33,14 @@ const env = nunjucks.configure(viewsDir, {
 // JSON filter - serialize to JSON
 env.addFilter('json', (value: unknown) => JSON.stringify(value));
 
-// Asset filter - prefix paths with base path for static assets
+// Asset filter - prefix paths with base path and version for static assets (cache busting)
 env.addFilter('asset', (assetPath: string) => {
     const basePath = getBasePath();
+    const version = getAppVersion();
     // Remove leading slash if present to avoid double slashes
     const cleanPath = assetPath.startsWith('/') ? assetPath.slice(1) : assetPath;
-    return basePath ? `${basePath}/${cleanPath}` : `/${cleanPath}`;
+    // Result: /{basePath}/{version}/{path} or /{version}/{path}
+    return basePath ? `${basePath}/${version}/${cleanPath}` : `/${version}/${cleanPath}`;
 });
 
 // Trans filter - uses translation service with current render locale

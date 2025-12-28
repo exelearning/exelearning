@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import { getFilesDir } from '../services/file-helper';
+import { getAppVersion } from '../utils/version';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
 
 /**
@@ -254,13 +255,14 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 
         // Merge user iDevices with base, user takes priority
         const ideviceMap = new Map<string, IdeviceConfig>();
+        const version = getAppVersion();
 
         for (const idevice of baseIdevices) {
-            ideviceMap.set(idevice.id, { ...idevice, url: `/files/perm/idevices/base/${idevice.id}` });
+            ideviceMap.set(idevice.id, { ...idevice, url: `/${version}/files/perm/idevices/base/${idevice.id}` });
         }
 
         for (const idevice of userIdevices) {
-            ideviceMap.set(idevice.id, { ...idevice, url: `/files/perm/idevices/users/${idevice.id}` });
+            ideviceMap.set(idevice.id, { ...idevice, url: `/${version}/files/perm/idevices/users/${idevice.id}` });
         }
 
         const result = Array.from(ideviceMap.values());

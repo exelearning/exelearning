@@ -26,7 +26,20 @@
 window.MathJax = window.MathJax || (function() {
     var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
     var isIndex = document.documentElement.id === 'exe-index';
-    var basePath = isWorkarea ? '/app/common/exe_math' : (isIndex ? './libs/exe_math' : '../libs/exe_math');
+    // For workarea: use versioned path from eXeLearning config or detect from script tags
+    // For exports: use relative paths (./libs or ../libs)
+    var version = (window.eXeLearning && window.eXeLearning.version) || '';
+    if (!version && isWorkarea) {
+        // Try to detect version from existing script tags (e.g., /v0.0.0-alpha/app/...)
+        var scriptTag = document.querySelector('script[src*="/app/common/"]');
+        if (scriptTag) {
+            var match = scriptTag.src.match(/\/(v[\d.]+[^/]*)\//);
+            if (match) version = match[1];
+        }
+    }
+    var basePath = isWorkarea
+        ? (version ? '/' + version + '/app/common/exe_math' : '/app/common/exe_math')
+        : (isIndex ? './libs/exe_math' : '../libs/exe_math');
     
     var externalExtensions = [
         'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
@@ -1348,7 +1361,23 @@ var $exeDevices = {
                     }
 
                     self._loading = true;
-                    var basePath = $("html").prop("id") == "exe-index" ? "./libs/exe_math" : "../libs/exe_math";
+                    // For exports: use relative paths. For workarea: use versioned path if available
+                    var isExport = $("html").prop("id") == "exe-index" || !document.querySelector('script[src*="/app/common/"]');
+                    var basePath;
+                    if (isExport) {
+                        basePath = $("html").prop("id") == "exe-index" ? "./libs/exe_math" : "../libs/exe_math";
+                    } else {
+                        // Workarea: detect version from script tags
+                        var version = (window.eXeLearning && window.eXeLearning.version) || '';
+                        if (!version) {
+                            var scriptTag = document.querySelector('script[src*="/app/common/"]');
+                            if (scriptTag) {
+                                var match = scriptTag.src.match(/\/(v[\d.]+[^/]*)\//);
+                                if (match) version = match[1];
+                            }
+                        }
+                        basePath = version ? '/' + version + '/app/common/exe_math' : '/app/common/exe_math';
+                    }
                     if (!window.MathJax) {
                         window.MathJax = self.engineConfig;
                     }

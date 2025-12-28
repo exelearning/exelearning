@@ -208,7 +208,7 @@ const app = new Elysia()
         // Match /v{version}/libs/* and rewrite to /libs/*
         const versionedLibsMatch = pathname.match(/^\/v[\d.]+[^/]*\/libs\/(.+)$/);
         if (versionedLibsMatch) {
-            // Serve the file directly from public/libs
+            // Serve the file directly from public/libs with long cache (immutable due to versioned URL)
             const filePath = path.join(process.cwd(), 'public', 'libs', versionedLibsMatch[1]);
             if (fs.existsSync(filePath)) {
                 const content = fs.readFileSync(filePath);
@@ -216,7 +216,10 @@ const app = new Elysia()
                 const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
                 return new Response(content, {
-                    headers: { 'Content-Type': contentType },
+                    headers: {
+                        'Content-Type': contentType,
+                        'Cache-Control': 'public, max-age=31536000, immutable',
+                    },
                 });
             }
         }
@@ -270,6 +273,7 @@ const app = new Elysia()
         }
 
         // Match /v{version}/* and rewrite to /* (except /libs, /admin-files, /user-files which are handled above)
+        // This handles /app/*, /style/*, and other versioned static assets
         const versionedMatch = pathname.match(/^\/v[\d.]+[^/]*\/(.+)$/);
         if (
             versionedMatch &&
@@ -284,7 +288,10 @@ const app = new Elysia()
                 const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
                 return new Response(content, {
-                    headers: { 'Content-Type': contentType },
+                    headers: {
+                        'Content-Type': contentType,
+                        'Cache-Control': 'public, max-age=31536000, immutable',
+                    },
                 });
             }
         }

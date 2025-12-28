@@ -72,6 +72,7 @@ describe('Template Service', () => {
 
     describe('asset filter', () => {
         const originalBasePath = process.env.BASE_PATH;
+        const originalAppVersion = process.env.APP_VERSION;
 
         afterEach(() => {
             if (originalBasePath !== undefined) {
@@ -79,30 +80,61 @@ describe('Template Service', () => {
             } else {
                 delete process.env.BASE_PATH;
             }
+            if (originalAppVersion !== undefined) {
+                process.env.APP_VERSION = originalAppVersion;
+            } else {
+                delete process.env.APP_VERSION;
+            }
         });
 
-        it('should prefix asset path with base path', () => {
+        it('should prefix asset path with base path and version', () => {
             process.env.BASE_PATH = '/app';
+            process.env.APP_VERSION = 'v3.1.0';
             const result = env.renderString("{{ 'css/style.css' | asset }}", {});
-            expect(result).toBe('/app/css/style.css');
+            expect(result).toBe('/app/v3.1.0/css/style.css');
         });
 
-        it('should handle empty base path', () => {
+        it('should include version even without base path', () => {
             delete process.env.BASE_PATH;
+            process.env.APP_VERSION = 'v3.1.0';
             const result = env.renderString("{{ 'js/app.js' | asset }}", {});
-            expect(result).toBe('/js/app.js');
+            expect(result).toBe('/v3.1.0/js/app.js');
         });
 
         it('should handle leading slash in asset path', () => {
             delete process.env.BASE_PATH;
+            process.env.APP_VERSION = 'v3.1.0';
             const result = env.renderString("{{ '/images/logo.png' | asset }}", {});
-            expect(result).toBe('/images/logo.png');
+            expect(result).toBe('/v3.1.0/images/logo.png');
         });
 
-        it('should handle leading slash with base path', () => {
+        it('should handle leading slash with base path and version', () => {
             process.env.BASE_PATH = '/web';
+            process.env.APP_VERSION = 'v3.1.0';
             const result = env.renderString("{{ '/css/main.css' | asset }}", {});
-            expect(result).toBe('/web/css/main.css');
+            expect(result).toBe('/web/v3.1.0/css/main.css');
+        });
+
+        it('should use package.json version when APP_VERSION not set', () => {
+            delete process.env.BASE_PATH;
+            delete process.env.APP_VERSION;
+            const result = env.renderString("{{ 'libs/jquery.js' | asset }}", {});
+            // Should contain a version prefix like /v0.0.0-alpha/
+            expect(result).toMatch(/^\/v[\d.]+[^/]*\/libs\/jquery\.js$/);
+        });
+
+        it('should work with alpha/beta version tags', () => {
+            delete process.env.BASE_PATH;
+            process.env.APP_VERSION = 'v0.0.0-alpha-build20251228';
+            const result = env.renderString("{{ 'libs/bootstrap.css' | asset }}", {});
+            expect(result).toBe('/v0.0.0-alpha-build20251228/libs/bootstrap.css');
+        });
+
+        it('should work with complex base paths and version', () => {
+            process.env.BASE_PATH = '/web/exelearning';
+            process.env.APP_VERSION = 'v3.1.0-rc1';
+            const result = env.renderString("{{ '/app/common/common.js' | asset }}", {});
+            expect(result).toBe('/web/exelearning/v3.1.0-rc1/app/common/common.js');
         });
     });
 
