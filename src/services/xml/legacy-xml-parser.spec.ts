@@ -1021,6 +1021,86 @@ describe('legacy-xml-parser', () => {
             }
         });
 
+        it('should convert FileAttachIdevice to text for editability', () => {
+            // FileAttachIdevice converted to text (not attached-files) because
+            // attached-files iDevice has no editor. This matches Symfony behavior.
+            // See FileAttachHandler.js and OdeOldXmlFileAttachIdevice.php
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.fileattachidevice.FileAttachIdevice',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components[0]?.type).toBe('text');
+        });
+
+        it('should convert FileAttachIdeviceInc to text for editability', () => {
+            // FileAttachIdeviceInc is a variant that also converts to text
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.fileattachidevice.FileAttachIdeviceInc',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components[0]?.type).toBe('text');
+        });
+
+        it('should convert AttachmentIdevice to text for editability', () => {
+            // AttachmentIdevice is another file attachment variant → text
+            const parsed: LegacyInstanceXmlDocument = {
+                instance: {
+                    '@_class': 'exe.engine.package.Package',
+                    node: {
+                        '@_class': 'exe.engine.node.Node',
+                        '@_reference': 'node-1',
+                        dictionary: {
+                            unicode: { '@_value': 'Page' },
+                            list: {
+                                instance: {
+                                    '@_class': 'exe.engine.attachmentidevice.AttachmentIdevice',
+                                    '@_reference': 'idevice-1',
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+
+            const result = parse(parsed);
+            const page = result.pages.find(p => p.id === 'node-1');
+            expect(page?.components[0]?.type).toBe('text');
+        });
+
         it('should preserve content when converting to text', () => {
             const parsed: LegacyInstanceXmlDocument = {
                 instance: {

@@ -3224,6 +3224,27 @@ describe('LegacyXmlParser', () => {
     });
   });
 
+  describe('FileAttachIdevice type mapping', () => {
+    // FileAttachIdevice converts to 'text' (not 'attached-files') because
+    // attached-files iDevice has no editor. This matches Symfony behavior.
+    // See FileAttachHandler.js and OdeOldXmlFileAttachIdevice.php
+
+    it('should map FileAttachIdevice to text type for editability', () => {
+      const type = parser.mapIdeviceType('exe.engine.fileattachidevice.FileAttachIdevice');
+      expect(type).toBe('text');
+    });
+
+    it('should map FileAttachIdeviceInc to text type for editability', () => {
+      const type = parser.mapIdeviceType('exe.engine.fileattachidevice.FileAttachIdeviceInc');
+      expect(type).toBe('text');
+    });
+
+    it('should map AttachmentIdevice to text type for editability', () => {
+      const type = parser.mapIdeviceType('exe.engine.attachmentidevice.AttachmentIdevice');
+      expect(type).toBe('text');
+    });
+  });
+
   describe('JsIdevice _iDeviceDir type mappings', () => {
     // Test all legacy _iDeviceDir values found in ELP fixtures
 
