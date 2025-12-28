@@ -308,7 +308,7 @@ When opening or importing a legacy `.elp` (`contentv3.xml`):
 | ImageMagnifierIdevice | magnifier |
 | GalleryIdevice | image-gallery |
 | CasestudyIdevice | casestudy |
-| FileAttachIdeviceInc | attached-files |
+| FileAttachIdevice, AttachmentIdevice | text (for editability) |
 | ExternalUrlIdevice | external-website |
 | QuizTestIdevice | quick-questions |
 

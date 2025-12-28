@@ -627,7 +627,7 @@ function extractResourcePaths(inst: unknown): string[] {
  *   - ImageMagnifierIdevice → magnifier
  *   - GalleryIdevice → image-gallery
  *   - CasestudyIdevice → casestudy
- *   - FileAttachIdeviceInc → attached-files
+ *   - FileAttachIdevice, AttachmentIdevice → text (for editability)
  *   - ExternalUrlIdevice → external-website
  *   - QuizTestIdevice → quick-questions
  *
@@ -671,6 +671,10 @@ function mapIdeviceType(className: string): string {
         'WikipediaIdevice',
         'RssIdevice',
         'AppletIdevice', // Java applets - no modern support
+        // File attachment iDevices → text (as per Symfony OdeOldXmlFileAttachIdevice.php)
+        // The attached-files iDevice type has no editor, so we convert to editable 'text'
+        'FileAttachIdevice', // Matches FileAttachIdevice and FileAttachIdeviceInc
+        'AttachmentIdevice',
     ];
 
     // Check if this is a text-based iDevice that should convert to 'text'
@@ -703,8 +707,7 @@ function mapIdeviceType(className: string): string {
         'GalleryIdevice': 'image-gallery',
         // Case study
         'CasestudyIdevice': 'casestudy',
-        // File attachments
-        'FileAttachIdeviceInc': 'attached-files',
+        // Note: FileAttachIdevice moved to textBasedIdevices (converts to 'text' for editability)
         // External URL / website
         'ExternalUrlIdevice': 'external-website',
         // SCORM quiz/test

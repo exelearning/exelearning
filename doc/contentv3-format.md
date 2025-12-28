@@ -301,7 +301,8 @@ Legacy iDevice types are mapped to modern ODE types:
 | `ImageMagnifierIdevice` | `magnifier` |
 | `GalleryIdevice` | `image-gallery` |
 | `CasestudyIdevice` | `casestudy` |
-| `FileAttachIdeviceInc` | `attached-files` |
+| `FileAttachIdevice` | `text` |
+| `AttachmentIdevice` | `text` |
 | `ExternalUrlIdevice` | `external-website` |
 | `QuizTestIdevice` | `quick-questions` |
 | `JsIdevice` | Uses `class_` attribute |
