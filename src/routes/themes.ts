@@ -32,7 +32,13 @@ export interface ThemesRouteDependencies {
         readFileSync: typeof fs.readFileSync;
         readdirSync: typeof fs.readdirSync;
     };
+    fsExtra: {
+        pathExists: typeof fsExtra.pathExists;
+        remove: typeof fsExtra.remove;
+    };
     getEnv: (key: string) => string | undefined;
+    validateThemeZip: typeof validateThemeZip;
+    extractTheme: typeof extractTheme;
 }
 
 const defaultDeps: ThemesRouteDependencies = {
@@ -41,7 +47,13 @@ const defaultDeps: ThemesRouteDependencies = {
         readFileSync: fs.readFileSync,
         readdirSync: fs.readdirSync,
     },
+    fsExtra: {
+        pathExists: fsExtra.pathExists,
+        remove: fsExtra.remove,
+    },
     getEnv: (key: string) => process.env[key],
+    validateThemeZip,
+    extractTheme,
 };
 
 let deps = defaultDeps;
@@ -382,7 +394,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
         // These themes are served via /user-files/themes/ route
         const userThemesDir = path.join(getFilesDir(), 'themes', 'users');
         let additionalUserThemes: ThemeConfig[] = [];
-        if (fs.existsSync(userThemesDir)) {
+        if (deps.fs.existsSync(userThemesDir)) {
             // Pass custom URL prefix so preview images and assets use /user-files/themes/ route
             additionalUserThemes = scanThemes(userThemesDir, 'user', '/user-files/themes');
         }
@@ -476,7 +488,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
                 const fileBuffer = Buffer.from(await themeZip.arrayBuffer());
 
                 // Validate ZIP file
-                const validation = await validateThemeZip(fileBuffer);
+                const validation = await deps.validateThemeZip(fileBuffer);
                 if (!validation.valid) {
                     set.status = 400;
                     return { responseMessage: 'ERROR', error: validation.error };
@@ -504,7 +516,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
                 // 2. Check base themes directory
                 const baseThemePath = path.join(THEMES_BASE_PATH, dirName);
-                if (fs.existsSync(baseThemePath)) {
+                if (deps.fs.existsSync(baseThemePath)) {
                     set.status = 400;
                     return {
                         responseMessage: 'ERROR',
@@ -514,7 +526,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
                 // 3. Check site themes directory
                 const siteThemePath = path.join(getSiteThemesPath(), dirName);
-                if (await fsExtra.pathExists(siteThemePath)) {
+                if (await deps.fsExtra.pathExists(siteThemePath)) {
                     set.status = 400;
                     return {
                         responseMessage: 'ERROR',
@@ -529,7 +541,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
                 // Check if theme already exists in user folder - if so, just return success
                 // (user can re-import a theme they already have)
-                if (await fsExtra.pathExists(targetDir)) {
+                if (await deps.fsExtra.pathExists(targetDir)) {
                     // Theme already exists, no need to import again
                     // Just return success with current theme list
                     const baseThemes = scanThemes(THEMES_BASE_PATH, 'base');
@@ -545,7 +557,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
                     const userThemesDir = path.join(getFilesDir(), 'themes', 'users');
                     let additionalUserThemes: ThemeConfig[] = [];
-                    if (await fsExtra.pathExists(userThemesDir)) {
+                    if (await deps.fsExtra.pathExists(userThemesDir)) {
                         additionalUserThemes = scanThemes(userThemesDir, 'user', '/user-files/themes');
                     }
 
@@ -559,7 +571,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
                 }
 
                 // Extract theme to user themes folder
-                await extractTheme(fileBuffer, targetDir);
+                await deps.extractTheme(fileBuffer, targetDir);
 
                 // Return updated theme list
                 const baseThemes = scanThemes(THEMES_BASE_PATH, 'base');
@@ -577,7 +589,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
                 // Also scan user themes from FILES_DIR (served via /user-files/themes/ route)
                 const userThemesDir = path.join(getFilesDir(), 'themes', 'users');
                 let additionalUserThemes: ThemeConfig[] = [];
-                if (await fsExtra.pathExists(userThemesDir)) {
+                if (await deps.fsExtra.pathExists(userThemesDir)) {
                     additionalUserThemes = scanThemes(userThemesDir, 'user', '/user-files/themes');
                 }
 
@@ -642,7 +654,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
                 }
 
                 // Validate ZIP file
-                const validation = await validateThemeZip(fileBuffer);
+                const validation = await deps.validateThemeZip(fileBuffer);
                 if (!validation.valid) {
                     set.status = 400;
                     return { responseMessage: 'ERROR', error: validation.error };
@@ -671,7 +683,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
                 // 2. Check base themes directory
                 const baseThemePath = path.join(THEMES_BASE_PATH, dirName);
-                if (fs.existsSync(baseThemePath)) {
+                if (deps.fs.existsSync(baseThemePath)) {
                     set.status = 400;
                     return {
                         responseMessage: 'ERROR',
@@ -681,7 +693,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
                 // 3. Check site themes directory
                 const siteThemePath = path.join(getSiteThemesPath(), dirName);
-                if (await fsExtra.pathExists(siteThemePath)) {
+                if (await deps.fsExtra.pathExists(siteThemePath)) {
                     set.status = 400;
                     return {
                         responseMessage: 'ERROR',
@@ -691,7 +703,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
                 // 4. Check legacy user themes directory
                 const legacyUserThemePath = path.join(THEMES_USERS_PATH, dirName);
-                if (fs.existsSync(legacyUserThemePath)) {
+                if (deps.fs.existsSync(legacyUserThemePath)) {
                     set.status = 400;
                     return {
                         responseMessage: 'ERROR',
@@ -701,7 +713,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
                 // 5. Check user themes in FILES_DIR
                 const targetDir = path.join(getFilesDir(), 'themes', 'users', dirName);
-                if (await fsExtra.pathExists(targetDir)) {
+                if (await deps.fsExtra.pathExists(targetDir)) {
                     set.status = 400;
                     return {
                         responseMessage: 'ERROR',
@@ -710,14 +722,14 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
                 }
 
                 // Extract theme to target directory
-                await extractTheme(fileBuffer, targetDir);
+                await deps.extractTheme(fileBuffer, targetDir);
 
                 // Read config.xml to get theme metadata
                 const configPath = path.join(targetDir, 'config.xml');
                 let themeConfig: ThemeConfig;
 
-                if (fs.existsSync(configPath)) {
-                    const xmlContent = fs.readFileSync(configPath, 'utf8');
+                if (deps.fs.existsSync(configPath)) {
+                    const xmlContent = deps.fs.readFileSync(configPath, 'utf8');
                     // Use /user-files/themes/ prefix for user themes from FILES_DIR
                     const parsed = parseThemeConfig(xmlContent, dirName, targetDir, 'user', '/user-files/themes');
                     if (parsed) {
@@ -802,11 +814,11 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
             // Check in user themes directory
             const userThemePath = path.join(getFilesDir(), 'themes', 'users', themeId);
 
-            if (!(await fsExtra.pathExists(userThemePath))) {
+            if (!(await deps.fsExtra.pathExists(userThemePath))) {
                 // Also check in public/files/perm/themes/users (legacy location)
                 const legacyPath = path.join('public/files/perm/themes/users', themeId);
-                if (fs.existsSync(legacyPath)) {
-                    await fsExtra.remove(legacyPath);
+                if (deps.fs.existsSync(legacyPath)) {
+                    await deps.fsExtra.remove(legacyPath);
                     return {
                         responseMessage: 'OK',
                         deleted: { name: themeId },
@@ -821,7 +833,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
             }
 
             // Delete the theme directory
-            await fsExtra.remove(userThemePath);
+            await deps.fsExtra.remove(userThemePath);
 
             return {
                 responseMessage: 'OK',

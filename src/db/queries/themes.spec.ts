@@ -29,6 +29,8 @@ import {
     getNextSiteThemeSortOrder,
     getDefaultTheme,
     setDefaultTheme,
+    upsertBaseTheme,
+    removeOrphanedBaseThemes,
 } from './themes';
 
 describe('Theme Queries', () => {
@@ -517,6 +519,173 @@ describe('Theme Queries', () => {
             const setting = await getDefaultTheme(db);
             expect(setting.type).toBe('site');
             expect(setting.dirName).toBe('theme-2');
+        });
+
+        test('should return default when stored JSON is invalid', async () => {
+            // Manually insert invalid JSON
+            await db
+                .insertInto('app_settings')
+                .values({
+                    key: 'default_theme',
+                    value: 'not-valid-json{',
+                    type: 'json',
+                })
+                .execute();
+
+            const setting = await getDefaultTheme(db);
+            expect(setting).toEqual({ type: 'base', dirName: 'base' });
+        });
+    });
+
+    describe('upsertBaseTheme', () => {
+        test('should insert new base theme when not exists', async () => {
+            await upsertBaseTheme(db, {
+                dir_name: 'new-base-theme',
+                display_name: 'New Base Theme',
+                description: 'A new theme',
+                version: '1.0.0',
+                author: 'Test Author',
+                license: 'MIT',
+            });
+
+            const theme = await findBaseThemeByDirName(db, 'new-base-theme');
+            expect(theme).toBeDefined();
+            expect(theme?.display_name).toBe('New Base Theme');
+            expect(theme?.description).toBe('A new theme');
+            expect(theme?.version).toBe('1.0.0');
+            expect(theme?.author).toBe('Test Author');
+            expect(theme?.license).toBe('MIT');
+            expect(theme?.is_builtin).toBe(1);
+            expect(theme?.is_enabled).toBe(1);
+        });
+
+        test('should update existing base theme metadata', async () => {
+            // First create a base theme
+            await upsertBaseTheme(db, {
+                dir_name: 'existing-theme',
+                display_name: 'Original Name',
+                version: '1.0.0',
+            });
+
+            // Then update it
+            await upsertBaseTheme(db, {
+                dir_name: 'existing-theme',
+                display_name: 'Updated Name',
+                version: '2.0.0',
+                description: 'New description',
+            });
+
+            const theme = await findBaseThemeByDirName(db, 'existing-theme');
+            expect(theme?.display_name).toBe('Updated Name');
+            expect(theme?.version).toBe('2.0.0');
+            expect(theme?.description).toBe('New description');
+        });
+
+        test('should preserve is_enabled when updating', async () => {
+            // Create a base theme
+            await upsertBaseTheme(db, {
+                dir_name: 'toggle-theme',
+                display_name: 'Toggle Theme',
+            });
+
+            // Disable it
+            const theme = await findBaseThemeByDirName(db, 'toggle-theme');
+            await toggleThemeEnabled(db, theme!.id, false);
+
+            // Upsert again (simulating resync)
+            await upsertBaseTheme(db, {
+                dir_name: 'toggle-theme',
+                display_name: 'Updated Toggle Theme',
+            });
+
+            // is_enabled should still be 0
+            const updated = await findBaseThemeByDirName(db, 'toggle-theme');
+            expect(updated?.is_enabled).toBe(0);
+            expect(updated?.display_name).toBe('Updated Toggle Theme');
+        });
+
+        test('should handle null optional fields', async () => {
+            await upsertBaseTheme(db, {
+                dir_name: 'minimal-theme',
+                display_name: 'Minimal Theme',
+            });
+
+            const theme = await findBaseThemeByDirName(db, 'minimal-theme');
+            expect(theme?.description).toBeNull();
+            expect(theme?.version).toBeNull();
+            expect(theme?.author).toBeNull();
+            expect(theme?.license).toBeNull();
+        });
+    });
+
+    describe('removeOrphanedBaseThemes', () => {
+        test('should not delete anything when empty array provided', async () => {
+            // Create a base theme
+            await upsertBaseTheme(db, {
+                dir_name: 'keep-theme',
+                display_name: 'Keep Theme',
+            });
+
+            // Call with empty array - should not delete
+            await removeOrphanedBaseThemes(db, []);
+
+            const theme = await findBaseThemeByDirName(db, 'keep-theme');
+            expect(theme).toBeDefined();
+        });
+
+        test('should delete orphaned base themes', async () => {
+            // Create multiple base themes
+            await upsertBaseTheme(db, {
+                dir_name: 'keep-1',
+                display_name: 'Keep 1',
+            });
+            await upsertBaseTheme(db, {
+                dir_name: 'keep-2',
+                display_name: 'Keep 2',
+            });
+            await upsertBaseTheme(db, {
+                dir_name: 'orphan-1',
+                display_name: 'Orphan 1',
+            });
+
+            // Remove orphans (only keep-1 and keep-2 exist in filesystem)
+            await removeOrphanedBaseThemes(db, ['keep-1', 'keep-2']);
+
+            // Verify kept themes still exist
+            const kept1 = await findBaseThemeByDirName(db, 'keep-1');
+            const kept2 = await findBaseThemeByDirName(db, 'keep-2');
+            expect(kept1).toBeDefined();
+            expect(kept2).toBeDefined();
+
+            // Verify orphan was deleted
+            const orphan = await findBaseThemeByDirName(db, 'orphan-1');
+            expect(orphan).toBeUndefined();
+        });
+
+        test('should only delete builtin themes, not site themes', async () => {
+            // Create a base theme
+            await upsertBaseTheme(db, {
+                dir_name: 'base-orphan',
+                display_name: 'Base Orphan',
+            });
+
+            // Create a site theme with same dir_name pattern
+            await createTheme(db, {
+                dir_name: 'site-theme',
+                display_name: 'Site Theme',
+                is_builtin: 0,
+            });
+
+            // Remove all base themes except 'other'
+            await removeOrphanedBaseThemes(db, ['other']);
+
+            // Base theme should be deleted
+            const baseTheme = await findBaseThemeByDirName(db, 'base-orphan');
+            expect(baseTheme).toBeUndefined();
+
+            // Site theme should still exist
+            const siteTheme = await findThemeByDirName(db, 'site-theme');
+            expect(siteTheme).toBeDefined();
         });
     });
 });
