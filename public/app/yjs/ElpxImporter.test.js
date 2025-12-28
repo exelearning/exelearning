@@ -480,6 +480,101 @@ describe('ElpxImporter', () => {
         'No content.xml found'
       );
     });
+
+    it('extracts nested ELP file when ZIP contains a single .elp file', async () => {
+      // Create nested ELP content
+      const nestedContent = new TextEncoder().encode(SAMPLE_CONTENT_XML);
+
+      // Mock fflate - first call returns ZIP with nested .elp, second call extracts it
+      let callCount = 0;
+      global.window.fflate = {
+        unzipSync: (data) => {
+          callCount++;
+          if (callCount === 1) {
+            // First call: outer ZIP containing .elp file (no content.xml at root)
+            return {
+              'project.elp': nestedContent,
+            };
+          } else {
+            // Second call: extracting the nested .elp file
+            return {
+              'content.xml': nestedContent,
+            };
+          }
+        },
+        strToU8: (str) => new TextEncoder().encode(str),
+        strFromU8: (data) => new TextDecoder().decode(data),
+      };
+
+      const mockFile = createMockFile();
+      const result = await importer.importFromFile(mockFile);
+
+      expect(result).toBeDefined();
+      expect(callCount).toBe(2); // unzipSync called twice (outer + nested)
+    });
+
+    it('extracts nested ELPX file when ZIP contains a single .elpx file', async () => {
+      const nestedContent = new TextEncoder().encode(SAMPLE_CONTENT_XML);
+
+      let callCount = 0;
+      global.window.fflate = {
+        unzipSync: () => {
+          callCount++;
+          if (callCount === 1) {
+            return {
+              'myproject.elpx': nestedContent,
+            };
+          } else {
+            return {
+              'content.xml': nestedContent,
+            };
+          }
+        },
+        strToU8: (str) => new TextEncoder().encode(str),
+        strFromU8: (data) => new TextDecoder().decode(data),
+      };
+
+      const mockFile = createMockFile();
+      const result = await importer.importFromFile(mockFile);
+
+      expect(result).toBeDefined();
+      expect(callCount).toBe(2);
+    });
+
+    it('throws error when ZIP contains multiple ELP files', async () => {
+      global.window.fflate = {
+        unzipSync: () => ({
+          'project1.elp': new Uint8Array([1, 2, 3]),
+          'project2.elp': new Uint8Array([4, 5, 6]),
+        }),
+        strToU8: (str) => new TextEncoder().encode(str),
+        strFromU8: (data) => new TextDecoder().decode(data),
+      };
+
+      const mockFile = createMockFile();
+
+      await expect(importer.importFromFile(mockFile)).rejects.toThrow(
+        'ZIP contains multiple ELP files'
+      );
+    });
+
+    it('ignores nested ELP files in subdirectories', async () => {
+      // ELP files in subdirectories should be ignored - only root level matters
+      global.window.fflate = {
+        unzipSync: () => ({
+          'content.xml': new TextEncoder().encode(SAMPLE_CONTENT_XML),
+          'subdir/nested.elp': new Uint8Array([1, 2, 3]), // Should be ignored
+        }),
+        strToU8: (str) => new TextEncoder().encode(str),
+        strFromU8: (data) => new TextDecoder().decode(data),
+      };
+
+      const mockFile = createMockFile();
+      const result = await importer.importFromFile(mockFile);
+
+      // Should succeed without trying to extract the nested ELP
+      expect(result).toBeDefined();
+    });
   });
 
   describe('progress callback phases', () => {
