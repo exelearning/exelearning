@@ -48,7 +48,8 @@ export default class modalTemplateSelection extends Modal {
             const locale =
                 eXeLearning.app.locale.lang || eXeLearning.config.locale;
             const response = await eXeLearning.app.api.getTemplates(locale);
-            this.templates = response || [];
+            // API returns { templates: [...], locale, supportedLocales }
+            this.templates = response?.templates || [];
         } catch (error) {
             console.error('Error fetching templates:', error);
             this.templates = [];

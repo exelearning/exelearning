@@ -377,10 +377,19 @@ export default class PreviewPanelManager {
         }
 
         // Build preview options
+        // Get theme URL from currently selected theme (handles admin vs builtin themes)
+        // Ensure it's an absolute URL (blob: contexts don't resolve relative URLs correctly)
+        const selectedTheme = eXeLearning.app?.themes?.selected;
+        let themeUrl = selectedTheme?.path || null;
+        if (themeUrl && !themeUrl.startsWith('http')) {
+            themeUrl = window.location.origin + themeUrl;
+        }
+
         const previewOptions = {
             baseUrl: window.location.origin,
             basePath: eXeLearning.app.config?.basePath || '',
             version: eXeLearning.app.config?.version || 'v1',
+            themeUrl: themeUrl, // Full absolute theme URL (e.g., 'http://localhost:8081/v1/site-files/themes/chiquito/')
         };
 
         // Generate preview

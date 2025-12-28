@@ -18,6 +18,8 @@ export interface Database {
     yjs_updates: YjsUpdatesTable;
     yjs_version_history: YjsVersionHistoryTable;
     app_settings: AppSettingsTable;
+    themes: ThemesTable;
+    templates: TemplatesTable;
     // Kysely internal migration tables
     kysely_migration: KyselyMigrationTable;
     kysely_migration_lock: KyselyMigrationLockTable;
@@ -125,6 +127,46 @@ interface AppSettingsTable {
     updated_by: number | null;
 }
 
+/**
+ * Unified themes table for both builtin (base) and site themes
+ * - is_builtin=1: Base themes from public/files/perm/themes/base/
+ * - is_builtin=0: Site themes uploaded by admin, stored in FILES_DIR/themes/site/
+ */
+interface ThemesTable {
+    id: Generated<number>;
+    dir_name: string;
+    display_name: string;
+    description: string | null;
+    version: string | null;
+    author: string | null;
+    license: string | null;
+    is_builtin: number; // SQLite boolean: 1=base theme, 0=site theme
+    is_enabled: number; // SQLite boolean = 0/1
+    is_default: number; // SQLite boolean = 0/1
+    sort_order: number;
+    storage_path: string | null; // NULL for builtin themes (use filesystem)
+    file_size: number | null;
+    uploaded_by: number | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+interface TemplatesTable {
+    id: Generated<number>;
+    filename: string;
+    display_name: string;
+    description: string | null;
+    locale: string;
+    is_enabled: number; // SQLite boolean = 0/1
+    sort_order: number;
+    storage_path: string;
+    file_size: number | null;
+    preview_image: string | null;
+    uploaded_by: number | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
 // Kysely internal migration tables
 interface KyselyMigrationTable {
     name: string;
@@ -176,6 +218,16 @@ export type NewYjsUpdate = Insertable<YjsUpdatesTable>;
 // Yjs Version History
 export type YjsVersionHistory = Selectable<YjsVersionHistoryTable>;
 export type NewYjsVersionHistory = Insertable<YjsVersionHistoryTable>;
+
+// Themes (unified: base and site themes)
+export type Theme = Selectable<ThemesTable>;
+export type NewTheme = Insertable<ThemesTable>;
+export type ThemeUpdate = Updateable<ThemesTable>;
+
+// Templates (project templates for new projects)
+export type Template = Selectable<TemplatesTable>;
+export type NewTemplate = Insertable<TemplatesTable>;
+export type TemplateUpdate = Updateable<TemplatesTable>;
 
 // ============================================================================
 // HELPER TYPES

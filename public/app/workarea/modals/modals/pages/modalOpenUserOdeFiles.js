@@ -1945,36 +1945,26 @@ export default class modalOpenUserOdeFiles extends Modal {
     }
 
     showModalLoadOdeTheme(response) {
+        // For projects opened from server (legacy flow), we don't have access
+        // to the original ELP file to extract theme files. Show info message
+        // and use default theme.
+        // Note: Theme import for local .elpx files is handled by YjsProjectBridge.
         let text = '';
         text +=
             '<p>' +
             _("You don't have the style used by this project.") +
             '</p>';
-        text += '<p>' + _('Do you want to install it?') + '</p>';
-        eXeLearning.app.modals.confirm.show({
-            title: _('Import style'),
+        text +=
+            '<p>' +
+            _('The default style will be used instead.') +
+            '</p>';
+        eXeLearning.app.modals.alert.show({
+            title: _('Style not available'),
             body: text,
             confirmExec: () => {
-                const params = {
-                    odeSessionId: eXeLearning.app.project.odeSession,
-                    themeDirname: response.theme,
-                };
-                eXeLearning.app.api
-                    .postOdeImportTheme(params)
-                    .then((responseTheme) => {
-                        if (
-                            responseTheme.responseMessage == 'OK' &&
-                            responseTheme.themes
-                        ) {
-                            eXeLearning.app.project.app.themes.list.loadThemes(
-                                responseTheme.themes.themes
-                            );
-                            eXeLearning.app.project.app.themes.selectTheme(
-                                response.theme,
-                                true
-                            );
-                        }
-                    });
+                // Select default theme
+                const defaultTheme = eXeLearning.config?.defaultTheme || 'base';
+                eXeLearning.app.themes.selectTheme(defaultTheme, false);
             },
         });
     }

@@ -127,6 +127,16 @@ describe('NavbarStyles', () => {
                 manager: { selected: { name: 'Base Theme 2' } },
                 downloadable: '0',
             },
+            four: {
+                id: 'site-1',
+                type: 'site',
+                title: 'Site Theme 1',
+                name: 'Site Theme 1',
+                description: 'Site managed theme',
+                path: '/site-files/themes/site-1/',
+                manager: { selected: { name: 'Base Theme 2' } },
+                downloadable: '1',
+            },
         };
 
         navbarStyles = new NavbarStyles({ navbar: document });
@@ -136,10 +146,11 @@ describe('NavbarStyles', () => {
         document.body.innerHTML = '';
     });
 
-    it('splits installed themes into base and user lists', () => {
+    it('splits installed themes into base (including site) and user lists', () => {
         expect(navbarStyles.baseThemes.map((t) => t.id)).toEqual([
             'base-1',
             'base-2',
+            'site-1',
         ]);
         expect(navbarStyles.userThemes.map((t) => t.id)).toEqual(['user-1']);
     });
@@ -247,7 +258,8 @@ describe('NavbarStyles', () => {
         navbarStyles.buildBaseListThemes();
 
         const cards = document.querySelectorAll('.theme-card');
-        expect(cards.length).toBe(2);
+        // 2 base + 1 site theme = 3 cards
+        expect(cards.length).toBe(3);
 
         const downloadItem = document.querySelector('.theme-action-download');
         downloadItem.dispatchEvent(new MouseEvent('click'));

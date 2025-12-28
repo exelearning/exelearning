@@ -67,7 +67,11 @@ export default class ApiCallBaseFunctions {
         try {
             return await this.doAjax(url, 'GET', data, waiting);
         } catch (err) {
-            return {};
+            // Return error response body if available (for 4xx/5xx errors)
+            if (err.responseJSON) {
+                return err.responseJSON;
+            }
+            return { responseMessage: 'ERROR', error: err.statusText || 'Request failed' };
         }
     }
 
@@ -81,7 +85,11 @@ export default class ApiCallBaseFunctions {
         try {
             return await this.doAjax(url, 'POST', data, waiting);
         } catch (err) {
-            return {};
+            // Return error response body if available (for 4xx/5xx errors)
+            if (err.responseJSON) {
+                return err.responseJSON;
+            }
+            return { responseMessage: 'ERROR', error: err.statusText || 'Request failed' };
         }
     }
 
@@ -95,7 +103,11 @@ export default class ApiCallBaseFunctions {
         try {
             return await this.doFileSendAjax(url, 'POST', data, waiting);
         } catch (err) {
-            return {};
+            // Return error response body if available (for 4xx/5xx errors)
+            if (err.responseJSON) {
+                return err.responseJSON;
+            }
+            return { responseMessage: 'ERROR', error: err.statusText || 'Request failed' };
         }
     }
 
@@ -111,7 +123,11 @@ export default class ApiCallBaseFunctions {
         try {
             return await this.doJsonAjax(url, 'POST', data, waiting);
         } catch (err) {
-            return {};
+            // Return error response body if available (for 4xx/5xx errors)
+            if (err.responseJSON) {
+                return err.responseJSON;
+            }
+            return { responseMessage: 'ERROR', error: err.statusText || 'Request failed' };
         }
     }
 
@@ -125,7 +141,11 @@ export default class ApiCallBaseFunctions {
         try {
             return await this.doAjax(url, 'PUT', data, waiting);
         } catch (err) {
-            return {};
+            // Return error response body if available (for 4xx/5xx errors)
+            if (err.responseJSON) {
+                return err.responseJSON;
+            }
+            return { responseMessage: 'ERROR', error: err.statusText || 'Request failed' };
         }
     }
 
@@ -139,7 +159,11 @@ export default class ApiCallBaseFunctions {
         try {
             return await this.doAjax(url, 'DELETE', data, waiting);
         } catch (err) {
-            return {};
+            // Return error response body if available (for 4xx/5xx errors)
+            if (err.responseJSON) {
+                return err.responseJSON;
+            }
+            return { responseMessage: 'ERROR', error: err.statusText || 'Request failed' };
         }
     }
 
@@ -154,7 +178,11 @@ export default class ApiCallBaseFunctions {
         try {
             return await this.doAjax(url, method, data, waiting);
         } catch (err) {
-            return {};
+            // Return error response body if available (for 4xx/5xx errors)
+            if (err.responseJSON) {
+                return err.responseJSON;
+            }
+            return { responseMessage: 'ERROR', error: err.statusText || 'Request failed' };
         }
     }
 

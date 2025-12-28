@@ -36,7 +36,8 @@ export default class NavbarFile {
             const theme = this.themes[key];
             if (theme.type === 'user') {
                 this.userThemes.push(theme);
-            } else if (theme.type === 'base') {
+            } else if (theme.type === 'base' || theme.type === 'site' || theme.type === 'admin') {
+                // Include base, site, and admin (legacy) themes in the System tab
                 this.baseThemes.push(theme);
             }
         }

@@ -140,3 +140,58 @@ export {
     getSystemStats,
 } from './admin';
 export type { AppSetting } from './admin';
+
+// Theme queries (consolidated - base and site themes)
+export * as themeQueries from './themes';
+export {
+    // Read queries - all themes
+    findThemeById,
+    findThemeByDirName,
+    getAllThemes,
+    getEnabledThemes,
+    countThemes,
+    themeDirNameExists,
+    // Read queries - site themes (is_builtin=0)
+    getSiteThemes,
+    getEnabledSiteThemes,
+    countSiteThemes,
+    // Read queries - base themes (is_builtin=1)
+    getBaseThemes,
+    getEnabledBaseThemes,
+    findBaseThemeByDirName,
+    // Write queries
+    createTheme,
+    updateTheme,
+    deleteTheme,
+    // Default theme (from themes table)
+    getDefaultThemeRecord,
+    setDefaultThemeById,
+    clearDefaultTheme,
+    // Toggle enabled
+    toggleThemeEnabled,
+    // Sort order
+    getNextSiteThemeSortOrder,
+    // Default theme settings (from app_settings)
+    getDefaultTheme,
+    setDefaultTheme,
+} from './themes';
+export type { ThemeType, DefaultThemeSetting } from './themes';
+
+// Template queries (project templates for new projects)
+export * as templateQueries from './templates';
+export {
+    findTemplateById,
+    findTemplateByFilenameAndLocale,
+    getAllTemplates,
+    getTemplatesByLocale,
+    getEnabledTemplatesByLocale,
+    countTemplates,
+    countTemplatesByLocale,
+    getDistinctLocales as getTemplateDistinctLocales,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    toggleTemplateEnabled,
+    templateFilenameExists,
+    getNextTemplateSortOrder,
+} from './templates';

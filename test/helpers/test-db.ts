@@ -6,17 +6,18 @@
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import type { Database } from '../../src/db/types';
-import { up } from '../../src/db/migrations/001_initial';
+import { migrateToLatest } from '../../src/db/migrations';
 
 /**
  * Create a fresh in-memory test database
  * Each call creates a new isolated database instance
+ * Runs ALL migrations (001 through latest)
  */
 export async function createTestDb(): Promise<Kysely<Database>> {
     const db = new Kysely<Database>({
         dialect: new BunSqliteDialect({ url: ':memory:' }),
     });
-    await up(db);
+    await migrateToLatest(db);
     return db;
 }
 
@@ -33,6 +34,11 @@ export async function cleanTestDb(db: Kysely<Database>): Promise<void> {
     await db.deleteFrom('projects').execute();
     await db.deleteFrom('users_preferences').execute();
     await db.deleteFrom('users').execute();
+    // Clean templates table (migration 004)
+    await db.deleteFrom('templates').execute();
+    // Clean themes table (migration 006 consolidation)
+    await db.deleteFrom('themes').execute();
+    await db.deleteFrom('app_settings').execute();
 }
 
 /**

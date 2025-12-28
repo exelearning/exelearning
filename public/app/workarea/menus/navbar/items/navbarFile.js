@@ -155,6 +155,9 @@ export default class NavbarFile {
         this.setImportXmlPropertiesEvent();
         this.setImportElpEvent();
         this.setLeftPanelsTogglerEvents();
+
+        // Check for available templates and show button if any exist
+        this.checkAndShowNewFromTemplateButton();
     }
 
     /**************************************************************************************
@@ -181,6 +184,41 @@ export default class NavbarFile {
         this.newFromTemplateButton.addEventListener('click', () => {
             this.newFromTemplateEvent();
         });
+    }
+
+    /**
+     * Check if there are templates available for the current locale
+     * and show the "New from Template" button if so
+     */
+    async checkAndShowNewFromTemplateButton() {
+        try {
+            // Get current locale from eXeLearning config or default to 'en'
+            const locale = eXeLearning?.config?.locale || 'en';
+            const basePath = eXeLearning?.config?.basePath || '';
+
+            const response = await fetch(`${basePath}/api/templates?locale=${locale}`, {
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                Logger.debug('[NavbarFile] Templates API not available');
+                return;
+            }
+
+            const data = await response.json();
+
+            // Show button if there are any templates (builtin or admin)
+            if (data.templates && data.templates.length > 0) {
+                const li = this.newFromTemplateButton?.parentElement;
+                if (li) {
+                    li.classList.remove('d-none');
+                    Logger.debug(`[NavbarFile] Showing "New from Template" - ${data.templates.length} templates available for ${locale}`);
+                }
+            }
+        } catch (error) {
+            // Silently ignore - button stays hidden
+            Logger.debug('[NavbarFile] Could not check templates:', error.message);
+        }
     }
 
     /**

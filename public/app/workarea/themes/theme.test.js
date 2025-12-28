@@ -216,6 +216,22 @@ describe('Theme', () => {
 
       expect(result).toBe('/api/resources?resource=/perm/themes/modern/base.css');
     });
+
+    it('should return site theme paths directly without resource service', () => {
+      const path = '/v1.0.0/site-files/themes/custom-theme/style.css';
+      const result = theme.getResourceServicePath(path);
+
+      // Site themes are served directly, not through the resource service
+      expect(result).toBe('/v1.0.0/site-files/themes/custom-theme/style.css');
+    });
+
+    it('should return admin theme paths directly for backwards compatibility', () => {
+      const path = '/v1.0.0/admin-files/themes/custom-theme/style.css';
+      const result = theme.getResourceServicePath(path);
+
+      // Admin themes path still works for backwards compatibility
+      expect(result).toBe('/v1.0.0/admin-files/themes/custom-theme/style.css');
+    });
   });
 
   describe('loadStyleDynamically', () => {

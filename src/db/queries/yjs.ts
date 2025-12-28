@@ -172,7 +172,7 @@ export async function getLatestVersion(db: Kysely<Database>, projectId: number):
 export async function countUpdates(db: Kysely<Database>, projectId: number): Promise<number> {
     const result = await db
         .selectFrom('yjs_updates')
-        .select(db.fn.count<number>('id').as('count'))
+        .select(eb => eb.fn.count<number>('id').as('count'))
         .where('project_id', '=', projectId)
         .executeTakeFirst();
     return result?.count ?? 0;
@@ -461,7 +461,7 @@ export async function getVersionById(
 export async function countVersions(db: Kysely<Database>, projectId: number): Promise<number> {
     const result = await db
         .selectFrom('yjs_version_history')
-        .select(db.fn.count<number>('id').as('count'))
+        .select(eb => eb.fn.count<number>('id').as('count'))
         .where('project_id', '=', projectId)
         .executeTakeFirst();
     return result?.count ?? 0;

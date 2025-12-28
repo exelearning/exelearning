@@ -8,6 +8,9 @@ import { Kysely, Migrator, sql, type Migration, type MigrationProvider } from 'k
 import * as migration001 from './001_initial';
 import * as migration002 from './002_app_settings';
 import * as migration003 from './003_project_status';
+import * as migration004 from './004_admin_themes_templates';
+import * as migration005 from './005_builtin_theme_settings';
+import * as migration006 from './006_consolidate_themes';
 
 // ============================================================================
 // MIGRATION REGISTRY
@@ -17,6 +20,9 @@ const migrations: Record<string, Migration> = {
     '001_initial': migration001,
     '002_app_settings': migration002,
     '003_project_status': migration003,
+    '004_admin_themes_templates': migration004,
+    '005_builtin_theme_settings': migration005,
+    '006_consolidate_themes': migration006,
 };
 
 // ============================================================================

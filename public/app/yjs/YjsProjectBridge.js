@@ -1824,7 +1824,9 @@ class YjsProjectBridge {
     }
 
     // Check and handle theme from imported package
-    if (stats && stats.theme) {
+    // Only import theme when opening a file (clearExisting=true), not when importing into existing project
+    const clearExisting = options.clearExisting !== false; // default is true
+    if (stats && stats.theme && clearExisting) {
       await this._checkAndImportTheme(stats.theme, file);
     }
 
@@ -1833,6 +1835,14 @@ class YjsProjectBridge {
 
   /**
    * Check if imported theme is installed and offer to import it
+   *
+   * SECURITY NOTE: This feature allows users to import custom themes from ELP files.
+   * Themes can contain JavaScript code that will be executed in the exported content.
+   * This is controlled by the ONLINE_THEMES_INSTALL setting (config.userStyles).
+   * When disabled, themes will NOT be imported from ELP files - only the default
+   * theme will be used. Administrators should be aware that enabling this feature
+   * allows users to run custom JavaScript in exported content.
+   *
    * @param {string} themeName - Name of the theme from the package
    * @param {File} file - The original .elpx file to check for /theme/ folder
    * @private
@@ -1841,6 +1851,17 @@ class YjsProjectBridge {
     if (!themeName) return;
 
     Logger.log(`[YjsProjectBridge] Checking theme: ${themeName}`);
+
+    // Check if theme import is allowed (ONLINE_THEMES_INSTALL setting)
+    // In offline installations (Electron/desktop), always allow theme import
+    const isOfflineInstallation = eXeLearning.config?.isOfflineInstallation || false;
+    const userStylesEnabled = eXeLearning.config?.userStyles === 1 || eXeLearning.config?.userStyles === true;
+
+    if (!isOfflineInstallation && !userStylesEnabled) {
+      Logger.log('[YjsProjectBridge] Theme import disabled (ONLINE_THEMES_INSTALL=0), using default theme');
+      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+      return;
+    }
 
     // Check if theme is installed
     const installedThemes = eXeLearning.app.themes?.list?.installed || {};
@@ -1867,6 +1888,10 @@ class YjsProjectBridge {
         return;
       }
 
+      // Store file reference for later extraction
+      this._pendingThemeFile = file;
+      this._pendingThemeZip = zip;
+
       // Show confirmation modal to import theme
       this._showThemeImportModal(themeName);
     } catch (error) {
@@ -1890,22 +1915,23 @@ class YjsProjectBridge {
       body: text,
       confirmExec: async () => {
         try {
-          // Get session ID from project
-          const sessionId = this.documentManager?.projectId ||
-                           eXeLearning.app.project?.odeSession;
-
-          if (!sessionId) {
-            console.error('[YjsProjectBridge] No session ID available for theme import');
-            return;
+          // Package theme files from the stored ZIP
+          const themeZip = await this._packageThemeFromZip(themeName);
+          if (!themeZip) {
+            throw new Error('Could not extract theme files from package');
           }
 
           const params = {
-            odeSessionId: sessionId,
             themeDirname: themeName,
+            themeZip: themeZip,
           };
 
-          Logger.log('[YjsProjectBridge] Importing theme:', params);
+          Logger.log('[YjsProjectBridge] Importing theme:', themeName);
           const response = await eXeLearning.app.api.postOdeImportTheme(params);
+
+          // Clean up stored references
+          this._pendingThemeFile = null;
+          this._pendingThemeZip = null;
 
           if (response.responseMessage === 'OK' && response.themes) {
             // Reload theme list and select imported theme
@@ -1913,14 +1939,17 @@ class YjsProjectBridge {
             await eXeLearning.app.themes.selectTheme(themeName, true);
             Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
           } else {
-            console.error('[YjsProjectBridge] Theme import failed:', response.responseMessage);
+            console.error('[YjsProjectBridge] Theme import failed:', response.responseMessage || response.error);
             eXeLearning.app.modals.alert.show({
               title: _('Error'),
-              body: response.responseMessage || _('Failed to import style'),
+              body: response.error || response.responseMessage || _('Failed to import style'),
             });
           }
         } catch (error) {
           console.error('[YjsProjectBridge] Theme import error:', error);
+          // Clean up stored references
+          this._pendingThemeFile = null;
+          this._pendingThemeZip = null;
           eXeLearning.app.modals.alert.show({
             title: _('Error'),
             body: _('Failed to import style'),
@@ -1928,10 +1957,61 @@ class YjsProjectBridge {
         }
       },
       cancelExec: () => {
+        // Clean up stored references
+        this._pendingThemeFile = null;
+        this._pendingThemeZip = null;
         // Use default theme
         eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
       },
     });
+  }
+
+  /**
+   * Package theme files from stored ZIP into a new ZIP blob
+   * @param {string} themeName - Name of the theme
+   * @returns {Promise<Blob|null>} Theme ZIP blob or null if failed
+   * @private
+   */
+  async _packageThemeFromZip(themeName) {
+    try {
+      const zip = this._pendingThemeZip;
+      if (!zip) {
+        console.error('[YjsProjectBridge] No pending theme ZIP available');
+        return null;
+      }
+
+      const fflateLib = window.fflate;
+      if (!fflateLib) {
+        console.error('[YjsProjectBridge] fflate library not loaded');
+        return null;
+      }
+
+      // Extract all files from theme/ folder
+      const themeFiles = {};
+      for (const [filePath, fileData] of Object.entries(zip)) {
+        if (filePath.startsWith('theme/') && !filePath.endsWith('/')) {
+          // Remove 'theme/' prefix to get relative path
+          const relativePath = filePath.substring(6); // 'theme/'.length = 6
+          if (relativePath) {
+            themeFiles[relativePath] = fileData;
+          }
+        }
+      }
+
+      if (Object.keys(themeFiles).length === 0) {
+        console.error('[YjsProjectBridge] No theme files found in package');
+        return null;
+      }
+
+      Logger.log(`[YjsProjectBridge] Packaging ${Object.keys(themeFiles).length} theme files`);
+
+      // Create ZIP
+      const zipped = fflateLib.zipSync(themeFiles);
+      return new Blob([zipped], { type: 'application/zip' });
+    } catch (error) {
+      console.error('[YjsProjectBridge] Error packaging theme:', error);
+      return null;
+    }
   }
 
   /**

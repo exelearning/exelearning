@@ -181,6 +181,12 @@ export default class Theme {
      * @returns {String}
      */
     getResourceServicePath(path) {
+        // Site themes are served directly from /site-files/themes/
+        // No need to go through the idevices download service
+        if (path.includes('/site-files/') || path.includes('/admin-files/')) {
+            return path;
+        }
+
         let pathServiceResources =
             this.manager.app.api.endpoints.api_idevices_download_file_resources
                 .path;

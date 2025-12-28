@@ -35,6 +35,8 @@ import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import { getSettingString } from '../services/app-settings';
+import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+import { getAppVersion } from '../utils/version';
 import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
@@ -522,6 +524,37 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
 
                 console.log(`[Project] Created new project ${projectRecord.uuid} with title "${title}"`);
 
+                // Get global default theme (can be base or site)
+                let defaultTheme: { dirName: string; displayName: string; url: string; type: 'base' | 'site' } | null =
+                    null;
+                try {
+                    const globalDefault = await getDefaultThemeDefault(db);
+                    const version = getAppVersion();
+
+                    if (globalDefault.type === 'site') {
+                        // Get site theme details
+                        const siteTheme = await findThemeByDirName(db, globalDefault.dirName);
+                        if (siteTheme?.is_enabled) {
+                            defaultTheme = {
+                                dirName: siteTheme.dir_name,
+                                displayName: siteTheme.display_name,
+                                url: `/${version}/site-files/themes/${siteTheme.dir_name}`,
+                                type: 'site',
+                            };
+                        }
+                    } else {
+                        // Base theme - use base path
+                        defaultTheme = {
+                            dirName: globalDefault.dirName,
+                            displayName: globalDefault.dirName, // Will be resolved by frontend
+                            url: `/files/perm/themes/base/${globalDefault.dirName}`,
+                            type: 'base',
+                        };
+                    }
+                } catch {
+                    // Silently ignore if tables don't exist yet - defaults to 'base' theme on frontend
+                }
+
                 return {
                     success: true,
                     uuid: session.sessionId,
@@ -529,6 +562,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     projectId: projectRecord.id,
                     projectUuid: projectRecord.uuid,
                     title,
+                    defaultTheme, // Include default theme for new projects
                     message: 'Project created successfully',
                 };
             })
