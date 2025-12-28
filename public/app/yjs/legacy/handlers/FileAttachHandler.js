@@ -11,8 +11,15 @@
  *
  * Based on Symfony OdeOldXmlFileAttachIdevice.php:
  * - Converts to 'text' iDevice (not download-source-file)
+ * - Extracts introHTML (instructions) and shows it before file links
  * - Creates HTML with links to attached files
  * - Links open in new tab (target="_blank")
+ *
+ * XML Structure for FileAttachIdeviceInc:
+ * - introHTML: TextAreaField with content_w_resourcePaths (instructions text)
+ * - fileAttachmentFields: list of FileField instances
+ *   - fileDescription: TextField with content (description for link text)
+ *   - fileResource: Resource with _storageName (filename in ZIP)
  *
  * Requires: BaseLegacyHandler.js to be loaded first
  */
@@ -34,26 +41,62 @@ class FileAttachHandler extends BaseLegacyHandler {
   }
 
   /**
-   * Extract HTML content with file links
+   * Extract HTML content with instructions (introHTML) + file links
    *
    * Matches Symfony OdeOldXmlFileAttachIdevice.php format:
-   * <p><a href="path" target="_blank">description</a></p>
+   * - First: introHTML content (instructions)
+   * - Then: <p><a href="path" target="_blank">description</a></p> for each file
    */
   extractHtmlView(dict) {
     if (!dict) return '';
 
-    // Extract files and generate links (Symfony format)
+    const parts = [];
+
+    // 1. Extract introHTML (instructions) - appears before file links
+    const introHtml = this.extractIntroHtml(dict);
+    if (introHtml) {
+      parts.push(introHtml);
+    }
+
+    // 2. Extract files and generate links (Symfony format)
     const files = this.extractFiles(dict);
-    if (files.length === 0) return '';
+    if (files.length > 0) {
+      // Generate HTML links with download attribute for attached files
+      // The download attribute forces browser to download instead of trying to display
+      const fileLinks = files.map(file => {
+        // Use description as link text, fallback to filename
+        const linkText = file.description || file.displayName || file.filename;
+        // Add download attribute with filename to force download
+        return `<p><a href="${file.path}" target="_blank" download="${file.filename}">${linkText}</a></p>`;
+      }).join('');
+      parts.push(fileLinks);
+    }
 
-    // Generate HTML links like Symfony does
-    const fileLinks = files.map(file => {
-      // Use description as link text, fallback to filename
-      const linkText = file.description || file.displayName || file.filename;
-      return `<p><a href="${file.path}" target="_blank">${linkText}</a></p>`;
-    }).join('');
+    return parts.join('');
+  }
 
-    return fileLinks;
+  /**
+   * Extract introHTML content (instructions text)
+   *
+   * Legacy structure:
+   * <string role="key" value="introHTML"/>
+   * <instance class="exe.engine.field.TextAreaField">
+   *   <dictionary>
+   *     <string role="key" value="content_w_resourcePaths"/>
+   *     <unicode value="<p>estas son las instrucciones</p>"/>
+   *   </dictionary>
+   * </instance>
+   *
+   * @param {Element} dict - Dictionary element of the iDevice
+   * @returns {string} HTML content from introHTML
+   */
+  extractIntroHtml(dict) {
+    // Look for introHTML instance
+    const introInstance = this.findDictInstance(dict, 'introHTML');
+    if (!introInstance) return '';
+
+    // Extract content from TextAreaField
+    return this.extractTextAreaFieldContent(introInstance);
   }
 
   /**
@@ -72,9 +115,9 @@ class FileAttachHandler extends BaseLegacyHandler {
   /**
    * Extract files from the legacy format
    *
-   * Structure:
-   * - list of FileField instances
-   * - Each has: _fileResource, _displayName, _description
+   * FileAttachIdeviceInc structure:
+   * - fileAttachmentFields: list of FileField instances
+   * - Each FileField has: fileDescription (TextField), fileResource (Resource)
    *
    * @param {Element} dict - Dictionary element of the FileAttachIdevice
    * @returns {Array} Array of file objects
@@ -82,22 +125,25 @@ class FileAttachHandler extends BaseLegacyHandler {
   extractFiles(dict) {
     const files = [];
 
-    // Find the list containing FileField instances
-    const lists = dict.querySelectorAll(':scope > list');
-    let filesList = null;
+    // Strategy 1: Look for fileAttachmentFields key (FileAttachIdeviceInc format)
+    let filesList = this.findDictList(dict, 'fileAttachmentFields');
 
-    for (const list of lists) {
-      const firstInst = list.querySelector(':scope > instance');
-      if (firstInst) {
-        const className = firstInst.getAttribute('class') || '';
-        if (className.includes('FileField') || className.includes('AttachmentField')) {
-          filesList = list;
-          break;
+    // Strategy 2: Look for direct list containing FileField instances
+    if (!filesList) {
+      const lists = dict.querySelectorAll(':scope > list');
+      for (const list of lists) {
+        const firstInst = list.querySelector(':scope > instance');
+        if (firstInst) {
+          const className = firstInst.getAttribute('class') || '';
+          if (className.includes('FileField') || className.includes('AttachmentField')) {
+            filesList = list;
+            break;
+          }
         }
       }
     }
 
-    // Alternative: files may be in a "files" or "_files" key
+    // Strategy 3: Alternative key names
     if (!filesList) {
       filesList = this.findDictList(dict, 'files') ||
                   this.findDictList(dict, '_files') ||
@@ -132,12 +178,14 @@ class FileAttachHandler extends BaseLegacyHandler {
   /**
    * Extract file info from a dictionary
    *
-   * Based on Symfony's extraction of:
-   * - fileResource -> _storageName (filename)
-   * - fileDescription -> content (description for link text)
+   * FileAttachIdeviceInc FileField structure:
+   * - fileResource: Resource with _storageName (filename in ZIP)
+   * - fileDescription: TextField with content (description for link text)
+   *
+   * Based on Symfony OdeOldXmlFileAttachIdevice.php extraction
    */
   extractFileFromDict(fDict) {
-    // Extract file resource path (Symfony: fileResource/_storageName)
+    // Extract file resource path (fileResource/_storageName)
     const filename = this.extractResourcePath(fDict, 'fileResource') ||
                     this.extractResourcePath(fDict, '_fileResource') ||
                     this.extractResourcePath(fDict, '_resource') ||
@@ -146,17 +194,27 @@ class FileAttachHandler extends BaseLegacyHandler {
 
     if (!filename) return null;
 
-    // Extract description from fileDescription TextAreaField (Symfony format)
+    // Extract description from fileDescription TextField
+    // FileAttachIdeviceInc structure:
+    // <string role="key" value="fileDescription"/>
+    // <instance class="exe.engine.field.TextField">
+    //   <dictionary>
+    //     <string role="key" value="content"/>
+    //     <unicode value="Description text"/>
+    //   </dictionary>
+    // </instance>
     let description = '';
     const descInst = this.findDictInstance(fDict, 'fileDescription');
     if (descInst) {
       const descDict = descInst.querySelector(':scope > dictionary');
       if (descDict) {
+        // TextField stores text in 'content' field
         description = this.findDictStringValue(descDict, 'content') ||
                      this.findDictStringValue(descDict, '_content') || '';
       }
     }
-    // Fallback to direct description field
+
+    // Fallback to direct description field (older formats)
     if (!description) {
       description = this.findDictStringValue(fDict, '_description') ||
                    this.findDictStringValue(fDict, 'description') || '';
@@ -173,8 +231,8 @@ class FileAttachHandler extends BaseLegacyHandler {
                        this.findDictStringValue(fDict, '_label') ||
                        this.findDictStringValue(fDict, 'label') || filename;
 
-    // Build path (will be updated by resource resolver)
-    // Symfony uses: sessionPath + ideviceId + "/" + filename
+    // Build path - uses resources/ prefix for asset path replacement
+    // ElpxImporter.importLegacyFormat replaces resources/filename with asset://uuid/filename
     const path = `resources/${filename}`;
 
     return {

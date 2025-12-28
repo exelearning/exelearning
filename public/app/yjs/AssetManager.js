@@ -871,15 +871,22 @@ class AssetManager {
     const assetMap = new Map();
     const assetFiles = [];
 
-    // Find all image/media files (zip is an object with path -> Uint8Array)
+    // Find all asset files (zip is an object with path -> Uint8Array)
     for (const [relativePath, fileData] of Object.entries(zip)) {
       // Skip directories (they end with /)
       if (relativePath.endsWith('/')) continue;
       if (relativePath.startsWith('__MACOSX')) continue;
       if (relativePath.endsWith('.xml')) continue;
 
+      // Include files from resources/ folder (attached files from FileAttachIdevice, etc.)
+      // These can be ANY file type (.elp, .txt, custom extensions, etc.)
+      const isResourceFile = relativePath.startsWith('resources/') ||
+                            relativePath.includes('/resources/');
+
       // Include images, video, audio, documents, 3D models and common media
-      if (/\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff?|mp4|m4v|webm|mov|avi|mkv|mp3|m4a|ogg|wav|aac|flac|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|gltf|glb|stl)$/i.test(relativePath)) {
+      const isMediaFile = /\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff?|mp4|m4v|webm|mov|avi|mkv|mp3|m4a|ogg|wav|aac|flac|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|gltf|glb|stl|elp|elpx|txt|html?|css|js|json|csv|tsv|rtf|odt|ods|odp|epub|mobi)$/i.test(relativePath);
+
+      if (isResourceFile || isMediaFile) {
         assetFiles.push({ path: relativePath, fileData });
       }
     }
@@ -1226,7 +1233,24 @@ class AssetManager {
       stl: 'model/stl',
       // Code
       css: 'text/css',
-      js: 'application/javascript'
+      js: 'application/javascript',
+      // eXeLearning
+      elp: 'application/zip',
+      elpx: 'application/zip',
+      // Text
+      txt: 'text/plain',
+      html: 'text/html',
+      htm: 'text/html',
+      json: 'application/json',
+      csv: 'text/csv',
+      rtf: 'application/rtf',
+      // Open Document
+      odt: 'application/vnd.oasis.opendocument.text',
+      ods: 'application/vnd.oasis.opendocument.spreadsheet',
+      odp: 'application/vnd.oasis.opendocument.presentation',
+      // eBooks
+      epub: 'application/epub+zip',
+      mobi: 'application/x-mobipocket-ebook'
     };
     return mimeTypes[ext] || 'application/octet-stream';
   }
