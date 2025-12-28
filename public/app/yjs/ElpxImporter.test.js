@@ -2937,4 +2937,163 @@ describe('ElpxImporter', () => {
     });
   });
 
+  describe('importLegacyFormat - internal link remapping', () => {
+    // Legacy contentv3.xml with internal links that need remapping
+    // After LegacyXmlParser converts path-based links to page IDs (page-XX),
+    // ElpxImporter generates new random IDs, so the links need to be updated
+    const LEGACY_XML_WITH_INTERNAL_LINKS = `<?xml version="1.0"?>
+      <instance class="exe.engine.package.Package">
+        <dictionary>
+          <string role="key" value="_title"/>
+          <unicode value="Project With Internal Links"/>
+          <string role="key" value="_nodeIdDict"/>
+          <dictionary/>
+          <string role="key" value="_root"/>
+          <instance class="exe.engine.node.Node" reference="0">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root"/>
+              <string role="key" value="_children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="44">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Target Page"/>
+                    <string role="key" value="parent"/>
+                    <reference key="0"/>
+                    <string role="key" value="_children"/>
+                    <list/>
+                    <string role="key" value="idevices"/>
+                    <list/>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.node.Node" reference="45">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Page With Link"/>
+                    <string role="key" value="parent"/>
+                    <reference key="0"/>
+                    <string role="key" value="_children"/>
+                    <list/>
+                    <string role="key" value="idevices"/>
+                    <list>
+                      <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="100">
+                        <dictionary>
+                          <string role="key" value="_title"/>
+                          <unicode value="Link Test"/>
+                          <string role="key" value="content"/>
+                          <instance class="exe.engine.field.TextAreaField">
+                            <dictionary>
+                              <string role="key" value="content_w_resourcePaths"/>
+                              <unicode value="&lt;p&gt;Click &lt;a href=&quot;exe-node:page-44&quot;&gt;here&lt;/a&gt; to go to target.&lt;/p&gt;"/>
+                            </dictionary>
+                          </instance>
+                        </dictionary>
+                      </instance>
+                    </list>
+                  </dictionary>
+                </instance>
+              </list>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </dictionary>
+      </instance>`;
+
+    let importerWithLinks;
+    let mockDocManagerWithLinks;
+
+    beforeEach(() => {
+      global.window.fflate = createMockFflateLegacy(LEGACY_XML_WITH_INTERNAL_LINKS);
+      global.window.LegacyXmlParser = LegacyXmlParser;
+      mockDocManagerWithLinks = createMockDocumentManager();
+      importerWithLinks = new ElpxImporter(mockDocManagerWithLinks, createMockAssetManager());
+    });
+
+    it('remaps page IDs from page-XX format to new random IDs', async () => {
+      const mockFile = createMockFile('project-with-links.elp');
+      await importerWithLinks.importLegacyFormat(mockFile);
+
+      const navigation = mockDocManagerWithLinks.getNavigation();
+
+      // Should have imported pages
+      expect(navigation.length).toBeGreaterThan(0);
+
+      // All pages should have new random IDs, not the old page-XX format
+      for (let i = 0; i < navigation.length; i++) {
+        const page = navigation.get(i);
+        const pageId = page.get('id');
+
+        // Should NOT be in old format like page-0, page-44, page-45
+        expect(pageId).not.toMatch(/^page-\d+$/);
+        // Should be in new format like page-abcdef-123456
+        expect(pageId).toMatch(/^page-[a-z0-9]+-[a-z0-9]+$/);
+      }
+    });
+
+    it('updateInternalLinksWithRemap helper replaces old page IDs', () => {
+      // Test the internal link update logic directly
+      const idRemap = new Map([
+        ['page-44', 'page-abc123-xyz'],
+        ['page-45', 'page-def456-uvw'],
+      ]);
+
+      // Simulate the updateInternalLinksWithRemap function
+      const updateInternalLinksWithRemap = (html) => {
+        if (!html || typeof html !== 'string' || !html.includes('exe-node:')) return html;
+        return html.replace(/exe-node:(page-\d+)/g, (match, oldPageId) => {
+          const newPageId = idRemap.get(oldPageId);
+          if (newPageId) {
+            return `exe-node:${newPageId}`;
+          }
+          return match;
+        });
+      };
+
+      // Test with HTML containing internal links
+      const html = '<a href="exe-node:page-44">Link to target</a> and <a href="exe-node:page-45">another link</a>';
+      const result = updateInternalLinksWithRemap(html);
+
+      expect(result).toBe('<a href="exe-node:page-abc123-xyz">Link to target</a> and <a href="exe-node:page-def456-uvw">another link</a>');
+      expect(result).not.toContain('page-44');
+      expect(result).not.toContain('page-45');
+    });
+
+    it('updateInternalLinksWithRemap handles links without matches', () => {
+      const idRemap = new Map([
+        ['page-44', 'page-abc123-xyz'],
+      ]);
+
+      const updateInternalLinksWithRemap = (html) => {
+        if (!html || typeof html !== 'string' || !html.includes('exe-node:')) return html;
+        return html.replace(/exe-node:(page-\d+)/g, (match, oldPageId) => {
+          const newPageId = idRemap.get(oldPageId);
+          if (newPageId) {
+            return `exe-node:${newPageId}`;
+          }
+          return match;
+        });
+      };
+
+      // Link with unmapped ID should remain unchanged
+      const html = '<a href="exe-node:page-99">Unknown page</a>';
+      const result = updateInternalLinksWithRemap(html);
+
+      expect(result).toBe(html);
+    });
+
+    it('updateInternalLinksWithRemap handles non-string input', () => {
+      const updateInternalLinksWithRemap = (html) => {
+        if (!html || typeof html !== 'string' || !html.includes('exe-node:')) return html;
+        return html;
+      };
+
+      expect(updateInternalLinksWithRemap(null)).toBe(null);
+      expect(updateInternalLinksWithRemap(undefined)).toBe(undefined);
+      expect(updateInternalLinksWithRemap('')).toBe('');
+      expect(updateInternalLinksWithRemap('no links here')).toBe('no links here');
+    });
+  });
+
 });

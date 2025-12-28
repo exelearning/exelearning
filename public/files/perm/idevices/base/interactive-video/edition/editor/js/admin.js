@@ -523,7 +523,11 @@ var iAdmin = {
                     this.video.url = parent.document.getElementById(
                         'interactiveVideoFile'
                     ).value;
-                    if (this.video.url.indexOf('files/tmp') != 0) {
+                    // Accept both legacy files/tmp paths and new asset:// URLs
+                    if (
+                        this.video.url.indexOf('files/tmp') != 0 &&
+                        this.video.url.indexOf('asset://') != 0
+                    ) {
                         this.appError(
                             $i18n.Type +
                                 ': ' +

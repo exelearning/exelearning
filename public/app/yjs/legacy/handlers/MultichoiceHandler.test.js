@@ -45,6 +45,16 @@ describe('MultichoiceHandler', () => {
       expect(handler.canHandle('exe.engine.freetextidevice.FreeTextIdevice')).toBe(false);
       expect(handler.canHandle('exe.engine.truefalseidevice.TrueFalseIdevice')).toBe(false);
     });
+
+    it('sets _isMultiSelect to false for MultichoiceIdevice', () => {
+      handler.canHandle('exe.engine.multichoiceidevice.MultichoiceIdevice');
+      expect(handler._isMultiSelect).toBe(false);
+    });
+
+    it('sets _isMultiSelect to true for MultiSelectIdevice', () => {
+      handler.canHandle('exe.engine.multiselectidevice.MultiSelectIdevice');
+      expect(handler._isMultiSelect).toBe(true);
+    });
   });
 
   describe('getTargetType', () => {
@@ -219,7 +229,10 @@ describe('MultichoiceHandler', () => {
       expect(questions[0].answers[1]).toEqual([false, 'A & B options']);
     });
 
-    it('extracts multiple choice question correctly', () => {
+    it('uses single selectionType for MultichoiceIdevice even with multiple correct answers', () => {
+      // First call canHandle to set the iDevice type
+      handler.canHandle('exe.engine.multichoiceidevice.MultichoiceIdevice');
+
       const dict = parseDictionary(`
         <dictionary>
           <string role="key" value="questions"></string>
@@ -271,6 +284,66 @@ describe('MultichoiceHandler', () => {
       const questions = handler.extractQuestions(dict);
 
       expect(questions.length).toBe(1);
+      // MultichoiceIdevice always uses 'single' (radio buttons)
+      expect(questions[0].selectionType).toBe('single');
+    });
+
+    it('uses multiple selectionType for MultiSelectIdevice', () => {
+      // First call canHandle to set the iDevice type
+      handler.canHandle('exe.engine.multiselectidevice.MultiSelectIdevice');
+
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="questions"></string>
+          <list>
+            <instance class="exe.engine.field.QuizQuestionField">
+              <dictionary>
+                <string role="key" value="questionTextArea"></string>
+                <instance class="exe.engine.field.TextAreaField">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"></string>
+                    <unicode value="${escapeXml('<p>Select even numbers</p>')}"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="options"></string>
+                <list>
+                  <instance class="exe.engine.field.QuizOptionField">
+                    <dictionary>
+                      <string role="key" value="answerTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="${escapeXml('<p>2</p>')}"></unicode>
+                        </dictionary>
+                      </instance>
+                      <string role="key" value="isCorrect"></string>
+                      <bool value="1"></bool>
+                    </dictionary>
+                  </instance>
+                  <instance class="exe.engine.field.QuizOptionField">
+                    <dictionary>
+                      <string role="key" value="answerTextArea"></string>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="content_w_resourcePaths"></string>
+                          <unicode value="${escapeXml('<p>4</p>')}"></unicode>
+                        </dictionary>
+                      </instance>
+                      <string role="key" value="isCorrect"></string>
+                      <bool value="1"></bool>
+                    </dictionary>
+                  </instance>
+                </list>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const questions = handler.extractQuestions(dict);
+
+      expect(questions.length).toBe(1);
+      // MultiSelectIdevice always uses 'multiple' (checkboxes)
       expect(questions[0].selectionType).toBe('multiple');
     });
 

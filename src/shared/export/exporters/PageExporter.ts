@@ -16,6 +16,12 @@
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 
+/**
+ * PageExporter - Single-page HTML export
+ *
+ * For internal links, uses anchor fragments (#page-content-pageId)
+ * instead of file paths since all content is on one page.
+ */
 export class PageExporter extends Html5Exporter {
     /**
      * Get file suffix for PAGE format
@@ -124,6 +130,25 @@ export class PageExporter extends Html5Exporter {
             author: meta.author || '',
             license: meta.license || 'CC-BY-SA',
         });
+    }
+
+    /**
+     * Override page URL map for single-page export
+     * Uses anchor fragments instead of file paths
+     */
+    protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
+        const map = new Map<string, { url: string; urlFromSubpage: string }>();
+
+        for (const page of pages) {
+            // All pages use anchor fragments on the same page
+            const anchor = `#page-content-${page.id}`;
+            map.set(page.id, {
+                url: anchor,
+                urlFromSubpage: anchor, // Same since it's all one page
+            });
+        }
+
+        return map;
     }
 
     /**

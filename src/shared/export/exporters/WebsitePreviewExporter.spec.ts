@@ -1085,4 +1085,131 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('MathJax.typesetPromise');
         });
     });
+
+    describe('YouTube preview transform script', () => {
+        it('should include YouTube transform script in preview', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('YouTube Preview Transform');
+        });
+
+        it('should detect blob: context in transform script', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("href.startsWith('blob:')");
+        });
+
+        it('should detect file: context in transform script', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("window.location.protocol === 'file:'");
+        });
+
+        it('should include regex pattern to extract video ID from youtube.com/embed/', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('youtube\\.com\\/embed\\/');
+            expect(result.html).toContain('[a-zA-Z0-9_-]{11}');
+        });
+
+        it('should include regex pattern to extract video ID from youtube-nocookie.com/embed/', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('youtube-nocookie\\.com\\/embed\\/');
+        });
+
+        it('should use youtube-preview.html wrapper path', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('/app/common/youtube-preview.html');
+        });
+
+        it('should include basePath in wrapper URL when provided', async () => {
+            const result = await exporter.generatePreview({
+                basePath: '/exelearning',
+            });
+            expect(result.html).toContain("var basePath = '/exelearning'");
+        });
+
+        it('should use empty basePath when not provided', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("var basePath = ''");
+        });
+
+        it('should extract HTTP origin from blob URL', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('match(/^blob:(https?:\\/\\/[^/]+)/)');
+        });
+
+        it('should pass through YouTube parameters to wrapper', async () => {
+            const result = await exporter.generatePreview();
+            // Should pass these parameters from original iframe to wrapper
+            expect(result.html).toContain("'autoplay'");
+            expect(result.html).toContain("'start'");
+            expect(result.html).toContain("'end'");
+            expect(result.html).toContain("'mute'");
+            expect(result.html).toContain("'loop'");
+            expect(result.html).toContain("'controls'");
+        });
+
+        it('should preserve iframe dimensions in wrapper URL', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("iframe.getAttribute('width')");
+            expect(result.html).toContain("iframe.getAttribute('height')");
+            expect(result.html).toContain("wrapperUrl += '&w='");
+            expect(result.html).toContain("wrapperUrl += '&h='");
+        });
+
+        it('should mark transformed iframes with data attribute', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("iframe.dataset.youtubeTransformed = 'true'");
+            expect(result.html).toContain('iframe.dataset.originalSrc = src');
+        });
+
+        it('should skip already transformed iframes', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("iframe.dataset.youtubeTransformed === 'true'");
+        });
+
+        it('should use MutationObserver for dynamically added iframes', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('MutationObserver');
+            expect(result.html).toContain('childList: true');
+            expect(result.html).toContain('subtree: true');
+        });
+
+        it('should check child iframes in added nodes', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("node.querySelectorAll('iframe')");
+        });
+
+        it('should run on DOMContentLoaded if document is still loading', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("document.readyState === 'loading'");
+            expect(result.html).toContain('DOMContentLoaded');
+        });
+
+        it('should run immediately if document is already loaded', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('transformAllYouTubeIframes()');
+        });
+
+        it('should log console message when transforming iframes', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("console.log('[YouTube Preview]");
+        });
+
+        it('should warn if HTTP origin cannot be determined', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("console.warn('[YouTube Preview]");
+        });
+
+        it('should only run in blob: or file: contexts (not HTTP)', async () => {
+            const result = await exporter.generatePreview();
+            // Script should exit early for normal HTTP contexts
+            expect(result.html).toContain('if (!isBlob && !isFile)');
+            expect(result.html).toContain('return; // Normal HTTP context');
+        });
+
+        it('should check for youtube.com, youtube-nocookie.com, and youtu.be', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain("src.includes('youtube.com')");
+            expect(result.html).toContain("src.includes('youtube-nocookie.com')");
+            expect(result.html).toContain("src.includes('youtu.be')");
+        });
+    });
 });

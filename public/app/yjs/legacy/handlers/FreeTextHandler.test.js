@@ -161,10 +161,11 @@ describe('FreeTextHandler', () => {
         </dictionary>
       `);
 
-      const feedback = handler.extractFeedback(dict);
+      // Pass Spanish context (default for legacy files)
+      const feedback = handler.extractFeedback(dict, { language: 'es' });
       expect(feedback.content).toBe('<p>Feedback</p>');
-      // Uses translation function if available, otherwise Spanish default
-      expect(feedback.buttonCaption).toBe(typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+      // Uses project language for localized default caption
+      expect(feedback.buttonCaption).toBe('Mostrar retroalimentación');
     });
 
     it('extracts custom buttonCaption from feedbackTextArea', () => {
@@ -214,10 +215,11 @@ describe('FreeTextHandler', () => {
         </dictionary>
       `);
 
+      // extractProperties calls extractFeedback internally which uses default (Spanish)
       const props = handler.extractProperties(dict);
       expect(props.textFeedbackTextarea).toBe('<p>Feedback</p>');
-      // Uses translation function if available, otherwise Spanish default
-      expect(props.textFeedbackInput).toBe(typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+      // Uses project language for localized default caption (Spanish is default for legacy)
+      expect(props.textFeedbackInput).toBe('Mostrar retroalimentación');
     });
 
     it('returns empty object when no feedback', () => {

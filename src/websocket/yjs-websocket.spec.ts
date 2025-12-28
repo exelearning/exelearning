@@ -1175,6 +1175,72 @@ describe('Yjs WebSocket Service', () => {
 
             expect(registerSpy).toHaveBeenCalled();
         });
+
+        it('should trigger collaboration detection when second client joins', async () => {
+            const mockAssetCoordinator = createMockAssetCoordinator();
+            const collaborationSpy = mock(async () => {});
+            mockAssetCoordinator.onCollaborationDetected = collaborationSpy;
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: mockAssetCoordinator,
+            });
+
+            const projectUuid = 'd1d2d3d4-e5f6-7890-abcd-ef1234567890';
+            const docName = `project-${projectUuid}`;
+
+            // Add session for the project
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+
+            // First client connects - no collaboration yet
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            // Collaboration should NOT be detected yet (only 1 client)
+            expect(collaborationSpy).not.toHaveBeenCalled();
+
+            // Second client connects - collaboration should be detected
+            const ws2 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            // Now collaboration should be detected
+            expect(collaborationSpy).toHaveBeenCalledWith(projectUuid);
+        });
+
+        it('should handle error in onCollaborationDetected gracefully', async () => {
+            const mockAssetCoordinator = createMockAssetCoordinator();
+            // Make onCollaborationDetected throw an error
+            mockAssetCoordinator.onCollaborationDetected = async () => {
+                throw new Error('Collaboration error');
+            };
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: mockAssetCoordinator,
+            });
+
+            const projectUuid = 'e1e2e3e4-e5f6-7890-abcd-ef1234567890';
+            const docName = `project-${projectUuid}`;
+
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+
+            // First client
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            // Second client - should not throw even if onCollaborationDetected fails
+            const ws2 = createMockWebSocket() as any;
+            const result = await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            // Connection should still succeed despite error in collaboration detection
+            expect(result.success).toBe(true);
+        });
     });
 
     describe('handleWebSocketPong', () => {
@@ -1273,6 +1339,46 @@ describe('Yjs WebSocket Service', () => {
             // Give async handler time to execute
             await new Promise(resolve => setTimeout(resolve, 10));
             expect(handleMessageSpy).toHaveBeenCalled();
+        });
+
+        it('should handle error in asset message handler gracefully', async () => {
+            const mockAssetCoordinator = createMockAssetCoordinator();
+            // Make handleMessage throw an error
+            mockAssetCoordinator.handleMessage = async () => {
+                throw new Error('Asset handler error');
+            };
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: mockAssetCoordinator,
+            });
+
+            const ws = createMockWebSocket();
+            const docName = 'project-asset-error-test';
+            roomManager.addConnection(docName, ws as any);
+
+            const data: WsData = {
+                clientId: 'asset-error-client',
+                userId: 1,
+                projectUuid: 'asset-error-uuid',
+                docName,
+            };
+
+            const assetMsg = JSON.stringify({
+                type: 'request-asset',
+                projectId: 'asset-error-uuid',
+                clientId: 'asset-error-client',
+                data: {},
+            });
+
+            // Should not throw even if handleMessage fails
+            handleWebSocketMessage(ws as any, data, assetMsg);
+
+            // Give async handler time to execute and log error
+            await new Promise(resolve => setTimeout(resolve, 20));
         });
 
         it('should ignore messages when room not found', () => {

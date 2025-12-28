@@ -54,13 +54,9 @@ var $interactivevideo = {
         notAnswered: 'Please finish the activity',
         check: 'Check',
         newWindow: 'New window',
-        msgOnlySaveAuto:
-            'Your score will be saved after each question. You can only play once.',
         msgSaveAuto:
             'Your score will be automatically saved after each question.',
         msgYouScore: 'Your score',
-        msgScoreScorm:
-            "The score can't be saved because this page is not part of a SCORM package.",
         msgYouLastScore: 'The last score saved is',
         msgActityComply: 'You have already done this activity.',
         msgPlaySeveralTimes:
@@ -73,6 +69,9 @@ var $interactivevideo = {
         msgOnlySave: 'You can only save once',
         msgOnlySaveAuto:
             'Your score will be saved after each question. You can only play once.',
+        youtubePreviewNotice:
+            'YouTube videos cannot be embedded in preview mode. ' +
+            'They will work correctly when exported and served from a web server.',
     },
     scorm: {
         isScorm: 0,
@@ -255,11 +254,16 @@ var $interactivevideo = {
         es[0].innerHTML += html;
 
         // console.log(typeof top.interactiveVideoEditor.activityToSave);
-        if (
+        // Only show "no slides" message if there's truly no content at all
+        // (no slides AND no cover title/description)
+        var hasNoContent = (
             typeof InteractiveVideo == 'undefined' ||
-            typeof InteractiveVideo.slides == 'undefined' ||
-            InteractiveVideo.slides.length == 0
-        ) {
+            typeof InteractiveVideo.slides == 'undefined'
+        );
+        var hasNoSlides = !hasNoContent && InteractiveVideo.slides.length === 0;
+        var hasCover = !hasNoContent && (InteractiveVideo.title || InteractiveVideo.description);
+
+        if (hasNoContent || (hasNoSlides && !hasCover)) {
             $('#player').html(
                 "<p style='text-align:center;margin:0;line-height:356px'>" +
                     i18n.noSlides +
@@ -358,6 +362,20 @@ var $interactivevideo = {
             );
             return;
         } else if (this.type == 'youtube') {
+            // Check if we're in a context where YouTube embeds cannot work
+            // YouTube requires HTTP/HTTPS origin - blob: and file: URLs are not supported
+            var currentOrigin = window.location.origin || '';
+            var isUnsupportedContext = currentOrigin.startsWith('blob:') ||
+                                       currentOrigin.startsWith('file:') ||
+                                       window.location.protocol === 'file:' ||
+                                       window.location.href.startsWith('blob:');
+
+            if (isUnsupportedContext) {
+                // Use HTTP wrapper iframe to load YouTube (works from blob: context)
+                $interactivevideo.loadYoutubeWrapper();
+                return;
+            }
+
             isYTready = setInterval(function () {
                 if (typeof YT !== 'undefined') {
                     onYouTubeIframeAPIReady = $interactivevideo.ready();
@@ -538,6 +556,8 @@ var $interactivevideo = {
     },
 
     randomizeArray: function (o) {
+        // Guard: arrays with 0 or 1 elements cannot be shuffled differently
+        if (o.length <= 1) return o;
         var original = [];
         for (var w = 0; w < o.length; w++) original.push(o[w]);
         for (
@@ -741,6 +761,219 @@ var $interactivevideo = {
         });
     },
 
+    /**
+     * Load YouTube via HTTP wrapper iframe (works from blob:/file: contexts)
+     *
+     * YOUTUBE EMBEDDING RESTRICTION:
+     * YouTube's IFrame Player API requires a valid HTTP/HTTPS origin to function.
+     * When the preview is loaded via blob: URL (e.g., blob:http://localhost:8080/...),
+     * YouTube rejects the embed with "Error 153: Video player configuration error"
+     * because blob: URLs have a null origin that YouTube doesn't recognize.
+     *
+     * SOLUTION:
+     * Instead of creating a YT.Player directly (which would fail in blob: context),
+     * we create an iframe that loads youtube-preview.html from the HTTP server.
+     * This wrapper has a valid HTTP origin, so YouTube works correctly inside it.
+     *
+     * COMMUNICATION:
+     * Since the YouTube player is now inside a nested iframe, we use postMessage
+     * to communicate between the interactive-video iDevice and the wrapper:
+     * - Wrapper sends: youtube-ready, youtube-time, youtube-state, youtube-error
+     * - Parent sends: youtube-play, youtube-pause, youtube-seek, youtube-stop
+     *
+     * The player object is replaced with a proxy that sends postMessage commands
+     * to maintain compatibility with existing code that calls player.playVideo(), etc.
+     *
+     * @see public/app/common/youtube-preview.html - The HTTP wrapper
+     * @see WebsitePreviewExporter.ts - Global transform for all YouTube embeds
+     */
+    loadYoutubeWrapper: function () {
+        var videoId = this.id;
+        var self = this;
+
+        // Determine the base URL for the wrapper
+        // In blob: context, we need to extract the real origin
+        var wrapperBaseUrl = '';
+        if (window.location.href.startsWith('blob:')) {
+            // Extract origin from blob URL: blob:http://localhost:8080/... -> http://localhost:8080
+            var blobUrl = window.location.href;
+            var match = blobUrl.match(/^blob:(https?:\/\/[^/]+)/);
+            if (match) {
+                wrapperBaseUrl = match[1];
+            }
+        } else if (window.location.protocol === 'file:') {
+            // For file: protocol, we can't determine the server URL
+            // Fall back to showing the fallback UI
+            this.showYoutubeFallback();
+            return;
+        }
+
+        // If we couldn't determine a valid base URL, show fallback
+        if (!wrapperBaseUrl) {
+            this.showYoutubeFallback();
+            return;
+        }
+
+        // Get basePath if set (for subdirectory installations)
+        var basePath = (typeof eXe !== 'undefined' && eXe.basePath) ? eXe.basePath : '';
+
+        // Build the wrapper URL
+        var wrapperUrl = wrapperBaseUrl + basePath + '/app/common/youtube-preview.html?v=' + encodeURIComponent(videoId);
+
+        // Create iframe for the wrapper
+        var iframe = document.createElement('iframe');
+        iframe.id = 'youtube-wrapper-iframe';
+        iframe.src = wrapperUrl;
+        iframe.width = '448';
+        iframe.height = '356';
+        iframe.frameBorder = '0';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        iframe.allowFullscreen = true;
+        iframe.style.cssText = 'border:none;background:#000;';
+
+        // Clear player container and add iframe
+        var playerEl = document.getElementById('player');
+        playerEl.innerHTML = '';
+        playerEl.appendChild(iframe);
+
+        // Track if wrapper is ready
+        this.youtubeWrapperReady = false;
+        this._lastYoutubeTime = 0;
+
+        // Listen for messages from the wrapper
+        var messageHandler = function(event) {
+            // Validate origin
+            if (event.origin !== wrapperBaseUrl) return;
+
+            var data = event.data;
+            if (!data || typeof data.type !== 'string') return;
+
+            switch (data.type) {
+                case 'youtube-ready':
+                    self.youtubeWrapperReady = true;
+                    self.complete();
+                    break;
+
+                case 'youtube-time':
+                    self._lastYoutubeTime = data.time || 0;
+                    self.track(data.time || 0);
+                    break;
+
+                case 'youtube-state':
+                    // YT.PlayerState: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
+                    if (data.state === 1) { // playing
+                        self.hasPlayed = true;
+                        self.checkSlides();
+                    }
+                    break;
+
+                case 'youtube-error':
+                    console.error('[InteractiveVideo] YouTube wrapper error:', data.message);
+                    // On error, show the static fallback
+                    self.showYoutubeFallback();
+                    break;
+            }
+        };
+
+        window.addEventListener('message', messageHandler);
+
+        // Store handler reference for cleanup
+        this._youtubeWrapperMessageHandler = messageHandler;
+
+        // Create a player-like interface for compatibility with existing code
+        this.player = {
+            getCurrentTime: function() {
+                return self._lastYoutubeTime || 0;
+            },
+            playVideo: function() {
+                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
+                if (wrapperIframe && wrapperIframe.contentWindow) {
+                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-play' }, wrapperBaseUrl);
+                }
+            },
+            pauseVideo: function() {
+                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
+                if (wrapperIframe && wrapperIframe.contentWindow) {
+                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-pause' }, wrapperBaseUrl);
+                }
+            },
+            seekTo: function(time) {
+                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
+                if (wrapperIframe && wrapperIframe.contentWindow) {
+                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-seek', time: time }, wrapperBaseUrl);
+                }
+            },
+            stopVideo: function() {
+                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
+                if (wrapperIframe && wrapperIframe.contentWindow) {
+                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-stop' }, wrapperBaseUrl);
+                }
+            }
+        };
+    },
+
+    /**
+     * Show fallback for YouTube when wrapper also fails (e.g., file: protocol)
+     * Displays a thumbnail with a link to watch on YouTube
+     */
+    showYoutubeFallback: function () {
+        var videoId = this.id;
+        var i18n = this.i18n;
+        var thumbnailUrl = 'https://img.youtube.com/vi/' + videoId + '/maxresdefault.jpg';
+        var fallbackThumbnail = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+        var youtubeUrl = 'https://www.youtube.com/watch?v=' + videoId;
+
+        var html = '<div class="exe-youtube-fallback" style="' +
+            'width:448px;height:356px;' +
+            'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+            'background:#000;position:relative;border-radius:8px;overflow:hidden;">' +
+            '<img src="' + thumbnailUrl + '" ' +
+            'onerror="this.src=\'' + fallbackThumbnail + '\'" ' +
+            'alt="YouTube video thumbnail" ' +
+            'style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0.7;">' +
+            '<div style="position:relative;z-index:1;text-align:center;padding:20px;">' +
+            '<div style="' +
+            'width:68px;height:48px;margin:0 auto 16px;' +
+            'background:#ff0000;border-radius:12px;' +
+            'display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="24" height="24" viewBox="0 0 24 24" fill="white">' +
+            '<path d="M8 5v14l11-7z"/>' +
+            '</svg>' +
+            '</div>' +
+            '<p style="color:#fff;font-size:14px;margin:0 0 12px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">' +
+            (i18n.newWindow || 'Open in new window') +
+            '</p>' +
+            '<a href="' + youtubeUrl + '" target="_blank" rel="noopener" ' +
+            'style="' +
+            'display:inline-block;padding:10px 24px;' +
+            'background:#ff0000;color:#fff;text-decoration:none;' +
+            'border-radius:4px;font-weight:bold;font-size:14px;' +
+            'transition:background 0.2s;"' +
+            'onmouseover="this.style.background=\'#cc0000\'" ' +
+            'onmouseout="this.style.background=\'#ff0000\'">' +
+            'YouTube' +
+            '</a>' +
+            '</div>' +
+            '</div>';
+
+        $('#player').html(html);
+
+        // Show message explaining why the video can't be embedded
+        var contextMsg = '<p class="exe-youtube-context-warning" style="' +
+            'margin:8px 0;padding:8px 12px;' +
+            'background:#fff3cd;border:1px solid #ffc107;border-radius:4px;' +
+            'font-size:12px;color:#856404;text-align:center;">' +
+            (i18n.youtubePreviewNotice ||
+                'YouTube videos cannot be embedded in preview mode. ' +
+                'They will work correctly when exported and served from a web server.') +
+            '</p>';
+
+        $('#player').after(contextMsg);
+
+        // Still initialize the activity UI (results viewer, cover, etc.)
+        $interactivevideo.complete();
+    },
+
     checkSlides: function () {
         if ($interactivevideo.isSeek) {
             if ($('BODY').hasClass('active')) {
@@ -783,10 +1016,24 @@ var $interactivevideo = {
 
             $interactivevideo.complete();
         } else if ($interactivevideo.type == 'youtube') {
+            // Get the origin for YouTube API (must be HTTP/HTTPS)
+            var origin = window.location.origin;
+            // If origin is not valid (blob:, file:, etc.), use the page's base URL
+            if (!origin || origin === 'null' || origin.startsWith('blob:') || origin.startsWith('file:')) {
+                origin = 'https://exelearning.net'; // Fallback origin
+            }
+
             $interactivevideo.player = new YT.Player('player', {
                 height: '356',
                 width: '448',
                 videoId: $interactivevideo.id,
+                host: 'https://www.youtube-nocookie.com', // Privacy-enhanced mode
+                playerVars: {
+                    origin: origin,
+                    enablejsapi: 1,
+                    rel: 0, // Don't show related videos at end
+                    modestbranding: 1 // Minimal YouTube branding
+                },
                 events: {
                     onReady: function () {
                         $interactivevideo.complete();
@@ -812,6 +1059,16 @@ var $interactivevideo = {
                             500
                         );
                         $interactivevideo.checkSlides();
+                    },
+                    onError: function (e) {
+                        // Handle YouTube errors gracefully
+                        console.error('[InteractiveVideo] YouTube error:', e.data);
+                        // Error codes: 2=invalid param, 5=HTML5 error, 100=not found,
+                        // 101/150=embedding disabled, 153=playback restricted
+                        if (e.data === 150 || e.data === 101 || e.data === 153) {
+                            // Video cannot be embedded - show fallback
+                            $interactivevideo.showYoutubeFallback();
+                        }
                     },
                 },
             });

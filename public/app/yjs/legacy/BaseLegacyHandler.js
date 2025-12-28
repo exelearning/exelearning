@@ -55,6 +55,35 @@ class BaseLegacyHandler {
     return { content: '', buttonCaption: '' };
   }
 
+  /**
+   * Get localized "Show Feedback" text based on language code
+   * Uses static translations instead of UI locale for legacy imports
+   * @param {string} langCode - Language code (e.g., 'es', 'en', 'ca')
+   * @returns {string} Localized feedback button text
+   */
+  getLocalizedFeedbackText(langCode) {
+    const translations = {
+      es: 'Mostrar retroalimentación',
+      en: 'Show Feedback',
+      ca: 'Mostra la retroalimentació',
+      eu: 'Erakutsi feedbacka',
+      gl: 'Mostrar retroalimentación',
+      pt: 'Mostrar feedback',
+      fr: 'Afficher le feedback',
+      de: 'Feedback anzeigen',
+      it: 'Mostra feedback',
+      nl: 'Toon feedback',
+      pl: 'Pokaż informację zwrotną',
+      ru: 'Показать отзыв',
+      zh: '显示反馈',
+      ja: 'フィードバックを表示',
+      ar: 'إظهار الملاحظات',
+    };
+    // Normalize language code (e.g., 'es-ES' -> 'es')
+    const lang = (langCode || '').split('-')[0].toLowerCase();
+    return translations[lang] || translations.es; // Default to Spanish for legacy files
+  }
+
   // ========================================
   // Shared XML Parsing Utilities
   // ========================================

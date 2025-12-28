@@ -444,12 +444,19 @@ export abstract class BaseExporter {
     /**
      * Pre-process pages to add filenames to asset URLs in all component content
      * Also replaces exe-package:elp protocol for download-source-file iDevice
+     * And converts internal links (exe-node:) to proper page URLs
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
         const meta = this.getMetadata();
         const projectTitle = meta.title || 'eXeLearning';
 
-        for (const page of pages) {
+        // Build page URL map for internal link conversion
+        const pageUrlMap = this.buildPageUrlMap(pages);
+
+        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+            const page = pages[pageIndex];
+            const isIndex = pageIndex === 0;
+
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
@@ -457,11 +464,74 @@ export abstract class BaseExporter {
                         component.content = await this.addFilenamesToAssetUrls(component.content);
                         // Replace exe-package:elp protocol for client-side download
                         component.content = this.replaceElpxProtocol(component.content, projectTitle);
+                        // Convert internal links to proper page URLs
+                        component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
                     }
                 }
             }
         }
         return pages;
+    }
+
+    /**
+     * Build a map of page IDs to their export URLs
+     * Used for internal link (exe-node:) conversion
+     */
+    protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
+        const map = new Map<string, { url: string; urlFromSubpage: string }>();
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            const isFirstPage = i === 0;
+
+            if (isFirstPage) {
+                // First page is index.html
+                map.set(page.id, {
+                    url: 'index.html',
+                    urlFromSubpage: '../index.html',
+                });
+            } else {
+                // Other pages are in html/ directory
+                const filename = this.sanitizePageFilename(page.title);
+                map.set(page.id, {
+                    url: `html/${filename}.html`,
+                    urlFromSubpage: `${filename}.html`,
+                });
+            }
+        }
+
+        return map;
+    }
+
+    /**
+     * Replace exe-node: internal links with proper page URLs
+     *
+     * @param content - HTML content
+     * @param pageUrlMap - Map of page IDs to their export URLs
+     * @param isFromIndex - Whether the content is from the index page (affects relative paths)
+     * @returns Content with internal links replaced
+     */
+    protected replaceInternalLinks(
+        content: string,
+        pageUrlMap: Map<string, { url: string; urlFromSubpage: string }>,
+        isFromIndex: boolean,
+    ): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        // Replace href="exe-node:pageId" with actual page URLs
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageId) => {
+            const pageUrls = pageUrlMap.get(pageId);
+            if (pageUrls) {
+                // Use the appropriate URL based on whether we're on index or subpage
+                const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
+                return `href="${url}"`;
+            }
+            // If page not found, leave the link unchanged (might be an external link or error)
+            console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);
+            return match;
+        });
     }
 
     /**

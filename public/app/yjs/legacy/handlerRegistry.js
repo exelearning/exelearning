@@ -24,6 +24,8 @@
  * - handlers/RssHandler.js
  * - handlers/WikipediaHandler.js
  * - handlers/GeogebraHandler.js
+ * - handlers/InteractiveVideoHandler.js
+ * - handlers/NotaHandler.js
  * - handlers/DefaultHandler.js
  */
 
@@ -52,10 +54,12 @@ const LegacyHandlerRegistry = {
       new FileAttachHandler(),       // FileAttachIdevice, AttachmentIdevice → text (with file links)
       new ImageMagnifierHandler(),   // ImageMagnifierIdevice → magnifier
       new GeogebraHandler(),         // GeogebraIdevice → geogebra-activity
+      new InteractiveVideoHandler(), // JsIdevice interactive-video → interactive-video
       new GameIdeviceHandler(),      // flipcards, selecciona, trivial, etc. → game types
       new FpdSolvedExerciseHandler(),// SolvedExerciseIdevice → text (with Q&A)
       new WikipediaHandler(),        // WikipediaIdevice → text (with wrapper)
       new RssHandler(),              // RssIdevice → text
+      new NotaHandler(),             // NotaIdevice → text (with visibility=false block)
       new FreeTextHandler(),         // FreeTextIdevice, ReflectionIdevice, GenericIdevice → text
       new DefaultHandler(),          // Fallback for unknown types (must be last)
     ];

@@ -162,6 +162,44 @@ describe('App utility methods', () => {
 
       window.location = originalLocation;
     });
+
+    it('creates symfony compatibility shim from config', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":false,"baseURL":"http://localhost","basePath":"/app","fullURL":"http://localhost/app"}';
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'http://localhost/test', protocol: 'http:' };
+
+      appInstance.parseExelearningConfig();
+
+      // Verify symfony compatibility shim is created
+      expect(window.eXeLearning.symfony).toBeDefined();
+      expect(window.eXeLearning.symfony.baseURL).toBe('http://localhost');
+      expect(window.eXeLearning.symfony.basePath).toBe('/app');
+      expect(window.eXeLearning.symfony.fullURL).toBe('http://localhost/app');
+
+      window.location = originalLocation;
+    });
+
+    it('creates symfony compatibility shim with empty defaults', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true}';
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'http://localhost/test', protocol: 'http:' };
+
+      appInstance.parseExelearningConfig();
+
+      // Verify symfony compatibility shim defaults to empty strings
+      expect(window.eXeLearning.symfony).toBeDefined();
+      expect(window.eXeLearning.symfony.baseURL).toBe('');
+      expect(window.eXeLearning.symfony.basePath).toBe('');
+      expect(window.eXeLearning.symfony.fullURL).toBe('');
+
+      window.location = originalLocation;
+    });
   });
 
   describe('showProvisionalDemoWarning', () => {
