@@ -514,11 +514,9 @@ var $exeDevice = {
             }
             //var myCSS=document.querySelector("link[href*='6.0.1']")
             var win = null;
-            // Get file path
+            // Get file path (handle versioned URLs like /v0.0.0-alpha/files/...)
             var filePath = $exeDevice.idevicePath.replace(
-                eXeLearning.symfony.baseURL +
-                    eXeLearning.symfony.basePath +
-                    '/files/',
+                /^.*\/files\//,
                 ''
             );
 
