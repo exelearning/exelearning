@@ -1034,6 +1034,7 @@ if (window.__jQueryShimQueue) {
 })();
 
 ${this.getSpaNavigationScript()}
+${this.getYouTubePreviewTransformScript(options)}
 // Initialize iDevices after DOM is ready
 if (typeof $exeExport !== 'undefined' && $exeExport.init) {
     $exeExport.init();
@@ -1151,8 +1152,224 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
   // Check initial hash on load
   showPageByHash();
 
+  // Enable internal links (exe-node:pageId format)
+  // These are links created in the TinyMCE editor that point to other pages
+  function enableInternalLinks() {
+    var internalLinks = document.querySelectorAll('a[href^="exe-node:"]');
+    internalLinks.forEach(function(link) {
+      var href = link.getAttribute('href') || '';
+      // Extract page ID: exe-node:page-abc123 -> page-abc123
+      var pageId = href.replace('exe-node:', '');
+
+      // Find the page index
+      var targetIndex = -1;
+      for (var i = 0; i < pages.length; i++) {
+        if (pages[i].id === 'page-' + pageId) {
+          targetIndex = i;
+          break;
+        }
+      }
+
+      if (targetIndex >= 0) {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          showPage(targetIndex);
+        });
+        // Update href for accessibility (shows target in status bar)
+        link.setAttribute('href', '#page-' + pageId);
+      }
+    });
+  }
+
+  // Enable internal links after initial render
+  enableInternalLinks();
+
   // MathJax typesets each page when it becomes active (if MathJax is loaded)
   updateNavButtons();
+})();`;
+    }
+
+    /**
+     * Get YouTube preview transform script
+     *
+     * YOUTUBE EMBEDDING RESTRICTION:
+     * YouTube's IFrame Player API requires a valid HTTP/HTTPS origin to function.
+     * The preview panel loads content via blob: URLs (e.g., blob:http://localhost:8080/...),
+     * which have a null origin that YouTube rejects with "Error 153".
+     *
+     * SOLUTION:
+     * This script detects when running in a blob:/file: context and automatically
+     * transforms all YouTube iframe src attributes to point to our HTTP wrapper
+     * (youtube-preview.html). The wrapper is served from a valid HTTP origin,
+     * so YouTube embeds work correctly inside it.
+     *
+     * TRANSFORM FLOW:
+     * 1. Script detects blob: context
+     * 2. Extracts the real HTTP origin from the blob URL
+     * 3. Finds all YouTube iframes in the document
+     * 4. Replaces their src with: {httpOrigin}/app/common/youtube-preview.html?v={videoId}
+     * 5. MutationObserver watches for dynamically added iframes
+     *
+     * This script only runs in preview mode (blob:/file: contexts).
+     * In normal HTTP exports, YouTube embeds work without transformation.
+     *
+     * @see public/app/common/youtube-preview.html - The HTTP wrapper that loads YouTube
+     */
+    private getYouTubePreviewTransformScript(options: PreviewOptions): string {
+        const basePath = options.basePath || '';
+        return `// YouTube Preview Transform (for blob:/file: contexts)
+(function() {
+    'use strict';
+
+    // Only run in blob: or file: contexts where YouTube embeds fail
+    var href = window.location.href;
+    var isBlob = href.startsWith('blob:');
+    var isFile = window.location.protocol === 'file:';
+
+    if (!isBlob && !isFile) {
+        return; // Normal HTTP context, YouTube works fine
+    }
+
+    // Extract HTTP origin from blob URL
+    var httpOrigin = '';
+    if (isBlob) {
+        var match = href.match(/^blob:(https?:\\/\\/[^/]+)/);
+        if (match) httpOrigin = match[1];
+    }
+
+    if (!httpOrigin) {
+        console.warn('[YouTube Preview] Cannot determine HTTP origin for wrapper');
+        return;
+    }
+
+    var basePath = '${basePath}';
+    var wrapperBase = httpOrigin + basePath + '/app/common/youtube-preview.html';
+
+    // YouTube URL patterns to extract video ID
+    var youtubePatterns = [
+        /(?:youtube\\.com\\/embed\\/|youtube-nocookie\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})/,
+        /(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([a-zA-Z0-9_-]{11})/
+    ];
+
+    function extractVideoId(src) {
+        if (!src) return null;
+        for (var i = 0; i < youtubePatterns.length; i++) {
+            var match = src.match(youtubePatterns[i]);
+            if (match) return match[1];
+        }
+        return null;
+    }
+
+    function extractParams(src) {
+        var params = {};
+        try {
+            // Handle protocol-relative URLs
+            var fullUrl = src;
+            if (src.startsWith('//')) fullUrl = 'https:' + src;
+            var url = new URL(fullUrl);
+            url.searchParams.forEach(function(value, key) {
+                params[key] = value;
+            });
+        } catch (e) {
+            // Try to extract from query string manually
+            var qIdx = src.indexOf('?');
+            if (qIdx !== -1) {
+                var qs = src.substring(qIdx + 1);
+                qs.split('&').forEach(function(part) {
+                    var kv = part.split('=');
+                    if (kv.length === 2) params[kv[0]] = kv[1];
+                });
+            }
+        }
+        return params;
+    }
+
+    function transformYouTubeIframe(iframe) {
+        var src = iframe.getAttribute('src') || '';
+        var videoId = extractVideoId(src);
+
+        if (!videoId) return false;
+
+        // Check if already transformed
+        if (iframe.dataset.youtubeTransformed === 'true') return false;
+
+        // Build wrapper URL preserving original parameters
+        var params = extractParams(src);
+        var wrapperUrl = wrapperBase + '?v=' + videoId;
+
+        // Pass through relevant YouTube parameters
+        var passParams = ['autoplay', 'start', 'end', 'mute', 'loop', 'controls', 'cc_load_policy'];
+        passParams.forEach(function(p) {
+            if (params[p] !== undefined) wrapperUrl += '&' + p + '=' + params[p];
+        });
+
+        // Preserve iframe dimensions
+        var width = iframe.getAttribute('width');
+        var height = iframe.getAttribute('height');
+        if (width) wrapperUrl += '&w=' + width;
+        if (height) wrapperUrl += '&h=' + height;
+
+        // Transform the iframe
+        iframe.dataset.originalSrc = src;
+        iframe.dataset.youtubeTransformed = 'true';
+        iframe.src = wrapperUrl;
+
+        console.log('[YouTube Preview] Transformed embed:', videoId);
+        return true;
+    }
+
+    function isYouTubeIframe(iframe) {
+        var src = iframe.getAttribute('src') || '';
+        return src.includes('youtube.com') ||
+               src.includes('youtube-nocookie.com') ||
+               src.includes('youtu.be');
+    }
+
+    function transformAllYouTubeIframes() {
+        var iframes = document.querySelectorAll('iframe');
+        var count = 0;
+        iframes.forEach(function(iframe) {
+            if (isYouTubeIframe(iframe) && transformYouTubeIframe(iframe)) {
+                count++;
+            }
+        });
+        if (count > 0) {
+            console.log('[YouTube Preview] Transformed ' + count + ' YouTube embed(s)');
+        }
+    }
+
+    // Transform existing iframes
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', transformAllYouTubeIframes);
+    } else {
+        transformAllYouTubeIframes();
+    }
+
+    // Watch for dynamically added iframes (some iDevices add content after load)
+    var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType !== 1) return; // Not an element
+
+                // Check if the added node is an iframe
+                if (node.tagName === 'IFRAME' && isYouTubeIframe(node)) {
+                    transformYouTubeIframe(node);
+                }
+
+                // Check children of added node
+                if (node.querySelectorAll) {
+                    var childIframes = node.querySelectorAll('iframe');
+                    childIframes.forEach(function(iframe) {
+                        if (isYouTubeIframe(iframe)) {
+                            transformYouTubeIframe(iframe);
+                        }
+                    });
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
 })();`;
     }
 

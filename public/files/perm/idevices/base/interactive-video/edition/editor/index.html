@@ -36,7 +36,7 @@
             tinymceScript.type = "text/javascript";
             head.append(tinymceScript);
 
-            let langsScriptPath = `${basePath}/api/idevice-management/idevices/download/file/resources?resource=perm/idevices/base/interactive-video/edition/editor/langs/all.js`;
+            let langsScriptPath = `${basePath}/api/idevices/download-file-resources?resource=perm/idevices/base/interactive-video/edition/editor/langs/all.js`;
             let langsScript = document.createElement("script");
             langsScript.id = "langsScript";
             langsScript.src = langsScriptPath;
@@ -53,7 +53,7 @@
                 mediaelementStyle.type = "text/css";
                 head.append(mediaelementStyle);
 
-                let adminStylePath = `${basePath}/${assetsPath}files/perm/idevices/base/interactive-video/edition/editor/css/admin.css`;
+                let adminStylePath = `${basePath}/api/idevices/download-file-resources?resource=perm/idevices/base/interactive-video/edition/editor/css/admin.css`;
                 let adminStyle = document.createElement("link");
                 adminStyle.id = "adminStyle";
                 adminStyle.href = adminStylePath;
@@ -61,7 +61,7 @@
                 adminStyle.type = "text/css";
                 head.append(adminStyle);
 
-                let adminScriptPath = `${basePath}/api/idevice-management/idevices/download/file/resources?resource=perm/idevices/base/interactive-video/edition/editor/js/admin.js`;
+                let adminScriptPath = `${basePath}/api/idevices/download-file-resources?resource=perm/idevices/base/interactive-video/edition/editor/js/admin.js`;
                 let adminScript = document.createElement("script");
                 adminScript.id = "adminScript";
                 adminScript.src = adminScriptPath;

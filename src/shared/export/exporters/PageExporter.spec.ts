@@ -365,4 +365,64 @@ describe('PageExporter', () => {
             expect(result.success).toBe(true);
         });
     });
+
+    describe('Internal Link Handling (Single Page)', () => {
+        it('should build page URL map with anchor fragments', () => {
+            const pages = [
+                { id: 'page-1', title: 'Home', blocks: [] },
+                { id: 'page-2', title: 'About', blocks: [] },
+                { id: 'page-3', title: 'Contact', blocks: [] },
+            ];
+            const map = (exporter as any).buildPageUrlMap(pages);
+
+            // All pages should use anchor fragments for single-page export
+            expect(map.get('page-1')).toEqual({
+                url: '#page-content-page-1',
+                urlFromSubpage: '#page-content-page-1',
+            });
+            expect(map.get('page-2')).toEqual({
+                url: '#page-content-page-2',
+                urlFromSubpage: '#page-content-page-2',
+            });
+            expect(map.get('page-3')).toEqual({
+                url: '#page-content-page-3',
+                urlFromSubpage: '#page-content-page-3',
+            });
+        });
+
+        it('should convert exe-node links to anchor fragments', () => {
+            const pageUrlMap = new Map([
+                ['page-1', { url: '#page-content-page-1', urlFromSubpage: '#page-content-page-1' }],
+                ['page-2', { url: '#page-content-page-2', urlFromSubpage: '#page-content-page-2' }],
+            ]);
+
+            const content = '<a href="exe-node:page-2">Go to About</a>';
+            const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+
+            expect(result).toBe('<a href="#page-content-page-2">Go to About</a>');
+        });
+
+        it('should use same anchor format regardless of page position', () => {
+            const pageUrlMap = new Map([
+                ['page-1', { url: '#page-content-page-1', urlFromSubpage: '#page-content-page-1' }],
+            ]);
+
+            // From first page
+            const result1 = (exporter as any).replaceInternalLinks(
+                '<a href="exe-node:page-1">Link</a>',
+                pageUrlMap,
+                true,
+            );
+            // From other page (doesn't matter for single page)
+            const result2 = (exporter as any).replaceInternalLinks(
+                '<a href="exe-node:page-1">Link</a>',
+                pageUrlMap,
+                false,
+            );
+
+            // Both should produce the same anchor link
+            expect(result1).toBe('<a href="#page-content-page-1">Link</a>');
+            expect(result2).toBe('<a href="#page-content-page-1">Link</a>');
+        });
+    });
 });

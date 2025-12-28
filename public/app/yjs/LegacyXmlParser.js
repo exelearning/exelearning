@@ -34,6 +34,40 @@ class LegacyXmlParser {
   };
 
   /**
+   * FEEDBACK BUTTON TEXT TRANSLATIONS
+   * Static translations for "Show Feedback" button text.
+   * Used instead of UI locale to ensure project language is respected.
+   */
+  static FEEDBACK_TRANSLATIONS = {
+    es: 'Mostrar retroalimentación',
+    en: 'Show Feedback',
+    ca: 'Mostra la retroalimentació',
+    eu: 'Erakutsi feedbacka',
+    gl: 'Mostrar retroalimentación',
+    pt: 'Mostrar feedback',
+    fr: 'Afficher le feedback',
+    de: 'Feedback anzeigen',
+    it: 'Mostra feedback',
+    nl: 'Toon feedback',
+    pl: 'Pokaż informację zwrotną',
+    ru: 'Показать отзыв',
+    zh: '显示反馈',
+    ja: 'フィードバックを表示',
+    ar: 'إظهار الملاحظات',
+  };
+
+  /**
+   * Get localized "Show Feedback" text based on language code
+   * @param {string} langCode - Language code (e.g., 'es', 'en')
+   * @returns {string} Localized feedback button text
+   */
+  getLocalizedFeedbackText(langCode) {
+    const lang = (langCode || '').split('-')[0].toLowerCase();
+    return LegacyXmlParser.FEEDBACK_TRANSLATIONS[lang] ||
+           LegacyXmlParser.FEEDBACK_TRANSLATIONS.es; // Default to Spanish for legacy files
+  }
+
+  /**
    * Preprocess legacy XML content before parsing
    * Fixes encoding issues from eXe 2.x exports
    *
@@ -101,6 +135,9 @@ class LegacyXmlParser {
 
     // Extract metadata
     const meta = this.extractMetadata();
+
+    // Store project language for handlers to use
+    this.projectLanguage = meta.language || '';
 
     // Build page hierarchy
     const pages = this.buildPageHierarchy(nodes);
@@ -202,6 +239,7 @@ class LegacyXmlParser {
       title: 'Legacy Project',
       author: '',
       description: '',
+      language: '', // Language code (e.g., 'es', 'en')
       footer: '',
       extraHeadContent: '',
       // Export options (defaults) - use pp_ prefix to match form property names
@@ -230,6 +268,10 @@ class LegacyXmlParser {
     // Extract description
     const description = this.findDictValue(dict, '_description');
     if (description) meta.description = description;
+
+    // Extract language (stored as _lang in legacy format)
+    const lang = this.findDictValue(dict, '_lang');
+    if (lang) meta.language = lang;
 
     // Extract custom footer content (user-provided footer HTML)
     const footer = this.findDictValue(dict, 'footer');
@@ -780,13 +822,18 @@ class LegacyXmlParser {
             // Filter out default "Free Text" title - should show empty block name instead
             const title = idevice.title || '';
             const blockName = title === 'Free Text' ? '' : title;
-            blocks.push({
+            const block = {
               id: `block-${nodeEl.getAttribute('reference')}-${idx}`,
               name: blockName,  // Use iDevice title as block name, filtering defaults
               iconName: idevice.icon || '',  // Use iDevice icon as block icon
               position: idx,
               idevices: [idevice],  // Exactly one iDevice per block
-            });
+            };
+            // Pass block properties from handler (e.g., NotaHandler sets visibility=false)
+            if (idevice.blockProperties) {
+              block.blockProperties = idevice.blockProperties;
+            }
+            blocks.push(block);
           });
         }
         break;
@@ -1139,16 +1186,18 @@ class LegacyXmlParser {
         // Use handler registry if available, otherwise fall back to inline logic
         if (typeof LegacyHandlerRegistry !== 'undefined') {
           const handler = LegacyHandlerRegistry.getHandler(className, ideviceType);
-          // Pass idevice.id for handlers that need it (e.g., TrueFalseHandler)
-          const handlerProps = handler.extractProperties(dict, idevice.id);
+          // Pass idevice.id and language context for handlers that need it
+          const handlerContext = { language: this.projectLanguage };
+          const handlerProps = handler.extractProperties(dict, idevice.id, handlerContext);
           if (handlerProps && Object.keys(handlerProps).length > 0) {
             idevice.properties = handlerProps;
             Logger.log(`[LegacyXmlParser] Extracted properties via ${handler.constructor.name}`);
           }
 
           // Use handler's extractHtmlView if available (e.g., GameIdeviceHandler updates DataGame div with decrypted JSON)
+          // Pass project language as context for proper localization of default texts
           if (typeof handler.extractHtmlView === 'function') {
-            const handlerHtml = handler.extractHtmlView(dict);
+            const handlerHtml = handler.extractHtmlView(dict, { language: this.projectLanguage });
             if (handlerHtml) {
               idevice.htmlView = handlerHtml;
               Logger.log(`[LegacyXmlParser] Used handler htmlView (${handlerHtml.length} chars)`);
@@ -1162,6 +1211,16 @@ class LegacyXmlParser {
           if (handlerType && handlerType !== 'text' && handlerType !== idevice.type) {
             Logger.log(`[LegacyXmlParser] Handler updated type: ${idevice.type} -> ${handlerType}`);
             idevice.type = handlerType;
+          }
+
+          // Get block properties from handler if available
+          // This allows handlers like NotaHandler to set visibility=false on the block
+          if (typeof handler.getBlockProperties === 'function') {
+            const blockProps = handler.getBlockProperties();
+            if (blockProps && Object.keys(blockProps).length > 0) {
+              idevice.blockProperties = blockProps;
+              Logger.log(`[LegacyXmlParser] Handler block properties:`, blockProps);
+            }
           }
         } else {
           // Fallback: Legacy inline extraction for MultichoiceIdevice/MultiSelectIdevice
@@ -1626,8 +1685,8 @@ class LegacyXmlParser {
       }
     }
 
-    // Use translation function if available, otherwise use Spanish default
-    const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+    // Use project language for localized default caption
+    const defaultCaption = this.getLocalizedFeedbackText(this.projectLanguage);
     return {
       content,
       buttonCaption: buttonCaption || defaultCaption
@@ -1810,8 +1869,8 @@ class LegacyXmlParser {
 
             // Return feedback if there's content (button caption is optional)
             if (content) {
-              // Use translation function if available, otherwise use Spanish default
-              const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+              // Use project language for localized default caption
+              const defaultCaption = this.getLocalizedFeedbackText(this.projectLanguage);
               return {
                 content,
                 buttonCaption: buttonCaption || defaultCaption

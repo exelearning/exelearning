@@ -52,13 +52,15 @@ class DropdownHandler extends BaseLegacyHandler {
    * with content_w_resourcePaths for the feedback text.
    *
    * @param {Element} dict - Dictionary element
+   * @param {Object} context - Context with language info
+   * @param {string} context.language - Project language code
    * @returns {Object} { content, buttonCaption }
    */
-  extractFeedback(dict) {
+  extractFeedback(dict, context = {}) {
     if (!dict) return { content: '', buttonCaption: '' };
 
-    // Use translation function if available, otherwise use Spanish default
-    const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+    // Use project language for default caption
+    const defaultCaption = this.getLocalizedFeedbackText(context.language);
 
     // Look for feedback field (ListaIdevice uses "feedback" key)
     const feedbackField = this.findDictInstance(dict, 'feedback');
@@ -66,7 +68,8 @@ class DropdownHandler extends BaseLegacyHandler {
       const feedbackDict = feedbackField.querySelector(':scope > dictionary');
       let buttonCaption = defaultCaption;
       if (feedbackDict) {
-        buttonCaption = this.findDictStringValue(feedbackDict, 'buttonCaption') || defaultCaption;
+        const storedCaption = this.findDictStringValue(feedbackDict, 'buttonCaption');
+        buttonCaption = storedCaption || defaultCaption;
       }
       const content = this.extractTextAreaFieldContent(feedbackField);
       if (content) {
@@ -80,7 +83,8 @@ class DropdownHandler extends BaseLegacyHandler {
       const feedbackDict = feedbackTextArea.querySelector(':scope > dictionary');
       let buttonCaption = defaultCaption;
       if (feedbackDict) {
-        buttonCaption = this.findDictStringValue(feedbackDict, 'buttonCaption') || defaultCaption;
+        const storedCaption = this.findDictStringValue(feedbackDict, 'buttonCaption');
+        buttonCaption = storedCaption || defaultCaption;
       }
       const content = this.extractTextAreaFieldContent(feedbackTextArea);
       if (content) {
@@ -98,11 +102,15 @@ class DropdownHandler extends BaseLegacyHandler {
    * - eXeFormInstructions comes from instructionsForLearners
    * - questionsData contains the dropdown questions with <u> tags preserved
    * - eXeIdeviceTextAfter contains the feedback content (form iDevice uses this field)
+   *
+   * @param {Element} dict - Dictionary element
+   * @param {string} ideviceId - iDevice ID (unused)
+   * @param {Object} context - Context with language info
    */
-  extractProperties(dict) {
+  extractProperties(dict, ideviceId, context = {}) {
     const questionsData = this.extractDropdownQuestions(dict);
     const instructions = this.extractHtmlView(dict);
-    const feedback = this.extractFeedback(dict);
+    const feedback = this.extractFeedback(dict, context);
 
     if (questionsData.length > 0 || feedback.content) {
       const props = {};
@@ -133,19 +141,19 @@ class DropdownHandler extends BaseLegacyHandler {
    * and hidden div, similar to FreeTextHandler.
    *
    * @param {Element} dict - Dictionary element
+   * @param {Object} context - Context with language info
    * @returns {string} HTML content
    */
-  buildHtmlViewWithFeedback(dict) {
+  buildHtmlViewWithFeedback(dict, context = {}) {
     if (!dict) return '';
 
     let content = '';
 
     // Get instructions (main content for dropdown is in questionsData, not htmlView)
     // But we may want to include feedback rendering here
-    const feedback = this.extractFeedback(dict);
+    const feedback = this.extractFeedback(dict, context);
     if (feedback.content) {
-      const buttonCaption = feedback.buttonCaption ||
-        (typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+      const buttonCaption = feedback.buttonCaption;
 
       content += `<div class="iDevice_buttons feedback-button js-required">
 <input type="button" class="feedbacktooglebutton" value="${buttonCaption}" data-text-a="${buttonCaption}" data-text-b="${buttonCaption}">

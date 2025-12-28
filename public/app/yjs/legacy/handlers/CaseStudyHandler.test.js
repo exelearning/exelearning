@@ -258,13 +258,14 @@ describe('CaseStudyHandler', () => {
         </dictionary>
       `);
 
-      const activities = handler.extractActivities(dict);
+      // Pass Spanish context (default for legacy files)
+      const activities = handler.extractActivities(dict, { language: 'es' });
 
       expect(activities.length).toBe(1);
       expect(activities[0].activity).toBe('<p>Analyze the case</p>');
       expect(activities[0].feedback).toBe('<p>Good analysis!</p>');
-      // Uses translation function if available, otherwise Spanish default
-      expect(activities[0].buttonCaption).toBe(typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+      // Uses project language for localized default caption
+      expect(activities[0].buttonCaption).toBe('Mostrar retroalimentación');
     });
 
     it('handles multiple questions', () => {

@@ -172,6 +172,43 @@ describe('LegacyXmlParser', () => {
       expect(meta.extraHeadContent).toBe('');
     });
 
+    it('extracts language from package', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Spanish Project"/>
+              <string role="key" value="_lang"/>
+              <unicode value="es"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.title).toBe('Spanish Project');
+      expect(meta.language).toBe('es');
+    });
+
+    it('returns empty language when not present', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="No Language Project"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.language).toBe('');
+    });
+
     it('extracts export options from package with bool elements', () => {
       // Legacy format uses <bool value="1"/> for boolean values
       const xml = `<?xml version="1.0"?>
@@ -238,6 +275,7 @@ describe('LegacyXmlParser', () => {
       expect(meta).toHaveProperty('title');
       expect(meta).toHaveProperty('author');
       expect(meta).toHaveProperty('description');
+      expect(meta).toHaveProperty('language');
       expect(meta).toHaveProperty('footer');
       expect(meta).toHaveProperty('extraHeadContent');
       expect(meta).toHaveProperty('exportSource');
@@ -595,12 +633,14 @@ describe('LegacyXmlParser', () => {
 
       const doc = new DOMParser().parseFromString(xml, 'text/xml');
       parser.xmlDoc = doc;
+      // Set project language to Spanish (default for legacy files)
+      parser.projectLanguage = 'es';
 
       const fieldInst = doc.querySelector('instance');
       const result = parser.extractFeedbackFieldContent(fieldInst);
 
-      // In test environment, _('Show Feedback') returns 'Show Feedback' (the key)
-      expect(result.buttonCaption).toBe('Show Feedback');
+      // Uses project language for localized default caption
+      expect(result.buttonCaption).toBe('Mostrar retroalimentación');
     });
 
     it('returns empty when no dictionary', () => {
@@ -1353,13 +1393,15 @@ describe('LegacyXmlParser', () => {
 
       const doc = new DOMParser().parseFromString(xml, 'text/xml');
       parser.xmlDoc = doc;
+      // Set project language to Spanish (default for legacy files)
+      parser.projectLanguage = 'es';
 
       const dict = doc.querySelector('dictionary');
       const result = parser.extractReflectionFeedback(dict);
 
-      // Button caption is optional - implementation provides a default
+      // Button caption is optional - implementation provides a default based on project language
       expect(result.content).toBe('<p>Content without button</p>');
-      expect(result.buttonCaption).toBe('Show Feedback');
+      expect(result.buttonCaption).toBe('Mostrar retroalimentación');
     });
 
     it('returns empty when answerTextArea has no content', () => {

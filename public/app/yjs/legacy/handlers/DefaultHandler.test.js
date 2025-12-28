@@ -130,9 +130,11 @@ describe('DefaultHandler', () => {
         </dictionary>
       `);
 
-      const feedback = handler.extractFeedback(dict);
+      // Pass Spanish context (default for legacy files)
+      const feedback = handler.extractFeedback(dict, { language: 'es' });
       expect(feedback.content).toBe('<p>Feedback</p>');
-      expect(feedback.buttonCaption).toBe('Show Feedback');
+      // Uses project language for localized default caption
+      expect(feedback.buttonCaption).toBe('Mostrar retroalimentación');
     });
 
     it('returns empty when no feedback', () => {

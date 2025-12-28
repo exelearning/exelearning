@@ -20,10 +20,12 @@ global.ExternalUrlHandler = require('./handlers/ExternalUrlHandler');
 global.FileAttachHandler = require('./handlers/FileAttachHandler');
 global.ImageMagnifierHandler = require('./handlers/ImageMagnifierHandler');
 global.GeogebraHandler = require('./handlers/GeogebraHandler');
+global.InteractiveVideoHandler = require('./handlers/InteractiveVideoHandler');
 global.GameIdeviceHandler = require('./handlers/GameIdeviceHandler');
 global.FpdSolvedExerciseHandler = require('./handlers/FpdSolvedExerciseHandler');
 global.WikipediaHandler = require('./handlers/WikipediaHandler');
 global.RssHandler = require('./handlers/RssHandler');
+global.NotaHandler = require('./handlers/NotaHandler');
 global.FreeTextHandler = require('./handlers/FreeTextHandler');
 global.DefaultHandler = require('./handlers/DefaultHandler');
 
@@ -164,7 +166,7 @@ describe('LegacyHandlerRegistry', () => {
 
     it('includes all registered handlers', () => {
       const handlers = LegacyHandlerRegistry.getAllHandlers();
-      expect(handlers.length).toBe(17); // All handlers including DefaultHandler
+      expect(handlers.length).toBe(19); // All handlers including InteractiveVideoHandler, NotaHandler and DefaultHandler
     });
   });
 });

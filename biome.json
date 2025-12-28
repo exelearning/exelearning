@@ -112,6 +112,15 @@
             "linter": {
                 "enabled": false
             }
+        },
+        {
+            "includes": ["public/files/perm/idevices/**/*.test.js"],
+            "javascript": {
+                "globals": ["describe", "it", "expect", "beforeEach", "afterEach", "vi", "global"]
+            },
+            "linter": {
+                "enabled": false
+            }
         }
     ]
 }

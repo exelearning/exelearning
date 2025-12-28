@@ -338,7 +338,6 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             return { error: 'Not Found', message: `Resource not found: ${cleanResource}` };
         }
 
-        const content = fs.readFileSync(filePath);
         const ext = path.extname(filePath).toLowerCase();
 
         // Set content type based on extension
@@ -362,7 +361,14 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
         };
 
         set.headers['Content-Type'] = mimeTypes[ext] || 'application/octet-stream';
-        return content;
+
+        // For CSS files, rewrite relative URLs to absolute API endpoint URLs
+        if (ext === '.css') {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            return rewriteCSSUrls(content, cleanResource);
+        }
+
+        return fs.readFileSync(filePath);
     })
 
     // POST /api/idevices/upload/file/resources - Upload file resource (base64)
@@ -567,6 +573,33 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
             savedFileSize: fileSizeFormatted,
         };
     });
+
+/**
+ * Rewrite relative URLs in CSS to absolute API endpoint URLs
+ * This ensures fonts, images, and other resources load correctly when CSS is served via API
+ */
+function rewriteCSSUrls(content: string, resourcePath: string): string {
+    // Get the directory of the CSS file (relative to public/files)
+    const dir = path.dirname(resourcePath);
+
+    return content.replace(/url\(['"]?([^'"()]+)['"]?\)/g, (match, urlPath) => {
+        // Skip absolute URLs, data URIs, and HTTP(S) URLs
+        if (
+            urlPath.startsWith('/') ||
+            urlPath.startsWith('data:') ||
+            urlPath.startsWith('http://') ||
+            urlPath.startsWith('https://')
+        ) {
+            return match;
+        }
+
+        // Resolve relative path (e.g., ../fonts/open-sans.woff2)
+        const resolvedPath = path.posix.normalize(path.posix.join(dir, urlPath));
+
+        // Create the full API URL
+        return `url(/api/idevices/download-file-resources?resource=${encodeURIComponent(resolvedPath)})`;
+    });
+}
 
 /**
  * Format file size to human readable string

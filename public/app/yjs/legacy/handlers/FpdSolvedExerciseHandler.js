@@ -33,8 +33,11 @@ class FpdSolvedExerciseHandler extends BaseLegacyHandler {
 
   /**
    * Extract HTML view combining story and questions with feedback
+   * @param {Element} dict - Dictionary element
+   * @param {Object} context - Context with language info
+   * @param {string} context.language - Project language code
    */
-  extractHtmlView(dict) {
+  extractHtmlView(dict, context = {}) {
     if (!dict) return '';
 
     let html = '';
@@ -72,7 +75,7 @@ class FpdSolvedExerciseHandler extends BaseLegacyHandler {
           if (feedbackContent) {
             // Get button caption if available
             const feedbackDict = feedbackTextArea.querySelector(':scope > dictionary');
-            const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+            const defaultCaption = this.getLocalizedFeedbackText(context.language);
             let buttonCaption = defaultCaption;
             if (feedbackDict) {
               const caption = this.findDictStringValue(feedbackDict, 'buttonCaption');

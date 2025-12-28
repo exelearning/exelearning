@@ -43,8 +43,11 @@ class CaseStudyHandler extends BaseLegacyHandler {
   /**
    * Extract properties including history and activities
    * This populates jsonProperties for the casestudy editor
+   * @param {Element} dict - Dictionary element
+   * @param {string} ideviceId - iDevice ID (unused)
+   * @param {Object} context - Context with language info
    */
-  extractProperties(dict) {
+  extractProperties(dict, ideviceId, context = {}) {
     // Default structure with all required fields for modern casestudy iDevice
     // textInfo* fields are new in modern format - not in legacy, so default to empty
     const defaultProperties = {
@@ -74,7 +77,7 @@ class CaseStudyHandler extends BaseLegacyHandler {
     }
 
     // Extract activities (always an array, even if empty)
-    properties.activities = this.extractActivities(dict);
+    properties.activities = this.extractActivities(dict, context);
 
     return properties;
   }
@@ -89,7 +92,7 @@ class CaseStudyHandler extends BaseLegacyHandler {
    * @param {Element} dict - Dictionary element of the CaseStudyIdevice
    * @returns {Array} Array of activity objects
    */
-  extractActivities(dict) {
+  extractActivities(dict, context = {}) {
     const activities = [];
 
     // Primary: Look for "questions" list (legacy CasestudyIdevice format)
@@ -158,8 +161,8 @@ class CaseStudyHandler extends BaseLegacyHandler {
       }
 
       if (activityText || feedbackText) {
-        // Use translation function if available, otherwise use Spanish default
-        const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+        // Use project language for localized default caption
+        const defaultCaption = this.getLocalizedFeedbackText(context.language);
         activities.push({
           activity: activityText,
           feedback: feedbackText,

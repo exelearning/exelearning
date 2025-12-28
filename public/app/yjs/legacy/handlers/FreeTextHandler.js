@@ -35,8 +35,11 @@ class FreeTextHandler extends BaseLegacyHandler {
   /**
    * Extract HTML content from the legacy format
    * Also renders feedback button and content directly into htmlView (matching Symfony behavior)
+   * @param {Element} dict - Dictionary element from legacy XML
+   * @param {Object} context - Context with language info
+   * @param {string} context.language - Project language code (e.g., 'es', 'en')
    */
-  extractHtmlView(dict) {
+  extractHtmlView(dict, context = {}) {
     if (!dict) return '';
 
     let content = '';
@@ -73,10 +76,9 @@ class FreeTextHandler extends BaseLegacyHandler {
 
     // Render feedback into htmlView (matching Symfony legacy approach)
     // This ensures feedback works in editor, preview, and export
-    const feedback = this.extractFeedback(dict);
+    const feedback = this.extractFeedback(dict, context);
     if (feedback.content) {
-      const buttonCaption = feedback.buttonCaption ||
-        (typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+      const buttonCaption = feedback.buttonCaption;
 
       content += `<div class="iDevice_buttons feedback-button js-required">
 <input type="button" class="feedbacktooglebutton" value="${buttonCaption}" data-text-a="${buttonCaption}" data-text-b="${buttonCaption}">
@@ -89,12 +91,15 @@ class FreeTextHandler extends BaseLegacyHandler {
 
   /**
    * Extract feedback content (for Reflection iDevices)
+   * @param {Element} dict - Dictionary element
+   * @param {Object} context - Context with language info
+   * @param {string} context.language - Project language code
    */
-  extractFeedback(dict) {
+  extractFeedback(dict, context = {}) {
     if (!dict) return { content: '', buttonCaption: '' };
 
-    // Use translation function if available, otherwise use Spanish default
-    const defaultCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
+    // Use project language for default caption (not UI locale)
+    const defaultCaption = this.getLocalizedFeedbackText(context.language);
 
     // Look for answerTextArea (ReflectionIdevice style)
     const answerTextArea = this.findDictInstance(dict, 'answerTextArea');
@@ -104,8 +109,9 @@ class FreeTextHandler extends BaseLegacyHandler {
         // Get feedback content
         const content = this.extractTextAreaFieldContent(answerTextArea);
 
-        // Get button caption
-        const buttonCaption = this.findDictStringValue(answerDict, 'buttonCaption') || defaultCaption;
+        // Get button caption - use stored value if available, otherwise use localized default
+        const storedCaption = this.findDictStringValue(answerDict, 'buttonCaption');
+        const buttonCaption = storedCaption || defaultCaption;
 
         if (content) {
           return { content, buttonCaption };
@@ -119,7 +125,8 @@ class FreeTextHandler extends BaseLegacyHandler {
       const feedbackDict = feedbackTextArea.querySelector(':scope > dictionary');
       let buttonCaption = defaultCaption;
       if (feedbackDict) {
-        buttonCaption = this.findDictStringValue(feedbackDict, 'buttonCaption') || defaultCaption;
+        const storedCaption = this.findDictStringValue(feedbackDict, 'buttonCaption');
+        buttonCaption = storedCaption || defaultCaption;
       }
       const content = this.extractTextAreaFieldContent(feedbackTextArea);
       if (content) {

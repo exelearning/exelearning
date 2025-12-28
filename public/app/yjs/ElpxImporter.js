@@ -116,13 +116,36 @@ class ElpxImporter {
     // Report decompression complete (10%)
     this._reportProgress('decompress', 10, typeof _ === 'function' ? _('File decompressed') : 'File decompressed');
 
+    // Check if this ZIP contains a nested ELP file instead of direct content
+    // This handles cases where a user opens a .zip that contains an .elp/.elpx file
+    let workingZip = zip;
+
+    // First, check if content.xml or contentv3.xml exists at root
+    if (!zip['content.xml'] && !zip['contentv3.xml']) {
+      // Scan for nested .elp/.elpx files at root level
+      const elpFiles = Object.keys(zip).filter(name =>
+        !name.includes('/') && // Root level only
+        (name.toLowerCase().endsWith('.elp') || name.toLowerCase().endsWith('.elpx'))
+      );
+
+      if (elpFiles.length === 1) {
+        // Found a nested ELP file - extract it
+        Logger.log(`[ElpxImporter] Found nested ELP file: ${elpFiles[0]}, extracting...`);
+        const nestedElpData = zip[elpFiles[0]];
+        workingZip = fflateLib.unzipSync(nestedElpData);
+      } else if (elpFiles.length > 1) {
+        throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
+      }
+      // If no ELP files found, workingZip remains as original zip (will fail below if no content.xml)
+    }
+
     // Find content.xml (could be content.xml or contentv3.xml for legacy)
     let contentXml = null;
-    let contentFile = zip['content.xml'];
+    let contentFile = workingZip['content.xml'];
     let isLegacyFormat = false;
 
     if (!contentFile) {
-      contentFile = zip['contentv3.xml'];
+      contentFile = workingZip['contentv3.xml'];
       isLegacyFormat = true;
     }
 
@@ -146,11 +169,11 @@ class ElpxImporter {
     const rootElement = xmlDoc.documentElement?.tagName;
     if (rootElement === 'instance' || rootElement === 'dictionary') {
       Logger.log('[ElpxImporter] Legacy Python pickle format detected, importing legacy format...');
-      return await this.importLegacyFormat(file, { clearExisting, parentId });
+      return await this.importLegacyFormat(file, { clearExisting, parentId, preExtractedZip: workingZip });
     }
 
     // Extract and import structure
-    const stats = await this.importStructure(xmlDoc, zip, { clearExisting, parentId });
+    const stats = await this.importStructure(xmlDoc, workingZip, { clearExisting, parentId });
 
     Logger.log(`[ElpxImporter] Import complete:`, stats);
     return stats;
@@ -1383,10 +1406,11 @@ class ElpxImporter {
    * @param {boolean} [options.clearExisting=true] - Whether to clear existing content
    * @param {string|null} [options.parentId=null] - Parent page ID for nested import
    * @param {Function|null} [options.onProgress=null] - Progress callback
+   * @param {Object|null} [options.preExtractedZip=null] - Pre-extracted ZIP data (for nested ELP handling)
    * @returns {Promise<Object>} Import statistics { pages, blocks, components, assets }
    */
   async importLegacyFormat(file, options = {}) {
-    const { clearExisting = true, parentId = null, onProgress = null } = options;
+    const { clearExisting = true, parentId = null, onProgress = null, preExtractedZip = null } = options;
 
     // Store progress callback if provided
     if (onProgress) {
@@ -1399,16 +1423,39 @@ class ElpxImporter {
     this._reportProgress('decompress', 0, typeof _ === 'function' ? _('Decompressing legacy file...') : 'Decompressing legacy file...');
 
     // 1. Load ZIP and extract contentv3.xml using fflate
-    const fflateLib = window.fflate;
-    if (!fflateLib) {
-      throw new Error('fflate library not loaded');
+    // If preExtractedZip is provided, use it directly (already extracted from nested ELP)
+    let zip;
+    if (preExtractedZip) {
+      Logger.log('[ElpxImporter] Using pre-extracted ZIP data (nested ELP)');
+      zip = preExtractedZip;
+    } else {
+      const fflateLib = window.fflate;
+      if (!fflateLib) {
+        throw new Error('fflate library not loaded');
+      }
+
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Data = new Uint8Array(arrayBuffer);
+
+      // Use sync decompression - async workers cause memory issues on mobile (Chrome Android)
+      zip = fflateLib.unzipSync(uint8Data);
+
+      // Check for nested ELP file (same logic as importFromFile)
+      if (!zip['content.xml'] && !zip['contentv3.xml']) {
+        const elpFiles = Object.keys(zip).filter(name =>
+          !name.includes('/') &&
+          (name.toLowerCase().endsWith('.elp') || name.toLowerCase().endsWith('.elpx'))
+        );
+
+        if (elpFiles.length === 1) {
+          Logger.log(`[ElpxImporter] Found nested ELP file in legacy import: ${elpFiles[0]}, extracting...`);
+          const nestedElpData = zip[elpFiles[0]];
+          zip = fflateLib.unzipSync(nestedElpData);
+        } else if (elpFiles.length > 1) {
+          throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
+        }
+      }
     }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const uint8Data = new Uint8Array(arrayBuffer);
-
-    // Use sync decompression - async workers cause memory issues on mobile (Chrome Android)
-    const zip = fflateLib.unzipSync(uint8Data);
 
     let contentFile = zip['contentv3.xml'] || zip['content.xml'];
     if (!contentFile) {
@@ -1504,6 +1551,18 @@ class ElpxImporter {
       return str;
     };
 
+    // Helper that combines replaceAssetPaths with addMediaTypes
+    // This ensures media elements have type attributes for proper playback
+    const replaceAssetPathsWithMediaTypes = (str) => {
+      if (str == null || typeof str !== 'string') return '';
+      let result = replaceAssetPaths(str);
+      // Add MIME types to audio/video elements while asset:// URLs still have filenames
+      if (typeof window.addMediaTypes === 'function' && result) {
+        result = window.addMediaTypes(result);
+      }
+      return result;
+    };
+
     // Helper to transform asset paths in properties object (recursive)
     // This handles questionsData arrays where question/answer HTML may contain images
     const transformPropertiesAssets = (obj, transformFn) => {
@@ -1570,6 +1629,62 @@ class ElpxImporter {
 
     Logger.log('[ElpxImporter] Legacy import: remapped', idRemap.size, 'IDs, root pages:', rootIndex);
 
+    // Third pass: update internal links in idevice content with new page IDs
+    // LegacyXmlParser converted links to use old IDs (page-44), now update to new IDs
+    const updateInternalLinksWithRemap = (html) => {
+      if (!html || typeof html !== 'string' || !html.includes('exe-node:')) return html;
+      // Replace exe-node:old-page-id with exe-node:new-page-id
+      return html.replace(/exe-node:(page-\d+)/g, (match, oldPageId) => {
+        const newPageId = idRemap.get(oldPageId);
+        if (newPageId) {
+          Logger.log(`[ElpxImporter] Updated internal link: exe-node:${oldPageId} -> exe-node:${newPageId}`);
+          return `exe-node:${newPageId}`;
+        }
+        return match;
+      });
+    };
+
+    // Recursively update links in object properties
+    const updateLinksInObject = (obj) => {
+      if (!obj || typeof obj !== 'object') return;
+      if (Array.isArray(obj)) {
+        for (let i = 0; i < obj.length; i++) {
+          if (typeof obj[i] === 'string') {
+            obj[i] = updateInternalLinksWithRemap(obj[i]);
+          } else if (typeof obj[i] === 'object') {
+            updateLinksInObject(obj[i]);
+          }
+        }
+      } else {
+        for (const key of Object.keys(obj)) {
+          if (typeof obj[key] === 'string') {
+            obj[key] = updateInternalLinksWithRemap(obj[key]);
+          } else if (typeof obj[key] === 'object') {
+            updateLinksInObject(obj[key]);
+          }
+        }
+      }
+    };
+
+    // Update links in all pages' idevices
+    for (const page of flatPages) {
+      if (!page.blocks) continue;
+      for (const block of page.blocks) {
+        if (!block.idevices) continue;
+        for (const idevice of block.idevices) {
+          if (idevice.htmlView) {
+            idevice.htmlView = updateInternalLinksWithRemap(idevice.htmlView);
+          }
+          if (idevice.feedbackHtml) {
+            idevice.feedbackHtml = updateInternalLinksWithRemap(idevice.feedbackHtml);
+          }
+          if (idevice.properties) {
+            updateLinksInObject(idevice.properties);
+          }
+        }
+      }
+    }
+
     // Create page Y.Map
     const createPageYMap = (pageData) => {
       const pageMap = new Y.Map();
@@ -1599,6 +1714,16 @@ class ElpxImporter {
           blockMap.set('iconName', blockData.iconName || '');
           blockMap.set('order', blockData.position || 0);
 
+          // Apply block properties from handler (e.g., NotaHandler sets visibility=false)
+          if (blockData.blockProperties) {
+            const propsMap = new Y.Map();
+            for (const [key, value] of Object.entries(blockData.blockProperties)) {
+              propsMap.set(key, value);
+            }
+            blockMap.set('properties', propsMap);
+            Logger.log('[ElpxImporter] Block properties set:', blockData.blockProperties);
+          }
+
           const componentsArray = new Y.Array();
           if (blockData.idevices && Array.isArray(blockData.idevices)) {
             for (const ideviceData of blockData.idevices) {
@@ -1615,7 +1740,7 @@ class ElpxImporter {
 
               let transformedHtml = '';
               if (ideviceData.htmlView) {
-                transformedHtml = replaceAssetPaths(ideviceData.htmlView);
+                transformedHtml = replaceAssetPathsWithMediaTypes(ideviceData.htmlView);
                 compMap.set('htmlView', transformedHtml || '');
               }
 
@@ -1631,7 +1756,7 @@ class ElpxImporter {
                 const jsonProps = {
                   textTextarea: transformedHtml || '',
                   textFeedbackInput: feedbackInput,
-                  textFeedbackTextarea: feedbackTextarea ? replaceAssetPaths(feedbackTextarea) : ''
+                  textFeedbackTextarea: feedbackTextarea ? replaceAssetPathsWithMediaTypes(feedbackTextarea) : ''
                 };
                 compMap.set('jsonProperties', JSON.stringify(jsonProps));
               } else {
@@ -1653,11 +1778,11 @@ class ElpxImporter {
                   if (transformedHtml) {
                     jsonProps.history = transformedHtml;
                   }
-                  const transformedProps = transformPropertiesAssets(jsonProps, replaceAssetPaths);
+                  const transformedProps = transformPropertiesAssets(jsonProps, replaceAssetPathsWithMediaTypes);
                   compMap.set('jsonProperties', JSON.stringify(transformedProps));
                 } else if (ideviceData.properties && typeof ideviceData.properties === 'object' && Object.keys(ideviceData.properties).length > 0) {
                   // For other iDevices (form, etc.), use properties from LegacyXmlParser if available
-                  const transformedProps = transformPropertiesAssets(ideviceData.properties, replaceAssetPaths);
+                  const transformedProps = transformPropertiesAssets(ideviceData.properties, replaceAssetPathsWithMediaTypes);
                   compMap.set('jsonProperties', JSON.stringify(transformedProps));
                 } else {
                   compMap.set('jsonProperties', '{}');
@@ -1705,6 +1830,11 @@ class ElpxImporter {
           metadata.set('title', parsedData.meta.title || 'Legacy Project');
           metadata.set('author', parsedData.meta.author || '');
           metadata.set('description', parsedData.meta.description || '');
+          // Set language if present in legacy file (stored as _lang in contentv3.xml)
+          if (parsedData.meta.language) {
+            metadata.set('language', parsedData.meta.language);
+            Logger.log('[ElpxImporter] Legacy language set:', parsedData.meta.language);
+          }
           // Set custom footer content if present in legacy file
           if (parsedData.meta.footer) {
             metadata.set('footer', parsedData.meta.footer);

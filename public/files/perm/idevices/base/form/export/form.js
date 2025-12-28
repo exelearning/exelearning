@@ -80,7 +80,7 @@ var $form = {
         const htmlContent = `<div class="game-evaluation-ids js-hidden" data-id="${ldata.id}" data-evaluationb="${ldata.evaluation}" data-evaluationid="${ldata.evaluationID}"></div>
             <div id="frmMainContainer-${ldata.id}" class="form-IDevice" data-id="${ldata.id}">
                 <div class="form-Data js-hidden">${json}</div>
-                <div class="form-instructions">${ldata.eXeFormInstructions}</div>
+                ${ldata.eXeFormInstructions ? `<div class="form-instructions">${ldata.eXeFormInstructions}</div>` : ''}
                 <div class="FRMP-GameScoreBoard" style="display:${timedisplay};">
                     <div>
                         <strong><span class="sr-av">${ldata.msgs.msgTime}:</span></strong>
@@ -118,7 +118,7 @@ var $form = {
                         <input id="frmPSendScore-${ldata.id}" type="button" value="${ldata.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:none"/> <span class="Games-RepeatActivity"></span>
                     </div>
                 </div>
-                <div class="form-instructions">${ldata.eXeIdeviceTextAfter}</div>
+                ${ldata.eXeIdeviceTextAfter ? `<div class="form-instructions">${ldata.eXeIdeviceTextAfter}</div>` : ''}
             </div>
             ${$form.extractMediaElements(data.questionsData)}
             `;

@@ -358,10 +358,12 @@ describe('DropdownHandler', () => {
         </dictionary>
       `);
 
-      const feedback = handler.extractFeedback(dict);
+      // Pass Spanish context (default for legacy files)
+      const feedback = handler.extractFeedback(dict, { language: 'es' });
 
       expect(feedback.content).toBe('<p>This is the feedback content</p>');
-      expect(feedback.buttonCaption).toBe(typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación');
+      // Uses project language for localized default caption
+      expect(feedback.buttonCaption).toBe('Mostrar retroalimentación');
     });
 
     it('extracts feedback with custom buttonCaption', () => {

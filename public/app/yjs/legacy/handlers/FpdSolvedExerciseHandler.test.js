@@ -202,10 +202,10 @@ describe('FpdSolvedExerciseHandler', () => {
         </dictionary>
       `);
 
-      const html = handler.extractHtmlView(dict);
-      // Default caption when not provided (uses _ function if available, otherwise fallback)
-      const expectedCaption = typeof _ === 'function' ? _('Show Feedback') : 'Mostrar retroalimentación';
-      expect(html).toContain(`value="${expectedCaption}"`);
+      // Pass Spanish context (default for legacy files)
+      const html = handler.extractHtmlView(dict, { language: 'es' });
+      // Uses project language for localized default caption
+      expect(html).toContain('value="Mostrar retroalimentación"');
       expect(html).toContain('class="feedbacktooglebutton"');
     });
 

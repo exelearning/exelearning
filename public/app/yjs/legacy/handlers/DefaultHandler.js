@@ -51,8 +51,11 @@ class DefaultHandler extends BaseLegacyHandler {
 
   /**
    * Try to extract feedback content
+   * @param {Element} dict - Dictionary element
+   * @param {Object} context - Context with language info
+   * @param {string} context.language - Project language code
    */
-  extractFeedback(dict) {
+  extractFeedback(dict, context = {}) {
     if (!dict) return { content: '', buttonCaption: '' };
 
     // Look for answerTextArea (ReflectionIdevice style)
@@ -62,7 +65,7 @@ class DefaultHandler extends BaseLegacyHandler {
       if (content) {
         return {
           content,
-          buttonCaption: 'Show Feedback'
+          buttonCaption: this.getLocalizedFeedbackText(context.language)
         };
       }
     }

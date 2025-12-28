@@ -13,12 +13,26 @@
  * Requires: BaseLegacyHandler.js to be loaded first
  */
 class MultichoiceHandler extends BaseLegacyHandler {
+  constructor() {
+    super();
+    // Track the iDevice class to determine selection type
+    this._isMultiSelect = false;
+  }
+
   /**
    * Check if this handler can process the given legacy class
+   * Also stores whether this is a MultiSelect iDevice for later use
    */
   canHandle(className) {
-    return className.includes('MultichoiceIdevice') ||
-           className.includes('MultiSelectIdevice');
+    const canHandle = className.includes('MultichoiceIdevice') ||
+                      className.includes('MultiSelectIdevice');
+    if (canHandle) {
+      // Store whether this is a multi-select iDevice
+      // MultiSelectIdevice allows multiple answers (checkboxes)
+      // MultichoiceIdevice allows only one answer (radio buttons)
+      this._isMultiSelect = className.includes('MultiSelectIdevice');
+    }
+    return canHandle;
   }
 
   /**
@@ -131,7 +145,6 @@ class MultichoiceHandler extends BaseLegacyHandler {
       // Extract options from options list
       const optionsList = this.findDictList(qDict, 'options');
       const answers = [];
-      let correctCount = 0;
 
       if (optionsList) {
         const optionFields = optionsList.querySelectorAll(':scope > instance');
@@ -152,8 +165,6 @@ class MultichoiceHandler extends BaseLegacyHandler {
           const feedbackTextArea = this.findDictInstance(optDict, 'feedbackTextArea');
           const optionFeedback = feedbackTextArea ? this.extractTextAreaFieldContent(feedbackTextArea) : '';
 
-          if (isCorrect) correctCount++;
-
           // Include feedback if present (as third element)
           if (optionFeedback && optionFeedback.trim()) {
             answers.push([isCorrect, optionText, optionFeedback]);
@@ -165,9 +176,12 @@ class MultichoiceHandler extends BaseLegacyHandler {
 
       // Only add if we have a question or answers
       if (questionText || answers.length > 0) {
+        // Selection type is based on iDevice type, not number of correct answers:
+        // - MultiSelectIdevice: 'multiple' (checkboxes, multiple answers allowed)
+        // - MultichoiceIdevice: 'single' (radio buttons, only one answer)
         const questionData = {
           activityType: 'selection',
-          selectionType: correctCount > 1 ? 'multiple' : 'single',
+          selectionType: this._isMultiSelect ? 'multiple' : 'single',
           baseText: questionText,
           answers: answers
         };

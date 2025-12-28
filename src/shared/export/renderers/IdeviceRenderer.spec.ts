@@ -799,6 +799,266 @@ describe('IdeviceRenderer', () => {
         });
     });
 
+    describe('renderBlock with icon', () => {
+        it('should render block header with icon when iconName is provided', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'lightbulb', // iconName is on block, not properties
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('box-icon');
+            expect(html).toContain('theme/icons/lightbulb.png');
+        });
+
+        it('should use themeIconBasePath when provided for icon (preview mode)', () => {
+            // This tests lines 190-194
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Preview Block',
+                order: 0,
+                components: [],
+                iconName: 'check', // iconName is on block, not properties
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                themeIconBasePath: '/preview/icons/',
+            });
+
+            expect(html).toContain('/preview/icons/check.png');
+            expect(html).not.toContain('theme/icons/');
+        });
+
+        it('should add no-icon class when iconName is empty', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'No Icon Block',
+                order: 0,
+                components: [],
+                iconName: '', // iconName is on block, not properties
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('no-icon');
+            expect(html).not.toContain('box-icon');
+        });
+
+        it('should render toggle button when allowToggle is true', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Toggle Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: true },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+        });
+
+        it('should render toggle button with off state when minimized', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Minimized Toggle Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: true, minimized: true },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('box-toggle-off');
+        });
+
+        it('should render toggle button when allowToggle is string "true"', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Toggle String Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: 'true' as unknown as boolean },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('box-toggle');
+        });
+    });
+
+    describe('fixAssetUrls edge cases', () => {
+        it('should skip blob: URLs in {{context_path}}', () => {
+            // Tests lines 257-260
+            const content = '<img src="{{context_path}}/blob:http://localhost/abc">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            // Should keep original since it contains blob:
+            expect(fixed).toBe('<img src="{{context_path}}/blob:http://localhost/abc">');
+        });
+
+        it('should skip data: URLs in {{context_path}}', () => {
+            const content = '<img src="{{context_path}}/data:image/png;base64,abc">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="{{context_path}}/data:image/png;base64,abc">');
+        });
+
+        it('should skip blob: URLs in asset:// protocol', () => {
+            // Tests line 270
+            const content = '<img src="asset://blob:http://localhost/xyz">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="asset://blob:http://localhost/xyz">');
+        });
+
+        it('should skip data: URLs in asset:// protocol', () => {
+            const content = '<img src="asset://data:image/gif;base64,xyz">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="asset://data:image/gif;base64,xyz">');
+        });
+
+        it('should skip blob: URLs in files/tmp/ paths', () => {
+            // Tests line 280 - blob: URLs in relativePath capture group
+            // Pattern: files/tmp/[sessionPath]/[relativePath with blob:]
+            const content = '<img src="files/tmp/session123/blob:something/image.png">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            // The regex captures relativePath, and if it starts with blob: it returns original
+            expect(fixed).toContain('files/tmp/');
+        });
+
+        it('should skip data: URLs in files/tmp/ paths', () => {
+            // Pattern: files/tmp/[sessionPath]/[relativePath with data:]
+            const content = '<img src="files/tmp/session123/data:something/image.png">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toContain('files/tmp/');
+        });
+
+        it('should skip blob: URLs in /files/tmp/ quoted paths', () => {
+            // Tests lines 286-289
+            const content = '<img src="/files/tmp/session/blob:something">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            // Should keep original when blob: is in path
+            expect(fixed).toContain('/files/tmp/');
+        });
+
+        it('should skip data: URLs in /files/tmp/ quoted paths', () => {
+            const content = '<img src="/files/tmp/session/data:something">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toContain('/files/tmp/');
+        });
+
+        it('should skip blob: URLs in resources/ paths', () => {
+            // Tests line 298
+            const content = '<img src="resources/blob:http://localhost/abc">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="resources/blob:http://localhost/abc">');
+        });
+
+        it('should skip data: URLs in resources/ paths', () => {
+            const content = '<img src="resources/data:image/png;base64,abc">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="resources/data:image/png;base64,abc">');
+        });
+
+        it('should convert localhost URLs to relative paths', () => {
+            // Tests lines 309-310
+            const content = '<img src="http://localhost:8080/files/perm/idevices/text/icon.png">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="files/perm/idevices/text/icon.png">');
+        });
+
+        it('should convert localhost scripts URLs to relative paths', () => {
+            const content = '<script src="http://localhost:3000/scripts/perm/common.js"></script>';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<script src="files/perm/common.js"></script>');
+        });
+
+        it('should apply basePath to localhost URL conversions', () => {
+            const content = '<img src="http://localhost:5000/files/perm/image.png">';
+            const fixed = renderer.fixAssetUrls(content, '../');
+
+            expect(fixed).toBe('<img src="../files/perm/image.png">');
+        });
+    });
+
+    describe('transformPropertiesUrls', () => {
+        it('should transform URLs in nested object arrays', () => {
+            // Tests lines 410-413
+            const props = {
+                items: [
+                    { image: 'asset://uuid/photo.png', text: 'Item 1' },
+                    { image: 'asset://uuid/image.jpg', text: 'Item 2' },
+                ],
+            };
+
+            // Access private method via any
+            const transformed = (renderer as any).transformPropertiesUrls(props, '', false);
+
+            expect(transformed.items[0].image).toBe('content/resources/uuid/photo.png');
+            expect(transformed.items[1].image).toBe('content/resources/uuid/image.jpg');
+        });
+
+        it('should handle arrays with mixed types', () => {
+            const props = {
+                data: ['asset://uuid/file.png', 123, { url: 'asset://uuid/nested.jpg' }, null],
+            };
+
+            const transformed = (renderer as any).transformPropertiesUrls(props, '../', false);
+
+            expect(transformed.data[0]).toBe('../content/resources/uuid/file.png');
+            expect(transformed.data[1]).toBe(123);
+            expect(transformed.data[2].url).toBe('../content/resources/uuid/nested.jpg');
+            expect(transformed.data[3]).toBeNull();
+        });
+
+        it('should handle deeply nested objects', () => {
+            const props = {
+                level1: {
+                    level2: {
+                        image: 'asset://deep/nested.png',
+                    },
+                },
+            };
+
+            const transformed = (renderer as any).transformPropertiesUrls(props, '', false);
+
+            expect(transformed.level1.level2.image).toBe('content/resources/deep/nested.png');
+        });
+
+        it('should preserve non-URL values', () => {
+            const props = {
+                count: 42,
+                active: true,
+                name: 'Test',
+                empty: null,
+            };
+
+            const transformed = (renderer as any).transformPropertiesUrls(props, '', false);
+
+            expect(transformed.count).toBe(42);
+            expect(transformed.active).toBe(true);
+            expect(transformed.name).toBe('Test');
+            expect(transformed.empty).toBeNull();
+        });
+    });
+
     describe('render with pre>code escaping', () => {
         it('should escape pre>code content in rendered output', () => {
             const component: ExportComponent = {
