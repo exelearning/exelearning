@@ -52,6 +52,31 @@ describe('FileAttachHandler', () => {
     });
   });
 
+  describe('extractIntroHtml', () => {
+    it('extracts instructions from introHTML TextAreaField', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="introHTML"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="&lt;p&gt;estas son las instrucciones&lt;/p&gt;"></unicode>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const introHtml = handler.extractIntroHtml(dict);
+
+      expect(introHtml).toContain('<p>estas son las instrucciones</p>');
+    });
+
+    it('returns empty string when no introHTML', () => {
+      const dict = parseDictionary('<dictionary></dictionary>');
+      expect(handler.extractIntroHtml(dict)).toBe('');
+    });
+  });
+
   describe('extractHtmlView', () => {
     it('generates file links HTML (Symfony format)', () => {
       const dict = parseDictionary(`
@@ -78,11 +103,60 @@ describe('FileAttachHandler', () => {
 
       const html = handler.extractHtmlView(dict);
 
-      // Symfony format: <p><a href="path" target="_blank">description</a></p>
+      // Format: <p><a href="path" target="_blank" download="filename">description</a></p>
       expect(html).toContain('<p><a href=');
       expect(html).toContain('target="_blank"');
+      expect(html).toContain('download="document.pdf"');
       expect(html).toContain('document.pdf');
       expect(html).toContain('A PDF file'); // description used as link text
+    });
+
+    it('includes introHTML before file links', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="introHTML"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="&lt;p&gt;Instructions text&lt;/p&gt;"></unicode>
+            </dictionary>
+          </instance>
+          <string role="key" value="fileAttachmentFields"></string>
+          <list>
+            <instance class="exe.engine.extendedfieldengine.FileField">
+              <dictionary>
+                <string role="key" value="fileResource"></string>
+                <instance class="exe.engine.resource.Resource">
+                  <dictionary>
+                    <string role="key" value="_storageName"></string>
+                    <unicode value="file.mp3"></unicode>
+                  </dictionary>
+                </instance>
+                <string role="key" value="fileDescription"></string>
+                <instance class="exe.engine.field.TextField">
+                  <dictionary>
+                    <string role="key" value="content"></string>
+                    <unicode value="Audio file description"></unicode>
+                  </dictionary>
+                </instance>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const html = handler.extractHtmlView(dict);
+
+      // Should have introHTML BEFORE file links
+      expect(html).toContain('<p>Instructions text</p>');
+      expect(html).toContain('<p><a href=');
+      expect(html).toContain('download="file.mp3"');
+      expect(html).toContain('Audio file description');
+
+      // Verify order: instructions before file links
+      const introIndex = html.indexOf('Instructions text');
+      const linkIndex = html.indexOf('Audio file description');
+      expect(introIndex).toBeLessThan(linkIndex);
     });
 
     it('returns empty string for null dict', () => {
@@ -92,6 +166,24 @@ describe('FileAttachHandler', () => {
     it('returns empty string when no files', () => {
       const dict = parseDictionary('<dictionary></dictionary>');
       expect(handler.extractHtmlView(dict)).toBe('');
+    });
+
+    it('returns only introHTML when no files', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="introHTML"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="&lt;p&gt;Only instructions&lt;/p&gt;"></unicode>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const html = handler.extractHtmlView(dict);
+      expect(html).toContain('<p>Only instructions</p>');
+      expect(html).not.toContain('<a href=');
     });
   });
 
@@ -160,6 +252,62 @@ describe('FileAttachHandler', () => {
       expect(files[0].displayName).toBe('Annual Report');
       expect(files[0].description).toBe('PDF version');
       expect(files[0].path).toBe('resources/report.pdf');
+    });
+
+    it('extracts files from fileAttachmentFields key (FileAttachIdeviceInc format)', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="fileAttachmentFields"></string>
+          <list>
+            <instance class="exe.engine.extendedfieldengine.FileField">
+              <dictionary>
+                <string role="key" value="fileResource"></string>
+                <instance class="exe.engine.resource.Resource">
+                  <dictionary>
+                    <string role="key" value="_storageName"></string>
+                    <string value="file_example_MP3_700KB.mp3"></string>
+                  </dictionary>
+                </instance>
+                <string role="key" value="fileDescription"></string>
+                <instance class="exe.engine.field.TextField">
+                  <dictionary>
+                    <string role="key" value="content"></string>
+                    <unicode value="Audio file"></unicode>
+                  </dictionary>
+                </instance>
+              </dictionary>
+            </instance>
+            <instance class="exe.engine.extendedfieldengine.FileField">
+              <dictionary>
+                <string role="key" value="fileResource"></string>
+                <instance class="exe.engine.resource.Resource">
+                  <dictionary>
+                    <string role="key" value="_storageName"></string>
+                    <string value="El_Cid.elp"></string>
+                  </dictionary>
+                </instance>
+                <string role="key" value="fileDescription"></string>
+                <instance class="exe.engine.field.TextField">
+                  <dictionary>
+                    <string role="key" value="content"></string>
+                    <unicode value="ELP project file"></unicode>
+                  </dictionary>
+                </instance>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>
+      `);
+
+      const files = handler.extractFiles(dict);
+
+      expect(files.length).toBe(2);
+      expect(files[0].filename).toBe('file_example_MP3_700KB.mp3');
+      expect(files[0].description).toBe('Audio file');
+      expect(files[0].path).toBe('resources/file_example_MP3_700KB.mp3');
+      expect(files[1].filename).toBe('El_Cid.elp');
+      expect(files[1].description).toBe('ELP project file');
+      expect(files[1].path).toBe('resources/El_Cid.elp');
     });
 
     it('handles multiple files', () => {
