@@ -11,7 +11,13 @@
  * - No prev/next buttons
  * - Optimized for @media print CSS rules
  */
-import type { ExportDocument, ExportPage, ResourceProvider, LatexPreRenderResult, MermaidPreRenderResult } from '../interfaces';
+import type {
+    ExportDocument,
+    ExportPage,
+    ResourceProvider,
+    LatexPreRenderResult,
+    MermaidPreRenderResult,
+} from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';

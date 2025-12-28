@@ -761,35 +761,37 @@ test.describe('Text iDevice', () => {
 
             // Wait for mermaid to render in preview (pre-rendered to SVG)
             // Use waitForFunction for reliability instead of fixed timeout
-            const previewMermaidRendered = await page.waitForFunction(
-                () => {
-                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                    if (!previewIframe?.contentDocument) return null;
-                    const doc = previewIframe.contentDocument;
+            const previewMermaidRendered = await page
+                .waitForFunction(
+                    () => {
+                        const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                        if (!previewIframe?.contentDocument) return null;
+                        const doc = previewIframe.contentDocument;
 
-                    const activeArticle = doc.querySelector('article.spa-page.active');
-                    if (!activeArticle) return null;
+                        const activeArticle = doc.querySelector('article.spa-page.active');
+                        if (!activeArticle) return null;
 
-                    // Check for pre-rendered mermaid (new behavior: pre-rendered to static SVG)
-                    const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
-                    const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
+                        // Check for pre-rendered mermaid (new behavior: pre-rendered to static SVG)
+                        const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
+                        const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
 
-                    // Also check for runtime-rendered mermaid (fallback if pre-rendering not available)
-                    const pre = activeArticle.querySelector('pre.mermaid');
-                    const runtimeSvg = activeArticle.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
+                        // Also check for runtime-rendered mermaid (fallback if pre-rendering not available)
+                        const pre = activeArticle.querySelector('pre.mermaid');
+                        const runtimeSvg = activeArticle.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
 
-                    // Return when either pre-rendered OR runtime-rendered is complete
-                    if (preRenderedSvg || runtimeSvg) {
-                        return {
-                            isPreRendered: !!preRendered,
-                            hasSvg: !!(preRenderedSvg || runtimeSvg),
-                            hasDataMermaid: !!preRendered?.getAttribute('data-mermaid'),
-                        };
-                    }
-                    return null;
-                },
-                { timeout: 15000 },
-            ).then(handle => handle.jsonValue());
+                        // Return when either pre-rendered OR runtime-rendered is complete
+                        if (preRenderedSvg || runtimeSvg) {
+                            return {
+                                isPreRendered: !!preRendered,
+                                hasSvg: !!(preRenderedSvg || runtimeSvg),
+                                hasDataMermaid: !!preRendered?.getAttribute('data-mermaid'),
+                            };
+                        }
+                        return null;
+                    },
+                    { timeout: 15000 },
+                )
+                .then(handle => handle.jsonValue());
 
             // The diagram should have been rendered (either pre-rendered or runtime)
             expect(previewMermaidRendered.hasSvg).toBe(true);
@@ -1035,41 +1037,43 @@ test.describe('Text iDevice', () => {
             await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify pre-rendering: check for exe-mermaid-rendered class and NO mermaid.min.js script
-            const preRenderResult = await page.waitForFunction(
-                () => {
-                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                    if (!previewIframe?.contentDocument) return null;
-                    const doc = previewIframe.contentDocument;
+            const preRenderResult = await page
+                .waitForFunction(
+                    () => {
+                        const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                        if (!previewIframe?.contentDocument) return null;
+                        const doc = previewIframe.contentDocument;
 
-                    const activeArticle = doc.querySelector('article.spa-page.active');
-                    if (!activeArticle) return null;
+                        const activeArticle = doc.querySelector('article.spa-page.active');
+                        if (!activeArticle) return null;
 
-                    // Check for pre-rendered mermaid element
-                    const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
-                    const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
+                        // Check for pre-rendered mermaid element
+                        const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
+                        const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
 
-                    // Check if mermaid library is loaded (it should NOT be when pre-rendered)
-                    const mermaidScripts = doc.querySelectorAll('script[src*="mermaid.min.js"]');
-                    const hasMermaidLibrary = mermaidScripts.length > 0;
+                        // Check if mermaid library is loaded (it should NOT be when pre-rendered)
+                        const mermaidScripts = doc.querySelectorAll('script[src*="mermaid.min.js"]');
+                        const hasMermaidLibrary = mermaidScripts.length > 0;
 
-                    // Check if mermaid global is defined (another way to check if library loaded)
-                    const previewWindow = previewIframe.contentWindow as any;
-                    const hasMermaidGlobal = typeof previewWindow?.mermaid !== 'undefined';
+                        // Check if mermaid global is defined (another way to check if library loaded)
+                        const previewWindow = previewIframe.contentWindow as any;
+                        const hasMermaidGlobal = typeof previewWindow?.mermaid !== 'undefined';
 
-                    // Return when SVG is present (either pre-rendered or runtime)
-                    if (preRenderedSvg || doc.querySelector('svg[id^="mermaid-"]')) {
-                        return {
-                            isPreRendered: !!preRendered,
-                            hasSvg: true,
-                            hasDataMermaid: preRendered?.getAttribute('data-mermaid')?.includes('Pre-render Test'),
-                            hasMermaidLibrary,
-                            hasMermaidGlobal,
-                        };
-                    }
-                    return null;
-                },
-                { timeout: 15000 },
-            ).then(handle => handle.jsonValue());
+                        // Return when SVG is present (either pre-rendered or runtime)
+                        if (preRenderedSvg || doc.querySelector('svg[id^="mermaid-"]')) {
+                            return {
+                                isPreRendered: !!preRendered,
+                                hasSvg: true,
+                                hasDataMermaid: preRendered?.getAttribute('data-mermaid')?.includes('Pre-render Test'),
+                                hasMermaidLibrary,
+                                hasMermaidGlobal,
+                            };
+                        }
+                        return null;
+                    },
+                    { timeout: 15000 },
+                )
+                .then(handle => handle.jsonValue());
 
             // Diagram should render as SVG
             expect(preRenderResult.hasSvg).toBe(true);

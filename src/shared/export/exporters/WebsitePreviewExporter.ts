@@ -10,7 +10,13 @@
  * - Shows one page at a time with SPA-style navigation
  * - Asset URLs stay as `asset://` for later resolution to `blob://`
  */
-import type { ExportDocument, ExportPage, ResourceProvider, LatexPreRenderResult, MermaidPreRenderResult } from '../interfaces';
+import type {
+    ExportDocument,
+    ExportPage,
+    ResourceProvider,
+    LatexPreRenderResult,
+    MermaidPreRenderResult,
+} from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
