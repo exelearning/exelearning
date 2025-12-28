@@ -6,10 +6,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
-import { themesRoutes, configure, resetDependencies, type ThemesRouteDependencies } from './themes';
+import { themesRoutes, configure, resetDependencies } from './themes';
 import * as fs from 'fs';
-import { validateThemeZip, extractTheme } from '../services/admin-upload-validator';
-import * as fsExtra from 'fs-extra';
 
 describe('Themes Routes', () => {
     let app: Elysia;

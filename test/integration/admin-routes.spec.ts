@@ -12,16 +12,11 @@ import {
     getAllThemes,
     findThemeById,
     createTheme,
-    updateTheme,
     deleteTheme,
     setDefaultThemeById,
     clearDefaultTheme,
     toggleThemeEnabled,
-    themeDirNameExists,
-    getNextSiteThemeSortOrder,
     getDefaultTheme,
-    getEnabledThemes,
-    findThemeByDirName,
 } from '../../src/db/queries/themes';
 import {
     getAllTemplates,

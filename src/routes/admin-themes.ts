@@ -10,7 +10,6 @@
 import { Elysia, t } from 'elysia';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
-import * as fs from 'fs-extra';
 import * as path from 'path';
 import { db as defaultDb } from '../db/client';
 import type { Kysely } from 'kysely';
@@ -47,13 +46,7 @@ import {
     BASE_THEME_NAMES,
 } from '../services/admin-upload-validator';
 import { requireAdmin } from '../utils/guards';
-import {
-    getFilesDir as getFilesDirDefault,
-    getJwtSecret,
-    deleteFileIfExists,
-    parseIntegerId,
-    createErrorResponse,
-} from '../utils/admin-route-helpers';
+import { getFilesDir as getFilesDirDefault, getJwtSecret, deleteFileIfExists } from '../utils/admin-route-helpers';
 
 // ============================================================================
 // TYPES

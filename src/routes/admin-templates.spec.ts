@@ -3,9 +3,8 @@
  * Tests the route handlers with mocked dependencies
  */
 import { describe, expect, test, beforeEach, beforeAll, afterAll, mock } from 'bun:test';
-import { Elysia, t } from 'elysia';
+import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { createAdminTemplatesRoutes, type AdminTemplatesDependencies } from './admin-templates';
 import type { Template } from '../db/types';
 
@@ -131,9 +130,7 @@ describe('Admin Templates Routes', () => {
         });
 
         test('should return templates list with valid auth', async () => {
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/templates', adminToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/templates', adminToken));
             expect(response.status).toBe(200);
             const data = await response.json();
             expect(data.templates).toHaveLength(1);
@@ -158,9 +155,7 @@ describe('Admin Templates Routes', () => {
         });
 
         test('should return template by ID with valid auth', async () => {
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/templates/1', adminToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/templates/1', adminToken));
             expect(response.status).toBe(200);
             const data = await response.json();
             expect(data.id).toBe(1);
@@ -624,9 +619,7 @@ describe('Admin Templates Routes', () => {
                 })
                 .handle(new Request('http://localhost/generate'));
 
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/templates', userToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/templates', userToken));
             expect(response.status).toBe(403);
         });
     });

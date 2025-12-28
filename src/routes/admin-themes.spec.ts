@@ -165,9 +165,7 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should return themes list with valid auth', async () => {
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/themes', adminToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/themes', adminToken));
             expect(response.status).toBe(200);
             const data = await response.json();
             expect(data.themes).toBeDefined();
@@ -175,9 +173,7 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should return base themes and site themes', async () => {
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/themes', adminToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/themes', adminToken));
             expect(response.status).toBe(200);
             const data = await response.json();
             // Base theme + site theme
@@ -190,9 +186,7 @@ describe('Admin Themes Routes', () => {
             });
             app = createTestApp(mockDeps);
 
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/themes', adminToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/themes', adminToken));
             expect(response.status).toBe(200);
         });
     });
@@ -236,9 +230,7 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should return theme by ID with valid auth', async () => {
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/themes/1', adminToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/themes/1', adminToken));
             expect(response.status).toBe(200);
             const data = await response.json();
             expect(data.id).toBe(1);
@@ -256,9 +248,7 @@ describe('Admin Themes Routes', () => {
             mockDeps.queries.findThemeById = mock(() => Promise.resolve(undefined));
             app = createTestApp(mockDeps);
 
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/themes/999', adminToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/themes/999', adminToken));
             expect(response.status).toBe(404);
         });
 
@@ -266,9 +256,7 @@ describe('Admin Themes Routes', () => {
             mockDeps.queries.findThemeById = mock(() => Promise.resolve(mockBaseTheme));
             app = createTestApp(mockDeps);
 
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/themes/2', adminToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/themes/2', adminToken));
             expect(response.status).toBe(200);
             const data = await response.json();
             expect(data.source).toBe('base');
@@ -305,9 +293,7 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should return 400 when validation fails', async () => {
-            mockDeps.validator.validateThemeZip = mock(() =>
-                Promise.resolve({ valid: false, error: 'Invalid ZIP' }),
-            );
+            mockDeps.validator.validateThemeZip = mock(() => Promise.resolve({ valid: false, error: 'Invalid ZIP' }));
             app = createTestApp(mockDeps);
 
             const formData = new FormData();
@@ -593,9 +579,7 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should return 400 when trying to set disabled theme as default', async () => {
-            mockDeps.queries.findThemeById = mock(() =>
-                Promise.resolve({ ...mockTheme, is_enabled: 0 }),
-            );
+            mockDeps.queries.findThemeById = mock(() => Promise.resolve({ ...mockTheme, is_enabled: 0 }));
             app = createTestApp(mockDeps);
 
             const response = await app.handle(
@@ -631,9 +615,7 @@ describe('Admin Themes Routes', () => {
 
         test('should set base theme type when is_builtin=1', async () => {
             mockDeps.queries.findThemeById = mock(() => Promise.resolve(mockBaseTheme));
-            mockDeps.queries.setDefaultThemeById = mock(() =>
-                Promise.resolve({ ...mockBaseTheme, is_default: 1 }),
-            );
+            mockDeps.queries.setDefaultThemeById = mock(() => Promise.resolve({ ...mockBaseTheme, is_default: 1 }));
             app = createTestApp(mockDeps);
 
             const response = await app.handle(
@@ -704,9 +686,7 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should reset default to base when deleting default site theme', async () => {
-            mockDeps.queries.getDefaultTheme = mock(() =>
-                Promise.resolve({ type: 'site', dirName: 'test-theme' }),
-            );
+            mockDeps.queries.getDefaultTheme = mock(() => Promise.resolve({ type: 'site', dirName: 'test-theme' }));
             app = createTestApp(mockDeps);
 
             const response = await app.handle(
@@ -733,9 +713,7 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should handle theme without storage_path', async () => {
-            mockDeps.queries.findThemeById = mock(() =>
-                Promise.resolve({ ...mockTheme, storage_path: null }),
-            );
+            mockDeps.queries.findThemeById = mock(() => Promise.resolve({ ...mockTheme, storage_path: null }));
             app = createTestApp(mockDeps);
 
             const response = await app.handle(
@@ -799,9 +777,7 @@ describe('Admin Themes Routes', () => {
 
         test('should toggle base theme enabled successfully', async () => {
             // Non-default theme
-            mockDeps.queries.getDefaultTheme = mock(() =>
-                Promise.resolve({ type: 'site', dirName: 'other-theme' }),
-            );
+            mockDeps.queries.getDefaultTheme = mock(() => Promise.resolve({ type: 'site', dirName: 'other-theme' }));
             app = createTestApp(mockDeps);
 
             const response = await app.handle(
@@ -876,9 +852,7 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should return 400 when trying to set disabled theme as default', async () => {
-            mockDeps.queries.getBaseThemes = mock(() =>
-                Promise.resolve([{ ...mockBaseTheme, is_enabled: 0 }]),
-            );
+            mockDeps.queries.getBaseThemes = mock(() => Promise.resolve([{ ...mockBaseTheme, is_enabled: 0 }]));
             app = createTestApp(mockDeps);
 
             const response = await app.handle(
@@ -929,9 +903,7 @@ describe('Admin Themes Routes', () => {
 
     describe('Guard middleware', () => {
         test('should return 401 for invalid token', async () => {
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/themes', 'invalid-token'),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/themes', 'invalid-token'));
             expect(response.status).toBe(401);
         });
 
@@ -952,9 +924,7 @@ describe('Admin Themes Routes', () => {
                 })
                 .handle(new Request('http://localhost/generate'));
 
-            const response = await app.handle(
-                createAuthRequest('http://localhost/api/admin/themes', userToken),
-            );
+            const response = await app.handle(createAuthRequest('http://localhost/api/admin/themes', userToken));
             expect(response.status).toBe(403);
         });
     });

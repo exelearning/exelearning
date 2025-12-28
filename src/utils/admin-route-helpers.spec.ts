@@ -1,7 +1,7 @@
 /**
  * Tests for Admin Route Helpers
  */
-import { describe, expect, test, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
