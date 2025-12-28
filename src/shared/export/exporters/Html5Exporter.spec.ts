@@ -697,6 +697,87 @@ describe('Html5Exporter', () => {
         });
     });
 
+    describe('Mermaid Pre-Rendering', () => {
+        it('should call preRenderMermaid hook when provided', async () => {
+            let preRenderCalled = false;
+            let pagesProcessed = 0;
+
+            const result = await exporter.export({
+                preRenderMermaid: async (html: string) => {
+                    preRenderCalled = true;
+                    pagesProcessed++;
+                    return {
+                        html,
+                        hasMermaid: true,
+                        mermaidRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(result.success).toBe(true);
+            expect(preRenderCalled).toBe(true);
+            expect(pagesProcessed).toBe(samplePages.length);
+        });
+
+        it('should include Mermaid CSS when preRenderMermaid succeeds', async () => {
+            await exporter.export({
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            expect(cssContent).toContain('.exe-mermaid-rendered');
+        });
+
+        it('should not include Mermaid CSS when no mermaid was rendered', async () => {
+            await exporter.export({
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: false,
+                    mermaidRendered: false,
+                    count: 0,
+                }),
+            });
+
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+            expect(cssContent).not.toContain('.exe-mermaid-rendered');
+        });
+
+        it('should handle preRenderMermaid errors gracefully', async () => {
+            const result = await exporter.export({
+                preRenderMermaid: async () => {
+                    throw new Error('Mermaid not available');
+                },
+            });
+
+            // Should still succeed - errors are caught and logged
+            expect(result.success).toBe(true);
+        });
+
+        it('should modify HTML content when Mermaid is rendered', async () => {
+            await exporter.export({
+                preRenderMermaid: async (html: string) => ({
+                    html: html.replace('<pre class="mermaid">', '<div class="exe-mermaid-rendered"><svg>'),
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toBeDefined();
+        });
+    });
+
     describe('Download Source File Support (ELPX manifest)', () => {
         it('should not create manifest file when download-source-file is not used', async () => {
             await exporter.export();

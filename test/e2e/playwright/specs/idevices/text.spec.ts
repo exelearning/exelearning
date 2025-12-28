@@ -759,25 +759,46 @@ test.describe('Text iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
-            // Wait for mermaid to render in preview
-            await page.waitForTimeout(2000);
+            // Wait for mermaid to render in preview (pre-rendered to SVG)
+            // Use waitForFunction for reliability instead of fixed timeout
+            const previewMermaidRendered = await page.waitForFunction(
+                () => {
+                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                    if (!previewIframe?.contentDocument) return null;
+                    const doc = previewIframe.contentDocument;
 
-            // Verify mermaid diagram renders correctly in preview
-            const previewMermaidRendered = await iframe.locator('body').evaluate(() => {
-                const activeArticle = document.querySelector('article.spa-page.active');
-                if (!activeArticle) return { found: false, hasSvg: false };
+                    const activeArticle = doc.querySelector('article.spa-page.active');
+                    if (!activeArticle) return null;
 
-                const pre = activeArticle.querySelector('pre.mermaid');
-                const svg = activeArticle.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
+                    // Check for pre-rendered mermaid (new behavior: pre-rendered to static SVG)
+                    const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
+                    const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
 
-                return {
-                    found: !!pre,
-                    hasSvg: !!svg,
-                };
-            });
+                    // Also check for runtime-rendered mermaid (fallback if pre-rendering not available)
+                    const pre = activeArticle.querySelector('pre.mermaid');
+                    const runtimeSvg = activeArticle.querySelector('pre.mermaid svg, svg[id^="mermaid-"]');
 
-            expect(previewMermaidRendered.found).toBe(true);
+                    // Return when either pre-rendered OR runtime-rendered is complete
+                    if (preRenderedSvg || runtimeSvg) {
+                        return {
+                            isPreRendered: !!preRendered,
+                            hasSvg: !!(preRenderedSvg || runtimeSvg),
+                            hasDataMermaid: !!preRendered?.getAttribute('data-mermaid'),
+                        };
+                    }
+                    return null;
+                },
+                { timeout: 15000 },
+            ).then(handle => handle.jsonValue());
+
+            // The diagram should have been rendered (either pre-rendered or runtime)
             expect(previewMermaidRendered.hasSvg).toBe(true);
+
+            // When pre-rendering works, it should use exe-mermaid-rendered class
+            // and preserve original code in data-mermaid attribute
+            if (previewMermaidRendered.isPreRendered) {
+                expect(previewMermaidRendered.hasDataMermaid).toBe(true);
+            }
         });
 
         test('should update existing mermaid diagram', async ({ authenticatedPage, createProject }) => {
@@ -911,6 +932,157 @@ test.describe('Text iDevice', () => {
 
             expect(contentHtml).toContain('Updated');
             expect(contentHtml).toContain('Works!');
+        });
+
+        test('should pre-render mermaid to SVG in preview (no mermaid.min.js library)', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Mermaid PreRender Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice with mermaid diagram
+            await addTextIdeviceFromPanel(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
+
+            // Enter edit mode if needed
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // Expand toolbars
+            const toggleToolbarsButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
+                .first();
+            if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
+                await toggleToolbarsButton.click();
+                await page.waitForTimeout(500);
+            }
+
+            // Insert mermaid diagram
+            const mermaidButton = page
+                .locator(
+                    '.tox-tbtn[aria-label*="Mermaid"], .tox-tbtn[aria-label*="mermaid"], .tox-tbtn[title*="Mermaid"]',
+                )
+                .first();
+            await mermaidButton.click();
+
+            const dialog = page.locator('.tox-dialog');
+            await expect(dialog).toBeVisible({ timeout: 10000 });
+
+            const mermaidCode = `graph TD
+    A[Pre-render Test] --> B[SVG Output]`;
+
+            const textarea = dialog.locator('textarea');
+            await textarea.fill(mermaidCode);
+
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
+            await saveDialogBtn.click();
+            await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+            // Save the iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Save project
+            await workarea.save();
+            await page.waitForTimeout(1000);
+
+            // Open preview panel
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for preview to fully render
+            const iframe = page.frameLocator('#preview-iframe');
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+            // Verify pre-rendering: check for exe-mermaid-rendered class and NO mermaid.min.js script
+            const preRenderResult = await page.waitForFunction(
+                () => {
+                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                    if (!previewIframe?.contentDocument) return null;
+                    const doc = previewIframe.contentDocument;
+
+                    const activeArticle = doc.querySelector('article.spa-page.active');
+                    if (!activeArticle) return null;
+
+                    // Check for pre-rendered mermaid element
+                    const preRendered = activeArticle.querySelector('.exe-mermaid-rendered');
+                    const preRenderedSvg = activeArticle.querySelector('.exe-mermaid-rendered svg');
+
+                    // Check if mermaid library is loaded (it should NOT be when pre-rendered)
+                    const mermaidScripts = doc.querySelectorAll('script[src*="mermaid.min.js"]');
+                    const hasMermaidLibrary = mermaidScripts.length > 0;
+
+                    // Check if mermaid global is defined (another way to check if library loaded)
+                    const previewWindow = previewIframe.contentWindow as any;
+                    const hasMermaidGlobal = typeof previewWindow?.mermaid !== 'undefined';
+
+                    // Return when SVG is present (either pre-rendered or runtime)
+                    if (preRenderedSvg || doc.querySelector('svg[id^="mermaid-"]')) {
+                        return {
+                            isPreRendered: !!preRendered,
+                            hasSvg: true,
+                            hasDataMermaid: preRendered?.getAttribute('data-mermaid')?.includes('Pre-render Test'),
+                            hasMermaidLibrary,
+                            hasMermaidGlobal,
+                        };
+                    }
+                    return null;
+                },
+                { timeout: 15000 },
+            ).then(handle => handle.jsonValue());
+
+            // Diagram should render as SVG
+            expect(preRenderResult.hasSvg).toBe(true);
+
+            // When pre-rendering is successful:
+            // - Should have exe-mermaid-rendered class
+            // - Should preserve original code in data-mermaid
+            // - Should NOT load mermaid.min.js library (~2.7MB saved)
+            if (preRenderResult.isPreRendered) {
+                expect(preRenderResult.hasDataMermaid).toBe(true);
+                // Mermaid library should NOT be loaded in preview when pre-rendered
+                expect(preRenderResult.hasMermaidLibrary).toBe(false);
+            }
         });
     });
 

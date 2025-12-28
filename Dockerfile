@@ -28,7 +28,8 @@ COPY public/ ./public/
 
 RUN bun run build:all && \
     ls -la public/style/workarea/main.css && \
-    ls -la dist/
+    ls -la dist/ && \
+    ls -la public/bundles/*/manifest.json
 
 # Prune dev dependencies after build
 RUN rm -rf node_modules && \

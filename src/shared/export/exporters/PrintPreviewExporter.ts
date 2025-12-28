@@ -11,7 +11,7 @@
  * - No prev/next buttons
  * - Optimized for @media print CSS rules
  */
-import type { ExportDocument, ExportPage, ResourceProvider, LatexPreRenderResult } from '../interfaces';
+import type { ExportDocument, ExportPage, ResourceProvider, LatexPreRenderResult, MermaidPreRenderResult } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
@@ -41,6 +41,11 @@ export interface PrintPreviewOptions {
      * Optional hook to pre-render LaTeX inside encrypted DataGame divs.
      */
     preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
+    /**
+     * Optional hook to pre-render Mermaid diagrams to static SVG.
+     * When provided and successful, Mermaid library (~2.7MB) will NOT be included.
+     */
+    preRenderMermaid?: (html: string) => Promise<MermaidPreRenderResult>;
 }
 
 /**
@@ -238,6 +243,7 @@ ${madeWithExeHtml}`;
         // Pre-render LaTeX if needed
         let finalBodyContent = bodyContent;
         let latexWasRendered = false;
+        let mermaidWasRendered = false;
         if (!meta.addMathJax) {
             if (options.preRenderDataGameLatex) {
                 try {
@@ -263,12 +269,27 @@ ${madeWithExeHtml}`;
             }
         }
 
+        // Pre-render Mermaid diagrams to static SVG if hook is provided
+        if (options.preRenderMermaid) {
+            try {
+                const result = await options.preRenderMermaid(finalBodyContent);
+                if (result.mermaidRendered) {
+                    finalBodyContent = result.html;
+                    mermaidWasRendered = true;
+                    console.log(`[PrintPreview] Pre-rendered ${result.count} Mermaid diagram(s) to SVG`);
+                }
+            } catch (error) {
+                console.warn('[PrintPreview] Mermaid pre-render failed:', error);
+            }
+        }
+
         // Detect required libraries
         const libraryDetector = new LibraryDetector();
         const detectedLibraries = libraryDetector.detectLibraries(finalBodyContent, {
             includeAccessibilityToolbar: addAccessibilityToolbar,
             includeMathJax: meta.addMathJax === true,
             skipMathJax: latexWasRendered && !meta.addMathJax,
+            skipMermaid: mermaidWasRendered,
         });
 
         return `<!DOCTYPE html>

@@ -10,7 +10,7 @@
  * - Shows one page at a time with SPA-style navigation
  * - Asset URLs stay as `asset://` for later resolution to `blob://`
  */
-import type { ExportDocument, ExportPage, ResourceProvider, LatexPreRenderResult } from '../interfaces';
+import type { ExportDocument, ExportPage, ResourceProvider, LatexPreRenderResult, MermaidPreRenderResult } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
@@ -44,6 +44,12 @@ export interface PreviewOptions {
      * and re-encrypts before the main preRenderLatex processes visible content.
      */
     preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
+    /**
+     * Optional hook to pre-render Mermaid diagrams to static SVG.
+     * When provided and successful, Mermaid library (~2.7MB) will NOT be included.
+     * This significantly reduces load time and provides instant diagram rendering.
+     */
+    preRenderMermaid?: (html: string) => Promise<MermaidPreRenderResult>;
 }
 
 /**
@@ -307,6 +313,7 @@ ${madeWithExeHtml}`;
         // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
         let finalBodyContent = bodyContent;
         let latexWasRendered = false;
+        let mermaidWasRendered = false;
         if (!meta.addMathJax) {
             // Pre-render LaTeX in encrypted DataGame divs FIRST
             // (game iDevices store questions in encrypted JSON)
@@ -340,12 +347,28 @@ ${madeWithExeHtml}`;
             }
         }
 
+        // Pre-render Mermaid diagrams to static SVG if hook is provided
+        // This eliminates the need for the ~2.7MB Mermaid library
+        if (options.preRenderMermaid) {
+            try {
+                const result = await options.preRenderMermaid(finalBodyContent);
+                if (result.mermaidRendered) {
+                    finalBodyContent = result.html;
+                    mermaidWasRendered = true;
+                    console.log(`[Preview] Pre-rendered ${result.count} Mermaid diagram(s) to SVG`);
+                }
+            } catch (error) {
+                console.warn('[Preview] Mermaid pre-render failed, falling back to Mermaid library:', error);
+            }
+        }
+
         // Detect required libraries by scanning body content (after pre-rendering)
         const libraryDetector = new LibraryDetector();
         const detectedLibraries = libraryDetector.detectLibraries(finalBodyContent, {
             includeAccessibilityToolbar: addAccessibilityToolbar,
             includeMathJax: meta.addMathJax === true,
             skipMathJax: latexWasRendered && !meta.addMathJax,
+            skipMermaid: mermaidWasRendered,
         });
 
         // For preview with download-source-file: use postMessage to parent instead of embedding manifest
@@ -572,7 +595,11 @@ button.toggler span,
 .exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
 .exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
 /* Hide MathML visually but keep accessible for screen readers */
-.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
+.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* Pre-rendered Mermaid (static SVG) - when Mermaid library is not included */
+.exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
+.exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
     }
 
     /**

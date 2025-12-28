@@ -234,7 +234,7 @@ var $exe = {
         // Mermaid script path
         engine: $("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js",
         reload_pending: false,
-            //'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+        initialized: false,
         loadMermaid: function () {
             if (typeof window.mermaid === 'undefined') {
                 const script = document.createElement("script");
@@ -242,24 +242,83 @@ var $exe = {
                 script.async = true;
                 script.onload = function () {
                     mermaid = window.mermaid;
-                    mermaid.initialize({ startOnLoad: false });
-                    mermaid.run();
+                    mermaid.initialize({
+                        startOnLoad: false,
+                        suppressErrorRendering: true,
+                        logLevel: 'fatal',
+                        // Gantt configuration to prevent negative width errors
+                        gantt: {
+                            useMaxWidth: true,
+                            useWidth: undefined
+                        },
+                        flowchart: {
+                            useMaxWidth: true
+                        }
+                    });
+                    $exe.mermaid.initialized = true;
+                    $exe.mermaid.renderDiagrams();
                 };
                 document.head.appendChild(script);
-                this.reload_pending = false;
-            } else {
+            } else if (this.initialized) {
                 // debounce reloading to avoid multiple calls
                 if (!this.reload_pending) {
                     this.reload_pending = true;
                     setTimeout(function () {
                         $exe.mermaid.reload_pending = false;
-                        mermaid.run();
+                        $exe.mermaid.renderDiagrams();
                     }, 100);
                 }
             }
         },
+        renderDiagrams: function (retryCount) {
+            retryCount = retryCount || 0;
+            var maxRetries = 10;
+            // Include elements without data-processed OR with data-processed="pending" (failed previous render)
+            var mermaidNodes = $(".mermaid:not([data-processed]), .mermaid[data-processed='pending']");
+
+            if (mermaidNodes.length === 0) return;
+
+            // Check if elements have valid dimensions
+            var readyNodes = [];
+            var pendingNodes = [];
+
+            mermaidNodes.each(function () {
+                var $el = $(this);
+                // Element needs to be visible AND have width > 0
+                if ($el.is(':visible') && $el.width() > 0) {
+                    readyNodes.push(this);
+                    // Remove pending status so mermaid.run() will process it
+                    $el.removeAttr('data-processed');
+                } else {
+                    pendingNodes.push(this);
+                }
+            });
+
+            // Only call mermaid.run() if there are ready nodes
+            if (readyNodes.length > 0) {
+                try {
+                    mermaid.run();
+                } catch (e) {
+                    // Silently handle rendering errors
+                }
+            }
+
+            // Retry for pending nodes that don't have dimensions yet
+            if (pendingNodes.length > 0 && retryCount < maxRetries) {
+                setTimeout(function () {
+                    $exe.mermaid.renderDiagrams(retryCount + 1);
+                }, 200);
+            }
+        },
         init: function () {
+            // Check for mermaid elements that need rendering
+            // Pre-rendered diagrams have class exe-mermaid-rendered (not .mermaid)
+            // so they won't be matched by this selector.
+            // Include ALL .mermaid elements (even data-processed="pending" which means
+            // a previous render failed) so Mermaid library gets loaded and they can retry.
             var mermaidNodes = $(".mermaid");
+
+            // Load Mermaid if there are any mermaid elements
             if (mermaidNodes.length > 0) {
                 this.loadMermaid();
             }
