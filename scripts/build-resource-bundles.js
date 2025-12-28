@@ -6,7 +6,7 @@
  * to be fetched in a single request during export.
  *
  * Output structure:
- *   public/bundles/v{version}/
+ *   public/bundles/
  *   ├── themes/
  *   │   ├── base.zip
  *   │   ├── flux.zip
@@ -14,6 +14,9 @@
  *   ├── idevices.zip        # All base iDevices
  *   ├── libs.zip            # Base libraries
  *   └── manifest.json       # Bundle metadata with hashes
+ *
+ * Note: Files are stored without version in path. The version is used as a
+ * virtual cache buster in URLs only (controlled by APP_VERSION env var).
  *
  * Usage:
  *   bun scripts/build-resource-bundles.js
@@ -26,16 +29,16 @@ const { strToU8, zipSync } = require('fflate');
 
 const projectRoot = path.resolve(__dirname, '..');
 
-// Read version from package.json
+// Read version from package.json (stored in manifest for reference)
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
-const version = `v${packageJson.version}`;
+const buildVersion = `v${packageJson.version}`;
 
-// Paths
+// Paths - bundles stored without version (version is virtual cache buster in URLs)
 const THEMES_BASE_PATH = path.join(projectRoot, 'public/files/perm/themes/base');
 const IDEVICES_BASE_PATH = path.join(projectRoot, 'public/files/perm/idevices/base');
 const LIBS_PATH = path.join(projectRoot, 'public/libs');
 const COMMON_PATH = path.join(projectRoot, 'public/app/common');
-const OUTPUT_PATH = path.join(projectRoot, 'public/bundles', version);
+const OUTPUT_PATH = path.join(projectRoot, 'public/bundles');
 
 // Base libraries to include (matching resources.ts)
 const BASE_LIBS = [
@@ -346,16 +349,16 @@ function buildContentCssBundle(manifest) {
  * Main build function
  */
 function build() {
-  console.log(`Building resource bundles for ${version}...`);
+  console.log(`Building resource bundles (build version: ${buildVersion})...`);
 
-  // Clean output directory
+  // Clean output directory (but preserve any existing themes subdirectory marker)
   if (fs.existsSync(OUTPUT_PATH)) {
     fs.rmSync(OUTPUT_PATH, { recursive: true });
   }
   fs.mkdirSync(OUTPUT_PATH, { recursive: true });
 
   const manifest = {
-    version,
+    buildVersion, // Version at build time (for reference)
     builtAt: new Date().toISOString(),
   };
 

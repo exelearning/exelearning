@@ -729,9 +729,9 @@ describe('Resources Routes', () => {
 
             it('should return manifest JSON when it exists', async () => {
                 const mockManifest = {
-                    version: 'v0.0.0-alpha',
-                    generatedAt: '2024-01-01T00:00:00.000Z',
-                    themes: { base: 'abc123' },
+                    buildVersion: 'v0.0.0-alpha',
+                    builtAt: '2024-01-01T00:00:00.000Z',
+                    themes: { base: { hash: 'abc123' } },
                 };
 
                 configure({
@@ -756,8 +756,10 @@ describe('Resources Routes', () => {
 
                 expect(res.status).toBe(200);
                 const body = await res.json();
-                expect(body.version).toBe('v0.0.0-alpha');
-                expect(body.themes.base).toBe('abc123');
+                expect(body.buildVersion).toBe('v0.0.0-alpha');
+                expect(body.themes.base.hash).toBe('abc123');
+                // runtimeVersion is added by the API from APP_VERSION or package.json
+                expect(body.runtimeVersion).toBeDefined();
             });
 
             it('should return 500 if manifest is invalid JSON', async () => {
