@@ -229,6 +229,15 @@ interface LatexPreRendererHooks {
 }
 
 /**
+ * Mermaid pre-renderer hooks interface
+ */
+interface MermaidPreRendererHooks {
+    preRenderMermaid: (
+        html: string,
+    ) => Promise<{ html: string; hasMermaid: boolean; mermaidRendered: boolean; count: number }>;
+}
+
+/**
  * Get LaTeX pre-renderer hooks if available in browser context
  * @returns Object with preRenderLatex and preRenderDataGameLatex, or undefined
  */
@@ -258,6 +267,33 @@ function getLatexPreRendererHooks(): LatexPreRendererHooks | undefined {
 }
 
 /**
+ * Get Mermaid pre-renderer hooks if available in browser context
+ * @returns Object with preRenderMermaid, or undefined
+ */
+function getMermaidPreRendererHooks(): MermaidPreRendererHooks | undefined {
+    if (typeof window === 'undefined') return undefined;
+
+    const windowMermaidPreRenderer = (
+        window as unknown as {
+            MermaidPreRenderer?: {
+                preRender: (
+                    html: string,
+                ) => Promise<{ html: string; hasMermaid: boolean; mermaidRendered: boolean; count: number }>;
+            };
+        }
+    ).MermaidPreRenderer;
+    const windowMermaid = (window as unknown as { mermaid?: unknown }).mermaid;
+
+    if (windowMermaidPreRenderer && windowMermaid) {
+        return {
+            preRenderMermaid: windowMermaidPreRenderer.preRender.bind(windowMermaidPreRenderer),
+        };
+    }
+
+    return undefined;
+}
+
+/**
  * Quick export function - creates exporter and runs export in one call
  *
  * @param format - Export format
@@ -280,7 +316,9 @@ export async function quickExport(
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
     const latexHooks = getLatexPreRendererHooks();
-    const exportOptions = latexHooks ? { ...options, ...latexHooks } : options;
+    // Wire up Mermaid pre-renderer hooks if available in browser context
+    const mermaidHooks = getMermaidPreRendererHooks();
+    const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
 
     return exporter.export(exportOptions);
 }
@@ -309,7 +347,9 @@ export async function exportAndDownload(
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
     const latexHooks = getLatexPreRendererHooks();
-    const exportOptions = latexHooks ? { ...options, ...latexHooks } : options;
+    // Wire up Mermaid pre-renderer hooks if available in browser context
+    const mermaidHooks = getMermaidPreRendererHooks();
+    const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
 
     const result = await exporter.export(exportOptions);
 
@@ -360,13 +400,16 @@ export async function generatePreview(
     // preRenderDataGameLatex handles LaTeX inside encrypted game iDevice data.
     // This allows exports to skip bundling MathJax (~1MB)
     const latexHooks = getLatexPreRendererHooks();
-    if (latexHooks) {
-        options = {
-            ...options,
-            preRenderLatex: latexHooks.preRenderLatex,
-            preRenderDataGameLatex: latexHooks.preRenderDataGameLatex,
-        };
-    }
+    // Wire up Mermaid pre-renderer hooks if available in browser context
+    // MermaidPreRenderer converts <pre class="mermaid"> to static SVG
+    // This allows exports to skip bundling Mermaid (~2.7MB)
+    const mermaidHooks = getMermaidPreRendererHooks();
+
+    options = {
+        ...options,
+        ...latexHooks,
+        ...mermaidHooks,
+    };
 
     return exporter.generatePreview(options);
 }
@@ -460,13 +503,14 @@ export async function generatePrintPreview(
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
     const latexHooks = getLatexPreRendererHooks();
-    if (latexHooks) {
-        options = {
-            ...options,
-            preRenderLatex: latexHooks.preRenderLatex,
-            preRenderDataGameLatex: latexHooks.preRenderDataGameLatex,
-        };
-    }
+    // Wire up Mermaid pre-renderer hooks if available in browser context
+    const mermaidHooks = getMermaidPreRendererHooks();
+
+    options = {
+        ...options,
+        ...latexHooks,
+        ...mermaidHooks,
+    };
 
     return exporter.generatePreview(options);
 }

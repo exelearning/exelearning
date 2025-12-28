@@ -315,6 +315,13 @@ export interface ExportOptions {
      * Must be called BEFORE preRenderLatex.
      */
     preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
+
+    /**
+     * Optional hook to pre-render Mermaid diagrams to static SVG.
+     * When provided and successful, Mermaid library (~2.7MB) will NOT be included in the output.
+     * This significantly reduces export size and provides instant diagram rendering.
+     */
+    preRenderMermaid?: (html: string) => Promise<MermaidPreRenderResult>;
 }
 
 /**
@@ -555,6 +562,8 @@ export interface LibraryDetectionOptions {
     includeMathJax?: boolean;
     /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
     skipMathJax?: boolean;
+    /** Skip Mermaid library if diagrams were pre-rendered to SVG */
+    skipMermaid?: boolean;
 }
 
 /**
@@ -568,6 +577,20 @@ export interface LatexPreRenderResult {
     /** Whether LaTeX was successfully pre-rendered */
     latexRendered: boolean;
     /** Number of expressions rendered */
+    count: number;
+}
+
+/**
+ * Mermaid pre-render result
+ */
+export interface MermaidPreRenderResult {
+    /** Processed HTML with Mermaid diagrams rendered to static SVG */
+    html: string;
+    /** Whether the original HTML contained Mermaid diagrams */
+    hasMermaid: boolean;
+    /** Whether Mermaid was successfully pre-rendered */
+    mermaidRendered: boolean;
+    /** Number of diagrams rendered */
     count: number;
 }
 

@@ -58,9 +58,10 @@ export class Html5Exporter extends BaseExporter {
                 if (fileList) fileList.push(path);
             };
 
-            // 1. Generate HTML pages (with optional LaTeX pre-rendering)
+            // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
+            let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -107,6 +108,23 @@ export class Html5Exporter extends BaseExporter {
                     }
                 }
 
+                // Pre-render Mermaid diagrams to static SVG if hook is provided
+                // This eliminates the need for the ~2.7MB Mermaid library in exports
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(html);
+                        if (result.mermaidRendered) {
+                            html = result.html;
+                            mermaidWasRendered = true;
+                            console.log(
+                                `[Html5Exporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
+                            );
+                        }
+                    } catch (error) {
+                        console.warn('[Html5Exporter] Mermaid pre-render failed for page:', page.title, error);
+                    }
+                }
+
                 // First page is index.html, others go in html/ directory
                 const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 pageHtmlMap.set(pageFilename, html);
@@ -124,19 +142,24 @@ export class Html5Exporter extends BaseExporter {
                 addFile('content.xml', contentXml);
             }
 
-            // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
+            // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
             let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered LaTeX CSS if LaTeX was rendered
-            if (latexWasRendered) {
-                const latexCss = this.getPreRenderedLatexCss();
+            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
+            if (latexWasRendered || mermaidWasRendered) {
                 const decoder = new TextDecoder();
-                const baseCssText = decoder.decode(baseCss);
+                let baseCssText = decoder.decode(baseCss);
+                if (latexWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedLatexCss();
+                }
+                if (mermaidWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                }
                 const encoder = new TextEncoder();
-                baseCss = encoder.encode(baseCssText + '\n' + latexCss);
+                baseCss = encoder.encode(baseCssText);
             }
             addFile('content/css/base.css', baseCss);
 
@@ -184,6 +207,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 8. Detect and fetch additional required libraries based on content
             // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
+            // Skip Mermaid if diagrams were pre-rendered to static SVG
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,
@@ -191,11 +215,15 @@ export class Html5Exporter extends BaseExporter {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,
                     skipMathJax: latexWasRendered && !meta.addMathJax, // Don't skip if explicitly requested
+                    skipMermaid: mermaidWasRendered,
                 },
             );
 
             if (latexWasRendered) {
                 console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
+            }
+            if (mermaidWasRendered) {
+                console.log('[Html5Exporter] Mermaid pre-rendered - skipping Mermaid library (~2.7MB saved)');
             }
 
             try {
@@ -341,5 +369,15 @@ export class Html5Exporter extends BaseExporter {
 .exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
 /* Hide MathML visually but keep accessible for screen readers */
 .exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
+    }
+
+    /**
+     * Get CSS for pre-rendered Mermaid diagrams (static SVG)
+     * This CSS is needed when Mermaid is pre-rendered instead of using the library at runtime
+     */
+    protected getPreRenderedMermaidCss(): string {
+        return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
+.exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
+.exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
     }
 }

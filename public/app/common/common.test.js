@@ -522,11 +522,131 @@ describe('common.js $exe helpers', () => {
       expect(loadSpy).toHaveBeenCalled();
     });
 
-    it('loadMermaid reloads mermaid when already loaded', () => {
+    it('loadMermaid reloads mermaid when already loaded and initialized', () => {
       global.mermaid = { run: vi.fn() };
       global.$exe.mermaid.reload_pending = false;
+      global.$exe.mermaid.initialized = true;
       global.$exe.mermaid.loadMermaid();
       expect(global.$exe.mermaid.reload_pending).toBe(true);
+    });
+
+    it('loadMermaid does not reload when mermaid not initialized', () => {
+      global.mermaid = { run: vi.fn() };
+      global.$exe.mermaid.reload_pending = false;
+      global.$exe.mermaid.initialized = false;
+      global.$exe.mermaid.loadMermaid();
+      expect(global.$exe.mermaid.reload_pending).toBe(false);
+    });
+
+    it('renderDiagrams calls mermaid.run for visible elements with width', () => {
+      document.body.innerHTML = '<div class="mermaid">graph TD; A-->B</div>';
+      // Mock jQuery methods since happy-dom doesn't support layout
+      const originalWidth = $.fn.width;
+      const originalIs = $.fn.is;
+      $.fn.width = function() { return 100; };
+      $.fn.is = function(selector) {
+        if (selector === ':visible') return true;
+        return originalIs.call(this, selector);
+      };
+      global.mermaid = { run: vi.fn() };
+      global.$exe.mermaid.renderDiagrams(0);
+      expect(global.mermaid.run).toHaveBeenCalled();
+      $.fn.width = originalWidth;
+      $.fn.is = originalIs;
+    });
+
+    it('renderDiagrams skips already processed elements', () => {
+      document.body.innerHTML = '<div class="mermaid" data-processed="true" style="width: 100px;">graph TD; A-->B</div>';
+      global.mermaid = { run: vi.fn() };
+      global.$exe.mermaid.renderDiagrams(0);
+      expect(global.mermaid.run).not.toHaveBeenCalled();
+    });
+
+    it('renderDiagrams does not call mermaid.run for elements without width', () => {
+      document.body.innerHTML = '<div class="mermaid" style="width: 0; display: block;">graph TD; A-->B</div>';
+      global.mermaid = { run: vi.fn() };
+      global.$exe.mermaid.renderDiagrams(10); // maxRetries reached
+      expect(global.mermaid.run).not.toHaveBeenCalled();
+    });
+
+    it('init skips loading mermaid when all diagrams are pre-rendered', () => {
+      // Only pre-rendered mermaid content, no raw mermaid elements
+      document.body.innerHTML = '<div class="exe-mermaid-rendered" data-mermaid="graph TD; A-->B"><svg></svg></div>';
+      const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
+      global.$exe.mermaid.init();
+      // loadMermaid should NOT be called when only pre-rendered content exists
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('init loads mermaid when there are unprocessed mermaid elements alongside pre-rendered', () => {
+      // Both pre-rendered and raw mermaid elements
+      document.body.innerHTML = `
+        <div class="exe-mermaid-rendered" data-mermaid="graph TD; A-->B"><svg></svg></div>
+        <div class="mermaid">graph TD; C-->D</div>
+      `;
+      const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
+      global.$exe.mermaid.init();
+      // loadMermaid SHOULD be called when there are raw mermaid elements
+      expect(loadSpy).toHaveBeenCalled();
+    });
+
+    it('init loads mermaid when elements have data-processed="pending" (failed previous render)', () => {
+      // Element with pending status (failed previous render attempt)
+      document.body.innerHTML = '<div class="mermaid" data-processed="pending">graph TD; A-->B</div>';
+      const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
+      global.$exe.mermaid.init();
+      // loadMermaid SHOULD be called to retry rendering
+      expect(loadSpy).toHaveBeenCalled();
+    });
+
+    it('renderDiagrams includes elements with data-processed="pending" for retry', () => {
+      document.body.innerHTML = '<div class="mermaid" data-processed="pending" style="width: 100px; display: block;">graph TD; A-->B</div>';
+      const originalIs = $.fn.is;
+      $.fn.is = function(selector) {
+        if (selector === ':visible') return true;
+        return originalIs.call(this, selector);
+      };
+      global.mermaid = { run: vi.fn() };
+      global.$exe.mermaid.renderDiagrams(0);
+      // mermaid.run SHOULD be called for pending elements
+      expect(global.mermaid.run).toHaveBeenCalled();
+      $.fn.is = originalIs;
+    });
+
+    it('renderDiagrams removes data-processed attribute before calling mermaid.run', () => {
+      document.body.innerHTML = '<div class="mermaid" data-processed="pending" style="width: 100px; display: block;">graph TD; A-->B</div>';
+      const originalIs = $.fn.is;
+      $.fn.is = function(selector) {
+        if (selector === ':visible') return true;
+        return originalIs.call(this, selector);
+      };
+      global.mermaid = { run: vi.fn() };
+      global.$exe.mermaid.renderDiagrams(0);
+      const element = document.querySelector('.mermaid');
+      // data-processed should be removed so mermaid.run can process it
+      expect(element.getAttribute('data-processed')).toBeNull();
+      $.fn.is = originalIs;
+    });
+
+    it('renderDiagrams handles mix of new and pending elements', () => {
+      document.body.innerHTML = `
+        <div class="mermaid" style="width: 100px; display: block;">graph TD; A-->B</div>
+        <div class="mermaid" data-processed="pending" style="width: 100px; display: block;">graph TD; C-->D</div>
+      `;
+      const originalIs = $.fn.is;
+      $.fn.is = function(selector) {
+        if (selector === ':visible') return true;
+        return originalIs.call(this, selector);
+      };
+      global.mermaid = { run: vi.fn() };
+      global.$exe.mermaid.renderDiagrams(0);
+      expect(global.mermaid.run).toHaveBeenCalled();
+      // Both elements should have data-processed removed
+      const elements = document.querySelectorAll('.mermaid');
+      elements.forEach(el => {
+        expect(el.getAttribute('data-processed')).toBeNull();
+      });
+      $.fn.is = originalIs;
     });
   });
 

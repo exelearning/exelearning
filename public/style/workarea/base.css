@@ -276,6 +276,8 @@
 pre.mermaid {
     margin: 1.5em 0;
     text-align: center;
+    width: 100%;
+    min-width: 200px;
 }
 
 /* Blocks */
