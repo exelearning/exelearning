@@ -413,12 +413,14 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
 
     // =========================================================================
     // Bundle Endpoints (ZIP bundles for optimized fetching)
+    // Note: Bundles are stored without version in path. Version is only used
+    // in URLs as a virtual cache buster (controlled by APP_VERSION env var).
     // =========================================================================
 
     // GET /api/resources/bundle/manifest - Get bundle manifest with hashes
     .get('/api/resources/bundle/manifest', ({ set }) => {
-        const version = getAppVersion();
-        const manifestPath = path.join(BUNDLES_PATH, version, 'manifest.json');
+        // Bundles stored at root of BUNDLES_PATH (no version in physical path)
+        const manifestPath = path.join(BUNDLES_PATH, 'manifest.json');
 
         if (!deps.fs.existsSync(manifestPath)) {
             set.status = 404;
@@ -427,7 +429,8 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
 
         try {
             const manifest = JSON.parse(deps.fs.readFileSync(manifestPath, 'utf-8'));
-            return manifest;
+            // Add current runtime version to manifest response (for cache coordination)
+            return { ...manifest, runtimeVersion: getAppVersion() };
         } catch {
             set.status = 500;
             return { error: 'Internal Error', message: 'Failed to read bundle manifest' };
@@ -437,10 +440,9 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     // GET /api/resources/bundle/theme/:themeName - Get theme ZIP bundle
     .get('/api/resources/bundle/theme/:themeName', async ({ params, set }) => {
         const { themeName } = params;
-        const version = getAppVersion();
 
-        // Check for pre-built bundle (base themes)
-        const prebuiltPath = path.join(BUNDLES_PATH, version, 'themes', `${themeName}.zip`);
+        // Check for pre-built bundle (base themes) - no version in physical path
+        const prebuiltPath = path.join(BUNDLES_PATH, 'themes', `${themeName}.zip`);
 
         if (deps.fs.existsSync(prebuiltPath)) {
             set.headers['content-type'] = 'application/zip';
@@ -517,8 +519,8 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
 
     // GET /api/resources/bundle/idevices - Get all iDevices ZIP bundle
     .get('/api/resources/bundle/idevices', ({ set }) => {
-        const version = getAppVersion();
-        const bundlePath = path.join(BUNDLES_PATH, version, 'idevices.zip');
+        // No version in physical path - bundles stored at root
+        const bundlePath = path.join(BUNDLES_PATH, 'idevices.zip');
 
         if (!deps.fs.existsSync(bundlePath)) {
             set.status = 404;
@@ -532,8 +534,8 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
 
     // GET /api/resources/bundle/libs - Get base libraries ZIP bundle
     .get('/api/resources/bundle/libs', ({ set }) => {
-        const version = getAppVersion();
-        const bundlePath = path.join(BUNDLES_PATH, version, 'libs.zip');
+        // No version in physical path - bundles stored at root
+        const bundlePath = path.join(BUNDLES_PATH, 'libs.zip');
 
         if (!deps.fs.existsSync(bundlePath)) {
             set.status = 404;
@@ -547,8 +549,8 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
 
     // GET /api/resources/bundle/common - Get common libraries ZIP bundle
     .get('/api/resources/bundle/common', ({ set }) => {
-        const version = getAppVersion();
-        const bundlePath = path.join(BUNDLES_PATH, version, 'common.zip');
+        // No version in physical path - bundles stored at root
+        const bundlePath = path.join(BUNDLES_PATH, 'common.zip');
 
         if (!deps.fs.existsSync(bundlePath)) {
             set.status = 404;
@@ -562,8 +564,8 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
 
     // GET /api/resources/bundle/content-css - Get content CSS ZIP bundle
     .get('/api/resources/bundle/content-css', ({ set }) => {
-        const version = getAppVersion();
-        const bundlePath = path.join(BUNDLES_PATH, version, 'content-css.zip');
+        // No version in physical path - bundles stored at root
+        const bundlePath = path.join(BUNDLES_PATH, 'content-css.zip');
 
         if (!deps.fs.existsSync(bundlePath)) {
             set.status = 404;

@@ -13,11 +13,8 @@ import { unzipSync } from 'fflate';
 
 const projectRoot = path.resolve(__dirname, '..');
 
-// Get version from package.json
-const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
-const version = `v${packageJson.version}`;
-
-const bundlesPath = path.join(projectRoot, 'public/bundles', version);
+// Bundles are stored without version in path (version is virtual cache buster in URLs only)
+const bundlesPath = path.join(projectRoot, 'public/bundles');
 
 describe('build-resource-bundles', () => {
     beforeAll(() => {
