@@ -120,6 +120,16 @@ describe('iDevices Routes', () => {
 
             expect(idevice.url).toContain('/files/perm/idevices/');
         });
+
+        it('should include version prefix in idevice URLs for cache-busting', async () => {
+            const res = await app.handle(new Request('http://localhost/api/idevices/installed'));
+
+            const body = await res.json();
+            const idevice = body.idevices[0];
+
+            // URL should start with /v followed by version number (e.g., /v0.0.0-alpha/files/perm/idevices/...)
+            expect(idevice.url).toMatch(/^\/v[\d.]+[^/]*\/files\/perm\/idevices\//);
+        });
     });
 
     describe('GET /api/idevices/installed/:ideviceId', () => {
