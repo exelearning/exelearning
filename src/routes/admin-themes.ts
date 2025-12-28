@@ -47,6 +47,13 @@ import {
     BASE_THEME_NAMES,
 } from '../services/admin-upload-validator';
 import { requireAdmin } from '../utils/guards';
+import {
+    getFilesDir as getFilesDirDefault,
+    getJwtSecret,
+    deleteFileIfExists,
+    parseIntegerId,
+    createErrorResponse,
+} from '../utils/admin-route-helpers';
 
 // ============================================================================
 // TYPES
@@ -92,8 +99,6 @@ export interface ThemesDependencies {
 // DEFAULTS
 // ============================================================================
 
-const getFilesDir = () => process.env.ELYSIA_FILES_DIR || process.env.FILES_DIR || '/mnt/data';
-
 const defaultDependencies: ThemesDependencies = {
     db: defaultDb,
     queries: {
@@ -123,12 +128,7 @@ const defaultDependencies: ThemesDependencies = {
         extractTheme: extractThemeDefault,
         slugify: slugifyDefault,
     },
-    getFilesDir,
-};
-
-// Get JWT secret
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
+    getFilesDir: getFilesDirDefault,
 };
 
 // ============================================================================
@@ -567,11 +567,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                 // Delete files (only if storage_path exists)
                 if (theme.storage_path) {
                     const targetDir = path.join(filesDir(), theme.storage_path);
-                    try {
-                        await fs.remove(targetDir);
-                    } catch {
-                        // Ignore file deletion errors
-                    }
+                    await deleteFileIfExists(targetDir);
                 }
 
                 // Delete database record

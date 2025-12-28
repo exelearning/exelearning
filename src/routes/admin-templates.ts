@@ -33,6 +33,11 @@ import {
     SUPPORTED_LOCALES,
 } from '../services/admin-upload-validator';
 import { requireAdmin } from '../utils/guards';
+import {
+    getFilesDir as getFilesDirDefault,
+    getJwtSecret,
+    deleteFileIfExists,
+} from '../utils/admin-route-helpers';
 
 // ============================================================================
 // TYPES
@@ -70,8 +75,6 @@ export interface AdminTemplatesDependencies {
 // DEFAULTS
 // ============================================================================
 
-const getFilesDir = () => process.env.ELYSIA_FILES_DIR || process.env.FILES_DIR || '/mnt/data';
-
 const defaultDependencies: AdminTemplatesDependencies = {
     db: defaultDb,
     queries: {
@@ -93,12 +96,7 @@ const defaultDependencies: AdminTemplatesDependencies = {
         extractTemplate: extractTemplateDefault,
         slugify: slugifyDefault,
     },
-    getFilesDir,
-};
-
-// Get JWT secret
-const getJwtSecret = () => {
-    return process.env.JWT_SECRET || process.env.APP_SECRET || 'elysia-dev-secret-change-me';
+    getFilesDir: getFilesDirDefault,
 };
 
 // ============================================================================
@@ -441,11 +439,7 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
 
                 // Delete file
                 const filePath = path.join(filesDir(), template.storage_path);
-                try {
-                    await fs.remove(filePath);
-                } catch {
-                    // Ignore file deletion errors
-                }
+                await deleteFileIfExists(filePath);
 
                 // Delete database record
                 await queries.deleteTemplate(database, id);

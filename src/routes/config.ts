@@ -816,7 +816,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
                     description: t.description || undefined,
                 }));
             } catch {
-                // Silently ignore if admin_templates table doesn't exist yet
+                // Silently ignore if templates table doesn't exist yet
             }
 
             // Sort by displayName

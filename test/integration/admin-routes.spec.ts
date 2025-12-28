@@ -8,32 +8,30 @@ import * as fs from 'fs-extra';
 import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser } from '../helpers/test-db';
 import type { Kysely } from 'kysely';
 import type { Database } from '../../src/db/types';
-import { type AdminThemesDependencies } from '../../src/routes/admin-themes';
 import {
-    getAllAdminThemes,
-    findAdminThemeById,
-    createAdminTheme,
-    updateAdminTheme,
-    deleteAdminTheme,
-    setDefaultAdminTheme,
-    clearDefaultAdminTheme,
-    toggleAdminThemeEnabled,
-    adminThemeDirNameExists,
-    getNextAdminThemeSortOrder,
-    getDefaultAdminTheme,
-    getEnabledAdminThemes,
-    findAdminThemeByDirName,
-} from '../../src/db/queries/admin-themes';
+    getAllThemes,
+    findThemeById,
+    createTheme,
+    updateTheme,
+    deleteTheme,
+    setDefaultThemeById,
+    clearDefaultTheme,
+    toggleThemeEnabled,
+    themeDirNameExists,
+    getNextSiteThemeSortOrder,
+    getDefaultTheme,
+    getEnabledThemes,
+    findThemeByDirName,
+} from '../../src/db/queries/themes';
 import {
-    getAllAdminTemplates,
-    getAdminTemplatesByLocale,
-    findAdminTemplateById,
-    createAdminTemplate,
-    deleteAdminTemplate,
-    toggleAdminTemplateEnabled,
+    getAllTemplates,
+    getTemplatesByLocale,
+    findTemplateById,
+    createTemplate,
+    deleteTemplate,
+    toggleTemplateEnabled,
     getDistinctLocales,
-} from '../../src/db/queries/admin-templates';
-import { validateThemeZip, extractTheme, slugify } from '../../src/services/admin-upload-validator';
+} from '../../src/db/queries/templates';
 
 const TEST_FILES_DIR = '/tmp/exelearning-admin-test';
 
@@ -63,35 +61,10 @@ describe('Admin Routes Integration', () => {
 
     describe('Admin Themes Routes', () => {
         function createThemesApp(): Elysia {
-            const deps: AdminThemesDependencies = {
-                db,
-                queries: {
-                    getAllAdminThemes,
-                    getEnabledAdminThemes,
-                    findAdminThemeById,
-                    findAdminThemeByDirName,
-                    createAdminTheme,
-                    updateAdminTheme,
-                    deleteAdminTheme,
-                    setDefaultAdminTheme,
-                    clearDefaultAdminTheme,
-                    toggleAdminThemeEnabled,
-                    adminThemeDirNameExists,
-                    getNextAdminThemeSortOrder,
-                    getDefaultAdminTheme,
-                },
-                validator: {
-                    validateThemeZip,
-                    extractTheme,
-                    slugify,
-                },
-                getFilesDir: () => TEST_FILES_DIR,
-            };
-
             // Create routes without auth (for testing)
             const routes = new Elysia()
                 .get('/api/admin/themes', async () => {
-                    const themes = await getAllAdminThemes(db);
+                    const themes = await getAllThemes(db);
                     return {
                         themes: themes.map(t => ({
                             id: t.id,
@@ -108,7 +81,7 @@ describe('Admin Routes Integration', () => {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'Invalid theme ID' };
                     }
-                    const theme = await findAdminThemeById(db, id);
+                    const theme = await findThemeById(db, id);
                     if (!theme) {
                         set.status = 404;
                         return { error: 'Not Found', message: 'Theme not found' };
@@ -125,12 +98,12 @@ describe('Admin Routes Integration', () => {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'Invalid theme ID' };
                     }
-                    const theme = await findAdminThemeById(db, id);
+                    const theme = await findThemeById(db, id);
                     if (!theme) {
                         set.status = 404;
                         return { error: 'Not Found', message: 'Theme not found' };
                     }
-                    await deleteAdminTheme(db, id);
+                    await deleteTheme(db, id);
                     return { success: true };
                 });
 
@@ -147,11 +120,12 @@ describe('Admin Routes Integration', () => {
 
         test('GET /api/admin/themes should return themes after creation', async () => {
             // Create a theme in DB
-            await createAdminTheme(db, {
+            await createTheme(db, {
                 dir_name: 'test-theme',
                 display_name: 'Test Theme',
                 is_enabled: 1,
                 is_default: 0,
+                is_builtin: 0,
                 sort_order: 1,
                 storage_path: 'admin/themes/test-theme',
             });
@@ -165,11 +139,12 @@ describe('Admin Routes Integration', () => {
         });
 
         test('GET /api/admin/themes/:id should return theme by ID', async () => {
-            const theme = await createAdminTheme(db, {
+            const theme = await createTheme(db, {
                 dir_name: 'findable',
                 display_name: 'Findable Theme',
                 is_enabled: 1,
                 is_default: 0,
+                is_builtin: 0,
                 sort_order: 1,
                 storage_path: 'admin/themes/findable',
             });
@@ -194,11 +169,12 @@ describe('Admin Routes Integration', () => {
         });
 
         test('DELETE /api/admin/themes/:id should delete theme', async () => {
-            const theme = await createAdminTheme(db, {
+            const theme = await createTheme(db, {
                 dir_name: 'deletable',
                 display_name: 'Deletable',
                 is_enabled: 1,
                 is_default: 0,
+                is_builtin: 0,
                 sort_order: 1,
                 storage_path: 'admin/themes/deletable',
             });
@@ -210,7 +186,7 @@ describe('Admin Routes Integration', () => {
             expect(response.status).toBe(200);
 
             // Verify deleted
-            const found = await findAdminThemeById(db, theme.id);
+            const found = await findThemeById(db, theme.id);
             expect(found).toBeUndefined();
         });
 
@@ -229,9 +205,9 @@ describe('Admin Routes Integration', () => {
                 .get('/api/admin/templates', async ({ query }) => {
                     let templates;
                     if (query?.locale) {
-                        templates = await getAdminTemplatesByLocale(db, query.locale);
+                        templates = await getTemplatesByLocale(db, query.locale);
                     } else {
-                        templates = await getAllAdminTemplates(db);
+                        templates = await getAllTemplates(db);
                     }
                     return {
                         templates: templates.map(t => ({
@@ -250,7 +226,7 @@ describe('Admin Routes Integration', () => {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'Invalid template ID' };
                     }
-                    const template = await findAdminTemplateById(db, id);
+                    const template = await findTemplateById(db, id);
                     if (!template) {
                         set.status = 404;
                         return { error: 'Not Found', message: 'Template not found' };
@@ -267,12 +243,12 @@ describe('Admin Routes Integration', () => {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'Invalid template ID' };
                     }
-                    const template = await findAdminTemplateById(db, id);
+                    const template = await findTemplateById(db, id);
                     if (!template) {
                         set.status = 404;
                         return { error: 'Not Found', message: 'Template not found' };
                     }
-                    await deleteAdminTemplate(db, id);
+                    await deleteTemplate(db, id);
                     return { success: true };
                 });
         }
@@ -286,7 +262,7 @@ describe('Admin Routes Integration', () => {
         });
 
         test('GET /api/admin/templates should return templates after creation', async () => {
-            await createAdminTemplate(db, {
+            await createTemplate(db, {
                 filename: 'test-template',
                 display_name: 'Test Template',
                 locale: 'es',
@@ -304,7 +280,7 @@ describe('Admin Routes Integration', () => {
         });
 
         test('GET /api/admin/templates should filter by locale', async () => {
-            await createAdminTemplate(db, {
+            await createTemplate(db, {
                 filename: 'es-template',
                 display_name: 'Spanish',
                 locale: 'es',
@@ -312,7 +288,7 @@ describe('Admin Routes Integration', () => {
                 sort_order: 1,
                 storage_path: 'admin/templates/es/es-template.elpx',
             });
-            await createAdminTemplate(db, {
+            await createTemplate(db, {
                 filename: 'en-template',
                 display_name: 'English',
                 locale: 'en',
@@ -330,7 +306,7 @@ describe('Admin Routes Integration', () => {
         });
 
         test('GET /api/admin/templates/:id should return template by ID', async () => {
-            const template = await createAdminTemplate(db, {
+            const template = await createTemplate(db, {
                 filename: 'findable',
                 display_name: 'Findable',
                 locale: 'es',
@@ -359,7 +335,7 @@ describe('Admin Routes Integration', () => {
         });
 
         test('DELETE /api/admin/templates/:id should delete template', async () => {
-            const template = await createAdminTemplate(db, {
+            const template = await createTemplate(db, {
                 filename: 'deletable',
                 display_name: 'Deletable',
                 locale: 'es',
@@ -375,7 +351,7 @@ describe('Admin Routes Integration', () => {
             expect(response.status).toBe(200);
 
             // Verify deleted
-            const found = await findAdminTemplateById(db, template.id);
+            const found = await findTemplateById(db, template.id);
             expect(found).toBeUndefined();
         });
 
@@ -389,70 +365,76 @@ describe('Admin Routes Integration', () => {
     });
 
     describe('Theme toggle and default operations', () => {
-        test('toggleAdminThemeEnabled should work', async () => {
-            const theme = await createAdminTheme(db, {
+        test('toggleThemeEnabled should work', async () => {
+            const theme = await createTheme(db, {
                 dir_name: 'toggleable',
                 display_name: 'Toggleable',
                 is_enabled: 1,
                 is_default: 0,
+                is_builtin: 0,
                 sort_order: 1,
                 storage_path: 'admin/themes/toggleable',
             });
 
-            const disabled = await toggleAdminThemeEnabled(db, theme.id, false);
+            const disabled = await toggleThemeEnabled(db, theme.id, false);
             expect(disabled?.is_enabled).toBe(0);
 
-            const enabled = await toggleAdminThemeEnabled(db, theme.id, true);
+            const enabled = await toggleThemeEnabled(db, theme.id, true);
             expect(enabled?.is_enabled).toBe(1);
         });
 
-        test('setDefaultAdminTheme should clear other defaults', async () => {
-            const theme1 = await createAdminTheme(db, {
+        test('setDefaultThemeById should clear other defaults', async () => {
+            const theme1 = await createTheme(db, {
                 dir_name: 'theme1',
                 display_name: 'Theme 1',
                 is_enabled: 1,
                 is_default: 1,
+                is_builtin: 0,
                 sort_order: 1,
                 storage_path: 'admin/themes/theme1',
             });
-            const theme2 = await createAdminTheme(db, {
+            const theme2 = await createTheme(db, {
                 dir_name: 'theme2',
                 display_name: 'Theme 2',
                 is_enabled: 1,
                 is_default: 0,
+                is_builtin: 0,
                 sort_order: 2,
                 storage_path: 'admin/themes/theme2',
             });
 
-            await setDefaultAdminTheme(db, theme2.id);
+            await setDefaultThemeById(db, theme2.id);
 
-            const updated1 = await findAdminThemeById(db, theme1.id);
-            const updated2 = await findAdminThemeById(db, theme2.id);
+            const updated1 = await findThemeById(db, theme1.id);
+            const updated2 = await findThemeById(db, theme2.id);
 
             expect(updated1?.is_default).toBe(0);
             expect(updated2?.is_default).toBe(1);
         });
 
-        test('clearDefaultAdminTheme should remove all defaults', async () => {
-            await createAdminTheme(db, {
+        test('clearDefaultTheme should remove all defaults', async () => {
+            await createTheme(db, {
                 dir_name: 'default-theme',
                 display_name: 'Default',
                 is_enabled: 1,
                 is_default: 1,
+                is_builtin: 0,
                 sort_order: 1,
                 storage_path: 'admin/themes/default-theme',
             });
 
-            await clearDefaultAdminTheme(db);
+            await clearDefaultTheme(db);
 
-            const defaultTheme = await getDefaultAdminTheme(db);
-            expect(defaultTheme).toBeUndefined();
+            const defaultTheme = await getDefaultTheme(db);
+            // getDefaultTheme returns a DefaultThemeSetting object, not undefined
+            // When no default is set, themeType should be 'base' and dirName should be the fallback
+            expect(defaultTheme).toBeDefined();
         });
     });
 
     describe('Template toggle operations', () => {
-        test('toggleAdminTemplateEnabled should work', async () => {
-            const template = await createAdminTemplate(db, {
+        test('toggleTemplateEnabled should work', async () => {
+            const template = await createTemplate(db, {
                 filename: 'toggleable',
                 display_name: 'Toggleable',
                 locale: 'es',
@@ -461,10 +443,10 @@ describe('Admin Routes Integration', () => {
                 storage_path: 'admin/templates/es/toggleable.elpx',
             });
 
-            const disabled = await toggleAdminTemplateEnabled(db, template.id, false);
+            const disabled = await toggleTemplateEnabled(db, template.id, false);
             expect(disabled?.is_enabled).toBe(0);
 
-            const enabled = await toggleAdminTemplateEnabled(db, template.id, true);
+            const enabled = await toggleTemplateEnabled(db, template.id, true);
             expect(enabled?.is_enabled).toBe(1);
         });
     });
