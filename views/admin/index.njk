@@ -943,6 +943,70 @@
             color: var(--admin-text-muted);
             font-style: italic;
         }
+
+        /* System Info */
+        .system-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .system-info-section {
+            background: var(--admin-bg);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .system-info-section h6 {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--admin-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .system-info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.375rem 0;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--admin-border);
+        }
+
+        .system-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .system-info-item .label {
+            color: var(--admin-text-muted);
+        }
+
+        .system-info-item .value {
+            font-weight: 500;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+
+        .system-info-item .value.success {
+            color: #059669;
+        }
+
+        .system-info-item .value.warning {
+            color: #d97706;
+        }
+
+        .system-info-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--admin-text-muted);
+        }
     </style>
 </head>
 <body>
@@ -1058,14 +1122,14 @@
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h5>
-                            <span class="mi mi-sm">schedule</span>
-                            {{ t.recent_activity or 'Recent Activity' }}
+                            <span class="mi mi-sm">info</span>
+                            {{ t.system_info or 'System Info' }}
                         </h5>
                     </div>
-                    <div class="admin-card-body">
-                        <div class="empty-state">
-                            <span class="mi">history</span>
-                            <p>{{ t.no_recent_activity or 'No recent activity to display' }}</p>
+                    <div class="admin-card-body" id="system-info-content">
+                        <div class="system-info-loading">
+                            <span class="mi">hourglass_empty</span>
+                            &nbsp;{{ t.loading or 'Loading' }}...
                         </div>
                     </div>
                 </div>
@@ -1755,7 +1819,7 @@
             document.getElementById('sectionTitle').textContent = titles[section] || section;
 
             // Load section data
-            if (section === 'dashboard') loadStats();
+            if (section === 'dashboard') { loadStats(); loadSystemInfo(); }
             if (section === 'users') loadUsers();
             if (section === 'projects') loadProjects();
 
@@ -1866,6 +1930,133 @@
             } catch (err) {
                 console.error('Failed to load stats:', err);
             }
+        }
+
+        // Load system info
+        async function loadSystemInfo() {
+            const container = document.getElementById('system-info-content');
+            try {
+                const res = await fetch(`${API_BASE}/system-info`, { credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load system info');
+                const data = await res.json();
+                container.innerHTML = renderSystemInfo(data);
+            } catch (err) {
+                console.error('Failed to load system info:', err);
+                container.innerHTML = `<div class="empty-state"><span class="mi">error</span><p>${T.error || 'Error loading system info'}</p></div>`;
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            if (days > 0) return `${days}d ${hours}h ${mins}m`;
+            if (hours > 0) return `${hours}h ${mins}m`;
+            return `${mins}m`;
+        }
+
+        function renderSystemInfo(info) {
+            const diskUsagePercent = info.disk.total > 0
+                ? Math.round((1 - info.disk.available / info.disk.total) * 100)
+                : 0;
+            const memUsagePercent = info.memory.total > 0
+                ? Math.round((info.memory.used / info.memory.total) * 100)
+                : 0;
+
+            return `
+                <div class="system-info-grid">
+                    <div class="system-info-section">
+                        <h6><span class="mi mi-sm">memory</span> Runtime</h6>
+                        <div class="system-info-item">
+                            <span class="label">Engine</span>
+                            <span class="value">${info.runtime.name} ${info.runtime.version}</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="label">Platform</span>
+                            <span class="value">${info.runtime.platform} (${info.runtime.arch})</span>
+                        </div>
+                    </div>
+                    <div class="system-info-section">
+                        <h6><span class="mi mi-sm">storage</span> Database</h6>
+                        <div class="system-info-item">
+                            <span class="label">Engine</span>
+                            <span class="value">${info.database.engine}</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="label">Version</span>
+                            <span class="value">${info.database.version}</span>
+                        </div>
+                        ${info.database.path ? `<div class="system-info-item"><span class="label">Path</span><span class="value" title="${info.database.path}">${info.database.path.length > 30 ? '...' + info.database.path.slice(-27) : info.database.path}</span></div>` : ''}
+                        ${info.database.host ? `<div class="system-info-item"><span class="label">Host</span><span class="value">${info.database.host}:${info.database.port}</span></div>` : ''}
+                    </div>
+                    <div class="system-info-section">
+                        <h6><span class="mi mi-sm">apps</span> Application</h6>
+                        <div class="system-info-item">
+                            <span class="label">Version</span>
+                            <span class="value">${info.application.version}</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="label">Environment</span>
+                            <span class="value ${info.application.environment === 'prod' ? 'success' : 'warning'}">${info.application.environment}</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="label">Port</span>
+                            <span class="value">${info.application.port}</span>
+                        </div>
+                    </div>
+                    <div class="system-info-section">
+                        <h6><span class="mi mi-sm">developer_board</span> Memory</h6>
+                        <div class="system-info-item">
+                            <span class="label">System RAM</span>
+                            <span class="value">${formatBytes(info.memory.used)} / ${formatBytes(info.memory.total)} (${memUsagePercent}%)</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="label">Heap Used</span>
+                            <span class="value">${formatBytes(info.memory.heapUsed)} / ${formatBytes(info.memory.heapTotal)}</span>
+                        </div>
+                    </div>
+                    <div class="system-info-section">
+                        <h6><span class="mi mi-sm">computer</span> Operating System</h6>
+                        <div class="system-info-item">
+                            <span class="label">Platform</span>
+                            <span class="value">${info.os.platform}</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="label">Hostname</span>
+                            <span class="value">${info.os.hostname}</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="label">CPUs</span>
+                            <span class="value">${info.os.cpus}</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="label">Uptime</span>
+                            <span class="value">${formatUptime(info.os.uptime)}</span>
+                        </div>
+                    </div>
+                    <div class="system-info-section">
+                        <h6><span class="mi mi-sm">folder</span> Disk (${info.disk.path})</h6>
+                        ${info.disk.error ? `<div class="system-info-item"><span class="label">Status</span><span class="value warning">${info.disk.error}</span></div>` : `
+                        <div class="system-info-item">
+                            <span class="label">Available</span>
+                            <span class="value">${formatBytes(info.disk.available)} / ${formatBytes(info.disk.total)} (${diskUsagePercent}% used)</span>
+                        </div>
+                        `}
+                        <div class="system-info-item">
+                            <span class="label">Docker</span>
+                            <span class="value ${info.docker.isDocker ? 'success' : ''}">${info.docker.isDocker ? 'Yes' : 'No'}${info.docker.containerId ? ` (${info.docker.containerId.slice(0, 12)})` : ''}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // Load users
@@ -3056,6 +3247,7 @@
 
         // Initial load
         loadStats();
+        loadSystemInfo();
     </script>
 </body>
 </html>

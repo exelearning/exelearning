@@ -36,6 +36,7 @@ import {
 } from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
+import { getSystemInfo } from '../services/system-info';
 
 type AppSettingsTable = {
     key: string;
@@ -292,6 +293,11 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     ...stats,
                     timestamp: new Date().toISOString(),
                 };
+            })
+
+            // GET /api/admin/system-info - Get system information (runtime, db, memory, etc.)
+            .get('/api/admin/system-info', async () => {
+                return await getSystemInfo();
             })
 
             // =====================================================
