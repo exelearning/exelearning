@@ -64,24 +64,26 @@ export default defineConfig({
         // },
     ],
 
-    /* Run local dev server before starting the tests */
-    webServer: {
-        command:
-            'DB_PATH=:memory: FILES_DIR=/tmp/exelearning-e2e/ PORT=3001 APP_PORT=3001 APP_AUTH_METHODS=password,guest bun src/index.ts',
-        url: 'http://localhost:3001/login',
-        reuseExistingServer: !process.env.CI,
-        timeout: 120 * 1000, // 2 minutes to start
-        stdout: 'pipe',
-        stderr: 'pipe',
-        env: {
-            ...process.env,
-            DB_PATH: ':memory:',
-            FILES_DIR: '/tmp/exelearning-e2e/',
-            PORT: '3001',
-            APP_PORT: '3001',
-            APP_AUTH_METHODS: 'password,guest',
-        },
-    },
+    /* Run local dev server before starting the tests (only if E2E_BASE_URL is not set) */
+    webServer: process.env.E2E_BASE_URL
+        ? undefined
+        : {
+              command:
+                  'DB_PATH=:memory: FILES_DIR=/tmp/exelearning-e2e/ PORT=3001 APP_PORT=3001 APP_AUTH_METHODS=password,guest bun src/index.ts',
+              url: 'http://localhost:3001/login',
+              reuseExistingServer: !process.env.CI,
+              timeout: 120 * 1000, // 2 minutes to start
+              stdout: 'pipe',
+              stderr: 'pipe',
+              env: {
+                  ...process.env,
+                  DB_PATH: ':memory:',
+                  FILES_DIR: '/tmp/exelearning-e2e/',
+                  PORT: '3001',
+                  APP_PORT: '3001',
+                  APP_AUTH_METHODS: 'password,guest',
+              },
+          },
 
     /* Global timeout for each test */
     timeout: 60000,

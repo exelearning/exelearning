@@ -4,12 +4,19 @@ on:
   push:
    branches:
      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag to test'
+        required: false
+        default: 'main'
 
 jobs:
   test-compose:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - db: postgres
@@ -20,7 +27,7 @@ jobs:
             app_port: 8083
 
     env:
-      TAG: main
+      TAG: ${{ inputs.tag || 'main' }}
 
     steps:
       - name: Checkout repository
@@ -37,17 +44,40 @@ jobs:
       - name: Wait for app to be ready
         run: |
           echo "Waiting for app to be available at http://localhost:${{ matrix.app_port }}"
-          for i in {1..30}; do
-            if curl -s http://localhost:${{ matrix.APP_PORT }} | grep -q '<!DOCTYPE'; then
+          for i in {1..60}; do
+            if curl -s http://localhost:${{ matrix.app_port }}/healthcheck | grep -q 'ok'; then
               echo "App is up!"
               exit 0
             fi
-            echo "Waiting..."
+            echo "Waiting... ($i/60)"
             sleep 3
           done
           echo "App did not become ready in time" >&2
-          docker compose -f doc/deploy/docker-compose.${{ matrix.db }}.yml logs
+          docker compose -p ${{ matrix.db }} -f doc/deploy/docker-compose.${{ matrix.db }}.yml logs
           exit 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests against ${{ matrix.db }}
+        run: |
+          npx playwright test --project=chromium --reporter=list
+        env:
+          E2E_BASE_URL: http://localhost:${{ matrix.app_port }}
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.db }}
+          path: playwright-report/
+          retention-days: 7
 
       - name: Dump Docker Compose logs on failure
         if: failure()
@@ -59,4 +89,4 @@ jobs:
 
       - name: Stop services
         if: always()
-        run: docker compose -f doc/deploy/docker-compose.${{ matrix.db }}.yml down -v
+        run: docker compose -p ${{ matrix.db }} -f doc/deploy/docker-compose.${{ matrix.db }}.yml down -v

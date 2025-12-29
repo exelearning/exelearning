@@ -12,6 +12,16 @@ WORKDIR /app
 # Dependencies stage - separated for cache efficiency
 ################################################################################
 FROM base AS deps
+
+# Install build dependencies for native modules (mysql2, pg)
+RUN apk add --no-cache --virtual .build-deps \
+    python3 \
+    make \
+    g++ \
+    && apk add --no-cache \
+    # Runtime libs needed by mysql2 and pg
+    libc6-compat
+
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
@@ -47,7 +57,9 @@ LABEL maintainer="INTEF <cedec@educacion.gob.es>" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
-RUN apk add --no-cache dumb-init
+# dumb-init for proper signal handling
+# libc6-compat for mysql2/pg native bindings
+RUN apk add --no-cache dumb-init libc6-compat
 
 ENV NODE_ENV=production \
     APP_ENV=prod \
