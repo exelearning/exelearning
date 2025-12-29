@@ -232,7 +232,7 @@ export default class NavbarFile {
             // Iterate through all blocks in the page
             for (let j = 0; j < blocks.length; j++) {
                 const blockMap = blocks.get(j);
-                const blockName = blockMap.get('blockName') || blockMap.get('name') || '';
+                const blockName = blockMap.get('blockName') || blockMap.get('title') || blockMap.get('name') || '';
                 const components = blockMap.get('components');
 
                 if (!components) continue;
@@ -322,15 +322,66 @@ export default class NavbarFile {
         // Collect all idevices HTML content
         let idevices = this.collectAllIdevicesHtml();
 
+        // Collect asset metadata from IndexedDB for assets referenced in idevices
+        let assetMetadata = await this.collectAssetMetadata(idevices);
+
         let params = {
             csv: false,
             odeSessionId: sessionId,
             resourceReport: true,
             idevices: idevices,
+            assetMetadata: assetMetadata,
         };
         let odeSessionUsedFiles =
             await eXeLearning.app.api.getOdeSessionUsedFiles(params);
         return odeSessionUsedFiles;
+    }
+
+    /**
+     * Collect metadata for all assets referenced in idevices HTML
+     * @param {Array} idevices - Array of idevice objects with html property
+     * @returns {Promise<Object>} Map of assetId -> {filename, size, mime}
+     */
+    async collectAssetMetadata(idevices) {
+        const assetMetadata = {};
+
+        // Get asset manager from Yjs bridge
+        const assetManager = eXeLearning.app.project?._yjsBridge?.assetManager;
+        if (!assetManager) {
+            console.warn('[NavbarUtilities] AssetManager not available');
+            return assetMetadata;
+        }
+
+        // Extract all unique asset IDs from idevices HTML
+        const assetIds = new Set();
+        const assetRegex = /asset:\/\/([a-f0-9-]+)/gi;
+
+        for (const idevice of idevices) {
+            if (!idevice.html) continue;
+            let match;
+            while ((match = assetRegex.exec(idevice.html)) !== null) {
+                assetIds.add(match[1]);
+            }
+        }
+
+        // Get metadata for each asset from IndexedDB
+        for (const assetId of assetIds) {
+            try {
+                const asset = await assetManager.getAsset(assetId);
+                if (asset) {
+                    assetMetadata[assetId] = {
+                        filename: asset.filename || null,
+                        size: asset.size || 0,
+                        mime: asset.mime || 'application/octet-stream',
+                    };
+                }
+            } catch (error) {
+                console.warn(`[NavbarUtilities] Failed to get metadata for asset ${assetId}:`, error);
+            }
+        }
+
+        Logger.log(`[NavbarUtilities] Collected metadata for ${Object.keys(assetMetadata).length} assets`);
+        return assetMetadata;
     }
 
     /**
