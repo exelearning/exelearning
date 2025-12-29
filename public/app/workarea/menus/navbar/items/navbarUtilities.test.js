@@ -591,7 +591,7 @@ describe('NavbarUtilities', () => {
             };
             const mockBlockMap = {
                 get: vi.fn((key) => {
-                    if (key === 'name') return 'Block 1';
+                    if (key === 'blockName') return 'Block 1';
                     if (key === 'components') {
                         return { length: 1, get: vi.fn(() => mockCompMap) };
                     }
@@ -674,34 +674,25 @@ describe('NavbarUtilities', () => {
         });
 
         describe('odeBrokenLinksEvent', () => {
-            it('should show toast and modal when broken links found', async () => {
-                vi.spyOn(navbarUtilities, 'getOdeSessionBrokenLinksEvent').mockResolvedValue({
-                    responseMessage: 'OK',
-                    brokenLinks: [{ link: 'http://broken.com' }],
-                });
+            it('should collect idevices and show modal', () => {
+                vi.spyOn(navbarUtilities, 'collectAllIdevicesHtml').mockReturnValue([
+                    { html: '<a href="https://test.com">Link</a>', pageName: 'Page 1' },
+                ]);
 
                 navbarUtilities.odeBrokenLinksEvent();
 
-                // Wait for promise to resolve
-                await vi.waitFor(() => {
-                    expect(eXeLearning.app.toasts.createToast).toHaveBeenCalled();
-                });
+                expect(navbarUtilities.collectAllIdevicesHtml).toHaveBeenCalled();
+                expect(eXeLearning.app.modals.odebrokenlinks.show).toHaveBeenCalledWith([
+                    { html: '<a href="https://test.com">Link</a>', pageName: 'Page 1' },
+                ]);
             });
 
-            it('should show alert when no broken links found', async () => {
-                vi.spyOn(navbarUtilities, 'getOdeSessionBrokenLinksEvent').mockResolvedValue({
-                    responseMessage: 'OK',
-                    brokenLinks: null,
-                });
+            it('should show modal with empty array when no idevices found', () => {
+                vi.spyOn(navbarUtilities, 'collectAllIdevicesHtml').mockReturnValue([]);
 
                 navbarUtilities.odeBrokenLinksEvent();
 
-                await vi.waitFor(() => {
-                    expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
-                        title: 'Link validation tool',
-                        body: 'No broken links found.',
-                    });
-                });
+                expect(eXeLearning.app.modals.odebrokenlinks.show).toHaveBeenCalledWith([]);
             });
         });
 
