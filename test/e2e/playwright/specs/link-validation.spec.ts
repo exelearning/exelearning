@@ -31,7 +31,7 @@ async function addTextIdevice(page: Page): Promise<void> {
             .locator('.accordion-button');
 
         if ((await infoCategory.count()) > 0) {
-            const isCollapsed = await infoCategory.first().evaluate((el) => el.classList.contains('collapsed'));
+            const isCollapsed = await infoCategory.first().evaluate(el => el.classList.contains('collapsed'));
             if (isCollapsed) {
                 await infoCategory.first().click();
                 await page.waitForTimeout(500);
@@ -110,7 +110,7 @@ test.describe('Link Validation', () => {
         await page.waitForFunction(
             () => {
                 const editor = (window as any).tinymce?.activeEditor;
-                return editor && editor.initialized && !editor.readonly;
+                return editor?.initialized && !editor.readonly;
             },
             { timeout: 15000 },
         );
@@ -298,7 +298,7 @@ test.describe('Link Validation', () => {
         await page.waitForFunction(
             () => {
                 const editor = (window as any).tinymce?.activeEditor;
-                return editor && editor.initialized && !editor.readonly;
+                return editor?.initialized && !editor.readonly;
             },
             { timeout: 15000 },
         );
