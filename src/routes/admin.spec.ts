@@ -220,6 +220,70 @@ describe('Admin Routes', () => {
     });
 
     // ============================================================================
+    // SYSTEM INFO ENDPOINT
+    // ============================================================================
+
+    describe('GET /api/admin/system-info', () => {
+        it('should return system information', async () => {
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/system-info', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+
+            // Verify all sections are present
+            expect(body.runtime).toBeDefined();
+            expect(body.runtime.name).toBeDefined();
+            expect(body.runtime.version).toBeDefined();
+            expect(body.runtime.platform).toBeDefined();
+            expect(body.runtime.arch).toBeDefined();
+
+            expect(body.database).toBeDefined();
+            expect(body.database.engine).toBeDefined();
+
+            expect(body.application).toBeDefined();
+            expect(body.application.version).toBeDefined();
+            expect(body.application.environment).toBeDefined();
+
+            expect(body.memory).toBeDefined();
+            expect(body.memory.total).toBeGreaterThan(0);
+
+            expect(body.os).toBeDefined();
+            expect(body.os.platform).toBeDefined();
+            expect(body.os.cpus).toBeGreaterThan(0);
+
+            expect(body.docker).toBeDefined();
+            expect(typeof body.docker.isDocker).toBe('boolean');
+
+            expect(body.disk).toBeDefined();
+            expect(body.disk.path).toBeDefined();
+
+            expect(body.timestamp).toBeDefined();
+        });
+
+        it('should require admin role', async () => {
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+            const userToken = await generateUserToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/system-info', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(403);
+        });
+    });
+
+    // ============================================================================
     // LIST USERS ENDPOINT
     // ============================================================================
 
