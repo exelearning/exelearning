@@ -28,8 +28,8 @@ services:
       # Files directory
       FILES_DIR: "/mnt/data/"
       
-      # Authentication settings
-      APP_AUTH_METHODS: password
+      # Authentication settings (guest enabled for E2E tests)
+      APP_AUTH_METHODS: password,guest
       AUTH_CREATE_USERS: true
       
       # Test users
