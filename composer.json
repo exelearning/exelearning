@@ -33,7 +33,7 @@
         "symfony/security-bundle": "^7.3",
         "symfony/security-core": "^7.3",
         "symfony/serializer": "^7.3",
-        "symfony/translation": "^7.3",
+        "symfony/translation": "^8.0",
         "symfony/twig-bundle": "^7.3",
         "symfony/uid": "^7.3",
         "symfony/validator": "^7.3",
