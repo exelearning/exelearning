@@ -84,10 +84,10 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
             return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
         }
 
-        // MySQL/MariaDB uses information_schema
+        // MySQL/MariaDB uses information_schema with DATABASE() to filter current DB
         const result = await sql<{ count: string }>`
             SELECT COUNT(*) as count FROM information_schema.tables
-            WHERE table_name = ${tableName}
+            WHERE table_schema = DATABASE() AND table_name = ${tableName}
         `.execute(db);
         return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
     } catch {
@@ -121,10 +121,11 @@ export async function columnExists(db: Kysely<unknown>, tableName: string, colum
             return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
         }
 
-        // MySQL/MariaDB: Use information_schema.columns
+        // MySQL/MariaDB: Use information_schema.columns with DATABASE() to filter current DB
         const result = await sql<{ count: string }>`
             SELECT COUNT(*) as count FROM information_schema.columns
-            WHERE table_name = ${tableName}
+            WHERE table_schema = DATABASE()
+              AND table_name = ${tableName}
               AND column_name = ${columnName}
         `.execute(db);
         return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
@@ -160,20 +161,19 @@ export function addAutoIncrement(col: ColumnDefinitionBuilder): ColumnDefinition
 /**
  * Get the correct data type for binary/blob columns.
  * - PostgreSQL: 'bytea'
- * - MySQL/MariaDB: 'longblob' (regular 'blob' is limited to 64KB)
+ * - MySQL/MariaDB: 'blob' (Kysely doesn't support 'longblob', but we can alter later if needed)
  * - SQLite: 'blob'
+ *
+ * Note: For MySQL, BLOB is limited to 64KB. For larger data (like Yjs documents),
+ * consider using MEDIUMBLOB (16MB) or LONGBLOB (4GB) via raw SQL.
+ * However, most Yjs documents should fit within BLOB limits for typical use cases.
  */
-export function getBinaryType(): 'bytea' | 'blob' | 'longblob' {
+export function getBinaryType(): 'bytea' | 'blob' {
     const dialect = getDialect();
     if (dialect === 'postgres') {
         return 'bytea';
     }
-    if (dialect === 'mysql') {
-        // MySQL/MariaDB: Use LONGBLOB (4GB limit) instead of BLOB (64KB limit)
-        // This is needed for Yjs documents which can be several MB
-        return 'longblob';
-    }
-    // SQLite: BLOB is flexible, no size limit
+    // SQLite and MySQL/MariaDB: Use 'blob' which Kysely understands
     return 'blob';
 }
 

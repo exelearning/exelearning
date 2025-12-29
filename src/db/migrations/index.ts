@@ -65,11 +65,7 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
 /**
  * Insert a migration record only if it doesn't already exist
  */
-async function insertMigrationIfNotExists(
-    db: Kysely<unknown>,
-    name: string,
-    timestamp: string,
-): Promise<void> {
+async function insertMigrationIfNotExists(db: Kysely<unknown>, name: string, timestamp: string): Promise<void> {
     const existing = await sql<{ cnt: number }>`
         SELECT COUNT(*) as cnt FROM kysely_migration WHERE name = ${name}
     `.execute(db);
