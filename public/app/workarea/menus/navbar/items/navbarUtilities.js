@@ -168,52 +168,34 @@ export default class NavbarFile {
     }
 
     /**
-     * Gets the ode broken links and shows it in a modal
-     *
+     * Opens the link validation modal with progressive validation
+     * Modal shows all links immediately with spinners, then updates as validation completes
      */
     odeBrokenLinksEvent() {
-        // Show message
-        let toastData = {
-            title: _('Link validation tool'),
-            body: _('Looking for broken links...'),
-            icon: 'downloading',
-        };
-        let toast = eXeLearning.app.toasts.createToast(toastData);
-        // Get ode broken list
-        this.getOdeSessionBrokenLinksEvent().then((response) => {
-            if (response.responseMessage == 'OK' && response.brokenLinks) {
-                // Show eXe OdeBrokenList modal
-                eXeLearning.app.modals.odebrokenlinks.show(response);
-            } else {
-                // Open eXe alert modal
-                eXeLearning.app.modals.alert.show({
-                    title: _('Link validation tool'),
-                    body: _('No broken links found.'),
-                });
-            }
-            // Remove message
-            setTimeout(() => {
-                toast.remove();
-            }, 800);
-        });
+        // Collect all idevices HTML content for validation
+        const idevices = this.collectAllIdevicesHtml();
+
+        // Open modal immediately - validation happens inside the modal
+        eXeLearning.app.modals.odebrokenlinks.show(idevices);
     }
 
     /**
-     * Get the broken links in all ode on the session
-     * @returns
+     * Get the broken links in all ode on the session (legacy method for compatibility)
+     * @returns {Promise<Object>}
+     * @deprecated Use odeBrokenLinksEvent() for progressive validation UI
      */
     async getOdeSessionBrokenLinksEvent() {
-        let sessionId = eXeLearning.app.project.odeSession;
+        const sessionId = eXeLearning.app.project.odeSession;
 
         // Collect all idevices HTML content for validation
-        let idevices = this.collectAllIdevicesHtml();
+        const idevices = this.collectAllIdevicesHtml();
 
-        let params = {
+        const params = {
             csv: false,
             odeSessionId: sessionId,
             idevices: idevices,
         };
-        let odeSessionBrokenLinks =
+        const odeSessionBrokenLinks =
             await eXeLearning.app.api.getOdeSessionBrokenLinks(params);
         return odeSessionBrokenLinks;
     }

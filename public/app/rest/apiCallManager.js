@@ -639,6 +639,26 @@ export default class ApiCallManager {
     }
 
     /**
+     * Extract links from idevices for validation (fast, no validation)
+     *
+     * @param {Object} params - { odeSessionId, idevices }
+     * @returns {Promise<Object>} - { responseMessage, links, totalLinks }
+     */
+    async extractLinksForValidation(params) {
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/ode-management/odes/session/brokenlinks/extract`;
+        return await this.func.postJson(url, params);
+    }
+
+    /**
+     * Get the URL for the link validation stream endpoint
+     *
+     * @returns {string}
+     */
+    getLinkValidationStreamUrl() {
+        return `${this.apiUrlBase}${this.apiUrlBasePath}/api/ode-management/odes/session/brokenlinks/validate-stream`;
+    }
+
+    /**
      * Get page broken links
      *
      * @param {*} pageId
