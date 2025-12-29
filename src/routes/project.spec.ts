@@ -2027,6 +2027,74 @@ describe('Project Routes', () => {
             expect(body.usedFiles[0].usedFilesSize).toBe('Stored in browser');
         });
 
+        it('should use asset metadata when provided', async () => {
+            const assetId = 'a1b2c3d4-5678-90ab-cdef-123456789012';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<img src="asset://${assetId}">`,
+                                pageName: 'Page 1',
+                                blockName: 'Block 1',
+                                ideviceType: 'image',
+                            },
+                        ],
+                        assetMetadata: {
+                            [assetId]: {
+                                filename: 'my-photo.jpg',
+                                size: 1048576, // 1 MB
+                                mime: 'image/jpeg',
+                            },
+                        },
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBeGreaterThan(0);
+            // Should use filename from metadata instead of UUID
+            expect(body.usedFiles[0].usedFiles).toBe('my-photo.jpg');
+            // Should show formatted size instead of "Stored in browser"
+            expect(body.usedFiles[0].usedFilesSize).toBe('1 MB');
+        });
+
+        it('should fallback to UUID when metadata has no filename', async () => {
+            const assetId = 'b2c3d4e5-6789-01ab-cdef-234567890123';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<img src="asset://${assetId}">`,
+                                pageName: 'Page 1',
+                            },
+                        ],
+                        assetMetadata: {
+                            [assetId]: {
+                                filename: null,
+                                size: 512,
+                                mime: 'application/octet-stream',
+                            },
+                        },
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBeGreaterThan(0);
+            // Should use UUID as fallback
+            expect(body.usedFiles[0].usedFiles).toBe(assetId);
+            // Should still show size
+            expect(body.usedFiles[0].usedFilesSize).toBe('512 B');
+        });
+
         it('should detect files/ URLs', async () => {
             // Create a test file
             const filesDir = path.join(testDir, 'files');
@@ -4670,6 +4738,250 @@ describe('Project Routes', () => {
             const body = await res.json();
             // Non-existent files should be filtered out
             expect(body.usedFiles).toBeDefined();
+        });
+
+        it('should extract filename from asset URL path when no metadata', async () => {
+            const assetId = 'c3d4e5f6-7890-12ab-cdef-345678901234';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<img src="asset://${assetId}/my-image.png">`,
+                                pageName: 'Page 1',
+                                blockName: 'Block 1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(1);
+            // Should extract filename from URL path
+            expect(body.usedFiles[0].usedFiles).toBe('my-image.png');
+            expect(body.usedFiles[0].usedFilesSize).toBe('Stored in browser');
+        });
+
+        it('should handle multiple assets with mixed metadata', async () => {
+            const assetId1 = 'd4e5f6a7-8901-23ab-cdef-456789012345';
+            const assetId2 = 'e5f6a7b8-9012-34ab-cdef-567890123456';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<img src="asset://${assetId1}"><video src="asset://${assetId2}">`,
+                                pageName: 'Page 1',
+                                blockName: 'Block 1',
+                                ideviceType: 'multimedia',
+                            },
+                        ],
+                        assetMetadata: {
+                            [assetId1]: {
+                                filename: 'photo.jpg',
+                                size: 2048,
+                                mime: 'image/jpeg',
+                            },
+                        },
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(2);
+
+            // First asset should have metadata
+            const file1 = body.usedFiles.find((f: { usedFiles: string }) => f.usedFiles === 'photo.jpg');
+            expect(file1).toBeDefined();
+            expect(file1.usedFilesSize).toBe('2 KB');
+
+            // Second asset should fallback to UUID
+            const file2 = body.usedFiles.find((f: { usedFiles: string }) => f.usedFiles === assetId2);
+            expect(file2).toBeDefined();
+            expect(file2.usedFilesSize).toBe('Stored in browser');
+        });
+
+        it('should handle asset with zero size in metadata', async () => {
+            const assetId = 'f6a7b8c9-0123-45ab-cdef-678901234567';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<img src="asset://${assetId}">`,
+                                pageName: 'Page 1',
+                            },
+                        ],
+                        assetMetadata: {
+                            [assetId]: {
+                                filename: 'empty-file.txt',
+                                size: 0,
+                                mime: 'text/plain',
+                            },
+                        },
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(1);
+            expect(body.usedFiles[0].usedFiles).toBe('empty-file.txt');
+            // Zero size should fallback to "Stored in browser"
+            expect(body.usedFiles[0].usedFilesSize).toBe('Stored in browser');
+        });
+
+        it('should handle asset with null filename in metadata', async () => {
+            const assetId = 'a7b8c9d0-1234-56ab-cdef-789012345678';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<img src="asset://${assetId}">`,
+                                pageName: 'Page 1',
+                            },
+                        ],
+                        assetMetadata: {
+                            [assetId]: {
+                                filename: null,
+                                size: 500,
+                                mime: 'image/png',
+                            },
+                        },
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(1);
+            // Should fallback to asset ID when filename is null
+            expect(body.usedFiles[0].usedFiles).toBe(assetId);
+            // Size should still be formatted
+            expect(body.usedFiles[0].usedFilesSize).toBe('500 B');
+        });
+
+        it('should skip idevices without html field', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                pageName: 'Page 1',
+                                blockName: 'Block 1',
+                            },
+                            {
+                                html: '<img src="asset://b8c9d0e1-2345-67ab-cdef-890123456789">',
+                                pageName: 'Page 2',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            // Should only find the asset from the second idevice
+            expect(body.usedFiles.length).toBe(1);
+        });
+
+        it('should handle href attribute for asset URLs', async () => {
+            const assetId = 'c9d0e1f2-3456-78ab-cdef-901234567890';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<a href="asset://${assetId}">Download PDF</a>`,
+                                pageName: 'Page 1',
+                            },
+                        ],
+                        assetMetadata: {
+                            [assetId]: {
+                                filename: 'document.pdf',
+                                size: 1048576,
+                                mime: 'application/pdf',
+                            },
+                        },
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(1);
+            expect(body.usedFiles[0].usedFiles).toBe('document.pdf');
+            expect(body.usedFiles[0].usedFilesSize).toBe('1 MB');
+        });
+
+        it('should populate all idevice context fields', async () => {
+            const assetId = 'e1f2a3b4-5678-90ab-cdef-123456789012';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<img src="asset://${assetId}">`,
+                                pageName: 'Test Page',
+                                blockName: 'Test Block',
+                                ideviceType: 'image-gallery',
+                                order: 5,
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(1);
+            expect(body.usedFiles[0].pageNamesUsedFiles).toBe('Test Page');
+            expect(body.usedFiles[0].blockNamesUsedFiles).toBe('Test Block');
+            expect(body.usedFiles[0].typeComponentSyncUsedFiles).toBe('image-gallery');
+            expect(body.usedFiles[0].orderComponentSyncUsedFiles).toBe('5');
+        });
+
+        it('should handle empty assetMetadata object', async () => {
+            const assetId = 'f2a3b4c5-6789-01ab-cdef-234567890123';
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: `<img src="asset://${assetId}">`,
+                                pageName: 'Page 1',
+                            },
+                        ],
+                        assetMetadata: {},
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(1);
+            expect(body.usedFiles[0].usedFiles).toBe(assetId);
+            expect(body.usedFiles[0].usedFilesSize).toBe('Stored in browser');
         });
     });
 

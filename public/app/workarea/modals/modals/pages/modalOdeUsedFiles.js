@@ -40,6 +40,87 @@ export default class ModalOdeUsedFiles extends Modal {
     }
 
     /**
+     * Create a clickable link for an asset path
+     * @param {string} path - The asset path (asset://uuid or server path)
+     * @returns {HTMLElement} - A clickable anchor or span element
+     */
+    createPathLink(path) {
+        if (!path) {
+            let span = document.createElement('span');
+            span.textContent = '';
+            return span;
+        }
+
+        // Check if it's an asset:// URL (browser-stored asset)
+        const assetMatch = path.match(/asset:\/\/([a-f0-9-]+)/i);
+        if (assetMatch) {
+            const assetId = assetMatch[1];
+            let link = document.createElement('a');
+            link.href = '#';
+            link.textContent = path;
+            link.title = _('Click to open resource in new window');
+            link.style.cursor = 'pointer';
+            link.onclick = async (e) => {
+                e.preventDefault();
+                await this.openAssetInNewWindow(assetId);
+            };
+            return link;
+        }
+
+        // Check if it's a server path (starts with / or http)
+        if (path.startsWith('/') || path.startsWith('http')) {
+            let link = document.createElement('a');
+            link.href = path;
+            link.textContent = path;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.title = _('Click to open resource in new window');
+            return link;
+        }
+
+        // Default: just text
+        let span = document.createElement('span');
+        span.textContent = path;
+        return span;
+    }
+
+    /**
+     * Open a browser-stored asset in a new window
+     * @param {string} assetId - The asset UUID
+     */
+    async openAssetInNewWindow(assetId) {
+        try {
+            const assetManager =
+                eXeLearning.app.project?._yjsBridge?.assetManager;
+            if (!assetManager) {
+                console.error(
+                    '[ModalOdeUsedFiles] AssetManager not available'
+                );
+                alert(_('Cannot open resource: Asset manager not available'));
+                return;
+            }
+
+            const asset = await assetManager.getAsset(assetId);
+            if (!asset || !asset.blob) {
+                console.error(
+                    `[ModalOdeUsedFiles] Asset not found: ${assetId}`
+                );
+                alert(_('Cannot open resource: Asset not found'));
+                return;
+            }
+
+            const blobUrl = await assetManager.createBlobURL(asset.blob);
+            window.open(blobUrl, '_blank');
+        } catch (error) {
+            console.error(
+                '[ModalOdeUsedFiles] Error opening asset:',
+                error
+            );
+            alert(_('Error opening resource'));
+        }
+    }
+
+    /**
      *
      * @param {*} odeElements
      * @returns {Node}
@@ -65,7 +146,12 @@ export default class ModalOdeUsedFiles extends Modal {
             let tr = document.createElement('tr');
             for (let tdCount = 0; tdCount < tdContent.length; tdCount++) {
                 let td = document.createElement('td');
-                td.textContent = tdContent[tdCount];
+                // Column 1 (index 1) is the path - make it clickable
+                if (tdCount === 1) {
+                    td.appendChild(this.createPathLink(tdContent[tdCount]));
+                } else {
+                    td.textContent = tdContent[tdCount];
+                }
                 tr.appendChild(td);
             }
             tBody.appendChild(tr);
@@ -90,15 +176,12 @@ export default class ModalOdeUsedFiles extends Modal {
     }
 
     /**
-     * Generate html of body
-     *
-     * @param {*} odeElements
-     * @returns {String}
+     * Set body content using DOM element (preserves event handlers)
+     * @param {HTMLElement} element - DOM element to set as body content
      */
-    makeBodyHtml(odeElements) {
-        let element = document.createElement('div');
-        element.append(this.makeOdeListElements(odeElements));
-        return element.innerHTML;
+    setBodyElement(element) {
+        this.modalElementBody.innerHTML = '';
+        this.modalElementBody.appendChild(element);
     }
 
     /**
@@ -115,7 +198,8 @@ export default class ModalOdeUsedFiles extends Modal {
                 ? odeElements.title
                 : this.titleDefault;
             this.setTitle(title);
-            this.setBody(this.makeBodyHtml(odeElements));
+            // Use DOM element instead of innerHTML to preserve onclick handlers
+            this.setBodyElement(this.makeOdeListElements(odeElements));
             this.setConfirmExec(() => {
                 this.downloadCsv();
             });
