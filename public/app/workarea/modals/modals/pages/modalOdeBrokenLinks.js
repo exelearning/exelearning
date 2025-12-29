@@ -1,28 +1,43 @@
 import Modal from '../modal.js';
+import LinkValidationManager from '../../../utils/LinkValidationManager.js';
 
+/**
+ * Modal for progressive link validation
+ *
+ * Shows all links immediately with spinners, then updates each
+ * to show valid (checkmark) or broken (X) status as validation completes.
+ */
 export default class ModalOdeBrokenLinks extends Modal {
     constructor(manager) {
-        let id = 'modalOdeBrokenLinks';
-        let titleDefault;
-        super(manager, id, titleDefault, false);
-        this.confirmButtonDefaultText = _('End');
+        const id = 'modalOdeBrokenLinks';
+        super(manager, id, undefined, false);
+        this.confirmButtonDefaultText = _('Download CSV');
         this.cancelButtonDefaultText = _('Cancel');
-        this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary'
-        );
-        this.cancelButton = this.modalElement.querySelector(
-            'button.close.btn.btn-secondary'
-        );
+        this.confirmButton = this.modalElement.querySelector('button.btn.btn-primary');
+        this.cancelButton = this.modalElement.querySelector('button.close.btn.btn-secondary');
+
+        /** @type {LinkValidationManager|null} */
+        this.linkManager = null;
+
+        /** @type {HTMLElement|null} */
+        this.progressContainer = null;
+
+        /** @type {HTMLElement|null} */
+        this.tableBody = null;
+
+        /** @type {Map<string, HTMLElement>} */
+        this.rowElements = new Map();
     }
 
     /**
-     *
-     * @param {*} odeElements
-     * @returns {Node}
+     * Create the table header with status column
+     * @returns {HTMLElement}
      */
     makeTheadElements() {
-        let tHead = document.createElement('thead');
-        let thTitles = [
+        const thead = document.createElement('thead');
+        const tr = document.createElement('tr');
+        const titles = [
+            _('Status'),
             _('Link'),
             _('Error'),
             _('Times'),
@@ -31,134 +46,375 @@ export default class ModalOdeBrokenLinks extends Modal {
             _('iDevice'),
             _('Position'),
         ];
-        for (let thCount = 0; thCount < thTitles.length; thCount++) {
-            let th = document.createElement('th');
-            th.textContent = _(thTitles[thCount]);
-            tHead.appendChild(th);
+
+        for (const title of titles) {
+            const th = document.createElement('th');
+            th.textContent = title;
+            tr.appendChild(th);
         }
-        return tHead;
+
+        thead.appendChild(tr);
+        return thead;
     }
 
     /**
-     *
-     * @param {*} odeElements
-     * @returns {Node}
+     * Create a table row for a link
+     * @param {Object} link - Link object with id, url, status, etc.
+     * @returns {HTMLElement}
      */
-    makeTbodyElements(odeElements) {
-        let odeComponentLinkKey;
-        let tBody = document.createElement('tbody');
-        let links = odeElements['brokenLinks'];
-        for (
-            odeComponentLinkKey = 0;
-            odeComponentLinkKey < links.length;
-            odeComponentLinkKey++
-        ) {
-            let tdContent = [
-                links[odeComponentLinkKey]['brokenLinks'],
-                links[odeComponentLinkKey]['brokenLinksError'],
-                links[odeComponentLinkKey]['nTimesBrokenLinks'],
-                links[odeComponentLinkKey]['pageNamesBrokenLinks'],
-                links[odeComponentLinkKey]['blockNamesBrokenLinks'],
-                links[odeComponentLinkKey]['typeComponentSyncBrokenLinks'],
-                links[odeComponentLinkKey]['orderComponentSyncBrokenLinks'],
-            ];
-            let tr = document.createElement('tr');
-            for (let tdCount = 0; tdCount < tdContent.length; tdCount++) {
-                let td = document.createElement('td');
-                td.textContent = tdContent[tdCount];
-                tr.appendChild(td);
+    createLinkRow(link) {
+        const tr = document.createElement('tr');
+        tr.dataset.linkId = link.id;
+
+        // Status cell with spinner
+        const statusTd = document.createElement('td');
+        statusTd.className = 'link-status text-center';
+        statusTd.innerHTML = this.getStatusHtml(link.status, link.error);
+        tr.appendChild(statusTd);
+
+        // URL cell
+        const urlTd = document.createElement('td');
+        urlTd.className = 'link-url';
+        urlTd.textContent = link.url;
+        urlTd.title = link.url;
+        urlTd.style.maxWidth = '300px';
+        urlTd.style.overflow = 'hidden';
+        urlTd.style.textOverflow = 'ellipsis';
+        urlTd.style.whiteSpace = 'nowrap';
+        tr.appendChild(urlTd);
+
+        // Error cell
+        const errorTd = document.createElement('td');
+        errorTd.className = 'link-error';
+        errorTd.textContent = link.error || '';
+        tr.appendChild(errorTd);
+
+        // Count cell
+        const countTd = document.createElement('td');
+        countTd.textContent = link.count || '';
+        tr.appendChild(countTd);
+
+        // Page name cell
+        const pageTd = document.createElement('td');
+        pageTd.textContent = link.pageName || '';
+        tr.appendChild(pageTd);
+
+        // Block name cell
+        const blockTd = document.createElement('td');
+        blockTd.textContent = link.blockName || '';
+        tr.appendChild(blockTd);
+
+        // iDevice type cell
+        const ideviceTd = document.createElement('td');
+        ideviceTd.textContent = link.ideviceType || '';
+        tr.appendChild(ideviceTd);
+
+        // Order cell
+        const orderTd = document.createElement('td');
+        orderTd.textContent = link.order || '';
+        tr.appendChild(orderTd);
+
+        return tr;
+    }
+
+    /**
+     * Get HTML for status indicator
+     * @param {string} status - pending, valid, or broken
+     * @param {string|null} error - Error message if broken
+     * @returns {string}
+     */
+    getStatusHtml(status, error) {
+        switch (status) {
+            case 'pending':
+            case 'validating':
+                return '<span class="spinner-border spinner-border-sm text-secondary" role="status" aria-label="Validating"></span>';
+            case 'valid':
+                return '<span class="text-success" title="Valid">&#10003;</span>';
+            case 'broken':
+                return `<span class="text-danger" title="${error || 'Error'}">&#10007;</span>`;
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * Create progress bar HTML
+     * @returns {string}
+     */
+    createProgressHtml() {
+        return `
+            <div class="validation-progress mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="progress-text text-muted">${_('Validating links...')}</small>
+                    <small class="progress-stats text-muted">0 / 0</small>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Update progress bar
+     * @param {Object} stats - Validation statistics
+     */
+    updateProgress(stats) {
+        if (!this.progressContainer) return;
+
+        const progressBar = this.progressContainer.querySelector('.progress-bar');
+        const progressStats = this.progressContainer.querySelector('.progress-stats');
+        const progressText = this.progressContainer.querySelector('.progress-text');
+
+        const percent = stats.total > 0 ? Math.round((stats.validated / stats.total) * 100) : 0;
+
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
+        }
+
+        if (progressStats) {
+            progressStats.textContent = `${stats.validated} / ${stats.total}`;
+        }
+
+        if (progressText && stats.validated === stats.total) {
+            const brokenText = stats.broken > 0
+                ? `${stats.broken} ${_('broken')}`
+                : _('No broken links');
+            progressText.textContent = `${_('Complete')}: ${brokenText}`;
+            progressText.classList.remove('text-muted');
+            progressText.classList.add(stats.broken > 0 ? 'text-danger' : 'text-success');
+        }
+    }
+
+    /**
+     * Update a single link row
+     * @param {string} linkId - Link ID
+     * @param {string} status - New status
+     * @param {string|null} error - Error message if broken
+     */
+    updateLinkRow(linkId, status, error) {
+        const row = this.rowElements.get(linkId);
+        if (!row) return;
+
+        // Update status cell
+        const statusCell = row.querySelector('.link-status');
+        if (statusCell) {
+            statusCell.innerHTML = this.getStatusHtml(status, error);
+        }
+
+        // Update error cell
+        const errorCell = row.querySelector('.link-error');
+        if (errorCell) {
+            errorCell.textContent = error || '';
+        }
+
+        // Add visual indicator for broken links
+        if (status === 'broken') {
+            row.classList.add('table-danger');
+        }
+    }
+
+    /**
+     * Build the modal body with progress and table
+     * @param {Array} links - Array of link objects
+     * @returns {HTMLElement}
+     */
+    buildBody(links) {
+        const container = document.createElement('div');
+
+        // Progress section
+        this.progressContainer = document.createElement('div');
+        this.progressContainer.innerHTML = this.createProgressHtml();
+        container.appendChild(this.progressContainer);
+
+        // Table
+        const table = document.createElement('table');
+        table.className = 'table table-striped table-sm';
+        table.appendChild(this.makeTheadElements());
+
+        this.tableBody = document.createElement('tbody');
+        this.rowElements.clear();
+
+        if (links.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 8;
+            td.className = 'text-center text-muted';
+            td.textContent = _('No links found in content');
+            tr.appendChild(td);
+            this.tableBody.appendChild(tr);
+        } else {
+            for (const link of links) {
+                const row = this.createLinkRow(link);
+                this.rowElements.set(link.id, row);
+                this.tableBody.appendChild(row);
             }
-            tBody.appendChild(tr);
         }
-        return tBody;
+
+        table.appendChild(this.tableBody);
+
+        // Wrap table in scrollable container
+        const tableWrapper = document.createElement('div');
+        tableWrapper.style.maxHeight = '400px';
+        tableWrapper.style.overflowY = 'auto';
+        tableWrapper.appendChild(table);
+
+        container.appendChild(tableWrapper);
+
+        return container;
     }
 
     /**
-     *
-     * @param {*} odeElements
-     * @returns {Node}
+     * Show the modal and start validation
+     * @param {Array} idevices - Array of idevice content objects
      */
-    makeOdeListElements(odeElements) {
-        let odeTable = document.createElement('table');
-        let tHead = this.makeTheadElements();
-        let tBody = this.makeTbodyElements(odeElements);
-        odeTable.appendChild(tHead);
-        odeTable.appendChild(tBody);
-        odeTable.classList.add('table');
-        odeTable.classList.add('table-striped');
-        return odeTable;
-    }
+    show(idevices) {
+        this.titleDefault = _('Link Validation');
+        const time = this.manager.closeModals() ? 500 : 50;
 
-    /**
-     * Generate html of body
-     *
-     * @param {*} odeElements
-     * @returns {String}
-     */
-    makeBodyHtml(odeElements) {
-        let element = document.createElement('div');
-        element.append(this.makeOdeListElements(odeElements));
-        return element.innerHTML;
-    }
-
-    /**
-     *
-     * @param {*} odeElements
-     */
-    show(odeElements) {
-        // Set title
-        this.titleDefault = _('Broken Links');
-        let time = this.manager.closeModals() ? 500 : 50;
         setTimeout(() => {
-            odeElements = odeElements ? odeElements : {};
-            let title = odeElements.title
-                ? odeElements.title
-                : this.titleDefault;
-            this.setTitle(title);
-            this.setBody(this.makeBodyHtml(odeElements));
+            this.setTitle(this.titleDefault);
+
+            // Disable CSV button initially
+            if (this.confirmButton) {
+                this.confirmButton.disabled = true;
+                this.confirmButton.textContent = _('Download CSV');
+            }
+
+            // Create and configure the validation manager
+            this.linkManager = new LinkValidationManager();
+
+            this.linkManager.onLinksExtracted = (links, stats) => {
+                // Build and show the table with all links
+                const body = this.buildBody(links);
+                this.setBody(body.innerHTML);
+
+                // Re-bind row elements after setting body
+                const rows = this.modalElement.querySelectorAll('tbody tr[data-link-id]');
+                this.rowElements.clear();
+                rows.forEach((row) => {
+                    this.rowElements.set(row.dataset.linkId, row);
+                });
+
+                // Get progress container reference
+                this.progressContainer = this.modalElement.querySelector('.validation-progress');
+                this.updateProgress(stats);
+            };
+
+            this.linkManager.onLinkUpdate = (linkId, status, error) => {
+                this.updateLinkRow(linkId, status, error);
+            };
+
+            this.linkManager.onProgress = (stats) => {
+                this.updateProgress(stats);
+            };
+
+            this.linkManager.onComplete = (stats, cancelled) => {
+                // Enable CSV download button
+                if (this.confirmButton) {
+                    this.confirmButton.disabled = false;
+                }
+
+                // Update progress to complete state
+                this.updateProgress(stats);
+
+                // Hide progress bar after a moment
+                if (this.progressContainer && !cancelled) {
+                    setTimeout(() => {
+                        const progressBar = this.progressContainer.querySelector('.progress');
+                        if (progressBar) {
+                            progressBar.style.display = 'none';
+                        }
+                    }, 1000);
+                }
+            };
+
+            this.linkManager.onError = (error) => {
+                console.error('[ModalOdeBrokenLinks] Validation error:', error);
+                eXeLearning.app.alerts.showToast({
+                    type: 'error',
+                    message: _('Error validating links'),
+                });
+            };
+
+            // Set up CSV download
             this.setConfirmExec(() => {
                 this.downloadCsv();
             });
+
+            // Set up cancel to stop validation
+            this.setCancelExec(() => {
+                if (this.linkManager && this.linkManager.isInProgress()) {
+                    this.linkManager.cancel();
+                }
+            });
+
+            // Show the modal
             this.modal.show();
+
+            // Start validation
+            this.linkManager.startValidation(idevices || []);
         }, time);
     }
 
     /**
-     *
+     * Download broken links as CSV
      */
-    async downloadCsv() {
+    downloadCsv() {
         this.preventCloseModal = true;
-        let sessionId = eXeLearning.app.project.odeSession;
-        let params = {
-            csv: true,
-            odeSessionId: sessionId,
-        };
-        await eXeLearning.app.api
-            .getOdeSessionBrokenLinks(params)
-            .then(function (data) {
-                var headerTitles = [
-                    _('Link'),
-                    _('Error'),
-                    _('Times'),
-                    _('Page name'),
-                    _('Block name'),
-                    _('iDevice'),
-                    _('Position'),
-                ];
-                var csv =
-                    eXeLearning.app.api.app.menus.navbar.utilities.json2Csv(
-                        data['brokenLinks'],
-                        headerTitles
-                    );
-                var downloadLink = document.createElement('a');
-                var blob = new Blob(['\ufeff', csv]);
-                var url = URL.createObjectURL(blob);
-                downloadLink.href = url;
-                downloadLink.download = 'BrokenLinks.csv';
 
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
+        if (!this.linkManager) {
+            console.warn('[ModalOdeBrokenLinks] No link manager available for CSV export');
+            return;
+        }
+
+        const brokenLinks = this.linkManager.toExportFormat(true);
+
+        if (brokenLinks.length === 0) {
+            eXeLearning.app.alerts.showToast({
+                type: 'info',
+                message: _('No broken links to export'),
             });
+            return;
+        }
+
+        const headerTitles = [
+            _('Link'),
+            _('Error'),
+            _('Times'),
+            _('Page name'),
+            _('Block name'),
+            _('iDevice'),
+            _('Position'),
+        ];
+
+        const csv = eXeLearning.app.api.app.menus.navbar.utilities.json2Csv(
+            brokenLinks,
+            headerTitles
+        );
+
+        const downloadLink = document.createElement('a');
+        const blob = new Blob(['\ufeff', csv]);
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        downloadLink.download = 'BrokenLinks.csv';
+
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(url);
+    }
+
+    /**
+     * Clean up when modal is hidden
+     */
+    onHide() {
+        if (this.linkManager) {
+            this.linkManager.cancel();
+            this.linkManager = null;
+        }
+        this.rowElements.clear();
+        this.progressContainer = null;
+        this.tableBody = null;
     }
 }

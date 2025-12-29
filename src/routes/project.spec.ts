@@ -1828,6 +1828,165 @@ describe('Project Routes', () => {
         });
     });
 
+    describe('Link Extraction (brokenlinks/extract)', () => {
+        it('should extract links without validating', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="https://google.com">Google</a><img src="files/image.jpg">',
+                                pageName: 'Page 1',
+                                blockName: 'Block 1',
+                                ideviceType: 'text',
+                                order: 1,
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+            expect(body.links).toHaveLength(2);
+            expect(body.totalLinks).toBe(2);
+
+            // Each link should have an ID and metadata
+            const googleLink = body.links.find((l: { url: string }) => l.url === 'https://google.com');
+            expect(googleLink).toBeDefined();
+            expect(googleLink.id).toBeDefined();
+            expect(googleLink.pageName).toBe('Page 1');
+            expect(googleLink.ideviceType).toBe('text');
+        });
+
+        it('should return empty array for content with no links', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [{ html: '<p>No links here</p>' }],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.links).toHaveLength(0);
+            expect(body.totalLinks).toBe(0);
+        });
+
+        it('should skip exe-node links during extraction', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idevices: [
+                            {
+                                html: '<a href="exe-node:page-123">Internal</a><a href="https://external.com">External</a>',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            // Only external link should be extracted (exe-node skipped)
+            expect(body.links).toHaveLength(1);
+            expect(body.links[0].url).toBe('https://external.com');
+        });
+    });
+
+    describe('Link Validation Stream (brokenlinks/validate-stream)', () => {
+        it('should stream validation results for exe-node links', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        links: [
+                            {
+                                id: 'test-id-1',
+                                url: 'exe-node:page-123',
+                                count: 1,
+                                pageName: 'Page 1',
+                                blockName: 'Block 1',
+                                ideviceType: 'text',
+                                order: '1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+
+            // Read the streamed response (Elysia yields JSON objects with escaped data)
+            const text = await res.text();
+
+            // Should contain link-validated event with valid status
+            // Note: data field contains escaped JSON, so we check for escaped quotes
+            expect(text).toContain('"event":"link-validated"');
+            expect(text).toContain('\\"status\\":\\"valid\\"');
+            expect(text).toContain('\\"id\\":\\"test-id-1\\"');
+
+            // Should contain done event
+            expect(text).toContain('"event":"done"');
+            expect(text).toContain('\\"complete\\":true');
+        });
+
+        it('should stream broken status for missing files', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        links: [
+                            {
+                                id: 'missing-file-id',
+                                url: 'files/this-file-does-not-exist.jpg',
+                                count: 1,
+                                pageName: 'Page 1',
+                                blockName: 'Block 1',
+                                ideviceType: 'text',
+                                order: '1',
+                            },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const text = await res.text();
+
+            // Should contain broken status with 404 error (escaped JSON in data field)
+            expect(text).toContain('\\"status\\":\\"broken\\"');
+            expect(text).toContain('\\"error\\":\\"404\\"');
+        });
+
+        it('should handle empty links array', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/brokenlinks/validate-stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ links: [] }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const text = await res.text();
+
+            // Should only contain done event (escaped JSON in data field)
+            expect(text).toContain('"event":"done"');
+            expect(text).toContain('\\"totalValidated\\":0');
+        });
+    });
+
     describe('Used Files Report (usedfiles)', () => {
         it('should return no files for empty content', async () => {
             const res = await app.handle(

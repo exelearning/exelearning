@@ -34,6 +34,12 @@ import { db as dbDefault } from '../db/client';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
+import {
+    extractLinksFromIdevices,
+    validateLinksStream,
+    type ExtractedLink,
+    type IdeviceContent,
+} from '../services/link-validator';
 import { getSettingString } from '../services/app-settings';
 import { findThemeByDirName, getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 import { getAppVersion } from '../utils/version';
@@ -1914,6 +1920,41 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 return {
                     responseMessage: 'OK',
                     brokenLinks: allBrokenLinks,
+                };
+            })
+
+            // POST /api/ode-management/odes/session/brokenlinks/extract - Extract links without validating (fast)
+            .post('/api/ode-management/odes/session/brokenlinks/extract', async ({ body }) => {
+                const data = body as UsedFilesRequest;
+                const idevices = (data.idevices || []) as IdeviceContent[];
+
+                const links = extractLinksFromIdevices(idevices);
+
+                return {
+                    responseMessage: 'OK',
+                    links,
+                    totalLinks: links.length,
+                };
+            })
+
+            // POST /api/ode-management/odes/session/brokenlinks/validate-stream - Validate links via SSE
+            .post('/api/ode-management/odes/session/brokenlinks/validate-stream', async function* ({ body }) {
+                const data = body as { links: ExtractedLink[] };
+                const links = data.links || [];
+                const filesDir = getFilesDir();
+
+                // Stream validation results as SSE events
+                for await (const result of validateLinksStream(links, { filesDir, batchSize: 5 })) {
+                    yield {
+                        event: 'link-validated',
+                        data: JSON.stringify(result),
+                    };
+                }
+
+                // Signal completion
+                yield {
+                    event: 'done',
+                    data: JSON.stringify({ complete: true, totalValidated: links.length }),
                 };
             })
 
