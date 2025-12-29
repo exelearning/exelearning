@@ -63,6 +63,26 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
 }
 
 /**
+ * Insert a migration record only if it doesn't already exist
+ */
+async function insertMigrationIfNotExists(
+    db: Kysely<unknown>,
+    name: string,
+    timestamp: string,
+): Promise<void> {
+    const existing = await sql<{ cnt: number }>`
+        SELECT COUNT(*) as cnt FROM kysely_migration WHERE name = ${name}
+    `.execute(db);
+
+    if (existing.rows[0]?.cnt === 0) {
+        await sql`
+            INSERT INTO kysely_migration (name, timestamp)
+            VALUES (${name}, ${timestamp})
+        `.execute(db);
+    }
+}
+
+/**
  * Check if this is a legacy database with tables but no migration tracking.
  * If so, register existing migrations as already applied.
  *
@@ -138,20 +158,19 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
 
         // Mark both migrations as already applied (schema is already correct)
         const timestamp = new Date().toISOString();
-        await sql`
-            INSERT INTO kysely_migration (name, timestamp)
-            VALUES ('000_legacy_symfony', ${timestamp})
-        `.execute(db);
-        await sql`
-            INSERT INTO kysely_migration (name, timestamp)
-            VALUES ('001_initial', ${timestamp})
-        `.execute(db);
+        await insertMigrationIfNotExists(db, '000_legacy_symfony', timestamp);
+        await insertMigrationIfNotExists(db, '001_initial', timestamp);
 
-        // Initialize lock
-        await sql`
-            INSERT INTO kysely_migration_lock (id, is_locked)
-            VALUES ('migration_lock', 0)
+        // Initialize lock (only if not exists)
+        const lockExists = await sql<{ cnt: number }>`
+            SELECT COUNT(*) as cnt FROM kysely_migration_lock WHERE id = 'migration_lock'
         `.execute(db);
+        if (lockExists.rows[0]?.cnt === 0) {
+            await sql`
+                INSERT INTO kysely_migration_lock (id, is_locked)
+                VALUES ('migration_lock', 0)
+            `.execute(db);
+        }
 
         console.log('[DB] Migration tracking created, both migrations marked as applied');
         return;
@@ -167,14 +186,8 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
             // Schema exists but migration not recorded
             console.log('[DB] Syncing migration record for existing schema...');
             const timestamp = new Date().toISOString();
-            await sql`
-                INSERT INTO kysely_migration (name, timestamp)
-                VALUES ('000_legacy_symfony', ${timestamp})
-            `.execute(db);
-            await sql`
-                INSERT INTO kysely_migration (name, timestamp)
-                VALUES ('001_initial', ${timestamp})
-            `.execute(db);
+            await insertMigrationIfNotExists(db, '000_legacy_symfony', timestamp);
+            await insertMigrationIfNotExists(db, '001_initial', timestamp);
             console.log('[DB] Migrations marked as applied');
         }
     }
