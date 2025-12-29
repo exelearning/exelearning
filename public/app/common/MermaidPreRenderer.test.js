@@ -623,4 +623,181 @@ describe('MermaidPreRenderer', () => {
             );
         });
     });
+
+    describe('dynamic Mermaid loading', () => {
+        let originalMermaid;
+        let originalDocument;
+
+        beforeEach(() => {
+            originalMermaid = globalThis.mermaid;
+            originalDocument = globalThis.document;
+        });
+
+        afterEach(() => {
+            if (originalMermaid !== undefined) {
+                globalThis.mermaid = originalMermaid;
+            } else {
+                delete globalThis.mermaid;
+            }
+            if (originalDocument !== undefined) {
+                globalThis.document = originalDocument;
+            }
+        });
+
+        test('skips loading when mermaid is already available', async () => {
+            // Set up mermaid as already loaded
+            globalThis.mermaid = {
+                initialize: vi.fn(),
+                render: vi.fn(async () => ({ svg: '<svg></svg>' })),
+            };
+
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // Should work without needing to load
+            expect(result.mermaidRendered).toBe(true);
+        });
+
+        test('attempts to load mermaid dynamically when not available', async () => {
+            delete globalThis.mermaid;
+
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // In test environment, loading will fail but should not throw
+            expect(result.hasMermaid).toBe(true);
+            expect(result.mermaidRendered).toBe(false);
+        }, 10000);
+
+        test('initMermaid throws when mermaid cannot be loaded', async () => {
+            delete globalThis.mermaid;
+
+            // In test environment, script loading will timeout/fail
+            await expect(MermaidPreRenderer._initMermaid())
+                .rejects.toThrow(/Mermaid library/);
+        }, 10000);
+
+        test('initMermaid succeeds when mermaid is pre-loaded', async () => {
+            globalThis.mermaid = {
+                initialize: vi.fn(),
+            };
+
+            // Should not throw
+            await MermaidPreRenderer._initMermaid();
+
+            expect(globalThis.mermaid.initialize).toHaveBeenCalled();
+        });
+
+        test('preRender returns original HTML when mermaid loading fails', async () => {
+            delete globalThis.mermaid;
+
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // Should return original HTML when mermaid cannot be loaded
+            expect(result.hasMermaid).toBe(true);
+            expect(result.mermaidRendered).toBe(false);
+            expect(result.html).toBe(html);
+        }, 10000);
+
+        test('preRender continues with rendering after dynamic load', async () => {
+            // Start without mermaid
+            delete globalThis.mermaid;
+
+            // Simulate that mermaid gets loaded during initMermaid
+            // by mocking the initialize call to set up mermaid
+            const mockMermaid = {
+                initialize: vi.fn(),
+                render: vi.fn(async () => ({ svg: '<svg>dynamically loaded</svg>' })),
+            };
+
+            // Pre-set mermaid before the test (simulating successful dynamic load)
+            globalThis.mermaid = mockMermaid;
+
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.html).toContain('dynamically loaded');
+        });
+    });
+
+    describe('escapeHtmlAttribute edge cases', () => {
+        test('handles empty string', () => {
+            expect(MermaidPreRenderer._escapeHtmlAttribute('')).toBe('');
+        });
+
+        test('handles string with no special characters', () => {
+            expect(MermaidPreRenderer._escapeHtmlAttribute('simple text')).toBe('simple text');
+        });
+
+        test('handles all special characters together', () => {
+            const input = '<div class="test" data-value=\'a&b\'>';
+            const expected = '&lt;div class=&quot;test&quot; data-value=\'a&amp;b\'&gt;';
+            expect(MermaidPreRenderer._escapeHtmlAttribute(input)).toBe(expected);
+        });
+
+        test('handles multiline mermaid code', () => {
+            const input = `gantt
+    title Test
+    section S1
+        Task1 :a1, 2024-01-01, 30d`;
+            const result = MermaidPreRenderer._escapeHtmlAttribute(input);
+            expect(result).not.toContain('<');
+            expect(result).not.toContain('>');
+            expect(result).not.toContain('"');
+        });
+    });
+
+    describe('hasMermaid function', () => {
+        test('returns false for undefined', () => {
+            expect(MermaidPreRenderer.hasMermaid(undefined)).toBe(false);
+        });
+
+        test('returns false for empty string', () => {
+            expect(MermaidPreRenderer.hasMermaid('')).toBe(false);
+        });
+
+        test('detects pre.mermaid with multiple classes', () => {
+            expect(MermaidPreRenderer.hasMermaid('<pre class="code mermaid highlight">')).toBe(true);
+        });
+
+        test('detects pre.mermaid case insensitive for tag', () => {
+            expect(MermaidPreRenderer.hasMermaid('<PRE class="mermaid">')).toBe(true);
+        });
+
+        test('ignores mermaid in other contexts', () => {
+            // mermaid in text content should not match
+            expect(MermaidPreRenderer.hasMermaid('<p>I love mermaid diagrams</p>')).toBe(false);
+            // mermaid as different class
+            expect(MermaidPreRenderer.hasMermaid('<div class="mermaid">')).toBe(false);
+        });
+    });
+
+    describe('getOriginalCode function', () => {
+        test('returns null for undefined element', () => {
+            expect(MermaidPreRenderer.getOriginalCode(undefined)).toBe(null);
+        });
+
+        test('returns null for element without correct class', () => {
+            const div = document.createElement('div');
+            div.className = 'some-other-class';
+            expect(MermaidPreRenderer.getOriginalCode(div)).toBe(null);
+        });
+
+        test('returns null when data-mermaid is empty', () => {
+            const div = document.createElement('div');
+            div.className = 'exe-mermaid-rendered';
+            div.setAttribute('data-mermaid', '');
+            // Empty string attribute returns null (falsy value check)
+            expect(MermaidPreRenderer.getOriginalCode(div)).toBe(null);
+        });
+
+        test('returns code with special characters preserved', () => {
+            const div = document.createElement('div');
+            div.className = 'exe-mermaid-rendered';
+            div.setAttribute('data-mermaid', 'graph TD; A["Label with <special>"]-->B');
+            expect(MermaidPreRenderer.getOriginalCode(div)).toBe('graph TD; A["Label with <special>"]-->B');
+        });
+    });
 });
