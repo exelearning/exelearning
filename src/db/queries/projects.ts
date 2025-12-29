@@ -7,6 +7,7 @@ import type { Kysely } from 'kysely';
 import type { Database, Project, NewProject, ProjectUpdate, User } from '../types';
 import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { supportsReturning } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -304,16 +305,25 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
 
 export async function createProject(db: Kysely<Database>, data: Omit<NewProject, 'uuid'>): Promise<Project> {
     const timestamp = now();
-    return db
-        .insertInto('projects')
-        .values({
-            ...data,
-            uuid: uuidv4(),
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const uuid = uuidv4();
+    const values = {
+        ...data,
+        uuid,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('projects').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT by uuid
+    await db.insertInto('projects').values(values).execute();
+    const project = await db.selectFrom('projects').selectAll().where('uuid', '=', uuid).executeTakeFirst();
+    if (!project) {
+        throw new Error('Failed to create project');
+    }
+    return project;
 }
 
 export async function updateProject(
@@ -321,15 +331,21 @@ export async function updateProject(
     id: number,
     data: ProjectUpdate,
 ): Promise<Project | undefined> {
-    return db
-        .updateTable('projects')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const updates = {
+        ...data,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('projects').set(updates).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('projects').set(updates).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('projects').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 export async function updateProjectByUuid(
@@ -337,15 +353,21 @@ export async function updateProjectByUuid(
     uuid: string,
     data: ProjectUpdate,
 ): Promise<Project | undefined> {
-    return db
-        .updateTable('projects')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('uuid', '=', uuid)
-        .returningAll()
-        .executeTakeFirst();
+    const updates = {
+        ...data,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('projects').set(updates).where('uuid', '=', uuid).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('projects').set(updates).where('uuid', '=', uuid).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('projects').selectAll().where('uuid', '=', uuid).executeTakeFirst();
 }
 
 export async function markProjectAsSaved(db: Kysely<Database>, projectId: number): Promise<void> {
@@ -476,16 +498,24 @@ export async function createProjectWithUuid(
     data: Omit<NewProject, 'uuid'>,
 ): Promise<Project> {
     const timestamp = now();
-    return db
-        .insertInto('projects')
-        .values({
-            ...data,
-            uuid,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        uuid,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('projects').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT by uuid
+    await db.insertInto('projects').values(values).execute();
+    const project = await db.selectFrom('projects').selectAll().where('uuid', '=', uuid).executeTakeFirst();
+    if (!project) {
+        throw new Error('Failed to create project');
+    }
+    return project;
 }
 
 /**

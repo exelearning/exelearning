@@ -92,9 +92,8 @@ function mapDriverToDialect(driver: string): DbDialect {
         case 'postgres':
         case 'postgresql':
             return 'postgres';
-        case 'pdo_sqlite':
-        case 'sqlite':
-        case 'sqlite3':
+        // SQLite is the default for any unrecognized driver
+        // Explicit cases: pdo_sqlite, sqlite, sqlite3
         default:
             return 'sqlite';
     }

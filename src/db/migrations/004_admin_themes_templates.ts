@@ -8,14 +8,18 @@
  * Files are stored in filesystem (FILES_DIR/), metadata in database.
  */
 import { Kysely } from 'kysely';
+import { getAutoIncrementType, addAutoIncrement } from '../helpers';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
+    const idType = getAutoIncrementType();
+
     // ========================================================================
     // ADMIN THEMES
     // ========================================================================
     await db.schema
         .createTable('admin_themes')
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .ifNotExists()
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('dir_name', 'varchar(100)', col => col.notNull().unique())
         .addColumn('display_name', 'varchar(255)', col => col.notNull())
         .addColumn('description', 'text')
@@ -34,6 +38,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 
     await db.schema
         .createIndex('idx_admin_themes_enabled')
+        .ifNotExists()
         .on('admin_themes')
         .columns(['is_enabled', 'sort_order'])
         .execute();
@@ -43,7 +48,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('templates')
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .ifNotExists()
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('filename', 'varchar(255)', col => col.notNull())
         .addColumn('display_name', 'varchar(255)', col => col.notNull())
         .addColumn('description', 'text')
@@ -61,6 +67,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // Unique constraint: same filename can exist in different locales
     await db.schema
         .createIndex('idx_templates_filename_locale')
+        .ifNotExists()
         .on('templates')
         .columns(['filename', 'locale'])
         .unique()
@@ -69,6 +76,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // Index for fast locale-based queries
     await db.schema
         .createIndex('idx_templates_locale')
+        .ifNotExists()
         .on('templates')
         .columns(['locale', 'is_enabled', 'sort_order'])
         .execute();

@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, Template, NewTemplate, TemplateUpdate } from '../types';
 import { now } from '../types';
+import { supportsReturning } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -87,17 +88,26 @@ export async function getDistinctLocales(db: Kysely<Database>): Promise<string[]
 
 export async function createTemplate(db: Kysely<Database>, data: NewTemplate): Promise<Template> {
     const timestamp = now();
-    return db
-        .insertInto('templates')
-        .values({
-            ...data,
-            is_enabled: data.is_enabled ?? 1,
-            sort_order: data.sort_order ?? 0,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        is_enabled: data.is_enabled ?? 1,
+        sort_order: data.sort_order ?? 0,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('templates').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT
+    const result = await db.insertInto('templates').values(values).executeTakeFirstOrThrow();
+    const insertId = Number(result.insertId);
+    const template = await db.selectFrom('templates').selectAll().where('id', '=', insertId).executeTakeFirst();
+    if (!template) {
+        throw new Error('Failed to create template');
+    }
+    return template;
 }
 
 export async function updateTemplate(
@@ -105,15 +115,21 @@ export async function updateTemplate(
     id: number,
     data: TemplateUpdate,
 ): Promise<Template | undefined> {
-    return db
-        .updateTable('templates')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const values = {
+        ...data,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('templates').set(values).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('templates').set(values).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('templates').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 export async function deleteTemplate(db: Kysely<Database>, id: number): Promise<void> {
@@ -132,15 +148,21 @@ export async function toggleTemplateEnabled(
     id: number,
     isEnabled: boolean,
 ): Promise<Template | undefined> {
-    return db
-        .updateTable('templates')
-        .set({
-            is_enabled: isEnabled ? 1 : 0,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const values = {
+        is_enabled: isEnabled ? 1 : 0,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('templates').set(values).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('templates').set(values).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('templates').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 /**

@@ -7,6 +7,7 @@ import type { Kysely } from 'kysely';
 import type { Database, Asset, NewAsset, AssetUpdate, Project } from '../types';
 import { now } from '../types';
 import { sql } from 'kysely';
+import { supportsReturning } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -171,15 +172,24 @@ export async function getUserStorageUsage(db: Kysely<Database>, userId: number):
 
 export async function createAsset(db: Kysely<Database>, data: NewAsset): Promise<Asset> {
     const timestamp = now();
-    return db
-        .insertInto('assets')
-        .values({
-            ...data,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('assets').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT by insertId
+    const result = await db.insertInto('assets').values(values).executeTakeFirstOrThrow();
+    const insertId = Number(result.insertId);
+    const asset = await db.selectFrom('assets').selectAll().where('id', '=', insertId).executeTakeFirst();
+    if (!asset) {
+        throw new Error('Failed to create asset');
+    }
+    return asset;
 }
 
 export async function createAssets(db: Kysely<Database>, data: NewAsset[]): Promise<Asset[]> {
@@ -192,19 +202,35 @@ export async function createAssets(db: Kysely<Database>, data: NewAsset[]): Prom
         updated_at: timestamp,
     }));
 
-    return db.insertInto('assets').values(withTimestamps).returningAll().execute();
+    if (supportsReturning()) {
+        return db.insertInto('assets').values(withTimestamps).returningAll().execute();
+    }
+
+    // MySQL: Get max ID, insert, then SELECT range
+    const maxIdResult = await db.selectFrom('assets').select(db.fn.max('id').as('maxId')).executeTakeFirst();
+    const startId = ((maxIdResult as { maxId: number | null })?.maxId ?? 0) + 1;
+
+    await db.insertInto('assets').values(withTimestamps).execute();
+
+    return db.selectFrom('assets').selectAll().where('id', '>=', startId).execute();
 }
 
 export async function updateAsset(db: Kysely<Database>, id: number, data: AssetUpdate): Promise<Asset | undefined> {
-    return db
-        .updateTable('assets')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const updates = {
+        ...data,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('assets').set(updates).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('assets').set(updates).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('assets').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 export async function updateAssetClientId(db: Kysely<Database>, id: number, clientId: string): Promise<void> {
@@ -223,8 +249,21 @@ export async function deleteAsset(db: Kysely<Database>, id: number): Promise<voi
 }
 
 export async function deleteAllAssetsForProject(db: Kysely<Database>, projectId: number): Promise<number> {
-    const result = await db.deleteFrom('assets').where('project_id', '=', projectId).returningAll().execute();
-    return result.length;
+    if (supportsReturning()) {
+        const result = await db.deleteFrom('assets').where('project_id', '=', projectId).returningAll().execute();
+        return result.length;
+    }
+
+    // MySQL: Count first, then delete
+    const countResult = await db
+        .selectFrom('assets')
+        .select(db.fn.count('id').as('count'))
+        .where('project_id', '=', projectId)
+        .executeTakeFirst();
+    const count = Number((countResult as { count: number | bigint })?.count ?? 0);
+
+    await db.deleteFrom('assets').where('project_id', '=', projectId).execute();
+    return count;
 }
 
 // ============================================================================

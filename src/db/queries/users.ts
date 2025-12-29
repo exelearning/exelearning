@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, User, NewUser, UserUpdate } from '../types';
 import { now, stringifyRoles } from '../types';
+import { supportsReturning } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -48,30 +49,45 @@ export async function countUsers(db: Kysely<Database>): Promise<number> {
 
 export async function createUser(db: Kysely<Database>, data: NewUser): Promise<User> {
     const timestamp = now();
-    return db
-        .insertInto('users')
-        .values({
-            ...data,
-            roles: typeof data.roles === 'string' ? data.roles : stringifyRoles((data.roles as string[]) || []),
-            is_lopd_accepted: data.is_lopd_accepted ?? 0,
-            is_active: data.is_active ?? 1,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        roles: typeof data.roles === 'string' ? data.roles : stringifyRoles((data.roles as string[]) || []),
+        is_lopd_accepted: data.is_lopd_accepted ?? 0,
+        is_active: data.is_active ?? 1,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('users').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT by insertId
+    const result = await db.insertInto('users').values(values).executeTakeFirstOrThrow();
+    const insertId = Number(result.insertId);
+    const user = await db.selectFrom('users').selectAll().where('id', '=', insertId).executeTakeFirst();
+    if (!user) {
+        throw new Error('Failed to create user');
+    }
+    return user;
 }
 
 export async function updateUser(db: Kysely<Database>, id: number, data: UserUpdate): Promise<User | undefined> {
-    return db
-        .updateTable('users')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const updates = {
+        ...data,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('users').set(updates).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('users').set(updates).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('users').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 export async function deleteUser(db: Kysely<Database>, id: number): Promise<void> {
@@ -125,13 +141,19 @@ export async function findFirstUser(db: Kysely<Database>): Promise<User | undefi
 }
 
 export async function updateUserRoles(db: Kysely<Database>, id: number, roles: string[]): Promise<User | undefined> {
-    return db
-        .updateTable('users')
-        .set({
-            roles: stringifyRoles(roles),
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const updates = {
+        roles: stringifyRoles(roles),
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('users').set(updates).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('users').set(updates).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('users').selectAll().where('id', '=', id).executeTakeFirst();
 }

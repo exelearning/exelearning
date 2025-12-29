@@ -2,7 +2,7 @@
  * Tests for Kysely Dialect Factory
  * Covers SQLite, MySQL/MariaDB, and PostgreSQL
  */
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import {
     getDbConfig,
     getDialectFromEnv,

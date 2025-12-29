@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, YjsDocument, NewYjsDocument, YjsUpdate, NewYjsUpdate, YjsVersionHistory } from '../types';
 import { now } from '../types';
+import { supportsReturning, toBinaryData } from '../helpers';
 
 // ============================================================================
 // YJS DOCUMENTS (SNAPSHOTS)
@@ -20,15 +21,25 @@ export async function findSnapshotByProjectId(
 
 export async function createSnapshot(db: Kysely<Database>, data: NewYjsDocument): Promise<YjsDocument> {
     const timestamp = now();
-    return db
-        .insertInto('yjs_documents')
-        .values({
-            ...data,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        snapshot_data: toBinaryData(data.snapshot_data),
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('yjs_documents').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT
+    const result = await db.insertInto('yjs_documents').values(values).executeTakeFirstOrThrow();
+    const insertId = Number(result.insertId);
+    const doc = await db.selectFrom('yjs_documents').selectAll().where('id', '=', insertId).executeTakeFirst();
+    if (!doc) {
+        throw new Error('Failed to create snapshot');
+    }
+    return doc;
 }
 
 export async function updateSnapshot(
@@ -37,16 +48,31 @@ export async function updateSnapshot(
     snapshotData: Uint8Array,
     snapshotVersion: string,
 ): Promise<YjsDocument | undefined> {
-    return db
+    const updates = {
+        snapshot_data: toBinaryData(snapshotData),
+        snapshot_version: snapshotVersion,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db
+            .updateTable('yjs_documents')
+            .set(updates)
+            .where('project_id', '=', projectId)
+            .returningAll()
+            .executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db
         .updateTable('yjs_documents')
-        .set({
-            snapshot_data: snapshotData,
-            snapshot_version: snapshotVersion,
-            updated_at: now(),
-        })
+        .set(updates)
         .where('project_id', '=', projectId)
-        .returningAll()
         .executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('yjs_documents').selectAll().where('project_id', '=', projectId).executeTakeFirst();
 }
 
 export async function upsertSnapshot(
@@ -57,32 +83,55 @@ export async function upsertSnapshot(
 ): Promise<YjsDocument> {
     const existing = await findSnapshotByProjectId(db, projectId);
     const timestamp = now();
+    const binaryData = toBinaryData(snapshotData);
 
     if (existing) {
+        const updates = {
+            snapshot_data: binaryData,
+            snapshot_version: snapshotVersion,
+            updated_at: timestamp,
+        };
+
+        if (supportsReturning()) {
+            const updated = await db
+                .updateTable('yjs_documents')
+                .set(updates)
+                .where('project_id', '=', projectId)
+                .returningAll()
+                .executeTakeFirst();
+            return updated!;
+        }
+
+        // MySQL: Update then SELECT
+        await db.updateTable('yjs_documents').set(updates).where('project_id', '=', projectId).execute();
         const updated = await db
-            .updateTable('yjs_documents')
-            .set({
-                snapshot_data: snapshotData,
-                snapshot_version: snapshotVersion,
-                updated_at: timestamp,
-            })
+            .selectFrom('yjs_documents')
+            .selectAll()
             .where('project_id', '=', projectId)
-            .returningAll()
             .executeTakeFirst();
         return updated!;
     }
 
-    return db
-        .insertInto('yjs_documents')
-        .values({
-            project_id: projectId,
-            snapshot_data: snapshotData,
-            snapshot_version: snapshotVersion,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        project_id: projectId,
+        snapshot_data: binaryData,
+        snapshot_version: snapshotVersion,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('yjs_documents').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT
+    await db.insertInto('yjs_documents').values(values).execute();
+    const inserted = await db
+        .selectFrom('yjs_documents')
+        .selectAll()
+        .where('project_id', '=', projectId)
+        .executeTakeFirst();
+    return inserted!;
 }
 
 export async function deleteSnapshot(db: Kysely<Database>, projectId: number): Promise<void> {
@@ -129,19 +178,42 @@ export async function findUpdatesSince(
 
 export async function createUpdate(db: Kysely<Database>, data: NewYjsUpdate): Promise<YjsUpdate> {
     const timestamp = now();
-    return db
-        .insertInto('yjs_updates')
-        .values({
-            ...data,
-            created_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        update_data: toBinaryData(data.update_data),
+        created_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('yjs_updates').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT
+    const result = await db.insertInto('yjs_updates').values(values).executeTakeFirstOrThrow();
+    const insertId = Number(result.insertId);
+    const update = await db.selectFrom('yjs_updates').selectAll().where('id', '=', insertId).executeTakeFirst();
+    if (!update) {
+        throw new Error('Failed to create update');
+    }
+    return update;
 }
 
 export async function deleteAllUpdates(db: Kysely<Database>, projectId: number): Promise<number> {
-    const result = await db.deleteFrom('yjs_updates').where('project_id', '=', projectId).returningAll().execute();
-    return result.length;
+    if (supportsReturning()) {
+        const result = await db.deleteFrom('yjs_updates').where('project_id', '=', projectId).returningAll().execute();
+        return result.length;
+    }
+
+    // MySQL: Count first, then delete
+    const countResult = await db
+        .selectFrom('yjs_updates')
+        .select(db.fn.count('id').as('count'))
+        .where('project_id', '=', projectId)
+        .executeTakeFirst();
+    const count = Number((countResult as { count: number | bigint })?.count ?? 0);
+
+    await db.deleteFrom('yjs_updates').where('project_id', '=', projectId).execute();
+    return count;
 }
 
 export async function deleteUpdatesBefore(
@@ -405,18 +477,31 @@ export async function createVersionSnapshot(
     createdBy?: number,
 ): Promise<YjsVersionHistory> {
     const timestamp = now();
-    return db
-        .insertInto('yjs_version_history')
-        .values({
-            project_id: projectId,
-            snapshot_data: snapshotData,
-            version: Date.now().toString(),
-            description: description || null,
-            created_by: createdBy || null,
-            created_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        project_id: projectId,
+        snapshot_data: toBinaryData(snapshotData),
+        version: Date.now().toString(),
+        description: description || null,
+        created_by: createdBy || null,
+        created_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('yjs_version_history').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT
+    const result = await db.insertInto('yjs_version_history').values(values).executeTakeFirstOrThrow();
+    const insertId = Number(result.insertId);
+    const history = await db
+        .selectFrom('yjs_version_history')
+        .selectAll()
+        .where('id', '=', insertId)
+        .executeTakeFirst();
+    if (!history) {
+        throw new Error('Failed to create version snapshot');
+    }
+    return history;
 }
 
 /**

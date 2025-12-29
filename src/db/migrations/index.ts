@@ -3,6 +3,7 @@
  * Programmatic migrations for SQLite, PostgreSQL, and MySQL
  */
 import { Kysely, Migrator, sql, type Migration, type MigrationProvider } from 'kysely';
+import { tableExists as tableExistsHelper } from '../helpers';
 
 // Import all migrations
 import * as migration001 from './001_initial';
@@ -66,27 +67,7 @@ const defaultDependencies: MigrationDependencies = {
  * Check if a table exists in the database (cross-database compatible)
  */
 export async function tableExists(db: Kysely<unknown>, tableName: string): Promise<boolean> {
-    try {
-        // Use information_schema for PostgreSQL/MySQL, sqlite_master for SQLite
-        // We try SQLite first since it's our primary target
-        const result = await sql<{ count: number }>`
-            SELECT COUNT(*) as count FROM sqlite_master
-            WHERE type='table' AND name=${tableName}
-        `.execute(db);
-        return (result.rows[0]?.count ?? 0) > 0;
-    } catch {
-        // If SQLite query fails, try information_schema (PostgreSQL/MySQL)
-        // istanbul ignore next - requires PostgreSQL/MySQL database
-        try {
-            const result = await sql<{ count: number }>`
-                SELECT COUNT(*) as count FROM information_schema.tables
-                WHERE table_name = ${tableName}
-            `.execute(db);
-            return (result.rows[0]?.count ?? 0) > 0;
-        } catch {
-            return false;
-        }
-    }
+    return tableExistsHelper(db, tableName);
 }
 
 /**

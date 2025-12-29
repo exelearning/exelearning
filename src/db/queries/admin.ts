@@ -8,6 +8,7 @@ import { sql } from 'kysely';
 import type { Database, User, Project } from '../types';
 import { now, stringifyRoles, parseRoles } from '../types';
 import { ROLES } from '../../utils/guards';
+import { supportsReturning } from '../helpers';
 
 // ============================================================================
 // USER MANAGEMENT QUERIES
@@ -179,15 +180,23 @@ export async function updateUserStatus(
     userId: number,
     isActive: boolean,
 ): Promise<User | undefined> {
-    return db
-        .updateTable('users')
-        .set({
-            is_active: isActive ? 1 : 0,
-            updated_at: now(),
-        })
-        .where('id', '=', userId)
-        .returningAll()
-        .executeTakeFirst();
+    const values = {
+        is_active: isActive ? 1 : 0,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('users').set(values).where('id', '=', userId).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('users').set(values).where('id', '=', userId).executeTakeFirst();
+
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+
+    return db.selectFrom('users').selectAll().where('id', '=', userId).executeTakeFirst();
 }
 
 /**
@@ -208,21 +217,29 @@ export async function createUserAsAdmin(
     // Ensure ROLE_USER is always present
     const roles = data.roles.includes(ROLES.USER) ? data.roles : [ROLES.USER, ...data.roles];
 
-    return db
-        .insertInto('users')
-        .values({
-            email: data.email,
-            password: data.password,
-            user_id: data.userId,
-            roles: stringifyRoles(roles),
-            quota_mb: data.quotaMb ?? null,
-            is_lopd_accepted: 0,
-            is_active: 1,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        email: data.email,
+        password: data.password,
+        user_id: data.userId,
+        roles: stringifyRoles(roles),
+        quota_mb: data.quotaMb ?? null,
+        is_lopd_accepted: 0,
+        is_active: 1,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('users').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT by email (unique)
+    await db.insertInto('users').values(values).execute();
+    const user = await db.selectFrom('users').selectAll().where('email', '=', data.email).executeTakeFirst();
+    if (!user) {
+        throw new Error('Failed to create user');
+    }
+    return user;
 }
 
 /**
@@ -233,15 +250,23 @@ export async function updateUserQuota(
     userId: number,
     quotaMb: number | null,
 ): Promise<User | undefined> {
-    return db
-        .updateTable('users')
-        .set({
-            quota_mb: quotaMb,
-            updated_at: now(),
-        })
-        .where('id', '=', userId)
-        .returningAll()
-        .executeTakeFirst();
+    const values = {
+        quota_mb: quotaMb,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('users').set(values).where('id', '=', userId).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('users').set(values).where('id', '=', userId).executeTakeFirst();
+
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+
+    return db.selectFrom('users').selectAll().where('id', '=', userId).executeTakeFirst();
 }
 
 // ============================================================================

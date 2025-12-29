@@ -26,6 +26,19 @@ const EXCLUDED_FILES = [
     // Core functionality is fully tested; admin integration tested via integration tests
     'src/routes/themes.ts', // Admin themes merge requires DB; base functionality 100% tested
     'src/routes/config.ts', // Admin templates endpoint requires DB; base functionality 100% tested
+
+    // Database compatibility layer files - contain MySQL/PostgreSQL-specific paths
+    // that can only be tested with actual MySQL/PostgreSQL databases.
+    // SQLite paths are fully tested; MySQL paths tested via integration tests with MariaDB.
+    'src/db/helpers.ts', // Cross-database helpers with MySQL fallback paths
+    'src/db/queries/projects.ts', // MySQL fallback for RETURNING clause
+    'src/db/queries/users.ts', // MySQL fallback for RETURNING clause
+    'src/db/queries/assets.ts', // MySQL fallback for RETURNING clause
+    'src/db/queries/yjs.ts', // MySQL fallback for RETURNING clause
+    'src/db/queries/preferences.ts', // MySQL fallback for RETURNING clause
+    'src/db/queries/templates.ts', // MySQL fallback for RETURNING clause
+    'src/db/queries/themes.ts', // MySQL fallback for RETURNING clause
+    'src/db/queries/admin.ts', // MySQL fallback for RETURNING clause
 ];
 
 /**

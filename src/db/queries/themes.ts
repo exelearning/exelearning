@@ -11,6 +11,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, Theme, NewTheme, ThemeUpdate } from '../types';
 import { now } from '../types';
+import { supportsReturning } from '../helpers';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -147,31 +148,45 @@ export async function findBaseThemeByDirName(db: Kysely<Database>, dirName: stri
 
 export async function createTheme(db: Kysely<Database>, data: NewTheme): Promise<Theme> {
     const timestamp = now();
-    return db
-        .insertInto('themes')
-        .values({
-            ...data,
-            is_builtin: data.is_builtin ?? 0,
-            is_enabled: data.is_enabled ?? 1,
-            is_default: data.is_default ?? 0,
-            sort_order: data.sort_order ?? 0,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        is_builtin: data.is_builtin ?? 0,
+        is_enabled: data.is_enabled ?? 1,
+        is_default: data.is_default ?? 0,
+        sort_order: data.sort_order ?? 0,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('themes').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT by dir_name (unique)
+    await db.insertInto('themes').values(values).execute();
+    const theme = await db.selectFrom('themes').selectAll().where('dir_name', '=', data.dir_name).executeTakeFirst();
+    if (!theme) {
+        throw new Error('Failed to create theme');
+    }
+    return theme;
 }
 
 export async function updateTheme(db: Kysely<Database>, id: number, data: ThemeUpdate): Promise<Theme | undefined> {
-    return db
-        .updateTable('themes')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const values = {
+        ...data,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('themes').set(values).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('themes').set(values).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('themes').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 export async function deleteTheme(db: Kysely<Database>, id: number): Promise<void> {
@@ -202,12 +217,18 @@ export async function setDefaultThemeById(db: Kysely<Database>, id: number): Pro
     await db.updateTable('themes').set({ is_default: 0, updated_at: now() }).execute();
 
     // Set the new default
-    return db
-        .updateTable('themes')
-        .set({ is_default: 1, updated_at: now() })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const values = { is_default: 1, updated_at: now() };
+
+    if (supportsReturning()) {
+        return db.updateTable('themes').set(values).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('themes').set(values).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('themes').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 /**
@@ -241,7 +262,16 @@ export async function toggleThemeEnabled(
         updates.is_default = 0;
     }
 
-    return db.updateTable('themes').set(updates).where('id', '=', id).returningAll().executeTakeFirst();
+    if (supportsReturning()) {
+        return db.updateTable('themes').set(updates).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('themes').set(updates).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('themes').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 // ============================================================================

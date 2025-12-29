@@ -14,6 +14,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // ========================================================================
     await db.schema
         .createTable('builtin_theme_settings')
+        .ifNotExists()
         .addColumn('dir_name', 'varchar(100)', col => col.primaryKey())
         .addColumn('is_enabled', 'integer', col => col.notNull().defaultTo(1))
         .addColumn('updated_at', 'text')
@@ -24,12 +25,20 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     // Stored in app_settings table: key = 'default_theme', value = JSON
     // Value format: { "type": "builtin"|"admin", "dirName": "theme-name" }
     // ========================================================================
-    // Insert default theme setting (base theme)
-    await sql`
-        INSERT INTO app_settings (key, value, updated_at)
-        VALUES ('default_theme', '{"type":"builtin","dirName":"base"}', datetime('now'))
-        ON CONFLICT (key) DO NOTHING
-    `.execute(db);
+    // Insert default theme setting (base theme) - use ISO timestamp for cross-db compatibility
+    const now = new Date().toISOString();
+    await db
+        .insertInto('app_settings' as any)
+        .values({
+            key: 'default_theme',
+            value: '{"type":"builtin","dirName":"base"}',
+            updated_at: now,
+        })
+        .onConflict(oc => oc.column('key').doNothing())
+        .execute()
+        .catch(() => {
+            // Ignore if already exists (for databases that don't support ON CONFLICT)
+        });
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {

@@ -3,15 +3,20 @@
  * Compatible with SQLite, PostgreSQL, and MySQL
  */
 import { Kysely } from 'kysely';
+import { getAutoIncrementType, addAutoIncrement, getBinaryType } from '../helpers';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
+    // Get the correct types for the current database
+    const idType = getAutoIncrementType();
+    const binaryType = getBinaryType();
+
     // ========================================================================
     // USERS
     // ========================================================================
     await db.schema
         .createTable('users')
         .ifNotExists()
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('email', 'varchar(180)', col => col.notNull().unique())
         .addColumn('user_id', 'varchar(40)', col => col.notNull())
         .addColumn('password', 'text', col => col.notNull())
@@ -31,7 +36,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await db.schema
         .createTable('users_preferences')
         .ifNotExists()
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('user_id', 'varchar(255)', col => col.notNull())
         .addColumn('preference_key', 'varchar(255)', col => col.notNull())
         .addColumn('value', 'text', col => col.notNull())
@@ -54,7 +59,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await db.schema
         .createTable('projects')
         .ifNotExists()
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('uuid', 'varchar(36)', col => col.notNull().unique())
         .addColumn('title', 'varchar(255)', col => col.notNull())
         .addColumn('description', 'text')
@@ -95,7 +100,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await db.schema
         .createTable('assets')
         .ifNotExists()
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('project_id', 'integer', col => col.notNull().references('projects.id').onDelete('cascade'))
         .addColumn('filename', 'varchar(255)', col => col.notNull())
         .addColumn('storage_path', 'varchar(500)', col => col.notNull())
@@ -122,9 +127,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await db.schema
         .createTable('yjs_documents')
         .ifNotExists()
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('project_id', 'integer', col => col.notNull().unique().references('projects.id').onDelete('cascade'))
-        .addColumn('snapshot_data', 'blob', col => col.notNull())
+        .addColumn('snapshot_data', binaryType, col => col.notNull())
         .addColumn('snapshot_version', 'text', col => col.notNull().defaultTo('0'))
         .addColumn('created_at', 'text')
         .addColumn('updated_at', 'text')
@@ -136,10 +141,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await db.schema
         .createTable('yjs_updates')
         .ifNotExists()
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('project_id', 'integer', col => col.notNull().references('projects.id').onDelete('cascade'))
-        .addColumn('update_data', 'blob', col => col.notNull())
-        .addColumn('version', 'text', col => col.notNull())
+        .addColumn('update_data', binaryType, col => col.notNull())
+        .addColumn('version', 'varchar(255)', col => col.notNull())
         .addColumn('client_id', 'varchar(255)')
         .addColumn('created_at', 'text')
         .execute();
@@ -157,10 +162,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     await db.schema
         .createTable('yjs_version_history')
         .ifNotExists()
-        .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('project_id', 'integer', col => col.notNull().references('projects.id').onDelete('cascade'))
-        .addColumn('snapshot_data', 'blob', col => col.notNull())
-        .addColumn('version', 'text', col => col.notNull())
+        .addColumn('snapshot_data', binaryType, col => col.notNull())
+        .addColumn('version', 'varchar(255)', col => col.notNull())
         .addColumn('description', 'text')
         .addColumn('created_by', 'integer', col => col.references('users.id').onDelete('set null'))
         .addColumn('created_at', 'text')

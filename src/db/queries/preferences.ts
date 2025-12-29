@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, UserPreference, NewUserPreference, UserPreferenceUpdate } from '../types';
 import { now } from '../types';
+import { supportsReturning } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -57,16 +58,25 @@ export async function getPreferenceValueOrDefault(
 
 export async function createPreference(db: Kysely<Database>, data: NewUserPreference): Promise<UserPreference> {
     const timestamp = now();
-    return db
-        .insertInto('users_preferences')
-        .values({
-            ...data,
-            created_at: timestamp,
-            updated_at: timestamp,
-            is_active: 1,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        created_at: timestamp,
+        updated_at: timestamp,
+        is_active: 1,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('users_preferences').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT
+    const result = await db.insertInto('users_preferences').values(values).executeTakeFirstOrThrow();
+    const insertId = Number(result.insertId);
+    const pref = await db.selectFrom('users_preferences').selectAll().where('id', '=', insertId).executeTakeFirst();
+    if (!pref) {
+        throw new Error('Failed to create preference');
+    }
+    return pref;
 }
 
 export async function updatePreference(
@@ -74,15 +84,21 @@ export async function updatePreference(
     id: number,
     data: UserPreferenceUpdate,
 ): Promise<UserPreference | undefined> {
-    return db
-        .updateTable('users_preferences')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    const values = {
+        ...data,
+        updated_at: now(),
+    };
+
+    if (supportsReturning()) {
+        return db.updateTable('users_preferences').set(values).where('id', '=', id).returningAll().executeTakeFirst();
+    }
+
+    // MySQL: Update then SELECT
+    const result = await db.updateTable('users_preferences').set(values).where('id', '=', id).executeTakeFirst();
+    if (!result || result.numUpdatedRows === 0n) {
+        return undefined;
+    }
+    return db.selectFrom('users_preferences').selectAll().where('id', '=', id).executeTakeFirst();
 }
 
 export async function setPreference(
@@ -96,32 +112,55 @@ export async function setPreference(
     const timestamp = now();
 
     if (existing) {
+        const updateValues = {
+            value,
+            description: description ?? existing.description,
+            updated_at: timestamp,
+        };
+
+        if (supportsReturning()) {
+            const updated = await db
+                .updateTable('users_preferences')
+                .set(updateValues)
+                .where('id', '=', existing.id)
+                .returningAll()
+                .executeTakeFirst();
+            return updated!;
+        }
+
+        // MySQL: Update then SELECT
+        await db.updateTable('users_preferences').set(updateValues).where('id', '=', existing.id).execute();
         const updated = await db
-            .updateTable('users_preferences')
-            .set({
-                value,
-                description: description ?? existing.description,
-                updated_at: timestamp,
-            })
+            .selectFrom('users_preferences')
+            .selectAll()
             .where('id', '=', existing.id)
-            .returningAll()
             .executeTakeFirst();
         return updated!;
     }
 
-    return db
-        .insertInto('users_preferences')
-        .values({
-            user_id: userId,
-            preference_key: preferenceKey,
-            value,
-            description: description ?? null,
-            created_at: timestamp,
-            updated_at: timestamp,
-            is_active: 1,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    // Insert new preference
+    const insertValues = {
+        user_id: userId,
+        preference_key: preferenceKey,
+        value,
+        description: description ?? null,
+        created_at: timestamp,
+        updated_at: timestamp,
+        is_active: 1,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('users_preferences').values(insertValues).returningAll().executeTakeFirstOrThrow();
+    }
+
+    // MySQL: Insert then SELECT
+    const result = await db.insertInto('users_preferences').values(insertValues).executeTakeFirstOrThrow();
+    const insertId = Number(result.insertId);
+    const pref = await db.selectFrom('users_preferences').selectAll().where('id', '=', insertId).executeTakeFirst();
+    if (!pref) {
+        throw new Error('Failed to create preference');
+    }
+    return pref;
 }
 
 export async function deletePreference(db: Kysely<Database>, userId: string, preferenceKey: string): Promise<boolean> {
@@ -133,8 +172,17 @@ export async function deletePreference(db: Kysely<Database>, userId: string, pre
 }
 
 export async function deleteAllPreferencesForUser(db: Kysely<Database>, userId: string): Promise<number> {
-    const result = await db.deleteFrom('users_preferences').where('user_id', '=', userId).returningAll().execute();
-    return result.length;
+    if (supportsReturning()) {
+        const result = await db.deleteFrom('users_preferences').where('user_id', '=', userId).returningAll().execute();
+        return result.length;
+    }
+
+    // MySQL: Count first, then delete
+    const existing = await db.selectFrom('users_preferences').selectAll().where('user_id', '=', userId).execute();
+    if (existing.length > 0) {
+        await db.deleteFrom('users_preferences').where('user_id', '=', userId).execute();
+    }
+    return existing.length;
 }
 
 // ============================================================================
