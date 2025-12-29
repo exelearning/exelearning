@@ -519,11 +519,8 @@ export default class NavbarFile {
             // Get the document manager
             const documentManager = yjsBridge.documentManager;
 
-            // Create resource fetcher for server resources (themes, libs, iDevices)
-            let resourceFetcher = null;
-            if (typeof window.ResourceFetcher !== 'undefined') {
-                resourceFetcher = new window.ResourceFetcher();
-            }
+            // Get resource fetcher from yjsBridge (already initialized with bundle manifest)
+            const resourceFetcher = yjsBridge.resourceFetcher || null;
 
             // Build preview options
             const previewOptions = {

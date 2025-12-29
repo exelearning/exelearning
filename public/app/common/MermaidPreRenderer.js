@@ -19,6 +19,102 @@
     // Matches <pre class="mermaid">, <pre class="mermaid other">, <pre class="other mermaid">
     const HAS_MERMAID_PATTERN = /<pre\s+[^>]*class="[^"]*\bmermaid\b[^"]*"/i;
 
+    /**
+     * Check if an SVG has a broken viewBox (width or height = 0)
+     * This happens when Mermaid renders while the element is hidden/has zero width
+     * @param {Element} element - Element containing the SVG
+     * @returns {boolean} True if SVG is broken
+     */
+    function hasBrokenSvg(element) {
+        const svg = element.querySelector('svg');
+        if (!svg) return false;
+
+        const viewBox = svg.getAttribute('viewBox');
+        if (!viewBox) return false;
+
+        // Parse viewBox: "minX minY width height"
+        const parts = viewBox.trim().split(/\s+/);
+        if (parts.length >= 4) {
+            const width = parseFloat(parts[2]);
+            const height = parseFloat(parts[3]);
+            // If width or height is 0 or negative, the SVG is broken
+            if (width <= 0 || height <= 0) {
+                return true;
+            }
+        }
+
+        // Also check for max-width: 0px style which indicates broken render
+        const style = svg.getAttribute('style') || '';
+        if (style.includes('max-width: 0px') || style.includes('max-width:0px')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Extract original Mermaid code from a processed element
+     * When Mermaid renders, it replaces the text content with SVG.
+     * We need to recover the original code from:
+     * 1. Text nodes in the element (if any remain)
+     * 2. The parent iDevice's JSON data (data-idevice-json-data attribute)
+     * @param {Element} preElement - The pre.mermaid element
+     * @param {Document} doc - The document for querying
+     * @returns {string|null} Original mermaid code or null
+     */
+    function extractMermaidCode(preElement, doc) {
+        // First try: get text nodes if any remain
+        const textNodes = [];
+        for (const child of preElement.childNodes) {
+            if (child.nodeType === 3 /* TEXT_NODE */) {
+                const text = child.textContent.trim();
+                if (text) textNodes.push(text);
+            }
+        }
+        if (textNodes.length > 0) {
+            const code = textNodes.join('\n').trim();
+            // Validate it looks like Mermaid code (not just whitespace or HTML)
+            if (code.length > 5 && !code.startsWith('<')) {
+                return code;
+            }
+        }
+
+        // Second try: look for the code in the parent iDevice's JSON data
+        // The iDevice stores original content in data-idevice-json-data
+        const ideviceNode = preElement.closest('[data-idevice-json-data]');
+        if (ideviceNode) {
+            try {
+                const jsonStr = ideviceNode.getAttribute('data-idevice-json-data');
+                const jsonData = JSON.parse(jsonStr);
+                // Look for fields that might contain mermaid code
+                for (const [key, value] of Object.entries(jsonData)) {
+                    if (typeof value === 'string' && value.includes('mermaid')) {
+                        // Parse the HTML content to extract mermaid code properly
+                        const tempDiv = doc.createElement('div');
+                        tempDiv.innerHTML = value;
+                        const mermaidPre = tempDiv.querySelector('pre.mermaid');
+                        if (mermaidPre) {
+                            const code = mermaidPre.textContent.trim();
+                            if (code.length > 5) {
+                                return code;
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                // JSON parse failed, continue
+                console.warn('[MermaidPreRenderer] Failed to parse idevice JSON:', e);
+            }
+        }
+
+        // If element has no SVG, try getting text content directly
+        if (!preElement.querySelector('svg')) {
+            return preElement.textContent.trim();
+        }
+
+        return null;
+    }
+
     // Counter for unique render IDs
     let renderCounter = 0;
 
@@ -45,12 +141,80 @@
     }
 
     /**
+     * Load Mermaid library dynamically if not already loaded
+     * @param {number} timeout - Timeout in ms (default 5000)
+     * @returns {Promise<void>}
+     */
+    async function loadMermaidLibrary(timeout = 5000) {
+        if (typeof mermaid !== 'undefined') {
+            return; // Already loaded
+        }
+
+        // Skip in test environments without proper DOM
+        if (typeof document === 'undefined' || !document.head) {
+            throw new Error('Mermaid library could not be loaded (no DOM)');
+        }
+
+        // Determine the correct path for Mermaid library
+        const isWorkarea = document.querySelector('html')?.id === 'exe-workarea';
+        const mermaidPath = isWorkarea
+            ? '../app/common/mermaid/mermaid.min.js'
+            : './libs/mermaid/mermaid.min.js';
+
+        console.log('[MermaidPreRenderer] Loading Mermaid library from:', mermaidPath);
+
+        return new Promise((resolve, reject) => {
+            // Add timeout to prevent hanging forever
+            const timeoutId = setTimeout(() => {
+                reject(new Error('Mermaid library load timeout'));
+            }, timeout);
+
+            const script = document.createElement('script');
+            script.src = mermaidPath;
+            script.async = true;
+            script.onload = () => {
+                clearTimeout(timeoutId);
+                console.log('[MermaidPreRenderer] Mermaid library loaded successfully');
+                resolve();
+            };
+            script.onerror = () => {
+                // Try alternative path
+                const altPath = isWorkarea
+                    ? './libs/mermaid/mermaid.min.js'
+                    : '../app/common/mermaid/mermaid.min.js';
+                console.log('[MermaidPreRenderer] Trying alternative path:', altPath);
+
+                const altScript = document.createElement('script');
+                altScript.src = altPath;
+                altScript.async = true;
+                altScript.onload = () => {
+                    clearTimeout(timeoutId);
+                    console.log('[MermaidPreRenderer] Mermaid library loaded from alternative path');
+                    resolve();
+                };
+                altScript.onerror = () => {
+                    clearTimeout(timeoutId);
+                    reject(new Error('Failed to load Mermaid library'));
+                };
+                document.head.appendChild(altScript);
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    /**
      * Initialize Mermaid for pre-rendering
+     * Loads Mermaid dynamically if not available
      * @returns {Promise<void>}
      */
     async function initMermaid() {
+        // Load Mermaid if not available
         if (typeof mermaid === 'undefined') {
-            throw new Error('Mermaid library not loaded');
+            await loadMermaidLibrary();
+        }
+
+        if (typeof mermaid === 'undefined') {
+            throw new Error('Mermaid library could not be loaded');
         }
 
         // Initialize with optimal settings for pre-rendering
@@ -156,18 +320,7 @@
             };
         }
 
-        // Check Mermaid availability
-        if (typeof mermaid === 'undefined') {
-            console.warn('[MermaidPreRenderer] Mermaid not available, skipping pre-render');
-            return {
-                html,
-                hasMermaid: true,
-                mermaidRendered: false,
-                count: 0,
-            };
-        }
-
-        // Initialize Mermaid for pre-rendering
+        // Initialize Mermaid for pre-rendering (will load dynamically if needed)
         try {
             await initMermaid();
         } catch (error) {
@@ -204,8 +357,37 @@
         const elements = Array.from(mermaidElements);
 
         for (const element of elements) {
-            // Skip elements that are already processed (have data-processed attribute)
+            // Check if already processed by runtime Mermaid
             if (element.hasAttribute('data-processed')) {
+                // ALWAYS try to re-render processed elements
+                // Runtime Mermaid may have rendered with broken dimensions (element was hidden)
+                // We need to extract original code and re-render properly
+                const code = extractMermaidCode(element, doc);
+                if (code) {
+                    const isBroken = hasBrokenSvg(element);
+                    if (isBroken) {
+                        console.log('[MermaidPreRenderer] Detected broken SVG, re-rendering...');
+                    }
+                    try {
+                        const svg = await renderMermaidToSvg(code);
+                        if (svg) {
+                            // Create wrapper and replace
+                            const wrapper = doc.createElement('div');
+                            wrapper.className = 'exe-mermaid-rendered';
+                            wrapper.setAttribute('data-mermaid', code);
+                            wrapper.innerHTML = svg;
+                            element.parentNode.replaceChild(wrapper, element);
+                            renderedCount++;
+                            if (isBroken) {
+                                console.log('[MermaidPreRenderer] Successfully re-rendered broken SVG');
+                            }
+                            continue;
+                        }
+                    } catch (err) {
+                        console.warn('[MermaidPreRenderer] Failed to re-render:', err);
+                    }
+                }
+                // Skip if couldn't extract code or re-render failed
                 continue;
             }
 

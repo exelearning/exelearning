@@ -858,8 +858,8 @@ describe('ResourceFetcher', () => {
     it('returns empty Map when fflate is not available', async () => {
       const fetcher = new ResourceFetcher();
       // Ensure fflate is not defined
-      const originalFflate = global.fflate;
-      delete global.fflate;
+      const originalFflate = window.fflate;
+      delete window.fflate;
 
       const result = await fetcher.extractZipBundle(new ArrayBuffer(0));
 
@@ -867,13 +867,13 @@ describe('ResourceFetcher', () => {
       expect(result.size).toBe(0);
 
       // Restore if it existed
-      if (originalFflate) global.fflate = originalFflate;
+      if (originalFflate) window.fflate = originalFflate;
     });
 
     it('extracts files from ZIP when fflate is available', async () => {
       const fetcher = new ResourceFetcher();
-      // Mock fflate
-      global.fflate = {
+      // Mock fflate on window (where ResourceFetcher looks for it)
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'style.css': new Uint8Array([99, 115, 115]), // 'css'
           'script.js': new Uint8Array([106, 115]), // 'js'
@@ -888,12 +888,12 @@ describe('ResourceFetcher', () => {
       expect(result.has('script.js')).toBe(true);
       expect(result.has('folder/')).toBe(false);
 
-      delete global.fflate;
+      delete window.fflate;
     });
 
     it('detects MIME types correctly', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'image.png': new Uint8Array([1]),
           'image.jpg': new Uint8Array([1]),
@@ -911,12 +911,12 @@ describe('ResourceFetcher', () => {
       expect(result.get('data.json').type).toBe('application/json');
       expect(result.get('unknown.xyz').type).toBe('application/octet-stream');
 
-      delete global.fflate;
+      delete window.fflate;
     });
 
     it('returns empty Map on extraction error', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockImplementation(() => {
           throw new Error('Corrupt ZIP');
         }),
@@ -926,20 +926,21 @@ describe('ResourceFetcher', () => {
 
       expect(result.size).toBe(0);
 
-      delete global.fflate;
+      delete window.fflate;
     });
   });
 
   describe('fetchBundle', () => {
     it('returns extracted files on success', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'file.txt': new Uint8Array([116, 101, 115, 116]), // 'test'
         }),
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        headers: { get: () => '100' },
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
 
@@ -948,7 +949,7 @@ describe('ResourceFetcher', () => {
       expect(result).toBeInstanceOf(Map);
       expect(result.size).toBe(1);
 
-      delete global.fflate;
+      delete window.fflate;
     });
 
     it('returns null on non-ok response', async () => {
@@ -973,7 +974,7 @@ describe('ResourceFetcher', () => {
   describe('loadIdevicesBundle', () => {
     it('loads and distributes iDevice files from bundle', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'text/script.js': new Uint8Array([1]),
           'text/style.css': new Uint8Array([2]),
@@ -982,6 +983,7 @@ describe('ResourceFetcher', () => {
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        headers: { get: () => '100' },
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
 
@@ -992,7 +994,7 @@ describe('ResourceFetcher', () => {
       expect(fetcher.cache.get('idevice:text').size).toBe(2);
       expect(fetcher.cache.get('idevice:quiz').size).toBe(1);
 
-      delete global.fflate;
+      delete window.fflate;
     });
 
     it('marks bundle as tried even on empty result', async () => {
@@ -1006,7 +1008,7 @@ describe('ResourceFetcher', () => {
 
     it('skips files with less than 2 path parts', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'rootfile.js': new Uint8Array([1]), // should be skipped
           'idevice/file.js': new Uint8Array([2]),
@@ -1014,6 +1016,7 @@ describe('ResourceFetcher', () => {
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        headers: { get: () => '100' },
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
 
@@ -1022,7 +1025,7 @@ describe('ResourceFetcher', () => {
       expect(fetcher.cache.has('idevice:idevice')).toBe(true);
       expect(fetcher.cache.get('idevice:idevice').size).toBe(1);
 
-      delete global.fflate;
+      delete window.fflate;
     });
   });
 
@@ -1031,13 +1034,14 @@ describe('ResourceFetcher', () => {
       const fetcher = new ResourceFetcher();
       fetcher.bundlesAvailable = true;
 
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'style.css': new Uint8Array([1]),
         }),
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        headers: { get: () => '100' },
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
 
@@ -1046,7 +1050,7 @@ describe('ResourceFetcher', () => {
       expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/theme/base');
       expect(result.size).toBe(1);
 
-      delete global.fflate;
+      delete window.fflate;
     });
 
     it('falls back to individual files when bundle fails', async () => {
@@ -1077,13 +1081,14 @@ describe('ResourceFetcher', () => {
       const fetcher = new ResourceFetcher();
       fetcher.bundlesAvailable = true;
 
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'text/script.js': new Uint8Array([1]),
         }),
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        headers: { get: () => '100' },
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
 
@@ -1091,7 +1096,7 @@ describe('ResourceFetcher', () => {
 
       expect(result.size).toBe(1);
 
-      delete global.fflate;
+      delete window.fflate;
     });
   });
 
@@ -1100,13 +1105,14 @@ describe('ResourceFetcher', () => {
       const fetcher = new ResourceFetcher();
       fetcher.bundlesAvailable = true;
 
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'jquery.min.js': new Uint8Array([1]),
         }),
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        headers: { get: () => '100' },
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
 
@@ -1115,19 +1121,20 @@ describe('ResourceFetcher', () => {
       expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/libs');
       expect(result.size).toBe(1);
 
-      delete global.fflate;
+      delete window.fflate;
     });
 
     it('falls back when bundle is empty', async () => {
       const fetcher = new ResourceFetcher();
       fetcher.bundlesAvailable = true;
 
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({}),
       };
       // Bundle returns empty
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        headers: { get: () => '100' },
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
       // Fallback
@@ -1140,7 +1147,7 @@ describe('ResourceFetcher', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
 
-      delete global.fflate;
+      delete window.fflate;
     });
   });
 
@@ -1160,13 +1167,14 @@ describe('ResourceFetcher', () => {
       const fetcher = new ResourceFetcher();
       fetcher.bundlesAvailable = true;
 
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
           'base.css': new Uint8Array([1]),
         }),
       };
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        headers: { get: () => '100' },
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(10)),
       });
 
@@ -1175,7 +1183,7 @@ describe('ResourceFetcher', () => {
       expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/content-css');
       expect(result.size).toBe(1);
 
-      delete global.fflate;
+      delete window.fflate;
     });
 
     it('falls back to individual files when bundle fails', async () => {
@@ -1494,18 +1502,18 @@ describe('ResourceFetcher', () => {
 
   describe('additional MIME types in extractZipBundle', () => {
     beforeEach(() => {
-      global.fflate = {
+      window.fflate = {
         unzipSync: vi.fn(),
       };
     });
 
     afterEach(() => {
-      delete global.fflate;
+      delete window.fflate;
     });
 
     it('detects html MIME type', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate.unzipSync.mockReturnValue({
+      window.fflate.unzipSync.mockReturnValue({
         'page.html': new Uint8Array([1]),
         'page.htm': new Uint8Array([1]),
       });
@@ -1518,7 +1526,7 @@ describe('ResourceFetcher', () => {
 
     it('detects media MIME types', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate.unzipSync.mockReturnValue({
+      window.fflate.unzipSync.mockReturnValue({
         'audio.mp3': new Uint8Array([1]),
         'video.mp4': new Uint8Array([1]),
         'video.webm': new Uint8Array([1]),
@@ -1535,7 +1543,7 @@ describe('ResourceFetcher', () => {
 
     it('detects font MIME types', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate.unzipSync.mockReturnValue({
+      window.fflate.unzipSync.mockReturnValue({
         'font.woff': new Uint8Array([1]),
         'font.ttf': new Uint8Array([1]),
         'font.eot': new Uint8Array([1]),
@@ -1550,7 +1558,7 @@ describe('ResourceFetcher', () => {
 
     it('detects image MIME types', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate.unzipSync.mockReturnValue({
+      window.fflate.unzipSync.mockReturnValue({
         'image.gif': new Uint8Array([1]),
         'image.webp': new Uint8Array([1]),
         'image.svg': new Uint8Array([1]),
@@ -1567,7 +1575,7 @@ describe('ResourceFetcher', () => {
 
     it('detects xml MIME type', async () => {
       const fetcher = new ResourceFetcher();
-      global.fflate.unzipSync.mockReturnValue({
+      window.fflate.unzipSync.mockReturnValue({
         'data.xml': new Uint8Array([1]),
       });
 

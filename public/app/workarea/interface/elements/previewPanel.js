@@ -370,11 +370,8 @@ export default class PreviewPanelManager {
 
         const documentManager = yjsBridge.documentManager;
 
-        // Get resource fetcher if available
-        let resourceFetcher = null;
-        if (typeof window.ResourceFetcher !== 'undefined') {
-            resourceFetcher = new window.ResourceFetcher();
-        }
+        // Get resource fetcher from yjsBridge (already initialized with bundle manifest)
+        const resourceFetcher = yjsBridge.resourceFetcher || null;
 
         // Build preview options
         // Get theme URL from currently selected theme (handles admin vs builtin themes)

@@ -221,6 +221,7 @@ export default class projectManager {
             enableIndexedDB: true,
             offline: localOnlyMode,
             isNewProject: options.isNewProject,
+            skipSyncWait: options.skipSyncWait ?? false,
         });
 
         this._yjsEnabled = true;

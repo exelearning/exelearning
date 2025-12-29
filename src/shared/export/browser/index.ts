@@ -268,6 +268,10 @@ function getLatexPreRendererHooks(): LatexPreRendererHooks | undefined {
 
 /**
  * Get Mermaid pre-renderer hooks if available in browser context
+ *
+ * Note: Only requires MermaidPreRenderer to be loaded (not mermaid library).
+ * MermaidPreRenderer.preRender() will dynamically load mermaid if needed.
+ *
  * @returns Object with preRenderMermaid, or undefined
  */
 function getMermaidPreRendererHooks(): MermaidPreRendererHooks | undefined {
@@ -282,9 +286,10 @@ function getMermaidPreRendererHooks(): MermaidPreRendererHooks | undefined {
             };
         }
     ).MermaidPreRenderer;
-    const windowMermaid = (window as unknown as { mermaid?: unknown }).mermaid;
 
-    if (windowMermaidPreRenderer && windowMermaid) {
+    // Only require MermaidPreRenderer to be loaded.
+    // The preRender function will load mermaid library dynamically if needed.
+    if (windowMermaidPreRenderer) {
         return {
             preRenderMermaid: windowMermaidPreRenderer.preRender.bind(windowMermaidPreRenderer),
         };
