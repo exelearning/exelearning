@@ -208,18 +208,20 @@ describe('User Queries', () => {
         });
 
         it('should set created_at and updated_at timestamps', async () => {
-            const before = new Date().toISOString();
+            const beforeMs = Date.now() - 1000; // 1 second tolerance
             const user = await createUser(db, {
                 email: 'time@example.com',
                 user_id: 'time-user',
                 password: 'h',
             });
-            const after = new Date().toISOString();
+            const afterMs = Date.now() + 1000; // 1 second tolerance
 
             expect(user.created_at).toBeDefined();
             expect(user.updated_at).toBeDefined();
-            expect(user.created_at! >= before).toBe(true);
-            expect(user.created_at! <= after).toBe(true);
+            // Timestamps are stored as Unix milliseconds
+            const createdAtMs = user.created_at!;
+            expect(createdAtMs).toBeGreaterThanOrEqual(beforeMs);
+            expect(createdAtMs).toBeLessThanOrEqual(afterMs);
         });
 
         it('should throw on duplicate email', async () => {
@@ -265,12 +267,15 @@ describe('User Queries', () => {
             });
             const originalTimestamp = user.updated_at;
 
-            // Wait a bit to ensure different timestamp
+            // Small delay to ensure different timestamp (integers have ms precision)
             await new Promise(r => setTimeout(r, 10));
 
             const updated = await updateUser(db, user.id, { quota_mb: 1000 });
 
-            expect(updated!.updated_at! > originalTimestamp!).toBe(true);
+            // Compare timestamps directly as integers (Unix milliseconds)
+            const originalMs = originalTimestamp!;
+            const updatedMs = updated!.updated_at!;
+            expect(updatedMs).toBeGreaterThan(originalMs);
         });
 
         it('should return undefined for non-existent user', async () => {

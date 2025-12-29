@@ -231,11 +231,15 @@ describe('Project Queries', () => {
             });
 
             const originalUpdatedAt = project.updated_at;
+            // Small delay to ensure different timestamp (integers have ms precision)
             await new Promise(r => setTimeout(r, 10));
 
             const updated = await updateProject(db, project.id, { title: 'New Title' });
 
-            expect(updated?.updated_at).not.toBe(originalUpdatedAt);
+            // Timestamps are now integers (Unix ms)
+            const originalMs = originalUpdatedAt!;
+            const updatedMs = updated!.updated_at!;
+            expect(updatedMs).toBeGreaterThan(originalMs);
         });
 
         it('should return undefined for non-existent project', async () => {
@@ -820,6 +824,7 @@ describe('Project Queries', () => {
             const older = await createProject(db, { title: 'Older', owner_id: testUser.id });
             await markProjectAsSaved(db, older.id);
 
+            // Small delay to ensure different timestamp (integers have ms precision)
             await new Promise(r => setTimeout(r, 10));
 
             const newer = await createProject(db, { title: 'Newer', owner_id: testUser.id });
@@ -866,8 +871,9 @@ describe('Project Queries', () => {
                 title: 'Timestamp Test',
                 owner_id: testUser.id,
             });
-            const originalUpdatedAt = project.updated_at;
+            const originalTimestamp = project.updated_at;
 
+            // Small delay to ensure different timestamp (integers have ms precision)
             await new Promise(r => setTimeout(r, 10));
 
             const newOwner = await createUser(db, {
@@ -882,7 +888,10 @@ describe('Project Queries', () => {
             await transferOwnershipByUuid(db, uuid, newOwner.id);
 
             const found = await findProjectByUuid(db, uuid);
-            expect(found?.updated_at).not.toBe(originalUpdatedAt);
+            // Timestamps are now integers (Unix ms)
+            const originalMs = originalTimestamp!;
+            const updatedMs = found!.updated_at!;
+            expect(updatedMs).toBeGreaterThan(originalMs);
         });
 
         it('should throw error if project UUID not found', async () => {
@@ -949,13 +958,17 @@ describe('Project Queries', () => {
                 title: 'Vis Timestamp',
                 owner_id: testUser.id,
             });
-            const originalUpdatedAt = project.updated_at;
+            const originalTimestamp = project.updated_at;
 
+            // Small delay to ensure different timestamp (integers have ms precision)
             await new Promise(r => setTimeout(r, 10));
             await updateProjectVisibilityByUuid(db, uuid, 'public');
 
             const found = await findProjectByUuid(db, uuid);
-            expect(found?.updated_at).not.toBe(originalUpdatedAt);
+            // Timestamps are now integers (Unix ms)
+            const originalMs = originalTimestamp!;
+            const updatedMs = found!.updated_at!;
+            expect(updatedMs).toBeGreaterThan(originalMs);
         });
     });
 });

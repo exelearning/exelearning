@@ -241,10 +241,10 @@ export async function findAllProjectsForUser(db: Kysely<Database>, userId: numbe
         }
     }
 
-    // Sort by updatedAt DESC
+    // Sort by updatedAt DESC (timestamps are already Unix milliseconds)
     return result.sort((a, b) => {
-        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        const dateA = a.updated_at ?? 0;
+        const dateB = b.updated_at ?? 0;
         return dateB - dateA;
     });
 }
@@ -292,9 +292,10 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
         }
     }
 
+    // Sort by updatedAt DESC (timestamps are already Unix milliseconds)
     return result.sort((a, b) => {
-        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        const dateA = a.updated_at ?? 0;
+        const dateB = b.updated_at ?? 0;
         return dateB - dateA;
     });
 }

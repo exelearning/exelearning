@@ -1,14 +1,21 @@
 /**
  * Initial Migration: Create all tables
  * Compatible with SQLite, PostgreSQL, and MySQL
+ *
+ * This consolidated migration creates the complete v3.1 schema:
+ * - Core: users, users_preferences, projects, project_collaborators, assets
+ * - Yjs: yjs_documents, yjs_updates, yjs_version_history
+ * - Settings: app_settings
+ * - Themes: themes, templates
  */
-import { Kysely } from 'kysely';
+import { Kysely, sql } from 'kysely';
 import { getAutoIncrementType, addAutoIncrement, getBinaryType } from '../helpers';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
     // Get the correct types for the current database
     const idType = getAutoIncrementType();
     const binaryType = getBinaryType();
+    const now = Date.now();
 
     // ========================================================================
     // USERS
@@ -26,8 +33,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('external_identifier', 'varchar(180)')
         .addColumn('api_token', 'varchar(255)')
         .addColumn('is_active', 'integer', col => col.notNull().defaultTo(1))
-        .addColumn('created_at', 'text')
-        .addColumn('updated_at', 'text')
+        .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
+        .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
     // ========================================================================
@@ -42,8 +49,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('value', 'text', col => col.notNull())
         .addColumn('description', 'text')
         .addColumn('is_active', 'integer', col => col.notNull().defaultTo(1))
-        .addColumn('created_at', 'text')
-        .addColumn('updated_at', 'text')
+        .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
+        .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
     await db.schema
@@ -54,7 +61,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .execute();
 
     // ========================================================================
-    // PROJECTS
+    // PROJECTS (without is_active - use status instead)
     // ========================================================================
     await db.schema
         .createTable('projects')
@@ -69,11 +76,10 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('language', 'varchar(10)')
         .addColumn('author', 'varchar(255)')
         .addColumn('license', 'varchar(255)')
-        .addColumn('last_accessed_at', 'text')
+        .addColumn('last_accessed_at', 'bigint') // Unix timestamp in milliseconds
         .addColumn('saved_once', 'integer', col => col.notNull().defaultTo(0))
-        .addColumn('is_active', 'integer', col => col.notNull().defaultTo(1))
-        .addColumn('created_at', 'text')
-        .addColumn('updated_at', 'text')
+        .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
+        .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
     // ========================================================================
@@ -109,8 +115,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('client_id', 'varchar(36)')
         .addColumn('component_id', 'varchar(255)')
         .addColumn('content_hash', 'varchar(64)')
-        .addColumn('created_at', 'text')
-        .addColumn('updated_at', 'text')
+        .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
+        .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
     await db.schema
@@ -131,8 +137,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('project_id', 'integer', col => col.notNull().unique().references('projects.id').onDelete('cascade'))
         .addColumn('snapshot_data', binaryType, col => col.notNull())
         .addColumn('snapshot_version', 'text', col => col.notNull().defaultTo('0'))
-        .addColumn('created_at', 'text')
-        .addColumn('updated_at', 'text')
+        .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
+        .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
     // ========================================================================
@@ -146,7 +152,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('update_data', binaryType, col => col.notNull())
         .addColumn('version', 'varchar(255)', col => col.notNull())
         .addColumn('client_id', 'varchar(255)')
-        .addColumn('created_at', 'text')
+        .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
     await db.schema
@@ -168,7 +174,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('version', 'varchar(255)', col => col.notNull())
         .addColumn('description', 'text')
         .addColumn('created_by', 'integer', col => col.references('users.id').onDelete('set null'))
-        .addColumn('created_at', 'text')
+        .addColumn('created_at', 'bigint', col => col.notNull()) // Unix timestamp in milliseconds (required)
         .execute();
 
     await db.schema
@@ -177,10 +183,111 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .on('yjs_version_history')
         .column('project_id')
         .execute();
+
+    // ========================================================================
+    // APP SETTINGS
+    // ========================================================================
+    await db.schema
+        .createTable('app_settings')
+        .ifNotExists()
+        .addColumn('key', 'varchar(255)', col => col.primaryKey())
+        .addColumn('value', 'text', col => col.notNull())
+        .addColumn('type', 'varchar(20)', col => col.notNull().defaultTo('string'))
+        .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
+        .addColumn('updated_by', 'integer')
+        .execute();
+
+    // ========================================================================
+    // THEMES (unified table for base and site themes)
+    // - is_builtin=1: Built-in themes from public/files/perm/themes/base/
+    // - is_builtin=0: Admin-uploaded themes, stored in FILES_DIR/themes/site/
+    // ========================================================================
+    await db.schema
+        .createTable('themes')
+        .ifNotExists()
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
+        .addColumn('dir_name', 'varchar(100)', col => col.notNull().unique())
+        .addColumn('display_name', 'varchar(255)', col => col.notNull())
+        .addColumn('description', 'text')
+        .addColumn('version', 'varchar(50)')
+        .addColumn('author', 'varchar(255)')
+        .addColumn('license', 'varchar(255)')
+        .addColumn('is_builtin', 'integer', col => col.notNull().defaultTo(0)) // 1=base, 0=site
+        .addColumn('is_enabled', 'integer', col => col.notNull().defaultTo(1))
+        .addColumn('is_default', 'integer', col => col.notNull().defaultTo(0))
+        .addColumn('sort_order', 'integer', col => col.notNull().defaultTo(0))
+        .addColumn('storage_path', 'varchar(512)') // NULL for builtin (uses filesystem)
+        .addColumn('file_size', 'integer')
+        .addColumn('uploaded_by', 'integer', col => col.references('users.id').onDelete('set null'))
+        .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
+        .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
+        .execute();
+
+    await db.schema
+        .createIndex('idx_themes_enabled')
+        .ifNotExists()
+        .on('themes')
+        .columns(['is_enabled', 'is_builtin', 'sort_order'])
+        .execute();
+
+    // ========================================================================
+    // TEMPLATES (project templates for new projects)
+    // ========================================================================
+    await db.schema
+        .createTable('templates')
+        .ifNotExists()
+        .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
+        .addColumn('filename', 'varchar(255)', col => col.notNull())
+        .addColumn('display_name', 'varchar(255)', col => col.notNull())
+        .addColumn('description', 'text')
+        .addColumn('locale', 'varchar(10)', col => col.notNull())
+        .addColumn('is_enabled', 'integer', col => col.notNull().defaultTo(1))
+        .addColumn('sort_order', 'integer', col => col.notNull().defaultTo(0))
+        .addColumn('storage_path', 'varchar(512)', col => col.notNull())
+        .addColumn('file_size', 'integer')
+        .addColumn('preview_image', 'varchar(512)')
+        .addColumn('uploaded_by', 'integer', col => col.references('users.id').onDelete('set null'))
+        .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
+        .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
+        .execute();
+
+    // Unique constraint: same filename can exist in different locales
+    await db.schema
+        .createIndex('idx_templates_filename_locale')
+        .ifNotExists()
+        .on('templates')
+        .columns(['filename', 'locale'])
+        .unique()
+        .execute();
+
+    // Index for fast locale-based queries
+    await db.schema
+        .createIndex('idx_templates_locale')
+        .ifNotExists()
+        .on('templates')
+        .columns(['locale', 'is_enabled', 'sort_order'])
+        .execute();
+
+    // ========================================================================
+    // DEFAULT SETTINGS
+    // ========================================================================
+    // Insert default theme setting (base theme)
+    await sql`
+        INSERT INTO app_settings (key, value, type, updated_at)
+        VALUES ('default_theme', '{"type":"base","dirName":"base"}', 'json', ${now})
+        ON CONFLICT (key) DO NOTHING
+    `
+        .execute(db)
+        .catch(() => {
+            // Ignore if already exists (for databases that don't support ON CONFLICT)
+        });
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
     // Drop tables in reverse order (respecting foreign keys)
+    await db.schema.dropTable('templates').ifExists().execute();
+    await db.schema.dropTable('themes').ifExists().execute();
+    await db.schema.dropTable('app_settings').ifExists().execute();
     await db.schema.dropTable('yjs_version_history').ifExists().execute();
     await db.schema.dropTable('yjs_updates').ifExists().execute();
     await db.schema.dropTable('yjs_documents').ifExists().execute();

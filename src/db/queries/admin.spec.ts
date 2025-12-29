@@ -133,7 +133,8 @@ describe('Admin Queries', () => {
 
         it('should sort by created_at', async () => {
             await createUser(db, { email: 'older@test.com', user_id: 'older', password: 'hash' });
-            await new Promise(r => setTimeout(r, 10)); // Small delay for different timestamps
+            // Small delay to ensure different timestamp (integers have ms precision)
+            await new Promise(r => setTimeout(r, 10));
             await createUser(db, { email: 'newer@test.com', user_id: 'newer', password: 'hash' });
 
             const result = await findUsersPaginated(db, { sortBy: 'created_at', sortOrder: 'desc' });
@@ -333,6 +334,7 @@ describe('Admin Queries', () => {
         it('should sort by created_at', async () => {
             const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
             await seedTestProject(db, userId, { title: 'Older', uuid: 'proj-old' });
+            // Small delay to ensure different timestamp (integers have ms precision)
             await new Promise(r => setTimeout(r, 10));
             await seedTestProject(db, userId, { title: 'Newer', uuid: 'proj-new' });
 
@@ -493,10 +495,12 @@ describe('Admin Queries', () => {
             const userId = await seedTestUser(db, { email: 'ts@test.com', user_id: 'ts' });
             const before = await db.selectFrom('users').selectAll().where('id', '=', userId).executeTakeFirst();
 
+            // Small delay to ensure different timestamp (integers have ms precision)
             await new Promise(r => setTimeout(r, 10));
             const updated = await updateUserStatus(db, userId, false);
 
-            expect(updated!.updated_at! > before!.updated_at!).toBe(true);
+            // Timestamps are now integers (Unix ms), direct comparison
+            expect(updated!.updated_at).toBeGreaterThan(before!.updated_at!);
         });
     });
 
@@ -569,19 +573,20 @@ describe('Admin Queries', () => {
         });
 
         it('should set timestamps', async () => {
-            const before = new Date().toISOString();
+            const beforeMs = Date.now() - 100; // Small tolerance
             const user = await createUserAsAdmin(db, {
                 email: 'time@test.com',
                 password: 'hash',
                 userId: 'time',
                 roles: ['ROLE_USER'],
             });
-            const after = new Date().toISOString();
+            const afterMs = Date.now() + 100;
 
             expect(user.created_at).toBeDefined();
             expect(user.updated_at).toBeDefined();
-            expect(user.created_at! >= before).toBe(true);
-            expect(user.created_at! <= after).toBe(true);
+            // Timestamps are now integers (Unix ms)
+            expect(user.created_at!).toBeGreaterThanOrEqual(beforeMs);
+            expect(user.created_at!).toBeLessThanOrEqual(afterMs);
         });
 
         it('should throw on duplicate email', async () => {
@@ -636,10 +641,12 @@ describe('Admin Queries', () => {
             const userId = await seedTestUser(db, { email: 'qts@test.com', user_id: 'qts' });
             const before = await db.selectFrom('users').selectAll().where('id', '=', userId).executeTakeFirst();
 
+            // Small delay to ensure different timestamp (integers have ms precision)
             await new Promise(r => setTimeout(r, 10));
             const updated = await updateUserQuota(db, userId, 2000);
 
-            expect(updated!.updated_at! > before!.updated_at!).toBe(true);
+            // Timestamps are now integers (Unix ms), direct comparison
+            expect(updated!.updated_at).toBeGreaterThan(before!.updated_at!);
         });
     });
 

@@ -82,18 +82,20 @@ describe('Yjs Queries', () => {
             });
 
             it('should set timestamps', async () => {
-                const before = new Date().toISOString();
+                const beforeMs = Date.now() - 1000; // 1 second tolerance
                 const snapshot = await createSnapshot(db, {
                     project_id: testProjectId,
                     snapshot_data: new Uint8Array([1]),
                     snapshot_version: '1',
                 });
-                const after = new Date().toISOString();
+                const afterMs = Date.now() + 1000;
 
                 expect(snapshot.created_at).toBeDefined();
                 expect(snapshot.updated_at).toBeDefined();
-                expect(snapshot.created_at! >= before).toBe(true);
-                expect(snapshot.created_at! <= after).toBe(true);
+                // Timestamps are now integers (Unix ms)
+                const createdAtMs = snapshot.created_at!;
+                expect(createdAtMs).toBeGreaterThanOrEqual(beforeMs);
+                expect(createdAtMs).toBeLessThanOrEqual(afterMs);
             });
         });
 
@@ -241,18 +243,20 @@ describe('Yjs Queries', () => {
             });
 
             it('should set created_at timestamp', async () => {
-                const before = new Date().toISOString();
+                const beforeMs = Date.now() - 1000; // 1 second tolerance
                 const update = await createUpdate(db, {
                     project_id: testProjectId,
                     update_data: new Uint8Array([1]),
                     version: '1',
                     client_id: null,
                 });
-                const after = new Date().toISOString();
+                const afterMs = Date.now() + 1000;
 
                 expect(update.created_at).toBeDefined();
-                expect(update.created_at! >= before).toBe(true);
-                expect(update.created_at! <= after).toBe(true);
+                // Timestamps are now integers (Unix ms)
+                const createdAtMs = update.created_at!;
+                expect(createdAtMs).toBeGreaterThanOrEqual(beforeMs);
+                expect(createdAtMs).toBeLessThanOrEqual(afterMs);
             });
         });
 
@@ -825,7 +829,7 @@ describe('Yjs Queries', () => {
         describe('listVersionHistory', () => {
             it('should list version history ordered by newest first', async () => {
                 await createVersionSnapshot(db, testProjectId, new Uint8Array([1]), 'V1');
-                // Small delay to ensure different timestamps
+                // Small delay to ensure different timestamp (integers have ms precision)
                 await new Promise(resolve => setTimeout(resolve, 10));
                 await createVersionSnapshot(db, testProjectId, new Uint8Array([2]), 'V2');
                 await new Promise(resolve => setTimeout(resolve, 10));
@@ -849,9 +853,9 @@ describe('Yjs Queries', () => {
             });
 
             it('should respect offset parameter', async () => {
+                // Create 5 versions without delays - ordering by ID for offset test
                 for (let i = 0; i < 5; i++) {
                     await createVersionSnapshot(db, testProjectId, new Uint8Array([i]), `V${i}`);
-                    await new Promise(resolve => setTimeout(resolve, 5));
                 }
 
                 const versions = await listVersionHistory(db, testProjectId, 10, 2);
@@ -994,6 +998,7 @@ describe('Yjs Queries', () => {
         describe('getLatestVersionHistory', () => {
             it('should get the most recent version', async () => {
                 await createVersionSnapshot(db, testProjectId, new Uint8Array([1]), 'First');
+                // Small delay to ensure different timestamp (integers have ms precision)
                 await new Promise(resolve => setTimeout(resolve, 10));
                 await createVersionSnapshot(db, testProjectId, new Uint8Array([2]), 'Second');
                 await new Promise(resolve => setTimeout(resolve, 10));

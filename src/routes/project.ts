@@ -1509,11 +1509,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 // Combine all projects
                 const allProjects = [...ownedProjects, ...savedSharedProjects];
 
-                // Sort by updatedAt DESC and take the 3 most recent
+                // Sort by updatedAt DESC and take the 3 most recent (timestamps are Unix milliseconds)
                 const recentProjects = allProjects
                     .sort((a, b) => {
-                        const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-                        const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                        const dateA = a.updated_at ?? 0;
+                        const dateB = b.updated_at ?? 0;
                         return dateB - dateA;
                     })
                     .slice(0, 3);

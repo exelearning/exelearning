@@ -95,6 +95,44 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
     }
 }
 
+/**
+ * Check if a column exists in a table (cross-database compatible)
+ */
+export async function columnExists(db: Kysely<unknown>, tableName: string, columnName: string): Promise<boolean> {
+    const dialect = getDialect();
+
+    try {
+        if (dialect === 'sqlite') {
+            // SQLite: Use PRAGMA table_info
+            const result = await sql<{ name: string }>`
+                PRAGMA table_info(${sql.raw(tableName)})
+            `.execute(db);
+            return result.rows.some(row => row.name === columnName);
+        }
+
+        if (dialect === 'postgres') {
+            // PostgreSQL: Use information_schema.columns
+            const result = await sql<{ count: string }>`
+                SELECT COUNT(*)::text as count FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = ${tableName}
+                  AND column_name = ${columnName}
+            `.execute(db);
+            return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
+        }
+
+        // MySQL/MariaDB: Use information_schema.columns
+        const result = await sql<{ count: string }>`
+            SELECT COUNT(*) as count FROM information_schema.columns
+            WHERE table_name = ${tableName}
+              AND column_name = ${columnName}
+        `.execute(db);
+        return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
+    } catch {
+        return false;
+    }
+}
+
 // ============================================================================
 // CROSS-DATABASE SCHEMA HELPERS
 // ============================================================================
@@ -122,10 +160,21 @@ export function addAutoIncrement(col: ColumnDefinitionBuilder): ColumnDefinition
 /**
  * Get the correct data type for binary/blob columns.
  * - PostgreSQL: 'bytea'
- * - MySQL/SQLite: 'blob'
+ * - MySQL/MariaDB: 'longblob' (regular 'blob' is limited to 64KB)
+ * - SQLite: 'blob'
  */
-export function getBinaryType(): 'bytea' | 'blob' {
-    return getDialect() === 'postgres' ? 'bytea' : 'blob';
+export function getBinaryType(): 'bytea' | 'blob' | 'longblob' {
+    const dialect = getDialect();
+    if (dialect === 'postgres') {
+        return 'bytea';
+    }
+    if (dialect === 'mysql') {
+        // MySQL/MariaDB: Use LONGBLOB (4GB limit) instead of BLOB (64KB limit)
+        // This is needed for Yjs documents which can be several MB
+        return 'longblob';
+    }
+    // SQLite: BLOB is flexible, no size limit
+    return 'blob';
 }
 
 // ============================================================================

@@ -6,6 +6,7 @@
 import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import type { Database } from '../../src/db/types';
+import { now } from '../../src/db/types';
 import { migrateToLatest } from '../../src/db/migrations';
 
 /**
@@ -62,7 +63,7 @@ export async function seedTestUser(
         roles: string;
     }> = {},
 ): Promise<number> {
-    const now = new Date().toISOString();
+    const timestamp = now();
     const result = await db
         .insertInto('users')
         .values({
@@ -72,8 +73,8 @@ export async function seedTestUser(
             roles: overrides.roles ?? '["ROLE_USER"]',
             is_lopd_accepted: 1,
             is_active: 1,
-            created_at: now,
-            updated_at: now,
+            created_at: timestamp,
+            updated_at: timestamp,
         })
         .returning('id')
         .executeTakeFirstOrThrow();
@@ -93,7 +94,7 @@ export async function seedTestProject(
         description: string;
     }> = {},
 ): Promise<number> {
-    const now = new Date().toISOString();
+    const timestamp = now();
     const result = await db
         .insertInto('projects')
         .values({
@@ -104,8 +105,8 @@ export async function seedTestProject(
             status: 'active',
             visibility: 'private',
             saved_once: 0,
-            created_at: now,
-            updated_at: now,
+            created_at: timestamp,
+            updated_at: timestamp,
         })
         .returning('id')
         .executeTakeFirstOrThrow();

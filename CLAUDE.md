@@ -269,6 +269,43 @@ Uses **Kysely** ORM with support for multiple databases:
 | PostgreSQL | `pg` | Production (cloud) |
 | MariaDB/MySQL | `mysql2` | Production (on-premise) |
 
+### Cross-Database Compatible Data Types
+
+**All migrations must use common data types that work identically across SQLite, PostgreSQL, and MySQL:**
+
+| Purpose | Kysely Type | Notes |
+|---------|-------------|-------|
+| Timestamps | `'bigint'` | Store as Unix milliseconds via `Date.now()` |
+| Binary data | `'blob'` | Works on all databases (BLOB/BYTEA) |
+| Text | `'text'` | Unlimited text |
+| Integers | `'integer'` | Standard 32-bit integer |
+| Primary key | `'integer'` | With `autoIncrement()` |
+
+**Timestamps are stored as integers (Unix milliseconds):**
+```typescript
+// In migrations
+.addColumn('created_at', 'bigint')
+.addColumn('updated_at', 'bigint')
+
+// In code - use the helper from src/db/types.ts
+import { now } from '../db/types';
+await db.insertInto('users').values({
+    email: 'user@example.com',
+    created_at: now(), // Returns Date.now() (milliseconds)
+});
+
+// To convert to Date object
+import { timestampToDate, formatTimestamp } from '../db/types';
+const date = timestampToDate(user.created_at); // Date object
+const iso = formatTimestamp(user.created_at);  // ISO 8601 string
+```
+
+**Benefits of integer timestamps:**
+- Millisecond precision (no 1-second delays in tests)
+- Direct numeric comparison (`timestamp1 < timestamp2`)
+- No string parsing overhead
+- Consistent across all database dialects
+
 ### Configuration
 
 Database is configured via environment variables (see `.env.dist`):

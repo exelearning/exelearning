@@ -6,24 +6,16 @@ import { Kysely, Migrator, sql, type Migration, type MigrationProvider } from 'k
 import { tableExists as tableExistsHelper } from '../helpers';
 
 // Import all migrations
+import * as migration000 from './000_legacy_symfony';
 import * as migration001 from './001_initial';
-import * as migration002 from './002_app_settings';
-import * as migration003 from './003_project_status';
-import * as migration004 from './004_admin_themes_templates';
-import * as migration005 from './005_builtin_theme_settings';
-import * as migration006 from './006_consolidate_themes';
 
 // ============================================================================
 // MIGRATION REGISTRY
 // ============================================================================
 
 const migrations: Record<string, Migration> = {
+    '000_legacy_symfony': migration000,
     '001_initial': migration001,
-    '002_app_settings': migration002,
-    '003_project_status': migration003,
-    '004_admin_themes_templates': migration004,
-    '005_builtin_theme_settings': migration005,
-    '006_consolidate_themes': migration006,
 };
 
 // ============================================================================
@@ -73,26 +65,63 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
 /**
  * Check if this is a legacy database with tables but no migration tracking.
  * If so, register existing migrations as already applied.
+ *
+ * Database states:
+ * 1. Fresh DB: No tables at all → Run 001_initial, skip 002_legacy_symfony
+ * 2. Symfony legacy DB: users exists, projects doesn't → Run 001_initial (creates new tables), run 002_legacy_symfony
+ * 3. Elysia DB without tracking: users+projects exist, no kysely_migration → Mark 001_initial as applied
+ * 4. Normal DB with tracking: Run pending migrations as normal
  */
 async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
-    // 1. Check if BOTH core tables exist (users AND projects)
-    // If either is missing, this is either a fresh DB or an old version that needs full migration
     const usersTableExists = await tableExists(db, 'users');
     const projectsTableExists = await tableExists(db, 'projects');
+    const migrationTableExists = await tableExists(db, 'kysely_migration');
 
-    // If any core table is missing, run all migrations (001_initial uses ifNotExists)
-    if (!usersTableExists || !projectsTableExists) {
+    // State 1: Fresh DB - nothing to sync, migrations will create everything
+    if (!usersTableExists) {
         return;
     }
 
-    // 2. Check if kysely_migration table exists
-    const migrationTableExists = await tableExists(db, 'kysely_migration');
+    // State 2: Symfony legacy DB (has users but no projects table)
+    // 001_initial will create new tables (uses ifNotExists)
+    // 002_legacy_symfony will clean up old Symfony schema
+    if (usersTableExists && !projectsTableExists) {
+        console.log('[DB] Detected Symfony legacy database...');
 
-    // 3. If application tables exist but migration table doesn't, this is a legacy DB
-    if (!migrationTableExists) {
-        console.log('[DB] Detected legacy database, creating migration tracking...');
+        if (!migrationTableExists) {
+            // Create migration tracking tables
+            await db.schema
+                .createTable('kysely_migration')
+                .ifNotExists()
+                .addColumn('name', 'varchar(255)', col => col.primaryKey())
+                .addColumn('timestamp', 'varchar(255)', col => col.notNull())
+                .execute();
 
-        // Create migration tables manually (Kysely does this automatically but we need to pre-populate)
+            await db.schema
+                .createTable('kysely_migration_lock')
+                .ifNotExists()
+                .addColumn('id', 'varchar(255)', col => col.primaryKey())
+                .addColumn('is_locked', 'integer', col => col.notNull().defaultTo(0))
+                .execute();
+
+            // Initialize lock
+            await sql`
+                INSERT INTO kysely_migration_lock (id, is_locked)
+                VALUES ('migration_lock', 0)
+            `.execute(db);
+        }
+
+        // Let migrations run normally - 001_initial will create missing tables,
+        // 002_legacy_symfony will clean up Symfony-specific schema
+        console.log('[DB] Migration tracking created, will run schema updates');
+        return;
+    }
+
+    // State 3: Elysia DB without tracking (users+projects exist but no migration table)
+    if (usersTableExists && projectsTableExists && !migrationTableExists) {
+        console.log('[DB] Detected existing Elysia database without migration tracking...');
+
+        // Create migration tables
         await db.schema
             .createTable('kysely_migration')
             .ifNotExists()
@@ -107,11 +136,15 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
             .addColumn('is_locked', 'integer', col => col.notNull().defaultTo(0))
             .execute();
 
-        // Insert the initial migration as already executed
-        const migrationTimestamp = new Date().toISOString();
+        // Mark both migrations as already applied (schema is already correct)
+        const timestamp = new Date().toISOString();
         await sql`
             INSERT INTO kysely_migration (name, timestamp)
-            VALUES ('001_initial', ${migrationTimestamp})
+            VALUES ('000_legacy_symfony', ${timestamp})
+        `.execute(db);
+        await sql`
+            INSERT INTO kysely_migration (name, timestamp)
+            VALUES ('001_initial', ${timestamp})
         `.execute(db);
 
         // Initialize lock
@@ -120,23 +153,30 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
             VALUES ('migration_lock', 0)
         `.execute(db);
 
-        console.log('[DB] Migration tracking created, 001_initial marked as applied');
+        console.log('[DB] Migration tracking created, both migrations marked as applied');
         return;
     }
 
-    // 4. If migration table exists but 001_initial not recorded, and tables exist
-    const migrationRecord = await sql<{ name: string }>`
-        SELECT name FROM kysely_migration WHERE name = '001_initial'
-    `.execute(db);
-
-    if (migrationRecord.rows.length === 0) {
-        console.log('[DB] Detected existing tables without migration record, syncing...');
-        const syncTimestamp = new Date().toISOString();
-        await sql`
-            INSERT INTO kysely_migration (name, timestamp)
-            VALUES ('001_initial', ${syncTimestamp})
+    // State 4: Normal DB with tracking - check for missing initial migration record
+    if (migrationTableExists) {
+        const initialMigrationRecord = await sql<{ name: string }>`
+            SELECT name FROM kysely_migration WHERE name = '001_initial'
         `.execute(db);
-        console.log('[DB] 001_initial marked as applied');
+
+        if (initialMigrationRecord.rows.length === 0 && projectsTableExists) {
+            // Schema exists but migration not recorded
+            console.log('[DB] Syncing migration record for existing schema...');
+            const timestamp = new Date().toISOString();
+            await sql`
+                INSERT INTO kysely_migration (name, timestamp)
+                VALUES ('000_legacy_symfony', ${timestamp})
+            `.execute(db);
+            await sql`
+                INSERT INTO kysely_migration (name, timestamp)
+                VALUES ('001_initial', ${timestamp})
+            `.execute(db);
+            console.log('[DB] Migrations marked as applied');
+        }
     }
 }
 

@@ -154,6 +154,8 @@ describe('001_initial Migration', () => {
                 expect(columnNames).toContain('value');
                 expect(columnNames).toContain('description');
                 expect(columnNames).toContain('is_active');
+                expect(columnNames).toContain('created_at');
+                expect(columnNames).toContain('updated_at');
             });
 
             it('should have index on user_id', async () => {
@@ -185,7 +187,10 @@ describe('001_initial Migration', () => {
                 expect(columnNames).toContain('license');
                 expect(columnNames).toContain('last_accessed_at');
                 expect(columnNames).toContain('saved_once');
-                expect(columnNames).toContain('is_active');
+                expect(columnNames).toContain('created_at');
+                expect(columnNames).toContain('updated_at');
+                // Note: is_active removed in v3.1 - use status column instead
+                expect(columnNames).not.toContain('is_active');
             });
 
             it('should have uuid as unique', async () => {
@@ -250,7 +255,7 @@ describe('001_initial Migration', () => {
                 expect(project!.status).toBe('active');
                 expect(project!.visibility).toBe('private');
                 expect(project!.saved_once).toBe(0);
-                expect(project!.is_active).toBe(1);
+                // Note: is_active removed in v3.1 - use status column instead
             });
 
             it('should reference users table', async () => {

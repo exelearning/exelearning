@@ -52,8 +52,8 @@ describe('Database Migrations', () => {
             const result = await migrateToLatest(db);
 
             expect(result.success).toBe(true);
+            expect(result.executedMigrations).toContain('000_legacy_symfony');
             expect(result.executedMigrations).toContain('001_initial');
-            expect(result.executedMigrations).toContain('003_project_status');
             expect(result.error).toBeUndefined();
         });
 
@@ -107,11 +107,11 @@ describe('Database Migrations', () => {
             // First migrate up
             await migrateToLatest(db);
 
-            // Then rollback
+            // Then rollback - 001_initial is the last migration in order
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('006_consolidate_themes');
+            expect(result.rolledBack).toBe('001_initial');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {
@@ -125,13 +125,9 @@ describe('Database Migrations', () => {
             // Migrate up
             await migrateToLatest(db);
 
-            // Rollback all 6 migrations to remove all tables
-            await migrateDown(db); // rollback 006_consolidate_themes
-            await migrateDown(db); // rollback 005_builtin_theme_settings
-            await migrateDown(db); // rollback 004_admin_themes_templates
-            await migrateDown(db); // rollback 003_project_status
-            await migrateDown(db); // rollback 002_app_settings
-            await migrateDown(db); // rollback 001_initial
+            // Rollback all 2 migrations to remove all tables
+            await migrateDown(db); // rollback 001_initial (last)
+            await migrateDown(db); // rollback 000_legacy_symfony (first)
 
             // Check users table is gone
             const tables = await db
@@ -190,14 +186,10 @@ describe('Database Migrations', () => {
 
             const status = await getMigrationStatus(db);
 
-            // After one rollback, only 006_consolidate_themes should be pending
-            // 001_initial through 005_builtin_theme_settings are still executed
-            expect(status.pending).toContain('006_consolidate_themes');
-            expect(status.executed).toContain('001_initial');
-            expect(status.executed).toContain('002_app_settings');
-            expect(status.executed).toContain('003_project_status');
-            expect(status.executed).toContain('004_admin_themes_templates');
-            expect(status.executed).toContain('005_builtin_theme_settings');
+            // After one rollback, only 001_initial should be pending
+            // 000_legacy_symfony is still executed
+            expect(status.pending).toContain('001_initial');
+            expect(status.executed).toContain('000_legacy_symfony');
         });
     });
 
@@ -206,18 +198,18 @@ describe('Database Migrations', () => {
             // Up
             const up1 = await migrateToLatest(db);
             expect(up1.success).toBe(true);
+            expect(up1.executedMigrations).toContain('000_legacy_symfony');
             expect(up1.executedMigrations).toContain('001_initial');
-            expect(up1.executedMigrations).toContain('006_consolidate_themes');
 
-            // Down - rolls back the last migration (006_consolidate_themes)
+            // Down - rolls back the last migration (001_initial)
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('006_consolidate_themes');
+            expect(down.rolledBack).toBe('001_initial');
 
-            // Up again - should re-apply 006_consolidate_themes
+            // Up again - should re-apply 001_initial
             const up2 = await migrateToLatest(db);
             expect(up2.success).toBe(true);
-            expect(up2.executedMigrations).toContain('006_consolidate_themes');
+            expect(up2.executedMigrations).toContain('001_initial');
         });
     });
 
@@ -358,11 +350,10 @@ describe('Database Migrations', () => {
             expect(result.executedMigrations).toContain('001_initial');
         });
 
-        it('should detect legacy database and register migration without re-creating tables', async () => {
-            // Manually create 001_initial tables WITHOUT kysely_migration (simulates legacy DB)
-            // Note: projects table must have is_active column for 003_project_status migration to work
+        it('should detect existing Elysia database and register migrations without re-creating tables', async () => {
+            // Manually create all tables WITHOUT kysely_migration (simulates existing Elysia DB)
             await sql`CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT)`.execute(db);
-            await sql`CREATE TABLE projects (id INTEGER PRIMARY KEY, title TEXT, status TEXT DEFAULT 'active', is_active INTEGER DEFAULT 1)`.execute(
+            await sql`CREATE TABLE projects (id INTEGER PRIMARY KEY, title TEXT, status TEXT DEFAULT 'active')`.execute(
                 db,
             );
             await sql`CREATE TABLE assets (id INTEGER PRIMARY KEY)`.execute(db);
@@ -375,13 +366,13 @@ describe('Database Migrations', () => {
             const result = await migrateToLatest(db);
 
             expect(result.success).toBe(true);
-            // Should NOT have executed 001_initial because syncLegacyMigrations registered it
+            // Should NOT have executed any migration because syncLegacyMigrations registered them
+            expect(result.executedMigrations).not.toContain('000_legacy_symfony');
             expect(result.executedMigrations).not.toContain('001_initial');
-            // But should have executed 002 and 003
-            expect(result.executedMigrations).toContain('002_app_settings');
 
-            // Verify 001_initial is marked as executed
+            // Verify both migrations are marked as executed
             const status = await getMigrationStatus(db);
+            expect(status.executed).toContain('000_legacy_symfony');
             expect(status.executed).toContain('001_initial');
 
             // Verify kysely_migration table was created
@@ -390,10 +381,9 @@ describe('Database Migrations', () => {
         });
 
         it('should handle partial state - migration table exists but record missing', async () => {
-            // Create 001_initial tables manually (simulating legacy DB)
-            // Note: projects table must have is_active column for 003_project_status migration to work
+            // Create all tables manually (simulating existing DB without migration record)
             await sql`CREATE TABLE users (id INTEGER PRIMARY KEY)`.execute(db);
-            await sql`CREATE TABLE projects (id INTEGER PRIMARY KEY, title TEXT, status TEXT DEFAULT 'active', is_active INTEGER DEFAULT 1)`.execute(
+            await sql`CREATE TABLE projects (id INTEGER PRIMARY KEY, title TEXT, status TEXT DEFAULT 'active')`.execute(
                 db,
             );
             await sql`CREATE TABLE assets (id INTEGER PRIMARY KEY)`.execute(db);
@@ -410,17 +400,17 @@ describe('Database Migrations', () => {
                 db,
             );
             await sql`INSERT INTO kysely_migration_lock VALUES ('migration_lock', 0)`.execute(db);
-            // Note: NOT inserting 001_initial into kysely_migration
+            // Note: NOT inserting any migrations into kysely_migration
 
             const result = await migrateToLatest(db);
 
             expect(result.success).toBe(true);
-            // 001_initial should be registered but not executed
+            // Both migrations should be registered but not executed (schema already exists)
+            expect(result.executedMigrations).not.toContain('000_legacy_symfony');
             expect(result.executedMigrations).not.toContain('001_initial');
-            // 002 and 003 should be executed
-            expect(result.executedMigrations).toContain('002_app_settings');
 
             const status = await getMigrationStatus(db);
+            expect(status.executed).toContain('000_legacy_symfony');
             expect(status.executed).toContain('001_initial');
         });
 
@@ -443,28 +433,32 @@ describe('Database Migrations', () => {
             expect(statusAfter.executed).toEqual(statusBefore.executed);
         });
 
-        it('should run all migrations when users exists but projects is missing (very old DB)', async () => {
-            // Simulate a very old database that only has users table but no projects
-            // This can happen with pre-v3.0 databases
+        it('should run all migrations when users exists but projects is missing (Symfony legacy DB)', async () => {
+            // Simulate a Symfony legacy database that only has users table but no projects
+            // Add ode_files to trigger Symfony legacy detection
             await sql`CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT)`.execute(db);
-            // Note: No projects table - simulating very old version
+            await sql`CREATE TABLE ode_files (id INTEGER PRIMARY KEY)`.execute(db);
+            // Note: No projects table - this is Symfony legacy
 
             // Run migration
             const result = await migrateToLatest(db);
 
             expect(result.success).toBe(true);
-            // Should execute ALL migrations including 001_initial (which uses ifNotExists)
+            // Should execute ALL migrations (000_legacy_symfony renames users→users_legacy, 001_initial creates fresh tables)
+            expect(result.executedMigrations).toContain('000_legacy_symfony');
             expect(result.executedMigrations).toContain('001_initial');
-            expect(result.executedMigrations).toContain('002_app_settings');
-            expect(result.executedMigrations).toContain('003_project_status');
 
             // Verify projects table was created
             const projectsExists = await tableExists(db, 'projects');
             expect(projectsExists).toBe(true);
 
-            // Verify users table still exists (not duplicated due to ifNotExists)
+            // Verify fresh users table was created (old one renamed to users_legacy)
             const usersExists = await tableExists(db, 'users');
             expect(usersExists).toBe(true);
+
+            // Verify old users table was renamed
+            const usersLegacyExists = await tableExists(db, 'users_legacy');
+            expect(usersLegacyExists).toBe(true);
         });
 
         it('should create both kysely_migration and kysely_migration_lock tables for legacy DB', async () => {
@@ -587,7 +581,7 @@ describe('Database Migrations', () => {
                     ({
                         migrateToLatest: async () => ({ results: [] }),
                         migrateDown: async () => ({
-                            results: [{ migrationName: '003_project_status', status: 'Success' }],
+                            results: [{ migrationName: '001_initial', status: 'Success' }],
                         }),
                         getMigrations: async () => [],
                     }) as unknown as Migrator,
@@ -596,7 +590,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db, mockDeps);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('003_project_status');
+            expect(result.rolledBack).toBe('001_initial');
         });
 
         it('should return undefined when no successful rollback', async () => {
