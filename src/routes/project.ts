@@ -1925,12 +1925,14 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             .post('/api/ode-management/odes/session/usedfiles', async ({ body }) => {
                 const data = body as UsedFilesRequest;
                 const idevices = data.idevices || [];
+                const assetMetadata = data.assetMetadata || {};
                 const filesDir = getFilesDir();
 
                 // Debug: log received data
                 console.log(`[UsedFiles] Raw body keys:`, Object.keys(data));
                 console.log(`[UsedFiles] idevices type:`, typeof data.idevices, Array.isArray(data.idevices));
                 console.log(`[UsedFiles] Received ${idevices.length} idevices`);
+                console.log(`[UsedFiles] Received metadata for ${Object.keys(assetMetadata).length} assets`);
                 if (idevices.length > 0) {
                     console.log('[UsedFiles] First idevice HTML sample:', idevices[0].html?.substring(0, 500));
                 }
@@ -1998,11 +2000,35 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     try {
                         // Handle asset:// URLs (stored in IndexedDB)
                         if (filePath.startsWith('asset://')) {
-                            const fileName = filePath.split('/').pop() || filePath;
+                            // Extract asset ID from URL (asset://uuid or asset://uuid/filename)
+                            const assetIdMatch = filePath.match(/asset:\/\/([a-f0-9-]+)/i);
+                            const assetId = assetIdMatch ? assetIdMatch[1] : '';
+
+                            // Get metadata from client if available
+                            const metadata = assetId ? assetMetadata[assetId] : null;
+
+                            // Use filename from metadata if available, otherwise use UUID
+                            let fileName: string;
+                            if (metadata?.filename) {
+                                fileName = metadata.filename;
+                            } else {
+                                // Fallback: extract from URL path or use UUID
+                                const urlParts = filePath.replace('asset://', '').split('/');
+                                fileName = urlParts.length > 1 ? urlParts[urlParts.length - 1] : assetId;
+                            }
+
+                            // Use size from metadata if available
+                            let fileSize: string;
+                            if (metadata?.size && metadata.size > 0) {
+                                fileSize = formatFileSize(metadata.size);
+                            } else {
+                                fileSize = 'Stored in browser';
+                            }
+
                             return {
                                 usedFiles: fileName,
                                 usedFilesPath: filePath,
-                                usedFilesSize: 'Stored in browser',
+                                usedFilesSize: fileSize,
                                 pageNamesUsedFiles: idevice.pageName || '',
                                 blockNamesUsedFiles: idevice.blockName || '',
                                 typeComponentSyncUsedFiles: idevice.ideviceType || '',

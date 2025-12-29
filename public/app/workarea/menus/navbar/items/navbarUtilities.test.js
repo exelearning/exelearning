@@ -654,10 +654,11 @@ describe('NavbarUtilities', () => {
         });
 
         describe('getOdeSessionUsedFilesEvent', () => {
-            it('should call API with session ID and collected idevices', async () => {
+            it('should call API with session ID, collected idevices and asset metadata', async () => {
                 vi.spyOn(navbarUtilities, 'collectAllIdevicesHtml').mockReturnValue([
                     { html: '<p>Test</p>', pageName: 'Page 1' },
                 ]);
+                vi.spyOn(navbarUtilities, 'collectAssetMetadata').mockResolvedValue({});
                 eXeLearning.app.api.getOdeSessionUsedFiles.mockResolvedValue({
                     responseMessage: 'OK',
                 });
@@ -669,7 +670,256 @@ describe('NavbarUtilities', () => {
                     odeSessionId: 'test-session-123',
                     resourceReport: true,
                     idevices: [{ html: '<p>Test</p>', pageName: 'Page 1' }],
+                    assetMetadata: {},
                 });
+            });
+
+            it('should include asset metadata when assets are found in HTML', async () => {
+                const mockIdevices = [
+                    { html: '<img src="asset://abc123-def456"/>', pageName: 'Page 1' },
+                ];
+                vi.spyOn(navbarUtilities, 'collectAllIdevicesHtml').mockReturnValue(mockIdevices);
+
+                const mockAssetMetadata = {
+                    'abc123-def456': { filename: 'image.png', size: 1024, mime: 'image/png' },
+                };
+                vi.spyOn(navbarUtilities, 'collectAssetMetadata').mockResolvedValue(mockAssetMetadata);
+                eXeLearning.app.api.getOdeSessionUsedFiles.mockResolvedValue({
+                    responseMessage: 'OK',
+                });
+
+                await navbarUtilities.getOdeSessionUsedFilesEvent();
+
+                expect(navbarUtilities.collectAssetMetadata).toHaveBeenCalledWith(mockIdevices);
+                expect(eXeLearning.app.api.getOdeSessionUsedFiles).toHaveBeenCalledWith({
+                    csv: false,
+                    odeSessionId: 'test-session-123',
+                    resourceReport: true,
+                    idevices: mockIdevices,
+                    assetMetadata: mockAssetMetadata,
+                });
+            });
+        });
+
+        describe('collectAssetMetadata', () => {
+            it('should return empty object when assetManager is not available', async () => {
+                eXeLearning.app.project._yjsBridge = null;
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: '<img src="asset://abc123"/>' },
+                ]);
+
+                expect(result).toEqual({});
+            });
+
+            it('should extract asset IDs from HTML and fetch metadata', async () => {
+                const mockAssetManager = {
+                    getAsset: vi.fn().mockResolvedValue({
+                        filename: 'test.png',
+                        size: 2048,
+                        mime: 'image/png',
+                    }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: '<img src="asset://abc123-def4-5678-90ab-cdef12345678"/>' },
+                ]);
+
+                expect(mockAssetManager.getAsset).toHaveBeenCalledWith('abc123-def4-5678-90ab-cdef12345678');
+                expect(result).toEqual({
+                    'abc123-def4-5678-90ab-cdef12345678': {
+                        filename: 'test.png',
+                        size: 2048,
+                        mime: 'image/png',
+                    },
+                });
+            });
+
+            it('should handle multiple assets and deduplicate', async () => {
+                const asset1Id = 'a1111111-1111-1111-1111-111111111111';
+                const asset2Id = 'b2222222-2222-2222-2222-222222222222';
+                const mockAssetManager = {
+                    getAsset: vi.fn().mockImplementation((id) => {
+                        if (id === asset1Id) {
+                            return Promise.resolve({ filename: 'a.png', size: 100, mime: 'image/png' });
+                        }
+                        if (id === asset2Id) {
+                            return Promise.resolve({ filename: 'b.jpg', size: 200, mime: 'image/jpeg' });
+                        }
+                        return Promise.resolve(null);
+                    }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: `<img src="asset://${asset1Id}"/><img src="asset://${asset1Id}"/>` },
+                    { html: `<img src="asset://${asset2Id}"/>` },
+                ]);
+
+                // Should call getAsset only twice (deduplicated)
+                expect(mockAssetManager.getAsset).toHaveBeenCalledTimes(2);
+                expect(result).toEqual({
+                    [asset1Id]: { filename: 'a.png', size: 100, mime: 'image/png' },
+                    [asset2Id]: { filename: 'b.jpg', size: 200, mime: 'image/jpeg' },
+                });
+            });
+
+            it('should handle missing assets gracefully', async () => {
+                const missingAssetId = 'c3333333-3333-3333-3333-333333333333';
+                const mockAssetManager = {
+                    getAsset: vi.fn().mockResolvedValue(null),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: `<img src="asset://${missingAssetId}"/>` },
+                ]);
+
+                expect(result).toEqual({});
+            });
+
+            it('should handle assets without filename using null', async () => {
+                const assetId = 'd4444444-4444-4444-4444-444444444444';
+                const mockAssetManager = {
+                    getAsset: vi.fn().mockResolvedValue({
+                        size: 1024,
+                        mime: 'application/octet-stream',
+                    }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: `<img src="asset://${assetId}"/>` },
+                ]);
+
+                expect(result[assetId].filename).toBeNull();
+                expect(result[assetId].size).toBe(1024);
+            });
+
+            it('should handle getAsset errors gracefully', async () => {
+                const assetId = 'e5555555-5555-5555-5555-555555555555';
+                const mockAssetManager = {
+                    getAsset: vi.fn().mockRejectedValue(new Error('Database error')),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: `<img src="asset://${assetId}"/>` },
+                ]);
+
+                expect(mockAssetManager.getAsset).toHaveBeenCalledWith(assetId);
+                expect(result).toEqual({});
+            });
+
+            it('should skip idevices without html field', async () => {
+                const mockAssetManager = {
+                    getAsset: vi.fn(),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { pageName: 'Page 1' },
+                    { html: null, pageName: 'Page 2' },
+                    { html: undefined, pageName: 'Page 3' },
+                ]);
+
+                expect(mockAssetManager.getAsset).not.toHaveBeenCalled();
+                expect(result).toEqual({});
+            });
+
+            it('should return empty object for empty idevices array', async () => {
+                const mockAssetManager = {
+                    getAsset: vi.fn(),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([]);
+
+                expect(mockAssetManager.getAsset).not.toHaveBeenCalled();
+                expect(result).toEqual({});
+            });
+
+            it('should handle assets with zero size', async () => {
+                const assetId = 'f6666666-6666-6666-6666-666666666666';
+                const mockAssetManager = {
+                    getAsset: vi.fn().mockResolvedValue({
+                        filename: 'empty.txt',
+                        size: 0,
+                        mime: 'text/plain',
+                    }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: `<a href="asset://${assetId}">Link</a>` },
+                ]);
+
+                expect(result[assetId]).toEqual({
+                    filename: 'empty.txt',
+                    size: 0,
+                    mime: 'text/plain',
+                });
+            });
+
+            it('should extract asset IDs from various URL patterns', async () => {
+                const assetId = 'a1111111-1111-1111-1111-111111111111';
+                const mockAssetManager = {
+                    getAsset: vi.fn().mockResolvedValue({
+                        filename: 'file.pdf',
+                        size: 5000,
+                        mime: 'application/pdf',
+                    }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                // Test various patterns: img src, a href, data attributes, etc.
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: `<img src="asset://${assetId}"/>` },
+                    { html: `<a href="asset://${assetId}">Download</a>` },
+                    { html: `<video data-src="asset://${assetId}"></video>` },
+                ]);
+
+                // Should only fetch once due to deduplication
+                expect(mockAssetManager.getAsset).toHaveBeenCalledTimes(1);
+                expect(result[assetId].filename).toBe('file.pdf');
+            });
+
+            it('should use default mime type when not provided', async () => {
+                const assetId = 'b2222222-2222-2222-2222-222222222222';
+                const mockAssetManager = {
+                    getAsset: vi.fn().mockResolvedValue({
+                        filename: 'unknown',
+                        size: 100,
+                    }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    assetManager: mockAssetManager,
+                };
+
+                const result = await navbarUtilities.collectAssetMetadata([
+                    { html: `<img src="asset://${assetId}"/>` },
+                ]);
+
+                expect(result[assetId].mime).toBe('application/octet-stream');
             });
         });
 

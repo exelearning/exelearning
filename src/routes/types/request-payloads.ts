@@ -223,6 +223,15 @@ export interface ProjectPropertiesRequest {
 }
 
 /**
+ * Asset metadata from client IndexedDB
+ */
+export interface AssetMetadata {
+    filename: string | null;
+    size: number;
+    mime: string;
+}
+
+/**
  * Used files analysis request
  */
 export interface UsedFilesRequest {
@@ -230,6 +239,7 @@ export interface UsedFilesRequest {
         id: string;
         htmlView: string;
     }>;
+    assetMetadata?: Record<string, AssetMetadata>;
 }
 
 // ============================================================================
