@@ -232,7 +232,7 @@ export default class NavbarFile {
             // Iterate through all blocks in the page
             for (let j = 0; j < blocks.length; j++) {
                 const blockMap = blocks.get(j);
-                const blockName = blockMap.get('name') || blockMap.get('title') || '';
+                const blockName = blockMap.get('blockName') || blockMap.get('name') || '';
                 const components = blockMap.get('components');
 
                 if (!components) continue;

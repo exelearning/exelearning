@@ -591,7 +591,7 @@ describe('NavbarUtilities', () => {
             };
             const mockBlockMap = {
                 get: vi.fn((key) => {
-                    if (key === 'name') return 'Block 1';
+                    if (key === 'blockName') return 'Block 1';
                     if (key === 'components') {
                         return { length: 1, get: vi.fn(() => mockCompMap) };
                     }
