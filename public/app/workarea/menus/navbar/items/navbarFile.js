@@ -528,11 +528,8 @@ export default class NavbarFile {
             const assetCache = yjsBridge.assetCache || null;
             const assetManager = yjsBridge.assetManager || null;
 
-            // Create resource fetcher for server resources (themes, libs, iDevices)
-            let resourceFetcher = null;
-            if (typeof window.ResourceFetcher !== 'undefined') {
-                resourceFetcher = new window.ResourceFetcher();
-            }
+            // Get resource fetcher from yjsBridge (already initialized with bundle manifest)
+            const resourceFetcher = yjsBridge.resourceFetcher || null;
 
             // Create PreviewExporter
             const exporter = new window.PreviewExporter(
@@ -1733,11 +1730,8 @@ export default class NavbarFile {
             const assetManager = yjsBridge.assetManager || null;
             const assetCache = yjsBridge.assetCache || null;
 
-            // Create resource fetcher for server resources (themes, libs, iDevices)
-            let resourceFetcher = null;
-            if (typeof window.ResourceFetcher !== 'undefined') {
-                resourceFetcher = new window.ResourceFetcher();
-            }
+            // Get resource fetcher from yjsBridge (already initialized with bundle manifest)
+            const resourceFetcher = yjsBridge.resourceFetcher || null;
 
             // Export using quickExport which auto-injects LaTeX pre-renderer hook
             // This enables SVG+MathML generation in exports (skipping MathJax ~1MB)
@@ -2087,10 +2081,8 @@ export default class NavbarFile {
                     const documentManager = yjsBridge.documentManager;
                     const assetManager = yjsBridge.assetManager || null;
                     const assetCache = yjsBridge.assetCache || null;
-                    let resourceFetcher = null;
-                    if (typeof window.ResourceFetcher !== 'undefined') {
-                        resourceFetcher = new window.ResourceFetcher();
-                    }
+                    // Get resource fetcher from yjsBridge (already initialized with bundle manifest)
+                    const resourceFetcher = yjsBridge.resourceFetcher || null;
 
                     const result = await window.SharedExporters.quickExport(
                         'HTML5',

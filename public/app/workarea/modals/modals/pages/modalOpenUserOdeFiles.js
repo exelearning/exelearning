@@ -1441,7 +1441,10 @@ export default class modalOpenUserOdeFiles extends Modal {
                 // Process file directly in memory without redirect
                 try {
                     // Reinitialize Yjs with the new project (keeps everything in memory)
-                    await eXeLearning.app.project.reinitializeWithProject(projectUuid);
+                    // Skip sync wait to avoid delay when opening local ELP files
+                    await eXeLearning.app.project.reinitializeWithProject(projectUuid, {
+                        skipSyncWait: true,
+                    });
                     Logger.log(`[OpenFile] Yjs reinitialized for project ${projectUuid}`);
 
                     // Hide progress modal before showing inline progress

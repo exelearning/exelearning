@@ -98,12 +98,10 @@ export default class ModalPrintPreview {
             throw new Error(_('Print preview not available'));
         }
 
-        // Generate preview
+        // Generate preview (use resourceFetcher from yjsBridge, already initialized with bundle manifest)
         const result = await generatePrintPreviewFn(
             yjsBridge.documentManager,
-            typeof window.ResourceFetcher !== 'undefined'
-                ? new window.ResourceFetcher()
-                : null,
+            yjsBridge.resourceFetcher || null,
             {
                 baseUrl: window.eXeLearning?.config?.baseURL || window.location.origin,
                 basePath: window.eXeLearning?.config?.basePath || '',

@@ -1470,7 +1470,7 @@ describe('modalOpenUserOdeFiles', () => {
       });
       const file = new File(['x'], 'sample.elp', { type: 'application/zip' });
       await modal.largeFilesUpload(file);
-      expect(window.eXeLearning.app.project.reinitializeWithProject).toHaveBeenCalledWith('proj-1');
+      expect(window.eXeLearning.app.project.reinitializeWithProject).toHaveBeenCalledWith('proj-1', { skipSyncWait: true });
       expect(window.eXeLearning.app.project.importElpDirectly).toHaveBeenCalled();
       expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
     });

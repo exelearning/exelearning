@@ -934,6 +934,13 @@ export default class MenuStructureBehaviour {
             setTimeout(() => {
                 // Add the Properties tooltip
                 this.addTooltips();
+
+                // Re-render any pending Mermaid diagrams on this page
+                // This handles diagrams that couldn't render initially because the page was hidden
+                if (typeof $exe !== 'undefined' && $exe.mermaid && $exe.mermaid.initialized) {
+                    $exe.mermaid.renderDiagrams();
+                }
+
                 resolve(response);
             }, time);
         });

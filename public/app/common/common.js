@@ -308,13 +308,24 @@ var $exe = {
             });
 
             // Only call mermaid.run() if there are ready nodes
+            // IMPORTANT: Pass the specific nodes to render, not all .mermaid elements
+            // This prevents Mermaid from rendering hidden elements with 0 width
             if (readyNodes.length > 0) {
                 try {
-                    mermaid.run();
+                    // Pass only the ready nodes to mermaid.run()
+                    mermaid.run({ nodes: readyNodes });
                 } catch (e) {
                     // Silently handle rendering errors
                 }
             }
+
+            // Mark pending nodes so we know they need retry later
+            // (when the page containing them becomes visible)
+            pendingNodes.forEach(function(node) {
+                if (!node.hasAttribute('data-processed')) {
+                    node.setAttribute('data-processed', 'pending');
+                }
+            });
 
             // Retry for pending nodes that don't have dimensions yet
             if (pendingNodes.length > 0 && retryCount < maxRetries) {

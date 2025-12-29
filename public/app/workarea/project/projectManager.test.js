@@ -974,6 +974,60 @@ describe('ProjectManager', () => {
             expect(projectManager.yjsProjectId).toBe('my-new-project');
             expect(projectManager.odeId).toBe('my-new-project');
         });
+
+        it('passes skipSyncWait option to bridge initialize', async () => {
+            const mockInitialize = vi.fn().mockResolvedValue();
+            // Create a proper constructor class for mocking
+            class MockBridge {
+                constructor() {
+                    this.initialize = mockInitialize;
+                }
+            }
+            window.YjsModules = { YjsProjectBridge: MockBridge };
+            // Mock localStorage
+            const originalLocalStorage = global.localStorage;
+            global.localStorage = { getItem: vi.fn().mockReturnValue(null) };
+
+            await projectManager.reinitializeWithProject('test-uuid', {
+                skipSyncWait: true,
+            });
+
+            expect(mockInitialize).toHaveBeenCalledWith(
+                'test-uuid',
+                null, // authToken from localStorage.getItem mock
+                expect.objectContaining({
+                    skipSyncWait: true,
+                }),
+            );
+
+            global.localStorage = originalLocalStorage;
+        });
+
+        it('defaults skipSyncWait to false when not provided', async () => {
+            const mockInitialize = vi.fn().mockResolvedValue();
+            // Create a proper constructor class for mocking
+            class MockBridge {
+                constructor() {
+                    this.initialize = mockInitialize;
+                }
+            }
+            window.YjsModules = { YjsProjectBridge: MockBridge };
+            // Mock localStorage
+            const originalLocalStorage = global.localStorage;
+            global.localStorage = { getItem: vi.fn().mockReturnValue(null) };
+
+            await projectManager.reinitializeWithProject('test-uuid');
+
+            expect(mockInitialize).toHaveBeenCalledWith(
+                'test-uuid',
+                null, // authToken from localStorage.getItem mock
+                expect.objectContaining({
+                    skipSyncWait: false,
+                }),
+            );
+
+            global.localStorage = originalLocalStorage;
+        });
     });
 
     describe('importElpDirectly', () => {

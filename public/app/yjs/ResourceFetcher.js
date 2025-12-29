@@ -102,15 +102,16 @@ class ResourceFetcher {
   async extractZipBundle(zipBuffer) {
     const files = new Map();
 
-    // Use fflate (should be loaded globally)
-    if (typeof fflate === 'undefined') {
-      console.warn('[ResourceFetcher] fflate not available, cannot extract ZIP');
+    // Use fflate (should be loaded globally via window.fflate)
+    if (typeof window.fflate === 'undefined') {
+      console.warn('[ResourceFetcher] fflate not available, cannot extract ZIP. Ensure fflate.umd.js is loaded.');
       return files;
     }
 
     try {
       const zipData = new Uint8Array(zipBuffer);
-      const unzipped = fflate.unzipSync(zipData);
+      Logger.log(`[ResourceFetcher] Extracting ZIP bundle (${zipData.length} bytes)...`);
+      const unzipped = window.fflate.unzipSync(zipData);
 
       for (const [filePath, content] of Object.entries(unzipped)) {
         // Skip directories
@@ -161,13 +162,19 @@ class ResourceFetcher {
    */
   async fetchBundle(bundleUrl) {
     try {
+      Logger.log(`[ResourceFetcher] Fetching bundle: ${bundleUrl}`);
       const response = await fetch(bundleUrl);
+
       if (!response.ok) {
+        console.warn(`[ResourceFetcher] Bundle fetch failed: ${bundleUrl} (${response.status} ${response.statusText})`);
         return null;
       }
 
+      Logger.log(`[ResourceFetcher] Bundle fetched OK (${response.headers.get('content-length') || '?'} bytes), extracting...`);
       const zipBuffer = await response.arrayBuffer();
-      return await this.extractZipBundle(zipBuffer);
+      const result = await this.extractZipBundle(zipBuffer);
+      Logger.log(`[ResourceFetcher] Bundle extracted: ${result.size} files`);
+      return result;
     } catch (e) {
       console.warn(`[ResourceFetcher] Failed to fetch bundle ${bundleUrl}:`, e);
       return null;

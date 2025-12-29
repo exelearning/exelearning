@@ -129,7 +129,7 @@ describe('MermaidPreRenderer', () => {
             expect(result.count).toBe(0);
             // Original HTML should be preserved when Mermaid is not available
             expect(result.html).toBe(html);
-        });
+        }, 10000);
 
         test('handles empty string', async () => {
             const result = await MermaidPreRenderer.preRender('');
@@ -242,12 +242,16 @@ describe('MermaidPreRenderer', () => {
             );
         });
 
-        test('skips elements with data-processed attribute', async () => {
+        test('re-renders elements with data-processed if code is available', async () => {
+            // Elements with data-processed but text content should be re-rendered
+            // This handles cases where runtime Mermaid rendered with broken dimensions
             const html = '<pre class="mermaid" data-processed="true">graph TD; A-->B</pre>';
             const result = await MermaidPreRenderer.preRender(html);
 
-            expect(result.count).toBe(0);
-            expect(result.mermaidRendered).toBe(false);
+            // Should re-render because code is available in text content
+            expect(result.count).toBe(1);
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.html).toContain('exe-mermaid-rendered');
         });
 
         test('handles empty pre.mermaid element', async () => {
@@ -371,13 +375,14 @@ describe('MermaidPreRenderer', () => {
             }
         });
 
-        test('throws when Mermaid not available', async () => {
+        test('throws when Mermaid not available and cannot be loaded', async () => {
             originalMermaid = globalThis.mermaid;
             delete globalThis.mermaid;
 
+            // In test environment, script loading will fail, so initMermaid should throw
             await expect(MermaidPreRenderer._initMermaid())
-                .rejects.toThrow('Mermaid library not loaded');
-        });
+                .rejects.toThrow(/Mermaid library/);
+        }, 10000);
 
         test('calls mermaid.initialize with correct options', async () => {
             originalMermaid = globalThis.mermaid;
@@ -510,6 +515,289 @@ describe('MermaidPreRenderer', () => {
             expect(result.html).toContain('<pre>Regular pre</pre>');
             expect(result.html).toContain('<pre class="code">Code pre</pre>');
             expect(result.html).toContain('exe-mermaid-rendered');
+        });
+    });
+
+    describe('broken SVG detection and re-render', () => {
+        let originalMermaid;
+
+        beforeEach(() => {
+            originalMermaid = globalThis.mermaid;
+            // Mock Mermaid for rendering
+            globalThis.mermaid = {
+                initialize: vi.fn(),
+                render: vi.fn(async (id, code) => ({
+                    svg: `<svg id="${id}" viewBox="0 0 100 50"><g>recovered</g></svg>`,
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMermaid !== undefined) {
+                globalThis.mermaid = originalMermaid;
+            } else {
+                delete globalThis.mermaid;
+            }
+        });
+
+        test('detects SVG with viewBox width=0 as broken', async () => {
+            // HTML with a broken SVG (viewBox has width 0)
+            const html = `
+                <div data-idevice-json-data='{"textTextarea":"<pre class=\\"mermaid\\">gantt\\n    title Test</pre>"}'>
+                    <pre class="mermaid" data-processed="true">
+                        <svg viewBox="0 0 0 100" style="max-width: 0px;">broken</svg>
+                    </pre>
+                </div>
+            `;
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // Should have re-rendered the broken SVG
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.count).toBe(1);
+            expect(result.html).toContain('exe-mermaid-rendered');
+            expect(result.html).toContain('recovered');
+        });
+
+        test('detects SVG with max-width: 0px as broken', async () => {
+            const html = `
+                <div data-idevice-json-data='{"textTextarea":"<pre class=\\"mermaid\\">graph TD; A-->B</pre>"}'>
+                    <pre class="mermaid" data-processed="true">
+                        <svg viewBox="0 0 100 50" style="max-width: 0px;">broken</svg>
+                    </pre>
+                </div>
+            `;
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.html).toContain('recovered');
+        });
+
+        test('skips already-processed elements when no code can be extracted', async () => {
+            // HTML with a processed SVG but no extractable code
+            // (no text nodes and no data-idevice-json-data)
+            const html = `
+                <pre class="mermaid" data-processed="true">
+                    <svg viewBox="0 0 100 50" style="max-width: 100px;">valid</svg>
+                </pre>
+            `;
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // Should NOT re-render because no code can be extracted
+            expect(result.mermaidRendered).toBe(false);
+            expect(result.count).toBe(0);
+            expect(result.html).toContain('valid');
+        });
+
+        test('extracts mermaid code from idevice JSON data', async () => {
+            // The original mermaid code should be recovered from data-idevice-json-data
+            const html = `
+                <div data-idevice-json-data='{"textTextarea":"<p>Text</p><pre class=\\"mermaid\\">flowchart LR\\n    A-->B</pre>"}'>
+                    <pre class="mermaid" data-processed="true">
+                        <svg viewBox="0 0 0 100">broken</svg>
+                    </pre>
+                </div>
+            `;
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(globalThis.mermaid.render).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.stringContaining('flowchart')
+            );
+        });
+
+        test('handles gantt diagram code extraction', async () => {
+            // Test with gantt diagram (which caused the original bug)
+            const html = `
+                <div data-idevice-json-data='{"textTextarea":"<pre class=\\"mermaid\\">gantt\\n    title A Gantt Diagram\\n    dateFormat YYYY-MM-DD\\n    section Section\\n        A task :a1, 2014-01-01, 30d</pre>"}'>
+                    <pre class="mermaid" data-processed="true">
+                        <svg viewBox="0 0 0 196" style="max-width: 0px;">broken gantt</svg>
+                    </pre>
+                </div>
+            `;
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.mermaidRendered).toBe(true);
+            expect(globalThis.mermaid.render).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.stringContaining('gantt')
+            );
+        });
+    });
+
+    describe('dynamic Mermaid loading', () => {
+        let originalMermaid;
+        let originalDocument;
+
+        beforeEach(() => {
+            originalMermaid = globalThis.mermaid;
+            originalDocument = globalThis.document;
+        });
+
+        afterEach(() => {
+            if (originalMermaid !== undefined) {
+                globalThis.mermaid = originalMermaid;
+            } else {
+                delete globalThis.mermaid;
+            }
+            if (originalDocument !== undefined) {
+                globalThis.document = originalDocument;
+            }
+        });
+
+        test('skips loading when mermaid is already available', async () => {
+            // Set up mermaid as already loaded
+            globalThis.mermaid = {
+                initialize: vi.fn(),
+                render: vi.fn(async () => ({ svg: '<svg></svg>' })),
+            };
+
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // Should work without needing to load
+            expect(result.mermaidRendered).toBe(true);
+        });
+
+        test('attempts to load mermaid dynamically when not available', async () => {
+            delete globalThis.mermaid;
+
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // In test environment, loading will fail but should not throw
+            expect(result.hasMermaid).toBe(true);
+            expect(result.mermaidRendered).toBe(false);
+        }, 10000);
+
+        test('initMermaid throws when mermaid cannot be loaded', async () => {
+            delete globalThis.mermaid;
+
+            // In test environment, script loading will timeout/fail
+            await expect(MermaidPreRenderer._initMermaid())
+                .rejects.toThrow(/Mermaid library/);
+        }, 10000);
+
+        test('initMermaid succeeds when mermaid is pre-loaded', async () => {
+            globalThis.mermaid = {
+                initialize: vi.fn(),
+            };
+
+            // Should not throw
+            await MermaidPreRenderer._initMermaid();
+
+            expect(globalThis.mermaid.initialize).toHaveBeenCalled();
+        });
+
+        test('preRender returns original HTML when mermaid loading fails', async () => {
+            delete globalThis.mermaid;
+
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // Should return original HTML when mermaid cannot be loaded
+            expect(result.hasMermaid).toBe(true);
+            expect(result.mermaidRendered).toBe(false);
+            expect(result.html).toBe(html);
+        }, 10000);
+
+        test('preRender continues with rendering after dynamic load', async () => {
+            // Start without mermaid
+            delete globalThis.mermaid;
+
+            // Simulate that mermaid gets loaded during initMermaid
+            // by mocking the initialize call to set up mermaid
+            const mockMermaid = {
+                initialize: vi.fn(),
+                render: vi.fn(async () => ({ svg: '<svg>dynamically loaded</svg>' })),
+            };
+
+            // Pre-set mermaid before the test (simulating successful dynamic load)
+            globalThis.mermaid = mockMermaid;
+
+            const html = '<pre class="mermaid">graph TD; A-->B</pre>';
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.html).toContain('dynamically loaded');
+        });
+    });
+
+    describe('escapeHtmlAttribute edge cases', () => {
+        test('handles empty string', () => {
+            expect(MermaidPreRenderer._escapeHtmlAttribute('')).toBe('');
+        });
+
+        test('handles string with no special characters', () => {
+            expect(MermaidPreRenderer._escapeHtmlAttribute('simple text')).toBe('simple text');
+        });
+
+        test('handles all special characters together', () => {
+            const input = '<div class="test" data-value=\'a&b\'>';
+            const expected = '&lt;div class=&quot;test&quot; data-value=\'a&amp;b\'&gt;';
+            expect(MermaidPreRenderer._escapeHtmlAttribute(input)).toBe(expected);
+        });
+
+        test('handles multiline mermaid code', () => {
+            const input = `gantt
+    title Test
+    section S1
+        Task1 :a1, 2024-01-01, 30d`;
+            const result = MermaidPreRenderer._escapeHtmlAttribute(input);
+            expect(result).not.toContain('<');
+            expect(result).not.toContain('>');
+            expect(result).not.toContain('"');
+        });
+    });
+
+    describe('hasMermaid function', () => {
+        test('returns false for undefined', () => {
+            expect(MermaidPreRenderer.hasMermaid(undefined)).toBe(false);
+        });
+
+        test('returns false for empty string', () => {
+            expect(MermaidPreRenderer.hasMermaid('')).toBe(false);
+        });
+
+        test('detects pre.mermaid with multiple classes', () => {
+            expect(MermaidPreRenderer.hasMermaid('<pre class="code mermaid highlight">')).toBe(true);
+        });
+
+        test('detects pre.mermaid case insensitive for tag', () => {
+            expect(MermaidPreRenderer.hasMermaid('<PRE class="mermaid">')).toBe(true);
+        });
+
+        test('ignores mermaid in other contexts', () => {
+            // mermaid in text content should not match
+            expect(MermaidPreRenderer.hasMermaid('<p>I love mermaid diagrams</p>')).toBe(false);
+            // mermaid as different class
+            expect(MermaidPreRenderer.hasMermaid('<div class="mermaid">')).toBe(false);
+        });
+    });
+
+    describe('getOriginalCode function', () => {
+        test('returns null for undefined element', () => {
+            expect(MermaidPreRenderer.getOriginalCode(undefined)).toBe(null);
+        });
+
+        test('returns null for element without correct class', () => {
+            const div = document.createElement('div');
+            div.className = 'some-other-class';
+            expect(MermaidPreRenderer.getOriginalCode(div)).toBe(null);
+        });
+
+        test('returns null when data-mermaid is empty', () => {
+            const div = document.createElement('div');
+            div.className = 'exe-mermaid-rendered';
+            div.setAttribute('data-mermaid', '');
+            // Empty string attribute returns null (falsy value check)
+            expect(MermaidPreRenderer.getOriginalCode(div)).toBe(null);
+        });
+
+        test('returns code with special characters preserved', () => {
+            const div = document.createElement('div');
+            div.className = 'exe-mermaid-rendered';
+            div.setAttribute('data-mermaid', 'graph TD; A["Label with <special>"]-->B');
+            expect(MermaidPreRenderer.getOriginalCode(div)).toBe('graph TD; A["Label with <special>"]-->B');
         });
     });
 });
