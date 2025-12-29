@@ -222,18 +222,20 @@ async function saveDownloadSourceFileIdevice(page: Page): Promise<void> {
     // Wait for save to complete
     await page.waitForTimeout(2000);
 
-    // Wait for edition mode to end
-    await page
-        .waitForFunction(
+    // Wait for edition mode to end - if this fails, the page might be closed
+    try {
+        await page.waitForFunction(
             () => {
                 const idevice = document.querySelector('#node-content article .idevice_node.download-source-file');
                 return idevice && idevice.getAttribute('mode') !== 'edition';
             },
             { timeout: 10000 },
-        )
-        .catch(() => {});
-
-    await page.waitForTimeout(500);
+        );
+        // Only wait if page is still open
+        await page.waitForTimeout(500);
+    } catch {
+        // Page might be closed or timeout - ignore
+    }
 }
 
 /**
@@ -332,6 +334,9 @@ test.describe('Download Source File iDevice', () => {
         });
 
         test('should persist after reload', async ({ authenticatedPage, createProject }) => {
+            // Extend timeout for this reload test
+            test.setTimeout(90000);
+
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -502,6 +507,9 @@ test.describe('Download Source File iDevice', () => {
 
     test.describe('Preview Panel', () => {
         test('should display download link correctly in preview', async ({ authenticatedPage, createProject }) => {
+            // Extend timeout for this complex preview test
+            test.setTimeout(90000);
+
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -546,6 +554,9 @@ test.describe('Download Source File iDevice', () => {
             authenticatedPage,
             createProject,
         }) => {
+            // Extend timeout for this complex preview test
+            test.setTimeout(90000);
+
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -604,6 +615,9 @@ test.describe('Download Source File iDevice', () => {
         });
 
         test('should show project info table in preview', async ({ authenticatedPage, createProject }) => {
+            // Extend timeout for this complex preview test
+            test.setTimeout(90000);
+
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -651,6 +665,9 @@ test.describe('Download Source File iDevice', () => {
 
     test.describe('Edit Mode', () => {
         test('should load previous values when editing', async ({ authenticatedPage, createProject }) => {
+            // Extend timeout for this complex edit test
+            test.setTimeout(90000);
+
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 

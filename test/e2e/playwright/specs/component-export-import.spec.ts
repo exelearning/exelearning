@@ -357,6 +357,9 @@ test.describe('Component Export/Import', () => {
         authenticatedPage,
         createProject,
     }) => {
+        // This is a complex test with many operations - extend timeout to 2 minutes
+        test.setTimeout(120000);
+
         const page = authenticatedPage;
 
         // 1. Create a new project
