@@ -98,6 +98,7 @@
     [
       'ElpxImporter.js',
       'ElpxExporter.js',
+      'ComponentImporter.js',  // Imports .idevice/.block files
       'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports (uses ResourceCache)
     ],
     // Group 3: Shared exporters bundle (TypeScript from src/shared/export/)
