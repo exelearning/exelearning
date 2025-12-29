@@ -40,6 +40,7 @@ window.YjsModules = {
   // Import/Export
   ElpxImporter: window.ElpxImporter,
   ElpxExporter: window.ElpxExporter,
+  ComponentImporter: window.ComponentImporter,
 
   // UI Integration
   YjsProjectBridge: window.YjsProjectBridge,
