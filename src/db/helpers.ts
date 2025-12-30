@@ -42,52 +42,24 @@ export function resetDialectCache(): void {
 }
 
 /**
- * Convert binary data to the correct format for the current database.
- * MySQL with Bun.SQL has charset issues - we store as base64 text.
- * SQLite/PostgreSQL accept Uint8Array directly.
+ * Convert binary data to Uint8Array for database storage.
+ * All databases (SQLite, PostgreSQL, MySQL with mysql2) accept Uint8Array directly.
  */
-export function toBinaryData(data: Uint8Array | Buffer): string | Uint8Array {
-    if (getDialect() === 'mysql') {
-        // MySQL with Bun.SQL corrupts binary data due to charset handling
-        // Store as base64-encoded string for reliable round-trip
-        const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
-        return buffer.toString('base64');
-    }
-    // SQLite and PostgreSQL work with Uint8Array
+export function toBinaryData(data: Uint8Array | Buffer): Uint8Array {
     return data instanceof Uint8Array ? data : new Uint8Array(data);
 }
 
 /**
  * Convert data read from database back to Uint8Array.
- * Handles base64 strings (MySQL), Buffers, and Uint8Arrays.
+ * Handles Buffers and Uint8Arrays.
  */
 export function fromBinaryData(data: unknown): Uint8Array {
-    // Direct binary types - no conversion needed
     if (data instanceof Uint8Array) {
         return data;
     }
     if (Buffer.isBuffer(data)) {
         return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
     }
-
-    // String data - check if it's base64 (MySQL with Bun.SQL)
-    if (typeof data === 'string') {
-        // Try base64 decode first (our storage format for MySQL)
-        try {
-            const buffer = Buffer.from(data, 'base64');
-            // Verify it's valid base64 by checking if re-encoding matches
-            if (buffer.toString('base64') === data) {
-                return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-            }
-        } catch {
-            // Not valid base64
-        }
-        // Fall back to binary encoding (for legacy data or corrupted data)
-        const buffer = Buffer.from(data, 'binary');
-        return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-    }
-
-    // Unknown type - return empty array
     console.warn(`[fromBinaryData] Unknown data type: ${typeof data}`);
     return new Uint8Array(0);
 }

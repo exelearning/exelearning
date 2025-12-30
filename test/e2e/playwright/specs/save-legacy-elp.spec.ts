@@ -39,6 +39,7 @@ async function importElpFixture(page: Page): Promise<void> {
     await fileChooser.setFiles(fixturePath);
 
     // Wait for import to complete by checking Yjs navigation has pages
+    // First, wait for at least 1 page to appear
     await page.waitForFunction(
         () => {
             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
@@ -50,6 +51,58 @@ async function importElpFixture(page: Page): Promise<void> {
         },
         { timeout: 90000 },
     );
+
+    // Then wait for the page count to stabilize (no changes for 2 seconds)
+    // This is important because Firefox imports pages asynchronously and may be slower
+    await page.waitForFunction(
+        () => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            if (!bridge) return false;
+            const yDoc = bridge.getDocumentManager()?.getDoc();
+            if (!yDoc) return false;
+            const navigation = yDoc.getArray('navigation');
+            if (!navigation) return false;
+
+            // Recursive count of all pages
+            const countPages = (pages: any): number => {
+                let count = 0;
+                if (!pages) return count;
+                for (let i = 0; i < pages.length; i++) {
+                    count++;
+                    const page = pages.get(i);
+                    const subpages = page?.get('pages');
+                    if (subpages) count += countPages(subpages);
+                }
+                return count;
+            };
+            const currentCount = countPages(navigation);
+
+            // Store/check the page count to detect stabilization
+            const win = window as any;
+            if (!win.__importPageCount) {
+                win.__importPageCount = currentCount;
+                win.__importStableTime = Date.now();
+                return false;
+            }
+
+            if (win.__importPageCount !== currentCount) {
+                win.__importPageCount = currentCount;
+                win.__importStableTime = Date.now();
+                return false;
+            }
+
+            // Page count stable for 2 seconds = import complete
+            return Date.now() - win.__importStableTime >= 2000;
+        },
+        { timeout: 90000, polling: 500 },
+    );
+
+    // Clean up the temporary window variables
+    await page.evaluate(() => {
+        const win = window as any;
+        delete win.__importPageCount;
+        delete win.__importStableTime;
+    });
 
     // Wait for loading screen to hide
     await page.waitForFunction(
