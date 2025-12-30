@@ -5,6 +5,7 @@
 import { Elysia } from 'elysia';
 import * as Y from 'yjs';
 import { findProjectByUuid, upsertSnapshot, findSnapshotByProjectId, updateProjectTitleAndSave } from '../db/queries';
+import { fromBinaryData } from '../db/helpers';
 import { db } from '../db/client';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
@@ -50,21 +51,34 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
         new Elysia({ prefix: '/api/projects' })
 
             // GET - Load Yjs document state
-            .get('/uuid/:uuid/yjs-document', async ({ params, set }) => {
+            .get('/uuid/:uuid/yjs-document', async ({ params }) => {
                 const project = await queries.findProjectByUuid(database, params.uuid);
                 if (!project) {
-                    set.status = 404;
-                    return { error: 'Not Found', message: 'Project not found' };
+                    console.log(`[Yjs GET] Project not found: ${params.uuid}`);
+                    return new Response(JSON.stringify({ error: 'Not Found', message: 'Project not found' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' },
+                    });
                 }
 
                 const snapshot = await queries.findSnapshotByProjectId(database, project.id);
                 if (!snapshot) {
-                    set.status = 404;
-                    return { error: 'Not Found', message: 'No document saved' };
+                    console.log(`[Yjs GET] No snapshot for project ${project.id} (uuid: ${params.uuid})`);
+                    return new Response(JSON.stringify({ error: 'Not Found', message: 'No document saved' }), {
+                        status: 404,
+                        headers: { 'Content-Type': 'application/json' },
+                    });
                 }
 
-                set.headers['Content-Type'] = 'application/octet-stream';
-                return snapshot.snapshot_data;
+                // Convert database data to Uint8Array
+                // MySQL with Bun.SQL stores as base64, SQLite/PostgreSQL as binary
+                const binaryData = fromBinaryData(snapshot.snapshot_data);
+
+                // Return raw binary response - using Response object ensures proper binary handling
+                return new Response(binaryData, {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/octet-stream' },
+                });
             })
 
             // POST - Save Yjs document state

@@ -40,8 +40,8 @@ interface UsersTable {
     external_identifier: string | null;
     api_token: string | null;
     is_active: number;
-    created_at: string | null;
-    updated_at: string | null;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
 }
 
 interface UsersPreferencesTable {
@@ -51,8 +51,8 @@ interface UsersPreferencesTable {
     value: string;
     description: string | null;
     is_active: number;
-    created_at: string | null;
-    updated_at: string | null;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
 }
 
 interface ProjectsTable {
@@ -66,10 +66,10 @@ interface ProjectsTable {
     language: string | null;
     author: string | null;
     license: string | null;
-    last_accessed_at: string | null;
+    last_accessed_at: number | null; // Unix timestamp in milliseconds
     saved_once: number;
-    created_at: string | null;
-    updated_at: string | null;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
 }
 
 interface ProjectCollaboratorsTable {
@@ -87,8 +87,8 @@ interface AssetsTable {
     client_id: string | null;
     component_id: string | null;
     content_hash: string | null;
-    created_at: string | null;
-    updated_at: string | null;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
 }
 
 interface YjsDocumentsTable {
@@ -96,8 +96,8 @@ interface YjsDocumentsTable {
     project_id: number;
     snapshot_data: Uint8Array; // Blob/bytea - compatible across all dialects
     snapshot_version: string; // bigint as text
-    created_at: string | null;
-    updated_at: string | null;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
 }
 
 interface YjsUpdatesTable {
@@ -106,7 +106,7 @@ interface YjsUpdatesTable {
     update_data: Uint8Array;
     version: string;
     client_id: string | null;
-    created_at: string | null;
+    created_at: number | null; // Unix timestamp in milliseconds
 }
 
 interface YjsVersionHistoryTable {
@@ -116,14 +116,14 @@ interface YjsVersionHistoryTable {
     version: string; // Timestamp-based version identifier
     description: string | null; // Optional description (e.g., "Manual save", "Auto-backup")
     created_by: number | null; // User ID who created this version
-    created_at: string;
+    created_at: number; // Unix timestamp in milliseconds (required)
 }
 
 interface AppSettingsTable {
     key: string;
     value: string;
     type: string;
-    updated_at: string | null;
+    updated_at: number | null; // Unix timestamp in milliseconds
     updated_by: number | null;
 }
 
@@ -147,8 +147,8 @@ interface ThemesTable {
     storage_path: string | null; // NULL for builtin themes (use filesystem)
     file_size: number | null;
     uploaded_by: number | null;
-    created_at: string | null;
-    updated_at: string | null;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
 }
 
 interface TemplatesTable {
@@ -163,8 +163,8 @@ interface TemplatesTable {
     file_size: number | null;
     preview_image: string | null;
     uploaded_by: number | null;
-    created_at: string | null;
-    updated_at: string | null;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
 }
 
 // Kysely internal migration tables
@@ -250,7 +250,7 @@ export function stringifyRoles(roles: string[]): string {
     return JSON.stringify(roles);
 }
 
-// Helper for timestamps
-export function now(): string {
-    return new Date().toISOString();
+// Helper for timestamps - returns Unix milliseconds
+export function now(): number {
+    return Date.now();
 }

@@ -2,7 +2,17 @@
  * Tests for Kysely Dialect Factory
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { getDbConfig, getDialectFromEnv, createDialect, configure, resetDependencies, type DbDialect } from './dialect';
+import {
+    getDbConfig,
+    getDialectFromEnv,
+    createDialect,
+    configure,
+    resetDependencies,
+    type DbDialect,
+    type SqliteConfig,
+    type PostgresConfig,
+    type MysqlConfig,
+} from './dialect';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -27,101 +37,293 @@ describe('Kysely Dialect Factory', () => {
     });
 
     describe('getDbConfig', () => {
-        it('should return default SQLite configuration', () => {
-            delete process.env.DB_PATH;
-            const config = getDbConfig();
+        describe('SQLite configuration', () => {
+            it('should return default SQLite configuration', () => {
+                delete process.env.DB_DRIVER;
+                delete process.env.DB_PATH;
+                const config = getDbConfig();
 
-            expect(config.dialect).toBe('sqlite');
-            expect(config.sqlitePath).toBe('data/exelearning.db');
+                expect(config.dialect).toBe('sqlite');
+                expect((config as SqliteConfig).sqlitePath).toBe('data/exelearning.db');
+            });
+
+            it('should use DB_PATH from environment', () => {
+                delete process.env.DB_DRIVER;
+                process.env.DB_PATH = '/custom/path/test.db';
+                const config = getDbConfig();
+
+                expect((config as SqliteConfig).sqlitePath).toBe('/custom/path/test.db');
+            });
+
+            it('should return sqlite for pdo_sqlite driver', () => {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                const config = getDbConfig();
+                expect(config.dialect).toBe('sqlite');
+            });
         });
 
-        it('should use DB_PATH from environment', () => {
-            process.env.DB_PATH = '/custom/path/test.db';
-            const config = getDbConfig();
+        describe('PostgreSQL configuration', () => {
+            it('should return postgres config for pdo_pgsql driver', () => {
+                process.env.DB_DRIVER = 'pdo_pgsql';
+                process.env.DB_HOST = 'pg-host';
+                process.env.DB_PORT = '5433';
+                process.env.DB_NAME = 'testdb';
+                process.env.DB_USER = 'testuser';
+                process.env.DB_PASSWORD = 'testpass';
 
-            expect(config.sqlitePath).toBe('/custom/path/test.db');
+                const config = getDbConfig() as PostgresConfig;
+
+                expect(config.dialect).toBe('postgres');
+                expect(config.host).toBe('pg-host');
+                expect(config.port).toBe(5433);
+                expect(config.database).toBe('testdb');
+                expect(config.user).toBe('testuser');
+                expect(config.password).toBe('testpass');
+            });
+
+            it('should use default postgres port', () => {
+                process.env.DB_DRIVER = 'postgres';
+                delete process.env.DB_PORT;
+
+                const config = getDbConfig() as PostgresConfig;
+
+                expect(config.port).toBe(5432);
+            });
+
+            it('should recognize postgresql alias', () => {
+                process.env.DB_DRIVER = 'postgresql';
+                const config = getDbConfig();
+                expect(config.dialect).toBe('postgres');
+            });
+
+            it('should recognize pgsql alias', () => {
+                process.env.DB_DRIVER = 'pgsql';
+                const config = getDbConfig();
+                expect(config.dialect).toBe('postgres');
+            });
         });
 
-        it('should always return sqlite dialect', () => {
-            const config = getDbConfig();
-            expect(config.dialect).toBe('sqlite');
+        describe('MySQL configuration', () => {
+            it('should return mysql config for pdo_mysql driver', () => {
+                process.env.DB_DRIVER = 'pdo_mysql';
+                process.env.DB_HOST = 'mysql-host';
+                process.env.DB_PORT = '3307';
+                process.env.DB_NAME = 'testdb';
+                process.env.DB_USER = 'testuser';
+                process.env.DB_PASSWORD = 'testpass';
+
+                const config = getDbConfig() as MysqlConfig;
+
+                expect(config.dialect).toBe('mysql');
+                expect(config.host).toBe('mysql-host');
+                expect(config.port).toBe(3307);
+                expect(config.database).toBe('testdb');
+                expect(config.user).toBe('testuser');
+                expect(config.password).toBe('testpass');
+                expect(config.charset).toBe('utf8mb4');
+            });
+
+            it('should use default mysql port', () => {
+                process.env.DB_DRIVER = 'mysql';
+                delete process.env.DB_PORT;
+
+                const config = getDbConfig() as MysqlConfig;
+
+                expect(config.port).toBe(3306);
+            });
+
+            it('should recognize mysql2 alias', () => {
+                process.env.DB_DRIVER = 'mysql2';
+                const config = getDbConfig();
+                expect(config.dialect).toBe('mysql');
+            });
+
+            it('should recognize mariadb alias', () => {
+                process.env.DB_DRIVER = 'mariadb';
+                const config = getDbConfig();
+                expect(config.dialect).toBe('mysql');
+            });
+        });
+
+        describe('pool configuration', () => {
+            it('should use default pool settings', () => {
+                const config = getDbConfig();
+                expect(config.poolMin).toBe(0);
+                expect(config.poolMax).toBe(10);
+            });
+
+            it('should use custom pool settings from env', () => {
+                process.env.DB_POOL_MIN = '2';
+                process.env.DB_POOL_MAX = '20';
+
+                const config = getDbConfig();
+                expect(config.poolMin).toBe(2);
+                expect(config.poolMax).toBe(20);
+            });
         });
     });
 
     describe('getDialectFromEnv', () => {
-        it('should always return sqlite', () => {
+        it('should return sqlite by default', () => {
+            delete process.env.DB_DRIVER;
             const dialect = getDialectFromEnv();
             expect(dialect).toBe('sqlite');
         });
 
+        it('should return postgres for pdo_pgsql', () => {
+            process.env.DB_DRIVER = 'pdo_pgsql';
+            const dialect = getDialectFromEnv();
+            expect(dialect).toBe('postgres');
+        });
+
+        it('should return mysql for pdo_mysql', () => {
+            process.env.DB_DRIVER = 'pdo_mysql';
+            const dialect = getDialectFromEnv();
+            expect(dialect).toBe('mysql');
+        });
+
+        it('should be case insensitive', () => {
+            process.env.DB_DRIVER = 'POSTGRES';
+            expect(getDialectFromEnv()).toBe('postgres');
+
+            process.env.DB_DRIVER = 'MySQL';
+            expect(getDialectFromEnv()).toBe('mysql');
+        });
+
         it('should return correct type', () => {
             const dialect: DbDialect = getDialectFromEnv();
-            expect(dialect).toBe('sqlite');
+            expect(['sqlite', 'postgres', 'mysql']).toContain(dialect);
         });
     });
 
     describe('createDialect', () => {
-        it('should create SQLite dialect with default config', () => {
-            process.env.DB_PATH = path.join(testDbDir, 'default.db');
-            const dialect = createDialect();
+        describe('SQLite dialect', () => {
+            it('should create SQLite dialect with default config', () => {
+                process.env.DB_PATH = path.join(testDbDir, 'default.db');
+                const dialect = createDialect();
 
-            expect(dialect).toBeDefined();
+                expect(dialect).toBeDefined();
+            });
+
+            it('should create SQLite dialect with custom config', () => {
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: path.join(testDbDir, 'custom.db'),
+                };
+                const dialect = createDialect(config);
+
+                expect(dialect).toBeDefined();
+            });
+
+            it('should create parent directory if not exists', () => {
+                const nestedPath = path.join(testDbDir, 'nested', 'deep', 'test.db');
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: nestedPath,
+                };
+
+                createDialect(config);
+
+                const dir = path.dirname(nestedPath);
+                expect(fs.existsSync(dir)).toBe(true);
+            });
+
+            it('should handle absolute paths', () => {
+                const absolutePath = path.join(testDbDir, 'absolute.db');
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: absolutePath,
+                };
+
+                const dialect = createDialect(config);
+                expect(dialect).toBeDefined();
+            });
+
+            it('should handle relative paths', () => {
+                const relativePath = 'test/temp/dialect-test/relative.db';
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: relativePath,
+                };
+
+                const dialect = createDialect(config);
+                expect(dialect).toBeDefined();
+            });
+
+            it('should handle :memory: database without creating directories', () => {
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: ':memory:',
+                };
+
+                const dialect = createDialect(config);
+                expect(dialect).toBeDefined();
+            });
         });
 
-        it('should create SQLite dialect with custom config', () => {
-            const config = {
-                dialect: 'sqlite' as DbDialect,
-                sqlitePath: path.join(testDbDir, 'custom.db'),
-            };
-            const dialect = createDialect(config);
+        describe('PostgreSQL dialect', () => {
+            it('should create PostgreSQL dialect', () => {
+                const config: PostgresConfig = {
+                    dialect: 'postgres',
+                    host: 'localhost',
+                    port: 5432,
+                    database: 'test',
+                    user: 'test',
+                    password: 'test',
+                };
 
-            expect(dialect).toBeDefined();
+                const dialect = createDialect(config);
+                expect(dialect).toBeDefined();
+            });
+
+            it('should throw error when not running in Bun for postgres', () => {
+                configure({ isBun: false });
+
+                const config: PostgresConfig = {
+                    dialect: 'postgres',
+                    host: 'localhost',
+                    port: 5432,
+                    database: 'test',
+                    user: 'test',
+                    password: 'test',
+                };
+
+                expect(() => createDialect(config)).toThrow('PostgreSQL dialect requires Bun runtime');
+            });
         });
 
-        it('should create parent directory if not exists', () => {
-            const nestedPath = path.join(testDbDir, 'nested', 'deep', 'test.db');
-            const config = {
-                dialect: 'sqlite' as DbDialect,
-                sqlitePath: nestedPath,
-            };
+        describe('MySQL dialect', () => {
+            it('should create MySQL dialect', () => {
+                const config: MysqlConfig = {
+                    dialect: 'mysql',
+                    host: 'localhost',
+                    port: 3306,
+                    database: 'test',
+                    user: 'test',
+                    password: 'test',
+                };
 
-            createDialect(config);
+                const dialect = createDialect(config);
+                expect(dialect).toBeDefined();
+            });
 
-            const dir = path.dirname(nestedPath);
-            expect(fs.existsSync(dir)).toBe(true);
-        });
+            it('should work in any runtime with mysql2', () => {
+                // mysql2 works in any runtime, not just Bun
+                configure({ isBun: false });
 
-        it('should handle absolute paths', () => {
-            const absolutePath = path.join(testDbDir, 'absolute.db');
-            const config = {
-                dialect: 'sqlite' as DbDialect,
-                sqlitePath: absolutePath,
-            };
+                const config: MysqlConfig = {
+                    dialect: 'mysql',
+                    host: 'localhost',
+                    port: 3306,
+                    database: 'test',
+                    user: 'test',
+                    password: 'test',
+                };
 
-            const dialect = createDialect(config);
-            expect(dialect).toBeDefined();
-        });
-
-        it('should handle relative paths', () => {
-            // Set DB_PATH to a path relative to cwd that exists
-            const relativePath = 'test/temp/dialect-test/relative.db';
-            const config = {
-                dialect: 'sqlite' as DbDialect,
-                sqlitePath: relativePath,
-            };
-
-            const dialect = createDialect(config);
-            expect(dialect).toBeDefined();
-        });
-
-        it('should handle :memory: database without creating directories', () => {
-            const config = {
-                dialect: 'sqlite' as DbDialect,
-                sqlitePath: ':memory:',
-            };
-
-            const dialect = createDialect(config);
-            expect(dialect).toBeDefined();
+                // Should not throw - mysql2 works everywhere
+                const dialect = createDialect(config);
+                expect(dialect).toBeDefined();
+            });
         });
     });
 
@@ -129,8 +331,8 @@ describe('Kysely Dialect Factory', () => {
         it('should allow configuring isBun to false for Node.js branch', () => {
             configure({ isBun: false });
 
-            const config = {
-                dialect: 'sqlite' as DbDialect,
+            const config: SqliteConfig = {
+                dialect: 'sqlite',
                 sqlitePath: ':memory:',
             };
 
@@ -144,8 +346,8 @@ describe('Kysely Dialect Factory', () => {
             resetDependencies();
 
             // After reset, should use Bun dialect again
-            const config = {
-                dialect: 'sqlite' as DbDialect,
+            const config: SqliteConfig = {
+                dialect: 'sqlite',
                 sqlitePath: ':memory:',
             };
             const dialect = createDialect(config);
@@ -155,8 +357,8 @@ describe('Kysely Dialect Factory', () => {
         it('should use Node.js dialect with file-based database', () => {
             configure({ isBun: false });
 
-            const config = {
-                dialect: 'sqlite' as DbDialect,
+            const config: SqliteConfig = {
+                dialect: 'sqlite',
                 sqlitePath: path.join(testDbDir, 'node-file.db'),
             };
 

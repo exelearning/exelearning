@@ -84,18 +84,18 @@ describe('Asset Queries', () => {
         });
 
         it('should set timestamps', async () => {
-            const before = new Date().toISOString();
+            const before = Date.now();
             const asset = await createAsset(db, {
                 project_id: testProjectId,
                 filename: 'test.png',
                 storage_path: '/path',
             });
-            const after = new Date().toISOString();
+            const after = Date.now();
 
             expect(asset.created_at).toBeDefined();
             expect(asset.updated_at).toBeDefined();
-            expect(asset.created_at! >= before).toBe(true);
-            expect(asset.created_at! <= after).toBe(true);
+            expect(asset.created_at!).toBeGreaterThanOrEqual(before);
+            expect(asset.created_at!).toBeLessThanOrEqual(after);
         });
     });
 

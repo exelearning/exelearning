@@ -42,7 +42,7 @@ type AppSettingsTable = {
     key: string;
     value: string;
     type: string;
-    updated_at: string | null;
+    updated_at: number | null; // Unix timestamp in milliseconds
     updated_by: number | null;
 };
 

@@ -31,8 +31,8 @@ services:
       # Files directory
       FILES_DIR: "/mnt/data/"
       
-      # Authentication settings
-      APP_AUTH_METHODS: password
+      # Authentication settings (guest enabled for E2E tests)
+      APP_AUTH_METHODS: password,guest
       AUTH_CREATE_USERS: true
       
       # Test user
@@ -56,8 +56,8 @@ services:
       POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
       POSTGRES_USER: "${DB_USER:-postgres}"
       POSTGRES_DB: "${DB_NAME:-exelearning}"
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    # ports:
+    #   - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
 

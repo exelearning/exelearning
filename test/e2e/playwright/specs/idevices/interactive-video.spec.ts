@@ -264,9 +264,16 @@ async function createCover(editorIframe: FrameLocator, title: string, intro: str
     await titleInput.fill(title);
 
     // Wait for TinyMCE to initialize (the textarea is replaced by TinyMCE)
-    // TinyMCE creates an iframe inside the editor wrapper
-    const tinyMceIframe = editorIframe.locator('#frontpage-content').locator('xpath=..').locator('iframe').first();
-    await tinyMceIframe.waitFor({ state: 'visible', timeout: 10000 });
+    // TinyMCE creates a wrapper with class .tox-tinymce containing the iframe
+    // First wait for the TinyMCE wrapper to appear near the content field
+    const tinyMceWrapper = editorIframe
+        .locator('#frontpage-content')
+        .locator('xpath=..')
+        .locator('.tox-tinymce')
+        .first();
+    await tinyMceWrapper.waitFor({ state: 'visible', timeout: 15000 });
+    const tinyMceIframe = tinyMceWrapper.locator('iframe').first();
+    await tinyMceIframe.waitFor({ state: 'visible', timeout: 5000 });
 
     // Fill in the introduction through TinyMCE iframe
     const tinyMceBody = tinyMceIframe.contentFrame().locator('body');
@@ -308,8 +315,15 @@ async function createTextSlide(editorIframe: FrameLocator, content: string): Pro
     await editorIframe.locator('#text-block').waitFor({ state: 'visible', timeout: 5000 });
 
     // Wait for TinyMCE to initialize
-    const tinyMceIframe = editorIframe.locator('#text-block-content').locator('xpath=..').locator('iframe').first();
-    await tinyMceIframe.waitFor({ state: 'visible', timeout: 10000 });
+    // TinyMCE creates a wrapper with class .tox-tinymce containing the iframe
+    const tinyMceWrapper = editorIframe
+        .locator('#text-block-content')
+        .locator('xpath=..')
+        .locator('.tox-tinymce')
+        .first();
+    await tinyMceWrapper.waitFor({ state: 'visible', timeout: 15000 });
+    const tinyMceIframe = tinyMceWrapper.locator('iframe').first();
+    await tinyMceIframe.waitFor({ state: 'visible', timeout: 5000 });
 
     // Fill in the text content through TinyMCE iframe
     const tinyMceBody = tinyMceIframe.contentFrame().locator('body');

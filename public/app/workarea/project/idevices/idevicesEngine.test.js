@@ -1350,6 +1350,43 @@ describe('IdevicesEngine', () => {
 
             expect(element.onreadystatechange).toBeDefined();
         });
+
+        it('executes function callback on load', () => {
+            const element = { onload: null };
+            const callback = vi.fn();
+
+            engine.onloadedScriptCallback('/path', element, callback);
+            element.onload();
+
+            expect(callback).toHaveBeenCalled();
+        });
+
+        it('executes string callback on load', () => {
+            const element = { onload: null };
+            globalThis.testCallbackExecuted = false;
+
+            engine.onloadedScriptCallback(
+                '/path',
+                element,
+                'globalThis.testCallbackExecuted = true',
+            );
+            element.onload();
+
+            expect(globalThis.testCallbackExecuted).toBe(true);
+            delete globalThis.testCallbackExecuted;
+        });
+
+        it('executes function callback on readystatechange complete', () => {
+            const element = { readyState: 'loading', onreadystatechange: null };
+            const callback = vi.fn();
+
+            engine.onloadedScriptCallback('/path', element, callback);
+
+            element.readyState = 'complete';
+            element.onreadystatechange();
+
+            expect(callback).toHaveBeenCalled();
+        });
     });
 
     describe('initIdevicePresence', () => {

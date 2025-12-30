@@ -182,17 +182,11 @@ test.describe('Share Modal', () => {
 
             // Set to private - help text should be hidden
             await shareModal.setVisibility('private');
-            await authenticatedPage.waitForTimeout(300);
-
-            const privateHelpHidden = await shareModal.visibilityHelp.isHidden();
-            expect(privateHelpHidden).toBe(true);
+            await expect(shareModal.visibilityHelp).toBeHidden({ timeout: 5000 });
 
             // Set to public - help text should be visible
             await shareModal.setVisibility('public');
-            await authenticatedPage.waitForTimeout(300);
-
-            const publicHelpVisible = await shareModal.visibilityHelp.isVisible();
-            expect(publicHelpVisible).toBe(true);
+            await expect(shareModal.visibilityHelp).toBeVisible({ timeout: 5000 });
         });
     });
 

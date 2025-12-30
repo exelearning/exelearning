@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, UserPreference, NewUserPreference, UserPreferenceUpdate } from '../types';
 import { now } from '../types';
+import { insertAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -57,16 +58,12 @@ export async function getPreferenceValueOrDefault(
 
 export async function createPreference(db: Kysely<Database>, data: NewUserPreference): Promise<UserPreference> {
     const timestamp = now();
-    return db
-        .insertInto('users_preferences')
-        .values({
-            ...data,
-            created_at: timestamp,
-            updated_at: timestamp,
-            is_active: 1,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    return insertAndReturn(db, 'users_preferences', {
+        ...data,
+        created_at: timestamp,
+        updated_at: timestamp,
+        is_active: 1,
+    });
 }
 
 export async function updatePreference(
@@ -74,15 +71,10 @@ export async function updatePreference(
     id: number,
     data: UserPreferenceUpdate,
 ): Promise<UserPreference | undefined> {
-    return db
-        .updateTable('users_preferences')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByIdAndReturn(db, 'users_preferences', id, {
+        ...data,
+        updated_at: now(),
+    });
 }
 
 export async function setPreference(
@@ -96,32 +88,23 @@ export async function setPreference(
     const timestamp = now();
 
     if (existing) {
-        const updated = await db
-            .updateTable('users_preferences')
-            .set({
-                value,
-                description: description ?? existing.description,
-                updated_at: timestamp,
-            })
-            .where('id', '=', existing.id)
-            .returningAll()
-            .executeTakeFirst();
+        const updated = await updateByIdAndReturn(db, 'users_preferences', existing.id, {
+            value,
+            description: description ?? existing.description,
+            updated_at: timestamp,
+        });
         return updated!;
     }
 
-    return db
-        .insertInto('users_preferences')
-        .values({
-            user_id: userId,
-            preference_key: preferenceKey,
-            value,
-            description: description ?? null,
-            created_at: timestamp,
-            updated_at: timestamp,
-            is_active: 1,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    return insertAndReturn(db, 'users_preferences', {
+        user_id: userId,
+        preference_key: preferenceKey,
+        value,
+        description: description ?? null,
+        created_at: timestamp,
+        updated_at: timestamp,
+        is_active: 1,
+    });
 }
 
 export async function deletePreference(db: Kysely<Database>, userId: string, preferenceKey: string): Promise<boolean> {
@@ -133,8 +116,18 @@ export async function deletePreference(db: Kysely<Database>, userId: string, pre
 }
 
 export async function deleteAllPreferencesForUser(db: Kysely<Database>, userId: string): Promise<number> {
-    const result = await db.deleteFrom('users_preferences').where('user_id', '=', userId).returningAll().execute();
-    return result.length;
+    const result = await db
+        .selectFrom('users_preferences')
+        .select(eb => eb.fn.count<number>('id').as('count'))
+        .where('user_id', '=', userId)
+        .executeTakeFirst();
+    const count = Number(result?.count ?? 0);
+
+    if (count > 0) {
+        await db.deleteFrom('users_preferences').where('user_id', '=', userId).execute();
+    }
+
+    return count;
 }
 
 // ============================================================================

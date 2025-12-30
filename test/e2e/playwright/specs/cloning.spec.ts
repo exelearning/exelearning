@@ -111,12 +111,21 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
         await saveBtn.click();
     }
 
-    // Wait for save to complete
+    // Wait for save to complete AND content to be rendered in the DOM
     await page.waitForFunction(
-        () => {
+        expectedContent => {
             const idevice = document.querySelector('#node-content article .idevice_node.text');
-            return idevice && idevice.getAttribute('mode') !== 'edition';
+            if (!idevice || idevice.getAttribute('mode') === 'edition') {
+                return false;
+            }
+            // Verify the content is actually rendered somewhere in node-content
+            const nodeContent = document.querySelector('#node-content');
+            if (!nodeContent) {
+                return false;
+            }
+            return nodeContent.textContent?.includes(expectedContent) ?? false;
         },
+        content,
         { timeout: 15000 },
     );
 }

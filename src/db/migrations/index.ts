@@ -3,26 +3,19 @@
  * Programmatic migrations for SQLite, PostgreSQL, and MySQL
  */
 import { Kysely, Migrator, sql, type Migration, type MigrationProvider } from 'kysely';
+import { tableExists as tableExistsHelper, getDialect } from '../helpers';
 
 // Import all migrations
+import * as migration000 from './000_legacy_symfony';
 import * as migration001 from './001_initial';
-import * as migration002 from './002_app_settings';
-import * as migration003 from './003_project_status';
-import * as migration004 from './004_admin_themes_templates';
-import * as migration005 from './005_builtin_theme_settings';
-import * as migration006 from './006_consolidate_themes';
 
 // ============================================================================
 // MIGRATION REGISTRY
 // ============================================================================
 
 const migrations: Record<string, Migration> = {
+    '000_legacy_symfony': migration000,
     '001_initial': migration001,
-    '002_app_settings': migration002,
-    '003_project_status': migration003,
-    '004_admin_themes_templates': migration004,
-    '005_builtin_theme_settings': migration005,
-    '006_consolidate_themes': migration006,
 };
 
 // ============================================================================
@@ -66,102 +59,139 @@ const defaultDependencies: MigrationDependencies = {
  * Check if a table exists in the database (cross-database compatible)
  */
 export async function tableExists(db: Kysely<unknown>, tableName: string): Promise<boolean> {
-    try {
-        // Use information_schema for PostgreSQL/MySQL, sqlite_master for SQLite
-        // We try SQLite first since it's our primary target
-        const result = await sql<{ count: number }>`
-            SELECT COUNT(*) as count FROM sqlite_master
-            WHERE type='table' AND name=${tableName}
-        `.execute(db);
-        return (result.rows[0]?.count ?? 0) > 0;
-    } catch {
-        // If SQLite query fails, try information_schema (PostgreSQL/MySQL)
-        // istanbul ignore next - requires PostgreSQL/MySQL database
-        try {
-            const result = await sql<{ count: number }>`
-                SELECT COUNT(*) as count FROM information_schema.tables
-                WHERE table_name = ${tableName}
-            `.execute(db);
-            return (result.rows[0]?.count ?? 0) > 0;
-        } catch {
-            return false;
-        }
-    }
+    return tableExistsHelper(db, tableName);
 }
 
 /**
  * Check if this is a legacy database with tables but no migration tracking.
  * If so, register existing migrations as already applied.
+ *
+ * Database states:
+ * 1. Fresh DB: No tables at all → Run both migrations (000 is no-op, 001 creates tables)
+ * 2. Symfony legacy DB: users exists, projects doesn't → Run 000 (cleanup) + 001 (create)
+ * 3. Normal DB with tracking: kysely_migration exists → Run pending migrations
  */
 async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
-    // 1. Check if BOTH core tables exist (users AND projects)
-    // If either is missing, this is either a fresh DB or an old version that needs full migration
     const usersTableExists = await tableExists(db, 'users');
     const projectsTableExists = await tableExists(db, 'projects');
-
-    // If any core table is missing, run all migrations (001_initial uses ifNotExists)
-    if (!usersTableExists || !projectsTableExists) {
-        return;
-    }
-
-    // 2. Check if kysely_migration table exists
     const migrationTableExists = await tableExists(db, 'kysely_migration');
 
-    // 3. If application tables exist but migration table doesn't, this is a legacy DB
-    if (!migrationTableExists) {
-        console.log('[DB] Detected legacy database, creating migration tracking...');
-
-        // Create migration tables manually (Kysely does this automatically but we need to pre-populate)
-        await db.schema
-            .createTable('kysely_migration')
-            .ifNotExists()
-            .addColumn('name', 'varchar(255)', col => col.primaryKey())
-            .addColumn('timestamp', 'varchar(255)', col => col.notNull())
-            .execute();
-
-        await db.schema
-            .createTable('kysely_migration_lock')
-            .ifNotExists()
-            .addColumn('id', 'varchar(255)', col => col.primaryKey())
-            .addColumn('is_locked', 'integer', col => col.notNull().defaultTo(0))
-            .execute();
-
-        // Insert the initial migration as already executed
-        const migrationTimestamp = new Date().toISOString();
-        await sql`
-            INSERT INTO kysely_migration (name, timestamp)
-            VALUES ('001_initial', ${migrationTimestamp})
-        `.execute(db);
-
-        // Initialize lock
-        await sql`
-            INSERT INTO kysely_migration_lock (id, is_locked)
-            VALUES ('migration_lock', 0)
-        `.execute(db);
-
-        console.log('[DB] Migration tracking created, 001_initial marked as applied');
+    // State 1: Fresh DB - nothing to sync, migrations will create everything
+    if (!usersTableExists) {
         return;
     }
 
-    // 4. If migration table exists but 001_initial not recorded, and tables exist
-    const migrationRecord = await sql<{ name: string }>`
-        SELECT name FROM kysely_migration WHERE name = '001_initial'
-    `.execute(db);
+    // State 2: Symfony legacy DB (has users but no projects table)
+    // 000_legacy_symfony will clean up old Symfony schema
+    // 001_initial will create new tables (uses ifNotExists)
+    if (usersTableExists && !projectsTableExists) {
+        console.log('[DB] Detected Symfony legacy database...');
 
-    if (migrationRecord.rows.length === 0) {
-        console.log('[DB] Detected existing tables without migration record, syncing...');
-        const syncTimestamp = new Date().toISOString();
-        await sql`
-            INSERT INTO kysely_migration (name, timestamp)
-            VALUES ('001_initial', ${syncTimestamp})
-        `.execute(db);
-        console.log('[DB] 001_initial marked as applied');
+        if (!migrationTableExists) {
+            // Create migration tracking tables
+            await db.schema
+                .createTable('kysely_migration')
+                .ifNotExists()
+                .addColumn('name', 'varchar(255)', col => col.primaryKey())
+                .addColumn('timestamp', 'varchar(255)', col => col.notNull())
+                .execute();
+
+            await db.schema
+                .createTable('kysely_migration_lock')
+                .ifNotExists()
+                .addColumn('id', 'varchar(255)', col => col.primaryKey())
+                .addColumn('is_locked', 'integer', col => col.notNull().defaultTo(0))
+                .execute();
+
+            // Initialize lock (idempotent - handles case where lock already exists)
+            const dialect = getDialect();
+            if (dialect === 'mysql') {
+                await sql`
+                    INSERT IGNORE INTO kysely_migration_lock (id, is_locked)
+                    VALUES ('migration_lock', 0)
+                `.execute(db);
+            } else if (dialect === 'postgres') {
+                await sql`
+                    INSERT INTO kysely_migration_lock (id, is_locked)
+                    VALUES ('migration_lock', 0)
+                    ON CONFLICT (id) DO NOTHING
+                `.execute(db);
+            } else {
+                // SQLite
+                await sql`
+                    INSERT OR IGNORE INTO kysely_migration_lock (id, is_locked)
+                    VALUES ('migration_lock', 0)
+                `.execute(db);
+            }
+        }
+
+        // Let migrations run normally - 000_legacy_symfony will clean up Symfony,
+        // 001_initial will create missing tables
+        console.log('[DB] Migration tracking created, will run schema updates');
+        return;
     }
+
+    // State 3: Normal DB with tracking - nothing to do
+    // Kysely's migrator will handle pending migrations automatically
 }
 
 // ============================================================================
 // MIGRATION FUNCTIONS
 // ============================================================================
+
+/**
+ * Check if all migrations are already executed (without acquiring lock)
+ */
+async function areAllMigrationsExecuted(db: Kysely<unknown>): Promise<boolean> {
+    const migrationTableExists = await tableExists(db, 'kysely_migration');
+    const dialect = getDialect();
+    console.log('[Migration] Migration table exists:', migrationTableExists);
+    if (!migrationTableExists && dialect !== 'mysql') {
+        return false; // No tracking table = need to run migrations
+    }
+
+    try {
+        // Get all executed migration names - more reliable than COUNT across databases
+        // Use raw SQL to avoid type issues with internal Kysely tables
+        const result = await sql<{ name: string }>`
+            SELECT name FROM kysely_migration
+        `.execute(db);
+
+        const executedNames = new Set(result.rows.map(r => r.name));
+        const allMigrationNames = Object.keys(migrations);
+
+        console.log('[Migration] Executed migrations:', [...executedNames]);
+        console.log('[Migration] Required migrations:', allMigrationNames);
+
+        // Check if all migrations are executed
+        const allDone = allMigrationNames.every(name => executedNames.has(name));
+        console.log('[Migration] All migrations done:', allDone);
+        return allDone;
+    } catch (err) {
+        if (!migrationTableExists) {
+            return false; // Table genuinely missing (or not visible) = need to run migrations
+        }
+        console.log('[Migration] Error checking migrations:', err);
+        return false; // Error = need to run migrations to be safe
+    }
+}
+
+/**
+ * Clean up any stale migration locks before running migrations.
+ * This is necessary because Kysely uses INSERT to acquire locks,
+ * which fails in MySQL if a lock row already exists from a previous run.
+ */
+async function cleanStaleLocks(db: Kysely<unknown>): Promise<void> {
+    try {
+        // Delete any existing lock rows - they're stale since we're just starting
+        // We try unconditionally because tableExists() might fail for some databases
+        await sql`DELETE FROM kysely_migration_lock WHERE id = 'migration_lock'`.execute(db);
+        console.log('[Migration] Cleaned stale locks');
+    } catch (err) {
+        // Ignore errors - table might not exist yet or be empty
+        console.log('[Migration] No stale locks to clean (or table does not exist)');
+    }
+}
 
 /**
  * Run all pending migrations
@@ -176,6 +206,16 @@ export async function migrateToLatest(
 }> {
     // Sync legacy databases first (detect existing tables without migration tracking)
     await syncLegacyMigrations(db);
+
+    // If all migrations are already executed, skip the migrator entirely
+    // This avoids Kysely's lock acquisition which can fail on MySQL with stale locks
+    if (await areAllMigrationsExecuted(db)) {
+        console.log('No pending migrations');
+        return { success: true, executedMigrations: [] };
+    }
+
+    // Clean up any stale locks from previous runs (fixes MySQL duplicate key error)
+    await cleanStaleLocks(db);
 
     const migrator = deps.createMigrator(db);
     const { error, results } = await migrator.migrateToLatest();

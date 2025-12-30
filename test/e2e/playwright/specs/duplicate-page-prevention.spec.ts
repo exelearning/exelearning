@@ -24,6 +24,9 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
  * - Only the first client's structure is used
  */
 
+// Server-side page creation is now implemented in src/services/yjs-initializer.ts
+// The initial Yjs document with one page is created when the project is created,
+// preventing the race condition where multiple clients would create duplicate pages.
 test.describe('Duplicate Page Prevention', () => {
     test.setTimeout(120000); // 2 minutes per test
 

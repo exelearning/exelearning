@@ -11,6 +11,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, Theme, NewTheme, ThemeUpdate } from '../types';
 import { now } from '../types';
+import { insertAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -147,31 +148,22 @@ export async function findBaseThemeByDirName(db: Kysely<Database>, dirName: stri
 
 export async function createTheme(db: Kysely<Database>, data: NewTheme): Promise<Theme> {
     const timestamp = now();
-    return db
-        .insertInto('themes')
-        .values({
-            ...data,
-            is_builtin: data.is_builtin ?? 0,
-            is_enabled: data.is_enabled ?? 1,
-            is_default: data.is_default ?? 0,
-            sort_order: data.sort_order ?? 0,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    return insertAndReturn(db, 'themes', {
+        ...data,
+        is_builtin: data.is_builtin ?? 0,
+        is_enabled: data.is_enabled ?? 1,
+        is_default: data.is_default ?? 0,
+        sort_order: data.sort_order ?? 0,
+        created_at: timestamp,
+        updated_at: timestamp,
+    });
 }
 
 export async function updateTheme(db: Kysely<Database>, id: number, data: ThemeUpdate): Promise<Theme | undefined> {
-    return db
-        .updateTable('themes')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByIdAndReturn(db, 'themes', id, {
+        ...data,
+        updated_at: now(),
+    });
 }
 
 export async function deleteTheme(db: Kysely<Database>, id: number): Promise<void> {
@@ -202,12 +194,7 @@ export async function setDefaultThemeById(db: Kysely<Database>, id: number): Pro
     await db.updateTable('themes').set({ is_default: 0, updated_at: now() }).execute();
 
     // Set the new default
-    return db
-        .updateTable('themes')
-        .set({ is_default: 1, updated_at: now() })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByIdAndReturn(db, 'themes', id, { is_default: 1, updated_at: now() });
 }
 
 /**
@@ -241,7 +228,7 @@ export async function toggleThemeEnabled(
         updates.is_default = 0;
     }
 
-    return db.updateTable('themes').set(updates).where('id', '=', id).returningAll().executeTakeFirst();
+    return updateByIdAndReturn(db, 'themes', id, updates);
 }
 
 // ============================================================================

@@ -239,9 +239,9 @@ test.describe('Link Validation', () => {
         const modal = page.locator('#modalOdeBrokenLinks');
         await modal.waitFor({ state: 'visible', timeout: 5000 });
 
-        // Verify progress bar exists
+        // Verify progress bar element exists (may not be visible if validation is fast)
         const progressBar = modal.locator('.progress-bar');
-        await expect(progressBar).toBeVisible({ timeout: 5000 });
+        await expect(progressBar).toBeAttached({ timeout: 5000 });
 
         // Wait for completion
         await page.waitForFunction(

@@ -586,22 +586,25 @@ test.describe('Text iDevice', () => {
                 await saveBtn.click();
             }
 
-            // Wait for edition mode to end
-            await page.waitForFunction(
-                () => {
-                    const idevice = document.querySelector('#node-content article .idevice_node.text');
-                    return idevice && idevice.getAttribute('mode') !== 'edition';
-                },
-                { timeout: 15000 },
-            );
+            // Wait for edition mode to end and bold content to be rendered
+            const hasBoldContent = await page
+                .waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content article .idevice_node.text');
+                        if (!idevice || idevice.getAttribute('mode') === 'edition') return null;
 
-            // Verify bold formatting was applied (check for <strong> or <b> tag)
-            const hasBoldContent = await page.evaluate(() => {
-                const content = document.querySelector('#node-content article .idevice_node.text .textIdeviceContent');
-                if (!content) return false;
-                const html = content.innerHTML;
-                return html.includes('<strong>') || html.includes('<b>');
-            });
+                        const content = idevice.querySelector('.textIdeviceContent');
+                        if (!content) return null;
+
+                        const html = content.innerHTML;
+                        if (html.includes('<strong>') || html.includes('<b>')) {
+                            return true;
+                        }
+                        return null;
+                    },
+                    { timeout: 15000 },
+                )
+                .then(handle => handle.jsonValue());
 
             expect(hasBoldContent).toBe(true);
         });

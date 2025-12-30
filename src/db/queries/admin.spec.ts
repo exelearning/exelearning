@@ -260,7 +260,7 @@ describe('Admin Queries', () => {
             const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
             await seedTestProject(db, userId, { title: 'Active Project', uuid: 'proj-active', status: 'active' });
 
-            const now = new Date().toISOString();
+            const now = Date.now();
             await db
                 .insertInto('projects')
                 .values({
@@ -286,7 +286,7 @@ describe('Admin Queries', () => {
             const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
             await seedTestProject(db, userId, { title: 'Private Project', uuid: 'proj-priv', visibility: 'private' });
 
-            const now = new Date().toISOString();
+            const now = Date.now();
             await db
                 .insertInto('projects')
                 .values({
@@ -433,8 +433,8 @@ describe('Admin Queries', () => {
                     roles: 'invalid-json',
                     is_lopd_accepted: 0,
                     is_active: 1,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
                 })
                 .execute();
 
@@ -459,8 +459,8 @@ describe('Admin Queries', () => {
                     roles: '["ROLE_USER"]',
                     is_lopd_accepted: 0,
                     is_active: 0, // Initially inactive
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
                 })
                 .execute();
 
@@ -569,19 +569,19 @@ describe('Admin Queries', () => {
         });
 
         it('should set timestamps', async () => {
-            const before = new Date().toISOString();
+            const before = Date.now();
             const user = await createUserAsAdmin(db, {
                 email: 'time@test.com',
                 password: 'hash',
                 userId: 'time',
                 roles: ['ROLE_USER'],
             });
-            const after = new Date().toISOString();
+            const after = Date.now();
 
             expect(user.created_at).toBeDefined();
             expect(user.updated_at).toBeDefined();
-            expect(user.created_at! >= before).toBe(true);
-            expect(user.created_at! <= after).toBe(true);
+            expect(user.created_at!).toBeGreaterThanOrEqual(before);
+            expect(user.created_at!).toBeLessThanOrEqual(after);
         });
 
         it('should throw on duplicate email', async () => {
@@ -680,8 +680,8 @@ describe('Admin Queries', () => {
                     roles: '["ROLE_USER"]',
                     is_lopd_accepted: 0,
                     is_active: 0,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
                 })
                 .execute();
 
@@ -706,7 +706,7 @@ describe('Admin Queries', () => {
             await seedTestProject(db, userId, { title: 'Active Project' });
 
             // Create archived project
-            const now = new Date().toISOString();
+            const now = Date.now();
             await db
                 .insertInto('projects')
                 .values({
@@ -784,9 +784,9 @@ describe('Admin Queries', () => {
                             key: 'site_name',
                             value: 'eXeLearning',
                             type: 'string',
-                            updated_at: new Date().toISOString(),
+                            updated_at: Date.now(),
                         },
-                        { key: 'max_upload_size', value: '100', type: 'number', updated_at: new Date().toISOString() },
+                        { key: 'max_upload_size', value: '100', type: 'number', updated_at: Date.now() },
                     ])
                     .execute();
 
@@ -811,7 +811,7 @@ describe('Admin Queries', () => {
                         key: 'test_key',
                         value: 'test_value',
                         type: 'string',
-                        updated_at: new Date().toISOString(),
+                        updated_at: Date.now(),
                     })
                     .execute();
 

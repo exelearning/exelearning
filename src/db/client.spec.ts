@@ -6,7 +6,18 @@ import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import type { Database } from './types';
 import { up } from './migrations/001_initial';
-import { db, closeDb, isConnected, getDbInfo, getDbConfig, getDialectFromEnv } from './client';
+import {
+    db,
+    dialect,
+    closeDb,
+    isConnected,
+    getDbInfo,
+    getDbConfig,
+    getDialectFromEnv,
+    getDb,
+    resetClientCacheForTesting,
+    getDialect,
+} from './client';
 
 describe('Kysely ORM Client', () => {
     describe('db instance', () => {
@@ -14,11 +25,40 @@ describe('Kysely ORM Client', () => {
             expect(db).toBeDefined();
         });
 
-        it('should have Kysely methods', () => {
-            expect(typeof db.selectFrom).toBe('function');
-            expect(typeof db.insertInto).toBe('function');
-            expect(typeof db.updateTable).toBe('function');
-            expect(typeof db.deleteFrom).toBe('function');
+        it('should have Kysely methods', async () => {
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPath = process.env.DB_PATH;
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                await resetClientCacheForTesting();
+
+                expect(typeof db.selectFrom).toBe('function');
+                expect(typeof db.insertInto).toBe('function');
+                expect(typeof db.updateTable).toBe('function');
+                expect(typeof db.deleteFrom).toBe('function');
+
+                const query = db.selectFrom('users');
+                expect(typeof query.select).toBe('function');
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PATH = originalPath;
+            }
+        });
+
+        it('should reset client cache after initialization', async () => {
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPath = process.env.DB_PATH;
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                await resetClientCacheForTesting();
+                getDb();
+                await resetClientCacheForTesting();
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PATH = originalPath;
+            }
         });
     });
 
@@ -26,8 +66,18 @@ describe('Kysely ORM Client', () => {
         it('should export current dialect', () => {
             // dialect is a Proxy for backwards compatibility
             // Use getDialect() to get the actual value
-            const { getDialect } = require('./client');
             expect(getDialect()).toBe('sqlite');
+        });
+
+        it('should lazily initialize dialect when cache is empty', async () => {
+            await resetClientCacheForTesting();
+            expect(getDialect()).toBe('sqlite');
+        });
+
+        it('should proxy dialect properties', async () => {
+            await resetClientCacheForTesting();
+            const length = dialect.length;
+            expect(length).toBe(getDialect().length);
         });
     });
 
@@ -56,18 +106,51 @@ describe('Kysely ORM Client', () => {
             expect(info.config).toBeDefined();
         });
 
-        it('should hide password in config', () => {
-            const info = getDbInfo();
+        it('should hide password in config when present', () => {
+            // Save original env
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPassword = process.env.DB_PASSWORD;
 
-            // If there's a password, it should be masked
-            if (info.config.password !== undefined) {
+            try {
+                // Set up postgres config with password
+                process.env.DB_DRIVER = 'pdo_pgsql';
+                process.env.DB_PASSWORD = 'secret123';
+
+                const info = getDbInfo();
+
+                // Password should be masked
                 expect(info.config.password).toBe('***');
+            } finally {
+                // Restore original env
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PASSWORD = originalPassword;
+            }
+        });
+
+        it('should not mask empty password', () => {
+            // Save original env
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPassword = process.env.DB_PASSWORD;
+
+            try {
+                // Set up postgres config without password
+                process.env.DB_DRIVER = 'pdo_pgsql';
+                process.env.DB_PASSWORD = '';
+
+                const info = getDbInfo();
+
+                // Empty password should remain empty
+                expect(info.config.password).toBe('');
+            } finally {
+                // Restore original env
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PASSWORD = originalPassword;
             }
         });
 
         it('should include dialect type', () => {
             const info = getDbInfo();
-            expect(['sqlite']).toContain(info.dialect);
+            expect(['sqlite', 'postgres', 'mysql']).toContain(info.dialect);
         });
     });
 

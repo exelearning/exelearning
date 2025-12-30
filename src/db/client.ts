@@ -33,6 +33,18 @@ export function getDb(): Kysely<Database> {
     return _db;
 }
 
+/**
+ * Reset lazy client cache (testing utility)
+ */
+export async function resetClientCacheForTesting(): Promise<void> {
+    if (_db) {
+        await _db.destroy();
+    }
+    _db = null;
+    _dialect = null;
+    _config = null;
+}
+
 // Legacy export for backwards compatibility - Proxy that lazy-loads
 export const db: Kysely<Database> = new Proxy({} as Kysely<Database>, {
     get(_, prop) {
@@ -107,11 +119,20 @@ export async function isConnected(): Promise<boolean> {
 export function getDbInfo() {
     const currentDialect = getDialect();
     const config = getDbConfig();
+
+    // Hide password for non-SQLite databases
+    if ('password' in config && config.password) {
+        return {
+            dialect: currentDialect,
+            config: {
+                ...config,
+                password: '***',
+            },
+        };
+    }
+
     return {
         dialect: currentDialect,
-        config: {
-            ...config,
-            password: config.password ? '***' : undefined, // Hide password
-        },
+        config,
     };
 }

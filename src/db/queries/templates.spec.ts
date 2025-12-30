@@ -10,6 +10,8 @@ import {
     getAllTemplates,
     getTemplatesByLocale,
     getEnabledTemplatesByLocale,
+    countTemplates,
+    countTemplatesByLocale,
     findTemplateById,
     findTemplateByFilenameAndLocale,
     createTemplate,
@@ -133,6 +135,61 @@ describe('Templates Queries', () => {
             const templates = await getEnabledTemplatesByLocale(db, 'es');
             expect(templates.length).toBe(1);
             expect(templates[0].filename).toBe('enabled');
+        });
+    });
+
+    describe('countTemplates', () => {
+        test('should return 0 when no templates exist', async () => {
+            const count = await countTemplates(db);
+            expect(count).toBe(0);
+        });
+
+        test('should count all templates', async () => {
+            await createTemplate(db, {
+                filename: 'count-1',
+                display_name: 'Count 1',
+                locale: 'en',
+                is_enabled: 1,
+                sort_order: 1,
+                storage_path: 'templates/en/count-1.elpx',
+            });
+            await createTemplate(db, {
+                filename: 'count-2',
+                display_name: 'Count 2',
+                locale: 'es',
+                is_enabled: 1,
+                sort_order: 1,
+                storage_path: 'templates/es/count-2.elpx',
+            });
+
+            const count = await countTemplates(db);
+            expect(count).toBe(2);
+        });
+    });
+
+    describe('countTemplatesByLocale', () => {
+        test('should count templates for a locale', async () => {
+            await createTemplate(db, {
+                filename: 'locale-1',
+                display_name: 'Locale 1',
+                locale: 'es',
+                is_enabled: 1,
+                sort_order: 1,
+                storage_path: 'templates/es/locale-1.elpx',
+            });
+            await createTemplate(db, {
+                filename: 'locale-2',
+                display_name: 'Locale 2',
+                locale: 'es',
+                is_enabled: 1,
+                sort_order: 2,
+                storage_path: 'templates/es/locale-2.elpx',
+            });
+
+            const countEs = await countTemplatesByLocale(db, 'es');
+            const countEn = await countTemplatesByLocale(db, 'en');
+            expect(countEs).toBe(2);
+            expect(countEn).toBe(0);
         });
     });
 

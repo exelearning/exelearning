@@ -32,6 +32,12 @@ describe('User Role Command', () => {
                 },
                 updateUserRoles: async (_db: any, id: number, roles: string[]) => {
                     updateUserRolesCalls.push({ id, roles });
+                    // Return the updated user object
+                    return {
+                        id,
+                        email: id === 1 ? 'existing@test.com' : 'admin@test.com',
+                        roles: JSON.stringify(roles),
+                    };
                 },
             },
         };

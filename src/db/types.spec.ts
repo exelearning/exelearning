@@ -61,20 +61,19 @@ describe('db types helpers', () => {
     });
 
     describe('now', () => {
-        it('should return ISO timestamp string', () => {
+        it('should return Unix timestamp in milliseconds', () => {
             const result = now();
-            expect(typeof result).toBe('string');
-            // ISO format: YYYY-MM-DDTHH:mm:ss.sssZ
-            expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+            expect(typeof result).toBe('number');
+            // Should be a reasonable timestamp (after 2020)
+            expect(result).toBeGreaterThan(1577836800000); // 2020-01-01
         });
 
         it('should return current time (within 1 second)', () => {
             const before = Date.now();
             const result = now();
             const after = Date.now();
-            const resultTime = new Date(result).getTime();
-            expect(resultTime).toBeGreaterThanOrEqual(before);
-            expect(resultTime).toBeLessThanOrEqual(after);
+            expect(result).toBeGreaterThanOrEqual(before);
+            expect(result).toBeLessThanOrEqual(after);
         });
     });
 

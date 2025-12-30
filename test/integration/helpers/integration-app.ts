@@ -12,9 +12,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type { Database, User, NewUser } from '../../../src/db/types';
-import * as migration001 from '../../../src/db/migrations/001_initial';
-import * as migration002 from '../../../src/db/migrations/002_app_settings';
-import * as migration003 from '../../../src/db/migrations/003_project_status';
+import { migrateToLatest } from '../../../src/db/migrations';
 
 // ============================================================================
 // TEST DATABASE
@@ -30,10 +28,8 @@ export async function createTestDb(): Promise<Kysely<Database>> {
         }),
     });
 
-    // Run all migrations
-    await migration001.up(db);
-    await migration002.up(db);
-    await migration003.up(db);
+    // Run all migrations using the new migration system
+    await migrateToLatest(db);
 
     return db;
 }
@@ -81,8 +77,8 @@ export async function createTestUser(db: Kysely<Database>, userData: Partial<New
             is_lopd_accepted: userData.is_lopd_accepted ?? 1,
             quota_mb: userData.quota_mb ?? 4096,
             is_active: userData.is_active ?? 1,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: Date.now(),
+            updated_at: Date.now(),
         })
         .returning([
             'id',
@@ -362,8 +358,8 @@ export async function createTestProject(
             license: null,
             last_accessed_at: null,
             saved_once: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: Date.now(),
+            updated_at: Date.now(),
         })
         .returning(['id', 'uuid'])
         .executeTakeFirstOrThrow();
@@ -385,8 +381,8 @@ export async function createTestYjsDocument(
             project_id: projectId,
             snapshot_data: snapshotData,
             snapshot_version: '1',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: Date.now(),
+            updated_at: Date.now(),
         })
         .returning(['id'])
         .executeTakeFirstOrThrow();
