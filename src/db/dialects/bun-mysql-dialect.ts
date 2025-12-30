@@ -30,6 +30,17 @@ export interface BunMysqlDialectConfig {
     charset?: string;
 }
 
+type SqlConstructor = typeof SQL;
+let SqlCtor: SqlConstructor = SQL;
+
+export function setMysqlSqlConstructorForTesting(sqlConstructor: SqlConstructor): void {
+    SqlCtor = sqlConstructor;
+}
+
+export function resetMysqlSqlConstructorForTesting(): void {
+    SqlCtor = SQL;
+}
+
 // Symbol for private release method
 const RELEASE_METHOD = Symbol('release');
 
@@ -189,7 +200,7 @@ class BunMysqlDriver implements Driver {
         // Build connection string for MySQL
         const connectionString = `mysql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
 
-        this.#sql = new SQL(connectionString, {
+        this.#sql = new SqlCtor(connectionString, {
             max,
             idleTimeout,
         });

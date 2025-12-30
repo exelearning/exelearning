@@ -91,6 +91,20 @@ describe('Database Helpers', () => {
             // For SQLite, should convert to Uint8Array
             expect(result).toBeInstanceOf(Uint8Array);
         });
+
+        it('should return Buffer for MySQL dialect', () => {
+            const originalDriver = process.env.DB_DRIVER;
+            try {
+                process.env.DB_DRIVER = 'mysql';
+                resetDialectCache();
+                const input = new Uint8Array([9, 8, 7]);
+                const result = toBinaryData(input);
+                expect(Buffer.isBuffer(result)).toBe(true);
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                resetDialectCache();
+            }
+        });
     });
 
     // ============================================================================
@@ -112,6 +126,19 @@ describe('Database Helpers', () => {
             expect(await tableExists(db, 'projects')).toBe(true);
             expect(await tableExists(db, 'assets')).toBe(true);
             expect(await tableExists(db, 'users_preferences')).toBe(true);
+        });
+
+        it('should handle postgres branch gracefully', async () => {
+            const originalDriver = process.env.DB_DRIVER;
+            try {
+                process.env.DB_DRIVER = 'postgres';
+                resetDialectCache();
+                const exists = await tableExists(db, 'users');
+                expect(exists).toBe(false);
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                resetDialectCache();
+            }
         });
     });
 

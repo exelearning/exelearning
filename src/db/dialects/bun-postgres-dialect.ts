@@ -30,6 +30,17 @@ export interface BunPostgresDialectConfig {
     ssl?: 'disable' | 'prefer' | 'require' | 'verify-ca' | 'verify-full';
 }
 
+type SqlConstructor = typeof SQL;
+let SqlCtor: SqlConstructor = SQL;
+
+export function setPostgresSqlConstructorForTesting(sqlConstructor: SqlConstructor): void {
+    SqlCtor = sqlConstructor;
+}
+
+export function resetPostgresSqlConstructorForTesting(): void {
+    SqlCtor = SQL;
+}
+
 // Symbol for private release method
 const RELEASE_METHOD = Symbol('release');
 
@@ -104,7 +115,7 @@ class BunPostgresDriver implements Driver {
             connectionString += `?sslmode=${ssl}`;
         }
 
-        this.#sql = new SQL(connectionString, {
+        this.#sql = new SqlCtor(connectionString, {
             max,
             idleTimeout,
         });
