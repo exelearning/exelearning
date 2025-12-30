@@ -104,6 +104,21 @@ describe('Database Helpers', () => {
             // For SQLite, should convert to Uint8Array
             expect(result).toBeInstanceOf(Uint8Array);
         });
+
+        it('should return Buffer for MySQL dialect', () => {
+            const originalDriver = process.env.DB_DRIVER;
+            try {
+                process.env.DB_DRIVER = 'mysql';
+                resetDialectCache();
+                const input = new Uint8Array([9, 8, 7]);
+                const result = toBinaryData(input);
+                expect(Buffer.isBuffer(result)).toBe(true);
+                expect([...result]).toEqual([9, 8, 7]);
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                resetDialectCache();
+            }
+        });
     });
 
     describe('fromBinaryData', () => {

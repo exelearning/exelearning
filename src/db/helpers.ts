@@ -42,10 +42,16 @@ export function resetDialectCache(): void {
 }
 
 /**
- * Convert binary data to Uint8Array for database storage.
- * All databases (SQLite, PostgreSQL, MySQL with mysql2) accept Uint8Array directly.
+ * Convert binary data to the correct format for database storage.
+ * - MySQL (mysql2): requires Buffer (Uint8Array causes "Unknown column '0'" error)
+ * - SQLite/PostgreSQL: accept Uint8Array directly
  */
-export function toBinaryData(data: Uint8Array | Buffer): Uint8Array {
+export function toBinaryData(data: Uint8Array | Buffer): Buffer | Uint8Array {
+    if (getDialect() === 'mysql') {
+        // mysql2 requires Buffer for binary data, not Uint8Array
+        return Buffer.isBuffer(data) ? data : Buffer.from(data);
+    }
+    // SQLite and PostgreSQL work with Uint8Array
     return data instanceof Uint8Array ? data : new Uint8Array(data);
 }
 
