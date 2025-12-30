@@ -7,6 +7,7 @@ import type { Kysely } from 'kysely';
 import type { Database, Asset, NewAsset, AssetUpdate, Project } from '../types';
 import { now } from '../types';
 import { sql } from 'kysely';
+import { insertAndReturn, insertManyAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -171,15 +172,11 @@ export async function getUserStorageUsage(db: Kysely<Database>, userId: number):
 
 export async function createAsset(db: Kysely<Database>, data: NewAsset): Promise<Asset> {
     const timestamp = now();
-    return db
-        .insertInto('assets')
-        .values({
-            ...data,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    return insertAndReturn(db, 'assets', {
+        ...data,
+        created_at: timestamp,
+        updated_at: timestamp,
+    });
 }
 
 export async function createAssets(db: Kysely<Database>, data: NewAsset[]): Promise<Asset[]> {
@@ -192,19 +189,14 @@ export async function createAssets(db: Kysely<Database>, data: NewAsset[]): Prom
         updated_at: timestamp,
     }));
 
-    return db.insertInto('assets').values(withTimestamps).returningAll().execute();
+    return insertManyAndReturn(db, 'assets', withTimestamps);
 }
 
 export async function updateAsset(db: Kysely<Database>, id: number, data: AssetUpdate): Promise<Asset | undefined> {
-    return db
-        .updateTable('assets')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByIdAndReturn(db, 'assets', id, {
+        ...data,
+        updated_at: now(),
+    });
 }
 
 export async function updateAssetClientId(db: Kysely<Database>, id: number, clientId: string): Promise<void> {
@@ -223,8 +215,18 @@ export async function deleteAsset(db: Kysely<Database>, id: number): Promise<voi
 }
 
 export async function deleteAllAssetsForProject(db: Kysely<Database>, projectId: number): Promise<number> {
-    const result = await db.deleteFrom('assets').where('project_id', '=', projectId).returningAll().execute();
-    return result.length;
+    const result = await db
+        .selectFrom('assets')
+        .select(eb => eb.fn.count<number>('id').as('count'))
+        .where('project_id', '=', projectId)
+        .executeTakeFirst();
+    const count = Number(result?.count ?? 0);
+
+    if (count > 0) {
+        await db.deleteFrom('assets').where('project_id', '=', projectId).execute();
+    }
+
+    return count;
 }
 
 // ============================================================================

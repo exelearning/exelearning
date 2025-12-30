@@ -144,8 +144,9 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
  */
 async function areAllMigrationsExecuted(db: Kysely<unknown>): Promise<boolean> {
     const migrationTableExists = await tableExists(db, 'kysely_migration');
+    const dialect = getDialect();
     console.log('[Migration] Migration table exists:', migrationTableExists);
-    if (!migrationTableExists) {
+    if (!migrationTableExists && dialect !== 'mysql') {
         return false; // No tracking table = need to run migrations
     }
 
@@ -167,6 +168,9 @@ async function areAllMigrationsExecuted(db: Kysely<unknown>): Promise<boolean> {
         console.log('[Migration] All migrations done:', allDone);
         return allDone;
     } catch (err) {
+        if (!migrationTableExists) {
+            return false; // Table genuinely missing (or not visible) = need to run migrations
+        }
         console.log('[Migration] Error checking migrations:', err);
         return false; // Error = need to run migrations to be safe
     }

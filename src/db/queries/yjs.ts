@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, YjsDocument, NewYjsDocument, YjsUpdate, NewYjsUpdate, YjsVersionHistory } from '../types';
 import { now } from '../types';
+import { supportsReturning, updateByColumnAndReturn } from '../helpers';
 
 // ============================================================================
 // YJS DOCUMENTS (SNAPSHOTS)
@@ -20,14 +21,21 @@ export async function findSnapshotByProjectId(
 
 export async function createSnapshot(db: Kysely<Database>, data: NewYjsDocument): Promise<YjsDocument> {
     const timestamp = now();
+    const values = {
+        ...data,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('yjs_documents').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    await db.insertInto('yjs_documents').values(values).executeTakeFirstOrThrow();
     return db
-        .insertInto('yjs_documents')
-        .values({
-            ...data,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
+        .selectFrom('yjs_documents')
+        .selectAll()
+        .where('project_id', '=', values.project_id)
         .executeTakeFirstOrThrow();
 }
 
@@ -37,16 +45,11 @@ export async function updateSnapshot(
     snapshotData: Uint8Array,
     snapshotVersion: string,
 ): Promise<YjsDocument | undefined> {
-    return db
-        .updateTable('yjs_documents')
-        .set({
-            snapshot_data: snapshotData,
-            snapshot_version: snapshotVersion,
-            updated_at: now(),
-        })
-        .where('project_id', '=', projectId)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByColumnAndReturn(db, 'yjs_documents', 'project_id', projectId, {
+        snapshot_data: snapshotData,
+        snapshot_version: snapshotVersion,
+        updated_at: now(),
+    });
 }
 
 export async function upsertSnapshot(
@@ -59,30 +62,28 @@ export async function upsertSnapshot(
     const timestamp = now();
 
     if (existing) {
-        const updated = await db
-            .updateTable('yjs_documents')
-            .set({
-                snapshot_data: snapshotData,
-                snapshot_version: snapshotVersion,
-                updated_at: timestamp,
-            })
-            .where('project_id', '=', projectId)
-            .returningAll()
-            .executeTakeFirst();
+        const updated = await updateByColumnAndReturn(db, 'yjs_documents', 'project_id', projectId, {
+            snapshot_data: snapshotData,
+            snapshot_version: snapshotVersion,
+            updated_at: timestamp,
+        });
         return updated!;
     }
 
-    return db
-        .insertInto('yjs_documents')
-        .values({
-            project_id: projectId,
-            snapshot_data: snapshotData,
-            snapshot_version: snapshotVersion,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        project_id: projectId,
+        snapshot_data: snapshotData,
+        snapshot_version: snapshotVersion,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('yjs_documents').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    await db.insertInto('yjs_documents').values(values).executeTakeFirstOrThrow();
+    return db.selectFrom('yjs_documents').selectAll().where('project_id', '=', projectId).executeTakeFirstOrThrow();
 }
 
 export async function deleteSnapshot(db: Kysely<Database>, projectId: number): Promise<void> {
@@ -129,19 +130,30 @@ export async function findUpdatesSince(
 
 export async function createUpdate(db: Kysely<Database>, data: NewYjsUpdate): Promise<YjsUpdate> {
     const timestamp = now();
+    const values = {
+        ...data,
+        created_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('yjs_updates').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    await db.insertInto('yjs_updates').values(values).executeTakeFirstOrThrow();
     return db
-        .insertInto('yjs_updates')
-        .values({
-            ...data,
-            created_at: timestamp,
-        })
-        .returningAll()
+        .selectFrom('yjs_updates')
+        .selectAll()
+        .where('project_id', '=', values.project_id)
+        .where('version', '=', values.version)
+        .orderBy('id', 'desc')
+        .limit(1)
         .executeTakeFirstOrThrow();
 }
 
 export async function deleteAllUpdates(db: Kysely<Database>, projectId: number): Promise<number> {
-    const result = await db.deleteFrom('yjs_updates').where('project_id', '=', projectId).returningAll().execute();
-    return result.length;
+    const count = await countUpdates(db, projectId);
+    await db.deleteFrom('yjs_updates').where('project_id', '=', projectId).execute();
+    return count;
 }
 
 export async function deleteUpdatesBefore(
@@ -405,17 +417,28 @@ export async function createVersionSnapshot(
     createdBy?: number,
 ): Promise<YjsVersionHistory> {
     const timestamp = now();
+    const version = Date.now().toString();
+    const values = {
+        project_id: projectId,
+        snapshot_data: snapshotData,
+        version,
+        description: description || null,
+        created_by: createdBy || null,
+        created_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('yjs_version_history').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    await db.insertInto('yjs_version_history').values(values).executeTakeFirstOrThrow();
     return db
-        .insertInto('yjs_version_history')
-        .values({
-            project_id: projectId,
-            snapshot_data: snapshotData,
-            version: Date.now().toString(),
-            description: description || null,
-            created_by: createdBy || null,
-            created_at: timestamp,
-        })
-        .returningAll()
+        .selectFrom('yjs_version_history')
+        .selectAll()
+        .where('project_id', '=', projectId)
+        .where('version', '=', version)
+        .orderBy('id', 'desc')
+        .limit(1)
         .executeTakeFirstOrThrow();
 }
 
@@ -506,12 +529,9 @@ export async function pruneOldVersions(db: Kysely<Database>, projectId: number, 
  * Delete all version history for a project
  */
 export async function deleteAllVersionHistory(db: Kysely<Database>, projectId: number): Promise<number> {
-    const result = await db
-        .deleteFrom('yjs_version_history')
-        .where('project_id', '=', projectId)
-        .returningAll()
-        .execute();
-    return result.length;
+    const count = await countVersions(db, projectId);
+    await db.deleteFrom('yjs_version_history').where('project_id', '=', projectId).execute();
+    return count;
 }
 
 /**

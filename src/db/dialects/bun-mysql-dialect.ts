@@ -53,8 +53,79 @@ class BunMysqlConnection implements DatabaseConnection {
         // Use unsafe() to execute the compiled query with parameters
         const result = await this.#reserved.unsafe(sql, parameters as unknown[]);
 
+        // Bun.SQL may return an array with metadata attached - handle rows first
+        if (Array.isArray(result)) {
+            const [first, second] = result;
+            if (Array.isArray(first) && (Array.isArray(second) || (second && typeof second === 'object'))) {
+                const rows = first as unknown[];
+                const fields = Array.isArray(second) ? second : [];
+                if (rows.length > 0 && Array.isArray(rows[0]) && fields.length > 0) {
+                    const fieldNames = fields.map((field, index) => {
+                        if (field && typeof field === 'object') {
+                            const meta = field as Record<string, unknown>;
+                            const name =
+                                (typeof meta.name === 'string' && meta.name) ||
+                                (typeof meta.column === 'string' && meta.column) ||
+                                (typeof meta.columnName === 'string' && meta.columnName) ||
+                                (typeof meta.field === 'string' && meta.field) ||
+                                (typeof meta.orgName === 'string' && meta.orgName);
+                            if (name) return name;
+                        }
+                        return String(index);
+                    });
+
+                    const mappedRows = rows.map(row => {
+                        if (!Array.isArray(row)) return row;
+                        const mapped: Record<string, unknown> = {};
+                        for (let i = 0; i < fieldNames.length; i += 1) {
+                            mapped[fieldNames[i]] = row[i];
+                        }
+                        return mapped;
+                    });
+
+                    return {
+                        rows: mappedRows as R[],
+                    };
+                }
+
+                return {
+                    rows: rows as R[],
+                };
+            }
+
+            const meta = result as {
+                insertId?: number | bigint;
+                affectedRows?: number;
+                changedRows?: number;
+            };
+            return {
+                rows: result as R[],
+                insertId:
+                    meta.insertId !== undefined && meta.insertId !== null && meta.insertId.toString() !== '0'
+                        ? BigInt(meta.insertId)
+                        : undefined,
+                numAffectedRows:
+                    meta.affectedRows !== undefined && meta.affectedRows !== null
+                        ? BigInt(meta.affectedRows)
+                        : undefined,
+                numChangedRows:
+                    meta.changedRows !== undefined && meta.changedRows !== null ? BigInt(meta.changedRows) : undefined,
+            };
+        }
+
+        if (
+            result &&
+            typeof result === 'object' &&
+            'rows' in result &&
+            Array.isArray((result as { rows: unknown }).rows)
+        ) {
+            return {
+                rows: (result as { rows: R[] }).rows,
+            };
+        }
+
         // Check if result is an OkPacket (INSERT/UPDATE/DELETE)
-        if (result && typeof result === 'object' && 'affectedRows' in result) {
+        if (result && typeof result === 'object' && ('affectedRows' in result || 'insertId' in result)) {
             const okPacket = result as { insertId?: number | bigint; affectedRows?: number; changedRows?: number };
             return {
                 rows: [],

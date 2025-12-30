@@ -668,22 +668,6 @@ test-e2e-sqlite: check-docker check-env ## Run E2E tests with SQLite backend
 	fi; \
 	exit $$test_exit
 
-# Run E2E tests against all database backends
-.PHONY: test-e2e-all-db
-test-e2e-all-db: check-docker check-env ## Run E2E tests against all database backends
-	@echo ""
-	@echo "============================================================"
-	@echo "  Running E2E Tests for all Database Backends"
-	@echo "============================================================"
-	@echo ""
-	@$(MAKE) test-e2e-sqlite && \
-	$(MAKE) test-e2e-mariadb && \
-	$(MAKE) test-e2e-postgres && \
-	echo "" && \
-	echo "============================================================" && \
-	echo "  ✅ All Database E2E Tests PASSED" && \
-	echo "============================================================"
-
 
 # =============================================================================
 # PACKAGING

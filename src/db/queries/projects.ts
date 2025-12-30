@@ -7,6 +7,7 @@ import type { Kysely } from 'kysely';
 import type { Database, Project, NewProject, ProjectUpdate, User } from '../types';
 import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -304,16 +305,20 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
 
 export async function createProject(db: Kysely<Database>, data: Omit<NewProject, 'uuid'>): Promise<Project> {
     const timestamp = now();
-    return db
-        .insertInto('projects')
-        .values({
-            ...data,
-            uuid: uuidv4(),
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const uuid = uuidv4();
+    const values = {
+        ...data,
+        uuid,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('projects').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    await db.insertInto('projects').values(values).executeTakeFirstOrThrow();
+    return db.selectFrom('projects').selectAll().where('uuid', '=', uuid).executeTakeFirstOrThrow();
 }
 
 export async function updateProject(
@@ -321,15 +326,10 @@ export async function updateProject(
     id: number,
     data: ProjectUpdate,
 ): Promise<Project | undefined> {
-    return db
-        .updateTable('projects')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByIdAndReturn(db, 'projects', id, {
+        ...data,
+        updated_at: now(),
+    });
 }
 
 export async function updateProjectByUuid(
@@ -337,15 +337,10 @@ export async function updateProjectByUuid(
     uuid: string,
     data: ProjectUpdate,
 ): Promise<Project | undefined> {
-    return db
-        .updateTable('projects')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('uuid', '=', uuid)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByColumnAndReturn(db, 'projects', 'uuid', uuid, {
+        ...data,
+        updated_at: now(),
+    });
 }
 
 export async function markProjectAsSaved(db: Kysely<Database>, projectId: number): Promise<void> {
@@ -476,16 +471,19 @@ export async function createProjectWithUuid(
     data: Omit<NewProject, 'uuid'>,
 ): Promise<Project> {
     const timestamp = now();
-    return db
-        .insertInto('projects')
-        .values({
-            ...data,
-            uuid,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    const values = {
+        ...data,
+        uuid,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+
+    if (supportsReturning()) {
+        return db.insertInto('projects').values(values).returningAll().executeTakeFirstOrThrow();
+    }
+
+    await db.insertInto('projects').values(values).executeTakeFirstOrThrow();
+    return db.selectFrom('projects').selectAll().where('uuid', '=', uuid).executeTakeFirstOrThrow();
 }
 
 /**

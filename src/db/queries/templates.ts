@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, Template, NewTemplate, TemplateUpdate } from '../types';
 import { now } from '../types';
+import { insertAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES
@@ -87,17 +88,13 @@ export async function getDistinctLocales(db: Kysely<Database>): Promise<string[]
 
 export async function createTemplate(db: Kysely<Database>, data: NewTemplate): Promise<Template> {
     const timestamp = now();
-    return db
-        .insertInto('templates')
-        .values({
-            ...data,
-            is_enabled: data.is_enabled ?? 1,
-            sort_order: data.sort_order ?? 0,
-            created_at: timestamp,
-            updated_at: timestamp,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
+    return insertAndReturn(db, 'templates', {
+        ...data,
+        is_enabled: data.is_enabled ?? 1,
+        sort_order: data.sort_order ?? 0,
+        created_at: timestamp,
+        updated_at: timestamp,
+    });
 }
 
 export async function updateTemplate(
@@ -105,15 +102,10 @@ export async function updateTemplate(
     id: number,
     data: TemplateUpdate,
 ): Promise<Template | undefined> {
-    return db
-        .updateTable('templates')
-        .set({
-            ...data,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByIdAndReturn(db, 'templates', id, {
+        ...data,
+        updated_at: now(),
+    });
 }
 
 export async function deleteTemplate(db: Kysely<Database>, id: number): Promise<void> {
@@ -132,15 +124,10 @@ export async function toggleTemplateEnabled(
     id: number,
     isEnabled: boolean,
 ): Promise<Template | undefined> {
-    return db
-        .updateTable('templates')
-        .set({
-            is_enabled: isEnabled ? 1 : 0,
-            updated_at: now(),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst();
+    return updateByIdAndReturn(db, 'templates', id, {
+        is_enabled: isEnabled ? 1 : 0,
+        updated_at: now(),
+    });
 }
 
 /**

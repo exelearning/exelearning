@@ -9,7 +9,7 @@
  * - MySQL: Use two-step approach (execute + SELECT)
  */
 
-import type { Kysely, Insertable, Updateable, ColumnDefinitionBuilder } from 'kysely';
+import type { Kysely, Insertable, Updateable, ColumnDefinitionBuilder, DataTypeExpression } from 'kysely';
 import { sql } from 'kysely';
 import type { Database } from './types';
 import { getDialectFromEnv, type DbDialect } from './dialect';
@@ -84,12 +84,14 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
             return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
         }
 
-        // MySQL/MariaDB uses information_schema with DATABASE() to filter current DB
-        const result = await sql<{ count: string }>`
-            SELECT COUNT(*) as count FROM information_schema.tables
-            WHERE table_schema = DATABASE() AND table_name = ${tableName}
-        `.execute(db);
-        return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
+        if (dialect === 'mysql') {
+            // MySQL/MariaDB: avoid information_schema permission issues
+            await sql`SELECT 1 FROM ${sql.identifier(tableName)} WHERE 1=0`.execute(db);
+            return true;
+        }
+
+        // Fallback (shouldn't be reached with known dialects)
+        return false;
     } catch {
         return false;
     }
@@ -121,14 +123,14 @@ export async function columnExists(db: Kysely<unknown>, tableName: string, colum
             return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
         }
 
-        // MySQL/MariaDB: Use information_schema.columns with DATABASE() to filter current DB
-        const result = await sql<{ count: string }>`
-            SELECT COUNT(*) as count FROM information_schema.columns
-            WHERE table_schema = DATABASE()
-              AND table_name = ${tableName}
-              AND column_name = ${columnName}
-        `.execute(db);
-        return parseInt(result.rows[0]?.count ?? '0', 10) > 0;
+        if (dialect === 'mysql') {
+            // MySQL/MariaDB: avoid information_schema permission issues
+            await sql`SELECT ${sql.identifier(columnName)} FROM ${sql.identifier(tableName)} WHERE 1=0`.execute(db);
+            return true;
+        }
+
+        // Fallback (shouldn't be reached with known dialects)
+        return false;
     } catch {
         return false;
     }
@@ -172,13 +174,14 @@ export function addAutoIncrement(col: ColumnDefinitionBuilder): ColumnDefinition
  *
  * We use LONGBLOB for MySQL to support large Yjs documents (20MB+).
  */
-export function getBinaryType(): 'bytea' | 'blob' | 'longblob' {
+export function getBinaryType(): DataTypeExpression {
     const dialect = getDialect();
     if (dialect === 'postgres') {
         return 'bytea';
     }
     if (dialect === 'mysql') {
-        return 'longblob';
+        // Use sql tag to allow MySQL-specific type not in Kysely's ColumnDataType
+        return sql`longblob`;
     }
     // SQLite: Use 'blob'
     return 'blob';
