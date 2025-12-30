@@ -307,7 +307,8 @@ describe('Kysely Dialect Factory', () => {
                 expect(dialect).toBeDefined();
             });
 
-            it('should throw error when not running in Bun for mysql', () => {
+            it('should work in any runtime with mysql2', () => {
+                // mysql2 works in any runtime, not just Bun
                 configure({ isBun: false });
 
                 const config: MysqlConfig = {
@@ -319,7 +320,9 @@ describe('Kysely Dialect Factory', () => {
                     password: 'test',
                 };
 
-                expect(() => createDialect(config)).toThrow('MySQL dialect requires Bun runtime');
+                // Should not throw - mysql2 works everywhere
+                const dialect = createDialect(config);
+                expect(dialect).toBeDefined();
             });
         });
     });

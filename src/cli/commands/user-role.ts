@@ -158,7 +158,15 @@ export async function execute(
     }
 
     // Apply changes
-    await queries.updateUserRoles(database, user.id, finalRoles);
+    const updated = await queries.updateUserRoles(database, user.id, finalRoles);
+
+    if (!updated) {
+        return {
+            success: false,
+            message: `Failed to update roles for ${email}. Database update returned no result.`,
+            roles: [],
+        };
+    }
 
     return {
         success: true,

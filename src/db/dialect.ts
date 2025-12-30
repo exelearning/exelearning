@@ -243,22 +243,24 @@ function createPostgresDialect(config: PostgresConfig): Dialect {
 }
 
 // ============================================================================
-// MYSQL DIALECT (Bun native)
+// MYSQL DIALECT (using mysql2 package)
 // ============================================================================
 
 function createMysqlDialect(config: MysqlConfig): Dialect {
-    if (!deps.isBun) {
-        throw new Error('MySQL dialect requires Bun runtime. Use mysql2 package for Node.js.');
-    }
+    // Use mysql2 package with Kysely's native MysqlDialect
+    // This is more stable than Bun's native SQL driver which has bugs with UPDATE operations
+    const { MysqlDialect } = require('kysely');
+    const { createPool } = require('mysql2');
 
-    const { BunMysqlDialect } = require('./dialects/bun-mysql-dialect');
-    return new BunMysqlDialect({
-        host: config.host,
-        port: config.port,
-        database: config.database,
-        user: config.user,
-        password: config.password,
-        max: config.poolMax,
-        charset: config.charset,
+    return new MysqlDialect({
+        pool: createPool({
+            host: config.host,
+            port: config.port,
+            database: config.database,
+            user: config.user,
+            password: config.password,
+            connectionLimit: config.poolMax || 10,
+            charset: config.charset || 'utf8mb4',
+        }),
     });
 }

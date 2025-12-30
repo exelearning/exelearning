@@ -72,6 +72,7 @@ class BunPostgresConnection implements DatabaseConnection {
         return {
             rows: Array.isArray(result) ? (result as R[]) : [],
             numAffectedRows: isMutation ? BigInt(result.count ?? 0) : undefined,
+            numUpdatedRows: isMutation ? BigInt(result.count ?? 0) : undefined,
         };
     }
 
