@@ -7,6 +7,7 @@ import type { Kysely } from 'kysely';
 import type { Database, Asset, NewAsset, AssetUpdate, Project } from '../types';
 import { now } from '../types';
 import { sql } from 'kysely';
+import { insertAndReturn, insertManyAndReturn, updateByIdAndReturn, deleteByColumnAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES

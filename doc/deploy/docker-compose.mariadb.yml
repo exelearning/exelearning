@@ -31,8 +31,8 @@ services:
       # Files directory
       FILES_DIR: "/mnt/data/"
       
-      # Authentication settings
-      APP_AUTH_METHODS: password
+      # Authentication settings (guest enabled for E2E tests)
+      APP_AUTH_METHODS: password,guest
       AUTH_CREATE_USERS: true
       
       # Test users
@@ -57,8 +57,8 @@ services:
       MARIADB_DATABASE: "${DB_NAME:-exelearning}"
       MARIADB_USER: "${DB_USER:-exelearning}"
       MARIADB_PASSWORD: "${DB_PASSWORD:-exelearning}"
-    ports:
-      - "${DB_PORT:-3306}:3306"
+    # ports:
+    #   - "${DB_PORT:-3306}:3306"
     volumes:
       - mariadb-data:/var/lib/mysql
 

@@ -208,18 +208,18 @@ describe('User Queries', () => {
         });
 
         it('should set created_at and updated_at timestamps', async () => {
-            const before = new Date().toISOString();
+            const before = Date.now();
             const user = await createUser(db, {
                 email: 'time@example.com',
                 user_id: 'time-user',
                 password: 'h',
             });
-            const after = new Date().toISOString();
+            const after = Date.now();
 
             expect(user.created_at).toBeDefined();
             expect(user.updated_at).toBeDefined();
-            expect(user.created_at! >= before).toBe(true);
-            expect(user.created_at! <= after).toBe(true);
+            expect(user.created_at!).toBeGreaterThanOrEqual(before);
+            expect(user.created_at!).toBeLessThanOrEqual(after);
         });
 
         it('should throw on duplicate email', async () => {

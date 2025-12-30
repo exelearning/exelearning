@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, UserPreference, NewUserPreference, UserPreferenceUpdate } from '../types';
 import { now } from '../types';
+import { insertAndReturn, updateByIdAndReturn, deleteByColumnAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES

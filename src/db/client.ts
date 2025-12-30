@@ -107,11 +107,20 @@ export async function isConnected(): Promise<boolean> {
 export function getDbInfo() {
     const currentDialect = getDialect();
     const config = getDbConfig();
+
+    // Hide password for non-SQLite databases
+    if ('password' in config && config.password) {
+        return {
+            dialect: currentDialect,
+            config: {
+                ...config,
+                password: '***',
+            },
+        };
+    }
+
     return {
         dialect: currentDialect,
-        config: {
-            ...config,
-            password: config.password ? '***' : undefined, // Hide password
-        },
+        config,
     };
 }

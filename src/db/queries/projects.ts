@@ -7,6 +7,7 @@ import type { Kysely } from 'kysely';
 import type { Database, Project, NewProject, ProjectUpdate, User } from '../types';
 import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { insertAndReturn, updateByIdAndReturn, updateByColumnAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES

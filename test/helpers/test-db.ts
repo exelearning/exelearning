@@ -62,7 +62,7 @@ export async function seedTestUser(
         roles: string;
     }> = {},
 ): Promise<number> {
-    const now = new Date().toISOString();
+    const now = Date.now();
     const result = await db
         .insertInto('users')
         .values({
@@ -91,9 +91,11 @@ export async function seedTestProject(
         uuid: string;
         title: string;
         description: string;
+        status?: string;
+        visibility?: string;
     }> = {},
 ): Promise<number> {
-    const now = new Date().toISOString();
+    const now = Date.now();
     const result = await db
         .insertInto('projects')
         .values({
@@ -101,8 +103,8 @@ export async function seedTestProject(
             title: overrides.title ?? 'Test Project',
             description: overrides.description ?? 'A test project',
             owner_id: ownerId,
-            status: 'active',
-            visibility: 'private',
+            status: overrides.status ?? 'active',
+            visibility: overrides.visibility ?? 'private',
             saved_once: 0,
             created_at: now,
             updated_at: now,

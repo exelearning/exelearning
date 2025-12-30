@@ -85,6 +85,16 @@ up: check-docker check-env
 	@echo "Starting Docker (APP_ENV=$${APP_ENV:-dev})..."
 	@docker compose up --build --remove-orphans
 
+.PHONY: up-postgres
+up-postgres: check-docker check-env
+	@echo "Starting Docker with PostgreSQL database..."
+	@docker compose -f doc/deploy/docker-compose.postgres.yml run --build --rm --remove-orphans --service-ports exelearning
+
+.PHONY: up-mariadb
+up-mariadb: check-docker check-env
+	@echo "Starting Docker with MariaDB datbase..."
+	@docker compose -f doc/deploy/docker-compose.mariadb.yml run --build --rm --remove-orphans --service-ports exelearning
+
 # Start Docker in background
 .PHONY: upd
 upd: check-docker check-env
@@ -521,6 +531,158 @@ test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 .PHONY: test-e2e-firefox
 test-e2e-firefox: check-env ## Run Playwright E2E tests with Firefox
 	npx playwright test --project=firefox
+
+
+# =============================================================================
+# DATABASE-SPECIFIC E2E TESTS
+# =============================================================================
+# These targets run E2E tests against different database backends using Docker.
+# They build the app, start the services, run Playwright tests, and clean up.
+#
+# Usage:
+#   make test-e2e-mariadb    # Test with MariaDB
+#   make test-e2e-postgres   # Test with PostgreSQL
+#   make test-e2e-sqlite     # Test with SQLite
+
+# Helper to wait for app to be ready
+define wait_for_app
+	@echo "Waiting for app to be ready at http://localhost:8080..."
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
+		if curl -s http://localhost:8080/health > /dev/null 2>&1; then \
+			echo "App is ready!"; \
+			break; \
+		fi; \
+		if [ $$i -eq 30 ]; then \
+			echo "Timeout waiting for app"; \
+			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml logs; \
+			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml down -v; \
+			exit 1; \
+		fi; \
+		echo "  Attempt $$i/30 - waiting..."; \
+		sleep 2; \
+	done
+endef
+
+.PHONY: test-e2e-mariadb
+test-e2e-mariadb: check-docker check-env ## Run E2E tests with MariaDB backend
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests with MariaDB"
+	@echo "============================================================"
+	@echo ""
+	@echo "Step 1: Cleaning up previous containers..."
+	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans 2>/dev/null
+	@echo ""
+	@echo "Step 2: Building and starting services..."
+	@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml up --build -d
+	@echo ""
+	@echo "Step 3: Waiting for services to be ready..."
+	$(call wait_for_app,mariadb)
+	@echo ""
+	@echo "Step 4: Running Playwright tests..."
+	@echo ""
+	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	test_exit=$$?; \
+	echo ""; \
+	echo "Step 5: Cleaning up..."; \
+	docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  ✅ MariaDB E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  ❌ MariaDB E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
+
+.PHONY: test-e2e-postgres
+test-e2e-postgres: check-docker check-env ## Run E2E tests with PostgreSQL backend
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests with PostgreSQL"
+	@echo "============================================================"
+	@echo ""
+	@echo "Step 1: Cleaning up previous containers..."
+	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans 2>/dev/null
+	@echo ""
+	@echo "Step 2: Building and starting services..."
+	@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml up --build -d
+	@echo ""
+	@echo "Step 3: Waiting for services to be ready..."
+	$(call wait_for_app,postgres)
+	@echo ""
+	@echo "Step 4: Running Playwright tests..."
+	@echo ""
+	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	test_exit=$$?; \
+	echo ""; \
+	echo "Step 5: Cleaning up..."; \
+	docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  ✅ PostgreSQL E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  ❌ PostgreSQL E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
+
+.PHONY: test-e2e-sqlite
+test-e2e-sqlite: check-docker check-env ## Run E2E tests with SQLite backend
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests with SQLite"
+	@echo "============================================================"
+	@echo ""
+	@echo "Step 1: Cleaning up previous containers..."
+	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans 2>/dev/null
+	@echo ""
+	@echo "Step 2: Building and starting services..."
+	@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml up --build -d
+	@echo ""
+	@echo "Step 3: Waiting for services to be ready..."
+	$(call wait_for_app,sqlite)
+	@echo ""
+	@echo "Step 4: Running Playwright tests..."
+	@echo ""
+	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	test_exit=$$?; \
+	echo ""; \
+	echo "Step 5: Cleaning up..."; \
+	docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  ✅ SQLite E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  ❌ SQLite E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
+
+# Run E2E tests against all database backends
+.PHONY: test-e2e-all-db
+test-e2e-all-db: check-docker check-env ## Run E2E tests against all database backends
+	@echo ""
+	@echo "============================================================"
+	@echo "  Running E2E Tests for all Database Backends"
+	@echo "============================================================"
+	@echo ""
+	@$(MAKE) test-e2e-sqlite && \
+	$(MAKE) test-e2e-mariadb && \
+	$(MAKE) test-e2e-postgres && \
+	echo "" && \
+	echo "============================================================" && \
+	echo "  ✅ All Database E2E Tests PASSED" && \
+	echo "============================================================"
 
 
 # =============================================================================

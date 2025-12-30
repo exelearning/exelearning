@@ -191,18 +191,18 @@ describe('Preferences Queries', () => {
         });
 
         it('should set timestamps', async () => {
-            const before = new Date().toISOString();
+            const before = Date.now();
             const pref = await createPreference(db, {
                 user_id: testUserId,
                 preference_key: 'timestamped',
                 value: 'value',
             });
-            const after = new Date().toISOString();
+            const after = Date.now();
 
             expect(pref.created_at).toBeDefined();
             expect(pref.updated_at).toBeDefined();
-            expect(pref.created_at! >= before).toBe(true);
-            expect(pref.created_at! <= after).toBe(true);
+            expect(pref.created_at!).toBeGreaterThanOrEqual(before);
+            expect(pref.created_at!).toBeLessThanOrEqual(after);
         });
     });
 

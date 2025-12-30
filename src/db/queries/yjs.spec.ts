@@ -82,18 +82,18 @@ describe('Yjs Queries', () => {
             });
 
             it('should set timestamps', async () => {
-                const before = new Date().toISOString();
+                const before = Date.now();
                 const snapshot = await createSnapshot(db, {
                     project_id: testProjectId,
                     snapshot_data: new Uint8Array([1]),
                     snapshot_version: '1',
                 });
-                const after = new Date().toISOString();
+                const after = Date.now();
 
                 expect(snapshot.created_at).toBeDefined();
                 expect(snapshot.updated_at).toBeDefined();
-                expect(snapshot.created_at! >= before).toBe(true);
-                expect(snapshot.created_at! <= after).toBe(true);
+                expect(snapshot.created_at!).toBeGreaterThanOrEqual(before);
+                expect(snapshot.created_at!).toBeLessThanOrEqual(after);
             });
         });
 
@@ -241,18 +241,18 @@ describe('Yjs Queries', () => {
             });
 
             it('should set created_at timestamp', async () => {
-                const before = new Date().toISOString();
+                const before = Date.now();
                 const update = await createUpdate(db, {
                     project_id: testProjectId,
                     update_data: new Uint8Array([1]),
                     version: '1',
                     client_id: null,
                 });
-                const after = new Date().toISOString();
+                const after = Date.now();
 
                 expect(update.created_at).toBeDefined();
-                expect(update.created_at! >= before).toBe(true);
-                expect(update.created_at! <= after).toBe(true);
+                expect(update.created_at!).toBeGreaterThanOrEqual(before);
+                expect(update.created_at!).toBeLessThanOrEqual(after);
             });
         });
 

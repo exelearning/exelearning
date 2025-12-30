@@ -6,6 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, Template, NewTemplate, TemplateUpdate } from '../types';
 import { now } from '../types';
+import { insertAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES

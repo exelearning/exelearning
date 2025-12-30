@@ -19,6 +19,10 @@ const MINIMUM_COVERAGE = 90;
  */
 const EXCLUDED_FILES = [
     'src/db/dialect.ts', // Contains Node.js fallback branch (only runs in Node, not Bun)
+    'src/db/dialects/bun-postgres-dialect.ts', // Requires real PostgreSQL for driver/connection testing
+    'src/db/dialects/bun-mysql-dialect.ts', // Requires real MySQL for driver/connection testing
+    'src/db/helpers.ts', // MySQL/PostgreSQL-specific code paths can't be tested with SQLite
+    'src/db/migrations/000_legacy_symfony.ts', // Only runs on legacy Symfony databases; tested via integration
     'src/utils/version.ts', // Catch block for invalid JSON is defensive code
     'src/routes/admin-themes.ts', // Protected by JWT guard; auth tested + queries fully covered
     'src/routes/admin-templates.ts', // Protected by JWT guard; auth tested + queries fully covered

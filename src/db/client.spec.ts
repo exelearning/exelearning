@@ -56,18 +56,51 @@ describe('Kysely ORM Client', () => {
             expect(info.config).toBeDefined();
         });
 
-        it('should hide password in config', () => {
-            const info = getDbInfo();
+        it('should hide password in config when present', () => {
+            // Save original env
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPassword = process.env.DB_PASSWORD;
 
-            // If there's a password, it should be masked
-            if (info.config.password !== undefined) {
+            try {
+                // Set up postgres config with password
+                process.env.DB_DRIVER = 'pdo_pgsql';
+                process.env.DB_PASSWORD = 'secret123';
+
+                const info = getDbInfo();
+
+                // Password should be masked
                 expect(info.config.password).toBe('***');
+            } finally {
+                // Restore original env
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PASSWORD = originalPassword;
+            }
+        });
+
+        it('should not mask empty password', () => {
+            // Save original env
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPassword = process.env.DB_PASSWORD;
+
+            try {
+                // Set up postgres config without password
+                process.env.DB_DRIVER = 'pdo_pgsql';
+                process.env.DB_PASSWORD = '';
+
+                const info = getDbInfo();
+
+                // Empty password should remain empty
+                expect(info.config.password).toBe('');
+            } finally {
+                // Restore original env
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PASSWORD = originalPassword;
             }
         });
 
         it('should include dialect type', () => {
             const info = getDbInfo();
-            expect(['sqlite']).toContain(info.dialect);
+            expect(['sqlite', 'postgres', 'mysql']).toContain(info.dialect);
         });
     });
 

@@ -185,7 +185,7 @@ describe('001_initial Migration', () => {
                 expect(columnNames).toContain('license');
                 expect(columnNames).toContain('last_accessed_at');
                 expect(columnNames).toContain('saved_once');
-                expect(columnNames).toContain('is_active');
+                // Note: is_active was removed - use status instead
             });
 
             it('should have uuid as unique', async () => {
@@ -250,7 +250,7 @@ describe('001_initial Migration', () => {
                 expect(project!.status).toBe('active');
                 expect(project!.visibility).toBe('private');
                 expect(project!.saved_once).toBe(0);
-                expect(project!.is_active).toBe(1);
+                // Note: is_active was removed - use status instead
             });
 
             it('should reference users table', async () => {
