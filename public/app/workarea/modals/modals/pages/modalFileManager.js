@@ -1266,12 +1266,13 @@ export default class ModalFilemanager extends Modal {
             // Video
             'mp4': 'video/mp4',
             'webm': 'video/webm',
-            'ogg': 'video/ogg',
+            'ogv': 'video/ogg',
             'mov': 'video/quicktime',
             'avi': 'video/x-msvideo',
             // Audio
             'mp3': 'audio/mpeg',
             'wav': 'audio/wav',
+            'oga': 'audio/ogg',
             'ogg': 'audio/ogg',
             'flac': 'audio/flac',
             'm4a': 'audio/mp4',

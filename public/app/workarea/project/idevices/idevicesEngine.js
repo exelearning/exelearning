@@ -2592,6 +2592,17 @@ export default class IdevicesEngine {
      * @param {*} callback
      */
     onloadedScriptCallback(url, element, callback) {
+        const executeCallback = () => {
+            if (callback) {
+                if (typeof callback === 'function') {
+                    callback();
+                } else {
+                    // Legacy string callbacks (used by tooltips, etc.)
+                    new Function(callback)();
+                }
+            }
+        };
+
         if (element.readyState) {
             element.onreadystatechange = function () {
                 if (
@@ -2599,16 +2610,12 @@ export default class IdevicesEngine {
                     element.readyState == 'complete'
                 ) {
                     element.onreadystatechange = null;
-                    if (callback) {
-                        eval(callback);
-                    }
+                    executeCallback();
                 }
             };
         } else {
             element.onload = function () {
-                if (callback) {
-                    eval(callback);
-                }
+                executeCallback();
             };
         }
     }
