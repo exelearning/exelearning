@@ -587,22 +587,24 @@ test.describe('Text iDevice', () => {
             }
 
             // Wait for edition mode to end and bold content to be rendered
-            const hasBoldContent = await page.waitForFunction(
-                () => {
-                    const idevice = document.querySelector('#node-content article .idevice_node.text');
-                    if (!idevice || idevice.getAttribute('mode') === 'edition') return null;
+            const hasBoldContent = await page
+                .waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content article .idevice_node.text');
+                        if (!idevice || idevice.getAttribute('mode') === 'edition') return null;
 
-                    const content = idevice.querySelector('.textIdeviceContent');
-                    if (!content) return null;
+                        const content = idevice.querySelector('.textIdeviceContent');
+                        if (!content) return null;
 
-                    const html = content.innerHTML;
-                    if (html.includes('<strong>') || html.includes('<b>')) {
-                        return true;
-                    }
-                    return null;
-                },
-                { timeout: 15000 },
-            ).then((handle) => handle.jsonValue());
+                        const html = content.innerHTML;
+                        if (html.includes('<strong>') || html.includes('<b>')) {
+                            return true;
+                        }
+                        return null;
+                    },
+                    { timeout: 15000 },
+                )
+                .then(handle => handle.jsonValue());
 
             expect(hasBoldContent).toBe(true);
         });
