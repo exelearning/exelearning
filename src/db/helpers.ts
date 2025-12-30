@@ -86,7 +86,7 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
 
         if (dialect === 'mysql') {
             // MySQL/MariaDB: avoid information_schema permission issues
-            await sql`SELECT 1 FROM ${sql.identifier(tableName)} WHERE 1=0`.execute(db);
+            await sql`SELECT 1 FROM ${sql.table(tableName)} WHERE 1=0`.execute(db);
             return true;
         }
 
@@ -125,7 +125,7 @@ export async function columnExists(db: Kysely<unknown>, tableName: string, colum
 
         if (dialect === 'mysql') {
             // MySQL/MariaDB: avoid information_schema permission issues
-            await sql`SELECT ${sql.identifier(columnName)} FROM ${sql.identifier(tableName)} WHERE 1=0`.execute(db);
+            await sql`SELECT ${sql.ref(columnName)} FROM ${sql.table(tableName)} WHERE 1=0`.execute(db);
             return true;
         }
 

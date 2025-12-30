@@ -33,6 +33,18 @@ export function getDb(): Kysely<Database> {
     return _db;
 }
 
+/**
+ * Reset lazy client cache (testing utility)
+ */
+export async function resetClientCacheForTesting(): Promise<void> {
+    if (_db) {
+        await _db.destroy();
+    }
+    _db = null;
+    _dialect = null;
+    _config = null;
+}
+
 // Legacy export for backwards compatibility - Proxy that lazy-loads
 export const db: Kysely<Database> = new Proxy({} as Kysely<Database>, {
     get(_, prop) {

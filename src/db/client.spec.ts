@@ -6,7 +6,18 @@ import { Kysely } from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import type { Database } from './types';
 import { up } from './migrations/001_initial';
-import { db, closeDb, isConnected, getDbInfo, getDbConfig, getDialectFromEnv } from './client';
+import {
+    db,
+    dialect,
+    closeDb,
+    isConnected,
+    getDbInfo,
+    getDbConfig,
+    getDialectFromEnv,
+    getDb,
+    resetClientCacheForTesting,
+    getDialect,
+} from './client';
 
 describe('Kysely ORM Client', () => {
     describe('db instance', () => {
@@ -14,11 +25,40 @@ describe('Kysely ORM Client', () => {
             expect(db).toBeDefined();
         });
 
-        it('should have Kysely methods', () => {
-            expect(typeof db.selectFrom).toBe('function');
-            expect(typeof db.insertInto).toBe('function');
-            expect(typeof db.updateTable).toBe('function');
-            expect(typeof db.deleteFrom).toBe('function');
+        it('should have Kysely methods', async () => {
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPath = process.env.DB_PATH;
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                await resetClientCacheForTesting();
+
+                expect(typeof db.selectFrom).toBe('function');
+                expect(typeof db.insertInto).toBe('function');
+                expect(typeof db.updateTable).toBe('function');
+                expect(typeof db.deleteFrom).toBe('function');
+
+                const query = db.selectFrom('users');
+                expect(typeof query.select).toBe('function');
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PATH = originalPath;
+            }
+        });
+
+        it('should reset client cache after initialization', async () => {
+            const originalDriver = process.env.DB_DRIVER;
+            const originalPath = process.env.DB_PATH;
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                await resetClientCacheForTesting();
+                getDb();
+                await resetClientCacheForTesting();
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                process.env.DB_PATH = originalPath;
+            }
         });
     });
 
@@ -26,8 +66,18 @@ describe('Kysely ORM Client', () => {
         it('should export current dialect', () => {
             // dialect is a Proxy for backwards compatibility
             // Use getDialect() to get the actual value
-            const { getDialect } = require('./client');
             expect(getDialect()).toBe('sqlite');
+        });
+
+        it('should lazily initialize dialect when cache is empty', async () => {
+            await resetClientCacheForTesting();
+            expect(getDialect()).toBe('sqlite');
+        });
+
+        it('should proxy dialect properties', async () => {
+            await resetClientCacheForTesting();
+            const length = dialect.length;
+            expect(length).toBe(getDialect().length);
         });
     });
 

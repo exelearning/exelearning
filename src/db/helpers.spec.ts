@@ -40,6 +40,18 @@ describe('Database Helpers', () => {
         resetDialectCache();
     });
 
+    async function withDbDriver<T>(driver: string, fn: () => Promise<T>): Promise<T> {
+        const originalDriver = process.env.DB_DRIVER;
+        try {
+            process.env.DB_DRIVER = driver;
+            resetDialectCache();
+            return await fn();
+        } finally {
+            process.env.DB_DRIVER = originalDriver;
+            resetDialectCache();
+        }
+    }
+
     // ============================================================================
     // DIALECT DETECTION
     // ============================================================================
@@ -129,16 +141,17 @@ describe('Database Helpers', () => {
         });
 
         it('should handle postgres branch gracefully', async () => {
-            const originalDriver = process.env.DB_DRIVER;
-            try {
-                process.env.DB_DRIVER = 'postgres';
-                resetDialectCache();
+            await withDbDriver('postgres', async () => {
                 const exists = await tableExists(db, 'users');
                 expect(exists).toBe(false);
-            } finally {
-                process.env.DB_DRIVER = originalDriver;
-                resetDialectCache();
-            }
+            });
+        });
+
+        it('should handle mysql branch for existing table', async () => {
+            await withDbDriver('mysql', async () => {
+                const exists = await tableExists(db, 'users');
+                expect(exists).toBe(true);
+            });
         });
     });
 
@@ -164,6 +177,20 @@ describe('Database Helpers', () => {
             expect(await columnExists(db, 'users', 'roles')).toBe(true);
             expect(await columnExists(db, 'projects', 'uuid')).toBe(true);
         });
+
+        it('should handle postgres branch gracefully', async () => {
+            await withDbDriver('postgres', async () => {
+                const exists = await columnExists(db, 'users', 'email');
+                expect(exists).toBe(false);
+            });
+        });
+
+        it('should handle mysql branch for existing column', async () => {
+            await withDbDriver('mysql', async () => {
+                const exists = await columnExists(db, 'users', 'email');
+                expect(exists).toBe(true);
+            });
+        });
     });
 
     // ============================================================================
@@ -174,23 +201,59 @@ describe('Database Helpers', () => {
         it('should return integer for SQLite', () => {
             expect(getAutoIncrementType()).toBe('integer');
         });
+
+        it('should return serial for Postgres', async () => {
+            await withDbDriver('postgres', async () => {
+                expect(getAutoIncrementType()).toBe('serial');
+            });
+        });
     });
 
     describe('addAutoIncrement', () => {
         it('should add autoIncrement for SQLite', () => {
             // This is harder to test directly without schema building
             // but we can verify the function exists and doesn't throw
-            const mockColBuilder = {
-                autoIncrement: () => mockColBuilder,
+            const colBuilder = {
+                autoIncrement: () => colBuilder,
             };
-            const result = addAutoIncrement(mockColBuilder as any);
-            expect(result).toBe(mockColBuilder);
+            const result = addAutoIncrement(colBuilder as any);
+            expect(result).toBe(colBuilder);
+        });
+
+        it('should skip autoIncrement for Postgres', async () => {
+            await withDbDriver('postgres', async () => {
+                let called = false;
+                const colBuilder = {
+                    autoIncrement: () => {
+                        called = true;
+                        return colBuilder;
+                    },
+                };
+                const result = addAutoIncrement(colBuilder as any);
+                expect(result).toBe(colBuilder);
+                expect(called).toBe(false);
+            });
         });
     });
 
     describe('getBinaryType', () => {
         it('should return blob for SQLite', () => {
             expect(getBinaryType()).toBe('blob');
+        });
+
+        it('should return bytea for Postgres', async () => {
+            await withDbDriver('postgres', async () => {
+                expect(getBinaryType()).toBe('bytea');
+            });
+        });
+
+        it('should return a SQL fragment for MySQL', async () => {
+            await withDbDriver('mysql', async () => {
+                const result = getBinaryType();
+                expect(typeof result).toBe('object');
+                expect(result).not.toBeNull();
+                expect('toOperationNode' in (result as object)).toBe(true);
+            });
         });
     });
 
@@ -367,6 +430,115 @@ describe('Database Helpers', () => {
         it('should return undefined for non-existent ID', async () => {
             const deleted = await deleteByIdAndReturn(db, 'users', 99999);
             expect(deleted).toBeUndefined();
+        });
+    });
+
+    // ============================================================================
+    // MYSQL BRANCHES (DRIVER OVERRIDE)
+    // ============================================================================
+
+    describe('mysql branches', () => {
+        it('should insert and return row using mysql branch', async () => {
+            await withDbDriver('mysql', async () => {
+                const user = await insertAndReturn(db, 'users', {
+                    email: 'mysql-user@example.com',
+                    user_id: 'mysql-user',
+                    password: 'hashed',
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 1,
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
+                });
+
+                expect(user.email).toBe('mysql-user@example.com');
+            });
+        });
+
+        it('should insert many rows using mysql branch', async () => {
+            await withDbDriver('mysql', async () => {
+                const users = await insertManyAndReturn(db, 'users', [
+                    {
+                        email: 'mysql-1@example.com',
+                        user_id: 'mysql-1',
+                        password: 'hashed',
+                        roles: '["ROLE_USER"]',
+                        is_lopd_accepted: 1,
+                        is_active: 1,
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    },
+                    {
+                        email: 'mysql-2@example.com',
+                        user_id: 'mysql-2',
+                        password: 'hashed',
+                        roles: '["ROLE_USER"]',
+                        is_lopd_accepted: 1,
+                        is_active: 1,
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    },
+                ]);
+
+                const emails = users.map(u => u.email).sort();
+                expect(emails).toEqual(['mysql-1@example.com', 'mysql-2@example.com']);
+            });
+        });
+
+        it('should update by ID using mysql branch', async () => {
+            await withDbDriver('mysql', async () => {
+                const user = await insertAndReturn(db, 'users', {
+                    email: 'mysql-update@example.com',
+                    user_id: 'mysql-update',
+                    password: 'hashed',
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 1,
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
+                });
+
+                const updated = await updateByIdAndReturn(db, 'users', user.id, {
+                    email: 'mysql-updated@example.com',
+                    updated_at: Date.now(),
+                });
+
+                expect(updated?.email).toBe('mysql-updated@example.com');
+            });
+        });
+
+        it('should return undefined when update affects no rows in mysql branch', async () => {
+            await withDbDriver('mysql', async () => {
+                const updated = await updateByIdAndReturn(db, 'users', 999999, {
+                    email: 'missing@example.com',
+                });
+                expect(updated).toBeUndefined();
+            });
+        });
+
+        it('should update by column using mysql branch', async () => {
+            await withDbDriver('mysql', async () => {
+                const userId = await seedTestUser(db);
+                await seedTestProject(db, userId, { uuid: 'mysql-project', title: 'Original' });
+
+                const updated = await updateByColumnAndReturn(db, 'projects', 'uuid', 'mysql-project', {
+                    title: 'Updated',
+                    updated_at: Date.now(),
+                });
+
+                expect(updated?.title).toBe('Updated');
+            });
+        });
+
+        it('should delete by column using mysql branch', async () => {
+            await withDbDriver('mysql', async () => {
+                const userId = await seedTestUser(db);
+                await seedTestProject(db, userId, { uuid: 'mysql-del-1', title: 'Delete 1' });
+                await seedTestProject(db, userId, { uuid: 'mysql-del-2', title: 'Delete 2' });
+
+                const deleted = await deleteByColumnAndReturn(db, 'projects', 'owner_id', userId);
+                expect(deleted).toHaveLength(2);
+            });
         });
     });
 });
