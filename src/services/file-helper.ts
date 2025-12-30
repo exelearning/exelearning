@@ -89,17 +89,17 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
     // ========================================================================
 
     const getFilesDir = (): string => {
-        // Check for explicit Elysia files dir first
+        // ELYSIA_FILES_DIR takes priority (used by tests)
         const elysiaFilesDir = getEnv('ELYSIA_FILES_DIR');
         if (elysiaFilesDir) {
             return elysiaFilesDir;
         }
-        // Check FILES_DIR but skip if it's the Docker /mnt path
+        // FILES_DIR from environment (Docker or make up-local)
         const filesDir = getEnv('FILES_DIR');
-        if (filesDir && !filesDir.startsWith('/mnt')) {
+        if (filesDir) {
             return filesDir;
         }
-        // Default to local data directory
+        // Fallback to local data directory
         return path.join(getCwd(), 'data');
     };
 
