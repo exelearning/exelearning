@@ -8,7 +8,6 @@ import { sql } from 'kysely';
 import type { Database, User, Project } from '../types';
 import { now, stringifyRoles, parseRoles } from '../types';
 import { ROLES } from '../../utils/guards';
-import { insertAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // USER MANAGEMENT QUERIES

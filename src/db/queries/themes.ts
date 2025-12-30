@@ -11,7 +11,6 @@
 import type { Kysely } from 'kysely';
 import type { Database, Theme, NewTheme, ThemeUpdate } from '../types';
 import { now } from '../types';
-import { insertAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // TYPE DEFINITIONS

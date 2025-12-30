@@ -6,7 +6,6 @@
 import type { Kysely } from 'kysely';
 import type { Database, User, NewUser, UserUpdate } from '../types';
 import { now, stringifyRoles } from '../types';
-import { insertAndReturn, updateByIdAndReturn } from '../helpers';
 
 // ============================================================================
 // READ QUERIES

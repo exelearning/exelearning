@@ -6,12 +6,6 @@
 import type { Kysely } from 'kysely';
 import type { Database, YjsDocument, NewYjsDocument, YjsUpdate, NewYjsUpdate, YjsVersionHistory } from '../types';
 import { now } from '../types';
-import {
-    insertAndReturn,
-    updateByColumnAndReturn,
-    deleteByColumnAndReturn,
-    supportsReturning,
-} from '../helpers';
 
 // ============================================================================
 // YJS DOCUMENTS (SNAPSHOTS)

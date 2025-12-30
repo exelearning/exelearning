@@ -151,12 +151,12 @@ async function areAllMigrationsExecuted(db: Kysely<unknown>): Promise<boolean> {
 
     try {
         // Get all executed migration names - more reliable than COUNT across databases
-        const result = await db
-            .selectFrom('kysely_migration' as any)
-            .select('name')
-            .execute();
+        // Use raw SQL to avoid type issues with internal Kysely tables
+        const result = await sql<{ name: string }>`
+            SELECT name FROM kysely_migration
+        `.execute(db);
 
-        const executedNames = new Set(result.map((r: { name: string }) => r.name));
+        const executedNames = new Set(result.rows.map(r => r.name));
         const allMigrationNames = Object.keys(migrations);
 
         console.log('[Migration] Executed migrations:', [...executedNames]);
