@@ -571,7 +571,7 @@ test-e2e-mariadb: check-docker check-env ## Run E2E tests with MariaDB backend
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans 2>/dev/null
+	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans || true
 	@echo ""
 	@echo "Step 2: Building and starting services..."
 	@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml up --build -d
@@ -606,7 +606,7 @@ test-e2e-postgres: check-docker check-env ## Run E2E tests with PostgreSQL backe
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans 2>/dev/null
+	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans || true
 	@echo ""
 	@echo "Step 2: Building and starting services..."
 	@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml up --build -d
@@ -641,7 +641,7 @@ test-e2e-sqlite: check-docker check-env ## Run E2E tests with SQLite backend
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans 2>/dev/null
+	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans || true
 	@echo ""
 	@echo "Step 2: Building and starting services..."
 	@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml up --build -d

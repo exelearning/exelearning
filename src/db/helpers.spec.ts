@@ -11,6 +11,7 @@ import {
     supportsReturning,
     resetDialectCache,
     toBinaryData,
+    fromBinaryData,
     tableExists,
     columnExists,
     getAutoIncrementType,
@@ -104,14 +105,69 @@ describe('Database Helpers', () => {
             expect(result).toBeInstanceOf(Uint8Array);
         });
 
-        it('should return Buffer for MySQL dialect', () => {
+        it('should return base64 string for MySQL dialect', () => {
             const originalDriver = process.env.DB_DRIVER;
             try {
                 process.env.DB_DRIVER = 'mysql';
                 resetDialectCache();
                 const input = new Uint8Array([9, 8, 7]);
                 const result = toBinaryData(input);
-                expect(Buffer.isBuffer(result)).toBe(true);
+                expect(typeof result).toBe('string');
+                // Verify it's valid base64 that decodes back to original
+                const decoded = Buffer.from(result as string, 'base64');
+                expect([...decoded]).toEqual([9, 8, 7]);
+            } finally {
+                process.env.DB_DRIVER = originalDriver;
+                resetDialectCache();
+            }
+        });
+    });
+
+    describe('fromBinaryData', () => {
+        it('should handle Uint8Array input', () => {
+            const input = new Uint8Array([1, 2, 3, 4, 5]);
+            const result = fromBinaryData(input);
+            expect(result).toBeInstanceOf(Uint8Array);
+            expect([...result]).toEqual([1, 2, 3, 4, 5]);
+        });
+
+        it('should handle Buffer input', () => {
+            const input = Buffer.from([1, 2, 3, 4, 5]);
+            const result = fromBinaryData(input);
+            expect(result).toBeInstanceOf(Uint8Array);
+            expect([...result]).toEqual([1, 2, 3, 4, 5]);
+        });
+
+        it('should handle base64 string (MySQL format)', () => {
+            // Base64 of [1, 2, 3, 4, 5] is "AQIDBAU="
+            const result = fromBinaryData('AQIDBAU=');
+            expect(result).toBeInstanceOf(Uint8Array);
+            expect([...result]).toEqual([1, 2, 3, 4, 5]);
+        });
+
+        it('should handle binary string (legacy format)', () => {
+            // Non-base64 string should fall back to binary encoding
+            const input = String.fromCharCode(1, 2, 3, 4, 5);
+            const result = fromBinaryData(input);
+            expect(result).toBeInstanceOf(Uint8Array);
+            expect([...result]).toEqual([1, 2, 3, 4, 5]);
+        });
+
+        it('should return empty array for unknown types', () => {
+            const result = fromBinaryData(null);
+            expect(result).toBeInstanceOf(Uint8Array);
+            expect(result.length).toBe(0);
+        });
+
+        it('should roundtrip through toBinaryData for MySQL', () => {
+            const originalDriver = process.env.DB_DRIVER;
+            try {
+                process.env.DB_DRIVER = 'mysql';
+                resetDialectCache();
+                const input = new Uint8Array([100, 150, 200, 250, 0, 1, 255]);
+                const stored = toBinaryData(input);
+                const result = fromBinaryData(stored);
+                expect([...result]).toEqual([100, 150, 200, 250, 0, 1, 255]);
             } finally {
                 process.env.DB_DRIVER = originalDriver;
                 resetDialectCache();

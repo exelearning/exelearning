@@ -47,6 +47,7 @@ import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
 } from '../websocket/access-notifier';
+import { createBlankYjsDocument } from '../services/yjs-initializer';
 import type { Kysely } from 'kysely';
 import type { Database, Project, User } from '../db/types';
 import type {
@@ -309,7 +310,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
         deps.fileHelper ?? defaultFileHelper;
 
     // Query functions
-    const { createProject, findSavedProjectsByOwner, findUserById } = deps.queries ?? defaultQueries;
+    const { createProject, findSavedProjectsByOwner, findUserById, upsertSnapshot } = deps.queries ?? defaultQueries;
 
     return (
         new Elysia({ prefix: '/api/project' })
@@ -515,6 +516,26 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     owner_id: userId,
                     saved_once: 0,
                 });
+
+                // Get global default theme early so we can use it for Yjs document initialization
+                let themeDirName = 'base';
+                try {
+                    const globalDefault = await getDefaultThemeDefault(db);
+                    themeDirName = globalDefault.dirName;
+                } catch {
+                    // Silently ignore if tables don't exist yet
+                }
+
+                // Create initial Yjs document with blank structure (prevents duplicate page race condition)
+                if (upsertSnapshot) {
+                    const initialYjsData = createBlankYjsDocument({
+                        title,
+                        language: 'en', // Default language, client can update later
+                        theme: themeDirName,
+                    });
+                    await upsertSnapshot(db, projectRecord.id, initialYjsData, '1.0');
+                    console.log(`[Project] Created initial Yjs document for project ${projectRecord.uuid}`);
+                }
 
                 // Use project UUID as session ID
                 const sessionId = projectRecord.uuid;

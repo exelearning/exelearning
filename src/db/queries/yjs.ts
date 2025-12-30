@@ -6,7 +6,7 @@
 import type { Kysely } from 'kysely';
 import type { Database, YjsDocument, NewYjsDocument, YjsUpdate, NewYjsUpdate, YjsVersionHistory } from '../types';
 import { now } from '../types';
-import { supportsReturning, updateByColumnAndReturn } from '../helpers';
+import { supportsReturning, updateByColumnAndReturn, toBinaryData } from '../helpers';
 
 // ============================================================================
 // YJS DOCUMENTS (SNAPSHOTS)
@@ -23,6 +23,7 @@ export async function createSnapshot(db: Kysely<Database>, data: NewYjsDocument)
     const timestamp = now();
     const values = {
         ...data,
+        snapshot_data: toBinaryData(data.snapshot_data),
         created_at: timestamp,
         updated_at: timestamp,
     };
@@ -46,7 +47,7 @@ export async function updateSnapshot(
     snapshotVersion: string,
 ): Promise<YjsDocument | undefined> {
     return updateByColumnAndReturn(db, 'yjs_documents', 'project_id', projectId, {
-        snapshot_data: snapshotData,
+        snapshot_data: toBinaryData(snapshotData),
         snapshot_version: snapshotVersion,
         updated_at: now(),
     });
@@ -60,10 +61,12 @@ export async function upsertSnapshot(
 ): Promise<YjsDocument> {
     const existing = await findSnapshotByProjectId(db, projectId);
     const timestamp = now();
+    // Convert binary data for MySQL compatibility (requires Buffer, not Uint8Array)
+    const binaryData = toBinaryData(snapshotData);
 
     if (existing) {
         const updated = await updateByColumnAndReturn(db, 'yjs_documents', 'project_id', projectId, {
-            snapshot_data: snapshotData,
+            snapshot_data: binaryData,
             snapshot_version: snapshotVersion,
             updated_at: timestamp,
         });
@@ -72,7 +75,7 @@ export async function upsertSnapshot(
 
     const values = {
         project_id: projectId,
-        snapshot_data: snapshotData,
+        snapshot_data: binaryData,
         snapshot_version: snapshotVersion,
         created_at: timestamp,
         updated_at: timestamp,
@@ -132,6 +135,7 @@ export async function createUpdate(db: Kysely<Database>, data: NewYjsUpdate): Pr
     const timestamp = now();
     const values = {
         ...data,
+        update_data: toBinaryData(data.update_data),
         created_at: timestamp,
     };
 
@@ -420,7 +424,7 @@ export async function createVersionSnapshot(
     const version = Date.now().toString();
     const values = {
         project_id: projectId,
-        snapshot_data: snapshotData,
+        snapshot_data: toBinaryData(snapshotData),
         version,
         description: description || null,
         created_by: createdBy || null,

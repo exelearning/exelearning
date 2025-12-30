@@ -155,9 +155,10 @@ class YjsDocumentManager {
     // Check if document is empty (after IndexedDB sync, before WebSocket sync)
     const navigation = this.ydoc.getArray('navigation');
     if (navigation.length === 0) {
-      // For new projects, skip server load (there's nothing to load)
-      // For existing projects, try to load from server as last resort
-      if (!this.config.offline && !isNewProject) {
+      // Always try to load from server if not offline
+      // Server-side initialization creates initial Yjs document when project is created,
+      // so even new projects have data on the server
+      if (!this.config.offline) {
         await this.loadFromServer();
       }
 
