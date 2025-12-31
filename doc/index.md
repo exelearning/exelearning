@@ -18,6 +18,7 @@ Use the sections below to jump to what you need.
 
 ## For System Administrators
 - [Deployment](deployment.md)
+- [High Availability](high-availability.md)
 
 ## For Developers
 - Development Environment: [Setup and tooling](development/environment.md)

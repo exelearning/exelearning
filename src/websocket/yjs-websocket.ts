@@ -322,12 +322,34 @@ export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData
             deps.assetCoordinator.handleMessage(data.projectUuid, data.clientId, parsed.message).catch(err => {
                 console.error('[YjsWebSocket] Error handling asset message:', err);
             });
+
+            // Relay asset message to other instances via Redis
+            roomManager
+                .relayToOtherInstances(data.docName, message, {
+                    isAsset: true,
+                    clientId: data.clientId,
+                    projectUuid: data.projectUuid,
+                })
+                .catch(() => {
+                    // Ignore relay errors (Redis may be down)
+                });
             break;
 
-        case 'yjs':
+        case 'yjs': {
             // Relay Yjs message to other clients in the room
-            roomManager.relayMessage(ws, data.docName, Buffer.from(parsed.data));
+            const yjsBuffer = Buffer.from(parsed.data);
+            roomManager.relayMessage(ws, data.docName, yjsBuffer);
+
+            // Relay to other instances via Redis
+            roomManager
+                .relayToOtherInstances(data.docName, yjsBuffer, {
+                    isAsset: false,
+                })
+                .catch(() => {
+                    // Ignore relay errors (Redis may be down)
+                });
             break;
+        }
 
         case 'unknown':
             // Unknown message type - log and ignore

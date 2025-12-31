@@ -223,6 +223,14 @@ Administrators can enable or disable templates through the admin panel. Disabled
 
 ---
 
+## High Availability
+
+For deployments requiring horizontal scaling and high availability with multiple server instances, see:
+
+* **[High Availability Guide](high-availability.md)** - Multi-instance deployment with Redis synchronization
+
+---
+
 ## See also
 
 * **Real-time configuration:** [development/real-time.md](../development/real-time.md)

@@ -11,6 +11,7 @@
 import type { ServerWebSocket } from 'bun';
 import { getConfig, DEBUG } from './config';
 import * as assetCoordinatorDefault from './asset-coordinator';
+import * as pubSubDefault from '../redis/pubsub-manager';
 
 // ============================================================================
 // DEPENDENCY INJECTION INTERFACES
@@ -24,10 +25,22 @@ export interface RoomManagerAssetCoordinator {
 }
 
 /**
+ * Pub/sub manager dependency interface
+ */
+export interface RoomManagerPubSub {
+    publish: typeof pubSubDefault.publish;
+    subscribe: typeof pubSubDefault.subscribe;
+    unsubscribe: typeof pubSubDefault.unsubscribe;
+    isPubSubEnabled: typeof pubSubDefault.isPubSubEnabled;
+    setMessageHandler: typeof pubSubDefault.setMessageHandler;
+}
+
+/**
  * Full dependencies for room manager
  */
 export interface RoomManagerDependencies {
     assetCoordinator: RoomManagerAssetCoordinator;
+    pubSub: RoomManagerPubSub;
     /** Override cleanup delay for testing (in ms) */
     cleanupDelayOverride?: number;
 }
@@ -36,6 +49,13 @@ export interface RoomManagerDependencies {
 const defaultDependencies: RoomManagerDependencies = {
     assetCoordinator: {
         cleanupProject: assetCoordinatorDefault.cleanupProject,
+    },
+    pubSub: {
+        publish: pubSubDefault.publish,
+        subscribe: pubSubDefault.subscribe,
+        unsubscribe: pubSubDefault.unsubscribe,
+        isPubSubEnabled: pubSubDefault.isPubSubEnabled,
+        setMessageHandler: pubSubDefault.setMessageHandler,
     },
 };
 
@@ -52,6 +72,10 @@ export function configure(newDeps: Partial<RoomManagerDependencies>): void {
         assetCoordinator: {
             ...defaultDependencies.assetCoordinator,
             ...(newDeps.assetCoordinator || {}),
+        },
+        pubSub: {
+            ...defaultDependencies.pubSub,
+            ...(newDeps.pubSub || {}),
         },
     };
 }
@@ -139,10 +163,18 @@ export function getRoom(docName: string): Room | undefined {
  */
 export function addConnection(docName: string, ws: ServerWebSocket<WsData>, projectUuid?: string): Room {
     const room = getOrCreateRoom(docName, projectUuid);
+    const wasEmpty = room.conns.size === 0;
     room.conns.add(ws);
 
     // Cancel any pending cleanup
     cancelCleanup(docName);
+
+    // Subscribe to Redis channel when first client joins
+    if (wasEmpty && deps.pubSub.isPubSubEnabled()) {
+        deps.pubSub.subscribe(docName).catch(err => {
+            console.error(`[RoomManager] Failed to subscribe to Redis channel ${docName}:`, err);
+        });
+    }
 
     if (DEBUG) {
         console.log(`[RoomManager] Added connection to ${docName} (${room.conns.size} total)`);
@@ -216,6 +248,13 @@ export function scheduleCleanup(docName: string): void {
 
         if (DEBUG) {
             console.log(`[RoomManager] Cleaned up room ${docName}`);
+        }
+
+        // Unsubscribe from Redis channel
+        if (deps.pubSub.isPubSubEnabled()) {
+            deps.pubSub.unsubscribe(docName).catch(() => {
+                // Ignore unsubscribe errors during cleanup
+            });
         }
 
         // Clean up asset coordinator resources
@@ -381,4 +420,49 @@ export function closeAllRooms(): void {
     if (DEBUG) {
         console.log('[RoomManager] Closed all rooms');
     }
+}
+
+// ============================================================================
+// CROSS-INSTANCE RELAY (REDIS PUB/SUB)
+// ============================================================================
+
+/**
+ * Relay message to other instances via Redis
+ * Called after local relay to sync with other server instances
+ *
+ * @param docName - Document/room name
+ * @param message - Raw message (Buffer or string)
+ * @param meta - Optional message metadata
+ */
+export async function relayToOtherInstances(
+    docName: string,
+    message: Buffer | string,
+    meta?: { isAsset?: boolean; clientId?: string; projectUuid?: string },
+): Promise<void> {
+    if (!deps.pubSub.isPubSubEnabled()) {
+        return; // Single-instance mode
+    }
+
+    await deps.pubSub.publish(docName, message, meta);
+}
+
+/**
+ * Initialize handler for cross-instance messages from Redis
+ * Must be called after Redis is connected
+ */
+export function initializeCrossInstanceHandler(): void {
+    if (!deps.pubSub.isPubSubEnabled()) {
+        return;
+    }
+
+    deps.pubSub.setMessageHandler((docName, message, meta) => {
+        // Broadcast to all local clients (message came from another instance)
+        broadcastToRoom(docName, message);
+
+        if (DEBUG) {
+            console.log(`[RoomManager] Received cross-instance message for ${docName} (isAsset: ${meta.isAsset})`);
+        }
+    });
+
+    console.log('[RoomManager] Cross-instance handler initialized');
 }
