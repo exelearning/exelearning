@@ -392,4 +392,117 @@ describe('Config Routes', () => {
             }
         });
     });
+
+    describe('GET /api/templates/:id/download', () => {
+        it('should return 400 for invalid template ID', async () => {
+            const response = await app.handle(new Request('http://localhost/api/templates/invalid/download'));
+
+            expect(response.status).toBe(400);
+            const data = await response.json();
+            expect(data.error).toBe('Bad Request');
+            expect(data.message).toBe('Invalid template ID');
+        });
+
+        it('should return 400 for negative template ID', async () => {
+            const response = await app.handle(new Request('http://localhost/api/templates/-1/download'));
+
+            expect(response.status).toBe(400);
+            const data = await response.json();
+            expect(data.error).toBe('Bad Request');
+        });
+
+        it('should return 400 for zero template ID', async () => {
+            const response = await app.handle(new Request('http://localhost/api/templates/0/download'));
+
+            expect(response.status).toBe(400);
+            const data = await response.json();
+            expect(data.error).toBe('Bad Request');
+        });
+
+        it('should return 404 for non-existent template', async () => {
+            const response = await app.handle(new Request('http://localhost/api/templates/99999/download'));
+
+            expect(response.status).toBe(404);
+            const data = await response.json();
+            expect(data.error).toBe('Not Found');
+            expect(data.message).toBe('Template not found');
+        });
+
+        it('should return 404 for disabled template (security)', async () => {
+            // Create a disabled template in database
+            const now = Date.now();
+            await db
+                .insertInto('templates')
+                .values({
+                    filename: 'test-disabled-template',
+                    display_name: 'Test Disabled Template',
+                    description: 'A disabled template for testing',
+                    locale: 'en',
+                    is_enabled: 0, // Disabled
+                    sort_order: 0,
+                    storage_path: 'templates/en/test-disabled-template.elpx',
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+
+            // Get the ID of the just-created template
+            const template = await db
+                .selectFrom('templates')
+                .selectAll()
+                .where('filename', '=', 'test-disabled-template')
+                .executeTakeFirst();
+
+            expect(template).toBeDefined();
+
+            const response = await app.handle(new Request(`http://localhost/api/templates/${template!.id}/download`));
+
+            // Should return 404 to not reveal the template exists
+            expect(response.status).toBe(404);
+            const data = await response.json();
+            expect(data.error).toBe('Not Found');
+            expect(data.message).toBe('Template not found');
+
+            // Cleanup
+            await db.deleteFrom('templates').where('id', '=', template!.id).execute();
+        });
+
+        it('should return 404 when template file does not exist on disk', async () => {
+            // Create an enabled template but don't create the file
+            const now = Date.now();
+            await db
+                .insertInto('templates')
+                .values({
+                    filename: 'test-missing-file-template',
+                    display_name: 'Test Missing File Template',
+                    description: 'A template with missing file for testing',
+                    locale: 'en',
+                    is_enabled: 1, // Enabled
+                    sort_order: 0,
+                    storage_path: 'templates/en/test-missing-file-template.elpx',
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+
+            // Get the ID
+            const template = await db
+                .selectFrom('templates')
+                .selectAll()
+                .where('filename', '=', 'test-missing-file-template')
+                .executeTakeFirst();
+
+            expect(template).toBeDefined();
+
+            const response = await app.handle(new Request(`http://localhost/api/templates/${template!.id}/download`));
+
+            expect(response.status).toBe(404);
+            const data = await response.json();
+            expect(data.error).toBe('Not Found');
+            expect(data.message).toBe('Template file not found');
+
+            // Cleanup
+            await db.deleteFrom('templates').where('id', '=', template!.id).execute();
+        });
+    });
 });
