@@ -24,7 +24,9 @@ import {
     parseBoolean,
     parseNumber,
 } from '../services/app-settings';
-import { getEnabledTemplatesByLocale } from '../db/queries/templates';
+import { getEnabledTemplatesByLocale, findTemplateById } from '../db/queries/templates';
+import { getFilesDir } from '../utils/admin-route-helpers';
+import * as path from 'path';
 import { getDefaultTheme, getDefaultThemeRecord } from '../db/queries/themes';
 import { SUPPORTED_LOCALES } from '../services/admin-upload-validator';
 
@@ -811,7 +813,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
                 templates = templatesDb.map(t => ({
                     name: t.filename,
                     displayName: t.display_name,
-                    path: `/api/admin/templates/${t.id}/download`,
+                    path: `/api/templates/${t.id}/download`,
                     source: 'admin' as const,
                     description: t.description || undefined,
                 }));
@@ -831,6 +833,64 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
         {
             query: t.Object({
                 locale: t.String(),
+            }),
+        },
+    )
+
+    // GET /api/templates/:id/download - Public download of an enabled template
+    // No authentication required, but only serves enabled templates
+    .get(
+        '/api/templates/:id/download',
+        async ({ params, set }) => {
+            const id = Number(params.id);
+
+            if (isNaN(id) || id <= 0) {
+                set.status = 400;
+                return { error: 'Bad Request', message: 'Invalid template ID' };
+            }
+
+            // Find template by ID
+            let template;
+            try {
+                template = await findTemplateById(defaultDb, id);
+            } catch {
+                // Table doesn't exist yet
+                set.status = 404;
+                return { error: 'Not Found', message: 'Template not found' };
+            }
+
+            if (!template) {
+                set.status = 404;
+                return { error: 'Not Found', message: 'Template not found' };
+            }
+
+            // SECURITY: Only serve enabled templates publicly
+            // Disabled templates return 404 (don't reveal they exist)
+            if (!template.is_enabled) {
+                set.status = 404;
+                return { error: 'Not Found', message: 'Template not found' };
+            }
+
+            // Build file path
+            const filesDir = getFilesDir();
+            const filePath = path.join(filesDir, 'templates', template.locale, `${template.filename}.elpx`);
+
+            // Check if file exists
+            const file = Bun.file(filePath);
+            if (!(await file.exists())) {
+                set.status = 404;
+                return { error: 'Not Found', message: 'Template file not found' };
+            }
+
+            // Return file with proper headers
+            set.headers['Content-Type'] = 'application/zip';
+            set.headers['Content-Disposition'] = `attachment; filename="${template.filename}.elpx"`;
+
+            return file;
+        },
+        {
+            params: t.Object({
+                id: t.String(),
             }),
         },
     )
