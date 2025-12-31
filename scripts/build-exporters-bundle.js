@@ -38,18 +38,22 @@ const browserAliasPlugin = {
             }
         });
 
-        // Mark fs-extra as external (shouldn't be imported by browser code,
-        // but just in case any transitive dependency tries)
+        // Redirect fs-extra to browser shim (used by xml-builder.ts which is imported by YjsDocumentAdapter)
         build.onResolve({ filter: /^fs-extra$/ }, () => {
-            return { path: 'fs-extra', external: true };
+            return {
+                path: path.join(projectRoot, 'src/shared/export/browser/fs-extra-shim.ts'),
+            };
         });
 
         build.onResolve({ filter: /^fs$/ }, () => {
             return { path: 'fs', external: true };
         });
 
+        // Redirect path to browser shim (used by xml-builder.ts)
         build.onResolve({ filter: /^path$/ }, () => {
-            return { path: 'path', external: true };
+            return {
+                path: path.join(projectRoot, 'src/shared/export/browser/path-shim.ts'),
+            };
         });
     },
 };
@@ -63,6 +67,10 @@ esbuild.build({
     external: ['jszip'],
     plugins: [browserAliasPlugin],
     logLevel: 'info',
+    // Replace Node.js environment variables with browser-safe values
+    define: {
+        'process.env.APP_DEBUG': '"0"',
+    },
 }).then(() => {
     console.log('exporters.bundle.js built successfully');
 }).catch((err) => {
