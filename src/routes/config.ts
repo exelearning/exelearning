@@ -562,8 +562,8 @@ const API_ROUTES = {
         api_translations_list_by_locale: { path: '/api/translations/{locale}', methods: ['GET'] },
 
         // Platform
-        set_platform_new_ode: { path: '/api/platform/new-ode', methods: ['POST'] },
-        open_platform_elp: { path: '/api/platform/open-elp', methods: ['POST'] },
+        set_platform_new_ode: { path: '/api/platform/integration/set_platform_new_ode', methods: ['POST'] },
+        open_platform_elp: { path: '/api/platform/integration/openPlatformElp', methods: ['POST'] },
 
         // Config
         api_config_upload_limits: { path: '/api/config/upload-limits', methods: ['GET'] },

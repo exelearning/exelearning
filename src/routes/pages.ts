@@ -48,6 +48,7 @@ import {
 } from '../services/session-manager';
 import { createSessionDirectories as createSessionDirectoriesDefault } from '../services/file-helper';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
+import { decodePlatformJWT } from '../utils/platform-jwt';
 import type { JwtPayload } from './types/request-payloads';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 
@@ -595,10 +596,24 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     parseAppSettingBoolean(process.env.ONLINE_THEMES_INSTALL, false),
                 );
 
+                // Check for platform integration (jwt_token in URL means user came from platform)
+                const jwtToken = query.jwt_token as string | undefined;
+                let platformIntegrationEnabled = false;
+                let platformName = 'exelearning'; // Default when not coming from platform
+
+                if (jwtToken) {
+                    const platformPayload = await decodePlatformJWT(jwtToken);
+                    if (platformPayload) {
+                        platformIntegrationEnabled = true;
+                        // Extract platform name from provider, or use 'Moodle' as default for platform integration
+                        platformName = platformPayload.provider?.name || 'Moodle';
+                    }
+                }
+
                 // Unified config object (replaces legacy 'symfony' object)
                 const config = {
                     // Platform settings
-                    platformName: 'exelearning',
+                    platformName: platformName,
                     platformType: 'standalone',
                     platformUrlGet: '',
                     platformUrlSet: '',
@@ -607,7 +622,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     clientIntervalUpdate: 3000,
                     defaultTheme: defaultThemeDirName,
                     isOfflineInstallation,
-                    platformIntegration: false,
+                    platformIntegration: platformIntegrationEnabled,
                     userStyles: userStylesEnabled ? 1 : 0,
                     userIdevices: 0,
                     debugJs: process.env.APP_ENV === 'dev',

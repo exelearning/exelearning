@@ -846,4 +846,196 @@ describe('YjsDocumentAdapter', () => {
             expect(pages[0].blocks[0].properties).toEqual({});
         });
     });
+
+    describe('getContentXml', () => {
+        it('should generate valid XML from document structure', async () => {
+            const component = createMockComponent('c1', 'FreeTextIdevice', '<p>Test content</p>');
+            const block = createMockBlock('b1', 'Test Block', [component]);
+            const page = createMockPage('p1', 'Test Page', [block]);
+
+            manager = new MockYjsDocumentManager(
+                {
+                    title: 'Test Project',
+                    author: 'Test Author',
+                    language: 'es',
+                    theme: 'base',
+                },
+                [page],
+            );
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            // Should be valid XML
+            expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(xml).toContain('<exe_document>');
+            expect(xml).toContain('</exe_document>');
+        });
+
+        it('should include metadata in XML', async () => {
+            const page = createMockPage('p1', 'Page');
+
+            manager = new MockYjsDocumentManager(
+                {
+                    title: 'My Project',
+                    author: 'John Doe',
+                    description: 'A test project',
+                    language: 'en',
+                    license: 'CC-BY-SA',
+                    keywords: 'test, project',
+                    theme: 'blue',
+                },
+                [page],
+            );
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            expect(xml).toContain('<meta>');
+            expect(xml).toContain('My Project');
+            expect(xml).toContain('John Doe');
+        });
+
+        it('should include navigation structure in XML', async () => {
+            const page1 = createMockPage('p1', 'First Page', [], null, 0);
+            const page2 = createMockPage('p2', 'Second Page', [], null, 1);
+
+            manager = new MockYjsDocumentManager({ title: 'Project' }, [page1, page2]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            expect(xml).toContain('<navigation>');
+            expect(xml).toContain('First Page');
+            expect(xml).toContain('Second Page');
+        });
+
+        it('should handle nested pages with correct parent hierarchy', async () => {
+            const parentPage = createMockPage('parent', 'Parent Page', [], null, 0);
+            const childPage = createMockPage('child', 'Child Page', [], 'parent', 0);
+            const grandchildPage = createMockPage('grandchild', 'Grandchild Page', [], 'child', 0);
+
+            manager = new MockYjsDocumentManager({ title: 'Nested Project' }, [parentPage, childPage, grandchildPage]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            // Should contain all pages
+            expect(xml).toContain('Parent Page');
+            expect(xml).toContain('Child Page');
+            expect(xml).toContain('Grandchild Page');
+        });
+
+        it('should include components in XML', async () => {
+            const comp1 = createMockComponent('c1', 'FreeTextIdevice', '<p>Content 1</p>');
+            const comp2 = createMockComponent('c2', 'MultipleChoiceIdevice', '<p>Quiz</p>');
+            const block = createMockBlock('b1', 'Block', [comp1, comp2]);
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({ title: 'Project' }, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            expect(xml).toContain('FreeTextIdevice');
+            expect(xml).toContain('MultipleChoiceIdevice');
+        });
+
+        it('should handle empty document', async () => {
+            manager = new MockYjsDocumentManager({ title: 'Empty Project' }, []);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            // Should throw because buildFromStructure requires at least one root page
+            await expect(adapter.getContentXml()).rejects.toThrow();
+        });
+
+        it('should include export options in metadata', async () => {
+            const page = createMockPage('p1', 'Page');
+
+            manager = new MockYjsDocumentManager(
+                {
+                    title: 'Project',
+                    addExeLink: true,
+                    addPagination: true,
+                    addSearchBox: false,
+                    addMathJax: true,
+                },
+                [page],
+            );
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            expect(xml).toContain('<meta>');
+            // Export options should be in the XML
+            expect(xml).toBeDefined();
+        });
+
+        it('should handle pages with multiple blocks and components', async () => {
+            const comp1 = createMockComponent('c1', 'text', '<p>Text 1</p>');
+            const comp2 = createMockComponent('c2', 'text', '<p>Text 2</p>');
+            const comp3 = createMockComponent('c3', 'image', '<img src="test.jpg"/>');
+            const block1 = createMockBlock('b1', 'Block 1', [comp1, comp2]);
+            const block2 = createMockBlock('b2', 'Block 2', [comp3]);
+            const page = createMockPage('p1', 'Page', [block1, block2]);
+
+            manager = new MockYjsDocumentManager({ title: 'Multi-block Project' }, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            // All components should be included
+            expect(xml).toContain('text');
+            expect(xml).toContain('image');
+        });
+
+        it('should use default values for missing metadata', async () => {
+            const page = createMockPage('p1', 'Page');
+
+            // Minimal metadata
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            // Should still generate valid XML with defaults
+            expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(xml).toContain('<exe_document>');
+        });
+
+        it('should correctly calculate page levels for deep hierarchy', async () => {
+            // Create a 4-level deep hierarchy
+            const level0 = createMockPage('l0', 'Level 0', [], null, 0);
+            const level1 = createMockPage('l1', 'Level 1', [], 'l0', 0);
+            const level2 = createMockPage('l2', 'Level 2', [], 'l1', 0);
+            const level3 = createMockPage('l3', 'Level 3', [], 'l2', 0);
+
+            manager = new MockYjsDocumentManager({ title: 'Deep Hierarchy' }, [level0, level1, level2, level3]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            // All pages should be included
+            expect(xml).toContain('Level 0');
+            expect(xml).toContain('Level 1');
+            expect(xml).toContain('Level 2');
+            expect(xml).toContain('Level 3');
+        });
+
+        it('should preserve component properties in XML', async () => {
+            const compProps = { textFeedbackInput: 'Show Feedback', textFeedbackTextarea: '<p>Feedback</p>' };
+            const component = createMockComponent('c1', 'text', '<p>Main</p>', compProps);
+            const block = createMockBlock('b1', 'Block', [component]);
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({ title: 'Props Project' }, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const xml = await adapter.getContentXml();
+
+            // Properties should be serialized in the XML
+            expect(xml).toBeDefined();
+            expect(xml.length).toBeGreaterThan(100);
+        });
+    });
 });

@@ -26,8 +26,9 @@ const browserAliasPlugin = {
             }
         });
 
-        // Intercept imports of xml-parser (uses fs-extra which doesn't work in browser)
-        build.onResolve({ filter: /xml-parser$/ }, (args) => {
+        // Intercept imports of our internal xml-parser module (uses fs-extra which doesn't work in browser)
+        // Note: Use specific pattern to avoid matching npm packages like 'fast-xml-parser'
+        build.onResolve({ filter: /services\/xml\/xml-parser$/ }, (args) => {
             // Normalize path separators for Windows compatibility
             const normalizedPath = args.importer.replace(/\\/g, '/');
             if (normalizedPath.includes('src/shared/export') || normalizedPath.includes('src/services')) {
