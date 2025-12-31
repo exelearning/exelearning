@@ -37,21 +37,19 @@ describe('File Helper Service', () => {
             expect(helper.getFilesDir()).toBe('/custom/elysia/files');
         });
 
-        it('should return FILES_DIR if set and not /mnt', () => {
+        it('should return FILES_DIR if set', () => {
             const helper = createFileHelper({
                 getEnv: key => (key === 'FILES_DIR' ? '/custom/files' : undefined),
             });
             expect(helper.getFilesDir()).toBe('/custom/files');
         });
 
-        it('should skip FILES_DIR if it starts with /mnt', () => {
+        it('should return FILES_DIR even if it starts with /mnt (Docker)', () => {
             const helper = createFileHelper({
-                getEnv: key => (key === 'FILES_DIR' ? '/mnt/shared/files' : undefined),
+                getEnv: key => (key === 'FILES_DIR' ? '/mnt/data/' : undefined),
                 getCwd: () => '/test/cwd',
             });
-            const result = helper.getFilesDir();
-            expect(result).not.toBe('/mnt/shared/files');
-            expect(result).toContain('data');
+            expect(helper.getFilesDir()).toBe('/mnt/data/');
         });
 
         it('should return default data directory if no env vars', () => {
