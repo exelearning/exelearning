@@ -6,12 +6,15 @@
  */
 import type { PlatformJWTPayload } from '../utils/platform-jwt';
 import { buildIntegrationUrl, getExportTypeFromPkgType } from '../utils/platform-jwt';
-import { db } from '../db/client';
-import { findProjectByUuid } from '../db/queries';
-import { reconstructDocument } from '../websocket/yjs-persistence';
+import { db as defaultDb } from '../db/client';
+import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
+import { reconstructDocument as reconstructDocumentDefault } from '../websocket/yjs-persistence';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
+import type { Kysely } from 'kysely';
+import type { Database } from '../db/types';
+import type { Doc as YDoc } from 'yjs';
 
 // Centralized export system
 import {
@@ -56,6 +59,44 @@ interface PlatformJsonData {
     ode_user: string;
     ode_uri?: string;
     jwt_token: string;
+}
+
+/**
+ * Dependencies for platform integration service
+ */
+export interface PlatformIntegrationDependencies {
+    db: Kysely<Database>;
+    findProjectByUuid: typeof findProjectByUuidDefault;
+    reconstructDocument: (projectId: number) => Promise<YDoc | null>;
+}
+
+const defaultDeps: PlatformIntegrationDependencies = {
+    db: defaultDb,
+    findProjectByUuid: findProjectByUuidDefault,
+    reconstructDocument: reconstructDocumentDefault,
+};
+
+let deps = defaultDeps;
+
+/**
+ * Configure dependencies for testing
+ */
+export function configure(newDeps: Partial<PlatformIntegrationDependencies>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+/**
+ * Reset dependencies to defaults
+ */
+export function resetDependencies(): void {
+    deps = defaultDeps;
+}
+
+/**
+ * Get current dependencies (for testing)
+ */
+export function getDependencies(): PlatformIntegrationDependencies {
+    return deps;
 }
 
 /**
@@ -139,7 +180,7 @@ export async function platformPetitionSet(
 
     try {
         // 1. Find the project in the database
-        const project = await findProjectByUuid(db, projectUuid);
+        const project = await deps.findProjectByUuid(deps.db, projectUuid);
         if (!project) {
             return {
                 success: false,
@@ -148,7 +189,7 @@ export async function platformPetitionSet(
         }
 
         // 2. Reconstruct Yjs document from database
-        const yjsDoc = await reconstructDocument(project.id);
+        const yjsDoc = await deps.reconstructDocument(project.id);
         if (!yjsDoc) {
             return {
                 success: false,
@@ -177,7 +218,7 @@ export async function platformPetitionSet(
 
         // Create asset providers
         const fsAssets = new FileSystemAssetProvider(tempDir);
-        const dbAssets = new DatabaseAssetProvider(db, project.id, tempDir);
+        const dbAssets = new DatabaseAssetProvider(deps.db, project.id, tempDir);
         const assets = new CombinedAssetProvider([dbAssets, fsAssets]);
 
         // 5. Select exporter based on package type

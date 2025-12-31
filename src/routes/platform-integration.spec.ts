@@ -5,10 +5,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { SignJWT } from 'jose';
 import { platformIntegrationRoutes } from './platform-integration';
+import {
+    configure as configureService,
+    resetDependencies as resetServiceDependencies,
+} from '../services/platform-integration';
 
 describe('Platform Integration Routes', () => {
     // Store original environment variables
     let originalEnv: Record<string, string | undefined>;
+    // Store original fetch
+    const originalFetch = globalThis.fetch;
 
     beforeEach(() => {
         originalEnv = {
@@ -21,9 +27,16 @@ describe('Platform Integration Routes', () => {
         // Set a test secret
         process.env.APP_SECRET = 'test-secret-for-jwt';
         delete process.env.BASE_PATH;
+        delete process.env.PROVIDER_IDS;
+        delete process.env.PROVIDER_TOKENS;
+        delete process.env.PROVIDER_URLS;
     });
 
     afterEach(() => {
+        // Restore original fetch
+        globalThis.fetch = originalFetch;
+        // Reset service dependencies
+        resetServiceDependencies();
         // Restore original environment variables
         Object.keys(originalEnv).forEach(key => {
             if (originalEnv[key] !== undefined) {
@@ -101,6 +114,19 @@ describe('Platform Integration Routes', () => {
             // The token should be URL-encoded in the redirect
             expect(location).toContain('jwt_token=');
         });
+
+        it('should respect BASE_PATH in redirect URL', async () => {
+            process.env.BASE_PATH = '/exelearning';
+            const token = await createValidToken();
+
+            const response = await app.handle(
+                new Request(`http://localhost/new_ode?jwt_token=${encodeURIComponent(token)}`),
+            );
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('/exelearning/workarea');
+        });
     });
 
     describe('GET /edit_ode', () => {
@@ -149,6 +175,19 @@ describe('Platform Integration Routes', () => {
             const location = response.headers.get('location');
             expect(location).toContain('odeId=jwt-cmid-789');
         });
+
+        it('should respect BASE_PATH in redirect URL', async () => {
+            process.env.BASE_PATH = '/myapp';
+            const token = await createValidToken();
+
+            const response = await app.handle(
+                new Request(`http://localhost/edit_ode?ode_id=123&jwt_token=${encodeURIComponent(token)}`),
+            );
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('/myapp/workarea');
+        });
     });
 
     describe('POST /api/platform/integration/openPlatformElp', () => {
@@ -168,8 +207,78 @@ describe('Platform Integration Routes', () => {
             expect(data.error).toContain('Invalid token');
         });
 
-        // Note: Testing successful fetch would require mocking the platform HTTP call
-        // This is better suited for integration tests
+        it('should return ELP data on success', async () => {
+            const token = await createValidToken();
+
+            // Mock fetch to return ELP data
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        ode_file: 'base64EncodedContent',
+                        ode_filename: 'test-project.elp',
+                        status: '0',
+                    }),
+                    { status: 200, headers: { 'Content-Type': 'application/json' } },
+                );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/openPlatformElp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: token }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+
+            const data = await response.json();
+            expect(data.responseMessage).toBe('OK');
+            expect(data.elpFile).toBe('base64EncodedContent');
+            expect(data.elpFileName).toBe('test-project.elp');
+        });
+
+        it('should return 500 when platform returns error', async () => {
+            const token = await createValidToken();
+
+            // Mock fetch to return error
+            globalThis.fetch = async () => new Response(null, { status: 500 });
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/openPlatformElp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: token }),
+                }),
+            );
+
+            expect(response.status).toBe(500);
+
+            const data = await response.json();
+            expect(data.responseMessage).toBe('ERROR');
+        });
+
+        it('should return 500 when network error occurs', async () => {
+            const token = await createValidToken();
+
+            // Mock fetch to throw error
+            globalThis.fetch = async () => {
+                throw new Error('Network error');
+            };
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/openPlatformElp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: token }),
+                }),
+            );
+
+            expect(response.status).toBe(500);
+
+            const data = await response.json();
+            expect(data.responseMessage).toBe('ERROR');
+            expect(data.error).toContain('Network error');
+        });
     });
 
     describe('POST /api/platform/integration/set_platform_new_ode', () => {
@@ -192,11 +301,145 @@ describe('Platform Integration Routes', () => {
             expect(data.error).toContain('Invalid token');
         });
 
-        // Note: Testing successful upload would require:
-        // 1. A project in the database
-        // 2. Yjs document with content
-        // 3. Mock platform server to receive the upload
-        // This is better suited for integration tests
+        it('should return error when project not found', async () => {
+            const token = await createValidToken();
+
+            // Configure service with mock that returns null for project
+            configureService({
+                findProjectByUuid: async () => null,
+            });
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectUuid: 'non-existent-uuid',
+                        jwt_token: token,
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(500);
+
+            const data = await response.json();
+            expect(data.success).toBe(false);
+            expect(data.error).toContain('Project not found');
+        });
+
+        it('should return success when upload succeeds', async () => {
+            const token = await createValidToken();
+            const mockYjsDoc = createMockYjsDocument();
+
+            // Configure service with mocks
+            configureService({
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'test-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                reconstructDocument: async () => mockYjsDoc,
+            });
+
+            // Mock fetch to return success
+            const platformResponse = { success: true, message: 'Upload complete' };
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify(platformResponse), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectUuid: 'test-uuid',
+                        jwt_token: token,
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+
+            const data = await response.json();
+            expect(data.success).toBe(true);
+        });
+
+        it('should return 500 when platform returns error', async () => {
+            const token = await createValidToken();
+            const mockYjsDoc = createMockYjsDocument();
+
+            configureService({
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'test-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                reconstructDocument: async () => mockYjsDoc,
+            });
+
+            // Mock fetch to return error
+            globalThis.fetch = async () => new Response(null, { status: 500 });
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectUuid: 'test-uuid',
+                        jwt_token: token,
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(500);
+
+            const data = await response.json();
+            expect(data.success).toBe(false);
+        });
+
+        it('should return 500 when network error occurs', async () => {
+            const token = await createValidToken();
+            const mockYjsDoc = createMockYjsDocument();
+
+            configureService({
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'test-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                reconstructDocument: async () => mockYjsDoc,
+            });
+
+            // Mock fetch to throw error
+            globalThis.fetch = async () => {
+                throw new Error('Connection refused');
+            };
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectUuid: 'test-uuid',
+                        jwt_token: token,
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(500);
+
+            const data = await response.json();
+            expect(data.success).toBe(false);
+            expect(data.error).toContain('Connection refused');
+        });
     });
 
     describe('Token validation', () => {
@@ -274,5 +517,59 @@ describe('Platform Integration Routes', () => {
 
             expect(response.status).toBe(401);
         });
+
+        it('should accept tokens from allowed providers', async () => {
+            process.env.PROVIDER_IDS = 'my-moodle';
+            process.env.PROVIDER_TOKENS = 'test-secret-for-jwt';
+            process.env.PROVIDER_URLS = 'https://moodle.example.com';
+
+            const token = await createValidToken({ provider_id: 'my-moodle' });
+
+            // Mock fetch to return success
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        ode_file: 'content',
+                        ode_filename: 'file.elp',
+                        status: '0',
+                    }),
+                    { status: 200, headers: { 'Content-Type': 'application/json' } },
+                );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/platform/integration/openPlatformElp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt_token: token }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+        });
     });
 });
+
+/**
+ * Create a minimal mock Yjs document with the required structure
+ */
+function createMockYjsDocument() {
+    const Y = require('yjs');
+    const doc = new Y.Doc();
+
+    const metadata = doc.getMap('metadata');
+    metadata.set('title', 'Test Project');
+    metadata.set('author', 'Test Author');
+    metadata.set('language', 'en');
+    metadata.set('license', 'CC BY-SA 4.0');
+
+    const navigation = doc.getArray('navigation');
+    const rootPage = new Y.Map();
+    rootPage.set('id', 'root');
+    rootPage.set('pageName', 'Home');
+    rootPage.set('parentId', null);
+    rootPage.set('order', 0);
+    rootPage.set('blocks', new Y.Array());
+    navigation.push([rootPage]);
+
+    return doc;
+}
