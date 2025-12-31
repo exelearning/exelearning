@@ -39,6 +39,8 @@ import { getSettingNumber } from './services/app-settings';
 import { getBasePath } from './utils/basepath.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
+import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
+import { initializeCrossInstanceHandler } from './websocket/room-manager';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -581,10 +583,21 @@ async function bootstrap() {
         process.exit(1);
     }
 
-    // 2. Sync builtin themes from filesystem to database
+    // 2. Initialize Redis for high availability (if configured)
+    if (isRedisEnabled()) {
+        console.log('[Redis] REDIS_HOST is set, enabling multi-instance mode...');
+        const connected = await connectRedis();
+        if (connected) {
+            initializeCrossInstanceHandler();
+        } else {
+            console.warn('[Redis] Failed to connect, falling back to single-instance mode');
+        }
+    }
+
+    // 3. Sync builtin themes from filesystem to database
     await syncBuiltinThemes();
 
-    // 3. Seed test user if not exists
+    // 5. Seed test user if not exists
     const testEmail = process.env.TEST_USER_EMAIL || 'user@exelearning.net';
     const testPassword = process.env.TEST_USER_PASSWORD || '1234';
 
@@ -609,7 +622,7 @@ async function bootstrap() {
         console.log(`[DB] Test user created: ${testEmail}`);
     }
 
-    // 4. Start server
+    // 6. Start server
     app.listen(PORT);
     initWebSocket();
 
@@ -628,16 +641,14 @@ bootstrap().catch(err => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down...');
+async function gracefulShutdown(signal: string) {
+    console.log(`${signal} received, shutting down...`);
     stopWebSocket();
+    await disconnectRedis();
     process.exit(0);
-});
+}
 
-process.on('SIGINT', () => {
-    console.log('SIGINT received, shutting down...');
-    stopWebSocket();
-    process.exit(0);
-});
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 export type App = typeof app;

@@ -29,6 +29,9 @@ const EXCLUDED_FILES = [
     // Core functionality is fully tested; admin integration tested via integration tests
     'src/routes/themes.ts', // Admin themes merge requires DB; base functionality 100% tested
     'src/routes/config.ts', // Admin templates endpoint requires DB; base functionality 100% tested
+    // Redis modules require real Redis server for connection testing; graceful fallback tested
+    'src/redis/client.ts', // Requires real Redis for connection/pub testing
+    'src/redis/pubsub-manager.ts', // Requires real Redis for pub/sub testing
 ];
 
 /**
