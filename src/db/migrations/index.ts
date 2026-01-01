@@ -8,7 +8,6 @@ import { tableExists as tableExistsHelper, getDialect } from '../helpers';
 // Import all migrations
 import * as migration000 from './000_legacy_symfony';
 import * as migration001 from './001_initial';
-import * as migration002 from './002_add_platform_id';
 
 // ============================================================================
 // MIGRATION REGISTRY
@@ -17,7 +16,6 @@ import * as migration002 from './002_add_platform_id';
 const migrations: Record<string, Migration> = {
     '000_legacy_symfony': migration000,
     '001_initial': migration001,
-    '002_add_platform_id': migration002,
 };
 
 // ============================================================================

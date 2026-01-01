@@ -1225,6 +1225,42 @@ describe('Pages Routes', () => {
             expect(location).toContain('jwt_token=');
             expect(location).toContain('platform-jwt-token');
         });
+
+        it('should find project by platform_id when odeId is not a UUID', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            // Create a project with platform_id matching the odeId
+            mockProjects.set('my-project-uuid', {
+                id: 100,
+                uuid: 'my-project-uuid',
+                ownerId: 1,
+                owner_id: 1,
+                platform_id: 'moodle-cmid-999', // This is the cmid from Moodle
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea?odeId=moodle-cmid-999&jwt_token=test-jwt', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Should render workarea with the found project (not create new)
+            expect(res.status).toBe(200);
+        });
     });
 
     describe('workarea rendering', () => {

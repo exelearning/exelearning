@@ -9,6 +9,7 @@ import type { Database, Project, User } from '../types';
 import {
     findProjectById,
     findProjectByUuid,
+    findProjectByPlatformId,
     findProjectWithOwner,
     findProjectByUuidWithOwner,
     getProjectCollaborators,
@@ -163,6 +164,44 @@ describe('Project Queries', () => {
 
         it('should return undefined for non-existent UUID', async () => {
             const found = await findProjectByUuid(db, 'nonexistent-uuid');
+            expect(found).toBeUndefined();
+        });
+    });
+
+    describe('findProjectByPlatformId', () => {
+        it('should find existing project by platform_id', async () => {
+            const uuid = 'platform-id-test';
+            const platformId = 'moodle-cmid-12345';
+
+            await createProjectWithUuid(db, uuid, {
+                title: 'Platform Project',
+                owner_id: testUser.id,
+            });
+
+            // Update project with platform_id
+            await updateProjectByUuid(db, uuid, { platform_id: platformId });
+
+            const found = await findProjectByPlatformId(db, platformId);
+
+            expect(found).toBeDefined();
+            expect(found?.uuid).toBe(uuid);
+            expect(found?.platform_id).toBe(platformId);
+        });
+
+        it('should return undefined for non-existent platform_id', async () => {
+            const found = await findProjectByPlatformId(db, 'nonexistent-platform-id');
+            expect(found).toBeUndefined();
+        });
+
+        it('should return undefined when platform_id is null', async () => {
+            const uuid = 'null-platform-id-test';
+            await createProjectWithUuid(db, uuid, {
+                title: 'No Platform Project',
+                owner_id: testUser.id,
+            });
+
+            // Project has null platform_id by default
+            const found = await findProjectByPlatformId(db, 'any-id');
             expect(found).toBeUndefined();
         });
     });

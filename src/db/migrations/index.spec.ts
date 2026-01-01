@@ -111,7 +111,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('002_add_platform_id');
+            expect(result.rolledBack).toBe('001_initial');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {
@@ -125,8 +125,7 @@ describe('Database Migrations', () => {
             // Migrate up
             await migrateToLatest(db);
 
-            // Rollback all 3 migrations to remove all tables
-            await migrateDown(db); // rollback 002_add_platform_id
+            // Rollback all 2 migrations to remove all tables
             await migrateDown(db); // rollback 001_initial
             await migrateDown(db); // rollback 000_legacy_symfony
 
@@ -187,10 +186,9 @@ describe('Database Migrations', () => {
 
             const status = await getMigrationStatus(db);
 
-            // After one rollback, 002_add_platform_id should be pending
-            // 001_initial and 000_legacy_symfony are still executed
-            expect(status.pending).toContain('002_add_platform_id');
-            expect(status.executed).toContain('001_initial');
+            // After one rollback, 001_initial should be pending
+            // 000_legacy_symfony is still executed
+            expect(status.pending).toContain('001_initial');
             expect(status.executed).toContain('000_legacy_symfony');
         });
     });
@@ -202,17 +200,16 @@ describe('Database Migrations', () => {
             expect(up1.success).toBe(true);
             expect(up1.executedMigrations).toContain('000_legacy_symfony');
             expect(up1.executedMigrations).toContain('001_initial');
-            expect(up1.executedMigrations).toContain('002_add_platform_id');
 
-            // Down - rolls back the last migration (002_add_platform_id)
+            // Down - rolls back the last migration (001_initial)
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('002_add_platform_id');
+            expect(down.rolledBack).toBe('001_initial');
 
-            // Up again - should re-apply 002_add_platform_id
+            // Up again - should re-apply 001_initial
             const up2 = await migrateToLatest(db);
             expect(up2.success).toBe(true);
-            expect(up2.executedMigrations).toContain('002_add_platform_id');
+            expect(up2.executedMigrations).toContain('001_initial');
         });
     });
 

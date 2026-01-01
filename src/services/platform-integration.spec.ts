@@ -438,6 +438,7 @@ describe('Platform Integration Service', () => {
                     updatedAt: new Date(),
                 }),
                 findSnapshotByProjectId: async () => mockSnapshot,
+                updateProjectByUuid: async () => undefined,
             });
 
             let capturedBody: FormData | null = null;
@@ -457,6 +458,74 @@ describe('Platform Integration Service', () => {
 
             // Verify cmid is sent as ode_id (not projectUuid)
             expect(odeData.ode_id).toBe('456'); // mockPayload.cmid
+        });
+
+        it('should store platform_id after successful upload', async () => {
+            const mockSnapshot = createMockSnapshot();
+            let storedPlatformId: string | null = null;
+            let storedProjectUuid: string | null = null;
+
+            configure({
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'test-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                findSnapshotByProjectId: async () => mockSnapshot,
+                updateProjectByUuid: async (_db, uuid, data) => {
+                    storedProjectUuid = uuid;
+                    storedPlatformId = data.platform_id ?? null;
+                    return undefined;
+                },
+            });
+
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ success: true }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+            const result = await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
+
+            expect(result.success).toBe(true);
+            // Verify platform_id (cmid) was stored for the project
+            expect(storedProjectUuid).toBe('test-uuid');
+            expect(storedPlatformId).toBe('456'); // mockPayload.cmid
+        });
+
+        it('should not store platform_id when upload fails', async () => {
+            const mockSnapshot = createMockSnapshot();
+            let updateCalled = false;
+
+            configure({
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'test-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                findSnapshotByProjectId: async () => mockSnapshot,
+                updateProjectByUuid: async () => {
+                    updateCalled = true;
+                    return undefined;
+                },
+            });
+
+            // Platform returns error
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ status: '1', error: 'Upload failed' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+            const result = await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
+
+            expect(result.success).toBe(false);
+            // updateProjectByUuid should NOT be called on failure
+            expect(updateCalled).toBe(false);
         });
     });
 });

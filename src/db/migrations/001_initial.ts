@@ -78,8 +78,16 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('license', 'varchar(255)')
         .addColumn('last_accessed_at', 'bigint') // Unix timestamp in milliseconds
         .addColumn('saved_once', 'integer', col => col.notNull().defaultTo(0))
+        .addColumn('platform_id', 'varchar(64)') // External platform ID (e.g., Moodle cmid)
         .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
         .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
+        .execute();
+
+    await db.schema
+        .createIndex('idx_projects_platform_id')
+        .ifNotExists()
+        .on('projects')
+        .column('platform_id')
         .execute();
 
     // ========================================================================
