@@ -335,6 +335,7 @@ describe('Platform Integration Service', () => {
                     updatedAt: new Date(),
                 }),
                 findSnapshotByProjectId: async () => mockSnapshot,
+                updateProjectByUuid: async () => undefined,
             });
 
             const platformResponse = { success: true, message: 'Upload complete' };
@@ -363,6 +364,7 @@ describe('Platform Integration Service', () => {
                     updatedAt: new Date(),
                 }),
                 findSnapshotByProjectId: async () => mockSnapshot,
+                updateProjectByUuid: async () => undefined,
             });
 
             let capturedBody: FormData | null = null;
