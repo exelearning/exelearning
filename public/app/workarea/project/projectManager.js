@@ -1097,9 +1097,9 @@ export default class projectManager {
             });
     }
 
-    // Placeholder for future real-time collaboration (Mercure was removed)
+    // Placeholder - kept for API compatibility
     async subscribeToSessionAndNotify() {
-        // No-op: Mercure integration removed
+        // No-op: Real-time collaboration uses Yjs WebSocket
     }
 
     async saveMenuHeadButton(disableButton) {

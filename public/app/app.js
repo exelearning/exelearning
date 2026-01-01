@@ -176,33 +176,6 @@ export default class App {
             });
         }
 
-        // Test-env override: when running E2E with Panther, the page origin
-        // is the internal PHP server (exelearning:908X), which doesn't host Mercure.
-        // Force the hub to the Nginx/Caddy endpoint in the exelearning container.
-        if (window.eXeLearning?.config?.environment === 'test') {
-            // Only override if not already explicitly set to a non-908X host
-            try {
-                const current = window.eXeLearning.mercure?.url || '';
-                const url = new URL(current || 'http://exelearning');
-                const isPantherPort = /^90\d{2}$/.test(
-                    String(urlRequest.port || '')
-                );
-                const isCurrentOk = current.includes('exelearning:8080');
-                if (!isCurrentOk && isPantherPort) {
-                    window.eXeLearning.mercure = {
-                        ...(window.eXeLearning.mercure || {}),
-                        url: 'http://exelearning:8080/.well-known/mercure',
-                    };
-                }
-            } catch (e) {
-                // Fallback: set directly
-                window.eXeLearning.mercure = {
-                    ...(window.eXeLearning.mercure || {}),
-                    url: 'http://exelearning:8080/.well-known/mercure',
-                };
-            }
-        }
-
         // COMPATIBILITY SHIM: Create eXeLearning.symfony for legacy iDevices
         // Legacy iDevices (like interactive-video) reference eXeLearning.symfony.baseURL
         // This shim maps them to the new eXeLearning.config structure
