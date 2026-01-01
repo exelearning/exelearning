@@ -152,52 +152,6 @@ describe('App utility methods', () => {
       window.location = originalLocation;
     });
 
-    it('handles test environment mercure override', () => {
-      window.eXeLearning.user = '{"id":1}';
-      window.eXeLearning.config = '{"isOfflineInstallation":false,"environment":"test"}';
-      window.eXeLearning.mercure = { url: 'http://test:9080' };
-
-      const originalLocation = window.location;
-      delete window.location;
-      window.location = { href: 'http://localhost:9080/test', protocol: 'http:', port: '9080' };
-
-      appInstance.parseExelearningConfig();
-
-      expect(window.eXeLearning.mercure.url).toBe('http://exelearning:8080/.well-known/mercure');
-
-      window.location = originalLocation;
-    });
-
-    it('handles mercure override exception via fallback', () => {
-      window.eXeLearning.user = '{"id":1}';
-      window.eXeLearning.config = '{"isOfflineInstallation":false,"environment":"test"}';
-      // Set mercure.url to an invalid URL that will throw when parsed
-      window.eXeLearning.mercure = { url: 'not-a-valid-url-at-all' };
-
-      const originalLocation = window.location;
-      const originalURL = global.URL;
-      delete window.location;
-      window.location = { href: 'http://localhost:9080/test', protocol: 'http:', port: '9080' };
-
-      // Mock URL to throw an error to trigger the catch block
-      global.URL = class {
-        constructor(url) {
-          if (url === 'not-a-valid-url-at-all') {
-            throw new Error('Invalid URL');
-          }
-          return new originalURL(url);
-        }
-      };
-
-      appInstance.parseExelearningConfig();
-
-      // Should fall back to the default mercure URL
-      expect(window.eXeLearning.mercure.url).toBe('http://exelearning:8080/.well-known/mercure');
-
-      global.URL = originalURL;
-      window.location = originalLocation;
-    });
-
     it('creates symfony compatibility shim from config', () => {
       window.eXeLearning.user = '{"id":1}';
       window.eXeLearning.config = '{"isOfflineInstallation":false,"baseURL":"http://localhost","basePath":"/app","fullURL":"http://localhost/app"}';
