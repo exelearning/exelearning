@@ -880,7 +880,7 @@ class JsonSanitizer
             $problems[] = 'Contains UTF-8 BOM';
         }
 
-        if (preg_match('/\\\\(?!["\\\\/bfnrtu])/', $text)) {
+        if (preg_match('/\\\\(?!["\\\\\/bfnrtu])/', $text)) {
             $problems[] = 'Contains invalid escape sequences';
         }
 
