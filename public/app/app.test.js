@@ -168,6 +168,36 @@ describe('App utility methods', () => {
       window.location = originalLocation;
     });
 
+    it('handles mercure override exception via fallback', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":false,"environment":"test"}';
+      // Set mercure.url to an invalid URL that will throw when parsed
+      window.eXeLearning.mercure = { url: 'not-a-valid-url-at-all' };
+
+      const originalLocation = window.location;
+      const originalURL = global.URL;
+      delete window.location;
+      window.location = { href: 'http://localhost:9080/test', protocol: 'http:', port: '9080' };
+
+      // Mock URL to throw an error to trigger the catch block
+      global.URL = class {
+        constructor(url) {
+          if (url === 'not-a-valid-url-at-all') {
+            throw new Error('Invalid URL');
+          }
+          return new originalURL(url);
+        }
+      };
+
+      appInstance.parseExelearningConfig();
+
+      // Should fall back to the default mercure URL
+      expect(window.eXeLearning.mercure.url).toBe('http://exelearning:8080/.well-known/mercure');
+
+      global.URL = originalURL;
+      window.location = originalLocation;
+    });
+
     it('creates symfony compatibility shim from config', () => {
       window.eXeLearning.user = '{"id":1}';
       window.eXeLearning.config = '{"isOfflineInstallation":false,"baseURL":"http://localhost","basePath":"/app","fullURL":"http://localhost/app"}';
@@ -1000,6 +1030,63 @@ describe('App utility methods', () => {
     });
   });
 
+  describe('init', () => {
+    it('calls all initialization methods in sequence', async () => {
+      const initToastsSpy = vi.fn();
+      const initModalsSpy = vi.fn();
+      const loadApiSpy = vi.fn().mockResolvedValue(undefined);
+      const loadLocaleSpy = vi.fn().mockResolvedValue(undefined);
+      const loadIdevicesSpy = vi.fn().mockResolvedValue(undefined);
+      const loadThemesSpy = vi.fn().mockResolvedValue(undefined);
+      const loadUserSpy = vi.fn().mockResolvedValue(undefined);
+      const showLopdSpy = vi.fn().mockResolvedValue(undefined);
+      const showDemoWarningSpy = vi.fn().mockResolvedValue(undefined);
+      const tmpStringsSpy = vi.fn().mockResolvedValue(undefined);
+      const noTranslateSpy = vi.fn().mockResolvedValue(undefined);
+      const customJsSpy = vi.fn().mockResolvedValue(undefined);
+      const shortcutsSpy = vi.fn().mockResolvedValue(undefined);
+      const electronToastsSpy = vi.fn();
+      const electronFileOpenSpy = vi.fn();
+      const exePackageSpy = vi.fn();
+
+      appInstance.initializedToasts = initToastsSpy;
+      appInstance.initializedModals = initModalsSpy;
+      appInstance.loadApiParameters = loadApiSpy;
+      appInstance.loadLocale = loadLocaleSpy;
+      appInstance.loadIdevicesInstalled = loadIdevicesSpy;
+      appInstance.loadThemesInstalled = loadThemesSpy;
+      appInstance.loadUser = loadUserSpy;
+      appInstance.showModalLopd = showLopdSpy;
+      appInstance.showProvisionalDemoWarning = showDemoWarningSpy;
+      appInstance.tmpStringList = tmpStringsSpy;
+      appInstance.addNoTranslateForGoogle = noTranslateSpy;
+      appInstance.runCustomJavaScriptCode = customJsSpy;
+      appInstance.initializedShortcuts = shortcutsSpy;
+      appInstance.bindElectronDownloadToasts = electronToastsSpy;
+      appInstance.bindElectronFileOpenHandler = electronFileOpenSpy;
+      appInstance.initExePackageProtocolHandler = exePackageSpy;
+
+      await appInstance.init();
+
+      expect(initToastsSpy).toHaveBeenCalled();
+      expect(initModalsSpy).toHaveBeenCalled();
+      expect(loadApiSpy).toHaveBeenCalled();
+      expect(loadLocaleSpy).toHaveBeenCalled();
+      expect(loadIdevicesSpy).toHaveBeenCalled();
+      expect(loadThemesSpy).toHaveBeenCalled();
+      expect(loadUserSpy).toHaveBeenCalled();
+      expect(showLopdSpy).toHaveBeenCalled();
+      expect(showDemoWarningSpy).toHaveBeenCalled();
+      expect(tmpStringsSpy).toHaveBeenCalled();
+      expect(noTranslateSpy).toHaveBeenCalled();
+      expect(customJsSpy).toHaveBeenCalled();
+      expect(shortcutsSpy).toHaveBeenCalled();
+      expect(electronToastsSpy).toHaveBeenCalled();
+      expect(electronFileOpenSpy).toHaveBeenCalled();
+      expect(exePackageSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('selectFirstNodeStructure', () => {
     it('calls project.structure.selectFirst', async () => {
       const selectFirstSpy = vi.fn();
@@ -1076,6 +1163,57 @@ describe('App utility methods', () => {
 
       expect(appInstance.sessionMonitor).not.toBeNull();
     });
+
+    it('closeYjsConnections callback calls app method', async () => {
+      // Import SessionMonitor mock to capture constructor args
+      const { default: SessionMonitor } = await import('./common/sessionMonitor.js');
+
+      // Get the mock constructor calls
+      appInstance.setupSessionMonitor();
+
+      // Get the options passed to SessionMonitor
+      const constructorCall = SessionMonitor.mock.calls[SessionMonitor.mock.calls.length - 1];
+      const options = constructorCall[0];
+
+      // Test the closeYjsConnections callback
+      const closeYjsSpy = vi.spyOn(appInstance, 'closeYjsConnections').mockImplementation(() => {});
+      options.closeYjsConnections('test-reason');
+
+      expect(closeYjsSpy).toHaveBeenCalledWith('test-reason');
+    });
+
+    it('onSessionInvalid callback calls handleSessionExpiration', async () => {
+      const { default: SessionMonitor } = await import('./common/sessionMonitor.js');
+
+      appInstance.setupSessionMonitor();
+
+      const constructorCall = SessionMonitor.mock.calls[SessionMonitor.mock.calls.length - 1];
+      const options = constructorCall[0];
+
+      const handleSpy = vi.spyOn(appInstance, 'handleSessionExpiration').mockImplementation(() => {});
+      options.onSessionInvalid('session-expired');
+
+      expect(handleSpy).toHaveBeenCalledWith('session-expired');
+    });
+
+    it('onNetworkError callback logs debug message', async () => {
+      const { default: SessionMonitor } = await import('./common/sessionMonitor.js');
+
+      appInstance.setupSessionMonitor();
+
+      const constructorCall = SessionMonitor.mock.calls[SessionMonitor.mock.calls.length - 1];
+      const options = constructorCall[0];
+
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const testError = new Error('Network error');
+      options.onNetworkError(testError, 'connection-lost');
+
+      expect(debugSpy).toHaveBeenCalledWith(
+        'SessionMonitor: temporary issue while checking the session',
+        'connection-lost',
+        testError
+      );
+    });
   });
 
   describe('constructor', () => {
@@ -1144,29 +1282,33 @@ describe('Module-level event handlers', () => {
     expect(typeof window.onload).toBe('function');
   });
 
-  it('window.onload creates App instance', () => {
-    // Mock init to prevent side effects
+  it('window.onload creates App instance and calls init', () => {
+    // Store original onload set by the module
     const originalOnload = window.onload;
 
-    // Call onload which creates App and calls init
-    // We mock init after App is created to prevent the async side effects
+    // Store original app if any
+    const originalApp = window.eXeLearning.app;
+
+    // Mock App.prototype.init to prevent side effects
+    const originalInit = App.prototype.init;
     const mockInit = vi.fn().mockResolvedValue(undefined);
+    App.prototype.init = mockInit;
 
-    // Wrap the original onload to capture the app and mock init
-    window.onload = function() {
-      window.eXeLearning.app = new App(window.eXeLearning);
-      window.eXeLearning.app.init = mockInit;
-      window.eXeLearning.app.init();
-    };
+    try {
+      // Execute the actual onload handler
+      // This covers lines 821-824: var eXeLearning = window.eXeLearning; eXeLearning.app = new App(eXeLearning); eXeLearning.app.init();
+      originalOnload();
 
-    window.onload();
-
-    expect(window.eXeLearning.app).toBeDefined();
-    expect(window.eXeLearning.app).toBeInstanceOf(App);
-    expect(mockInit).toHaveBeenCalled();
-
-    // Restore
-    window.onload = originalOnload;
+      // The App instance should be created
+      expect(window.eXeLearning.app).toBeDefined();
+      expect(window.eXeLearning.app).toBeInstanceOf(App);
+      // init should have been called
+      expect(mockInit).toHaveBeenCalled();
+    } finally {
+      // Cleanup
+      App.prototype.init = originalInit;
+      window.eXeLearning.app = originalApp;
+    }
   });
 
   it('beforeunload handler returns undefined', () => {
