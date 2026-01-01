@@ -18,6 +18,7 @@ import {
     createUser as createUserDefault,
     findPreference as findPreferenceDefault,
     findProjectByUuid as findProjectByUuidDefault,
+    findProjectByPlatformId as findProjectByPlatformIdDefault,
     checkProjectAccess as checkProjectAccessDefault,
     createProject as createProjectDefault,
 } from '../db/queries';
@@ -48,6 +49,7 @@ import {
 } from '../services/session-manager';
 import { createSessionDirectories as createSessionDirectoriesDefault } from '../services/file-helper';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
+import { decodePlatformJWT } from '../utils/platform-jwt';
 import type { JwtPayload } from './types/request-payloads';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 
@@ -72,6 +74,7 @@ export interface PagesQueriesDeps {
     createUser: typeof createUserDefault;
     findPreference: typeof findPreferenceDefault;
     findProjectByUuid: typeof findProjectByUuidDefault;
+    findProjectByPlatformId: typeof findProjectByPlatformIdDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
     createProject: typeof createProjectDefault;
     getDefaultTheme: typeof getDefaultThemeDefault;
@@ -126,6 +129,7 @@ const defaultQueries: PagesQueriesDeps = {
     createUser: createUserDefault,
     findPreference: findPreferenceDefault,
     findProjectByUuid: findProjectByUuidDefault,
+    findProjectByPlatformId: findProjectByPlatformIdDefault,
     checkProjectAccess: checkProjectAccessDefault,
     createProject: createProjectDefault,
     getDefaultTheme: getDefaultThemeDefault,
@@ -186,6 +190,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         createUser,
         findPreference,
         findProjectByUuid,
+        findProjectByPlatformId,
         checkProjectAccess,
         createProject,
         getDefaultTheme,
@@ -401,7 +406,75 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return Response.redirect(`${loginUrl}?returnUrl=${encodeURIComponent(returnUrl)}`, 302);
                 }
 
-                const projectUuid = query.project as string | undefined;
+                let projectUuid = query.project as string | undefined;
+                const odeId = query.odeId as string | undefined;
+                const jwtTokenParam = query.jwt_token as string | undefined;
+
+                // =====================================================
+                // PLATFORM INTEGRATION: Handle odeId parameter from Moodle
+                // =====================================================
+                // When coming from /edit_ode or /new_ode, we have odeId (not project)
+                // The odeId can be either:
+                // - A valid project UUID (if editing existing project)
+                // - A Moodle cmid stored as platform_id (if previously saved to Moodle)
+                // - A new Moodle cmid (if new project - need to create one)
+                if (!projectUuid && odeId) {
+                    // First try: Check if odeId is a valid project UUID
+                    let existingProject = await findProjectByUuid(db, odeId);
+
+                    // Second try: Check if odeId matches a platform_id (Moodle cmid)
+                    if (!existingProject) {
+                        existingProject = await findProjectByPlatformId(db, odeId);
+                        if (existingProject) {
+                            console.log(
+                                `[Pages] Platform integration: Found project by platform_id ${odeId} -> ${existingProject.uuid}`,
+                            );
+                        }
+                    }
+
+                    if (existingProject) {
+                        // Found existing project - use it
+                        projectUuid = existingProject.uuid;
+                        console.log(`[Pages] Platform integration: Using existing project ${projectUuid}`);
+                    } else {
+                        // odeId is not a valid project UUID or platform_id (new content from Moodle)
+                        // Create a new project and redirect, preserving jwt_token
+                        try {
+                            const projectRecord = await createProject(db, {
+                                title: 'New Project',
+                                owner_id: currentUser.id,
+                                saved_once: 0,
+                            });
+
+                            const newSessionId = projectRecord.uuid;
+
+                            createSession({
+                                sessionId: newSessionId,
+                                fileName: 'New Project.elp',
+                                filePath: '',
+                                createdAt: new Date(),
+                                updatedAt: new Date(),
+                                structure: null,
+                                userId: currentUser.id,
+                            });
+
+                            console.log(
+                                `[Pages] Platform integration: Created new project ${newSessionId} for Moodle cmid ${odeId}`,
+                            );
+
+                            // Redirect with jwt_token preserved
+                            const basePath = getBasePath();
+                            let redirectUrl = `${basePath}/workarea?project=${newSessionId}`;
+                            if (jwtTokenParam) {
+                                redirectUrl += `&jwt_token=${encodeURIComponent(jwtTokenParam)}`;
+                            }
+                            return Response.redirect(redirectUrl, 302);
+                        } catch (error) {
+                            console.error('[Pages] Platform integration: Failed to create new project:', error);
+                            // Continue - will fall through to normal flow
+                        }
+                    }
+                }
 
                 // =====================================================
                 // ACCESS CONTROL: Verify user has access to the project
@@ -486,6 +559,16 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 // If no project UUID, create a new project and redirect
                 if (!projectUuid) {
+                    // Helper function to build redirect URL with preserved jwt_token
+                    const buildRedirectUrl = (sessionId: string): string => {
+                        const basePath = getBasePath();
+                        let url = `${basePath}/workarea?project=${sessionId}`;
+                        if (jwtTokenParam) {
+                            url += `&jwt_token=${encodeURIComponent(jwtTokenParam)}`;
+                        }
+                        return url;
+                    };
+
                     // Offline mode: create in-memory session only (no DB persistence)
                     if (isOfflineMode()) {
                         const newSessionId = crypto.randomUUID();
@@ -502,10 +585,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                         console.log(`[Pages] Created ephemeral session ${newSessionId} for offline mode`);
 
-                        return Response.redirect(
-                            prefixPath(`/workarea?project=${newSessionId}`) || `/workarea?project=${newSessionId}`,
-                            302,
-                        );
+                        return Response.redirect(buildRedirectUrl(newSessionId), 302);
                     }
 
                     // Online mode: create project in DB (ensures persistence across reloads)
@@ -530,10 +610,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                         console.log(`[Pages] Created new project ${newSessionId} for user ${currentUser.id}`);
 
-                        return Response.redirect(
-                            prefixPath(`/workarea?project=${newSessionId}`) || `/workarea?project=${newSessionId}`,
-                            302,
-                        );
+                        return Response.redirect(buildRedirectUrl(newSessionId), 302);
                     } catch (error) {
                         console.error('[Pages] Failed to create new project:', error);
                         // Continue without project if creation fails
@@ -595,10 +672,24 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     parseAppSettingBoolean(process.env.ONLINE_THEMES_INSTALL, false),
                 );
 
+                // Check for platform integration (jwt_token in URL means user came from platform)
+                const jwtToken = query.jwt_token as string | undefined;
+                let platformIntegrationEnabled = false;
+                let platformName = 'exelearning'; // Default when not coming from platform
+
+                if (jwtToken) {
+                    const platformPayload = await decodePlatformJWT(jwtToken);
+                    if (platformPayload) {
+                        platformIntegrationEnabled = true;
+                        // Extract platform name from provider, or use 'Moodle' as default for platform integration
+                        platformName = platformPayload.provider?.name || 'Moodle';
+                    }
+                }
+
                 // Unified config object (replaces legacy 'symfony' object)
                 const config = {
                     // Platform settings
-                    platformName: 'exelearning',
+                    platformName: platformName,
                     platformType: 'standalone',
                     platformUrlGet: '',
                     platformUrlSet: '',
@@ -607,7 +698,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     clientIntervalUpdate: 3000,
                     defaultTheme: defaultThemeDirName,
                     isOfflineInstallation,
-                    platformIntegration: false,
+                    platformIntegration: platformIntegrationEnabled,
                     userStyles: userStylesEnabled ? 1 : 0,
                     userIdevices: 0,
                     debugJs: process.env.APP_ENV === 'dev',

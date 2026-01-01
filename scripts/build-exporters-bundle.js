@@ -26,8 +26,9 @@ const browserAliasPlugin = {
             }
         });
 
-        // Intercept imports of xml-parser (uses fs-extra which doesn't work in browser)
-        build.onResolve({ filter: /xml-parser$/ }, (args) => {
+        // Intercept imports of our internal xml-parser module (uses fs-extra which doesn't work in browser)
+        // Note: Use specific pattern to avoid matching npm packages like 'fast-xml-parser'
+        build.onResolve({ filter: /services\/xml\/xml-parser$/ }, (args) => {
             // Normalize path separators for Windows compatibility
             const normalizedPath = args.importer.replace(/\\/g, '/');
             if (normalizedPath.includes('src/shared/export') || normalizedPath.includes('src/services')) {
@@ -37,18 +38,22 @@ const browserAliasPlugin = {
             }
         });
 
-        // Mark fs-extra as external (shouldn't be imported by browser code,
-        // but just in case any transitive dependency tries)
+        // Redirect fs-extra to browser shim (used by xml-builder.ts which is imported by YjsDocumentAdapter)
         build.onResolve({ filter: /^fs-extra$/ }, () => {
-            return { path: 'fs-extra', external: true };
+            return {
+                path: path.join(projectRoot, 'src/shared/export/browser/fs-extra-shim.ts'),
+            };
         });
 
         build.onResolve({ filter: /^fs$/ }, () => {
             return { path: 'fs', external: true };
         });
 
+        // Redirect path to browser shim (used by xml-builder.ts)
         build.onResolve({ filter: /^path$/ }, () => {
-            return { path: 'path', external: true };
+            return {
+                path: path.join(projectRoot, 'src/shared/export/browser/path-shim.ts'),
+            };
         });
     },
 };
@@ -62,6 +67,10 @@ esbuild.build({
     external: ['jszip'],
     plugins: [browserAliasPlugin],
     logLevel: 'info',
+    // Replace Node.js environment variables with browser-safe values
+    define: {
+        'process.env.APP_DEBUG': '"0"',
+    },
 }).then(() => {
     console.log('exporters.bundle.js built successfully');
 }).catch((err) => {

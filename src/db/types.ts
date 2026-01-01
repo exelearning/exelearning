@@ -68,6 +68,7 @@ interface ProjectsTable {
     license: string | null;
     last_accessed_at: number | null; // Unix timestamp in milliseconds
     saved_once: number;
+    platform_id: string | null; // External platform ID (e.g., Moodle cmid)
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }

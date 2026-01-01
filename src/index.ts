@@ -22,6 +22,7 @@ import { adminRoutes } from './routes/admin';
 import { adminThemesRoutes } from './routes/admin-themes';
 import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
+import { platformIntegrationRoutes } from './routes/platform-integration';
 import {
     createWebSocketRoutes,
     initialize as initWebSocket,
@@ -453,6 +454,7 @@ const routePrefix = getBasePath();
 app.use(healthRoutes)
     .use(healthCheckAlias)
     .use(authRoutes)
+    .use(platformIntegrationRoutes)
     .use(pagesRoutes)
     .use(projectRoutes)
     .use(symfonyCompatProjectRoutes)
@@ -486,6 +488,7 @@ if (routePrefix) {
             .use(healthRoutes)
             .use(healthCheckAlias)
             .use(authRoutes)
+            .use(platformIntegrationRoutes)
             .use(pagesRoutes)
             .use(projectRoutes)
             .use(symfonyCompatProjectRoutes)
