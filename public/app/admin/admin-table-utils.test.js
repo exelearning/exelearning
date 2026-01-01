@@ -168,6 +168,78 @@ describe('Admin Table Utilities', () => {
 
             await expect(client.get('/invalid')).rejects.toThrow('Validation failed');
         });
+
+        it('should handle JSON parse error gracefully', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.reject(new Error('Invalid JSON')),
+            });
+
+            const client = createApiClient('/api/admin/themes');
+            const result = await client.get('/1');
+
+            expect(result).toEqual({});
+        });
+
+        it('should throw status error when no message in response', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                status: 500,
+                json: () => Promise.resolve({}),
+            });
+
+            const client = createApiClient('/api/admin/themes');
+
+            await expect(client.get('/error')).rejects.toThrow('Request failed with status 500');
+        });
+
+        it('should make PATCH request with JSON body', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({ id: 1, updated: true }),
+            });
+
+            const client = createApiClient('/api/admin/themes');
+            await client.patch('/1', { name: 'Updated Theme' });
+
+            expect(fetchSpy).toHaveBeenCalledWith('/api/admin/themes/1', {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: 'Updated Theme' }),
+            });
+        });
+
+        it('should make DELETE request', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve({}),
+            });
+
+            const client = createApiClient('/api/admin/themes');
+            await client.delete('/1');
+
+            expect(fetchSpy).toHaveBeenCalledWith('/api/admin/themes/1', {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+        });
+
+        it('should call get without path', async () => {
+            fetchSpy.mockResolvedValueOnce({
+                ok: true,
+                json: () => Promise.resolve([{ id: 1 }]),
+            });
+
+            const client = createApiClient('/api/admin/themes');
+            const result = await client.get();
+
+            expect(fetchSpy).toHaveBeenCalledWith('/api/admin/themes', {
+                method: 'GET',
+                credentials: 'include',
+            });
+            expect(result).toEqual([{ id: 1 }]);
+        });
     });
 
     describe('createToggleHandler', () => {
@@ -256,6 +328,24 @@ describe('Admin Table Utilities', () => {
             expect(reloadFn).toHaveBeenCalled();
             confirmSpy.mockRestore();
         });
+
+        it('should handle delete error', async () => {
+            const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+            const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+            fetchSpy.mockResolvedValueOnce({ ok: false });
+
+            const deleteHandler = createDeleteHandler(
+                '/api/admin/themes',
+                reloadFn,
+                'Delete %s?',
+                'Deleted!',
+            );
+            await deleteHandler(1, 'Neo Theme');
+
+            expect(alertSpy).toHaveBeenCalledWith('Error: Failed to delete');
+            confirmSpy.mockRestore();
+            alertSpy.mockRestore();
+        });
     });
 
     describe('createUploadHandler', () => {
@@ -322,6 +412,49 @@ describe('Admin Table Utilities', () => {
             const [, options] = fetchSpy.mock.calls[0];
             const formData = options.body;
             expect(formData.get('locale')).toBe('fr');
+        });
+
+        it('should handle upload error from response', async () => {
+            const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                json: () => Promise.resolve({ message: 'File too large' }),
+            });
+
+            const upload = createUploadHandler('/api/admin/themes/upload', reloadFn, 'Uploaded!');
+            const file = new File(['content'], 'theme.zip');
+            await upload(file);
+
+            expect(alertSpy).toHaveBeenCalledWith('Error: File too large');
+            expect(reloadFn).not.toHaveBeenCalled();
+            alertSpy.mockRestore();
+        });
+
+        it('should handle upload error without message', async () => {
+            const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+            fetchSpy.mockResolvedValueOnce({
+                ok: false,
+                json: () => Promise.resolve({}),
+            });
+
+            const upload = createUploadHandler('/api/admin/themes/upload', reloadFn, 'Uploaded!');
+            const file = new File(['content'], 'theme.zip');
+            await upload(file);
+
+            expect(alertSpy).toHaveBeenCalledWith('Error: Upload failed');
+            alertSpy.mockRestore();
+        });
+
+        it('should handle network error during upload', async () => {
+            const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+            fetchSpy.mockRejectedValueOnce(new Error('Network error'));
+
+            const upload = createUploadHandler('/api/admin/themes/upload', reloadFn, 'Uploaded!');
+            const file = new File(['content'], 'theme.zip');
+            await upload(file);
+
+            expect(alertSpy).toHaveBeenCalledWith('Error: Network error');
+            alertSpy.mockRestore();
         });
     });
 
