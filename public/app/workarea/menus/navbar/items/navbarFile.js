@@ -1382,12 +1382,31 @@ export default class NavbarFile {
         const urlParams = new URLSearchParams(window.location.search);
         let jwt_token = urlParams.get('jwt_token');
 
+        // Get project UUID - in Yjs mode this is the project ID, otherwise use odeSession
+        const projectUuid = eXeLearning.app.project.yjsProjectId ||
+                           eXeLearning.app.project.odeId ||
+                           eXeLearning.app.project.odeSession;
+
+        // Save project to server before uploading to platform
+        // This ensures the Yjs document is persisted
+        try {
+            if (eXeLearning.app.project._yjsBridge?.getDocumentManager) {
+                const docManager = eXeLearning.app.project._yjsBridge.getDocumentManager();
+                if (docManager?.saveToServer) {
+                    await docManager.saveToServer();
+                    console.log('[NavbarFile] Project saved to server before platform upload');
+                }
+            }
+        } catch (saveError) {
+            console.warn('[NavbarFile] Failed to save before platform upload:', saveError);
+            // Continue anyway - server might have the document from WebSocket sync
+        }
+
         let data = {
-            odeSessionId: eXeLearning.app.project.odeSession,
-            platformUrlSet: eXeLearning.config.platformUrlSet,
+            projectUuid: projectUuid,
             jwt_token: jwt_token,
         };
-        // Save
+        // Upload to platform
         let response;
 
         response =

@@ -159,8 +159,7 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
             if (!params) {
                 set.status = 401;
                 return {
-                    success: false,
-                    error: 'Invalid token or unauthorized provider',
+                    responseMessage: 'Invalid token or unauthorized provider',
                 };
             }
 
@@ -169,17 +168,25 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
 
                 if (!result.success) {
                     set.status = 500;
+                    // Return format expected by frontend
+                    return {
+                        responseMessage: result.error || 'Upload failed',
+                    };
                 }
 
-                return result;
+                // Return format expected by frontend
+                return {
+                    responseMessage: 'OK',
+                    returnUrl: params.returnurl,
+                };
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 console.error('[PlatformIntegration] set_platform_new_ode error:', message);
 
                 set.status = 500;
+                // Return format expected by frontend
                 return {
-                    success: false,
-                    error: message,
+                    responseMessage: message,
                 };
             }
         },

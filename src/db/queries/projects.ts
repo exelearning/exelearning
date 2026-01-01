@@ -21,6 +21,10 @@ export async function findProjectByUuid(db: Kysely<Database>, uuid: string): Pro
     return db.selectFrom('projects').selectAll().where('uuid', '=', uuid).executeTakeFirst();
 }
 
+export async function findProjectByPlatformId(db: Kysely<Database>, platformId: string): Promise<Project | undefined> {
+    return db.selectFrom('projects').selectAll().where('platform_id', '=', platformId).executeTakeFirst();
+}
+
 export async function findProjectWithOwner(
     db: Kysely<Database>,
     id: number,

@@ -224,8 +224,8 @@ describe('Platform Integration Service', () => {
             expect(result.error).toContain('Project not found');
         });
 
-        it('should return error when Yjs document cannot be reconstructed', async () => {
-            // Configure with mock project but null document
+        it('should return error when Yjs document snapshot not found', async () => {
+            // Configure with mock project but no snapshot
             configure({
                 findProjectByUuid: async () => ({
                     id: 1,
@@ -234,18 +234,18 @@ describe('Platform Integration Service', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => null,
+                findSnapshotByProjectId: async () => undefined,
             });
 
             const result = await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('Could not reconstruct project document');
+            expect(result.error).toContain('No document saved for this project');
         });
 
         it('should return error when platform returns non-OK HTTP status', async () => {
-            // Create a minimal mock Yjs document
-            const mockYjsDoc = createMockYjsDocument();
+            // Create a mock snapshot from Yjs document
+            const mockSnapshot = createMockSnapshot();
 
             configure({
                 findProjectByUuid: async () => ({
@@ -255,7 +255,7 @@ describe('Platform Integration Service', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             globalThis.fetch = async () => new Response(null, { status: 500 });
@@ -267,7 +267,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('should return error when platform returns error in JSON response', async () => {
-            const mockYjsDoc = createMockYjsDocument();
+            const mockSnapshot = createMockSnapshot();
 
             configure({
                 findProjectByUuid: async () => ({
@@ -277,7 +277,7 @@ describe('Platform Integration Service', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             globalThis.fetch = async () =>
@@ -296,7 +296,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('should return error when platform returns error field in JSON', async () => {
-            const mockYjsDoc = createMockYjsDocument();
+            const mockSnapshot = createMockSnapshot();
 
             configure({
                 findProjectByUuid: async () => ({
@@ -306,7 +306,7 @@ describe('Platform Integration Service', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             globalThis.fetch = async () =>
@@ -324,7 +324,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('should return success when platform upload succeeds', async () => {
-            const mockYjsDoc = createMockYjsDocument();
+            const mockSnapshot = createMockSnapshot();
 
             configure({
                 findProjectByUuid: async () => ({
@@ -334,7 +334,7 @@ describe('Platform Integration Service', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             const platformResponse = { success: true, message: 'Upload complete' };
@@ -352,7 +352,7 @@ describe('Platform Integration Service', () => {
 
         it('should use HTML5 exporter for webzip package type', async () => {
             const webzipPayload = { ...mockPayload, pkgtype: 'webzip' as const };
-            const mockYjsDoc = createMockYjsDocument();
+            const mockSnapshot = createMockSnapshot();
 
             configure({
                 findProjectByUuid: async () => ({
@@ -362,7 +362,7 @@ describe('Platform Integration Service', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             let capturedBody: FormData | null = null;
@@ -381,7 +381,7 @@ describe('Platform Integration Service', () => {
             expect(capturedBody).not.toBeNull();
         });
 
-        it('should handle exceptions during export gracefully', async () => {
+        it('should handle exceptions during snapshot loading gracefully', async () => {
             configure({
                 findProjectByUuid: async () => ({
                     id: 1,
@@ -390,7 +390,7 @@ describe('Platform Integration Service', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => {
+                findSnapshotByProjectId: async () => {
                     throw new Error('Database error');
                 },
             });
@@ -403,7 +403,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('should handle network errors during upload', async () => {
-            const mockYjsDoc = createMockYjsDocument();
+            const mockSnapshot = createMockSnapshot();
 
             configure({
                 findProjectByUuid: async () => ({
@@ -413,7 +413,7 @@ describe('Platform Integration Service', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             globalThis.fetch = async () => {
@@ -424,6 +424,39 @@ describe('Platform Integration Service', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Connection refused');
+        });
+
+        it('should send cmid as ode_id to platform', async () => {
+            const mockSnapshot = createMockSnapshot();
+
+            configure({
+                findProjectByUuid: async () => ({
+                    id: 1,
+                    uuid: 'test-uuid',
+                    title: 'Test Project',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }),
+                findSnapshotByProjectId: async () => mockSnapshot,
+            });
+
+            let capturedBody: FormData | null = null;
+            globalThis.fetch = async (_url, init) => {
+                capturedBody = init?.body as FormData;
+                return new Response(JSON.stringify({ success: true }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
+
+            expect(capturedBody).not.toBeNull();
+            const odeDataString = capturedBody!.get('ode_data') as string;
+            const odeData = JSON.parse(odeDataString);
+
+            // Verify cmid is sent as ode_id (not projectUuid)
+            expect(odeData.ode_id).toBe('456'); // mockPayload.cmid
         });
     });
 });
@@ -456,4 +489,23 @@ function createMockYjsDocument() {
     navigation.push([rootPage]);
 
     return doc;
+}
+
+/**
+ * Create a mock YjsDocument snapshot record
+ * This simulates what would be returned from findSnapshotByProjectId()
+ */
+function createMockSnapshot() {
+    const Y = require('yjs');
+    const doc = createMockYjsDocument();
+    const snapshotData = Y.encodeStateAsUpdate(doc);
+
+    return {
+        id: 1,
+        project_id: 1,
+        snapshot_data: snapshotData,
+        snapshot_version: '1',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    };
 }

@@ -154,9 +154,14 @@ export default class projectManager {
                 });
                 Logger.log('[ProjectManager] Yjs collaborative editing enabled');
 
-                // Clean up URL parameter after use (cleaner URL)
+                // Clean up URL parameter after use (cleaner URL, but preserve jwt_token for platform integration)
                 if (isNewProject) {
-                    const cleanUrl = window.location.pathname + '?project=' + projectId;
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const jwtToken = urlParams.get('jwt_token');
+                    let cleanUrl = window.location.pathname + '?project=' + projectId;
+                    if (jwtToken) {
+                        cleanUrl += '&jwt_token=' + encodeURIComponent(jwtToken);
+                    }
                     window.history.replaceState({}, '', cleanUrl);
                 }
 

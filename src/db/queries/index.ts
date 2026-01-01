@@ -25,6 +25,7 @@ export * as projectQueries from './projects';
 export {
     findProjectById,
     findProjectByUuid,
+    findProjectByPlatformId,
     findProjectWithOwner,
     findProjectByUuidWithOwner,
     getProjectCollaborators,

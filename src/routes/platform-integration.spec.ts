@@ -297,8 +297,7 @@ describe('Platform Integration Routes', () => {
             expect(response.status).toBe(401);
 
             const data = await response.json();
-            expect(data.success).toBe(false);
-            expect(data.error).toContain('Invalid token');
+            expect(data.responseMessage).toContain('Invalid token');
         });
 
         it('should return error when project not found', async () => {
@@ -323,13 +322,12 @@ describe('Platform Integration Routes', () => {
             expect(response.status).toBe(500);
 
             const data = await response.json();
-            expect(data.success).toBe(false);
-            expect(data.error).toContain('Project not found');
+            expect(data.responseMessage).toContain('Project not found');
         });
 
         it('should return success when upload succeeds', async () => {
             const token = await createValidToken();
-            const mockYjsDoc = createMockYjsDocument();
+            const mockSnapshot = createMockSnapshot();
 
             // Configure service with mocks
             configureService({
@@ -340,7 +338,8 @@ describe('Platform Integration Routes', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
+                updateProjectByUuid: async () => undefined, // Mock update for platform_id
             });
 
             // Mock fetch to return success
@@ -365,12 +364,13 @@ describe('Platform Integration Routes', () => {
             expect(response.status).toBe(200);
 
             const data = await response.json();
-            expect(data.success).toBe(true);
+            expect(data.responseMessage).toBe('OK');
+            expect(data.returnUrl).toBeDefined();
         });
 
         it('should return 500 when platform returns error', async () => {
             const token = await createValidToken();
-            const mockYjsDoc = createMockYjsDocument();
+            const mockSnapshot = createMockSnapshot();
 
             configureService({
                 findProjectByUuid: async () => ({
@@ -380,7 +380,7 @@ describe('Platform Integration Routes', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             // Mock fetch to return error
@@ -400,12 +400,13 @@ describe('Platform Integration Routes', () => {
             expect(response.status).toBe(500);
 
             const data = await response.json();
-            expect(data.success).toBe(false);
+            expect(data.responseMessage).toBeDefined();
+            expect(data.responseMessage).not.toBe('OK');
         });
 
         it('should return 500 when network error occurs', async () => {
             const token = await createValidToken();
-            const mockYjsDoc = createMockYjsDocument();
+            const mockSnapshot = createMockSnapshot();
 
             configureService({
                 findProjectByUuid: async () => ({
@@ -415,7 +416,7 @@ describe('Platform Integration Routes', () => {
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 }),
-                reconstructDocument: async () => mockYjsDoc,
+                findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             // Mock fetch to throw error
@@ -437,8 +438,7 @@ describe('Platform Integration Routes', () => {
             expect(response.status).toBe(500);
 
             const data = await response.json();
-            expect(data.success).toBe(false);
-            expect(data.error).toContain('Connection refused');
+            expect(data.responseMessage).toContain('Connection refused');
         });
     });
 
@@ -572,4 +572,22 @@ function createMockYjsDocument() {
     navigation.push([rootPage]);
 
     return doc;
+}
+
+/**
+ * Create a mock snapshot object as returned by findSnapshotByProjectId
+ */
+function createMockSnapshot() {
+    const Y = require('yjs');
+    const doc = createMockYjsDocument();
+    const snapshotData = Y.encodeStateAsUpdate(doc);
+
+    return {
+        id: 1,
+        project_id: 1,
+        snapshot_data: snapshotData,
+        snapshot_version: '1',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    };
 }

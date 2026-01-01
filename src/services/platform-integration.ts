@@ -7,14 +7,17 @@
 import type { PlatformJWTPayload } from '../utils/platform-jwt';
 import { buildIntegrationUrl, getExportTypeFromPkgType } from '../utils/platform-jwt';
 import { db as defaultDb } from '../db/client';
-import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
-import { reconstructDocument as reconstructDocumentDefault } from '../websocket/yjs-persistence';
+import {
+    findProjectByUuid as findProjectByUuidDefault,
+    findSnapshotByProjectId as findSnapshotByProjectIdDefault,
+    updateProjectByUuid as updateProjectByUuidDefault,
+} from '../db/queries';
+import * as Y from 'yjs';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
-import type { Doc as YDoc } from 'yjs';
 
 // Centralized export system
 import {
@@ -67,13 +70,15 @@ interface PlatformJsonData {
 export interface PlatformIntegrationDependencies {
     db: Kysely<Database>;
     findProjectByUuid: typeof findProjectByUuidDefault;
-    reconstructDocument: (projectId: number) => Promise<YDoc | null>;
+    findSnapshotByProjectId: typeof findSnapshotByProjectIdDefault;
+    updateProjectByUuid: typeof updateProjectByUuidDefault;
 }
 
 const defaultDeps: PlatformIntegrationDependencies = {
     db: defaultDb,
     findProjectByUuid: findProjectByUuidDefault,
-    reconstructDocument: reconstructDocumentDefault,
+    findSnapshotByProjectId: findSnapshotByProjectIdDefault,
+    updateProjectByUuid: updateProjectByUuidDefault,
 };
 
 let deps = defaultDeps;
@@ -188,14 +193,24 @@ export async function platformPetitionSet(
             };
         }
 
-        // 2. Reconstruct Yjs document from database
-        const yjsDoc = await deps.reconstructDocument(project.id);
-        if (!yjsDoc) {
+        // 2. Load Yjs document snapshot from database (yjs_documents table)
+        // Note: We read from yjs_documents (snapshots) because that's where the
+        // frontend saves via POST /api/projects/uuid/:uuid/yjs-document
+        const snapshot = await deps.findSnapshotByProjectId(deps.db, project.id);
+        if (!snapshot || !snapshot.snapshot_data) {
             return {
                 success: false,
-                error: 'Could not reconstruct project document',
+                error: 'No document saved for this project. Please save the project first.',
             };
         }
+
+        // 3. Reconstruct Y.Doc from snapshot
+        const yjsDoc = new Y.Doc();
+        const snapshotData =
+            snapshot.snapshot_data instanceof Uint8Array
+                ? snapshot.snapshot_data
+                : new Uint8Array(snapshot.snapshot_data);
+        Y.applyUpdate(yjsDoc, snapshotData);
 
         yjsDocWrapper = new ServerYjsDocumentWrapper(yjsDoc, projectUuid);
         if (!yjsDocWrapper.hasContent()) {
@@ -205,10 +220,10 @@ export async function platformPetitionSet(
             };
         }
 
-        // 3. Create document adapter for export
+        // 4. Create document adapter for export
         const document = new YjsDocumentAdapter(yjsDocWrapper);
 
-        // 4. Create providers
+        // 5. Create providers
         const publicDir = path.join(process.cwd(), 'public');
         const resources = new FileSystemResourceProvider(publicDir);
         const zip = new FflateZipProvider();
@@ -221,7 +236,7 @@ export async function platformPetitionSet(
         const dbAssets = new DatabaseAssetProvider(deps.db, project.id, tempDir);
         const assets = new CombinedAssetProvider([dbAssets, fsAssets]);
 
-        // 5. Select exporter based on package type
+        // 6. Select exporter based on package type
         const exportType = getExportTypeFromPkgType(payload.pkgtype);
         let exporter;
 
@@ -231,7 +246,7 @@ export async function platformPetitionSet(
             exporter = new Html5Exporter(document, resources, assets, zip);
         }
 
-        // 6. Run export
+        // 7. Run export
         const exportResult: ExportResult = await exporter.export({});
 
         // Cleanup temp directory
@@ -244,16 +259,18 @@ export async function platformPetitionSet(
             };
         }
 
-        // 7. Convert ZIP buffer to base64
+        // 8. Convert ZIP buffer to base64
         const zipBase64 = Buffer.from(exportResult.data).toString('base64');
 
-        // 8. Build filename from project title
+        // 9. Build filename from project title
         const meta = document.getMetadata();
         const projectTitle = meta.title || 'project';
         const extension = exportType === 'scorm12' ? 'zip' : 'zip';
         const filename = `${projectTitle}.${extension}`;
 
-        // 9. Send to platform
+        // 10. Send to platform
+        // Send cmid as ode_id (Moodle uses this to find the course module)
+        // Note: Moodle extracts cmid from JWT payload, so this must match
         const postData: PlatformJsonData = {
             ode_id: payload.cmid,
             ode_filename: filename,
@@ -291,6 +308,12 @@ export async function platformPetitionSet(
                 platformResponse,
             };
         }
+
+        // Store platform_id (cmid) in project for future lookups
+        // This allows finding the project when user returns from platform
+        await deps.updateProjectByUuid(deps.db, projectUuid, {
+            platform_id: payload.cmid,
+        });
 
         return {
             success: true,
