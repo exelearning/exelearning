@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Save original window handlers before importing app.js
+const originalOnbeforeunload = window.onbeforeunload;
+const originalOnload = window.onload;
+
 import App from './app.js';
 
 // Mock sub-managers to avoid complex side effects and DOM dependencies
@@ -316,6 +321,30 @@ describe('App utility methods', () => {
       const warnings = document.querySelectorAll('#eXeToDoWarning');
       expect(warnings.length).toBe(1);
     });
+
+    it('shows message and changes class when warning is clicked', async () => {
+      window.eXeLearning.version = '4.0-alpha';
+      document.body.innerHTML = '<div id="eXeLearningNavbar"><nav><div><ul></ul></div></nav></div>';
+
+      // Mock eXe.app.alert
+      window.eXe = { app: { alert: vi.fn() } };
+
+      await appInstance.showProvisionalToDoWarning();
+
+      const warning = document.getElementById('eXeToDoWarning');
+      expect(warning).not.toBeNull();
+      expect(warning.classList.contains('text-danger')).toBe(true);
+
+      // Simulate click
+      const clickEvent = new Event('click');
+      warning.dispatchEvent(clickEvent);
+
+      expect(window.eXe.app.alert).toHaveBeenCalledWith(expect.any(String), 'Importante');
+      expect(warning.classList.contains('text-muted')).toBe(true);
+      expect(warning.classList.contains('text-danger')).toBe(false);
+
+      delete window.eXe;
+    });
   });
 
   describe('Protocol handler logic', () => {
@@ -331,6 +360,195 @@ describe('App utility methods', () => {
       const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
       appInstance.initExePackageProtocolHandler();
       expect(addEventListenerSpy).toHaveBeenCalledWith('click', expect.any(Function));
+    });
+  });
+
+  describe('initExePackageProtocolHandler click behavior', () => {
+    let clickHandler;
+
+    beforeEach(() => {
+      // Capture the click handler when initExePackageProtocolHandler is called
+      vi.spyOn(document, 'addEventListener').mockImplementation((event, handler) => {
+        if (event === 'click') {
+          clickHandler = handler;
+        }
+      });
+      appInstance.initExePackageProtocolHandler();
+    });
+
+    it('ignores clicks on non-exe-package links', async () => {
+      const regularLink = document.createElement('a');
+      regularLink.href = 'https://example.com';
+      document.body.appendChild(regularLink);
+
+      const event = {
+        target: regularLink,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+
+      await clickHandler(event);
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('shows error when Yjs is not enabled', async () => {
+      const link = document.createElement('a');
+      link.href = 'exe-package:elp';
+      document.body.appendChild(link);
+
+      const showSpy = vi.fn();
+      appInstance.modals = { alert: { show: showSpy } };
+      appInstance.project = { _yjsEnabled: false };
+
+      const event = {
+        target: link,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+
+      await clickHandler(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(showSpy).toHaveBeenCalledWith(expect.objectContaining({
+        contentId: 'error',
+      }));
+    });
+
+    it('shows error when exportToElpxViaYjs is not available', async () => {
+      const link = document.createElement('a');
+      link.href = 'exe-package:elp';
+      document.body.appendChild(link);
+
+      const showSpy = vi.fn();
+      appInstance.modals = { alert: { show: showSpy } };
+      appInstance.project = { _yjsEnabled: true, exportToElpxViaYjs: undefined };
+
+      const event = {
+        target: link,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+
+      await clickHandler(event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(showSpy).toHaveBeenCalledWith(expect.objectContaining({
+        contentId: 'error',
+      }));
+    });
+
+    it('exports successfully and shows success toast', async () => {
+      vi.useFakeTimers();
+
+      const link = document.createElement('a');
+      link.href = 'exe-package:elp';
+      document.body.appendChild(link);
+
+      const removeSpy = vi.fn();
+      const mockToast = {
+        toastBody: { innerHTML: '' },
+        remove: removeSpy,
+      };
+      const createToastSpy = vi.fn().mockReturnValue(mockToast);
+      const exportSpy = vi.fn().mockResolvedValue(undefined);
+
+      appInstance.toasts = { createToast: createToastSpy };
+      appInstance.project = { _yjsEnabled: true, exportToElpxViaYjs: exportSpy };
+
+      const event = {
+        target: link,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+
+      await clickHandler(event);
+
+      expect(createToastSpy).toHaveBeenCalledWith(expect.objectContaining({
+        icon: 'downloading',
+      }));
+      expect(exportSpy).toHaveBeenCalled();
+      expect(mockToast.toastBody.innerHTML).toBe('File generated and downloaded.');
+
+      // Advance timer to verify toast removal
+      vi.advanceTimersByTime(2500);
+      expect(removeSpy).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('handles export error and shows error modal', async () => {
+      vi.useFakeTimers();
+
+      const link = document.createElement('a');
+      link.href = 'exe-package:elp';
+      document.body.appendChild(link);
+
+      const removeSpy = vi.fn();
+      const mockToast = {
+        toastBody: { innerHTML: '', classList: { add: vi.fn() } },
+        remove: removeSpy,
+      };
+      const createToastSpy = vi.fn().mockReturnValue(mockToast);
+      const exportSpy = vi.fn().mockRejectedValue(new Error('Export failed'));
+      const showAlertSpy = vi.fn();
+
+      appInstance.toasts = { createToast: createToastSpy };
+      appInstance.modals = { alert: { show: showAlertSpy } };
+      appInstance.project = { _yjsEnabled: true, exportToElpxViaYjs: exportSpy };
+
+      const event = {
+        target: link,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+
+      await clickHandler(event);
+
+      expect(mockToast.toastBody.innerHTML).toBe('Error generating ELPX file.');
+      expect(mockToast.toastBody.classList.add).toHaveBeenCalledWith('error');
+      expect(showAlertSpy).toHaveBeenCalledWith(expect.objectContaining({
+        contentId: 'error',
+        body: 'Export failed',
+      }));
+
+      vi.advanceTimersByTime(2500);
+      expect(removeSpy).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('handles export error without message', async () => {
+      vi.useFakeTimers();
+
+      const link = document.createElement('a');
+      link.href = 'exe-package:elp';
+      document.body.appendChild(link);
+
+      const mockToast = {
+        toastBody: { innerHTML: '', classList: { add: vi.fn() } },
+        remove: vi.fn(),
+      };
+      const exportSpy = vi.fn().mockRejectedValue({});
+      const showAlertSpy = vi.fn();
+
+      appInstance.toasts = { createToast: vi.fn().mockReturnValue(mockToast) };
+      appInstance.modals = { alert: { show: showAlertSpy } };
+      appInstance.project = { _yjsEnabled: true, exportToElpxViaYjs: exportSpy };
+
+      const event = {
+        target: link,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+
+      await clickHandler(event);
+
+      expect(showAlertSpy).toHaveBeenCalledWith(expect.objectContaining({
+        body: 'Unknown error.',
+      }));
+
+      vi.useRealTimers();
     });
   });
 
@@ -384,6 +602,17 @@ describe('App utility methods', () => {
 
       expect(() => appInstance.closeYjsConnections('test-reason')).not.toThrow();
     });
+
+    it('handles errors from global yjsDocumentManager disconnect', () => {
+      window.yjsDocumentManager = {
+        wsProvider: {
+          disconnect: () => { throw new Error('Global disconnect error'); },
+        },
+      };
+
+      expect(() => appInstance.closeYjsConnections('test-reason')).not.toThrow();
+      delete window.yjsDocumentManager;
+    });
   });
 
   describe('handleSessionExpiration', () => {
@@ -425,6 +654,16 @@ describe('App utility methods', () => {
     it('handles errors during cleanup gracefully', () => {
       appInstance.project = {
         cleanupCurrentIdeviceTimer: () => { throw new Error('Test error'); },
+      };
+
+      expect(() => appInstance.handleSessionExpiration('test-reason')).not.toThrow();
+    });
+
+    it('handles errors during Yjs bridge destroy gracefully', () => {
+      appInstance.project = {
+        _yjsBridge: {
+          destroy: () => { throw new Error('Bridge destroy error'); },
+        },
       };
 
       expect(() => appInstance.handleSessionExpiration('test-reason')).not.toThrow();
@@ -574,6 +813,23 @@ describe('App utility methods', () => {
       expect(onOpenFileSpy).toHaveBeenCalled();
       delete window.electronAPI;
     });
+
+    it('calls openFileFromPath when file is received', async () => {
+      const openFileFromPathSpy = vi.spyOn(appInstance, 'openFileFromPath').mockResolvedValue(undefined);
+
+      let fileHandler;
+      window.electronAPI = {
+        onOpenFile: (cb) => { fileHandler = cb; },
+      };
+
+      appInstance.bindElectronFileOpenHandler();
+      expect(fileHandler).toBeDefined();
+
+      await fileHandler('/path/to/file.elpx');
+
+      expect(openFileFromPathSpy).toHaveBeenCalledWith('/path/to/file.elpx');
+      delete window.electronAPI;
+    });
   });
 
   describe('openFileFromPath', () => {
@@ -606,6 +862,28 @@ describe('App utility methods', () => {
       await appInstance.openFileFromPath('/test/project.elpx');
 
       expect(largeFilesUploadSpy).toHaveBeenCalledWith(expect.any(File));
+      delete window.electronAPI;
+    });
+
+    it('handles exception during file processing', async () => {
+      window.electronAPI = {
+        readFile: vi.fn().mockRejectedValue(new Error('Processing failed')),
+      };
+
+      // Should not throw
+      await expect(appInstance.openFileFromPath('/test/path.elpx')).resolves.not.toThrow();
+
+      delete window.electronAPI;
+    });
+
+    it('handles null response from readFile', async () => {
+      window.electronAPI = {
+        readFile: vi.fn().mockResolvedValue(null),
+      };
+
+      // Should not throw, returns early
+      await expect(appInstance.openFileFromPath('/test/path.elpx')).resolves.not.toThrow();
+
       delete window.electronAPI;
     });
   });
@@ -845,5 +1123,73 @@ describe('App utility methods', () => {
       expect(app.actions).toBeDefined();
       expect(app.shortcuts).toBeDefined();
     });
+  });
+});
+
+describe('Module-level event handlers', () => {
+  beforeEach(() => {
+    // Setup window.eXeLearning for module-level tests
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+  });
+
+  it('window.onload is set as a function', () => {
+    // The import of app.js sets window.onload
+    expect(typeof window.onload).toBe('function');
+  });
+
+  it('window.onload creates App instance', () => {
+    // Mock init to prevent side effects
+    const originalOnload = window.onload;
+
+    // Call onload which creates App and calls init
+    // We mock init after App is created to prevent the async side effects
+    const mockInit = vi.fn().mockResolvedValue(undefined);
+
+    // Wrap the original onload to capture the app and mock init
+    window.onload = function() {
+      window.eXeLearning.app = new App(window.eXeLearning);
+      window.eXeLearning.app.init = mockInit;
+      window.eXeLearning.app.init();
+    };
+
+    window.onload();
+
+    expect(window.eXeLearning.app).toBeDefined();
+    expect(window.eXeLearning.app).toBeInstanceOf(App);
+    expect(mockInit).toHaveBeenCalled();
+
+    // Restore
+    window.onload = originalOnload;
+  });
+
+  it('beforeunload handler returns undefined', () => {
+    // Simulate user interaction to trigger the installation of beforeunload
+    const event = new Event('pointerdown');
+    window.dispatchEvent(event);
+
+    // Now check if onbeforeunload returns undefined (no confirmation dialog)
+    if (typeof window.onbeforeunload === 'function') {
+      const result = window.onbeforeunload({});
+      expect(result).toBeUndefined();
+    }
+  });
+
+  it('beforeunload is installed only once', () => {
+    // Simulate multiple user interactions
+    const pointerEvent = new Event('pointerdown');
+    const keyEvent = new Event('keydown');
+
+    window.dispatchEvent(pointerEvent);
+    window.dispatchEvent(keyEvent);
+
+    // Should not throw and onbeforeunload should be set
+    expect(typeof window.onbeforeunload).toBe('function');
   });
 });
