@@ -52,11 +52,7 @@ export class PageExporter extends Html5Exporter {
             const html = this.generateSinglePageHtml(pages, meta, usedIdevices);
             this.zip.addFile('index.html', html);
 
-            // 2. Add content.xml (ODE format for re-import)
-            const contentXml = this.generateContentXml();
-            this.zip.addFile('content.xml', contentXml);
-
-            // 3. Add base CSS (fetch from content/css)
+            // 2. Add base CSS (fetch from content/css)
             const contentCssFiles = await this.resources.fetchContentCss();
             const baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
@@ -72,8 +68,8 @@ export class PageExporter extends Html5Exporter {
                     this.zip.addFile(`theme/${path}`, content);
                 }
             } catch {
-                this.zip.addFile('theme/content.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
+                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
+                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
             }
 
             // 5. Fetch and add base libraries
@@ -86,7 +82,7 @@ export class PageExporter extends Html5Exporter {
                 // No base libraries available
             }
 
-            // 6. Fetch and add iDevice assets
+            // 6. Fetch and add iDevice assets (test files filtered at provider level)
             for (const idevice of usedIdevices) {
                 try {
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
@@ -141,7 +137,8 @@ export class PageExporter extends Html5Exporter {
 
         for (const page of pages) {
             // All pages use anchor fragments on the same page
-            const anchor = `#page-content-${page.id}`;
+            // Uses section-{id} to match the IDs generated in renderSinglePageSection
+            const anchor = `#section-${page.id}`;
             map.set(page.id, {
                 url: anchor,
                 urlFromSubpage: anchor, // Same since it's all one page

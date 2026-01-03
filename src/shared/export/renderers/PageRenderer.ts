@@ -19,6 +19,32 @@ import { IdeviceRenderer } from './IdeviceRenderer';
 import { LIBRARY_PATTERNS } from '../constants';
 
 /**
+ * Navigation button translations by language
+ */
+const NAV_TRANSLATIONS: Record<string, { previous: string; next: string }> = {
+    es: { previous: 'Anterior', next: 'Siguiente' },
+    en: { previous: 'Previous', next: 'Next' },
+    ca: { previous: 'Anterior', next: 'Següent' },
+    eu: { previous: 'Aurrekoa', next: 'Hurrengoa' },
+    gl: { previous: 'Anterior', next: 'Seguinte' },
+    pt: { previous: 'Anterior', next: 'Próximo' },
+    fr: { previous: 'Précédent', next: 'Suivant' },
+    de: { previous: 'Zurück', next: 'Weiter' },
+    it: { previous: 'Precedente', next: 'Successivo' },
+    nl: { previous: 'Vorige', next: 'Volgende' },
+    zh: { previous: '上一页', next: '下一页' },
+    ja: { previous: '前へ', next: '次へ' },
+    ar: { previous: 'السابق', next: 'التالي' },
+};
+
+/**
+ * Get navigation button translations for a language
+ */
+function getNavTranslations(language: string): { previous: string; next: string } {
+    return NAV_TRANSLATIONS[language] || NAV_TRANSLATIONS.en;
+}
+
+/**
  * PageRenderer class
  * Renders complete HTML pages for export
  */
@@ -114,7 +140,7 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 <div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${pageContent}
-</div></main>${this.renderNavButtons(page, allPages, basePath)}
+</div></main>${this.renderNavButtons(page, allPages, basePath, language)}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
 ${madeWithExeHtml}
@@ -508,29 +534,31 @@ ${madeWithExeHtml}
      * @param page - Current page
      * @param allPages - All pages
      * @param basePath - Base path
+     * @param language - Language for button text translation
      * @returns Navigation buttons HTML
      */
-    renderNavButtons(page: ExportPage, allPages: ExportPage[], basePath: string): string {
+    renderNavButtons(page: ExportPage, allPages: ExportPage[], basePath: string, language: string = 'en'): string {
         const currentIndex = allPages.findIndex(p => p.id === page.id);
         const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
         const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
+        const t = getNavTranslations(language);
         let html = '<div class="nav-buttons">';
 
         // Previous button - span if disabled, anchor if enabled
         if (prevPage) {
             const link = this.getPageLink(prevPage, allPages, basePath);
-            html += ` <a href="${link}" title="Previous" class="nav-button nav-button-left"> <span>Previous</span></a>`;
+            html += ` <a href="${link}" title="${t.previous}" class="nav-button nav-button-left"> <span>${t.previous}</span></a>`;
         } else {
-            html += ` <span class="nav-button nav-button-left" aria-hidden="true"> <span>Previous</span></span>`;
+            html += ` <span class="nav-button nav-button-left" aria-hidden="true"> <span>${t.previous}</span></span>`;
         }
 
         // Next button - span if disabled, anchor if enabled
         if (nextPage) {
             const link = this.getPageLink(nextPage, allPages, basePath);
-            html += `<a href="${link}" title="Next" class="nav-button nav-button-right"> <span>Next</span></a>`;
+            html += `<a href="${link}" title="${t.next}" class="nav-button nav-button-right"> <span>${t.next}</span></a>`;
         } else {
-            html += `<span class="nav-button nav-button-right" aria-hidden="true"> <span>Next</span></span>`;
+            html += `<span class="nav-button nav-button-right" aria-hidden="true"> <span>${t.next}</span></span>`;
         }
 
         html += '\n</div>';
@@ -542,11 +570,12 @@ ${madeWithExeHtml}
      * @param page - Current page
      * @param allPages - All pages
      * @param basePath - Base path
+     * @param language - Language for button text translation
      * @returns Pagination HTML
      * @deprecated Use renderNavButtons instead
      */
-    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string): string {
-        return this.renderNavButtons(page, allPages, basePath);
+    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string, language: string = 'en'): string {
+        return this.renderNavButtons(page, allPages, basePath, language);
     }
 
     /**
@@ -732,13 +761,13 @@ ${this.renderPageContent(page, '')}
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">
 <link rel="stylesheet" href="libs/exe_lightbox/exe_lightbox.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
-<script src="theme/default.js"> </script>
-<link rel="stylesheet" href="theme/content.css">
+<script src="theme/style.js"> </script>
+<link rel="stylesheet" href="theme/style.css">
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 </head>
 <body class="exe-export exe-single-page" lang="${language}">
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js">
+<div class="exe-content exe-export pre-js siteNav-hidden">
 ${this.renderSinglePageNav(allPages)}
 <main class="single-page-content">
 <header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>

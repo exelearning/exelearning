@@ -310,7 +310,7 @@ ${searchBoxHtml}
 ${staticHeaderHtml}
 ${pagesHtml}
 </main>
-${this.renderNavButtons()}
+${this.renderNavButtons(lang)}
 ${this.renderFooterSection({ license, userFooterContent })}
 </div>
 ${madeWithExeHtml}`;
@@ -566,8 +566,17 @@ html:not(.mode-teacher) .js .teacher-only {
     text-decoration: none;
 }
 
+/* Navigation: Expand active sections and parent paths */
+#siteNav .other-section {
+    display: none;
+}
+#siteNav li.active > .other-section,
+#siteNav li.current-page-parent > .other-section {
+    display: block;
+}
+
 /* Button text hiding - visually hidden but accessible */
-.nav-buttons .nav-button span,
+/* Note: .nav-button span text is now visible to match export output */
 button.toggler span,
 #exe-client-search-reset span {
     position: absolute;
@@ -829,15 +838,17 @@ ${blockHtml}
     }
 
     /**
-     * Render navigation buttons (Previous/Next)
+     * Render navigation buttons (Previous/Next) with translated text
+     * @param language - Language for button text translation
      */
-    private renderNavButtons(): string {
+    private renderNavButtons(language: string = 'en'): string {
+        const t = WebsitePreviewExporter.NAV_TRANSLATIONS[language] || WebsitePreviewExporter.NAV_TRANSLATIONS.en;
         return `<div class="nav-buttons">
-<a href="#" title="Previous" class="nav-button nav-button-left" data-nav="prev">
-<span>Previous</span>
+<a href="#" title="${t.previous}" class="nav-button nav-button-left" data-nav="prev">
+<span>${t.previous}</span>
 </a>
-<a href="#" title="Next" class="nav-button nav-button-right" data-nav="next">
-<span>Next</span>
+<a href="#" title="${t.next}" class="nav-button nav-button-right" data-nav="next">
+<span>${t.next}</span>
 </a>
 </div>`;
     }
@@ -858,6 +869,25 @@ ${blockHtml}
 </div>
 ${userFooterHtml}</div></footer>`;
     }
+
+    /**
+     * Navigation button translations by language
+     */
+    private static readonly NAV_TRANSLATIONS: Record<string, { previous: string; next: string }> = {
+        es: { previous: 'Anterior', next: 'Siguiente' },
+        en: { previous: 'Previous', next: 'Next' },
+        ca: { previous: 'Anterior', next: 'Següent' },
+        eu: { previous: 'Aurrekoa', next: 'Hurrengoa' },
+        gl: { previous: 'Anterior', next: 'Seguinte' },
+        pt: { previous: 'Anterior', next: 'Próximo' },
+        fr: { previous: 'Précédent', next: 'Suivant' },
+        de: { previous: 'Zurück', next: 'Weiter' },
+        it: { previous: 'Precedente', next: 'Successivo' },
+        nl: { previous: 'Vorige', next: 'Volgende' },
+        zh: { previous: '上一页', next: '下一页' },
+        ja: { previous: '前へ', next: '次へ' },
+        ar: { previous: 'السابق', next: 'التالي' },
+    };
 
     /**
      * Translations for "Made with eXeLearning" text

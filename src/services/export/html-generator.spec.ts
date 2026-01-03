@@ -230,10 +230,11 @@ describe('HTML Generator Helper', () => {
             expect(html).toContain('Child');
         });
 
-        it('should generate nav buttons', () => {
+        it('should generate nav buttons with language-based text', () => {
             const page1 = createPage({ id: 'page-1', title: 'First' });
             const page2 = createPage({ id: 'page-2', title: 'Second' });
             const page3 = createPage({ id: 'page-3', title: 'Third' });
+            // Default language is 'en'
             const structure = createMinimalStructure({ pages: [page1, page2, page3] });
 
             const html = generatePageHtml(page2, structure, {});
@@ -241,6 +242,21 @@ describe('HTML Generator Helper', () => {
             expect(html).toContain('class="nav-buttons"');
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
+            expect(html).toContain('Previous');
+            expect(html).toContain('Next');
+        });
+
+        it('should translate nav buttons to Spanish when language is es', () => {
+            const page1 = createPage({ id: 'page-1', title: 'First' });
+            const page2 = createPage({ id: 'page-2', title: 'Second' });
+            const page3 = createPage({ id: 'page-3', title: 'Third' });
+            const structure = createMinimalStructure({
+                pages: [page1, page2, page3],
+                meta: { ...createMinimalStructure().meta, language: 'es' },
+            });
+
+            const html = generatePageHtml(page2, structure, {});
+
             expect(html).toContain('Anterior');
             expect(html).toContain('Siguiente');
         });

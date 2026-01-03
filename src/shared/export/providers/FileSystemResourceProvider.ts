@@ -65,7 +65,14 @@ export class FileSystemResourceProvider implements ResourceProvider {
         const idevicePath = path.join(this.publicDir, 'files', 'perm', 'idevices', 'base', typeName, 'export');
         if (await fs.pathExists(idevicePath)) {
             // No prefix - files go to idevices/{type}/ folder (prefix added by caller)
-            return this.readDirectoryRecursive(idevicePath, '');
+            const files = await this.readDirectoryRecursive(idevicePath, '');
+            // Filter out test files (should not be included in exports)
+            for (const filePath of files.keys()) {
+                if (filePath.endsWith('.test.js') || filePath.endsWith('.spec.js')) {
+                    files.delete(filePath);
+                }
+            }
+            return files;
         }
         return new Map();
     }
