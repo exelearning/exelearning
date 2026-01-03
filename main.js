@@ -322,7 +322,6 @@ function initializeEnv() {
         FILES_DIR: path.join(appDataPath, 'data'),
         CACHE_DIR: path.join(appDataPath, 'cache'),
         LOG_DIR: path.join(appDataPath, 'log'),
-        MERCURE_URL: process.env.MERCURE_URL || '',
         API_JWT_SECRET: process.env.API_JWT_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
         ONLINE_THEMES_INSTALL: 1,
         ONLINE_IDEVICES_INSTALL: 0, // To do (see #381)
