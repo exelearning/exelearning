@@ -1,0 +1,12 @@
+# CodeQL configuration file
+# Excludes test fixtures from security scanning
+
+name: "eXeLearning CodeQL Config"
+
+# Exclude test fixtures from security scanning
+# These are static export snapshots used for integration testing,
+# not production code. The vulnerable patterns in these files are
+# from legacy exports and do not pose a runtime security risk.
+paths-ignore:
+  - test/fixtures/export/**
+  - "**/node_modules/**"
