@@ -16,6 +16,32 @@ import { normalizeHtmlPaths } from '../../utils/html-path-normalizer.util';
 import { getIdeviceConfig, getIdeviceExportFiles } from '../idevice-config';
 
 /**
+ * Navigation button translations by language
+ */
+const NAV_TRANSLATIONS: Record<string, { previous: string; next: string }> = {
+    es: { previous: 'Anterior', next: 'Siguiente' },
+    en: { previous: 'Previous', next: 'Next' },
+    ca: { previous: 'Anterior', next: 'Següent' },
+    eu: { previous: 'Aurrekoa', next: 'Hurrengoa' },
+    gl: { previous: 'Anterior', next: 'Seguinte' },
+    pt: { previous: 'Anterior', next: 'Próximo' },
+    fr: { previous: 'Précédent', next: 'Suivant' },
+    de: { previous: 'Zurück', next: 'Weiter' },
+    it: { previous: 'Precedente', next: 'Successivo' },
+    nl: { previous: 'Vorige', next: 'Volgende' },
+    zh: { previous: '上一页', next: '下一页' },
+    ja: { previous: '前へ', next: '次へ' },
+    ar: { previous: 'السابق', next: 'التالي' },
+};
+
+/**
+ * Get navigation button translations for a language
+ */
+function getNavTranslations(language: string): { previous: string; next: string } {
+    return NAV_TRANSLATIONS[language] || NAV_TRANSLATIONS.en;
+}
+
+/**
  * Generate the full HTML for a page
  */
 export function generatePageHtml(
@@ -54,7 +80,7 @@ ${generateHead(page, structure, resourcesPrefix, usedIdevices)}
 <div class="exe-content exe-export pre-js siteNav-hidden"> ${generateNavigation(allPages, page.id, isIndex)}${generatePageHeader(page, { projectTitle, currentPageIndex, totalPages, addPagination: structure.meta.addPagination })}<div id="page-content-${page.id}" class="page-content"> <main id="${page.id}" class="page"> <div id="exe-client-search" data-block-order-string="Caja %e" data-no-results-string="Sin resultados." data-pages="${escapeAttr(searchDataJson)}">
 </div>
 ${generatePageContent(page, resourcesPrefix)}
-</main></div>${generateNavButtons(page, allPages)}
+</main></div>${generateNavButtons(page, allPages, lang)}
 ${generateFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
 ${generateMadeWithEXe()}
@@ -235,6 +261,9 @@ function sanitizeFilename(title: string): string {
 
 /**
  * Generate page header with page counter, package title (h1), and page title (h2)
+ * Uses two separate header elements to match theme CSS selectors:
+ * - header.package-header for project title
+ * - header.page-header for page title
  */
 function generatePageHeader(
     page: NormalizedPage,
@@ -252,8 +281,14 @@ function generatePageHeader(
         ? ` <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
         : '';
 
-    return `<header id="header-${page.id}" class="page-header">${pageCounterHtml}<h1 class="package-title">${escapeHtml(projectTitle)}</h1>
-<h2 class="page-title">${escapeHtml(page.title)}</h2></header>`;
+    // Check if page title should be hidden
+    const hidePageTitle = page.properties?.hidePageTitle === true;
+    const pageHeaderStyle = hidePageTitle ? ' style="display:none"' : '';
+
+    // Use separate header elements so theme CSS selectors work correctly
+    // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
+    return `${pageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${escapeHtml(projectTitle)}</h1></header>
+<header class="page-header"${pageHeaderStyle}><h2 class="page-title">${escapeHtml(page.title)}</h2></header>`;
 }
 
 /**
@@ -502,25 +537,29 @@ function generateMadeWithEXe(): string {
 
 /**
  * Generate Navigation buttons (Prev/Next)
+ * @param page - Current page
+ * @param allPages - All pages
+ * @param language - Language for button text translation
  */
-function generateNavButtons(page: NormalizedPage, allPages: NormalizedPage[]): string {
+function generateNavButtons(page: NormalizedPage, allPages: NormalizedPage[], language: string = 'en'): string {
     const currentIndex = allPages.findIndex(p => p.id === page.id);
     const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
     const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
     if (!prevPage && !nextPage) return '';
 
+    const t = getNavTranslations(language);
     let html = '<div class="nav-buttons">';
 
     if (prevPage) {
         const isFirst = prevPage.id === allPages[0]?.id;
         const link = isFirst ? '../index.html' : `${sanitizeFilename(prevPage.title)}.html`;
-        html += ` <a href="${link}" title="Anterior" class="nav-button nav-button-left"> <span>Anterior</span></a>`;
+        html += ` <a href="${link}" title="${t.previous}" class="nav-button nav-button-left"> <span>${t.previous}</span></a>`;
     }
 
     if (nextPage) {
         const link = `${sanitizeFilename(nextPage.title)}.html`;
-        html += `<a href="${link}" title="Siguiente" class="nav-button nav-button-right"> <span>Siguiente</span></a>`;
+        html += `<a href="${link}" title="${t.next}" class="nav-button nav-button-right"> <span>${t.next}</span></a>`;
     }
 
     html += '\n</div>';

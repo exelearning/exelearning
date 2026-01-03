@@ -433,7 +433,7 @@ describe('PageRenderer', () => {
             expect(html).toContain('Second');
         });
 
-        it('should use anchor links for navigation', () => {
+        it('should NOT include navigation tree (single page has siteNav-hidden)', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -441,11 +441,12 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderSinglePage(pages, {});
 
-            expect(html).toContain('href="#section-page-1"');
-            expect(html).toContain('href="#section-page-2"');
+            // Single page export should NOT have nav tree, only sections
+            expect(html).toContain('siteNav-hidden');
+            expect(html).not.toContain('<nav id="siteNav"');
         });
 
-        it('should render nested navigation for child pages', () => {
+        it('should render all pages as sections (no nested nav)', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'parent', title: 'Parent' }),
                 createTestPage({ id: 'child', title: 'Child', parentId: 'parent' }),
@@ -453,8 +454,10 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderSinglePage(pages, {});
 
-            expect(html).toContain('class="other-section"');
-            expect(html).toContain('#section-child');
+            // No nav tree with nested structure
+            expect(html).not.toContain('class="other-section"');
+            // But sections should exist with proper IDs
+            expect(html).toContain('id="section-child"');
         });
     });
 
