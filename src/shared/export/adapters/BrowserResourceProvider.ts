@@ -60,11 +60,18 @@ export class BrowserResourceProvider implements ResourceProvider {
     /**
      * Fetch iDevice resources
      * @param ideviceType - iDevice type name
-     * @returns Map of path -> content
+     * @returns Map of path -> content (excluding test files)
      */
     async fetchIdeviceResources(ideviceType: string): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchIdevice(ideviceType);
-        return this.convertBlobMapToUint8ArrayMap(blobMap);
+        const files = await this.convertBlobMapToUint8ArrayMap(blobMap);
+        // Filter out test files (should not be included in exports)
+        for (const filePath of files.keys()) {
+            if (filePath.endsWith('.test.js') || filePath.endsWith('.spec.js')) {
+                files.delete(filePath);
+            }
+        }
+        return files;
     }
 
     /**

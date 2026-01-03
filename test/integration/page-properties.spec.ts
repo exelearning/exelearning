@@ -864,9 +864,10 @@ describe('Page Properties Integration', () => {
                 },
             ];
 
-            const html = renderer.renderSinglePage(pages, { projectTitle: 'Test' });
+            // Use renderSinglePageNav to test navigation-specific rendering
+            const navHtml = renderer.renderSinglePageNav(pages);
 
-            expect(html).toContain('highlighted-link');
+            expect(navHtml).toContain('highlighted-link');
         });
 
         it('should exclude hidden pages from single page navigation', () => {

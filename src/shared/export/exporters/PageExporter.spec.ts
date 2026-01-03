@@ -247,10 +247,10 @@ describe('PageExporter', () => {
             expect(indexHtml).toContain('chapter 2');
         });
 
-        it('should include content.xml', async () => {
+        it('should NOT include content.xml (only needed for ELP)', async () => {
             await exporter.export();
 
-            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.xml')).toBe(false);
         });
 
         it('should include base CSS', async () => {
@@ -376,36 +376,35 @@ describe('PageExporter', () => {
             const map = (exporter as any).buildPageUrlMap(pages);
 
             // All pages should use anchor fragments for single-page export
+            // Uses section-{id} to match the IDs generated in renderSinglePageSection
             expect(map.get('page-1')).toEqual({
-                url: '#page-content-page-1',
-                urlFromSubpage: '#page-content-page-1',
+                url: '#section-page-1',
+                urlFromSubpage: '#section-page-1',
             });
             expect(map.get('page-2')).toEqual({
-                url: '#page-content-page-2',
-                urlFromSubpage: '#page-content-page-2',
+                url: '#section-page-2',
+                urlFromSubpage: '#section-page-2',
             });
             expect(map.get('page-3')).toEqual({
-                url: '#page-content-page-3',
-                urlFromSubpage: '#page-content-page-3',
+                url: '#section-page-3',
+                urlFromSubpage: '#section-page-3',
             });
         });
 
         it('should convert exe-node links to anchor fragments', () => {
             const pageUrlMap = new Map([
-                ['page-1', { url: '#page-content-page-1', urlFromSubpage: '#page-content-page-1' }],
-                ['page-2', { url: '#page-content-page-2', urlFromSubpage: '#page-content-page-2' }],
+                ['page-1', { url: '#section-page-1', urlFromSubpage: '#section-page-1' }],
+                ['page-2', { url: '#section-page-2', urlFromSubpage: '#section-page-2' }],
             ]);
 
             const content = '<a href="exe-node:page-2">Go to About</a>';
             const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
 
-            expect(result).toBe('<a href="#page-content-page-2">Go to About</a>');
+            expect(result).toBe('<a href="#section-page-2">Go to About</a>');
         });
 
         it('should use same anchor format regardless of page position', () => {
-            const pageUrlMap = new Map([
-                ['page-1', { url: '#page-content-page-1', urlFromSubpage: '#page-content-page-1' }],
-            ]);
+            const pageUrlMap = new Map([['page-1', { url: '#section-page-1', urlFromSubpage: '#section-page-1' }]]);
 
             // From first page
             const result1 = (exporter as any).replaceInternalLinks(
@@ -421,8 +420,8 @@ describe('PageExporter', () => {
             );
 
             // Both should produce the same anchor link
-            expect(result1).toBe('<a href="#page-content-page-1">Link</a>');
-            expect(result2).toBe('<a href="#page-content-page-1">Link</a>');
+            expect(result1).toBe('<a href="#section-page-1">Link</a>');
+            expect(result2).toBe('<a href="#section-page-1">Link</a>');
         });
     });
 });
