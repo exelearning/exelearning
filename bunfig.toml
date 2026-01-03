@@ -1,0 +1,21 @@
+# Bun configuration file
+# https://bun.sh/docs/runtime/bunfig
+
+[test]
+# Root directory for tests
+root = "."
+
+# Exclude legacy code, node_modules, and Playwright e2e tests
+# Note: websocket specs (yjs-persistence.spec.ts, yjs-websocket.spec.ts, room-manager.spec.ts) use mock.module()
+# and may cause test pollution when run together with other tests
+ignore = ["nestjs_legacy/**", "symfony_legacy/**", "node_modules/**", "test/e2e/**"]
+
+# Environment variables for tests
+# Use in-memory SQLite database for fast, isolated tests
+env = { DB_PATH = ":memory:", ELYSIA_FILES_DIR = "/tmp/exelearning-test" }
+
+# Note: Frontend tests that need DOM should import '../jest.setup.js' directly.
+# This avoids loading happy-dom for backend tests unnecessarily.
+
+# Preload disabled - causes test isolation issues
+# preload = ["./test/preload.ts"]

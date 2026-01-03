@@ -16,7 +16,9 @@
 @use 'components/dropdowns';
 @use 'components/uploadbox';
 @use 'components/collaborative';
+@use 'components/share';
 @use 'layout/loadscreen';
+@use 'layout/importprogress';
 @use 'layout/header';
 @use 'layout/aside';
 @use 'layout/workarea';
@@ -24,6 +26,7 @@
 @use 'layout/execontent';
 @use 'layout/idevices';
 @use 'layout/stylesnavbar';
+@use 'layout/previewpanel';
 @use 'pages/login';
 @use 'pages/properties';
 

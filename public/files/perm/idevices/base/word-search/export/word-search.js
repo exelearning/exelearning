@@ -148,7 +148,10 @@ var $eXeSopa = {
             $container.show();
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex('.sopa-IDevice');
+        var sopaHtml = $('.sopa-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(sopaHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('.sopa-IDevice');
+        }
     },
 
     recreatePuzzle: function (instanceId) {
@@ -360,7 +363,7 @@ var $eXeSopa = {
                 </div>
                  <div class="SPP-ResolveDiv ">
                     <button class="btn btn-primary" id="sopaResolve-${instanceId}">${msgs.msgEnd}</button>
-                 </div>                
+                 </div>
                 <div class="SPP-Cubierta" id="sopaCubierta-${instanceId}">
                     <div class="SPP-CodeAccessDiv" id="sopaCodeAccessDiv-${instanceId}">
                         <div class="SPP-MessageCodeAccessE" id="sopaMesajeAccesCodeE-${instanceId}"></div>
@@ -544,7 +547,7 @@ var $eXeSopa = {
 
         $container.find('#sopaMFDetails-' + instanceId).show();
         $container.find('#sopaMAuthorPoint-' + instanceId).html(q.author);
-        $container.find('#sopaMFooterPoint-' + instanceId).text(q.definition);
+        $container.find('#sopaMFooterPoint-' + instanceId).html(q.definition);
 
         if (q.definition.length > 0) {
             $container.find('#sopaMFooterPoint-' + instanceId).show();
@@ -556,9 +559,8 @@ var $eXeSopa = {
             $container.find('#sopaMAuthorPoint-' + instanceId).show();
         }
 
-        const html = $container.find('#sopaFDetails-' + instanceId).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
-        if (latex) {
+        var html = $container.find('#sopaFDetails-' + instanceId).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#sopaFDetails-' + instanceId
             );
@@ -1356,7 +1358,6 @@ $(function () {
                             S = 0,
                             x = 0;
                         x < l;
-
                     )
                         if (p(S, x, l, f, d)) {
                             var w = u(a, t, S, x, $);
@@ -1424,7 +1425,6 @@ $(function () {
                                 void 0 === s.preferOverlap || s.preferOverlap,
                         };
                     !i;
-
                 ) {
                     for (; !i && l++ < d.maxAttempts; ) i = a(o, d);
                     if (!i) {

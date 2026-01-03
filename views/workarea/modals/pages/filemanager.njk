@@ -1,0 +1,142 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalFileManager" role="dialog" aria-hidden="true" data-testid="modal-filemanager" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-confirm" role="document">
+        <div class="modal-content" id="modalFileManagerContent">
+            <div class="modal-header">
+                <div class="modal-title">Media Library</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body media-library-body">
+                <div class="media-library-toolbar">
+                    <button type="button" class="btn btn-primary media-library-upload-btn">
+                        <span class="exe-icon">add</span> Add file
+                    </button>
+                    <input type="file" class="media-library-upload-input" accept="image/*,video/*,audio/*,.pdf,.zip,.elp,.elpx" multiple style="display:none;">
+
+                    <div class="media-library-view-controls">
+                        <button type="button" class="media-library-view-btn active" data-view="grid" title="Grid view">
+                            <span class="exe-icon">grid_view</span>
+                        </button>
+                        <button type="button" class="media-library-view-btn" data-view="list" title="List view">
+                            <span class="exe-icon">view_list</span>
+                        </button>
+                    </div>
+
+                    <div class="media-library-sort-controls">
+                        <label>Sort:</label>
+                        <select class="form-control media-library-sort">
+                            <option value="name-asc">Name A-Z</option>
+                            <option value="name-desc">Name Z-A</option>
+                            <option value="date-desc" selected>Newest first</option>
+                            <option value="date-asc">Oldest first</option>
+                            <option value="size-desc">Largest first</option>
+                            <option value="size-asc">Smallest first</option>
+                            <option value="type-asc">Type A-Z</option>
+                            <option value="type-desc">Type Z-A</option>
+                        </select>
+                    </div>
+
+                    <div class="media-library-filter-controls">
+                        <label>Type:</label>
+                        <select class="form-control media-library-filter">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+
+                    <input type="text" class="form-control media-library-search" placeholder="Search...">
+                </div>
+
+                <div class="media-library-container">
+                    <div class="media-library-main">
+                        <div class="media-library-empty">
+                            <p>No media files yet</p>
+                            <p class="media-library-empty-hint">Click "Add file" or drop files here to upload</p>
+                        </div>
+                        <div class="media-library-grid">
+                            <div class="media-library-loading">Loading assets...</div>
+                        </div>
+                        <div class="media-library-list-container" style="display:none;">
+                            <table class="media-library-list">
+                                <thead>
+                                    <tr>
+                                        <th class="col-thumb"></th>
+                                        <th class="col-name" data-sort="name">Name</th>
+                                        <th class="col-type" data-sort="type">Type</th>
+                                        <th class="col-size" data-sort="size">Size</th>
+                                        <th class="col-date" data-sort="date">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+
+                        <div class="media-library-pagination">
+                            <button type="button" class="media-library-page-btn" data-action="prev" disabled>
+                                <span class="exe-icon">chevron_left</span>
+                            </button>
+                            <span class="media-library-page-info">Page 1 of 1</span>
+                            <button type="button" class="media-library-page-btn" data-action="next" disabled>
+                                <span class="exe-icon">chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="media-library-sidebar">
+                        <div class="media-library-sidebar-empty">
+                            <p>Select an item to view details</p>
+                        </div>
+                        <div class="media-library-sidebar-content" style="display:none;">
+                            <div class="media-library-preview">
+                                <img src="" alt="" class="media-library-preview-img">
+                                <video src="" class="media-library-preview-video" controls style="display:none;"></video>
+                                <audio src="" class="media-library-preview-audio" controls style="display:none;"></audio>
+                                <iframe src="" class="media-library-preview-pdf" style="display:none; width:100%; height:250px; border:1px solid #ccc;"></iframe>
+                                <div class="media-library-preview-file" style="display:none;">
+                                    <span class="exe-icon file-icon">description</span>
+                                </div>
+                            </div>
+                            <div class="media-library-metadata">
+                                <div class="metadata-row">
+                                    <label>Filename:</label>
+                                    <input type="text" class="form-control media-library-filename" readonly>
+                                </div>
+                                <div class="metadata-row">
+                                    <label>Type:</label>
+                                    <span class="media-library-type"></span>
+                                </div>
+                                <div class="metadata-row">
+                                    <label>Size:</label>
+                                    <span class="media-library-size"></span>
+                                </div>
+                                <div class="metadata-row media-library-dimensions-row">
+                                    <label>Dimensions:</label>
+                                    <span class="media-library-dimensions"></span>
+                                </div>
+                                <div class="metadata-row">
+                                    <label>Date:</label>
+                                    <span class="media-library-date"></span>
+                                </div>
+                                <div class="metadata-row">
+                                    <label>URL:</label>
+                                    <input type="text" class="form-control media-library-url" readonly>
+                                </div>
+                            </div>
+                            <div class="media-library-actions">
+                                <button type="button" class="btn btn-secondary media-library-unzip-btn" style="display:none;" title="Extract ZIP contents">
+                                    <span class="exe-icon">folder_zip</span> Extract
+                                </button>
+                                <button type="button" class="btn btn-danger media-library-delete-btn">
+                                    <span class="exe-icon">delete</span> Delete
+                                </button>
+                                <button type="button" class="btn btn-primary media-library-insert-btn">
+                                    <span class="exe-icon">add_photo_alternate</span> Insert
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

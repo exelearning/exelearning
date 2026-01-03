@@ -4,25 +4,61 @@
 * text=auto
 
 # ---------------------------------------------------------------------
-# PHP files
+# TypeScript / JavaScript source files
 # ---------------------------------------------------------------------
-*.php text diff=php eol=lf -executable
+*.ts    text eol=lf -executable
+*.tsx   text eol=lf -executable
+*.mts   text eol=lf -executable
+*.cts   text eol=lf -executable
+*.js    text eol=lf -executable
+*.mjs   text eol=lf -executable
+*.cjs   text eol=lf -executable
 
 # ---------------------------------------------------------------------
-# Static resources (readable text, not executable)
+# Styles
 # ---------------------------------------------------------------------
 *.css   text eol=lf -executable
 *.scss  text eol=lf -executable
-*.js    text eol=lf -executable
-*.xml   text eol=lf -executable
-*.html  text eol=lf -executable
-*.yml   text eol=lf -executable
-*.yaml  text eol=lf -executable
-*.json  text eol=lf -executable
-*.md    text eol=lf -executable
+*.sass  text eol=lf -executable
+*.less  text eol=lf -executable
 
 # ---------------------------------------------------------------------
-# Images, icons, and other binary assets
+# Markup and data files
+# ---------------------------------------------------------------------
+*.html  text eol=lf -executable
+*.htm   text eol=lf -executable
+*.xml   text eol=lf -executable
+*.xsl   text eol=lf -executable
+*.xsd   text eol=lf -executable
+*.json  text eol=lf -executable
+*.jsonc text eol=lf -executable
+
+# ---------------------------------------------------------------------
+# Configuration files
+# ---------------------------------------------------------------------
+*.yml   text eol=lf -executable
+*.yaml  text eol=lf -executable
+*.toml  text eol=lf -executable
+*.ini   text eol=lf -executable
+*.cfg   text eol=lf -executable
+*.conf  text eol=lf -executable
+*.env*  text eol=lf -executable
+
+# ---------------------------------------------------------------------
+# Documentation and templates
+# ---------------------------------------------------------------------
+*.md       text eol=lf -executable
+*.txt      text eol=lf -executable
+*.njk      text eol=lf -executable
+*.nunjucks text eol=lf -executable
+
+# ---------------------------------------------------------------------
+# SQL migrations
+# ---------------------------------------------------------------------
+*.sql text eol=lf -executable
+
+# ---------------------------------------------------------------------
+# Images (SVG is text, others are binary)
 # ---------------------------------------------------------------------
 *.svg  text eol=lf -executable
 *.png  binary -executable
@@ -31,34 +67,76 @@
 *.gif  binary -executable
 *.ico  binary -executable
 *.webp binary -executable
+*.avif binary -executable
+*.icns binary -executable
 
 # ---------------------------------------------------------------------
-# Composer files
+# Fonts
 # ---------------------------------------------------------------------
-composer.json text eol=lf -executable
-composer.lock text eol=lf -executable
+*.woff  binary -executable
+*.woff2 binary -executable
+*.ttf   binary -executable
+*.otf   binary -executable
+*.eot   binary -executable
+
+# ---------------------------------------------------------------------
+# Media files
+# ---------------------------------------------------------------------
+*.mp3  binary -executable
+*.mp4  binary -executable
+*.webm binary -executable
+*.ogg  binary -executable
+*.wav  binary -executable
+*.flac binary -executable
+*.m4a  binary -executable
+
+# ---------------------------------------------------------------------
+# Archives and packages
+# ---------------------------------------------------------------------
+*.zip  binary -executable
+*.tar  binary -executable
+*.gz   binary -executable
+*.elp  binary -executable
+*.elpx binary -executable
+*.epub binary -executable
+
+# ---------------------------------------------------------------------
+# Lockfiles
+# ---------------------------------------------------------------------
+bun.lockb    binary -executable
+package-lock.json text eol=lf -executable -diff
+yarn.lock        text eol=lf -executable -diff
 
 # ---------------------------------------------------------------------
 # Export exclusions
 # ---------------------------------------------------------------------
-/.env export-ignore
-/tests export-ignore
-/build export-ignore
-/vendor export-ignore
+/.env          export-ignore
+/test          export-ignore
+/build         export-ignore
+/coverage      export-ignore
+/node_modules  export-ignore
 
 # ---------------------------------------------------------------------
 # Shell scripts (explicitly executable)
 # ---------------------------------------------------------------------
 *.sh text eol=lf executable
-02-configure-symfony.sh text eol=lf chmod=+x
-mercure.run text eol=lf chmod=+x
+docker-entrypoint.sh text eol=lf executable
 
 # ---------------------------------------------------------------------
-# Consistent line endings for core files
+# Windows batch files (require CRLF)
 # ---------------------------------------------------------------------
-.gitignore text eol=lf -executable
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# ---------------------------------------------------------------------
+# Core config files
+# ---------------------------------------------------------------------
+.gitignore       text eol=lf -executable
+.gitattributes   text eol=lf -executable
+.editorconfig    text eol=lf -executable
 docker-compose.yml text eol=lf -executable
-config/bundles.php text eol=lf -executable
+Dockerfile       text eol=lf -executable
+Makefile         text eol=lf -executable
 
 # ---------------------------------------------------------------------
 # Public assets: ensure static files are not executable

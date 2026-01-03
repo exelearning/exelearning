@@ -13,11 +13,10 @@ services:
       - exelearning-data:/mnt/data:rw
 
     environment:
-      # Symfony settings
+      # Application settings
       APP_ENV: prod
       APP_DEBUG: 0
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForSQLiteDeployment}"
-      APP_PORT: "${APP_PORT:-8080}"
       APP_ONLINE_MODE: 1
       XDEBUG_MODE: off
       
@@ -29,28 +28,21 @@ services:
       # Files directory
       FILES_DIR: "/mnt/data/"
       
-      # Authentication settings
-      APP_AUTH_METHODS: password
+      # Authentication settings (guest enabled for E2E tests)
+      APP_AUTH_METHODS: password,guest
       AUTH_CREATE_USERS: true
       
       # Test users
       TEST_USER_EMAIL: "${TEST_USER_EMAIL:-user@exelearning.net}"
       TEST_USER_USERNAME: "${TEST_USER_USERNAME:-user}"
       TEST_USER_PASSWORD: "${TEST_USER_PASSWORD:-1234}"
-      
-      # Mercure settings
-      MERCURE_URL: "http://localhost:8080/.well-known/mercure"
-      MERCURE_PUBLIC_URL:
-      MERCURE_JWT_SECRET_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
-      MERCURE_PUBLISHER_JWT_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
-      MERCURE_SUBSCRIBER_JWT_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
 
       API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForSQLiteDeployment}"
       
       # Post-configuration commands
       POST_CONFIGURE_COMMANDS: |
         echo "Setting up eXeLearning with SQLite..."
-        php bin/console app:create-user ${TEST_USER_EMAIL:-user@exelearning.net} ${TEST_USER_PASSWORD:-1234} ${TEST_USER_USERNAME:-user} --no-fail
+        bun cli create-user --email ${TEST_USER_EMAIL:-user@exelearning.net} --password ${TEST_USER_PASSWORD:-1234} --username ${TEST_USER_USERNAME:-user} --no-fail
 
 volumes:
   exelearning-data:

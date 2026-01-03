@@ -1,0 +1,90 @@
+// Import Progress Overlay
+// Shows inline progress during ELP import in the workarea
+
+#import-progress-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+
+    &.hiding {
+        opacity: 0;
+    }
+}
+
+.import-progress-content {
+    text-align: center;
+    padding: 2rem;
+    max-width: 300px;
+}
+
+.import-progress-spinner {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    border: 3px solid #e0e0e0;
+    border-top-color: var(--dark-exe-color, #0BA1A1);
+    border-radius: 50%;
+    animation: import-progress-spin 1s linear infinite;
+}
+
+.import-progress-message {
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 1rem;
+    min-height: 1.5em;
+}
+
+.import-progress-bar-container {
+    width: 200px;
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    margin: 0 auto 0.5rem;
+    overflow: hidden;
+}
+
+.import-progress-bar {
+    height: 100%;
+    background: var(--dark-exe-color, #0BA1A1);
+    border-radius: 2px;
+    transition: width 0.2s ease-out;
+}
+
+.import-progress-percent {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+@keyframes import-progress-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+// UI Blocking during import
+// Prevents user interaction while import is in progress
+#node-content-container.import-blocking {
+    pointer-events: none;
+
+    #node-content {
+        opacity: 0.5;
+    }
+
+    // The progress overlay should receive events (for wait cursor)
+    #import-progress-overlay {
+        pointer-events: auto;
+        cursor: wait;
+    }
+}

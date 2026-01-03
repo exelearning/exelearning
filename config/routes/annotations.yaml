@@ -1,6 +1,0 @@
-# config/routes/annotations.yaml
-
-controllers:
-    resource: ../../src/Controller/
-    type: attribute
-    prefix: '%base_path%'

@@ -2,99 +2,188 @@
 
 ## Overview
 
-The translation system used in this application is based on Symfony's **Translation** component, which provides a flexible and scalable way to manage multilingual content.
+eXeLearning uses XLF (XLIFF) files for internationalization. Translation files are stored in the `translations/` directory and loaded at server startup.
 
-Currently, the application supports the following languages:
+## Supported Languages
 
-* **English** (default language)
-* **Spanish**
-* **Catalan**
+The application supports these interface languages:
 
-Translations are organized in `.xlf` (XLIFF) files located in the `translations/` directory. These files allow efficient management of translatable strings used across both `.php` and `.js` files, thanks to a custom extractor.
+| Code | Language |
+|------|----------|
+| `en` | English (default) |
+| `es` | Español |
+| `ca` | Català |
+| `va` | Valencià |
+| `eu` | Euskara |
+| `gl` | Galego |
+| `pt` | Português |
+| `eo` | Esperanto |
+| `ro` | Română |
 
----
+Additional locales are available for exported content packages (see `src/services/translation.ts` for the full list).
 
-### Locale Configuration
+## Translation Files
 
-To enable and manage supported languages, you need to configure the **locales** in the `settings.php` file. This file defines which languages are active and the default fallback locale.
+Translations are stored as XLF files in `translations/`:
 
-Example configuration in `settings.php`:
-
-```php
-<?php
-
-// Active locales for which translations will be extracted
-public const LOCALES = [
-    'en' => 'English',
-    'es' => 'Español',
-    'ca' => 'Català'
-];
-
-// Default locale to be used when no translation is available
-public const DEFAULT_LOCALE = 'en';
+```
+translations/
+├── messages.en.xlf
+├── messages.es.xlf
+├── messages.ca.xlf
+├── messages.eu.xlf
+├── messages.gl.xlf
+├── messages.pt.xlf
+├── messages.eo.xlf
+├── messages.ro.xlf
+└── messages.va.xlf
 ```
 
----
+## Using Translations
 
-### Translation Generation
+### In TypeScript (Backend)
 
-To extract translatable strings and update the `.xlf` files, use the following `make` command:
+```typescript
+import { trans } from '../services/translation';
+
+// Simple translation
+const message = trans('welcome.message');
+
+// With parameters
+const greeting = trans('hello.user', { name: 'John' });
+// Parameters support both %param% and {param} formats
+```
+
+### In Nunjucks Templates
+
+```njk
+{{ trans('page.title') }}
+{{ trans('welcome.user', { name: user.name }) }}
+```
+
+### In JavaScript (Frontend)
+
+```javascript
+// Using the __() or t() helper functions
+const message = __('error.not_found');
+const title = t('page.title');
+```
+
+## Translation Commands
+
+### Extract New Translation Keys
+
+Scan source files for translation function calls and add new keys to XLF files:
+
+```bash
+# Extract keys for all locales
+bun cli translations
+
+# Extract for a specific locale
+bun cli translations --locale=es
+
+# Only extract (skip cleanup)
+bun cli translations --extract-only
+```
+
+### Clean XLF Files
+
+Remove invalid entries and clean up formatting:
+
+```bash
+bun cli translations --clean-only
+```
+
+### Using Make
 
 ```bash
 make translations
 ```
 
-This command:
+## Extraction Sources
 
-* Ensures that Docker and the environment are properly configured.
-* Runs the Symfony translation extractor inside the container via Composer.
-* Updates all `.xlf` files for the languages defined in `settings.php`.
+The extractor scans these patterns:
 
-> Internally, this invokes:
->
-> ```bash
-> docker compose exec exelearning composer --no-cache translations:extract
-> ```
+| Directory | Extensions | Patterns |
+|-----------|------------|----------|
+| `src/` | `*.ts` | `trans('key')`, `__('key')`, `t('key')` |
+| `views/` | `*.njk` | `trans('key')`, `__('key')`, `t('key')` |
+| `public/app/` | `*.js` | `trans('key')`, `__('key')`, `t('key')` |
 
-The resulting `.xlf` files are stored in the `translations/` directory and contain strings from both PHP and JavaScript sources.
+## Adding a New Language
 
-There is no need to run the extraction manually via Symfony or Composer — always use `make translations` to keep everything consistent.
+1. Add the locale to `LOCALES` in `src/services/translation.ts`:
 
----
-
-### JavaScript Translation Support
-
-In addition to PHP, the system supports extracting translations from JavaScript files. A custom **Extractor** processes `.js` files and ensures those strings are also available for translation.
-
-This extractor runs automatically when you execute `make translations`, so no extra steps are required to support `.js` translation strings.
-
----
-
-### Additional Notes
-
-* The default language is **English**. If a translation is missing, the English version is shown.
-* Always regenerate translation files when you add new translatable strings by running `make translations` or `composer translations:extract`.
-* To support a new language, simply add it to the `LOCALES` array in `settings.php` and run the extraction command to generate the corresponding `.xlf` files.
-
----
-
-## Add a New Language
-
-1) Add the locale to `LOCALES` in `settings.php` (e.g., `'fr' => 'Français'`).
-
-2) Extract translations:
-
-```bash
-make translations
+```typescript
+export const LOCALES: Record<string, string> = {
+    en: 'English',
+    es: 'Español',
+    fr: 'Français',  // New language
+    // ...
+};
 ```
 
-3) Edit the generated `translations/messages.<locale>.xlf` files and provide translations.
+2. Create the XLF file:
 
-4) Test locally by setting the app locale to the new language in your dev environment (or by switching language where available in the UI).
+```bash
+# Copy English as a starting point
+cp translations/messages.en.xlf translations/messages.fr.xlf
+```
+
+3. Edit the new XLF file:
+   - Update `target-language` attribute in the `<file>` element
+   - Translate the `<target>` elements
+
+4. Run extraction to add any missing keys:
+
+```bash
+bun cli translations --locale=fr
+```
+
+## XLF File Format
+
+Translation entries use the standard XLIFF format:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext">
+    <body>
+      <trans-unit id="abc123" resname="welcome.message">
+        <source>Welcome to eXeLearning</source>
+        <target>Bienvenido a eXeLearning</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>
+```
+
+## Locale Detection
+
+The server detects the user's locale from:
+
+1. User preference (stored in session/profile)
+2. `Accept-Language` HTTP header
+3. Default locale (`en`)
+
+```typescript
+import { detectLocaleFromHeader, setLocale } from '../services/translation';
+
+// Auto-detect from request
+const locale = detectLocaleFromHeader(request.headers.get('accept-language'));
+setLocale(locale);
+```
+
+## Best Practices
+
+- Use descriptive, hierarchical keys: `error.file.not_found` instead of `err1`
+- Keep translations consistent across files
+- Run `bun cli translations` after adding new translatable strings
+- Test the UI in multiple languages during development
 
 ---
 
 ## See Also
 
-- Developer environment: [development/environment.md](environment.md)
-
+- [Development Environment](environment.md)
+- [Architecture Overview](../architecture.md)

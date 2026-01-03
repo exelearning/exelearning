@@ -1,0 +1,158 @@
+/* Rubrics iDevice */
+.exe-rubrics-instructions {
+  margin: 1.5em 0 -0.5em 0;
+}
+.exe-rubrics-authorship {
+  margin-top: -1.5em;
+  text-align: center;
+  font-size: 0.9em;
+  margin-bottom: 2em;
+}
+.exe-rubrics-strings {
+  display: none !important;
+}
+/*NewEXE: change class */
+.rubric caption {
+  font-size: 1.05em;
+}
+.rubric .exe-rubrics-print {
+  vertical-align: top;
+  font-size: 0.8em;
+  margin-left: 0.7em;
+}
+.rubric .exe-rubrics-print:hover,
+.rubric .exe-rubrics-print:focus {
+  opacity: 1;
+}
+.rubric td span {
+  opacity: 0.8;
+  margin-left: 3px;
+  font-size: 0.9em;
+}
+/* Print version */
+body.exe-rubrics {
+  background: rgb(204, 204, 204);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  line-height: 2em;
+}
+body.exe-rubrics .exe-rubrics-print {
+  display: none;
+  background-color: lawngreen;
+}
+body.exe-rubrics .exe-rubrics-wrapper {
+  background: white;
+  display: block;
+  margin: 0 auto;
+  margin-bottom: 0.5cm;
+  box-shadow: 0 0 0.5cm rgba(0, 0, 0, 0.5);
+  min-height: 21cm;
+  width: 29.7cm;
+  text-align: center;
+  position: relative;
+}
+body.exe-rubrics a {
+  color: #2f6bb0;
+}
+@media print {
+  html.exe-rubrics,
+  body.exe-rubrics,
+  body.exe-rubrics .exe-rubrics-wrapper {
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  body.exe-rubrics #commands {
+    display: none;
+  }
+}
+@page {
+  size: auto;
+  margin: 0;
+}
+
+body.exe-rubrics #exe-rubrics-header p {
+  line-height: 2.5em;
+}
+body.exe-rubrics label {
+  font-weight: bold;
+}
+body.exe-rubrics #exe-rubrics-header label {
+  display: inline-block;
+  width: 10em;
+  text-align: right;
+  padding-right: 0.1cm;
+}
+body.exe-rubrics input[type="text"] {
+  border: none;
+  border-bottom: 1px solid #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+}
+body.exe-rubrics #activity,
+body.exe-rubrics #name {
+  width: 12.5cm;
+}
+
+body.exe-rubrics #exe-rubrics-header {
+  margin-top: 0.5cm;
+}
+body.exe-rubrics caption {
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 0.25cm;
+}
+body.exe-rubrics .exe-rubrics-content {
+  padding: 1cm 1.5cm;
+  text-align: left;
+}
+body.exe-rubrics table {
+  width: 100%;
+  margin-top: 1cm;
+}
+body.exe-rubrics table,
+body.exe-rubrics th,
+body.exe-rubrics td {
+  border-collapse: collapse;
+  border: 1px solid #000;
+}
+body.exe-rubrics th,
+body.exe-rubrics td {
+  padding: 0.1cm 0.25cm;
+}
+body.exe-rubrics td span {
+  margin-left: 0.2cm;
+  font-size: 9pt;
+  font-style: italic;
+}
+body.exe-rubrics td {
+  position: relative;
+}
+body.exe-rubrics td input {
+  position: absolute;
+  bottom: 0.1cm;
+  right: 0.1cm;
+}
+
+body.exe-rubrics #exe-rubrics-footer {
+  margin-top: 1cm;
+}
+body.exe-rubrics #notes {
+  width: 99%;
+  height: 5cm;
+  border: 1px solid #000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  padding: 0.1cm;
+  display: block;
+  margin-top: 0.1cm;
+  max-width: 100%;
+}
+body.exe-rubrics #commands {
+  position: absolute;
+  top: 0.2cm;
+  left: 0.3cm;
+}
+body.exe-rubrics #commands input {
+  margin-right: 0.15cm;
+}

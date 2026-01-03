@@ -1,0 +1,708 @@
+.exe-content{
+  background: #fff;
+}
+
+.exe-content .page-title{
+  font-size: 1.45em;
+}
+
+.exe-content .box{
+  margin-top: 20px;
+  border: 1px solid #dbdbdb;
+}
+
+.exe-content .box-head {
+  border-bottom: 1px solid #dbdbdb;
+}
+
+.exe-export .no-header .box-head {
+  border-bottom: 0;
+}
+
+.exe-content .box-head .box-title {
+  margin: 0;
+  font-size: 1.2em;
+}
+
+.exe-content a{
+  color: #5a7f0c;
+}
+
+.exe-content a:hover,
+.exe-content a:focus{
+  color: #71a300;
+}
+
+.exe-content h2{
+  font-size: 1.45em;
+}
+.exe-content h3{
+  font-size: 1.35em;
+}
+.exe-content h4{
+  font-size: 1.25em;
+}
+.exe-content h5{
+  font-size: 1.15em;
+}
+
+.exe-content a {
+    text-decoration: none
+}
+
+.exe-content a:hover,
+.exe-content a:focus {
+    text-decoration: underline
+}
+
+@media print {
+    .external-iframe-src {
+        display: block !important;
+        margin: 2em 0;
+        font-size: .95em;
+        text-align: center
+    }
+
+    #made-with-eXe {
+        display: none
+    }
+}
+
+.external-iframe {
+    border: 0
+}
+
+.pre-code {
+    background: #112C4A;
+    color: #E7ECF1;
+    font-family: Monaco, Courier, monospace;
+    border-radius: 9px;
+    font-size: 12px;
+    margin: 2em 1em;
+    overflow: auto;
+    padding: 20px
+}
+
+.exe-dl {
+    margin-bottom: 2em;
+    margin-left: 1.5em
+}
+
+.exe-dl dt {
+    font-weight: bold
+}
+
+.exe-dl dd {
+    margin: 1em 1.5em
+}
+
+.js .exe-dl dt {
+    margin: 1.2em 0 0 0
+}
+
+.exe-dl dt a {
+    text-decoration: underline
+}
+
+.exe-dl .icon {
+    font-family: Arial, sans-serif;
+    display: block;
+    width: 20px;
+    height: 20px;
+    font-size: 16px;
+    margin-right: 1em;
+    line-height: 20px;
+    text-align: center;
+    float: left;
+    border-radius: 2px;
+    position: relative
+}
+
+@media all and (min-width: 1px) {
+    .exe-dl dt a {
+        align-items: center;
+        display: flex;
+        text-decoration: none
+    }
+
+    .exe-dl .icon {
+        height: 18px;
+        line-height: 18px;
+        width: 18px;
+        padding: 1px;
+        font: 18px monospace;
+        font-weight: bold;
+        display: flex;
+        justify-content: center;
+        align-items: center
+    }
+}
+
+.exe-dl-toggler {
+    height: 20px;
+    margin: 1.5em
+}
+
+.exe-dl-toggler a {
+    margin-left: 0;
+    font-weight: bold
+}
+
+.js .exe-dl dd {
+    display: none;
+    padding-left: 0;
+    margin: 1em 1em 1em 37px
+}
+
+/* Math */
+.exe-math {
+    display: block;
+    margin: 2em 0
+}
+
+.exe-math,
+.MathJax_Display {
+    text-align: left !important
+}
+
+.exe-math.position-center,
+.position-center .MathJax_Display,
+[style*="text-align: center"] .MathJax_Display {
+    text-align: center !important
+}
+
+.exe-math.position-right,
+.position-right .MathJax_Display,
+[style*="text-align: right"] .MathJax_Display {
+    text-align: right !important
+}
+
+.js .show-image .exe-math-code,
+.js .show-code .exe-math-img {
+    display: none
+}
+
+.exe-math-links {
+    font-size: .85em
+}
+
+.exe-math-inline {
+    display: inline;
+    margin: 0 .1em !important
+}
+
+/* TinyMCE: Images and media */
+.exe-figure {
+    margin: 2em 0;
+    max-width: 100%
+}
+
+.position-center {
+    margin: 2em auto
+}
+
+.position-right {
+    margin: 2em 0 2em auto
+}
+
+.float-left {
+    float: left;
+    margin: .5em 1.5em 1em 0
+}
+
+.float-right {
+    float: right;
+    margin: .5em 0 1em 2em
+}
+
+.figcaption {
+    padding-top: .2em
+}
+
+.figcaption.header {
+    padding-top: 0;
+    padding-bottom: .2em
+}
+
+/* TinyMCE templates */
+.exe-layout-2-cols,
+.exe-layout-3-cols {
+    width: 100%
+}
+
+.exe-col{
+    box-sizing: content-box;
+}
+
+.exe-layout-2-cols .exe-col {
+    float: left;
+    width: 49%
+}
+
+.exe-layout-2-cols .exe-col-1 {
+    padding-right: 1%
+}
+
+.exe-layout-2-cols .exe-col-2 {
+    padding-left: 1%
+}
+
+.exe-layout-2-30-70 .exe-col {
+    width: 69%
+}
+
+.exe-layout-2-30-70 .exe-col-1 {
+    width: 29%
+}
+
+.exe-layout-2-70-30 .exe-col {
+    width: 29%
+}
+
+.exe-layout-2-70-30 .exe-col-1 {
+    width: 69%
+}
+
+.exe-layout-3-cols .exe-col {
+    float: left;
+    width: 32%
+}
+
+.exe-layout-3-cols .exe-col-1,
+.exe-layout-3-cols .exe-col-2 {
+    padding-right: 2%
+}
+
+/* Blocks */
+.exe-block-warning {
+    background: #FCF8E3;
+    color: #796034;
+    border: 1px solid #FAEBCC;
+    padding: 0 1em;
+    border-radius: 4px
+}
+
+p.exe-block-warning {
+    padding: 1em
+}
+
+.exe-block-alert {
+    background: #ffc;
+    color: #855000;
+    border: 1px solid #FFF099;
+    padding: 0 1em;
+    border-radius: 4px
+}
+
+p.exe-block-alert {
+    padding: 1em
+}
+
+.exe-block-danger {
+    background: #FEF0EF;
+    color: #973C3B;
+    border: 1px solid #F3DADD;
+    padding: 0 1em;
+    border-radius: 4px
+}
+
+p.exe-block-danger {
+    padding: 1em
+}
+
+.exe-block-info {
+    background: #E1F1F9;
+    color: #2B627D;
+    border: 1px solid #C9EDF4;
+    padding: 0 1em;
+    border-radius: 4px
+}
+
+p.exe-block-info {
+    padding: 1em
+}
+
+.exe-block-success {
+    background: #E5F3E0;
+    color: #336634;
+    border: 1px solid #DEEDD1;
+    padding: 0 1em;
+    border-radius: 4px
+}
+
+p.exe-block-success {
+    padding: 1em
+}
+
+.exe-content .exe-block-warning a,
+.exe-content .exe-block-warning a:hover,
+.exe-content .exe-block-warning a:focus {
+    color: #4F360A
+}
+
+.exe-content .exe-block-alert a,
+.exe-content .exe-block-alert a:hover,
+.exe-content .exe-block-alert a:focus {
+    color: #5B2600
+}
+
+.exe-content .exe-block-danger a,
+.exe-content .exe-block-danger a:hover,
+.exe-content .exe-block-danger a:focus {
+    color: #6D1211
+}
+
+.exe-content .exe-block-info a,
+.exe-content .exe-block-info a:hover,
+.exe-content .exe-block-info a:focus {
+    color: #063853
+}
+
+.exe-content .exe-block-success a,
+.exe-content .exe-block-success a:hover,
+.exe-content .exe-block-success a:focus {
+    color: #093C0A
+}
+
+div.exe-block-warning,
+div.exe-block-alert,
+div.exe-block-danger,
+div.exe-block-info,
+div.exe-block-success {
+    margin: 1em 0
+}
+
+/* RTL support */
+body [dir='rtl'] {
+    text-align: start
+}
+
+/* Autoclear */
+.exe-content .idevice_body,
+.exe-clear {
+    overflow: auto
+}
+
+/* JavaScript on/offf */
+.js-hidden {
+    display: none;
+}
+
+.exe-hidden,
+.js-required,
+.js .js-hidden,
+.exe-mindmap-code {
+    display: none
+}
+
+.js .js-required {
+    display: block
+}
+
+.box-toggle {
+    display: none;
+}
+
+.js .box-toggle {
+    display: inline-block;
+}
+
+.sr-av,
+.js .js-sr-av,
+.exe-hidden-accessible,
+.js .exe-tooltip-text {
+    position: absolute;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip: rect(0, 0, 0, 0);
+    height: 0
+}
+
+/* Tables */
+.exe-table {
+    margin: 2em auto;
+    max-width: 100%;
+    border: 1px solid #CCC;
+    border-collapse: collapse;
+    border-spacing: 0
+}
+
+.exe-table tr {
+    background: #fff
+}
+
+.exe-table caption {
+    padding: .5em 0;
+    text-align: center;
+    font-style: italic;
+    caption-side: top;
+}
+
+.exe-table td,
+.exe-table th {
+    border: 1px solid #CCC;
+    margin: 0;
+    padding: 0.5em 1em
+}
+
+.exe-table thead {
+    background: #ddd;
+    color: #000;
+    text-align: left
+}
+
+.exe-table tr:nth-child(2n-1) td,
+.exe-table tbody tr:nth-child(2n-1) th {
+    background: #F4F4F4
+}
+
+.exe-table tbody tr:nth-child(2n) th {
+    background: #F4F4F4
+}
+
+.exe-table tbody tr:nth-child(2n-1) th {
+    background: #E4E4E4
+}
+
+.exe-table thead+tbody tr:nth-child(2n) th {
+    background: #fff
+}
+
+.exe-table thead+tbody tr:nth-child(2n-1) th {
+    background: #F4F4F4
+}
+
+.exe-table-minimalist {
+    margin: 2em auto;
+    border-collapse: collapse
+}
+
+.exe-table-minimalist tr {
+    background: #fff
+}
+
+.exe-table-minimalist thead th {
+    color: #000;
+    padding: .6em 1.5em .6em .8em;
+    border-bottom: 2px solid #CCC;
+    text-align: left
+}
+
+.exe-table-minimalist td,
+.exe-table-minimalist tbody th {
+    border-bottom: 1px solid #ccc;
+    color: #555;
+    padding: .5em 1.5em .5em .8em
+}
+
+.exe-table-minimalist tbody tr:hover td,
+.exe-table-minimalist tbody tr:hover th {
+    color: #222
+}
+
+.exe-table-minimalist tr:nth-child(2n-1) td,
+.exe-table-minimalist tbody tr:nth-child(2n-1) th {
+    background: #F9F9F9
+}
+
+.exe-table-minimalist caption {
+    text-align: center;
+    font-style: italic;
+    border-bottom: 2px solid #CCC;
+    padding: .6em 0
+}
+
+/* Responsive tables */
+.exe-table-responsive {
+    display: block;
+    overflow-x: auto;
+    border: none
+}
+
+.exe-table-responsive,
+.exe-table-responsive th,
+.exe-table-responsive tr,
+.exe-table-responsive td {
+    width: auto !important
+}
+
+/* Tooltips */
+body .qtip {
+    font-size: .85em;
+    line-height: 1.5em
+}
+
+.qtip .exe-tooltip-text {
+    position: relative;
+    overflow: auto;
+    clip: auto;
+    height: auto
+}
+
+/* Structured lists */
+ol.auto-numbered {
+    counter-reset: item
+}
+
+.auto-numbered ol {
+    counter-reset: item
+}
+
+.auto-numbered li {
+    display: block
+}
+
+.auto-numbered li:before {
+    content: counters(item, ".") ".- ";
+    counter-increment: item
+}
+
+/* Blockquote + Cite */
+.exe-quote-cite cite {
+    display: block;
+    text-align: right;
+    margin-top: -.5em
+}
+
+/* File information */
+.exe-link-data {
+    font-size: .8em;
+    margin: 0 .2em
+}
+
+.exe-link-data abbr {
+    cursor: help
+}
+
+/* Quote With Authorship */
+.styled-qc {
+    font-family: Georgia, serif;
+    font-style: italic;
+    margin: 1.5em 2.5em;
+    padding: 0.25em 3.5em;
+    position: relative
+}
+
+.styled-qc:before {
+    display: block;
+    content: "\201C";
+    font-size: 5em;
+    position: absolute;
+    left: 0;
+    top: -20px
+}
+
+/* Responsive design */
+iframe,
+object,
+embed {
+    max-width: 100%
+}
+
+img,
+video {
+    max-width: 100%;
+    height: auto
+}
+
+@media all and (max-width: 992px) {
+    .exe-layout-3-cols .exe-col {
+        float: none;
+        width: 100%;
+        padding: 0
+    }
+
+    .exe-layout-3-cols .exe-col .exe-figure {
+        margin: 2em auto
+    }
+}
+
+@media all and (max-width: 780px) {
+    .styled-qc {
+        margin: 1.5em .5em
+    }
+
+    .exe-layout-2-cols .exe-col {
+        float: none;
+        width: 100%;
+        padding: 0
+    }
+
+    .exe-layout-2-cols .exe-col .exe-figure {
+        margin: 2em auto
+    }
+}
+
+/* Made with eXeLearning */
+#made-with-eXe {
+    margin: 0;
+    position: fixed;
+    bottom: 0;
+    right: 0
+}
+
+#made-with-eXe a {
+    text-decoration: none;
+    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+    border-top-left-radius: 4px;
+    color: #222;
+    font-size: 11px;
+    font-family: Arial, sans-serif;
+    line-height: 35px;
+    width: 35px;
+    height: 35px;
+    background: #fff url(../img/exe_powered_logo.png) no-repeat 3px 50%;
+    display: block;
+    background-size: auto 20px;
+    text-decoration: none;
+    transition: .5s;
+    opacity: .8
+}
+
+#made-with-eXe span {
+    padding-left: 35px;
+    padding-right: 5px
+}
+
+#made-with-eXe span span {
+    position: absolute;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip: rect(0, 0, 0, 0);
+    height: 0
+}
+
+#made-with-eXe a:hover {
+    width: auto;
+    padding: 0 5px;
+    background-position: 5px 50%;
+    opacity: 1
+}
+
+/* Search bar */
+#exe-client-search-reset {
+    display: none;
+}
+#exe-client-search-reset.visible {
+    display: inline;
+}
+
+/* Box toggler */
+.exe-export article.minimized .box-content{
+    display: none;
+}
+
+/* BOX no visible */
+.exe-export article.novisible.box{
+    display: none  !important;
+}
+
+/* iDevice no visible */
+.exe-export article.box .idevice_node.novisible{
+    display: none  !important;
+}
+
+/* Teacher mode */
+html:not(.mode-teacher) .js .teacher-only {
+    display: none !important;
+}

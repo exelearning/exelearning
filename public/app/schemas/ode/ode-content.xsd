@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    ODE Content XML Schema
+    XML Schema Definition for eXeLearning ODE XML format (content.xml)
+
+    Version: 2.0
+    Namespace: http://www.intef.es/xsd/ode
+
+    This XSD provides comprehensive type validation for eXeLearning project files.
+    It extends the DTD with:
+    - Data type validation (integer, boolean, dateTime)
+    - Enumerated values for iDevice types
+    - Pattern restrictions for identifiers
+
+    Copyright (C) 2025 eXeLearning
+    License: AGPL-3.0
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:ode="http://www.intef.es/xsd/ode"
+           targetNamespace="http://www.intef.es/xsd/ode"
+           elementFormDefault="qualified"
+           attributeFormDefault="unqualified">
+
+    <!-- ==================== Root Element ==================== -->
+    <xs:element name="ode" type="ode:odeType"/>
+
+    <xs:complexType name="odeType">
+        <xs:sequence>
+            <xs:element name="userPreferences" type="ode:userPreferencesType" minOccurs="0"/>
+            <xs:element name="odeResources" type="ode:odeResourcesType" minOccurs="0"/>
+            <xs:element name="odeProperties" type="ode:odePropertiesType" minOccurs="0"/>
+            <xs:element name="odeNavStructures" type="ode:odeNavStructuresType"/>
+        </xs:sequence>
+        <xs:attribute name="version" type="xs:string" use="optional"/>
+    </xs:complexType>
+
+    <!-- ==================== User Preferences ==================== -->
+    <xs:complexType name="userPreferencesType">
+        <xs:sequence>
+            <xs:element name="userPreference" type="ode:keyValueType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- ==================== ODE Resources ==================== -->
+    <xs:complexType name="odeResourcesType">
+        <xs:sequence>
+            <xs:element name="odeResource" type="ode:keyValueType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- ==================== ODE Properties ==================== -->
+    <xs:complexType name="odePropertiesType">
+        <xs:sequence>
+            <xs:element name="odeProperty" type="ode:keyValueType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- ==================== Generic Key-Value Type ==================== -->
+    <xs:complexType name="keyValueType">
+        <xs:sequence>
+            <xs:element name="key" type="xs:string"/>
+            <xs:element name="value" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- ==================== Navigation Structures ==================== -->
+    <xs:complexType name="odeNavStructuresType">
+        <xs:sequence>
+            <xs:element name="odeNavStructure" type="ode:odeNavStructureType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="odeNavStructureType">
+        <xs:sequence>
+            <xs:element name="odePageId" type="ode:odeIdentifierType"/>
+            <xs:element name="odeParentPageId" type="xs:string"/>
+            <xs:element name="pageName" type="xs:string"/>
+            <xs:element name="odeNavStructureOrder" type="xs:integer"/>
+            <xs:element name="odeNavStructureProperties" type="ode:navStructurePropertiesType" minOccurs="0"/>
+            <xs:element name="odePagStructures" type="ode:odePagStructuresType" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="navStructurePropertiesType">
+        <xs:sequence>
+            <xs:element name="odeNavStructureProperty" type="ode:keyValueType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- ==================== Block Structures ==================== -->
+    <xs:complexType name="odePagStructuresType">
+        <xs:sequence>
+            <xs:element name="odePagStructure" type="ode:odePagStructureType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="odePagStructureType">
+        <xs:sequence>
+            <xs:element name="odePageId" type="ode:odeIdentifierType"/>
+            <xs:element name="odeBlockId" type="ode:odeIdentifierType"/>
+            <xs:element name="blockName" type="xs:string"/>
+            <xs:element name="iconName" type="xs:string" minOccurs="0"/>
+            <xs:element name="odePagStructureOrder" type="xs:integer"/>
+            <xs:element name="odePagStructureProperties" type="ode:pagStructurePropertiesType" minOccurs="0"/>
+            <xs:element name="odeComponents" type="ode:odeComponentsType" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="pagStructurePropertiesType">
+        <xs:sequence>
+            <xs:element name="odePagStructureProperty" type="ode:keyValueType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- ==================== Components (iDevices) ==================== -->
+    <xs:complexType name="odeComponentsType">
+        <xs:sequence>
+            <xs:element name="odeComponent" type="ode:odeComponentType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="odeComponentType">
+        <xs:sequence>
+            <xs:element name="odePageId" type="ode:odeIdentifierType"/>
+            <xs:element name="odeBlockId" type="ode:odeIdentifierType"/>
+            <xs:element name="odeIdeviceId" type="ode:odeIdentifierType"/>
+            <xs:element name="odeIdeviceTypeName" type="ode:ideviceTypeType"/>
+            <xs:element name="htmlView" type="xs:string" minOccurs="0"/>
+            <xs:element name="jsonProperties" type="xs:string" minOccurs="0"/>
+            <xs:element name="odeComponentsOrder" type="xs:integer"/>
+            <xs:element name="odeComponentsProperties" type="ode:componentPropertiesType" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="componentPropertiesType">
+        <xs:sequence>
+            <xs:element name="odeComponentsProperty" type="ode:keyValueType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- ==================== Custom Simple Types ==================== -->
+
+    <!--
+        ODE Identifier Type
+        Format: YYYYMMDDHHmmss + 6 alphanumeric characters
+        Example: 20251125215856KTWCLS
+    -->
+    <xs:simpleType name="odeIdentifierType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[0-9]{14}[A-Z0-9]{6}|page-[a-z0-9-]+|[a-zA-Z0-9_-]+"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!--
+        iDevice Type Enumeration
+        Lists all known iDevice types in eXeLearning
+    -->
+    <xs:simpleType name="ideviceTypeType">
+        <xs:restriction base="xs:string">
+            <!-- Text-based iDevices -->
+            <xs:enumeration value="text"/>
+            <xs:enumeration value="FreeTextIdevice"/>
+            <xs:enumeration value="FreeTextfpdIdevice"/>
+
+            <!-- Interactive iDevices -->
+            <xs:enumeration value="form"/>
+            <xs:enumeration value="matching"/>
+            <xs:enumeration value="sort"/>
+            <xs:enumeration value="classify"/>
+            <xs:enumeration value="guess"/>
+            <xs:enumeration value="checklist"/>
+            <xs:enumeration value="crossword"/>
+            <xs:enumeration value="complete"/>
+            <xs:enumeration value="trueorfalse"/>
+
+            <!-- Media iDevices -->
+            <xs:enumeration value="image-gallery"/>
+            <xs:enumeration value="magnifier"/>
+            <xs:enumeration value="video"/>
+            <xs:enumeration value="audio"/>
+
+            <!-- Quiz iDevices -->
+            <xs:enumeration value="quick-questions"/>
+            <xs:enumeration value="quick-questions-multiple-choice"/>
+            <xs:enumeration value="QuizTestIdevice"/>
+            <xs:enumeration value="TrueFalseIdevice"/>
+            <xs:enumeration value="MultichoiceIdevice"/>
+            <xs:enumeration value="MultiSelectIdevice"/>
+            <xs:enumeration value="ClozeIdevice"/>
+
+            <!-- UDL iDevices -->
+            <xs:enumeration value="udl-content"/>
+
+            <!-- External content iDevices -->
+            <xs:enumeration value="external-website"/>
+            <xs:enumeration value="attached-files"/>
+            <xs:enumeration value="casestudy"/>
+
+            <!-- Legacy iDevices -->
+            <xs:enumeration value="JsIdevice"/>
+            <xs:enumeration value="GenericIdevice"/>
+            <xs:enumeration value="ReflectionIdevice"/>
+            <xs:enumeration value="GalleryIdevice"/>
+            <xs:enumeration value="ImageMagnifierIdevice"/>
+            <xs:enumeration value="ExternalUrlIdevice"/>
+            <xs:enumeration value="FileAttachIdeviceInc"/>
+            <xs:enumeration value="CasestudyIdevice"/>
+
+            <!-- Spanish FPD variants -->
+            <xs:enumeration value="VerdaderofalsofpdIdevice"/>
+            <xs:enumeration value="EleccionmultiplefpdIdevice"/>
+            <xs:enumeration value="SeleccionmultiplefpdIdevice"/>
+            <xs:enumeration value="ClozefpdIdevice"/>
+            <xs:enumeration value="ClozelangfpdIdevice"/>
+            <xs:enumeration value="ReflectionfpdIdevice"/>
+            <xs:enumeration value="ReflectionfpdmodifIdevice"/>
+            <xs:enumeration value="TareasIdevice"/>
+            <xs:enumeration value="ListaApartadosIdevice"/>
+            <xs:enumeration value="ComillasIdevice"/>
+            <xs:enumeration value="NotaInformacionIdevice"/>
+            <xs:enumeration value="NotaIdevice"/>
+            <xs:enumeration value="CasopracticofpdIdevice"/>
+            <xs:enumeration value="CitasparapensarfpdIdevice"/>
+            <xs:enumeration value="DebesconocerfpdIdevice"/>
+            <xs:enumeration value="DestacadofpdIdevice"/>
+            <xs:enumeration value="OrientacionestutoriafpdIdevice"/>
+            <xs:enumeration value="OrientacionesalumnadofpdIdevice"/>
+            <xs:enumeration value="ParasabermasfpdIdevice"/>
+            <xs:enumeration value="RecomendacionfpdIdevice"/>
+            <xs:enumeration value="EjercicioresueltofpdIdevice"/>
+
+            <!-- Misc iDevices -->
+            <xs:enumeration value="WikipediaIdevice"/>
+            <xs:enumeration value="RssIdevice"/>
+            <xs:enumeration value="AppletIdevice"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!--
+        Boolean String Type
+        For properties stored as string "true"/"false"
+    -->
+    <xs:simpleType name="booleanStringType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="true"/>
+            <xs:enumeration value="false"/>
+            <xs:enumeration value="True"/>
+            <xs:enumeration value="False"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!--
+        Known Property Keys Type
+        Enumeration of common property keys used in ODE properties
+    -->
+    <xs:simpleType name="propertyKeyType">
+        <xs:restriction base="xs:string">
+            <!-- Core metadata -->
+            <xs:enumeration value="pp_title"/>
+            <xs:enumeration value="pp_author"/>
+            <xs:enumeration value="pp_lang"/>
+            <xs:enumeration value="pp_locale"/>
+            <xs:enumeration value="pp_description"/>
+            <xs:enumeration value="pp_license"/>
+            <xs:enumeration value="pp_theme"/>
+            <xs:enumeration value="pp_keywords"/>
+            <xs:enumeration value="pp_category"/>
+
+            <!-- Export options -->
+            <xs:enumeration value="exportSource"/>
+            <xs:enumeration value="pp_addExeLink"/>
+            <xs:enumeration value="pp_exportElp"/>
+            <xs:enumeration value="pp_addPagination"/>
+            <xs:enumeration value="pp_addSearchBox"/>
+            <xs:enumeration value="pp_addAccessibilityToolbar"/>
+            <xs:enumeration value="pp_extraHeadContent"/>
+            <xs:enumeration value="pp_customStyles"/>
+            <xs:enumeration value="footer"/>
+
+            <!-- Block/component properties -->
+            <xs:enumeration value="visibility"/>
+            <xs:enumeration value="teacherOnly"/>
+            <xs:enumeration value="allowToggle"/>
+            <xs:enumeration value="minimized"/>
+            <xs:enumeration value="identifier"/>
+            <xs:enumeration value="cssClass"/>
+            <xs:enumeration value="titlePage"/>
+
+            <!-- Theme preferences -->
+            <xs:enumeration value="theme"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>

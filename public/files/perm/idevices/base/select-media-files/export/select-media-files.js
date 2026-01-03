@@ -113,9 +113,12 @@ var $eXeSeleccionaMedias = {
             $('#slcmpDivFeedBack-' + i).hide();
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.seleccionamedias-IDevice'
-        );
+        const mediasHtml = $('.seleccionamedias-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(mediasHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.seleccionamedias-IDevice'
+            );
+        }
     },
 
     getPhraseDefault: function () {
@@ -1064,9 +1067,14 @@ var $eXeSeleccionaMedias = {
             if (mOptions.active < mOptions.phrasesGame.length) {
                 $eXeSeleccionaMedias.showPhrase(mOptions.active, instance);
                 $eXeSeleccionaMedias.activateHover(instance);
-                $exeDevices.iDevice.gamification.math.updateLatex(
-                    '.seleccionamedias-IDevice'
-                );
+                const mediasHtml = $('.seleccionamedias-IDevice').html();
+                if (
+                    $exeDevices.iDevice.gamification.math.hasLatex(mediasHtml)
+                ) {
+                    $exeDevices.iDevice.gamification.math.updateLatex(
+                        '.seleccionamedias-IDevice'
+                    );
+                }
             } else {
                 $eXeSeleccionaMedias.gameOver(0, instance);
             }

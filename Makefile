@@ -1,53 +1,54 @@
-# Makefile to facilitate the use of Docker in the exelearning project
+# Makefile for eXeLearning (Elysia Backend)
+# Simplified wrapper around Docker and Bun scripts
 
-# Detect the operating system
+# Detect OS
 ifeq ($(OS),Windows_NT)
-    # We are on Windows
     ifdef MSYSTEM
-        # MSYSTEM is defined, we are in MinGW or MSYS
         SYSTEM_OS := unix
     else ifdef CYGWIN
-        # CYGWIN is defined, we are in Cygwin
         SYSTEM_OS := unix
     else
-        # Not in MinGW or Cygwin
         SYSTEM_OS := windows
-
     endif
 else
-    # Not Windows, assuming Unix
     SYSTEM_OS := unix
 endif
 
 MAKEFLAGS += --no-print-directory
 
-PUBLISH_ARG := $(if $(PUBLISH),--publish $(PUBLISH),)
+# Default target: show help
+.DEFAULT_GOAL := help
 
-# Use subst for multiplatform ~ expand
-EXPAND_PATH = $(subst ~,$(HOME),$(1))
-
-# Check if Docker is running
-check-docker:
+# Check Bun is installed
+check-bun:
 ifeq ($(SYSTEM_OS),windows)
-	@echo "Detected system: Windows (cmd, powershell)"
-	@docker version > NUL 2>&1 || (echo. & echo Error: Docker is not running. Please make sure Docker is installed and running. & echo. & exit 1)
+	@where bun >NUL 2>&1 || (if exist "$(HOME)\.bun\bin\bun.exe" (echo.) else (echo. & echo [ERROR] Bun is not installed. & echo    Install it from: https://bun.sh/ & echo. & exit 1))
 else
-	@echo "Detected system: Unix (Linux/macOS/Cygwin/MinGW)"	
-	@docker version > /dev/null 2>&1 || (echo "" && echo "Error: Docker is not running. Please make sure Docker is installed and running." && echo "" && exit 1)
+	@command -v bun >/dev/null 2>&1 || [ -x "$$HOME/.bun/bin/bun" ] || { \
+		echo ""; \
+		echo "[ERROR] Bun is not installed."; \
+		echo "   Install it from: https://bun.sh/"; \
+		echo ""; \
+		echo "   Quick install: curl -fsSL https://bun.sh/install | bash"; \
+		echo ""; \
+		exit 1; \
+	}
 endif
 
-# Check if the .env file exists, if not, copy from .env.dist
+# Check .env file exists
 check-env:
 ifeq ($(SYSTEM_OS),windows)
-	@if not exist .env ( \
-		echo The .env file does not exist. Copying from .env.dist... && \
-		copy .env.dist .env \
-	) 2>nul
+	@if not exist .env (copy .env.dist .env) 2>nul
 else
-	@if [ ! -f .env ]; then \
-		echo "The .env file does not exist. Copying from .env.dist..."; \
-		cp .env.dist .env; \
-	fi
+	@if [ ! -f .env ]; then cp .env.dist .env; fi
+endif
+
+# Check Docker is running
+check-docker:
+ifeq ($(SYSTEM_OS),windows)
+	@docker version > NUL 2>&1 || (echo Error: Docker is not running & exit 1)
+else
+	@docker version > /dev/null 2>&1 || (echo "Error: Docker is not running" && exit 1)
 endif
 
 # Fail early if running in Windows cmd or PowerShell
@@ -60,496 +61,642 @@ ifeq ($(SYSTEM_OS),windows)
 	@exit 1
 endif
 
-# Start Docker containers in interactive mode
-up: check-docker check-env css-dev
-	docker compose up --build --remove-orphans
 
-# Start Docker containers in background mode (daemon)
-upd: check-docker check-env css-dev
-	@RUNNING=$$(docker compose ps -q exelearning | xargs docker inspect -f '{{.State.Running}}' 2>/dev/null | grep true || true); \
-	if [ "$$RUNNING" = "true" ]; then \
-		echo "🔄 Container 'exelearning' already running, skipping wait."; \
-	else \
-		echo "🚀 Starting containers..."; \
-		docker compose up -d --remove-orphans; \
-		echo "⏳ Waiting for 'exelearning' container to be healthy..."; \
-		for i in $$(seq 1 30); do \
-			STATUS=$$(docker inspect -f '{{.State.Health.Status}}' $$(docker compose ps -q exelearning) 2>/dev/null || echo "starting"); \
-			if [ "$$STATUS" = "healthy" ]; then \
-				echo "✅ exelearning is healthy."; \
-				break; \
-			fi; \
-			if [ $$i -eq 30 ]; then \
-				echo "⚠️ Timed out waiting for 'exelearning' health check"; \
-			else \
-				sleep 1; \
-			fi; \
-		done; \
-	fi
+# =============================================================================
+# DOCKER COMMANDS
+# =============================================================================
 
-
-# Stop and remove Docker containers
-down: check-docker check-env
-	@docker compose --profile e2e down
-
-# Pull the latest images from the registry
+# Pull latest Docker images
+.PHONY: pull
 pull: check-docker check-env
-	docker compose -f docker-compose.yml pull
+	@docker compose pull
 
-# Build or rebuild Docker containers
+# Build Docker environment
+.PHONY: up
 build: check-docker check-env
-	docker compose build --pull
+	@echo "Building Docker image..."
+	@docker compose build --pull
 
-# Run the linter to check PHP and JS code style
-lint: lint-php lint-js
+# Start Docker environment
+# APP_ENV=dev (default): Elysia with hot-reload + SCSS watcher
+# APP_ENV=prod: Pre-compiled Elysia, no watchers
+.PHONY: up
+up: check-docker check-env
+	@echo "Starting Docker (APP_ENV=$${APP_ENV:-dev})..."
+	@docker compose up --build --remove-orphans
 
-# Automatically fix PHP and JS code style issues
-fix: fix-php fix-js
+.PHONY: up-postgres
+up-postgres: check-docker check-env
+	@echo "Starting Docker with PostgreSQL database..."
+	@docker compose -f doc/deploy/docker-compose.postgres.yml run --build --rm --remove-orphans --service-ports exelearning
 
-# Check PHP code style with PHP-CS-Fixer
-lint-php: check-docker check-env
-	docker compose run --rm --no-deps --entrypoint "" exelearning composer --no-cache php-cs-checker
+.PHONY: up-mariadb
+up-mariadb: check-docker check-env
+	@echo "Starting Docker with MariaDB datbase..."
+	@docker compose -f doc/deploy/docker-compose.mariadb.yml run --build --rm --remove-orphans --service-ports exelearning
 
-# Automatically fix PHP code style with PHP-CS-Fixer
-fix-php: check-docker check-env upd
-	docker compose exec exelearning composer --no-cache php-cs-fixer
+# Start Docker in background
+.PHONY: upd
+upd: check-docker check-env
+	@echo "Starting Docker detached (APP_ENV=$${APP_ENV:-dev})..."
+	@docker compose up -d --build --remove-orphans
 
-# Check JavaScript files indentation
-lint-js:
-	yarn check-format
+# Stop Docker
+.PHONY: down
+down: check-docker
+	@docker compose down
 
-# Indent JavaScript files with 4 spaces
-fix-js:
-	yarn format
+# Shell into container
+.PHONY: shell
+shell: check-docker
+	@docker compose exec exelearning sh
 
-# Run unit tests with PHPUnit (alias)
-phpunit: test
+# View logs
+.PHONY: logs
+logs: check-docker
+	@docker compose logs -f exelearning
 
-# Run ALL or a specific PHPUnit test (by file or with extra args)
-# Usage: make test [TEST=tests/Command/AlgoTest.php] [EXTRA="--filter testAlgo"]
-test: check-docker check-env css-dev
-	@echo "Starting unit test environment..."
-	@docker compose --profile e2e up -d --quiet-pull
-	@echo "Running PHPUnit $(if $(TEST),test: $(TEST) $(EXTRA),suite: all)"
-	@if [ -n "$(TEST)" ]; then \
-		docker compose exec -e APP_ENV=test exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA); \
-	else \
-		docker compose exec -e APP_ENV=test exelearning composer --no-cache phpunit; \
-	fi
-	@echo "Stopping test environment..."
-	@docker compose --profile e2e down > /dev/null 2>&1
 
-# Run just unit tests with PHPUnit
-test-unit: check-docker check-env css-dev
-	@echo "Running PHPUnit tests..."
-	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test  exelearning composer --no-cache phpunit-unit
+# =============================================================================
+# LOCAL DEVELOPMENT
+# =============================================================================
 
-# Run unit tests in parallel using "paratest"
-test-unit-parallel: check-docker check-env
-	@echo "Running PHPUnit tests..."
-	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit-parallel
+# Local environment variables (used by CLI commands)
+# For up-local, cross-env handles these via package.json scripts
+LOCAL_ENV := FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1
 
-# Run just e2e tests with PHPUnit
-test-e2e: check-docker check-env css-dev
-	@echo "Starting e2e test environment..."
-	@docker compose --profile e2e up -d --quiet-pull
-	@echo "Running PHPUnit tests..."
-	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e
+# Install dependencies
+.PHONY: deps
+deps: check-bun
+	@bun install
 
-# Run just e2e-realtime tests with PHPUnit
-test-e2e-realtime: check-docker check-env css-dev
-	@echo "Starting e2e test environment..."
-	@docker compose --profile e2e up -d --quiet-pull
-	@echo "Running PHPUnit tests..."
-	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e-realtime
+# Build CSS
+.PHONY: css
+css: check-bun
+	@bun run css:node
 
-# Run E2E tests for the offline (Electron) web content
-test-e2e-offline: check-docker check-env css-dev
-	@echo "Starting e2e test environment..."
-	@docker compose --profile e2e up -d --quiet-pull
-	@echo "Running PHPUnit tests..."
-	@docker compose --profile e2e run --rm -e APP_ENV=test -e APP_ONLINE_MODE=0 exelearning composer --no-cache phpunit-e2e-offline
+# Build TypeScript + bundle JS
+.PHONY: bundle
+bundle: deps
+	@echo "Building all assets..."
+	@bun run build:all
 
-# Test the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-test-electron: fail-on-windows install-php-bin
-	@echo "Running Electron E2E tests with Playwright..."
-	yarn install
-	#yarn test
-	yarn playwright test tests/electron
-
-# Open a shell inside the exelearning container ready for running phpunit
-test-shell: check-docker check-env css-dev
-	@echo "Starting e2e test environment..."
-	@docker compose --profile e2e up -d --quiet-pull
-	@echo "\033[33mRun a specific test with 'composer phpunit <test path>'. Example: composer phpunit tests/Command/CreateUserCommandTest.php\033[0m"	
-	docker compose exec exelearning sh
-	@docker compose --profile e2e down
-
-# Open a shell inside the exelearning container
-shell: check-docker check-env upd
-	docker compose exec exelearning sh
-
-# Clean up and stop Docker containers, removing volumes and orphan containers
-clean: check-docker check-env
-	@docker compose --profile e2e down -v --remove-orphans
-
-# Destroy everything: containers, volumes, images, vendors, caches (with confirmation)
-destroy: check-docker check-env
-ifeq ($(SYSTEM_OS),windows)
-	@echo "⚠️  WARNING: This will remove containers, images, vendor/, node_modules/, dist/, var/* (but keep var/.gitkeep)."
-	@choice /M "Are you sure you want to destroy everything?" || exit 1
-	@echo "🔥 Destroying ALL Docker resources and local build artifacts..."
-	@docker compose down -v --rmi all --remove-orphans
-	@if exist vendor rmdir /S /Q vendor
-	@if exist node_modules rmdir /S /Q node_modules
-	@if exist dist rmdir /S /Q dist
-	@if exist var ( \
-		for /D %%i in (var\*) do if /I not "%%~nxi"==".gitkeep" rmdir /S /Q "%%i" ; \
-		for %%i in (var\*) do if /I not "%%~nxi"==".gitkeep" del /Q "%%i" \
-	)
-	@if exist public\\bundles rmdir /S /Q public\\bundles
-	@echo "✅ Everything destroyed. Next run will be a completely fresh start."
+# Start local development (web only)
+# Uses cross-env to override .env values with local paths (data/)
+# APP_ENV=dev (default): Elysia with hot-reload + SCSS watcher
+# APP_ENV=prod: Pre-compiled Elysia, no watchers
+.PHONY: up-local
+up-local: check-bun deps css bundle
+ifeq ($(APP_ENV),prod)
+	@echo "Starting local (prod mode)..."
+	@$(MAKE) bundle
+	$(LOCAL_ENV) bun run start
 else
-	@echo "⚠️  WARNING: This will remove containers, images, vendor/, node_modules/, dist/, var/* (but keep var/.gitkeep)."
-	@read -p "Are you sure you want to destroy everything? [y/N] " confirm; \
-	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
-		echo "❌ Aborted."; \
-		exit 1; \
-	fi; \
-	echo "🔥 Destroying ALL Docker resources and local build artifacts..."; \
-	docker compose down -v --rmi all --remove-orphans; \
-	echo "🧹 Removing local build directories..."; \
-	rm -rf vendor node_modules dist public/bundles; \
-	if [ -d var ]; then \
-		find var -mindepth 1 ! -name ".gitkeep" -exec rm -rf {} +; \
-	fi; \
-	echo "✅ Everything destroyed. Next run will be a completely fresh start."
+	@echo "Starting local (dev mode)..."
+	bun run dev:local
 endif
 
-
-# Command to create a user via Symfony console with input prompts
-create-user: check-docker check-env upd
-	@read -p "Enter email: " email; \
-	read -p "Enter password: " password; \
-	read -p "Enter username: " username; \
-	docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
-
-# Grant an arbitrary role to a user
-# Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_MANAGER
-grant-role: check-docker check-env upd
-	@if [ -z "$(EMAIL)" ] || [ -z "$(ROLE)" ]; then \
-		echo "❌ EMAIL and ROLE are required. Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_X"; \
-		exit 1; \
-	fi
-	@echo "Granting '$(ROLE)' to '$(EMAIL)'..."; \
-	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --add="$(ROLE)" >/dev/null; \
-	echo "✅ '$(EMAIL)' now has '$(ROLE)'"
-
-# Revoke an arbitrary role from a user
-# Usage: make revoke-role EMAIL=user@example.com ROLE=ROLE_MANAGER
-revoke-role: check-docker check-env upd
-	@if [ -z "$(EMAIL)" ] || [ -z "$(ROLE)" ]; then \
-		echo "❌ EMAIL and ROLE are required. Usage: make revoke-role EMAIL=user@example.com ROLE=ROLE_X"; \
-		exit 1; \
-	fi
-	@echo "Revoking '$(ROLE)' from '$(EMAIL)'..."; \
-	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --remove="$(ROLE)" >/dev/null; \
-	echo "✅ '$(ROLE)' revoked from '$(EMAIL)'"
-
-# Keep the old convenience target for admins (uses the unified command under the hood)
-promote-admin: check-docker check-env upd
-	@if [ -z "$(EMAIL)" ]; then \
-		echo "❌ EMAIL is required. Usage: make promote-admin EMAIL=user@example.com"; \
-		exit 1; \
-	fi
-	@echo "Granting ROLE_ADMIN to '$(EMAIL)'..."; \
-	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --add=ROLE_ADMIN >/dev/null; \
-	echo "✅ '$(EMAIL)' is now ROLE_ADMIN"
-
-# New convenience target to remove admin
-demote-admin: check-docker check-env upd
-	@if [ -z "$(EMAIL)" ]; then \
-		echo "❌ EMAIL is required. Usage: make demote-admin EMAIL=user@example.com"; \
-		exit 1; \
-	fi
-	@echo "Revoking ROLE_ADMIN from '$(EMAIL)'..."; \
-	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --remove=ROLE_ADMIN >/dev/null; \
-	echo "✅ ROLE_ADMIN revoked from '$(EMAIL)'"
-
-# Generate API key for a user (Usage: make generate-api-key USER_ID=123 [OVERWRITE=1])
-generate-api-key: check-docker check-env upd
-	@if [ -z "$(USER_ID)" ]; then \
-		echo "❌ USER_ID is required. Usage: make generate-api-key USER_ID=123 [OVERWRITE=1]"; \
-		exit 1; \
-	fi
-	@docker compose exec exelearning composer --no-cache generate-api-key -- $(USER_ID) $(if $(OVERWRITE),--overwrite,)
-
-# Generate a JWT for any user (prints nicely with context)
-# Usage: make generate-jwt EMAIL=user@example.com [TTL=3600]
-generate-jwt: check-docker check-env upd
-	@if [ -z "$(EMAIL)" ]; then \
-		echo "❌ EMAIL is required. Usage: make generate-jwt EMAIL=user@example.com [TTL=3600]"; \
-		exit 1; \
-	fi
-	@TTL=$(if $(TTL),$(TTL),3600); \
-	TOKEN=$$(docker compose exec -T exelearning php -d detect_unicode=0 bin/console app:jwt:generate "$(EMAIL)" --ttl=$$TTL | tail -n 1); \
-	echo ""; \
-	echo "🔑 Bearer token (valid for $$TTL seconds):"; \
-	echo "Authorization: Bearer $$TOKEN"; \
-	echo ""; \
-	echo "Example:"; \
-	echo "  curl -H 'Authorization: Bearer $$TOKEN' -H 'Accept: application/json' http://localhost:8080/api/v2/projects"; \
-	echo ""
+# Start full app: Elysia backend + Electron
+.PHONY: run-app
+run-app: check-bun deps css bundle
+	@echo "Launching eXeLearning App (Electron + Elysia)..."
+	@bun run build:standalone
+	@bun run dev:app
 
 
-# Quick smoke test for API v2 /users (admin JWT)
-smoke-api-v2: check-docker check-env upd
-	@EMAIL=$(if $(EMAIL),$(EMAIL),admin@example.com); \
-	PASSWORD=$(if $(PASSWORD),$(PASSWORD),secret); \
-	USERNAME=$(if $(USERNAME),$(USERNAME),admin); \
-	echo "[smoke] Ensuring admin '$$EMAIL' exists and has ROLE_ADMIN..."; \
-	docker compose exec exelearning php bin/console app:create-user "$$EMAIL" "$$PASSWORD" "$$USERNAME" --no-fail >/dev/null || true; \
-	docker compose exec exelearning php bin/console app:user:promote "$$EMAIL" ROLE_ADMIN >/dev/null; \
-	echo "[smoke] Generating short-lived JWT (10 min)..."; \
-	TOKEN=$$(docker compose exec -T exelearning php -d detect_unicode=0 bin/console app:jwt:generate "$$EMAIL" --ttl=600 | tail -n 1); \
-	echo "[smoke] GET /api/v2/users"; \
-	STATUS=$$(docker compose exec -T exelearning sh -lc "curl -s -o /tmp/smoke_out.txt -w '%{http_code}' -H 'Authorization: Bearer $$TOKEN' -H 'Accept: application/json' http://localhost:8080/api/v2/users"); \
-	echo "HTTP $$STATUS"; \
-	docker compose exec -T exelearning sh -lc "head -c 500 /tmp/smoke_out.txt || true"; \
-	echo ""; \
-	if [ "$$STATUS" != "200" ]; then echo "❌ Smoke test failed"; exit 1; else echo "✅ Smoke test OK"; fi
+# =============================================================================
+# CLI COMMANDS
+# =============================================================================
 
-# Update Composer dependencies
-update: check-docker check-env upd
-	docker compose exec exelearning composer update --no-cache --with-all-dependencies
+CLI := $(LOCAL_ENV) bun run src/cli/index.ts
 
-# Update translation string
-translations: check-docker check-env upd
-	docker compose exec exelearning composer --no-cache translations:extract
+# Generic CLI access
+.PHONY: cli
+cli: check-bun
+	@$(CLI) $(ARGS)
 
-# Start the local environment with specific commands
-up-local: check-env css-dev
-	@echo "\033[31mWarning: Running in local environment may cause unexpected behavior. Use at your own risk.\033[0m"
-	@TMPDIR=$$(mktemp -d /tmp/exelearning-XXXXXX) && \
-	echo "Using temporary directory: $$TMPDIR" && \
-	export DB_DRIVER=pdo_sqlite && \
-	export APP_ENV=dev && \
-	export APP_DEBUG=1 && \
-	export APP_ONLINE_MODE=1 && \
-	export DB_PATH="$$TMPDIR/exelearning.db" && \
-	export FILES_DIR="$$TMPDIR/" && \
-	export TEST_USER_EMAIL="user@exelearning.net" && \
-	export TEST_USER_PASSWORD="1234" && \
-	export TEST_USER_USERNAME="testuser" && \
-	export APP_SECRET=mySuperSecretKey && \
-	php bin/console doctrine:schema:update --force && \
-	php bin/console app:create-user "$${TEST_USER_EMAIL}" "$${TEST_USER_PASSWORD}" "$${TEST_USER_USERNAME}" --no-fail && \
-	php bin/console cache:clear && \
-	php bin/console assets:install public && \
-	php bin/console dbal:run-sql "SELECT * FROM users" && \
-	php -d variables_order=EGPCS -S 127.0.0.1:8000 -t public public/router.php
+# Create a new user
+# Usage: make create-user EMAIL=x PASSWORD=y USER_ID=z [ROLES=ROLE_USER,ROLE_ADMIN] [QUOTA=4096]
+.PHONY: create-user
+create-user: check-bun
+ifndef EMAIL
+	$(error EMAIL is required. Usage: make create-user EMAIL=x PASSWORD=y USER_ID=z)
+endif
+ifndef PASSWORD
+	$(error PASSWORD is required)
+endif
+ifndef USER_ID
+	$(error USER_ID is required)
+endif
+	@$(CLI) create-user $(EMAIL) $(PASSWORD) $(USER_ID) $(if $(ROLES),--roles=$(ROLES),) $(if $(QUOTA),--quota=$(QUOTA),) $(if $(NO_FAIL),--no-fail,)
 
-# Start the unit tests in a local environment
-test-local: check-env
-	@echo "\033[31mWarning: Running tests in local environment may cause unexpected behavior. Use at your own risk.\033[0m"
-	@TMPDIR=$$(mktemp -d /tmp/exe-test-XXXXXX) && \
-	echo "Using temporary directory: $$TMPDIR" && \
-	export DB_DRIVER=pdo_sqlite && \
-	export DB_PATH=":memory:" && \
-	export FILES_DIR="$$TMPDIR/" && \
-	export APP_ENV=test && \
-	export APP_DEBUG=1 && \
-	export APP_SECRET=TestSecretKey && \
-	composer db-schema-update && \
-	php bin/console doctrine:schema:update --force && \
-	php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --all-or-nothing && \
-	composer --no-cache phpunit-unit
+# Grant ROLE_ADMIN to a user
+# Usage: make promote-admin EMAIL=x
+.PHONY: promote-admin
+promote-admin: check-bun
+ifndef EMAIL
+	$(error EMAIL is required. Usage: make promote-admin EMAIL=x)
+endif
+	@$(CLI) promote-admin $(EMAIL)
 
-update-licenses: check-env
-	composer --no-cache update-licenses
+# Remove ROLE_ADMIN from a user
+# Usage: make demote-admin EMAIL=x
+.PHONY: demote-admin
+demote-admin: check-bun
+ifndef EMAIL
+	$(error EMAIL is required. Usage: make demote-admin EMAIL=x)
+endif
+	@$(CLI) demote-admin $(EMAIL)
 
-# Generate a new migration class from changes in mapping information and compy them to the ./migrations local folder
-migration: check-docker check-env upd
-	docker compose exec exelearning php bin/console make:migration
-	docker compose cp exelearning:/app/migrations/. ./migrations/
+# Add a role to a user
+# Usage: make grant-role EMAIL=x ROLE=y
+.PHONY: grant-role
+grant-role: check-bun
+ifndef EMAIL
+	$(error EMAIL is required. Usage: make grant-role EMAIL=x ROLE=y)
+endif
+ifndef ROLE
+	$(error ROLE is required)
+endif
+	@$(CLI) grant-role $(EMAIL) $(ROLE)
 
-# Execute Symfony migrations
-migrate: check-docker check-env upd
-	docker compose exec exelearning php bin/console doctrine:migrations:migrate --no-interaction
+# Remove a role from a user
+# Usage: make revoke-role EMAIL=x ROLE=y
+.PHONY: revoke-role
+revoke-role: check-bun
+ifndef EMAIL
+	$(error EMAIL is required. Usage: make revoke-role EMAIL=x ROLE=y)
+endif
+ifndef ROLE
+	$(error ROLE is required)
+endif
+	@$(CLI) revoke-role $(EMAIL) $(ROLE)
 
-# Clean temporary folder
-tmp-cleanup: check-docker check-env upd
-	docker compose exec exelearning composer --no-cache tmp-cleanup
+# Generate a JWT token
+# Usage: make generate-jwt EMAIL=email@example.com [TTL=3600]
+.PHONY: generate-jwt
+generate-jwt: check-bun
+ifndef EMAIL
+	$(error EMAIL is required. Usage: make generate-jwt EMAIL=email@example.com [TTL=3600])
+endif
+	@$(CLI) jwt:generate $(EMAIL) $(if $(TTL),--ttl=$(TTL),)
 
-# Convert a legacy .elp file to .elpx via Docker using STDIN
-# Usage: make convert-elp INPUT=/abs/path.elp OUTPUT=/abs/path.elpx [DEBUG=debug]
-# Important! Only works with absolute paths!
-convert-elp: fail-on-windows check-docker check-env upd
+# Clean temporary files
+# Usage: make tmp-cleanup [MAX_AGE=86400] [DRY_RUN=1]
+.PHONY: tmp-cleanup
+tmp-cleanup: check-bun
+	@$(CLI) tmp:cleanup $(if $(MAX_AGE),--max-age=$(MAX_AGE),) $(if $(DRY_RUN),--dry-run,)
+
+# Extract and clean translations
+# Usage: make translations [LOCALE=es] [EXTRACT_ONLY=1] [CLEAN_ONLY=1]
+.PHONY: translations
+translations: check-bun
+	@$(CLI) translations $(if $(LOCALE),--locale=$(LOCALE),) $(if $(EXTRACT_ONLY),--extract-only,) $(if $(CLEAN_ONLY),--clean-only,)
+
+
+# =============================================================================
+# ELPX PROCESSING
+# =============================================================================
+
+# Convert a legacy .elp file to .elpx
+# Usage: make convert-elp INPUT=/path/to/file.elp OUTPUT=/path/to/output.elpx [DEBUG=1]
+.PHONY: convert-elp
+convert-elp: check-bun
 ifndef INPUT
-	$(error INPUT is required. Use INPUT=/absolute/path/to/file.elp)
+	$(error INPUT is required. Use INPUT=/path/to/file.elp)
 endif
 ifndef OUTPUT
-	$(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output.elpx)
+	$(error OUTPUT is required. Use OUTPUT=/path/to/output.elpx)
 endif
-	$(eval EXPANDED_INPUT := $(call EXPAND_PATH,$(INPUT)))
-	@if [ ! -f "$(EXPANDED_INPUT)" ]; then \
-	  echo "❌ INPUT file does not exist: $(EXPANDED_INPUT)"; \
-	  exit 1; \
-	fi
-	@mkdir -p $(dir $(OUTPUT))
-	@echo "Converting ELP → ELPX..."
-	@# Generate a temporary filename inside the container
-	$(eval TEMP_OUTPUT := /tmp/converted_$(shell date +%s).elp)
-	
-	@# Pass input via stdin, specifying output path in the container
-	@cat "$(EXPANDED_INPUT)" | \
-	env MSYS_NO_PATHCONV=1 docker compose exec -T exelearning \
-	    php bin/console elp:convert - "$(TEMP_OUTPUT)" $(if $(filter debug,$(DEBUG)),--debug,)
-	
-	@# Copy the converted file out of the container
-	@docker compose cp exelearning:"$(TEMP_OUTPUT)" "$(OUTPUT)"
-	
-	@echo "✅ Done. Output saved to $(OUTPUT)"
+	@$(CLI) elp:convert $(INPUT) $(OUTPUT) $(if $(DEBUG),--debug,)
 
-# Export an ELPX file via Docker in a given format using STDIN
-# Usage: make export-elpx FORMAT=html5 INPUT=/abs/path.elpx OUTPUT=/abs/output/folder [DEBUG=debug] [BASE_URL=https://example.com]
-export-elpx: fail-on-windows check-docker check-env upd
+# Export an ELP file to any supported format
+# Usage: make export-elpx FORMAT=html5 INPUT=/path/to/file.elp OUTPUT=/path/to/output [DEBUG=1] [BASE_URL=https://...]
+.PHONY: export-elpx
+export-elpx: check-bun
 ifndef FORMAT
 	$(error FORMAT is required. Use FORMAT=html5, scorm12, etc.)
 endif
 ifndef INPUT
-	$(error INPUT is required. Use INPUT=/absolute/path/to/file.elp)
+	$(error INPUT is required. Use INPUT=/path/to/file.elp)
 endif
 ifndef OUTPUT
-	$(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output/folder)
+	$(error OUTPUT is required. Use OUTPUT=/path/to/output/folder)
 endif
-	$(eval EXPANDED_INPUT := $(call EXPAND_PATH,$(INPUT)))
-	@if [ ! -f "$(EXPANDED_INPUT)" ]; then \
-	  echo "❌ INPUT file does not exist: $(EXPANDED_INPUT)"; \
-	  exit 1; \
-	fi
-	@mkdir -p "$(OUTPUT)"
-	@echo "Exporting ELP file to format '$(FORMAT)'..."
+	@$(CLI) elp:export $(INPUT) $(OUTPUT) --format=$(FORMAT) $(if $(THEME),--theme=$(THEME),) $(if $(DEBUG),--debug,) $(if $(BASE_URL),--base-url=$(BASE_URL),)
 
-	$(eval TEMP_OUTPUT := /tmp/export_$(shell date +%s))
+# Format-specific export shortcuts
+.PHONY: export-html5
+export-html5: check-bun
+ifndef INPUT
+	$(error INPUT is required. Use INPUT=/path/to/file.elp)
+endif
+ifndef OUTPUT
+	$(error OUTPUT is required. Use OUTPUT=/path/to/output/folder)
+endif
+	@$(CLI) elp:export $(INPUT) $(OUTPUT) --format=html5 $(if $(THEME),--theme=$(THEME),) $(if $(DEBUG),--debug,) $(if $(BASE_URL),--base-url=$(BASE_URL),)
 
-	@cat "$(EXPANDED_INPUT)" | \
-	env MSYS_NO_PATHCONV=1 docker compose exec -T exelearning \
-	php bin/console elp:export - "$(TEMP_OUTPUT)" "$(FORMAT)" \
-	$(if $(filter debug,$(DEBUG)),--debug,) \
-	$(if $(BASE_URL),--base-url=$(BASE_URL),)
+.PHONY: export-html5-sp
+export-html5-sp: check-bun
+ifndef INPUT
+	$(error INPUT is required. Use INPUT=/path/to/file.elp)
+endif
+ifndef OUTPUT
+	$(error OUTPUT is required. Use OUTPUT=/path/to/output/folder)
+endif
+	@$(CLI) elp:export $(INPUT) $(OUTPUT) --format=html5-sp $(if $(THEME),--theme=$(THEME),) $(if $(DEBUG),--debug,) $(if $(BASE_URL),--base-url=$(BASE_URL),)
 
-	@docker compose cp exelearning:"$(TEMP_OUTPUT)/." "$(OUTPUT)/"
+.PHONY: export-scorm12
+export-scorm12: check-bun
+ifndef INPUT
+	$(error INPUT is required. Use INPUT=/path/to/file.elp)
+endif
+ifndef OUTPUT
+	$(error OUTPUT is required. Use OUTPUT=/path/to/output/folder)
+endif
+	@$(CLI) elp:export $(INPUT) $(OUTPUT) --format=scorm12 $(if $(THEME),--theme=$(THEME),) $(if $(DEBUG),--debug,) $(if $(BASE_URL),--base-url=$(BASE_URL),)
 
-	@echo "✅ Done. Exported files saved to $(OUTPUT)"
+.PHONY: export-scorm2004
+export-scorm2004: check-bun
+ifndef INPUT
+	$(error INPUT is required. Use INPUT=/path/to/file.elp)
+endif
+ifndef OUTPUT
+	$(error OUTPUT is required. Use OUTPUT=/path/to/output/folder)
+endif
+	@$(CLI) elp:export $(INPUT) $(OUTPUT) --format=scorm2004 $(if $(THEME),--theme=$(THEME),) $(if $(DEBUG),--debug,) $(if $(BASE_URL),--base-url=$(BASE_URL),)
 
-# Usage: make export-elpx-html5 INPUT=/abs/file.elp OUTPUT=/abs/output/dir
-export-html5:
-	@$(MAKE) export-elpx FORMAT=html5 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+.PHONY: export-ims
+export-ims: check-bun
+ifndef INPUT
+	$(error INPUT is required. Use INPUT=/path/to/file.elp)
+endif
+ifndef OUTPUT
+	$(error OUTPUT is required. Use OUTPUT=/path/to/output/folder)
+endif
+	@$(CLI) elp:export $(INPUT) $(OUTPUT) --format=ims $(if $(THEME),--theme=$(THEME),) $(if $(DEBUG),--debug,) $(if $(BASE_URL),--base-url=$(BASE_URL),)
 
-export-scorm12:
-	@$(MAKE) export-elpx FORMAT=scorm12 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
-
-export-scorm2004:
-	@$(MAKE) export-elpx FORMAT=scorm2004 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
-
-export-epub3:
-	@$(MAKE) export-elpx FORMAT=epub3 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
-
-export-ims:
-	@$(MAKE) export-elpx FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
-
-install-composer-dependencies:
-	@echo "Install composer dependencies (no dev)"
-	@composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
-
-# Temporarily installs nativephp/php-bin, extracts the runtime to runtime/php/...,
-# and removes the dev package so vendor/nativephp/php-bin is not included in the build.
-# Works on macOS, Linux, and Git Bash (MSYS/MINGW/CYGWIN). Does not use PowerShell.
-install-php-bin: install-composer-dependencies
-	@echo "Fetching nativephp/php-bin without dev mode (temp dir)..."
-	@set -e; \
-	TMPDIR="$$(mktemp -d)"; \
-	composer create-project --no-dev --no-scripts --no-interaction --prefer-dist nativephp/php-bin "$$TMPDIR/php-bin"; \
-	OS_NAME="$$(uname -s)"; \
-	extract_zip() { _zip="$$1"; _dest="$$2"; rm -rf "$$_dest"; mkdir -p "$$_dest"; \
-	  if command -v unzip >/dev/null 2>&1; then unzip -q -o "$$_zip" -d "$$_dest"; else bsdtar -xf "$$_zip" -C "$$_dest"; fi; }; \
-	case "$$OS_NAME" in \
-	  Linux) \
-	    echo "Preparing embedded PHP for Linux..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/linux/x64/php-8.4.zip" "runtime/php/linux/x64"; \
-	    [ -x "runtime/php/linux/x64/php-8.4/bin/php" ] && ln -sf "php-8.4/bin/php" "runtime/php/linux/x64/php" || true ;; \
-	  Darwin) \
-	    echo "Preparing embedded PHP for macOS..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/mac/arm64/php-8.4.zip" "runtime/php/mac/arm64"; \
-	    extract_zip "$$TMPDIR/php-bin/bin/mac/x64/php-8.4.zip"   "runtime/php/mac/x64"; \
-	    copy_php_bin() { root="$$1"; dest="$$root/php"; src=""; \
-	      for c in "$$root/php" "$$root/php-8.4/php" "$$root/php-8.4/bin/php" "$$root/bin/php"; do [ -x "$$c" ] && src="$$c" && break; done; \
-	      [ -z "$$src" ] && { echo "PHP binary not found under $$root"; exit 1; }; \
-	      [ "$$src" != "$$dest" ] && cp -f "$$src" "$$dest"; chmod +x "$$dest" || true; }; \
-	    copy_php_bin "runtime/php/mac/arm64"; copy_php_bin "runtime/php/mac/x64" ;; \
-	  MINGW*|MSYS*|CYGWIN*) \
-	    echo "Preparing embedded PHP for Windows (Git Bash)..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/win/x64/php-8.4.zip" "runtime/php/win/x64"; \
-	    if [ -f "runtime/php/win/x64/php-8.4/php.exe" ]; then \
-	      cp -f "runtime/php/win/x64/php-8.4/php.exe" "runtime/php/win/x64/php.exe"; \
-	    elif [ -f "runtime/php/win/x64/php-8.4/bin/php.exe" ]; then \
-	      cp -f "runtime/php/win/x64/php-8.4/bin/php.exe" "runtime/php/win/x64/php.exe"; \
-	    fi ;; \
-	  *) echo "Unsupported OS"; exit 1 ;; \
-	esac; \
-	rm -rf "$$TMPDIR"; \
-	echo "Embedded PHP runtime prepared under runtime/php/*"
+.PHONY: export-epub3
+export-epub3: check-bun
+ifndef INPUT
+	$(error INPUT is required. Use INPUT=/path/to/file.elp)
+endif
+ifndef OUTPUT
+	$(error OUTPUT is required. Use OUTPUT=/path/to/output/folder)
+endif
+	@$(CLI) elp:export $(INPUT) $(OUTPUT) --format=epub3 $(if $(THEME),--theme=$(THEME),) $(if $(DEBUG),--debug,) $(if $(BASE_URL),--base-url=$(BASE_URL),)
 
 
-# Run the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-run-app: fail-on-windows css-node install-php-bin
+# =============================================================================
+# LINTING & FORMATTING
+# =============================================================================
+
+.PHONY: lint
+lint: check-bun lint-ts lint-js lint-tests
+
+.PHONY: fix
+fix: check-bun fix-ts fix-js fix-tests
+
+# Lint TypeScript source files (src/)
+.PHONY: lint-ts
+lint-ts: check-bun
+	bun run lint:src
+
+# Fix TypeScript source linting issues
+.PHONY: fix-ts
+fix-ts: check-bun
+	bun run lint:src:fix
+
+# Lint JavaScript files (public/app/)
+.PHONY: lint-js
+lint-js: check-bun
+	bun run lint:public
+
+# Fix JavaScript linting issues
+.PHONY: fix-js
+fix-js: check-bun
+	bun run lint:public:fix
+
+# Lint test files
+.PHONY: lint-tests
+lint-tests: check-bun
+	bun run lint:test
+
+# Fix test file linting issues
+.PHONY: fix-tests
+fix-tests: check-bun
+	bun run lint:test:fix
+
+.PHONY: format
+format: check-bun
+	bun run format
+
+.PHONY: format-check
+format-check: check-bun
+	bun run format:check
+
+
+# =============================================================================
+# LEGACY SYSTEM (Core2 Duo / No Bun support)
+# =============================================================================
+# UNSUPPORTED legacy mode for developers whose systems cannot run Bun
+# (e.g., older CPUs like Core2 Duo that lack AVX instructions).
+#
+# LIMITATIONS:
+# - No WebSocket support (real-time collaboration disabled)
+# - Runs in offline/single-user mode (APP_ONLINE_MODE=0)
+# - Performance may be slower than Bun
+# - Not recommended for production use
+#
+# For full functionality, use "make up" with Bun.
+
+# Start Docker with Node.js (legacy mode)
+.PHONY: up-legacy
+up-legacy: check-docker check-env ## Start server with Node.js (for systems without Bun)
+	@echo ""
+	@echo "============================================================"
+	@echo "  LEGACY MODE (Node.js) - UNSUPPORTED"
+	@echo "============================================================"
+	@echo "  This mode is for developers whose systems cannot run Bun"
+	@echo "  (e.g., older CPUs like Core2 Duo without AVX support)."
+	@echo ""
+	@echo "  LIMITATIONS:"
+	@echo "  - No WebSocket support (real-time collaboration disabled)"
+	@echo "  - Runs in offline/single-user mode"
+	@echo "  - Performance may be slower than Bun"
+	@echo ""
+	@echo "  For full functionality, use 'make up' with Bun."
+	@echo "============================================================"
+	@echo ""
+	@docker compose -f docker-compose.legacy.yml up --build --remove-orphans
+
+# Clean legacy Docker volumes
+.PHONY: clean-legacy
+clean-legacy: check-docker check-env
+	@echo ""
+	@echo "[LEGACY MODE] Starting with Node.js (no WebSocket, offline mode)"
+	@echo ""
+	@docker compose -f docker-compose.legacy.yml down -v --remove-orphans
+
+# Stop legacy Docker
+.PHONY: down-legacy
+down-legacy: check-docker ## Stop legacy server
+	@docker compose -f docker-compose.legacy.yml down
+
+# Check Node.js is installed
+check-node:
 ifeq ($(SYSTEM_OS),windows)
-	powershell -Command "$$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn start"	
-	#set EXELEARNING_DEBUG_MODE=$(DEBUG) && yarn start
+	@where node >NUL 2>&1 || (echo. & echo [ERROR] Node.js is not installed. & echo    Install it from: https://nodejs.org/ & echo. & exit 1)
 else
-	EXELEARNING_DEBUG_MODE=$(DEBUG) yarn start
+	@command -v node >/dev/null 2>&1 || { \
+		echo ""; \
+		echo "[ERROR] Node.js is not installed."; \
+		echo "   Install it from: https://nodejs.org/"; \
+		echo ""; \
+		exit 1; \
+	}
 endif
 
-# Package the application with the specified version
-# Usage: make package VERSION=1.0.0
-package: fail-on-windows css-node install-php-bin
+.PHONY: test-frontend-legacy
+test-frontend-legacy: check-node check-env ## Run frontend tests with Node.js (Vitest) + coverage (CI) - for systems without Bun
+	npm run test:frontend:node
+
+.PHONY: lint-legacy
+lint-legacy: check-node
+	@echo "[LEGACY] Running full lint with npm"
+	npm run lint:src
+	npm run lint:public
+	npm run lint:test
+
+.PHONY: fix-legacy
+fix-legacy: check-node
+	@echo "[LEGACY] Running full lint fix with npm"
+	npm run lint:src:fix
+	npm run lint:public:fix
+	npm run lint:test:fix
+
+# =============================================================================
+# TESTING
+# =============================================================================
+
+.PHONY: check-tests
+check-tests: check-bun
+	bun run scripts/check-test-coverage.ts
+
+.PHONY: check-coverage
+check-coverage: check-bun ## Check that all files have at least 90% coverage
+	@bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
+
+# Test environment: in-memory database for isolation
+TEST_ENV := DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test
+
+.PHONY: test
+test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
+
+.PHONY: test-unit
+test-unit: check-bun check-tests check-env ## Run unit tests (src/) with coverage and 90% threshold
+	@echo "Running unit tests with coverage..."
+	@FORCE_COLOR=1 $(TEST_ENV) bun test:unit > /tmp/exe-coverage.txt 2>&1; \
+	test_exit=$$?; \
+	cat /tmp/exe-coverage.txt; \
+	if [ $$test_exit -ne 0 ]; then exit $$test_exit; fi; \
+	bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
+
+.PHONY: test-integration
+test-integration: check-bun check-env ## Run integration tests
+	$(TEST_ENV) bun test:integration
+
+.PHONY: test-frontend
+test-frontend: check-bun check-env ## Run frontend tests (with Vitest + happy-dom) with coverage
+	bun test:frontend
+
+.PHONY: test-unit-ci
+test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov coverage for CI/Codecov
+	@echo "Running unit tests with lcov coverage..."
+	@mkdir -p coverage/bun
+	$(TEST_ENV) bun test:unit:ci
+	@bun run scripts/check-coverage.ts < coverage/bun/lcov.info || true
+
+.PHONY: test-e2e-chromium
+test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
+	npx playwright test --project=chromium
+
+.PHONY: test-e2e
+test-e2e: test-e2e-chromium ## Run Playwright E2E tests (alias for test-e2e-chromium)
+
+.PHONY: test-e2e-ui
+test-e2e-ui: check-env ## Run Playwright E2E tests with UI
+	npx playwright test --ui
+
+.PHONY: test-e2e-firefox
+test-e2e-firefox: check-env ## Run Playwright E2E tests with Firefox
+	npx playwright test --project=firefox
+
+
+# =============================================================================
+# DATABASE-SPECIFIC E2E TESTS
+# =============================================================================
+# These targets run E2E tests against different database backends using Docker.
+# They build the app, start the services, run Playwright tests, and clean up.
+#
+# Usage:
+#   make test-e2e-mariadb    # Test with MariaDB
+#   make test-e2e-postgres   # Test with PostgreSQL
+#   make test-e2e-sqlite     # Test with SQLite
+
+# Helper to wait for app to be ready
+define wait_for_app
+	@echo "Waiting for app to be ready at http://localhost:8080..."
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
+		if curl -s http://localhost:8080/health > /dev/null 2>&1; then \
+			echo "App is ready!"; \
+			break; \
+		fi; \
+		if [ $$i -eq 30 ]; then \
+			echo "Timeout waiting for app"; \
+			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml logs; \
+			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml down -v; \
+			exit 1; \
+		fi; \
+		echo "  Attempt $$i/30 - waiting..."; \
+		sleep 2; \
+	done
+endef
+
+.PHONY: test-e2e-mariadb
+test-e2e-mariadb: check-docker check-env ## Run E2E tests with MariaDB backend
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests with MariaDB"
+	@echo "============================================================"
+	@echo ""
+	@echo "Step 1: Cleaning up previous containers..."
+	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans || true
+	@echo ""
+	@echo "Step 2: Building and starting services..."
+	@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml up --build -d
+	@echo ""
+	@echo "Step 3: Waiting for services to be ready..."
+	$(call wait_for_app,mariadb)
+	@echo ""
+	@echo "Step 4: Running Playwright tests..."
+	@echo ""
+	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	test_exit=$$?; \
+	echo ""; \
+	echo "Step 5: Cleaning up..."; \
+	docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  ✅ MariaDB E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  ❌ MariaDB E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
+
+.PHONY: test-e2e-postgres
+test-e2e-postgres: check-docker check-env ## Run E2E tests with PostgreSQL backend
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests with PostgreSQL"
+	@echo "============================================================"
+	@echo ""
+	@echo "Step 1: Cleaning up previous containers..."
+	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans || true
+	@echo ""
+	@echo "Step 2: Building and starting services..."
+	@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml up --build -d
+	@echo ""
+	@echo "Step 3: Waiting for services to be ready..."
+	$(call wait_for_app,postgres)
+	@echo ""
+	@echo "Step 4: Running Playwright tests..."
+	@echo ""
+	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	test_exit=$$?; \
+	echo ""; \
+	echo "Step 5: Cleaning up..."; \
+	docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  ✅ PostgreSQL E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  ❌ PostgreSQL E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
+
+.PHONY: test-e2e-sqlite
+test-e2e-sqlite: check-docker check-env ## Run E2E tests with SQLite backend
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests with SQLite"
+	@echo "============================================================"
+	@echo ""
+	@echo "Step 1: Cleaning up previous containers..."
+	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans || true
+	@echo ""
+	@echo "Step 2: Building and starting services..."
+	@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml up --build -d
+	@echo ""
+	@echo "Step 3: Waiting for services to be ready..."
+	$(call wait_for_app,sqlite)
+	@echo ""
+	@echo "Step 4: Running Playwright tests..."
+	@echo ""
+	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	test_exit=$$?; \
+	echo ""; \
+	echo "Step 5: Cleaning up..."; \
+	docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  ✅ SQLite E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  ❌ SQLite E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
+
+
+# =============================================================================
+# PACKAGING
+# =============================================================================
+
+# Build release package
+# Usage: make package VERSION=1.0.0 [PUBLISH=always]
+.PHONY: package
+package: check-bun deps bundle
 ifndef VERSION
-	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
+	$(error VERSION is required. Usage: make package VERSION=x.y.z)
 endif
 	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
 	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
-	$(if $(PACKAGE_VERSION),,$(error Unable to derive package version from '$(VERSION)'))
-	@echo "Packaging application with version $(VERSION)..."
-	@echo " -> Using sanitized package version $(PACKAGE_VERSION) for electron-builder"
-	
-	# Update version in Constants.php and package.json
-	@echo "Updating version in files..."
-	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = '$(VERSION)';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(PACKAGE_VERSION)\"|" package.json && rm -f package.json.bak
-
-	# Build & publish for current platform
-	@echo "Building & publishing for current platform..."
-	yarn build $(PUBLISH_ARG)
-	
-	# Restore the fixed version in package.json and Constants.php
-	@echo "Restoring fixed version v0.0.0-alpha in Constants.php and 0.0.0-alpha in package.json..."
-	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = 'v0.0.0-alpha';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"0.0.0-alpha\"|" package.json && rm -f package.json.bak
-	
+	@echo "Packaging version $(VERSION) (npm version: $(PACKAGE_VERSION))..."
+	@bun -e "let pkg=require('./package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+	bun run package:app $(if $(PUBLISH),-- --publish $(PUBLISH),)
+	@echo "Restoring version to 0.0.0-alpha..."
+	@bun -e "let pkg=require('./package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
 	@echo "Package created successfully with version $(VERSION)"
-	@echo "Installer files available in the dist/ directory"
 
 
 ## --------- WINDOWS LOCAL SIGN ---------
 
-.SILENT: check-release-env eb-inject-config eb-cleanup-config \
-         package-windows-local-sign
-.PHONY:  check-release-env eb-inject-config eb-cleanup-config \
-         package-windows-local-sign
-
 # Accept multiple aliases for certificate thumbprint
-CERT_SHA1      ?= $(or $(CERT_THUMBPRINT),$(CERTIFICATE_SHA1),$(WIN_CERTIFICATE_SHA1))
+CERT_SHA1 ?= $(or $(CERT_THUMBPRINT),$(CERTIFICATE_SHA1),$(WIN_CERTIFICATE_SHA1))
+
+.SILENT: check-release-env eb-inject-config eb-cleanup-config package-windows-local-sign
+.PHONY: check-release-env eb-inject-config eb-cleanup-config package-windows-local-sign
 
 # Fail fast if required env/inputs are missing
 check-release-env:
@@ -557,10 +704,9 @@ check-release-env:
 	@: $(if $(or $(GH_TOKEN),$(GITHUB_TOKEN),$(GITHUB_RELEASE_TOKEN)),,$(error GH_TOKEN or GITHUB_TOKEN is required to publish to GitHub))
 	@: $(if $(CERT_SHA1),,$(error Set CERT_THUMBPRINT (or CERTIFICATE_SHA1/WIN_CERTIFICATE_SHA1) with your certificate SHA1 thumbprint))
 
-# Inject ephemeral config into package.json:
-# - win.certificateSha1
+# Inject ephemeral config into package.json (win.certificateSha1)
 eb-inject-config:
-	node -e "const fs=require('fs');const pth='package.json';\
+	bun -e "const fs=require('fs');const pth='package.json';\
 	 const s=fs.readFileSync(pth,'utf8'); const pj=JSON.parse(s); \
 	 pj.build=pj.build||{}; \
 	 pj.build.win=pj.build.win||{}; \
@@ -569,10 +715,10 @@ eb-inject-config:
 	 fs.writeFileSync('.eb-injected.sentinel','1'); \
 	 console.log('Injected: win.certificateSha1');"
 
-# Remove only what we injected (win.certificateSha1).
+# Remove only what we injected (win.certificateSha1)
 eb-cleanup-config:
 	@if [ -f .eb-injected.sentinel ]; then \
-	  node -e "const fs=require('fs');const pth='package.json';\
+	  bun -e "const fs=require('fs');const pth='package.json';\
 	    const pj=JSON.parse(fs.readFileSync(pth,'utf8')); \
 	    if(pj.build && pj.build.win){ delete pj.build.win.certificateSha1; } \
 	    fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
@@ -581,171 +727,140 @@ eb-cleanup-config:
 	fi
 
 # Windows packaging with local certificate store thumbprint
-# Usage:
-#   make package-windows-local-sign VERSION=v3.0.0 CERT_THUMBPRINT=<SHA1> [PUBLISH=always]
+# Usage: make package-windows-local-sign VERSION=v3.0.0 CERT_THUMBPRINT=<SHA1> [PUBLISH=always]
 package-windows-local-sign: fail-on-windows check-release-env eb-inject-config
-	@echo "→ Tag/version: $(VERSION)"
-	@echo "→ Cert SHA1: $(CERT_SHA1)"
-	@echo "Cleaning previous build artifacts..."; rm -rf vendor node_modules dist || true
-	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
-
-	# Build & publish (re-use your existing 'package' flow)
-	# We pass VERSION as tag (with v-prefix as you venías usando).
+	@echo "Tag/version: $(VERSION)"
+	@echo "Cert SHA1: $(CERT_SHA1)"
+	@echo "Cleaning previous build artifacts..."
+	@rm -rf node_modules dist || true
 	@DEBUG=electron-builder \
 	 GH_TOKEN="$${GH_TOKEN:-$${GITHUB_TOKEN:-$${GITHUB_RELEASE_TOKEN}}}" \
 	 $(MAKE) package VERSION="$(VERSION)" PUBLISH=$(if $(PUBLISH),$(PUBLISH),always)
-
 	@$(MAKE) eb-cleanup-config
-	@echo "✔ Windows package (signed) built & published for $(VERSION)"
+	@echo "Windows package (signed) built & published for $(VERSION)"
+
 ## --------- END WINDOWS LOCAL SIGN ---------
 
 
-# Copy the vendor/ directory from the container to the local host
-# Use this when you want to inspect or debug vendor code locally
-pull-vendor: check-docker check-env upd
-	@echo "⚠️  Copying /app/vendor from the container to ./vendor on your machine..."
-	@echo "💡 Use this only when you want to debug vendor libraries locally."
-	@echo "📁 This will overwrite your local ./vendor directory."
-	@docker compose cp exelearning:/app/vendor ./vendor
-	@echo "✅ Done. Local ./vendor directory updated from container."
+# =============================================================================
+# UTILITIES
+# =============================================================================
+
+# Clean Docker volumes
+.PHONY: clean
+clean: check-docker
+	docker compose down -v --remove-orphans
+
+# Clean local data (database + assets) for fresh start
+.PHONY: clean-local
+clean-local: check-bun
+	bun scripts/setup-local.js --clean
+
+# Clean test artifacts
+.PHONY: test-clean
+test-clean:
+	rm -rf coverage playwright-report test-results
+
+# Destroy everything: containers, volumes, images, node_modules, dist (with confirmation)
+.PHONY: destroy
+destroy: check-docker
+ifeq ($(SYSTEM_OS),windows)
+	@echo "WARNING: This will remove containers, images, node_modules/, dist/, data/*"
+	@choice /M "Are you sure you want to destroy everything?" || exit 1
+	@docker compose down -v --rmi all --remove-orphans
+	@if exist node_modules rmdir /S /Q node_modules
+	@if exist dist rmdir /S /Q dist
+	@if exist data ( for %%i in (data\*) do if /I not "%%~nxi"==".gitkeep" del /Q "%%i" )
+	@echo "Everything destroyed. Next run will be a fresh start."
+else
+	@echo "WARNING: This will remove containers, images, node_modules/, dist/, data/*"
+	@read -p "Are you sure? [y/N] " confirm; \
+	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+		echo "Aborted."; exit 1; \
+	fi; \
+	docker compose down -v --rmi all --remove-orphans; \
+	rm -rf node_modules dist; \
+	if [ -d data ]; then find data -mindepth 1 ! -name ".gitkeep" -exec rm -rf {} + 2>/dev/null || true; fi; \
+	echo "Everything destroyed. Next run will be a fresh start."
+endif
 
 
-.PHONY: css css-dev css-node
+# =============================================================================
+# HELP
+# =============================================================================
 
-# Prevent MSYS path conversion breaking Docker paths on Windows Git Bash
-# (same approach used elsewhere in this Makefile for docker compose commands)
-SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm \
-	-v $(PWD)/assets:/app/assets \
-	-v $(PWD)/public/style/workarea:/app/public/style/workarea \
-	-w /app node:24-alpine sh -lc
-
-css:
-	@echo "Generating CSS (prod)..."
-	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map"
-	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
-	@echo "CSS built (prod)."
-
-css-dev:
-	@echo "Generating CSS (dev)..."
-	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
-	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
-	@echo "CSS built (dev)."
-
-# Generate css direct with node, for local electron and package in GH
-css-node:
-	@echo "Installing Node.js dependencies..."
-	yarn install
-	@echo "Generating CSS (prod)..."
-	yarn run --silent sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map
-
-# Display help with available commands
+.PHONY: help
 help:
+	@echo "eXeLearning Development Commands"
 	@echo ""
-	@echo "Usage: make <command>"
+	@echo "Docker:"
+	@echo "  make up              Start Docker (dev mode by default)"
+	@echo "  make up APP_ENV=prod Start Docker (prod mode)"
+	@echo "  make upd             Start Docker detached"
+	@echo "  make down            Stop Docker"
+	@echo "  make pull            Pull latest Docker images"
+	@echo "  make shell           Shell into container"
+	@echo "  make logs            View container logs"
+	@echo "  make clean           Stop and remove volumes"
+	@echo "  make destroy         Remove everything (containers, images, node_modules)"
 	@echo ""
-	@echo "Docker management:"
+	@echo "Local:"
+	@echo "  make up-local              Start locally (web only, dev mode)"
+	@echo "  make up-local APP_ENV=prod Start locally (web only, prod mode)"
+	@echo "  make run-app               Start Electron + backend (desktop app)"
+	@echo "  make bundle                Build all assets (TS + CSS + JS bundle)"
+	@echo "  make deps                  Install dependencies"
 	@echo ""
-	@echo "  build                 - Build or rebuild Docker containers"
-	@echo "  clean                 - Clean up and stop Docker containers, removing volumes and orphan containers"
-	@echo "  destroy               - Destroy everything: containers, volumes, images, vendors, caches"
-	@echo "  down                  - Stop and remove Docker containers"
-	@echo "  pull                  - Pull the latest images from the registry"
-	@echo "  shell                 - Open a shell inside the exelearning container"
-	@echo "  up                    - Start Docker containers in interactive mode"
-	@echo "  up-local              - Run local Symfony server and prepare the environment (unstable)"
-	@echo "  upd                   - Start Docker containers in background mode (daemon)"
-	@echo "  update                - Update Composer dependencies"
-	@echo "  pull-vendor           - Copy vendor/ from container to local ./vendor (for debugging)"
-	@echo ""
-	@echo "Assets (SCSS / CSS):"
-	@echo ""
-	@echo "  css                   - Build production CSS (compressed, no source map)"
-	@echo "  css-dev               - Build development CSS (expanded, with source map)"
-	@echo ""
-	@echo "Code quality:"
-	@echo ""
-	@echo "  lint                  - Run the linter to check PHP and JS code style"
-	@echo "  fix                   - Automatically fix PHP and JS code style issues"
-	@echo "  lint-php              - Check PHP code style with PHP-CS-Fixer"
-	@echo "  fix-php               - Automatically fix PHP code style with PHP-CS-Fixer"
-	@echo "  lint-js               - Check JavaScript files indentation"
-	@echo "  fix-js                - Indent JavaScript files with 4 spaces"
+	@echo "CLI Commands:"
+	@echo "  make create-user EMAIL=x PASSWORD=y USER_ID=z   Create a new user"
+	@echo "  make promote-admin EMAIL=x                      Grant ROLE_ADMIN"
+	@echo "  make demote-admin EMAIL=x                       Remove ROLE_ADMIN"
+	@echo "  make grant-role EMAIL=x ROLE=y                  Add role to user"
+	@echo "  make revoke-role EMAIL=x ROLE=y                 Remove role from user"
+	@echo "  make generate-jwt EMAIL=x [TTL=3600]              Generate JWT token"
+	@echo "  make tmp-cleanup [MAX_AGE=86400]                Clean temp files"
+	@echo "  make translations [LOCALE=es]                   Extract/clean translations"
 	@echo ""
 	@echo "ELPX Processing:"
-	@echo ""
-	@echo "  convert-elp            - Convert eXeLearning v2.x (elp) file to v3.0 (elpx) format"
-	@echo "  export-elpx            - Export .elp file to any supported format (requires FORMAT, INPUT, OUTPUT)"
-	@echo "  export-html5           - Export .elp to HTML5 format (alias for export-elpx FORMAT=html5)"
-	@echo "  export-html5-sp        - Export .elp to single-page HTML5 format (alias for FORMAT=html5-sp)"
-	@echo "  export-scorm12         - Export .elp to SCORM 1.2 format (alias for FORMAT=scorm12)"
-	@echo "  export-scorm2004       - Export .elp to SCORM 2004 format (alias for FORMAT=scorm2004)"
-	@echo "  export-ims             - Export .elp to IMS format (alias for FORMAT=ims)"
-	@echo "  export-epub3           - Export .elp to EPUB 3 format (alias for FORMAT=epub3)"
-	@echo "  export-elpx            - Re-export .elp file (alias for FORMAT=elpx)"
-	@echo ""
-	@echo "Data:"
-	@echo ""
-	@echo "  create-user           - Ask for data and create user in Symonfy"
-	@echo "  grant-role            - Grant a role to a user (ROLE required)"
-	@echo "                           Usage: make grant-role EMAIL=user@exelearning.net ROLE=ROLE_X"
-	@echo "  revoke-role           - Revoke a role from a user (ROLE required)"
-	@echo "                           Usage: make revoke-role EMAIL=user@exelearning.net ROLE=ROLE_X"
-	@echo "  promote-admin         - Grant ROLE_ADMIN to a user"
-	@echo "                           Usage: make promote-admin EMAIL=user@exelearning.net"
-	@echo "  demote-admin          - Revoke ROLE_ADMIN from a user"
-	@echo "  generate-jwt          - Generate a JWT for a user"
-	@echo "                           Usage: make generate-jwt EMAIL=user@exelearning.net [TTL=3600]"
-	@echo "  smoke-api-v2          - Quick smoke test for /api/v2/users (uses admin JWT)"
-	@echo "  make-migration        - Generate a new Symfony migration (make:migration)"
-	@echo "  migrate               - Run pending Symfony migrations (doctrine:migrations:migrate)"
-	@echo "  tmp-cleanup           - Clean temporary folder"
+	@echo "  make convert-elp INPUT=x OUTPUT=y               Convert ELP v2.x to v3.0 (elpx)"
+	@echo "  make export-elpx FORMAT=x INPUT=y OUTPUT=z      Export to any format"
+	@echo "  make export-html5 INPUT=x OUTPUT=y              Export to HTML5"
+	@echo "  make export-html5-sp INPUT=x OUTPUT=y           Export to HTML5 single-page"
+	@echo "  make export-scorm12 INPUT=x OUTPUT=y            Export to SCORM 1.2"
+	@echo "  make export-scorm2004 INPUT=x OUTPUT=y          Export to SCORM 2004"
+	@echo "  make export-ims INPUT=x OUTPUT=y                Export to IMS Content Package"
+	@echo "  make export-epub3 INPUT=x OUTPUT=y              Export to EPUB3"
 	@echo ""
 	@echo "Testing:"
+	@echo "  make test            Run all tests"
+	@echo "  make test-unit       Run unit tests"
+	@echo "  make test-frontend   Run frontend tests"
+	@echo "  make test-watch      Run tests in watch mode"
+	@echo "  make test-e2e        Run Playwright E2E tests (Chromium)"
+	@echo "  make test-e2e-chromium  Run E2E tests with Chromium"
+	@echo "  make test-e2e-firefox   Run E2E tests with Firefox"
 	@echo ""
-	@echo "  phpunit               - Run unit tests with PHPUnit"
-	@echo "  test                  - Run ALL tests"
-	@echo "  test-unit             - Run unit tests with PHPUnit"
-	@echo "  test-e2e              - Run e2e tests with Paratest (chrome)"
-	@echo "  test-e2e-realtime     - Run e2e-realtime tests with Paratest (chrome)"
-	@echo "  test-e2e-offline      - Run e2e-offline tests with Paratest (chrome)"
-	@echo "  test-playwright       - Run local Playwright collaborative test (host browser)"
-	@echo "  test-shell            - Open a shell inside the exelearning container (and the chrome container)"
-	@echo "  test-local            - Run unit tests in local environment (no Docker, SQLite tmp DB)"
-	@echo "  test-unit-parallel    - Run unit tests in parallel using paratest"
+	@echo "Legacy (Core2 Duo / No Bun):"
+	@echo "  make up-legacy              Start legacy server with Node.js (Docker)"
+	@echo "  make down-legacy            Stop legacy server"
+	@echo "  make clean-legacy           Stop and remove legacy volumes"
+	@echo "  make test-frontend-legacy   Run frontend tests with Node.js + coverage"
+	@echo "  make lint-legacy            Run lint using npm (no Bun required)"
+	@echo "  make fix-legacy             Fix lint issues using npm"
+	@echo ""
+	@echo "Linting (Biome):"
+	@echo "  make lint            Run lint on all files"
+	@echo "  make fix             Fix all lint issues"
+	@echo "  make lint-ts         Lint TypeScript source (src/)"
+	@echo "  make fix-ts          Fix TypeScript linting issues"
+	@echo "  make lint-js         Lint JavaScript (public/app/)"
+	@echo "  make fix-js          Fix JavaScript linting issues"
+	@echo "  make lint-tests      Lint test files"
+	@echo "  make fix-tests       Fix test linting issues"
+	@echo "  make format          Format code with Biome"
 	@echo ""
 	@echo "Packaging:"
-	@echo ""
-	@echo "  run-app               - Run the app locally as it would work when packaged"
-	@echo "  package               - Generate installers for current platform with specified version (usage: make package VERSION=x.y.z)"
-	@echo ""
-	@echo "Translations (i18n):"
-	@echo ""
-	@echo "  translations          - Update translation strings"
-	@echo ""
-	@echo "Other:"
-	@echo ""
-	@echo "  help                  - Display this help with available commands"
-	@echo "  update-licenses       - Update the Legal notes (Third Libraries) reading the composer/installed.json file"
-	@echo ""
-
-# Set help as the default goal if no target is specified
-.DEFAULT_GOAL := help
-
-# Run local Playwright collaborative test (opens two Chromium windows)
-# Optional usage:
-#   make test-playwright BASE_HOST=http://localhost:8080 GUEST_LOGIN_PATH=/login/guest WORKAREA_PATH=/workarea VERBOSE=1
-test-playwright: check-env upd
-	@echo "Running Playwright collaborative test (local host)..."
-	yarn install
-	# Ensure required browsers are installed (idempotent)
-	yarn playwright install chromium || npx playwright install chromium
-	$(if $(BASE_HOST),BASE_HOST=$(BASE_HOST),) \
-	$(if $(GUEST_LOGIN_PATH),GUEST_LOGIN_PATH=$(GUEST_LOGIN_PATH),) \
-	$(if $(WORKAREA_PATH),WORKAREA_PATH=$(WORKAREA_PATH),) \
-	$(if $(SCREEN_WIDTH),SCREEN_WIDTH=$(SCREEN_WIDTH),) \
-	$(if $(SCREEN_HEIGHT),SCREEN_HEIGHT=$(SCREEN_HEIGHT),) \
-	$(if $(VERBOSE),VERBOSE=$(VERBOSE),) \
-	$(if $(DEBUG),DEBUG=$(DEBUG),) \
-	node tests/playwright/collab-exe.js
+	@echo "  make package VERSION=1.0.0                    Build release"
+	@echo "  make package VERSION=1.0.0 PUBLISH=always     Build & publish to GitHub"
+	@echo "  make package-windows-local-sign VERSION=1.0.0 CERT_THUMBPRINT=xxx"
+	@echo "                                                Build signed Windows release"

@@ -11,9 +11,25 @@
     width: 33%;
     max-width: 400px;
     min-width: 323px;
+    // CRITICAL: Lock height to viewport for flex children to work
+    height: 100vh;
     max-height: 100vh;
     overflow: hidden;
     z-index: 1;
+
+    // Flex layout to keep iDevices panel always visible at bottom
+    display: flex;
+    flex-direction: column;
+
+    // Accordion container should also be flex
+    #menus_content {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0; // Important for flex children to shrink properly
+        overflow: hidden;
+        justify-content: space-between; // Push iDevices to bottom when collapsed
+    }
     .content-info,
     #exe-logo,
     #exe-title,
@@ -150,4 +166,74 @@
             }
         }
     }
+}
+
+/* ========================================================================
+   Mobile Responsive Styles (< 768px) - Sidebar Overlay
+   ======================================================================== */
+@media (max-width: 767.98px) {
+    .asideleft {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 80% !important;
+        max-width: 320px !important;
+        min-width: 280px !important;
+        // Use dvh (dynamic viewport height) for mobile browsers with address bar
+        height: 100vh; // Fallback for older browsers
+        height: 100dvh; // Dynamic viewport height (modern browsers)
+        max-height: 100vh;
+        max-height: 100dvh;
+        z-index: 1050;
+        padding-top: 64px;
+        background: var(--white);
+        transform: translateX(-100%);
+        transition: transform var(--sidebar);
+        overflow: hidden;        // Children scroll, not sidebar itself
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+
+        // Flex layout for proper bottom-anchored iDevices
+        display: flex;
+        flex-direction: column;
+
+        // Reset desktop constraints
+        .content-info,
+        #exe-logo,
+        #exe-title,
+        #menu_nav,
+        #menu_idevices {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            width: auto !important;
+        }
+
+        #menus_content {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            justify-content: space-between; // Push iDevices to bottom
+        }
+
+        // Show sidebar when body doesn't have left-column-hidden
+        body:not(.left-column-hidden) & {
+            transform: translateX(0);
+        }
+    }
+
+    #menu_nav {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: calc(100vh - 350px); // Leave room for iDevices
+        overflow: hidden;
+
+        #nav_list {
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+    }
+
+    // #menu_idevices rules are in _menu_idevices.scss with :has() for collapsed/expanded states
 }

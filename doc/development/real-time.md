@@ -1,142 +1,310 @@
-# Real-Time Communication
+# Real-Time Collaboration
 
-eXeLearning includes real-time features (e.g., collaborative editing) powered by Mercure using Server‑Sent Events (SSE).
+eXeLearning uses [Yjs](https://yjs.dev/) for real-time collaborative editing with WebSocket transport. This enables multiple users to edit the same project simultaneously with automatic conflict resolution.
 
-## Real-Time Architecture
+## Architecture Overview
 
-Real-time communication relies on:
+eXeLearning implements a **stateless relay architecture**:
 
-1. **Mercure Hub**: Uses Server-Sent Events (SSE) to push updates from the server to subscribed clients.
-2. **JWT**: Authorizes who can publish/subscribe to topics.
+- **No Y.Doc on server**: The server doesn't maintain document state in memory
+- **Client is the source of truth**: Each client holds the authoritative Y.Doc in memory + IndexedDB
+- **Explicit saves only**: Content persists to server only when user clicks save
+- **Binary Yjs protocol**: Efficient sync using Yjs encoding
 
-### Integrated Mercure Hub
-
-The Docker image includes an integrated Mercure Hub via Nginx. This setup has several advantages:
-
-* **No CORS issues**: The app and the hub are served from the same domain.
-* **Simplified deployment**: No need for additional services.
-* **Developer-friendly**: No extra ports or configurations required.
-
-## Mercure Configuration
-
-### Nginx Configuration
-
-Nginx is configured to proxy requests to the Mercure Hub:
-
-> Important: The directive `proxy_buffering off;` is essential for Server‑Sent Events (SSE). Without it, Nginx buffers the stream and clients won’t receive live events.
-
-```nginx
-location ^~ /.well-known/mercure {
-    proxy_pass http://127.0.0.1:80;
-    proxy_read_timeout 24h;
-    proxy_http_version 1.1;
-    proxy_set_header Connection "";
-    proxy_buffering off; # <-- THIS LINE IS CRITICAL FOR SSE TO WORK!
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "Upgrade";
-    error_page 502 503 504 =400 /mercure_400.html;
-}
-
-location = /healthz {
-    proxy_pass http://127.0.0.1:80;
-    error_page 502 503 504 =400 /mercure_400.html;
-}
-
-location = /mercure_400.html {
-    return 400 "Bad Request";
-}
+```
+┌─────────────┐      WebSocket       ┌─────────────┐
+│  Client A   │◄───────────────────►│   Server    │
+│  (Y.Doc)    │   Binary messages   │   (Relay)   │
+└─────────────┘                      └──────┬──────┘
+                                            │
+┌─────────────┐      WebSocket             │
+│  Client B   │◄───────────────────────────┘
+│  (Y.Doc)    │
+└─────────────┘
 ```
 
-> **In summary:**  
-> If you experience issues with real-time updates or SSE connections hanging, the **first thing to check** is that `proxy_buffering off;` is set in your Nginx configuration for Mercure.
+## WebSocket Connection
 
-### `.env` Configuration
+### Endpoint
 
-The `.env.dist` file includes the basic Mercure secret configuration:
-
-```env
-###> Mercure ###
-MERCURE_JWT_SECRET_KEY=!ChangeThisMercureHubJWTSecretKey!
-###< Mercure ###
+```
+ws://hostname:port/yjs/project-{uuid}?token=JWT
 ```
 
-This key signs the JWT tokens that authorize clients to publish and subscribe to Mercure topics.
+- `project-{uuid}`: Document name (room identifier)
+- `token`: JWT authentication token (required)
 
-### Docker Compose Configuration
+### Connection Lifecycle
 
-The Docker Compose file passes the JWT secret to Mercure:
+1. **Connect**: Client opens WebSocket with JWT token
+2. **Validate**: Server validates token and project access
+3. **Join Room**: Client added to document room
+4. **Sync**: Yjs sync protocol exchanges state
+5. **Edit**: Changes broadcast to all room members
+6. **Disconnect**: Client removed, room cleanup scheduled
 
-```yaml
-environment:
-  MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
-  MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
-```
+### Authentication
 
-## Usage in the Application
-
-### Publishing Updates
-
-From the Symfony backend, you can publish updates via the `mercure.hub` service:
-
-```php
-$update = new Update(
-    'https://example.com/document/123',
-    json_encode(['status' => 'updated', 'by' => 'user1']),
-    true
-);
-$hub->publish($update);
-```
-
-### Subscribing from the Frontend
-
-In JavaScript, use the `EventSource` API to subscribe to updates:
+The JWT token must be passed as a query parameter:
 
 ```javascript
-const url = new URL('/.well-known/mercure', window.location.href);
-url.searchParams.append('topic', 'https://example.com/document/123');
+const wsUrl = `ws://localhost:3000/yjs/project-${projectId}?token=${authToken}`;
+const provider = new WebsocketProvider(wsUrl, `project-${projectId}`, ydoc);
+```
 
-const eventSource = new EventSource(url);
-eventSource.onmessage = event => {
-    const data = JSON.parse(event.data);
-    console.log(data);
-    // Update the UI accordingly
+**Error codes:**
+- `4001`: Invalid token
+- `4003`: Access denied to project
+
+## Message Protocol
+
+The server distinguishes between two message types:
+
+### Yjs Sync Messages (Binary)
+
+Standard Yjs sync protocol messages (bytes 0-2 prefix):
+
+| Byte | Message Type |
+|------|-------------|
+| 0 | Sync Step 1 |
+| 1 | Sync Step 2 |
+| 2 | Update |
+
+These are relayed to all other clients in the room.
+
+### Asset Coordination Messages
+
+Binary messages with `0xFF` prefix followed by JSON:
+
+```javascript
+// Client → Server
+{ type: 'awareness-update', data: { availableAssets: ['uuid1', 'uuid2'] } }
+{ type: 'request-asset', data: { assetId: 'uuid', priority: 75 } }
+{ type: 'asset-uploaded', data: { assetId: 'uuid' } }
+
+// Server → Client
+{ type: 'upload-request', data: { assetId: 'uuid' } }
+{ type: 'asset-ready', data: { assetId: 'uuid', url: '/api/...' } }
+{ type: 'asset-not-found', data: { assetId: 'uuid' } }
+```
+
+## Frontend Integration
+
+### YjsDocumentManager
+
+Central manager for Yjs documents:
+
+```javascript
+const manager = new YjsDocumentManager(projectId, {
+    wsUrl: 'ws://localhost:3000/yjs',
+    apiUrl: '/api',
+    token: authToken,
+    offline: false  // Set true to skip WebSocket
+});
+
+await manager.initialize({ isNewProject: false });
+
+// Access Y.Doc structures
+const navigation = manager.getNavigation();  // Y.Array
+const properties = manager.getProperties();  // Y.Map
+
+// Save to server (explicit)
+await manager.saveToServer();
+
+// Cleanup
+manager.destroy();
+```
+
+### IndexedDB Persistence
+
+Documents are persisted locally using `y-indexeddb`:
+
+```javascript
+// Automatic: YjsDocumentManager handles this
+const idbProvider = new IndexeddbPersistence(
+    `exelearning-project-${projectId}`,
+    ydoc
+);
+
+await idbProvider.whenSynced;  // Wait for local data load
+```
+
+### Awareness (User Presence)
+
+Track other users' cursor positions and states:
+
+```javascript
+const awareness = manager.awareness;
+
+// Set local state
+awareness.setLocalStateField('user', {
+    name: 'John',
+    color: '#ff0000'
+});
+
+// Listen for changes
+awareness.on('change', () => {
+    const states = awareness.getStates();
+    // Update UI with user cursors
+});
+```
+
+## Asset Coordination
+
+When collaborating, assets are shared between clients:
+
+### P2P Flow
+
+1. **Announce**: Clients send `awareness-update` with available assets
+2. **Request**: Client sends `request-asset` when missing an asset
+3. **Coordinate**: Server finds peer with asset, sends `upload-request`
+4. **Upload**: Peer uploads asset via REST API
+5. **Ready**: Server broadcasts `asset-ready` to requesters
+
+### Priority Queue
+
+Assets are prioritized for responsive UI:
+
+```javascript
+const PRIORITY = {
+    CRITICAL: 100,  // Blocking current render
+    HIGH: 75,       // Current page
+    MEDIUM: 50,     // Nearby pages
+    LOW: 25,        // Prefetch
+    IDLE: 0         // Normal save
 };
 ```
 
-## External Mercure Hub (optional)
+## Room Management
 
-While the integrated Mercure Hub suffices for most scenarios, a separate Mercure Hub may be used for high-load environments. To configure it:
+### Room Lifecycle
 
-1. Update the Nginx config to point to the external hub
-2. Set the JWT environment variables to match the external hub's settings
-3. Ensure the hub accepts connections from your domain
+- Rooms are created when first client connects
+- Multiple clients can join the same room
+- Cleanup is scheduled 30 seconds after last client disconnects
+- Cleanup is cancelled if client reconnects within 30 seconds
 
-## Testing Real-Time Features
+### Heartbeat
 
-Two default users are created for testing collaborative features:
+WebSocket connections use ping/pong for health:
 
-* User 1: `user@exelearning.net` / `1234`
-* User 2: `user2@exelearning.net` / `1234`
+| Environment | Ping Interval |
+|-------------|---------------|
+| Desktop | 60s |
+| Server | 30s |
 
-Open the app in two browsers or tabs to test collaboration.
+Server uses shorter interval to avoid proxy timeouts.
 
-To run automated tests for real-time features:
+## Testing Collaboration
+
+### Default Test Users
+
+Two users are created for testing:
+
+- **User 1**: `user@exelearning.net` / `1234`
+- **User 2**: `user2@exelearning.net` / `1234`
+
+### Testing Steps
+
+1. Open browser window 1, login as User 1
+2. Open project
+3. Open browser window 2 (incognito), login as User 2
+4. Open same project
+5. Edit in both windows - changes sync in real-time
+
+### Automated Testing
 
 ```bash
-make test-shell
-composer phpunit tests/E2E/RealTime/
+# Run unit tests
+make test-unit
+
+# Test WebSocket specifically
+DB_PATH=:memory: bun test src/websocket/
 ```
 
-See the Testing docs: [development/testing.md](testing.md).
+## Configuration
+
+### Environment Variables
+
+```bash
+# WebSocket endpoint is automatically determined from APP_PORT
+APP_PORT=8080
+
+# JWT secret for token validation
+APP_SECRET=your-secret-key
+
+# Base path (if app is in subdirectory)
+BASE_PATH=/exelearning
+```
+
+### Desktop vs Server
+
+Different timeouts are used:
+
+```typescript
+// Desktop (Electron)
+const DESKTOP_CONFIG = {
+    pingInterval: 60_000,
+    cleanupDelay: 5_000
+};
+
+// Server
+const SERVER_CONFIG = {
+    pingInterval: 30_000,
+    cleanupDelay: 30_000
+};
+```
 
 ## Troubleshooting
 
-- SSE not updating: Ensure `proxy_buffering off;` for the Mercure location in any reverse proxy.
-- 401/403 subscribing: The subscriber JWT must include allowed topics; check `MERCURE_SUBSCRIBER_JWT_KEY` and claims.
-- Mixed content over HTTPS: Ensure the Mercure URL matches your site scheme/host.
-- Timeouts: Increase `proxy_read_timeout` for the Mercure location.
+### Connection Issues
+
+**WebSocket not connecting:**
+- Check JWT token is valid and not expired
+- Verify project UUID exists and user has access
+- Check browser console for error codes (4001 = invalid token, 4003 = access denied)
+
+**Connection drops frequently:**
+- Check proxy timeout settings (should be > ping interval)
+- For Nginx: `proxy_read_timeout 90s;`
+
+### Sync Problems
+
+**Changes not appearing:**
+- Check both clients are connected (look for awareness)
+- Verify WebSocket messages in Network tab
+- Try refreshing to force full sync
+
+**Conflict/data loss:**
+- Yjs uses CRDT, conflicts are auto-resolved
+- Check IndexedDB for local state
+- Use `manager.saveToServer()` to persist
+
+### Asset Loading
+
+**Assets not loading for collaborators:**
+- Check `awareness-update` messages being sent
+- Verify asset exists in IndexedDB
+- Check REST API endpoints for upload/download
+
+**Slow asset sync:**
+- Check priority queue (CRITICAL assets upload first)
+- Verify network bandwidth
+- Large files use chunked upload (>20MB)
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/websocket/yjs-websocket.ts` | WebSocket route handler |
+| `src/websocket/room-manager.ts` | Room lifecycle management |
+| `src/websocket/asset-coordinator.ts` | P2P asset coordination |
+| `src/websocket/heartbeat.ts` | Connection keep-alive |
+| `public/app/yjs/YjsDocumentManager.js` | Frontend Y.Doc manager |
+| `public/app/yjs/AssetWebSocketHandler.js` | Asset protocol handler |
+
+## Further Reading
+
+- [Architecture Overview](../architecture.md) - System architecture
+- [Yjs Documentation](https://docs.yjs.dev/) - Official Yjs docs
+- [y-websocket](https://github.com/yjs/y-websocket) - WebSocket provider

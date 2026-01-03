@@ -1,5 +1,4 @@
 import Modal from '../modal.js';
-import RealTimeEventNotifier from '../../../../RealTimeEventNotifier/RealTimeEventNotifier.js';
 
 export default class ModalSessionLogout extends Modal {
     constructor(manager) {
@@ -18,14 +17,6 @@ export default class ModalSessionLogout extends Modal {
         // Modal footer content element
         this.modalFooterContent =
             this.modalElement.querySelector('.modal-footer');
-        this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
-
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey
-            );
-        }
     }
 
     /**
@@ -92,12 +83,27 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
+     * Close the offline app (Electron window)
+     */
+    closeOfflineApp() {
+        window.onbeforeunload = null;
+        window.close();
+    }
+
+    /**
      * saveSessionEventListener
      *
      * @param {*} saveSessionButton
      */
     saveSessionEventListener(saveSessionButton, data) {
-        saveSessionButton.addEventListener('click', () => {
+        saveSessionButton.addEventListener('click', async () => {
+            // Handle offline exit: save and close app
+            if (data.offlineExit) {
+                this.close();
+                await this.saveAndCloseOffline();
+                return;
+            }
+
             let odeParams = [];
 
             odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
@@ -110,12 +116,55 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
+     * Save project and close app in offline mode
+     */
+    async saveAndCloseOffline() {
+        try {
+            // Use Yjs export for saving
+            if (
+                eXeLearning.app.project?._yjsEnabled &&
+                eXeLearning.app.project?.exportToElpxViaYjs
+            ) {
+                await eXeLearning.app.project.exportToElpxViaYjs({
+                    saveAs: false,
+                });
+            }
+            this.closeOfflineApp();
+        } catch (error) {
+            console.error(
+                '[ModalSessionLogout] Error saving before exit:',
+                error
+            );
+            eXeLearning.app.modals.alert.show({
+                title: _('Error saving'),
+                body: _('An error occurred while saving the project'),
+                contentId: 'error',
+            });
+        }
+    }
+
+    /**
      * notSaveSessionEventListener
      *
      * @param {*} notSaveSessionButton
      */
     notSaveSessionEventListener(notSaveSessionButton, data) {
         notSaveSessionButton.addEventListener('click', () => {
+            // Handle offline exit: close app without saving
+            if (data.offlineExit) {
+                this.close();
+                this.closeOfflineApp();
+                return;
+            }
+
+            // Handle Yjs project navigation (from Recent Projects menu)
+            if (data.openYjsProject && data.projectUuid) {
+                const basePath = window.eXeLearning?.config?.basePath || '';
+                window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
+                this.close();
+                return;
+            }
+
             let odeParams = [];
             odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
 
@@ -157,6 +206,29 @@ export default class ModalSessionLogout extends Modal {
      * @param {*} odeParams
      */
     async saveSession(odeParams, data) {
+        // Handle Yjs project: save with Yjs then navigate
+        if (data.openYjsProject && data.projectUuid) {
+            try {
+                // Save current project using Yjs SaveManager
+                const saveManager =
+                    eXeLearning?.app?.project?._yjsBridge?.saveManager;
+                if (saveManager) {
+                    await saveManager.save();
+                }
+                // Navigate to the new project
+                const basePath = window.eXeLearning?.config?.basePath || '';
+                window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
+            } catch (error) {
+                console.error('[SessionLogout] Error saving Yjs project:', error);
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error saving'),
+                    body: _('An error occurred while saving the project'),
+                    contentId: 'error',
+                });
+            }
+            return;
+        }
+
         let params = {
             odeSessionId: odeParams['odeSessionId'],
             odeVersion: odeParams['odeVersion'],

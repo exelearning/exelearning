@@ -1,24 +1,24 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Nunito";
-    src: url("fonts/Nunito-ExtraLightItalic.woff2") format("woff2"),
-        url("fonts/Nunito-ExtraLightItalic.woff") format("woff");
+    src: url(fonts/Nunito-ExtraLightItalic.woff2) format("woff2"),
+        url(fonts/Nunito-ExtraLightItalic.woff) format("woff");
     font-style: italic;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Nunito";
-    src: url("fonts/Nunito-ExtraLight.woff2") format("woff2"),
-        url("fonts/Nunito-ExtraLight.woff") format("woff");
+    src: url(fonts/Nunito-ExtraLight.woff2) format("woff2"),
+        url(fonts/Nunito-ExtraLight.woff) format("woff");
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Nunito";
-    src: url("fonts/Nunito-BoldItalic.woff2") format("woff2"),
-        url("fonts/Nunito-BoldItalic.woff") format("woff");
+    src: url(fonts/Nunito-BoldItalic.woff2) format("woff2"),
+        url(fonts/Nunito-BoldItalic.woff) format("woff");
     font-weight: bold;
     font-style: italic;
     font-display: swap;
@@ -26,8 +26,8 @@
 
 @font-face {
     font-family: "Nunito";
-    src: url("fonts/Nunito-Bold.woff2") format("woff2"),
-        url("fonts/Nunito-Bold.woff") format("woff");
+    src: url(fonts/Nunito-Bold.woff2) format("woff2"),
+        url(fonts/Nunito-Bold.woff) format("woff");
     font-weight: bold;
     font-style: normal;
     font-display: swap;
@@ -63,9 +63,9 @@ a {
     width: 100%;
 }
 
-.exe-scorm .page header .page-title,
-.exe-ims .page header .page-title,
-.exe-epub .page header .page-title {
+.exe-scorm .page .page-header .page-title,
+.exe-ims .page .page-header .page-title,
+.exe-epub .page .page-header .page-title {
     width: 100%;
 }
 
@@ -138,6 +138,10 @@ body.exe-export.exe-scorm,
 body.exe-export.exe-ims,
 body.exe-export.exe-epub {
     padding: 0;
+}
+
+.exe-web-site .package-header {
+    width: 100%;
 }
 
 body.exe-scorm .package-title,
@@ -364,11 +368,6 @@ body.exe-export.exe-epub .exe-content {
     display: none;
 }
 
-#siteFooterExtra {
-    margin-bottom: 2em;
-    color: #555;
-    font-size: 0.95em;
-}
 #siteNav .other-section {
     display: none;
 }
@@ -752,7 +751,8 @@ body.siteNav-off button#siteNavToggler .sr-av {
 }
 
 /* iDevice buttons */
-.exe-content .iDevice_buttons input {
+.exe-content .iDevice_buttons input,
+.exe-content .iDevice_buttons button {
     background: #fff;
     color: #555;
     border: 1px solid #ccc;
@@ -761,7 +761,9 @@ body.siteNav-off button#siteNavToggler .sr-av {
     transition: 0.5s ease;
 }
 .exe-content .iDevice_buttons input:hover,
-.exe-content .iDevice_buttons input:focus {
+.exe-content .iDevice_buttons input:focus,
+.exe-content .iDevice_buttons button:hover,
+.exe-content .iDevice_buttons button:focus {
     box-shadow: 2px 2px 4px #dbdbdb;
     color: #000;
     border-color: #bbb;
@@ -1242,17 +1244,6 @@ body.siteNav-off button#searchBarTogger {
     }
     @page {
         margin: 1.5cm;
-    }
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
     }
     #packageLicense.cc {
         background: none;

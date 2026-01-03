@@ -1,3 +1,6 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 /**
  * eXeLearning
  *
@@ -210,6 +213,15 @@ export default class Idevice {
         let pathSplit = path.split('/files/');
         let pathParam = pathSplit.length == 2 ? pathSplit[1] : path;
         let pathServiceResourceContentCss = `${pathServiceResources}?resource=${pathParam}`;
+
+        // Debug logging for path construction
+        Logger.log('[iDevice] getResourceServicePath:', {
+            inputPath: path,
+            pathServiceResources,
+            pathSplit,
+            pathParam,
+            finalUrl: pathServiceResourceContentCss
+        });
 
         return pathServiceResourceContentCss;
     }

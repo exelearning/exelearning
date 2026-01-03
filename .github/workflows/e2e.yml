@@ -1,0 +1,59 @@
+name: E2E Tests
+
+on:
+  push:
+    branches:
+      - main
+      - tikismaker
+      - 'release/3.1'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+      - tikismaker
+      - 'release/*'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        browser: [chromium, firefox]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build CSS (prod)
+        run: make css
+
+      - name: Bundle JavaScript
+        run: make bundle
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: E2E Tests (${{ matrix.browser }})
+        run: |
+          set -e
+          npx playwright test --project=${{ matrix.browser }}
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/

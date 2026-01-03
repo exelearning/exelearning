@@ -1641,11 +1641,11 @@ var $quickquestionsmultiplechoice = {
         });
 
         if (!solution) {
-            $(`#seleccionaDefinition-${instance}`).text(definition);
+            $(`#seleccionaDefinition-${instance}`).html(definition);
         }
 
         const htmlContent = $(`#seleccionaWordDiv-${instance}`).html();
-        if (/(?:\\\(|\\\[|\\begin\{.*?})/.test(htmlContent)) {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(htmlContent)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 `seleccionaWordDiv-${instance}`
             );
@@ -1685,7 +1685,7 @@ var $quickquestionsmultiplechoice = {
             )
         );
         $(`#seleccionaPTime-${instance}`).text(time);
-        $(`#seleccionaQuestion-${instance}`).text(mQuestion.quextion);
+        $(`#seleccionaQuestion-${instance}`).html(mQuestion.quextion);
 
         $(
             `#seleccionaImagen-${instance}, #seleccionaEText-${instance}, #seleccionaVideo-${instance}, #seleccionaLinkAudio-${instance}, #seleccionaCursor-${instance}`
@@ -2467,13 +2467,13 @@ var $quickquestionsmultiplechoice = {
                         cursor: 'pointer',
                         color: $quickquestionsmultiplechoice.colors.black,
                     })
-                    .text(option || '')
+                    .html(option || '')
                     .toggle(!!option);
             }
         );
 
         const html = $(`#seleccionaQuestionDiv-${instance}`).html();
-        if (/(?:\\\(|\\\[|\\begin\{.*?})/.test(html)) {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 `seleccionaQuestionDiv-${instance}`
             );

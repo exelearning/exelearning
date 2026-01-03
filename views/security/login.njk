@@ -1,0 +1,86 @@
+{% extends "base.njk" %}
+
+{% block stylesheets %}
+    <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
+{% endblock %}
+
+{% block class %}login-page{% endblock %}
+{% block title %}eXeLearning{% endblock %}
+
+{% block body %}
+<section id="login-tpl" role="main">
+    <div class="login-left">
+        <div class="card-body text-black">
+            <img src="{{ '/images/logo.svg' | asset }}" alt="" class="logo mb-3">
+                <div id="exe-version" class="small">
+                    <span class="visually-hidden">{{ t.version or 'Version:' }}</span>
+                    {{ app_version or '3.0.0' }}
+                </div>
+                {% if not user %}
+                <h1 class="sign-in">{{ t.sign_in or 'Sign in' }}</h1>
+                <p class="hello-again">{{ t.hello_again or 'Hello again! Please enter your credentials.' }}</p>
+                {% endif %}
+                {% if error %}
+                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                    {{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ t.close or 'Close' }}"></button>
+                    </div>
+                {% endif %}
+                {% if user %}
+                    <h1 class="sign-in visually-hidden">{{ t.sign_in or 'Sign in' }}</h1>
+                    <div class="text-center text-md-start">
+                    <p class="mb-4">{{ t.logged_in_as or 'Logged in as' }} <strong>{{ user.username }}</strong></p>
+                    <a href="{{ basePath }}/workarea" class="btn button-secondary logout-button">{{ t.work_area or 'Work area' }}</a>
+                    <a href="{{ basePath }}/logout" class="btn button-primary logout-button mx-1">{{ t.logout or 'Logout' }}</a>
+                    </div>
+                {% else %}
+                    {% if auth_methods and 'password' in auth_methods %}
+                    <form id="login-form" name="login" action="{{ basePath }}/login_check" method="post" data-turbo="false">
+                        <h2 class="visually-hidden">{{ t.sign_in or 'Sign in' }}</h2>
+                        <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token }}">
+                        <input type="hidden" name="returnUrl" value="{{ returnUrl }}">
+                        <div class="login-user">
+                            <label for="inputEmail">{{ t.email or 'Email' }}</label>
+                            <input type="email" id="inputEmail" class="form-control mb-2" name="email" value="{{ last_username or '' }}" placeholder="{{ t.email or 'Email' }}" autocomplete="email" required>
+                        </div>
+                        <div class="login-password">
+                            <label for="inputPassword">{{ t.password or 'Password' }}</label>
+                            <input type="password" class="form-control" id="inputPassword" name="password" placeholder="{{ t.password or 'Password' }}" autocomplete="current-password" required>
+                        </div>
+                        <button class="login-submit btn button-primary btn-lg btn-block w-100" id="login-form-btn-submit" name="btn-submit" type="submit">{{ t.sign_in or 'Sign in' }}</button>
+                    </form>
+                    {% endif %}
+
+                    {% if auth_methods and ('cas' in auth_methods or 'openid' in auth_methods or 'guest' in auth_methods) %}
+                    {# Additional login method buttons #}
+                    <div class="other-methods">
+                        {% if 'password' in auth_methods %}
+                        <p class="small">{{ t.other_auth_methods or 'Other authentication methods:' }}</p>
+                        {% else %}
+                        <p class="small">{{ t.auth_methods or 'Authentication methods:' }}</p>
+                        {% endif %}
+                        <div class="other-methods-buttons d-flex g-5">
+                        {% if 'cas' in auth_methods %}
+                            <a href="{{ basePath }}/login/cas{% if returnUrl %}?returnUrl={{ returnUrl | urlencode }}{% endif %}" id="login-link-cas" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center me-2" data-turbo="false" data-no-prefetch>CAS</a>
+                        {% endif %}
+                        {% if 'openid' in auth_methods %}
+                            <a href="{{ basePath }}/login/openid{% if returnUrl %}?returnUrl={{ returnUrl | urlencode }}{% endif %}" id="login-link-openid" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center me-2" data-turbo="false" data-no-prefetch>OpenID</a>
+                        {% endif %}
+                        {% if 'guest' in auth_methods %}
+                            <form method="post" action="{{ basePath }}/login/guest" id="login-form-guest" class="d-inline" data-turbo="false" data-no-prefetch>
+                                <input type="hidden" name="guest_login_nonce" value="{{ guest_login_nonce or '' }}">
+                                <input type="hidden" name="returnUrl" value="{{ returnUrl }}">
+                                <button type="submit" id="login-link-guest" class="btn btn-secondary d-flex justify-content-center align-items-center me-2">{{ t.guest or 'Guest' }}</button>
+                            </form>
+                        {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    <div class="login-right"></div>
+</section>
+<script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
+{% endblock %}

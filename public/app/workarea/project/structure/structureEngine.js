@@ -1,5 +1,8 @@
 import StructureNode from './structureNode.js';
 
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class structureEngine {
     constructor(project) {
         this.project = project;
@@ -11,6 +14,7 @@ export default class structureEngine {
             '#main > #workarea > #node-content'
         );
         this.movingNode = false;
+        this._structureLoaded = false; // Track if structure was already loaded
     }
 
     rootNodeData = {
@@ -23,7 +27,15 @@ export default class structureEngine {
     };
 
     /**
-     * Load project structure from api and process data
+     * Check if Yjs collaborative mode is enabled
+     * @returns {boolean}
+     */
+    isYjsEnabled() {
+        return this.project?._yjsEnabled === true;
+    }
+
+    /**
+     * Load project structure from api (or Yjs if enabled) and process data
      *
      */
     async loadData() {
@@ -32,10 +44,68 @@ export default class structureEngine {
     }
 
     /**
-     * Get project structure from api
-     *
+     * Get project structure from api or Yjs
+     * When Yjs is enabled but empty (or force import flag is set), fetches from API and imports into Yjs
      */
     async getOdeStructure() {
+        // Check if Yjs mode is enabled
+        if (this.isYjsEnabled() && this.project._yjsBridge) {
+            const bridge = this.project._yjsBridge;
+            const navigation = bridge.documentManager?.getNavigation();
+            const forceImport = this.project._forceStructureImport === true;
+
+            // If force import flag is set, always fetch from API and import
+            if (forceImport) {
+                Logger.log('[StructureEngine] Force import flag set - clearing Yjs and fetching from API...');
+
+                // Clear the flag immediately to prevent loops
+                this.project._forceStructureImport = false;
+
+                // Clear existing Yjs data
+                if (bridge.clearNavigation) {
+                    bridge.clearNavigation();
+                }
+
+                // Fetch from API
+                const apiData = await this.fetchStructureFromApi();
+
+                if (apiData && apiData.length > 0) {
+                    bridge.importStructure(apiData);
+                    Logger.log('[StructureEngine] Force imported', apiData.length, 'pages into Yjs');
+                }
+
+                return this.getStructureFromYjs();
+            }
+
+            // Check if Yjs has data
+            if (navigation && navigation.length > 0) {
+                Logger.log('[StructureEngine] Loading structure from Yjs (has data)');
+                return this.getStructureFromYjs();
+            }
+
+            // Yjs is empty - fetch from API and import
+            Logger.log('[StructureEngine] Yjs empty, fetching from API and importing...');
+            const apiData = await this.fetchStructureFromApi();
+
+            if (apiData && apiData.length > 0) {
+                // Import API data into Yjs
+                bridge.importStructure(apiData);
+                Logger.log('[StructureEngine] Imported', apiData.length, 'pages into Yjs');
+            }
+
+            // Now read back from Yjs (source of truth)
+            return this.getStructureFromYjs();
+        }
+
+        // No Yjs - get directly from API
+        return await this.fetchStructureFromApi();
+    }
+
+    /**
+     * Fetch structure data from backend API
+     * @returns {Array} Structure data array
+     */
+    async fetchStructureFromApi() {
         let odeVersion = this.project.odeVersion;
         let odeSession = this.project.odeSession;
         let response = await this.project.app.api.getOdeStructure(
@@ -47,10 +117,100 @@ export default class structureEngine {
     }
 
     /**
+     * Get structure data from Yjs document
+     * Returns data in API-compatible format including blocks and components
+     * @returns {Array}
+     */
+    getStructureFromYjs() {
+        const bridge = this.project._yjsBridge;
+        if (!bridge || !bridge.structureBinding) {
+            console.warn('[StructureEngine] Yjs bridge not available');
+            return [];
+        }
+
+        const binding = bridge.structureBinding;
+        const pages = binding.getPages();
+        const structureData = pages.map((page) => {
+            // Get blocks for this page
+            const blocks = binding.getBlocks(page.id);
+            const odePagStructureSyncs = blocks.map((block) => {
+                // Get components for this block
+                const components = binding.getComponents(page.id, block.id);
+                const odeComponentsSyncs = components.map((comp) => ({
+                    odeComponentSyncId: comp.id,
+                    odeIdeviceTypeName: comp.ideviceType || comp.type,
+                    htmlView: comp.htmlContent || '',
+                    jsonProperties: comp.jsonProperties || '{}',
+                    order: comp.order,
+                    // Include all additional properties
+                    ...comp.properties,
+                }));
+
+                return {
+                    blockId: block.id,
+                    blockName: block.blockName || block.name,
+                    order: block.order,
+                    odeComponentsSyncs: odeComponentsSyncs,
+                };
+            });
+
+            // Ensure order is a valid number
+            let pageOrder = page.order;
+            if (typeof pageOrder !== 'number' || isNaN(pageOrder) || !isFinite(pageOrder)) {
+                pageOrder = 0;
+            }
+
+            // Convert Yjs properties to expected format: { key: { value: X } }
+            let odeNavStructureSyncProperties = null;
+            if (page.properties && typeof page.properties === 'object') {
+                odeNavStructureSyncProperties = {};
+                for (const [key, value] of Object.entries(page.properties)) {
+                    odeNavStructureSyncProperties[key] = { value: value };
+                }
+            }
+
+            return {
+                id: page.id,
+                pageId: page.pageId || page.id,
+                pageName: page.pageName,
+                parent: page.parentId || 'root', // Frontend expects 'root' for null parent
+                order: pageOrder,
+                odePagStructureSyncs: odePagStructureSyncs,
+                odeNavStructureSyncProperties: odeNavStructureSyncProperties,
+            };
+        });
+
+        Logger.log('[StructureEngine] Loaded', structureData.length, 'pages from Yjs');
+        this._structureLoaded = true;
+        return structureData;
+    }
+
+    /**
+     * Set structure data from Yjs (called by YjsProjectBridge on sync)
+     * @param {Array} data
+     */
+    setDataFromYjs(data) {
+        // Preserve current selection before re-rendering
+        // Guard: Ensure nodeSelected is a DOM element before calling getAttribute
+        const nodeSelected = this.menuStructureBehaviour?.nodeSelected;
+        const selectedNavId = (nodeSelected && typeof nodeSelected.getAttribute === 'function')
+            ? nodeSelected.getAttribute('nav-id')
+            : null;
+
+        this.dataJson = data;
+        this.processStructureData(this.dataJson);
+        // Re-render the structure menu if available, preserving selection
+        if (this.menuStructureCompose) {
+            this.reloadStructureMenu(selectedNavId);
+        }
+    }
+
+    /**
      * Update element params of page elements
      *
      */
     async updateDataFromApi() {
+        // Get fresh data (from Yjs or API depending on mode)
         this.dataJson = await this.getOdeStructure();
         this.dataJson.forEach((node) => {
             let currentNode = this.getNode(node.id);
@@ -66,11 +226,110 @@ export default class structureEngine {
     }
 
     /**
+     * Subscribe to Yjs structure changes
+     * Call this after Yjs is enabled to keep structure in sync
+     */
+    subscribeToYjsChanges() {
+        if (!this.isYjsEnabled() || !this.project._yjsBridge) {
+            return;
+        }
+
+        // Listen for structure changes from Yjs
+        this.project._yjsBridge.onStructureChange(async (events, transaction) => {
+            // Skip LOCAL changes - they are handled by the operation that triggered them
+            // (e.g., createNodeAndReload calls resetStructureData which handles selection)
+            // In Yjs, transaction.local is true for local changes, false for remote
+            const isRemote = transaction?.local === false;
+            if (!isRemote) {
+                Logger.log('[StructureEngine] Skipping local change (local:', transaction?.local, ')');
+                return;
+            }
+
+            Logger.log('[StructureEngine] Yjs structure changed (remote), reloading...');
+
+            // PRESERVE SELECTION: Save current selection for remote changes
+            const selectedNavId = this.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+            const selectedNode = selectedNavId ? this.getNode(selectedNavId) : null;
+            const parentNavId = selectedNode?.parent || null;
+
+            // Refresh from Yjs data
+            const structureData = this.getStructureFromYjs();
+            this.processStructureData(structureData);
+
+            // Re-render the menu
+            if (this.menuStructureCompose) {
+                this.menuStructureCompose.compose();
+                this.menuStructureBehaviour.behaviour(false);
+
+                // RESTORE SELECTION after re-render (await for visual update)
+                let pageToReload = null;
+                if (selectedNavId && this.getNode(selectedNavId)) {
+                    // Node still exists → re-select it
+                    await this.selectNode(selectedNavId);
+                    pageToReload = selectedNavId;
+                } else if (parentNavId && this.getNode(parentNavId)) {
+                    // Node was deleted → go to parent
+                    await this.selectNode(parentNavId);
+                    pageToReload = parentNavId;
+                } else if (selectedNavId) {
+                    // Both node and parent gone → select first available
+                    await this.selectFirst();
+                }
+                // If no node was selected before, don't auto-select
+
+                // FORCE RELOAD page content for remote changes (boxes/iDevices moved in/out)
+                if (pageToReload) {
+                    const pageElement = this.menuStructureBehaviour?.menuNav?.querySelector(
+                        `.nav-element[nav-id="${pageToReload}"]`
+                    );
+                    if (pageElement) {
+                        Logger.log('[StructureEngine] Forcing page content reload for remote changes');
+                        await eXeLearning.app.project.idevices.loadApiIdevicesInPage(false, pageElement);
+                    }
+                }
+            }
+        });
+
+        // Load initial structure from Yjs immediately (only if not already loaded)
+        // This prevents double-loading when getOdeStructure() was already called
+        if (!this.data || this.data.length === 0) {
+            const structureData = this.getStructureFromYjs();
+            if (structureData && structureData.length > 0) {
+                Logger.log(`[StructureEngine] Loading initial ${structureData.length} pages from Yjs`);
+                this.processStructureData(structureData);
+                // Re-render the menu with initial data
+                if (this.menuStructureCompose) {
+                    this.menuStructureCompose.compose();
+                    this.menuStructureBehaviour.behaviour(false);
+                    this.menuStructureBehaviour.selectFirst();
+                }
+            }
+        } else {
+            Logger.log(`[StructureEngine] Structure already loaded (${this.data.length} pages), skipping reload`);
+        }
+
+        Logger.log('[StructureEngine] Subscribed to Yjs changes');
+    }
+
+    /**
      * Reload menu nodes based in api nodes
      *
      * @param {String} idSelect
      */
     async resetStructureData(idSelect) {
+        Logger.log('[StructureEngine] resetStructureData called with idSelect:', idSelect);
+        // In Yjs mode, fully reload structure from Yjs document
+        if (this.isYjsEnabled()) {
+            const structureData = this.getStructureFromYjs();
+            this.processStructureData(structureData);
+            this.openNode(idSelect);
+            Logger.log('[StructureEngine] About to call reloadStructureMenu with:', idSelect);
+            await this.reloadStructureMenu(idSelect);
+            Logger.log('[StructureEngine] reloadStructureMenu completed');
+            return;
+        }
+
+        // Legacy API mode
         let data = await this.updateDataFromApi();
         this.data = this.orderStructureData(data);
         this.openNode(idSelect);
@@ -83,6 +342,16 @@ export default class structureEngine {
      * @param {String} idSelect
      */
     async resetDataAndStructureData(idSelect) {
+        // In Yjs mode, fully reload structure from Yjs document
+        if (this.isYjsEnabled()) {
+            const structureData = this.getStructureFromYjs();
+            this.processStructureData(structureData);
+            this.openNode(idSelect);
+            await this.reloadStructureMenu(idSelect);
+            return;
+        }
+
+        // Legacy API mode
         this.loadData();
         let data = await this.updateDataFromApi();
         this.data = this.orderStructureData(data);
@@ -96,10 +365,13 @@ export default class structureEngine {
      * @param {String} idToSelect
      */
     async reloadStructureMenu(idToSelect) {
+        Logger.log('[StructureEngine] reloadStructureMenu called with:', idToSelect);
         this.menuStructureCompose.compose();
         this.menuStructureBehaviour.behaviour(false);
         if (idToSelect) {
+            Logger.log('[StructureEngine] Calling selectNode with:', idToSelect);
             await this.selectNode(idToSelect);
+            Logger.log('[StructureEngine] selectNode completed');
         } else {
             await this.selectFirst();
         }
@@ -150,7 +422,8 @@ export default class structureEngine {
 
     /**
      * Set title to node root
-     *
+     * Preserves current selection to avoid navigating users when title changes
+     * Updated: Only updates DOM text directly to avoid form recreation cascade
      */
     setTitleToNodeRoot() {
         let propertiesTitle =
@@ -159,7 +432,16 @@ export default class structureEngine {
         rootNode.pageName = propertiesTitle
             ? propertiesTitle
             : _('Untitled document');
-        this.reloadStructureMenu();
+
+        // Update the root node title directly in the DOM without rebuilding the menu
+        // This avoids the cascade that causes form recreation
+        const rootNodeElement = this.menuNav?.querySelector('.nav-element[nav-id="root"] .node-text');
+        if (rootNodeElement) {
+            rootNodeElement.textContent = rootNode.pageName;
+        }
+
+        // NOTE: reloadStructureMenu() removed - it was causing form recreation cascade
+        // Just updating the text is sufficient for title changes
     }
 
     /**
@@ -200,16 +482,43 @@ export default class structureEngine {
      * @returns {Array}
      */
     groupDataByParent(data) {
-        let processedData = { null: { children: [] } };
-        let parentsToCheck = [null];
+        // Validate input data
+        if (!Array.isArray(data)) {
+            console.warn('[StructureEngine] groupDataByParent: Invalid data (not an array)');
+            return { null: { children: [] }, root: { children: [] } };
+        }
+
+        let processedData = { null: { children: [] }, root: { children: [] } };
+        let parentsToCheck = [null, 'root'];
+        let processedIds = new Set(); // Prevent infinite loops
+
         while (parentsToCheck.length > 0) {
             let searchedParent = parentsToCheck.pop();
             data.forEach((node) => {
-                if (node.parent == searchedParent) {
+                // Skip invalid nodes
+                if (!node || !node.id) {
+                    return;
+                }
+                // Prevent processing the same node twice (circular references)
+                if (processedIds.has(node.id)) {
+                    return;
+                }
+                // Check if node belongs to this parent
+                const nodeParent = node.parent === 'root' ? 'root' : (node.parent || null);
+                if (nodeParent == searchedParent) {
+                    processedIds.add(node.id);
+                    // Preserve any existing children that were added before this node was processed
+                    const existingChildren = processedData[node.id]?.children || [];
                     processedData[node.id] = node;
-                    processedData[node.id].children = [];
+                    processedData[node.id].children = existingChildren;
+
+                    // Ensure parent exists in processedData
+                    if (!processedData[searchedParent]) {
+                        processedData[searchedParent] = { children: [] };
+                    }
+
                     processedData[searchedParent].children.push(node);
-                    // Sort children
+                    // Sort children with safe comparison
                     processedData[searchedParent].children.sort(
                         this.compareNodesSort
                     );
@@ -279,217 +588,77 @@ export default class structureEngine {
      * @param {*} b
      */
     compareNodesSort(a, b) {
-        if (a.order < b.order) return -1;
-        if (a.order > b.order) return 1;
+        // Handle undefined/null/invalid order values safely
+        const orderA = (typeof a?.order === 'number' && isFinite(a.order)) ? a.order : 0;
+        const orderB = (typeof b?.order === 'number' && isFinite(b.order)) ? b.order : 0;
+        if (orderA < orderB) return -1;
+        if (orderA > orderB) return 1;
         return 0;
     }
 
+    // ===== SIMPLIFIED NODE MOVEMENT (via Yjs) =====
+
     /**
-     *
+     * Get YjsStructureBinding instance
+     * @returns {Object|null}
+     */
+    getYjsBinding() {
+        return this.project._yjsBridge?.structureBinding || null;
+    }
+
+    /**
+     * Move node UP (↑) - swap with previous sibling
      * @param {String} id
      */
-    async moveNodePrev(id) {
-        let moved = await this.moveNode(id, 'prev');
-        if (moved) {
+    moveNodePrev(id) {
+        const binding = this.getYjsBinding();
+        if (binding?.movePagePrev(id)) {
             this.resetStructureData(id);
         }
     }
 
     /**
-     *
+     * Move node DOWN (↓) - swap with next sibling
      * @param {String} id
      */
-    async moveNodeNext(id) {
-        let moved = await this.moveNode(id, 'next');
-        if (moved) {
+    moveNodeNext(id) {
+        const binding = this.getYjsBinding();
+        if (binding?.movePageNext(id)) {
             this.resetStructureData(id);
         }
     }
 
     /**
-     *
+     * Move node LEFT (←) - move to grandparent
      * @param {String} id
      */
-    async moveNodeUp(id) {
-        let moved = await this.moveNode(id, 'up');
-        if (moved) {
+    moveNodeUp(id) {
+        const binding = this.getYjsBinding();
+        if (binding?.movePageLeft(id)) {
             this.resetStructureData(id);
         }
     }
 
     /**
-     *
+     * Move node RIGHT (→) - become child of previous sibling
      * @param {String} id
      */
-    async moveNodeDown(id) {
-        let moved = await this.moveNode(id, 'down');
-        if (moved) {
+    moveNodeDown(id) {
+        const binding = this.getYjsBinding();
+        if (binding?.movePageRight(id)) {
             this.resetStructureData(id);
         }
     }
 
     /**
-     *
-     * @param {String} id
-     * @param {*} mov
+     * Move node to another node (drag & drop)
+     * @param {String} idMov - Node to move
+     * @param {String} idBase - Target node
      */
-    async moveNode(id, mov, isUndoMove = false) {
-        let moved = false;
-        let node = this.getNode(id);
-        let siblings = this.dataGroupByParent[node.parent].children;
-        if (this.movingNode) return false;
-        // Updates the order according to the movement indicated in the argument
-        switch (mov) {
-            case 'prev':
-                if (node.order > 1) {
-                    await node.apiUpdateOrder('-');
-                    moved = true;
-                }
-                break;
-            case 'next':
-                if (node.order < siblings.length) {
-                    await node.apiUpdateOrder('+');
-                    moved = true;
-                }
-                break;
-            case 'up':
-                if (node.parent) {
-                    let parentNode = this.getNode(node.parent);
-                    await node.apiUpdateParent(
-                        parentNode.parent,
-                        parentNode.order + 1
-                    );
-                    moved = true;
-                }
-                break;
-            case 'down':
-                let prevSibling = siblings[node.order - 2];
-                if (prevSibling) {
-                    await node.apiUpdateParent(
-                        siblings[node.order - 2].id,
-                        siblings.length + 1
-                    );
-                    moved = true;
-                }
-                break;
-        }
-        eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-            false,
-            node.pageId,
-            null,
-            null,
-            'RELOAD_NAV_MAP'
-        );
-        // Check that isn't undo
-        if (!isUndoMove) {
-            // Send operation log to bbdd
-            let additionalData = {
-                navId: node.id,
-                previousMov: mov,
-                isUndoMove: true,
-                isMovePageButton: true,
-            };
-            eXeLearning.app.project.sendOdeOperationLog(
-                node.pageId,
-                node.pageId,
-                'MOVE_PAGE',
-                additionalData
-            );
-        }
-        return moved;
-    }
-
-    /**
-     *
-     * @param {String} idMov
-     * @param {String} idBase
-     */
-    async moveNodeToNode(idMov, idBase, isUndoMove = false) {
-        let nodeMov = this.getNode(idMov);
-        let nodeBase = this.getNode(idBase);
-        // Get Nodes without changes
-        let previousNodeMovParent = nodeMov.parent;
-        let previousNodeBaseParent = nodeBase.parent;
-        // Set nodebaseId in case of is parent
-        if (
-            previousNodeBaseParent == 'root' ||
-            (nodeBase.children.length > 0 && nodeMov.parent == nodeBase.id)
-        ) {
-            previousNodeBaseParent = nodeBase.id;
-        }
-        let previousNodeMovOrder = nodeMov.order;
-        // Get nodemov before element id to return when undo, in case that not exist the id of the parent
-        let nodeMovElementOrder = document
-            .querySelector(`[nav-id="${nodeMov.id}"]`)
-            .getAttribute('order');
-        let nodeMovElementParent = document.querySelector(
-            `[nav-id="${nodeMov.id}"]`
-        ).parentElement;
-        let nodeMovBeforeElementId = 'root';
-        if (nodeMovElementOrder != 'root' && nodeMov.parent !== 'root') {
-            if (nodeMovElementOrder == '1') {
-                nodeMovBeforeElementId =
-                    nodeMovElementParent.parentElement.getAttribute('nav-id');
-            } else {
-                nodeMovBeforeElementId =
-                    nodeMovElementParent.childNodes[
-                        parseInt(nodeMovElementOrder) - 2
-                    ].getAttribute('nav-id');
-            }
-        }
-        // You cannot put a node inside one of its descendants
-        if (
-            !this.movingNode &&
-            !this.getDecendents(nodeMov.id).includes(nodeBase)
-        ) {
-            // Receiver node is parent of moving node
-            if (nodeMov.parent == nodeBase.id) {
-                await nodeMov.apiUpdateOrder(1);
-            }
-            // Receiver node is parent
-            else if (this.getChildren(nodeBase.id).length > 0) {
-                await nodeMov.apiUpdateParent(nodeBase.id, 1);
-            }
-            // Receiver node isn't parent and nodes are siblings
-            else if (nodeMov.parent == nodeBase.parent) {
-                await nodeMov.apiUpdateOrder(nodeBase.order + 1);
-            }
-            // Receiver node isn't parent
-            else {
-                await nodeMov.apiUpdateParent(
-                    nodeBase.parent,
-                    nodeBase.order + 1
-                );
-            }
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                nodeBase.pageId,
-                null,
-                null,
-                'RELOAD_NAV_MAP'
-            );
-            if (!isUndoMove) {
-                // Send operation log action to bbdd
-                let additionalData = {
-                    previousNodeMovOrder: previousNodeMovOrder,
-                    previousNodeMovParent: previousNodeMovParent,
-                    previousNodeBaseParent: previousNodeBaseParent,
-                    navId: nodeMov.id,
-                    baseNavId: nodeMovBeforeElementId,
-                    isUndoMove: true,
-                    isMovePageButton: false,
-                };
-                eXeLearning.app.project.sendOdeOperationLog(
-                    nodeBase.pageId,
-                    nodeBase.pageId,
-                    'MOVE_PAGE',
-                    additionalData
-                );
-            }
-            // Reload data
-            if (!isUndoMove) {
-                this.resetStructureData(nodeMov.id);
-            }
+    moveNodeToNode(idMov, idBase) {
+        const binding = this.getYjsBinding();
+        if (binding?.movePageToTarget(idMov, idBase)) {
+            this.resetStructureData(idMov);
         }
     }
 
@@ -513,10 +682,17 @@ export default class structureEngine {
      * @param {*} title
      */
     createNodeAndReload(parentId, title) {
+        // Local Yjs changes are skipped in onStructureChange (transaction.local = true)
+        // resetStructureData handles re-render and selection of new node
+        Logger.log('[StructureEngine] createNodeAndReload called, parentId:', parentId, 'title:', title);
         this.createNode(parentId, title).then((response) => {
+            Logger.log('[StructureEngine] createNode response:', response);
             if (response && response.responseMessage == 'OK') {
+                Logger.log('[StructureEngine] Calling resetStructureData with ID:', response.odeNavStructureSyncId);
                 this.resetStructureData(response.odeNavStructureSyncId);
             }
+        }).catch((error) => {
+            console.error('[StructureEngine] Error creating node:', error);
         });
     }
 
@@ -853,7 +1029,18 @@ export default class structureEngine {
      * @param {String} id
      */
     async selectNode(id) {
-        await this.menuStructureBehaviour.selectNode(this.getNodeElement(id));
+        Logger.log('[StructureEngine] selectNode called with id:', id);
+        const element = this.getNodeElement(id);
+        Logger.log('[StructureEngine] getNodeElement returned:', element ? 'FOUND' : 'NOT FOUND', element);
+        if (element) {
+            Logger.log('[StructureEngine] Calling menuStructureBehaviour.selectNode...');
+            await this.menuStructureBehaviour.selectNode(element);
+            Logger.log('[StructureEngine] menuStructureBehaviour.selectNode completed');
+        } else {
+            // Fallback to selectFirst if the specific node is not found in DOM
+            console.warn(`[StructureEngine] Node ${id} not found in DOM, selecting first`);
+            await this.selectFirst();
+        }
     }
 
     /**

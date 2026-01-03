@@ -1339,7 +1339,7 @@ var $exeDevice = {
         $('#eXeIdeviceTextAfter').val(unescape(tAfter));
         $('#puzzleEFeedBackEditor').val(unescape(textFeedBack));
 
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
         $exeDevice.showPuzzle(0, false);
     },
 

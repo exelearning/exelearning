@@ -14,6 +14,7 @@ export default class Theme {
      * config.xml params
      */
     configParams = [
+        'name',
         'author',
         'authorUrl',
         'description',
@@ -28,6 +29,7 @@ export default class Theme {
         'linkColor',
         'cssFiles',
         'downloadable',
+        'icons',
     ];
 
     /**
@@ -39,6 +41,7 @@ export default class Theme {
      * Default values of config.xml params
      */
     default = {
+        name: '',
         author: '',
         authorUrl: '',
         description: '',
@@ -51,7 +54,8 @@ export default class Theme {
         textColor: '',
         linkColor: '',
         cssFiles: [],
-        type: eXeLearning.symfony.themeBaseType,
+        type: eXeLearning.config.themeBaseType,
+        icons: {},
     };
 
     /**
@@ -60,14 +64,16 @@ export default class Theme {
      * @param {Array} data
      */
     setConfigValues(data) {
-        for (let [key, value] of Object.entries(data)) {
-            let defaultValue = this.default[key] ? this.default[key] : null;
-            let v = value ? value : defaultValue;
-            if (this.isTranslatable(key)) {
+        this.configParams.forEach((key) => {
+            let value = data[key];
+            let defaultValue =
+                this.default[key] !== undefined ? this.default[key] : null;
+            let v = value !== undefined && value !== null ? value : defaultValue;
+            if (this.isTranslatable(key) && v) {
                 v = _(v, this.id);
             }
             this[key] = v;
-        }
+        });
     }
 
     /**
@@ -175,6 +181,12 @@ export default class Theme {
      * @returns {String}
      */
     getResourceServicePath(path) {
+        // Site themes are served directly from /site-files/themes/
+        // No need to go through the idevices download service
+        if (path.includes('/site-files/') || path.includes('/admin-files/')) {
+            return path;
+        }
+
         let pathServiceResources =
             this.manager.app.api.endpoints.api_idevices_download_file_resources
                 .path;

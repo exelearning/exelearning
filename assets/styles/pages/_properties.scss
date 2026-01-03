@@ -230,7 +230,8 @@
                 &[property="pp_exportElp"],
                 &[property="pp_addPagination"],
                 &[property="pp_addSearchBox"],
-                &[property="pp_addAccessibilityToolbar"] {
+                &[property="pp_addAccessibilityToolbar"],
+                &[property="pp_addMathJax"] {
                     display: flex;
                     flex-direction: row;
                     justify-content: flex-start;

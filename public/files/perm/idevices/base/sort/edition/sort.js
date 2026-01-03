@@ -2068,7 +2068,7 @@ var $exeDevice = {
         tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
         tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
         tinyMCE.get('ordenaEFeedBackEditor').setContent(unescape(textFeedBack));
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
         $exeDevice.showPhrase(0, false);
     },
 

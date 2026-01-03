@@ -311,6 +311,11 @@ export default class Modal {
         if (!confirm && this.closeExec) {
             this.closeExec.call();
         }
+        // Move focus out of modal before hiding to avoid aria-hidden warning
+        // "Blocked aria-hidden on an element because its descendant retained focus"
+        if (document.activeElement && this.modalElement.contains(document.activeElement)) {
+            document.activeElement.blur();
+        }
         this.modal.hide();
         if (this.clearAfterClose) {
             setTimeout(() => {

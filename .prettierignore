@@ -1,7 +1,0 @@
-# .prettierignore
-/public/app/common/**
-/public/libs/**
-node_modules/
-dist/
-vendor/
-tmp/

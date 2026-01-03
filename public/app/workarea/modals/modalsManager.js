@@ -13,11 +13,14 @@ import ModalAssistant from './modals/pages/modalAssistant.js';
 import ModalReleaseNotes from './modals/pages/modalReleaseNotes.js';
 import ModalLegalNotes from './modals/pages/modalLegalNotes.js';
 import ModalAbout from './modals/pages/modalAbout.js';
+import ModalEasterEgg from './modals/pages/modalEasterEgg.js';
 import ModalProperties from './modals/pages/modalProperties.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
 import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
 import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
+import ModalShare from './modals/pages/modalShare.js';
+import ModalPrintPreview from './modals/pages/modalPrintPreview.js';
 
 export default class ModalsManagement {
     constructor(app) {
@@ -37,11 +40,14 @@ export default class ModalsManagement {
         this.releasenotes = null;
         this.legalnotes = null;
         this.about = null;
+        this.easteregg = null;
         this.properties = null;
         this.openuserodefiles = null;
         this.templateselection = null;
         this.sessionlogout = null;
         this.uploadprogress = null;
+        this.share = null;
+        this.printpreview = null;
     }
 
     /**
@@ -63,11 +69,14 @@ export default class ModalsManagement {
         this.releasenotes = new ModalReleaseNotes(this);
         this.legalnotes = new ModalLegalNotes(this);
         this.about = new ModalAbout(this);
+        this.easteregg = new ModalEasterEgg(this);
         this.properties = new ModalProperties(this);
         this.openuserodefiles = new ModalOpenUserOdeFiles(this);
         this.templateselection = new ModalTemplateSelection(this);
         this.sessionlogout = new ModalSessionLogout(this);
         this.uploadprogress = new ModalUploadProgress(document.body);
+        this.share = new ModalShare(this);
+        this.printpreview = new ModalPrintPreview(this);
     }
 
     /**
@@ -89,10 +98,13 @@ export default class ModalsManagement {
         this.releasenotes.behaviour();
         this.legalnotes.behaviour();
         this.about.behaviour();
+        this.easteregg.behaviour();
         this.properties.behaviour();
         this.openuserodefiles.behaviour();
         this.templateselection.behaviour();
         this.sessionlogout.behaviour();
+        this.share.behaviour();
+        this.printpreview.behaviour();
     }
 
     /**
@@ -117,10 +129,13 @@ export default class ModalsManagement {
             this.releasenotes,
             this.legalnotes,
             this.about,
+            this.easteregg,
             this.properties,
             this.openuserodefiles,
             this.templateselection,
             this.sessionlogout,
+            this.share,
+            this.printpreview,
         ];
     }
 

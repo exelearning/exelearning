@@ -26,7 +26,6 @@ export default class ModalLopd extends Modal {
         // We prevent users from being able to close the modal
         this.modal._config.keyboard = false;
         this.modal._config.backdrop = 'static';
-        this.modal._ignoreBackdropClick;
         // Display modal
         this.modal.show();
     }

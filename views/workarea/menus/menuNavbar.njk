@@ -1,0 +1,122 @@
+<nav class="navbar navbar-expand-md navbar-light">
+    {# Toggle de paneles - siempre visible #}
+    <button id="exe-panels-toggler" class="btn me-2 nav-link" title="{{ t.toggle_panels or 'Toggle panels' }}" data-bs-placement="bottom" aria-label="{{ t.toggle_panels or 'Toggle panels' }}">
+        <div class="medium-icon menu-icon"></div>
+    </button>
+
+    {# Menú desktop - oculto en móviles, visible en md+ #}
+    <div class="navbar-collapse d-none d-md-flex" id="navbarMainMenu">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item btn button-tertiary button-dropdown dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="dropdownFile" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    {{ t.file or 'File' }}
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dropdownFile">
+                    <li><a class="dropdown-item" id="navbar-button-new" href="#" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N"><span class="small-icon new-icon-green"></span> {{ t.new or 'New' }}</a></li>
+                    <li class="d-none"><a class="dropdown-item" id="navbar-button-new-from-template" href="#"><span class="small-icon new-icon"></span> {{ t.new_from_template or 'New from Template...' }}</a></li>
+                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
+                    <li class="dropdown dropend exe-online">
+                        <a class="dropdown-item dropdown-toggle" href="#" id="navbar-button-dropdown-recent-projects" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="small-icon recent-icon-green"></span> {{ t.recent_projects or 'Recent projects' }}
+                        </a>
+                        <ul class="dropdown-menu" id="navbar-dropdown-menu-recent-projects" aria-labelledby="navbar-button-dropdown-recent-projects">
+                            <li class="text-center">...</li>
+                        </ul>
+                    </li>
+                    {% if not config.isOfflineInstallation %}
+                    <li><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
+                    {% endif %}
+                    <li class="dropdown-divider exe-online"></li>
+                    <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
+                    <li class="d-none"><a id="navbar-button-save-as" class="dropdown-item exe-online" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon save-icon"></span>{{ t.save_as or 'Save as' }}</a></li>
+                    <li class="dropdown dropend exe-online">
+                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAs" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> {{ t.download_as or 'Download as...' }}</a>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownExportAs">
+                            <li><a class="dropdown-item exe-advanced" id="navbar-button-download-project" href="#">{{ t.exelearning_content or 'eXeLearning content (.elpx)' }}</a></li>
+                            <li><a id="navbar-button-export-html5" class="dropdown-item" href="#">{{ t.website or 'Website' }}</a></li>
+                            <li><a id="navbar-button-export-html5-sp" class="dropdown-item" href="#">{{ t.single_page or 'Single page' }}</a></li>
+                            <li><a id="navbar-button-export-scorm12" class="dropdown-item" href="#">SCORM 1.2</a></li>
+                            <li><a id="navbar-button-export-scorm2004" class="dropdown-item" href="#">SCORM 2004</a></li>
+                            <li><a id="navbar-button-export-ims" class="dropdown-item exe-advanced" href="#">IMS CP</a></li>
+                            <li><a id="navbar-button-export-epub3" class="dropdown-item" href="#">ePub3</a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.settings or 'Settings' }}</a></li>
+                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-share" href="#" data-shortcut="Mod+Alt+S" aria-keyshortcuts="Control+Alt+S Meta+Alt+S"><span class="small-icon share-icon"></span> {{ t.share or 'Share' }}</a></li>
+                    {% if config.isOfflineInstallation %}
+                        <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
+                        <li><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
+                        <li class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
+                        <li><a class="dropdown-item" id="navbar-button-save-as-offline" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon save-icon"></span> {{ t.save_as or 'Save as' }}</a></li>
+                        <li class="dropdown dropend">
+                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> {{ t.export_as or 'Export as...' }}</a>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">
+                                <li><a id="navbar-button-exportas-html5" class="dropdown-item" href="#">{{ t.website or 'Website' }}</a></li>
+                                <li><a id="navbar-button-exportas-html5-folder" class="dropdown-item" href="#">{{ t.export_to_folder or 'Export to Folder (Unzipped Website)' }}</a></li>
+                                <li><a id="navbar-button-exportas-html5-sp" class="dropdown-item" href="#">{{ t.single_page or 'Single page' }}</a></li>
+                                <li><a id="navbar-button-exportas-scorm12" class="dropdown-item" href="#">SCORM 1.2</a></li>
+                                <li><a id="navbar-button-exportas-scorm2004" class="dropdown-item" href="#">SCORM 2004</a></li>
+                                <li><a id="navbar-button-exportas-ims" class="dropdown-item exe-advanced" href="#">IMS CP</a></li>
+                                <li><a id="navbar-button-exportas-epub3" class="dropdown-item" href="#">ePub3</a></li>
+                                <li class="d-none"><a id="navbar-button-exportas-xml-properties" class="dropdown-item" href="#">{{ t.metadata or 'Metadata' }} (XML)</a></li>
+                            </ul>
+                        </li>
+                        <li class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.settings or 'Settings' }}</a></li>
+                    {% endif %}
+                    <li class="dropdown-divider"></li>
+                    <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ t.print or 'Print' }}</a></li>
+                    {% if config.platformIntegration %}
+                        <li class="dropdown dropend exe-advanced">
+                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ t.upload_to or 'Upload to' }}</a>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
+                                <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#">{{ config.platformName }}</a></li>
+                            </ul>
+                        </li>
+                    {% endif %}
+                    <li class="dropdown dropend exe-advanced d-none">
+                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownProperties" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ t.metadata or 'Metadata' }}</a>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownProperties">
+                            <li><a id="navbar-button-import-xml-properties" class="dropdown-item" href="#">{{ t.import or 'Import' }}</a></li>
+                            <li><a id="navbar-button-export-xml-properties" class="dropdown-item" href="#">{{ t.export or 'Export' }}</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li class="nav-item btn button-tertiary button-dropdown dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="dropdownUtilities" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    {{ t.utilities or 'Utilities' }}
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dropdownUtilities">
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-idevice-manager" href="#">{{ t.idevice_manager or 'iDevice manager' }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#"><span class="small-icon report-icon-green"></span> {{ t.resources_report or 'Resources report' }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#"><span class="small-icon link-icon"></span>  {{ t.link_validation or 'Link validation' }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#"><span class="small-icon image-icon-green"></span> {{ t.file_manager or 'File manager' }}</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-styles" href="#" data-shortcut="Mod+Alt+T" aria-keyshortcuts="Control+Alt+T Meta+Alt+T"><span class="small-icon styles-icon"></span> {{ t.styles or 'Styles' }}</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-preview" href="#" data-shortcut="Mod+P" aria-keyshortcuts="Control+P Meta+P"><span class="small-icon preview-icon-green"></span> {{ t.preview or 'Preview' }}</a></li>
+                </ul>
+            </li>
+            <li class="nav-item btn button-tertiary button-dropdown dropdown" id="dropdownHelpItem" >
+                <a class="nav-link dropdown-toggle" href="#" id="dropdownHelp" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    {{ t.help or 'Help' }}
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="dropdownHelp">
+                    <li><a class="dropdown-item" id="navbar-button-assistant" href="#">{{ t.assistant or 'Assistant' }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-exe-tutorial" href="#">{{ t.user_manual or 'User manual' }}</a></li>
+                    <li class="d-none"><a class="dropdown-item" id="navbar-button-api-docs" href="#">{{ t.api_reference or 'API Reference (Swagger)' }}</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-about-exe" href="#">{{ t.about_exelearning or 'About eXeLearning' }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-release-notes" href="#">{{ t.release_notes or 'Release notes' }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-legal-notes" href="#">{{ t.legal_notes or 'Legal notes' }}</a></li>
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-exe-web" href="#">{{ t.exelearning_website or 'eXeLearning website' }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-report-bug" href="#">{{ t.report_bug or 'Report a bug' }}</a></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</nav>

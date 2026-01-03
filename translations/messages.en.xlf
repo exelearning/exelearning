@@ -9659,7 +9659,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target></target>
+        <target><![CDATA[__Action & Expression]]></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
@@ -12999,6 +12999,64 @@
       </trans-unit>
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
+        <target></target>
+      </trans-unit>
+      <!-- Error page translations -->
+      <trans-unit id="error.page_not_found" resname="error.page_not_found">
+        <source>Page not found</source>
+        <target>Page not found</target>
+      </trans-unit>
+      <trans-unit id="error.page_cannot_be_displayed" resname="error.page_cannot_be_displayed">
+        <source>Sorry, but the page cannot be displayed.</source>
+        <target>Sorry, but the page cannot be displayed.</target>
+      </trans-unit>
+      <trans-unit id="error.server_error_try_again" resname="error.server_error_try_again">
+        <source>The server encountered an error and could not complete your request. Please try again later.</source>
+        <target>The server encountered an error and could not complete your request. Please try again later.</target>
+      </trans-unit>
+      <trans-unit id="error.return_to_workarea" resname="error.return_to_workarea">
+        <source>Return to work area</source>
+        <target>Return to work area</target>
+      </trans-unit>
+      <trans-unit id="error.return_to_login" resname="error.return_to_login">
+        <source>Return to login</source>
+        <target>Return to login</target>
+      </trans-unit>
+      <trans-unit id="error.create_new_project" resname="error.create_new_project">
+        <source>Create New Project</source>
+        <target>Create New Project</target>
+      </trans-unit>
+      <trans-unit id="error.back_to_login" resname="error.back_to_login">
+        <source>Back to Login</source>
+        <target>Back to Login</target>
+      </trans-unit>
+      <trans-unit id="error.access_denied" resname="error.access_denied">
+        <source>Access denied</source>
+        <target>Access denied</target>
+      </trans-unit>
+      <trans-unit id="error.server_error" resname="error.server_error">
+        <source>Server error</source>
+        <target>Server error</target>
+      </trans-unit>
+      <!-- Logical exception translations -->
+      <trans-unit id="error.autosave_recent_save" resname="error.autosave_recent_save">
+        <source>Autosave not needed - recent save exists</source>
+        <target>Autosave not needed - recent save exists</target>
+      </trans-unit>
+      <trans-unit id="error.insufficient_space" resname="error.insufficient_space">
+        <source>Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%</source>
+        <target>Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%</target>
+      </trans-unit>
+      <trans-unit id="error.session_already_open" resname="error.session_already_open">
+        <source>User already has an open session</source>
+        <target>User already has an open session</target>
+      </trans-unit>
+      <trans-unit id="error.extension_not_installed" resname="error.extension_not_installed">
+        <source>Required extension %extension% is not installed</source>
+        <target>Required extension %extension% is not installed</target>
+      </trans-unit>
+      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
+        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
         <target></target>
       </trans-unit>
     </body>

@@ -1,6 +1,6 @@
-# eXeLearning API v2 — Quick Reference
+# eXeLearning REST API — Quick Reference
 
-**Base URL:** `/api/v2`
+**Base URL:** `/api`
 **Auth:** `Authorization: Bearer <JWT>`
 **Roles:** `ROLE_USER` (projects, pages, blocks, iDevices) · `ROLE_ADMIN` (user management, quotas)
 
@@ -14,7 +14,7 @@
 curl -s -X POST \
   -H 'Accept: application/json' \
   -b cookies.txt -c cookies.txt \
-  http://localhost:8080/api/v2/auth/token
+  http://localhost:8080/api/auth/token
 # → { "token":"<JWT>", "ttl":3600 }
 ```
 
@@ -29,7 +29,7 @@ Use the token:
 ```bash
 export TOKEN='<JWT>'
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  http://localhost:8080/api/v2/projects
+  http://localhost:8080/api/projects
 ```
 
 ---
@@ -82,7 +82,7 @@ Supported filters (query params):
 Example:
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  'http://localhost:8080/api/v2/projects?title_like=tutorial&updated_after=1700000000'
+  'http://localhost:8080/api/projects?title_like=tutorial&updated_after=1700000000'
 ```
 
 Single project: `GET /projects/{projectId}`
@@ -118,15 +118,15 @@ Examples:
 ```bash
 # Admin listing with filter
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  'http://localhost:8080/api/v2/users?search=@example.com'
+  'http://localhost:8080/api/users?search=@example.com'
 
 # Lookup by userId
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  http://localhost:8080/api/v2/users/by-userid/user2
+  http://localhost:8080/api/users/by-userid/user2
 
 # Lookup by email (URL-encoded)
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  'http://localhost:8080/api/v2/users/by-email/user%40exelearning.net'
+  'http://localhost:8080/api/users/by-email/user%40exelearning.net'
 ```
 
 ---
@@ -137,7 +137,7 @@ List projects:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
-  http://localhost:8080/api/v2/projects
+  http://localhost:8080/api/projects
 ```
 
 Create a page:
@@ -145,7 +145,7 @@ Create a page:
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{ "title":"Intro", "parentId": null }' \
-  http://localhost:8080/api/v2/projects/<projectId>/pages
+  http://localhost:8080/api/projects/<projectId>/pages
 ```
 
 Add a text block:
@@ -153,7 +153,7 @@ Add a text block:
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{ "type":"text", "data": { "content":"Hello" } }' \
-  http://localhost:8080/api/v2/projects/<projectId>/pages/<pageId>/blocks
+  http://localhost:8080/api/projects/<projectId>/pages/<pageId>/blocks
 ```
 
 Move a block:
@@ -161,7 +161,7 @@ Move a block:
 ```bash
 curl -s -X PATCH -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{ "newPageId":"<targetPageId>", "position": 0 }' \
-  http://localhost:8080/api/v2/projects/<projectId>/pages/<pageId>/blocks/<blockId>/move
+  http://localhost:8080/api/projects/<projectId>/pages/<pageId>/blocks/<blockId>/move
 ```
 
 ---
@@ -178,7 +178,7 @@ These endpoints allow you to convert legacy ELP files to the current format and 
 
 ### Convert ELP File
 
-**Endpoint:** `POST /api/v2/convert/elp`
+**Endpoint:** `POST /api/convert/elp`
 
 **Description:** Converts old ELP files (contentv2/v3) to the current format (elpx/contentv4).
 
@@ -220,12 +220,12 @@ With `download=1`:
 
 ```bash
 # Convert and get JSON metadata
-curl -X POST "http://localhost:8080/api/v2/convert/elp" \
+curl -X POST "http://localhost:8080/api/convert/elp" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/legacy.elp"
 
 # Convert and download directly
-curl -X POST "http://localhost:8080/api/v2/convert/elp?download=1" \
+curl -X POST "http://localhost:8080/api/convert/elp?download=1" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/legacy.elp" \
   -o converted.elpx
@@ -233,16 +233,17 @@ curl -X POST "http://localhost:8080/api/v2/convert/elp?download=1" \
 
 ---
 
-### Export ELP File
+### Export ELP File (Stateless)
 
 **Endpoints:**
-- `POST /api/v2/export/elp` — Export to ELP/ELPX format
-- `POST /api/v2/export/html5` — Export to HTML5 web format
-- `POST /api/v2/export/html5-sp` — Export to HTML5 single page format
-- `POST /api/v2/export/scorm12` — Export to SCORM 1.2 format
-- `POST /api/v2/export/scorm2004` — Export to SCORM 2004 format
-- `POST /api/v2/export/ims` — Export to IMS Common Cartridge format
-- `POST /api/v2/export/epub3` — Export to EPUB3 format
+- `POST /api/convert/export/elp` — Export to ELP/ELPX format
+- `POST /api/convert/export/html5` — Export to HTML5 web format
+- `POST /api/convert/export/html5-sp` — Export to HTML5 single page format
+- `POST /api/convert/export/scorm12` — Export to SCORM 1.2 format
+- `POST /api/convert/export/scorm2004` — Export to SCORM 2004 format
+- `POST /api/convert/export/ims` — Export to IMS Content Package format
+- `POST /api/convert/export/epub3` — Export to EPUB3 format
+- `POST /api/convert/export/elpx` — Export to ELPX format (alias for elp)
 
 **Description:** Exports an ELP file to the specified format.
 
@@ -251,6 +252,7 @@ curl -X POST "http://localhost:8080/api/v2/convert/elp?download=1" \
 - **Body Parameters:**
   - `file` (required): The ELP file to export
   - `baseUrl` (optional): Base URL for links in exported content (e.g., `https://cdn.example.com/content`)
+  - `theme` (optional): Theme name to use (overrides the theme specified in the ELP metadata). Available themes: `base`, `zen`, `flux`, etc.
 
 **Query Parameters:**
 - `download` (optional): Set to `1` to download the exported content as a ZIP file instead of returning JSON metadata.
@@ -299,76 +301,106 @@ With `download=1`:
 
 ```bash
 # Export to HTML5 and get JSON metadata
-curl -X POST "http://localhost:8080/api/v2/export/html5" \
+curl -X POST "http://localhost:8080/api/convert/export/html5" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp"
 
 # Export to HTML5 and download as ZIP
-curl -L -X POST "http://localhost:8080/api/v2/export/html5?download=1" \
+curl -L -X POST "http://localhost:8080/api/convert/export/html5?download=1" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp" \
   -o export_html5.zip
 
 # Export to HTML5 with custom base URL and download
-curl -L -X POST "http://localhost:8080/api/v2/export/html5?download=1" \
+curl -L -X POST "http://localhost:8080/api/convert/export/html5?download=1" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp" \
   -F "baseUrl=https://cdn.example.com/courses" \
   -o export_html5.zip
 
+# Export to HTML5 with a specific theme (overrides ELP metadata)
+curl -L -X POST "http://localhost:8080/api/convert/export/html5?download=1" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/path/to/course.elp" \
+  -F "theme=zen" \
+  -o export_html5_zen.zip
+
 # Export to SCORM 1.2 and download
-curl -L -X POST "http://localhost:8080/api/v2/export/scorm12?download=1" \
+curl -L -X POST "http://localhost:8080/api/convert/export/scorm12?download=1" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp" \
   -o export_scorm12.zip
 
 # Export to EPUB3 and download
-curl -L -X POST "http://localhost:8080/api/v2/export/epub3?download=1" \
+curl -L -X POST "http://localhost:8080/api/convert/export/epub3?download=1" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp" \
-  -o export_epub3.zip
+  -o export_epub3.epub
 
 # Export to ELP format and download
-curl -L -X POST "http://localhost:8080/api/v2/export/elp?download=1" \
+curl -L -X POST "http://localhost:8080/api/convert/export/elp?download=1" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp" \
-  -o exported.elp
+  -o exported.elpx
 ```
 
 ---
 
 ### Configuration
 
-The ELP API endpoints use standard PHP configuration for file uploads:
+The ELP API endpoints are configured through environment variables:
 
-- **Upload size limit:** Respects PHP's `upload_max_filesize` setting (configured in `php.ini`)
-- **Temporary storage:** Uses system temp directory (`sys_get_temp_dir()`) with automatic cleanup
-- **No additional configuration required**
+- **Upload size limit:** Configured via `MAX_UPLOAD_SIZE` environment variable (default: 100MB)
+- **Temporary storage:** Uses the configured `FILES_DIR` with automatic cleanup
+- **No additional configuration required for most deployments**
 
-To adjust the maximum upload size, modify your `php.ini` or web server configuration:
+To adjust the maximum upload size, set the environment variable:
 
-```ini
-upload_max_filesize = 100M
-post_max_size = 100M
+```bash
+MAX_UPLOAD_SIZE=200M  # or 200000000 for bytes
+```
+
+---
+
+### Get Available Formats
+
+**Endpoint:** `GET /api/convert/formats`
+
+**Description:** Returns a list of available export formats with metadata.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "formats": [
+    { "id": "html5", "name": "HTML5 Website", "extension": "zip", "mimeType": "application/zip" },
+    { "id": "html5-sp", "name": "HTML5 Single Page", "extension": "zip", "mimeType": "application/zip" },
+    { "id": "scorm12", "name": "SCORM 1.2", "extension": "zip", "mimeType": "application/zip" },
+    { "id": "scorm2004", "name": "SCORM 2004", "extension": "zip", "mimeType": "application/zip" },
+    { "id": "ims", "name": "IMS Content Package", "extension": "zip", "mimeType": "application/zip" },
+    { "id": "epub3", "name": "EPUB3", "extension": "epub", "mimeType": "application/epub+zip" },
+    { "id": "elp", "name": "eXeLearning Project", "extension": "elpx", "mimeType": "application/x-exelearning" },
+    { "id": "elpx", "name": "eXeLearning Project", "extension": "elpx", "mimeType": "application/x-exelearning" }
+  ]
+}
 ```
 
 ---
 
 ### Implementation Notes
 
-1. **Ephemeral Users:** The API creates temporary users for each conversion/export operation to avoid conflicts with the authenticated user's session. These users are automatically cleaned up after the operation completes.
+1. **Stateless Operation:** The convert/export API is fully stateless. Each request processes the uploaded file independently using temporary directories that are cleaned up immediately after the response.
 
-2. **Temporary Files:** Uploaded files are stored in the system temp directory (`/tmp/exe_api_uploads` or equivalent) and cleaned up automatically. Export artifacts are also stored temporarily and removed after the response is sent.
+2. **Temporary Files:** Uploaded files are extracted to a temporary directory (`FILES_DIR/tmp/convert-{uuid}`) and cleaned up automatically after each operation.
 
 3. **File Validation:** All uploaded files are validated for:
-   - File size (PHP's `upload_max_filesize` limit)
+   - File size (`MAX_UPLOAD_SIZE` limit, default 100MB)
    - File extension (must be `.elp`, `.elpx`, or `.zip`)
-   - MIME type (must be a ZIP archive)
-   - Valid ELP structure (checked by ODE service)
+   - Valid ELP/ELPX structure (checked by the document adapter)
 
-4. **Session Management:** Each operation creates a unique ODE session that is properly closed and cleaned up, even if errors occur.
+4. **Authentication:** All endpoints require JWT authentication. The token can be provided via `Authorization: Bearer <token>` header or the `auth` cookie.
 
-5. **Logging:** All operations are logged with correlation IDs for debugging and monitoring.
+5. **Unified Export System:** Uses the shared export system (`src/shared/export/`) which is also used by the CLI and frontend, ensuring consistent output across all interfaces.
 
 ---
 

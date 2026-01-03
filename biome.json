@@ -1,0 +1,126 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
+    "vcs": {
+        "enabled": true,
+        "clientKind": "git",
+        "useIgnoreFile": true
+    },
+    "files": {
+        "includes": [
+            "**",
+            "!**/node_modules",
+            "!**/dist",
+            "!**/coverage",
+            "!**/release",
+            "!**/symfony_legacy",
+            "!**/nestjs_legacy",
+            "!**/public/libs",
+            "!**/public/app/common",
+            "!**/public/app/dist",
+            "!**/*.bundle.js",
+            "!**/*.d.ts",
+            "!**/tmp",
+            "!**/test/fixtures"
+        ]
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 120,
+        "lineEnding": "lf"
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "single",
+            "trailingCommas": "all",
+            "semicolons": "always",
+            "arrowParentheses": "asNeeded",
+            "quoteProperties": "preserve"
+        }
+    },
+    "assist": {
+        "actions": {
+            "source": {
+                "organizeImports": {
+                    "level": "off"
+                }
+            }
+        }
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true,
+            "suspicious": {
+                "noExplicitAny": "warn",
+                "noDebugger": "error",
+                "noVar": "error",
+                "noImplicitAnyLet": "off",
+                "noGlobalIsNan": "off",
+                "noGlobalIsFinite": "off",
+                "noAssignInExpressions": "off",
+                "noAsyncPromiseExecutor": "off",
+                "useIterableCallbackReturn": "off"
+            },
+            "style": {
+                "useConst": "error",
+                "noNonNullAssertion": "off",
+                "useDefaultParameterLast": "off",
+                "noParameterAssign": "off",
+                "useNodejsImportProtocol": "off",
+                "useTemplate": "off",
+                "useImportType": "off"
+            },
+            "correctness": {
+                "noUnusedVariables": "off",
+                "noUnusedImports": "warn",
+                "noUnusedFunctionParameters": "off"
+            },
+            "complexity": {
+                "noForEach": "off",
+                "noStaticOnlyClass": "off",
+                "useLiteralKeys": "off"
+            },
+            "performance": {
+                "noDelete": "off"
+            }
+        }
+    },
+    "overrides": [
+        {
+            "includes": ["**/*.spec.ts", "**/*.e2e-spec.ts", "test/**/*.ts"],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noExplicitAny": "off"
+                    },
+                    "correctness": {
+                        "noEmptyPattern": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["public/app/**/*.js"],
+            "javascript": {
+                "globals": ["eXe", "jQuery", "$", "tinymce", "Nunjucks", "Y", "Quill"]
+            },
+            "formatter": {
+                "enabled": false
+            },
+            "linter": {
+                "enabled": false
+            }
+        },
+        {
+            "includes": ["public/files/perm/idevices/**/*.test.js"],
+            "javascript": {
+                "globals": ["describe", "it", "expect", "beforeEach", "afterEach", "vi", "global"]
+            },
+            "linter": {
+                "enabled": false
+            }
+        }
+    ]
+}

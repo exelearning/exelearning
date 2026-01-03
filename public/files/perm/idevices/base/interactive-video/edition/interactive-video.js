@@ -66,16 +66,10 @@ var $exeDevice = {
             notAnswered: c_('Please finish the activity'),
             check: c_('Check'),
             newWindow: c_('New Window'),
-            msgOnlySaveAuto: c_(
-                'Your score will be saved after each question. You can only play once.'
-            ),
             msgSaveAuto: c_(
                 'Your score will be automatically saved after each question.'
             ),
             msgYouScore: c_('Your score'),
-            msgScoreScorm: c_(
-                "The score can't be saved because this page is not part of a SCORM package."
-            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
             msgPlaySeveralTimes: c_(
@@ -99,6 +93,10 @@ var $exeDevice = {
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Interactive video'),
+            youtubePreviewNotice: c_(
+                'YouTube videos cannot be embedded in preview mode. ' +
+                'They will work correctly when exported and served from a web server.'
+            ),
         };
     },
     scoreNIA: true,
@@ -324,6 +322,7 @@ var $exeDevice = {
             videoURL: '',
             videoType: '',
             i18n: {},
+            imageList: [],
         };
         this.loadPreviousValues();
         // To do now this.addExtjsScript();
@@ -505,13 +504,19 @@ var $exeDevice = {
                 );
                 return false;
             }
+            // Ensure videoURL and videoType are set (in case change event wasn't triggered)
+            if (f1 != '') {
+                $exeDevice.testIfVideoExists(f1, 'local');
+            } else if (f2 != '') {
+                $exeDevice.testIfVideoExists(f2, 'youtube');
+            } else if (f3 != '') {
+                $exeDevice.testIfVideoExists(f3, 'mediateca');
+            }
             //var myCSS=document.querySelector("link[href*='6.0.1']")
             var win = null;
-            // Get file path
+            // Get file path (handle versioned URLs like /v0.0.0-alpha/files/...)
             var filePath = $exeDevice.idevicePath.replace(
-                eXeLearning.symfony.baseURL +
-                    eXeLearning.symfony.basePath +
-                    '/files/',
+                /^.*\/files\//,
                 ''
             );
 
@@ -521,7 +526,7 @@ var $exeDevice = {
             const editorURL =
                 eXeLearning.symfony.baseURL +
                 eXeLearning.symfony.basePath +
-                '/api/idevice-management/idevices/download/file/resources?resource=' +
+                '/api/idevices/download-file-resources?resource=' +
                 filePath +
                 'editor/index.html';
             var css = `

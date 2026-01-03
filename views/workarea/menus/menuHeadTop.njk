@@ -1,0 +1,93 @@
+<div class="top" id="eXeLearningNavbar">
+    <div class="main-menu">
+        <div class="main-menu-left">
+            {% include 'workarea/menus/menuNavbar.njk' %}
+        </div>
+        <div class="main-menu-right">
+            <button id="head-top-download-button" class="btn" title="{{ t.download or 'Download' }}"  data-testid="download-button">
+                <span class="auto-icon" aria-hidden="true">download</span>
+                <span class="btn-label">{{ t.download or 'Download' }}</span>
+            </button>
+            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center" title="{{ t.save or 'Save' }}" data-testid="save-button">
+                <div class="small-icon save-icon-white"></div>
+                <span>{{ t.save or 'Save' }}</span>
+            </button>
+            <button id="head-bottom-preview" class="btn button-display display-outline button-square d-flex justify-content-center align-items-center" title="{{ t.preview or 'Preview' }}">
+                <div class="small-icon preview-icon-green"></div>
+            </button>
+            <button id="dropdownStyles" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="{{ t.styles or 'Styles' }}">
+                <span class="medium-icon styles-icon"></span>
+            </button>
+            <button id="head-top-settings-button" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="{{ t.settings or 'Settings' }}" data-testid="settings-button">
+                <span class="medium-icon settings-icon"></span>
+            </button>
+            <button id="head-top-share-button"
+                    class="btn btn-share-pill exe-online d-flex align-items-center"
+                    title="{{ t.share or 'Share' }}"
+                    aria-label="{{ t.share or 'Share' }}">
+                <span class="share-visibility-indicator d-flex align-items-center">
+                    <div class="auto-icon share-visibility-icon" aria-hidden="true">lock</div>
+                </span>
+                <span class="share-button-text">{{ t.share or 'Share' }}</span>
+            </button>
+            <div id="exe-last-edition" class="btn">
+                <span class="content"></span>
+            </div>
+            <div id="exe-concurrent-users" class="exe-online">
+                <button id="button-more-exe-concurrent-users" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="{{ t.users_online or 'Users online' }}">
+                    <span class="medium-icon concurrent-users-icon"></span>
+                </button>
+            </div>
+            <div id="head-bottom-user-logged" class="dropdown" title="{{ user.username }}" data-testid="user-menu" data-user-email="{{ user.username }}">
+                <button class="btn btn-link" type="button" id="exeUserMenuToggler" data-bs-toggle="dropdown" aria-expanded="false" title="{{ t.user_menu or 'User menu' }}">
+                    {% if config.isOfflineInstallation %}
+                    <img class="exe-gravatar exe-gravatar--offline" src="{{ basePath }}/exelearning.png" alt="eXeLearning" width="50" height="50" data-testid="user-avatar">
+                    {% elif user.gravatarUrl %}
+                    <img class="exe-gravatar" src="{{ user.gravatarUrl }}" alt="{{ user.username }}" width="50" height="50" data-testid="user-avatar" onerror="this.onerror=null;this.src='/images/default-avatar.svg';this.classList.add('exe-gravatar--fallback');">
+                    {% else %}
+                    <span class="exe-avatar" title="{{ user.username }}" data-testid="user-avatar-initial">{{ user.usernameFirsLetter }}</span>
+                    {% endif %}
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exeUserMenuToggler">
+                    {# Menú móvil plano: visible solo en móviles (d-md-none) #}
+                    <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.file or 'File' }}</small></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-new" href="#">{{ t.new or 'New' }}</a></li>
+                    <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-openuserodefiles" href="#">{{ t.open or 'Open' }}</a></li>
+                    <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-save" href="#">{{ t.save or 'Save' }}</a></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-import-elp" href="#">{{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.download_as or 'Download as' }}</small></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-html5" href="#">{{ t.website or 'Website' }}</a></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-scorm12" href="#">SCORM 1.2</a></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-epub3" href="#">ePub3</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-settings" href="#">{{ t.settings or 'Settings' }}</a></li>
+                    <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-share" href="#">{{ t.share or 'Share' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.utilities or 'Utilities' }}</small></li>
+                    <li class="d-md-none exe-advanced"><a class="dropdown-item" id="mobile-navbar-button-filemanager" href="#">{{ t.file_manager or 'File manager' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-styles" href="#">{{ t.styles or 'Styles' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-preview" href="#">{{ t.preview or 'Preview' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+                    <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.help or 'Help' }}</small></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-exe-tutorial" href="#">{{ t.user_manual or 'User manual' }}</a></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-about-exe" href="#">{{ t.about_exelearning or 'About eXeLearning' }}</a></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-exe-web" href="#">{{ t.exelearning_website or 'eXeLearning website' }}</a></li>
+                    <li class="dropdown-divider d-md-none"></li>
+
+                    {# Items existentes #}
+                    <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ t.preferences or 'Preferences' }}</a></li>
+                    <li class="dropdown-divider"></li>
+                    {% if config.isOfflineInstallation %}
+                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ t.exit or 'Exit' }}</a></li>
+                    {% else %}
+                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ t.logout or 'Logout' }}</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

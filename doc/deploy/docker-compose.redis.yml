@@ -1,0 +1,194 @@
+# High-Availability configuration for eXeLearning with Redis
+# Use with: docker compose -f docker-compose.redis.yml up -d
+#
+# This configuration provides:
+# - Two eXeLearning instances for high availability
+# - PostgreSQL database (shared)
+# - Redis for Yjs WebSocket synchronization across instances
+# - Nginx load balancer with WebSocket support
+#
+# Architecture:
+#   nginx (port 80) -> exelearning-1 (8080) + exelearning-2 (8080)
+#                  \-> postgres (5432)
+#                  \-> redis (6379)
+
+services:
+  # Load Balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "${LB_PORT:-80}:80"
+    volumes:
+      - ./nginx-ha.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      exelearning-1:
+        condition: service_healthy
+      exelearning-2:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # eXeLearning Instance 1
+  exelearning-1:
+    image: ghcr.io/exelearning/exelearning:${TAG:-latest}
+    build: ../../
+    restart: unless-stopped
+    volumes:
+      - exelearning-assets:/mnt/data:rw
+    environment:
+      # Application settings
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForHADeployment}"
+      APP_ONLINE_MODE: 1
+      XDEBUG_MODE: off
+
+      # Database settings (PostgreSQL)
+      DB_DRIVER: pdo_pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: "${DB_NAME:-exelearning}"
+      DB_USER: "${DB_USER:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD:-postgres}"
+      DB_CHARSET: "${DB_CHARSET:-utf8}"
+      DB_SERVER_VERSION: 17
+
+      # Files directory (shared volume)
+      FILES_DIR: "/mnt/data/"
+
+      # Redis configuration for HA
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Authentication settings
+      APP_AUTH_METHODS: "${APP_AUTH_METHODS:-password,guest}"
+      AUTH_CREATE_USERS: "${AUTH_CREATE_USERS:-true}"
+
+      # Test user
+      TEST_USER_EMAIL: "${TEST_USER_EMAIL:-user@exelearning.net}"
+      TEST_USER_USERNAME: "${TEST_USER_USERNAME:-user}"
+      TEST_USER_PASSWORD: "${TEST_USER_PASSWORD:-1234}"
+
+      # JWT secret (MUST be same across all instances)
+      API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForHADeployment}"
+
+      # Post-configuration commands (only run on first instance)
+      POST_CONFIGURE_COMMANDS: |
+        echo "Setting up eXeLearning instance 1..."
+        bun cli create-user --email ${TEST_USER_EMAIL:-user@exelearning.net} --password ${TEST_USER_PASSWORD:-1234} --username ${TEST_USER_USERNAME:-user} --no-fail
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # eXeLearning Instance 2
+  exelearning-2:
+    image: ghcr.io/exelearning/exelearning:${TAG:-latest}
+    build: ../../
+    restart: unless-stopped
+    volumes:
+      - exelearning-assets:/mnt/data:rw
+    environment:
+      # Application settings
+      APP_ENV: prod
+      APP_DEBUG: 0
+      APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForHADeployment}"
+      APP_ONLINE_MODE: 1
+      XDEBUG_MODE: off
+
+      # Database settings (PostgreSQL - same as instance 1)
+      DB_DRIVER: pdo_pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: "${DB_NAME:-exelearning}"
+      DB_USER: "${DB_USER:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD:-postgres}"
+      DB_CHARSET: "${DB_CHARSET:-utf8}"
+      DB_SERVER_VERSION: 17
+
+      # Files directory (shared volume)
+      FILES_DIR: "/mnt/data/"
+
+      # Redis configuration for HA
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Authentication settings
+      APP_AUTH_METHODS: "${APP_AUTH_METHODS:-password,guest}"
+      AUTH_CREATE_USERS: "${AUTH_CREATE_USERS:-true}"
+
+      # JWT secret (MUST be same across all instances)
+      API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForHADeployment}"
+
+      # No POST_CONFIGURE_COMMANDS - instance 1 handles user creation
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+      POSTGRES_USER: "${DB_USER:-postgres}"
+      POSTGRES_DB: "${DB_NAME:-exelearning}"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-exelearning}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Redis for Yjs Synchronization
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  exelearning-assets:
+    # For production, consider using NFS or cloud storage driver
+    # driver: local
+    # driver_opts:
+    #   type: nfs
+    #   o: addr=nfs-server.example.com,rw
+    #   device: ":/exports/exelearning"
+  postgres-data:
+  redis-data:
+
+networks:
+  default:
+    driver: bridge

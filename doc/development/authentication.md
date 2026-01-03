@@ -1,6 +1,6 @@
 # Authentication
 
-This application supports several authentication methods that can be enabled individually or together. Configuration is driven by environment variables and Symfony’s Security component.
+This application supports several authentication methods that can be enabled individually or together. Configuration is driven by environment variables.
 
 ## Supported Methods
 
@@ -55,13 +55,13 @@ API_JWT_SECRET=dev_secret_change_me
 
 ## How Authentication Works
 
-- Form Login: Standard Symfony form at `/login` posts to `/login_check`.
-- CAS: Clicking “CAS” sends the browser to your CAS login. The firewall extracts the service ticket from the `ticket` query parameter and validates it.
+- Form Login: Login form at `/login` posts credentials to `/login_check`.
+- CAS: Clicking "CAS" sends the browser to your CAS login. The auth handler extracts the service ticket from the `ticket` query parameter and validates it.
 - OIDC:
   - The app builds the Authorization URL from `OIDC_AUTHORIZATION_ENDPOINT` and redirects the user to the provider.
   - The callback `/login/openid/callback` exchanges the `code` for tokens using `OIDC_TOKEN_ENDPOINT`.
   - The app forwards the browser to the target page appending `?access_token=...`.
-  - The firewall’s AccessTokenAuthenticator picks the token and our `MultiTokenHandler` resolves the user via the OIDC UserInfo endpoint.
+  - The JWT middleware validates the token and resolves the user via the OIDC UserInfo endpoint.
   - The UserInfo endpoint URL is discovered automatically from `OIDC_ISSUER` using OIDC Discovery (`/.well-known/openid-configuration`).
 - Logout:
   - CAS: Redirects to `CAS_LOGOUT_PATH` with `service` back to the app.
@@ -81,7 +81,6 @@ Common prerequisites
   - Development: `http://localhost:8080/login/openid/callback`
   - Production: `https://<your-domain>/login/openid/callback`
 - Scopes: `OIDC_SCOPE="openid email"` is recommended. Add `profile` if you want name/picture.
-- ⚠️ If you encounter issues, try removing the trailing slash (/) from your `OIDC_ISSUER`.
 
 ### Google (Identity Platform)
 
@@ -172,11 +171,14 @@ API_JWT_SECRET=dev_secret_change_me
 # API_JWT_AUDIENCE=exelearning_clients
 ```
 
-Generate and validate tokens (commands):
+Generate tokens via CLI:
 
-```
-php bin/console app:generate-jwt
-php bin/console app:validate-jwt <token>
+```bash
+# Generate a JWT for a user
+bun run cli generate-jwt --email user@exelearning.net
+
+# Or via make
+make generate-jwt
 ```
 
 Send the token in:
@@ -187,6 +189,7 @@ Authorization: Bearer <token>
 
 ## Debugging and Troubleshooting
 
-- Check the `security` and `app` logs for authenticator trace and OIDC/CAS errors.
-- If OIDC fails with “Invalid URL: scheme is missing”, verify `OIDC_ISSUER` and endpoints. With discovery enabled, the backend fetches `userinfo_endpoint` automatically from the issuer’s `/.well-known/openid-configuration`.
+- Check the server logs for authentication errors (run with `DEBUG=*` for verbose output).
+- If OIDC fails with "Invalid URL: scheme is missing", verify `OIDC_ISSUER` and endpoints. The backend fetches `userinfo_endpoint` automatically from the issuer's `/.well-known/openid-configuration`.
 - For Google, a 404 on `/connect/endsession` is expected; use token revocation (already integrated) or sign out of Google in the browser.
+- JWT validation errors are logged with the specific claim that failed.

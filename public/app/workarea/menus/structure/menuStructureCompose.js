@@ -1,3 +1,8 @@
+import { getInitials, generateGravatarUrl } from '../../../utils/avatarUtils.js';
+
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 /**
  * eXeLearning
  *
@@ -8,13 +13,233 @@ export default class MenuStructureCompose {
     constructor(structureEngine) {
         this.structureEngine = structureEngine;
         this.menuNav = document.querySelector('#main #menu_nav');
-        this.menuNavList = this.menuNav.querySelector('#main #nav_list');
+        this.menuNavList = this.menuNav.querySelector('#nav_list');
         // Add object to engine
         this.structureEngine.menuStructureCompose = this;
 
         /* TO-DO: revert to previous version id no hyerarchy tree used. */
         // Inicialise items counter per level
         this.levelItemCounters = {};
+
+        // User presence tracking
+        this._presenceUnsubscribe = null;
+        this._initPresenceTracking();
+    }
+
+    /**
+     * Initialize user presence tracking via Yjs Awareness
+     */
+    _initPresenceTracking() {
+        // Wait for project to be ready
+        const checkReady = () => {
+            const project = eXeLearning?.app?.project;
+            if (project?._yjsEnabled && project?._yjsBridge?.getDocumentManager()) {
+                const documentManager = project._yjsBridge.getDocumentManager();
+                this._presenceUnsubscribe = documentManager.onUsersChange(({ users }) => {
+                    this._updateNodePresence(users);
+                });
+
+                // Get and display current presence state immediately
+                const currentUsers = documentManager.getOnlineUsers();
+                if (currentUsers && currentUsers.length > 0) {
+                    this._updateNodePresence(currentUsers);
+                }
+
+                // Listen for navigation changes to handle deleted pages
+                this._initDeletedPageHandler(documentManager);
+
+                Logger.log('[MenuStructureCompose] Presence tracking initialized');
+            } else {
+                setTimeout(checkReady, 1000);
+            }
+        };
+        setTimeout(checkReady, 500);
+    }
+
+    /**
+     * Initialize handler for when pages are deleted by other users
+     * Automatically selects parent page if current selection is deleted
+     */
+    _initDeletedPageHandler(documentManager) {
+        const navigation = documentManager.getNavigation();
+        if (!navigation) return;
+
+        // Store previous page IDs to detect deletions
+        let previousPageIds = new Set();
+        this._updatePreviousPageIds(previousPageIds);
+
+        navigation.observeDeep(() => {
+            // Small delay to ensure structure data is updated
+            setTimeout(() => {
+                this._handlePossiblePageDeletion(previousPageIds);
+                this._updatePreviousPageIds(previousPageIds);
+            }, 100);
+        });
+    }
+
+    /**
+     * Update the set of known page IDs
+     */
+    _updatePreviousPageIds(pageIdSet) {
+        pageIdSet.clear();
+        const structureData = this.structureEngine?.data || {};
+        for (const [id, node] of Object.entries(structureData)) {
+            pageIdSet.add(node.pageId || id);
+        }
+    }
+
+    /**
+     * Handle the case when the currently selected page was deleted
+     * Selects the parent page or root if necessary
+     */
+    _handlePossiblePageDeletion(previousPageIds) {
+        try {
+            const behaviour = this.structureEngine?.menuStructureBehaviour;
+            if (!behaviour?.nodeSelected) return;
+
+            const selectedPageId = behaviour.nodeSelected.getAttribute('page-id') ||
+                                   behaviour.nodeSelected.getAttribute('nav-id');
+
+            // Check if the selected page still exists in the DOM
+            const selectedNodeInDom = this.menuNavList.querySelector(
+                `.nav-element[page-id="${selectedPageId}"], .nav-element[nav-id="${selectedPageId}"]`
+            );
+
+            if (!selectedNodeInDom) {
+                // Selected page was deleted - find parent and select it
+                Logger.log('[MenuStructureCompose] Selected page was deleted, finding parent...');
+
+                // Try to find the parent from the old structure data
+                const oldNode = this._findNodeInPreviousData(selectedPageId, previousPageIds);
+                let parentId = oldNode?.parent;
+
+                // Find the parent node in the current DOM
+                let parentNode = null;
+                if (parentId) {
+                    parentNode = this.menuNavList.querySelector(
+                        `.nav-element[nav-id="${parentId}"]`
+                    );
+                }
+
+                // If parent not found, select root
+                if (!parentNode) {
+                    parentNode = this.menuNavList.querySelector('.nav-element[nav-id="root"]');
+                }
+
+                // If still no node found, select the first available node
+                if (!parentNode) {
+                    parentNode = this.menuNavList.querySelector('.nav-element');
+                }
+
+                if (parentNode) {
+                    Logger.log('[MenuStructureCompose] Selecting parent/fallback node');
+                    // Trigger selection via the behaviour
+                    behaviour.selectNode(parentNode);
+                }
+            }
+        } catch (error) {
+            console.warn('[MenuStructureCompose] Error handling page deletion:', error);
+        }
+    }
+
+    /**
+     * Find a node in the structure data
+     */
+    _findNodeInPreviousData(pageId, previousPageIds) {
+        const structureData = this.structureEngine?.data || {};
+        for (const [id, node] of Object.entries(structureData)) {
+            if ((node.pageId || id) === pageId) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Update presence avatars on all nodes
+     * @param {Array} users - Array of online users from awareness
+     */
+    _updateNodePresence(users) {
+        // Group users by selectedPageId
+        const usersByPage = {};
+        users.forEach(user => {
+            if (user.selectedPageId && !user.isLocal) {
+                if (!usersByPage[user.selectedPageId]) {
+                    usersByPage[user.selectedPageId] = [];
+                }
+                usersByPage[user.selectedPageId].push(user);
+            }
+        });
+
+        // Update all node presence containers
+        const allPresenceContainers = this.menuNavList.querySelectorAll('.node-presence-avatars');
+        allPresenceContainers.forEach(container => {
+            const pageId = container.dataset.pageId;
+            const usersOnPage = usersByPage[pageId] || [];
+            this._renderNodePresence(container, usersOnPage);
+        });
+    }
+
+    /**
+     * Render user avatars in a node's presence container
+     * @param {HTMLElement} container - The presence container element
+     * @param {Array} users - Users viewing this page
+     */
+    _renderNodePresence(container, users) {
+        container.innerHTML = '';
+
+        if (users.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'flex';
+
+        // Show max 3 avatars
+        const maxShow = 3;
+        const usersToShow = users.slice(0, maxShow);
+
+        usersToShow.forEach((user, index) => {
+            const avatar = document.createElement('div');
+            avatar.classList.add('node-user-avatar');
+            // Tooltip with email (fallback to name)
+            avatar.title = user.email || user.name || 'User';
+            avatar.style.zIndex = maxShow - index;
+
+            if (user.color) {
+                avatar.style.borderColor = user.color;
+            }
+
+            // Get or generate Gravatar URL
+            const gravatarUrl = user.gravatarUrl || generateGravatarUrl(user.email, 20);
+
+            if (gravatarUrl) {
+                const img = document.createElement('img');
+                img.src = gravatarUrl;
+                img.alt = user.name || '';
+
+                // Fallback to initials on error
+                const fallbackInitials = user.initials || getInitials(user.name || user.email);
+                img.onerror = function () {
+                    this.style.display = 'none';
+                    avatar.textContent = fallbackInitials;
+                };
+
+                avatar.appendChild(img);
+            } else {
+                avatar.textContent = user.initials || getInitials(user.name || user.email);
+            }
+
+            container.appendChild(avatar);
+        });
+
+        // Show +N if more users
+        if (users.length > maxShow) {
+            const more = document.createElement('div');
+            more.classList.add('node-user-avatar', 'node-user-more');
+            more.textContent = `+${users.length - maxShow}`;
+            container.appendChild(more);
+        }
     }
 
     compose() {
@@ -44,6 +269,24 @@ export default class MenuStructureCompose {
             }
         }
         this.initAccesibility();
+
+        // Typeset LaTeX in navigation if any page titles contain LaTeX delimiters
+        this.typesetLatexInNavigation();
+    }
+
+    /**
+     * Typeset LaTeX in navigation page titles if detected
+     */
+    typesetLatexInNavigation() {
+        const navText = this.menuNavList?.textContent || '';
+        // Check if any page title contains LaTeX patterns
+        if (/(?:\\\(|\\\[|\\begin\{)/.test(navText)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([this.menuNavList]).catch(err => {
+                    Logger.log('[MenuStructureCompose] MathJax typeset error:', err);
+                });
+            }
+        }
     }
 
     /**
@@ -114,7 +357,7 @@ export default class MenuStructureCompose {
         nodeDivElementNav.appendChild(childrenElement);
 
         parent.appendChild(nodeDivElementNav);
-        //console.log(`Node ${node.id} -> level${level} item${itemIndex} ${isOnlyItem ? '(onlyitem)' : ''}`);
+        //Logger.log(`Node ${node.id} -> level${level} item${itemIndex} ${isOnlyItem ? '(onlyitem)' : ''}`);
     }
 
     /**
@@ -168,6 +411,42 @@ export default class MenuStructureCompose {
             textElement.append(iconRootElement);
         } else {
             textElement.setAttribute('draggable', true);
+        }
+
+        // Add "+" button for ALL nodes (including root) - for adding subpages
+        let addButton = document.createElement('button');
+        addButton.classList.add(
+            'btn',
+            'button-tertiary',
+            'button-narrow',
+            'd-flex',
+            'justify-content-center',
+            'align-items-center',
+            'node-add-button',
+            'page-add'
+        );
+        addButton.setAttribute('data-parentnavid', node.id);
+        addButton.setAttribute('role', 'button');
+        addButton.setAttribute('tabindex', '0');
+        addButton.setAttribute('aria-label', node.id === 'root' ? _('Add page') : _('Add subpage'));
+        addButton.setAttribute('title', node.id === 'root' ? _('Add page') : _('Add subpage'));
+        addButton.setAttribute('data-testid', 'nav-node-add');
+        addButton.setAttribute('data-node-id', node.id);
+        addButton.style.cursor = 'pointer';
+
+        let addIcon = document.createElement('i');
+        addIcon.classList.add('small-icon', 'add-icon-green');
+
+        let addTitleElement = document.createElement('span');
+        addTitleElement.classList.add('visually-hidden');
+        addTitleElement.textContent = node.id === 'root' ? _('Add page') : _('Add subpage');
+
+        addButton.append(addIcon);
+        addButton.append(addTitleElement);
+        textElement.append(addButton);
+
+        // Add gear button only for non-root nodes
+        if (node.id !== 'root') {
             let menuIcon = document.createElement('i');
             menuIcon.classList.add('small-icon', 'settings-icon-green');
             let titleElement = document.createElement('span');
@@ -185,6 +464,8 @@ export default class MenuStructureCompose {
                 'page-settings'
             );
             menuButton.setAttribute('data-menunavid', node.id);
+            menuButton.setAttribute('title', _('Page properties'));
+            menuButton.setAttribute('aria-label', _('Page properties'));
             menuButton.style.cursor = 'pointer';
             menuButton.append(menuIcon);
             menuButton.append(titleElement);
@@ -195,6 +476,13 @@ export default class MenuStructureCompose {
         let dragOverElement = document.createElement('span');
         dragOverElement.classList.add('drag-over-border');
         textElement.append(dragOverElement);
+
+        // User presence container (shows avatars of users viewing this page)
+        let presenceContainer = document.createElement('div');
+        presenceContainer.classList.add('node-presence-avatars');
+        presenceContainer.dataset.pageId = node.pageId || node.id;
+        presenceContainer.style.display = 'none'; // Hidden by default
+        textElement.append(presenceContainer);
 
         return textElement;
     }
@@ -320,7 +608,7 @@ export default class MenuStructureCompose {
         const tree = document.getElementById('nav_list');
         if (!tree) return;
         tree.setAttribute('role', 'tree');
-        tree.setAttribute('aria-label', 'Índice de contenidos');
+        tree.setAttribute('aria-label', _('Table of contents'));
 
         tree.querySelectorAll('.nav-element-children-container').forEach(
             (g) => {
@@ -355,7 +643,7 @@ export default class MenuStructureCompose {
         tree.querySelectorAll('.page-settings').forEach((btn) => {
             btn.setAttribute('role', 'button');
             btn.setAttribute('tabindex', '0');
-            btn.setAttribute('aria-label', 'Opciones de página');
+            btn.setAttribute('aria-label', _('Page options'));
             btn.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();

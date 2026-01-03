@@ -2,7 +2,7 @@
 
 This page explains what we ship for desktop users and how installers are produced. If you just want to install eXeLearning on your computer, start with Install: [install.md](../install.md).
 
-In addition to Docker deployment, our GitHub Actions pipeline builds and publishes native desktop installers for all major platforms. Installers are built with [`electron-builder`](https://www.electron.build/) and embed a static PHP runtime via [`nativePHP/php-bin`](https://github.com/crazywhalecc/static-php-cli).
+In addition to Docker deployment, our GitHub Actions pipeline builds and publishes native desktop installers for all major platforms. Installers are built with [`electron-builder`](https://www.electron.build/) and bundle the Bun runtime for backend execution.
 
 ---
 
@@ -86,14 +86,12 @@ This configures your system to receive eXeLearning updates automatically with `d
 
 ### Prerequisites
 
-* **Node.js** – [nodejs.org](https://nodejs.org/)
-* **Composer** – [getcomposer.org](https://getcomposer.org/)
-* **Yarn & dependencies**:
+* **Bun** – [bun.sh](https://bun.sh/)
+* **Node.js** – [nodejs.org](https://nodejs.org/) (for electron-builder)
 
 ```bash
-npm install --global yarn
-yarn install
-composer install
+# Install dependencies
+bun install
 ```
 
 ---
@@ -101,7 +99,7 @@ composer install
 ### Build locally
 
 ```bash
-yarn build
+bun run build
 ```
 
 The resulting installers are saved in the `dist/` directory.

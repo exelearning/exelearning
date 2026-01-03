@@ -753,7 +753,7 @@ var $eXeCrucigrama = {
                 .text(wordindex + 1);
             $activeDefinition
                 .find('.CCGMP-WordDefinition')
-                .text(mOptions.wordsGame[wordindex].definition);
+                .html(mOptions.wordsGame[wordindex].definition);
 
             const $linkImage = $activeDefinition.find('.CCGMP-LinkImage');
             const $linkSound = $activeDefinition.find('.CCGMP-LinkSound');
@@ -1445,7 +1445,7 @@ var $eXeCrucigrama = {
         }
 
         const html = $('#ccgmDetails-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex('#ccgmDetails');
         }

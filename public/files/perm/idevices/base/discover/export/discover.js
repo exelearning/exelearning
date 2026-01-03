@@ -507,7 +507,7 @@ var $eXeDescubre = {
                 $textcontainer = $card.find('.DescubreQP-EText'),
                 latex =
                     $textcontainer.find('mjx-container').length > 0 ||
-                    /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(
+                    $exeDevices.iDevice.gamification.math.hasLatex(
                         $textcontainer.text()
                     );
 

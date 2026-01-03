@@ -819,7 +819,7 @@ var $exeDevicesEdition = {
                             alert(`The following lines are invalid:\n\n${questions.invalidLines.join('\n')}`);
                         } else {
                             alert('The questions have been added successfully');
-                            $('.exe-form-tabs li:first-child a').trigger("click")
+                            //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
                     $iaButton.on('click', function () {
@@ -836,7 +836,7 @@ var $exeDevicesEdition = {
                             alert(`The following lines are invalid:\n\n${questions.invalidLines.join('\n')}`);
                         } else {
                             alert('The questions have been added successfully');
-                            $('.exe-form-tabs li:first-child a').click();
+                            //$('.exe-form-tabs li:first-child a').click();
                         }
                     });
                     $copyButton.on('click', function () {
@@ -1151,17 +1151,66 @@ var $exeDevicesEdition = {
         // / Gamification
         filePicker: {
             init: function () {
-                $(".exe-file-picker,.exe-image-picker").each(
-                    function () {
-                        var id = this.id;
-                        var css = 'exe-pick-any-file';
-                        var e = $(this);
-                        if (e.hasClass("exe-image-picker")) css = 'exe-pick-image';
-                        e.after(' <input type="button" class="' + css + '" value="' + _("Select a file") + '" id="_browseFor' + id + '" onclick="$exeDevicesEdition.iDevice.filePicker.openFilePicker(this)" />');
+                var filemanager = window.eXeLearning?.app?.modals?.filemanager;
+
+                // Create buttons for inputs that don't have one
+                $(".exe-file-picker,.exe-image-picker").each(function () {
+                    var $input = $(this);
+
+                    // Skip if there's already a button after
+                    if ($input.next('input[type="button"].exe-pick-image, input[type="button"].exe-pick-any-file').length) {
+                        return;
                     }
-                );
+
+                    var id = this.id;
+                    var isImage = $input.hasClass("exe-image-picker");
+                    var css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
+
+                    var $button = $('<input>', {
+                        type: 'button',
+                        class: css,
+                        value: _("Select a file"),
+                        'data-filepicker': id
+                    });
+                    $input.after($button);
+                });
+
+                // EVENT DELEGATION - A single handler for ALL buttons
+                $(document).off('click.filepicker').on('click.filepicker', '.exe-pick-image, .exe-pick-any-file', function(e) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    if (!filemanager) return;
+
+                    var $button = $(this);
+                    var inputId = $button.attr('data-filepicker') || $button.prev('input[type="text"]').attr('id');
+                    var $input = inputId ? $('#' + inputId) : $button.prev('input[type="text"]');
+
+                    if (!$input.length) return;
+
+                    var isImage = $input.hasClass("exe-image-picker") || $button.hasClass("exe-pick-image");
+                    var accept = null;
+
+                    if (isImage) {
+                        accept = 'image';
+                    } else if (inputId && inputId.toLowerCase().indexOf('audio') !== -1) {
+                        accept = 'audio';
+                    } else if (inputId && inputId.toLowerCase().indexOf('video') !== -1) {
+                        accept = 'video';
+                    }
+
+                    filemanager.show({
+                        accept: accept,
+                        onSelect: function(result) {
+                            $input.val(result.assetUrl);
+                            $input.data('blobUrl', result.blobUrl);
+                            $input.trigger('change');
+                        }
+                    });
+                });
             },
             openFilePicker: function (e) {
+                // Legacy fallback - should not be called anymore
                 var id = e.id.replace("_browseFor", "");
                 var type = 'media';
                 if ($(e).hasClass("exe-pick-image")) type = 'image';
@@ -1223,4 +1272,9 @@ var $exeDevicesEdition = {
             }
         }
     }
+}
+
+// Export for Node.js/CommonJS (tests)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = $exeDevicesEdition;
 }

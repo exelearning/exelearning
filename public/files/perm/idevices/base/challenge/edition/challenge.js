@@ -1020,7 +1020,7 @@ var $exeDevice = {
         $exeDevice.updateFieldGame(game);
         const instructions = game.instructionsExe || game.instructions;
         tinymce.editors[0].setContent(instructions);
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
     },
 
     getIdeviceID: function () {

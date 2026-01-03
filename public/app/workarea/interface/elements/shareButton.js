@@ -1,132 +1,109 @@
+/**
+ * Share Project Button - Opens share modal with project link
+ */
 export default class ShareProjectButton {
     constructor() {
-        this.shareMenuHeadButton = document.querySelector(
-            '#head-top-share-button'
+        this.shareButton = document.querySelector('#head-top-share-button');
+        this.visibilityIcon = this.shareButton?.querySelector(
+            '.share-visibility-icon'
         );
+        this.currentVisibility = 'private'; // Default
     }
 
     /**
-     * Init element
-     *
+     * Initialize the share button
      */
     init() {
         this.addEventClick();
     }
 
     /**
-     * Add event click to button
-     *
+     * Add click event to open share modal
      */
     addEventClick() {
-        this.shareMenuHeadButton.addEventListener('click', (event) => {
-            // First save content (make propietary of the content)
+        if (!this.shareButton) return;
+
+        this.shareButton.addEventListener('click', async (event) => {
+            // Check if there's an open iDevice
             if (eXeLearning.app.project.checkOpenIdevice()) return;
-            eXeLearning.app.project.save().then(() => {
-                this.copyUserSessionId();
-            });
+
+            // Open share modal directly (no save)
+            this.openShareModal();
         });
     }
 
     /**
-     * Modal to show the share link and copy
-     *
+     * Open the share modal
      */
-    async copyUserSessionId() {
-        let result = await eXeLearning.app.api.getCurrentUserOdeSessionId();
-        let body = this.makeBodyElementShareUrl(result);
-        await eXeLearning.app.modals.alert.show({
-            title: _('Share link'),
-            body: body.innerHTML,
-            contentId: 'Ok',
-        });
-
-        // Set event copy button (due to innerHtml)
-        setTimeout(() => {
-            this.addEventButtonCopy();
-        }, 1000);
+    openShareModal() {
+        // Open the share modal
+        if (eXeLearning.app.modals?.share) {
+            eXeLearning.app.modals.share.show();
+        } else {
+            console.error('ShareProjectButton: Share modal not available');
+        }
     }
 
     /**
-     * Event to copy to the clipboard
-     *
+     * Update the visibility pill appearance
+     * @param {string} visibility - 'public' or 'private'
      */
-    addEventButtonCopy() {
-        let shareButton = document.getElementById('shareUrlButton');
-        shareButton.addEventListener('click', () => {
-            // Get the text field
-            let copyText = document.getElementById('shareLinkCode');
-            let copyTextValue = copyText.innerText;
+    updateVisibilityPill(visibility) {
+        if (!this.visibilityIcon) return;
 
-            if (!navigator.clipboard) {
-                let textArea = document.createElement('textarea');
+        this.currentVisibility = visibility;
 
-                textArea.value = copyTextValue;
+        if (visibility === 'public') {
+            this.visibilityIcon.textContent = 'public';
+        } else {
+            this.visibilityIcon.textContent = 'lock';
+        }
+    }
 
-                document.body.appendChild(textArea);
+    /**
+     * Load visibility from project API and update the pill
+     * Called when a project is loaded to show the correct visibility state
+     */
+    async loadVisibilityFromProject() {
+        const projectId = eXeLearning.app.project?.odeId;
+        if (!projectId) {
+            // No project loaded, use default from config
+            const defaultVisibility = eXeLearning.app.params?.defaultProjectVisibility || 'private';
+            this.updateVisibilityPill(defaultVisibility);
+            return;
+        }
 
-                textArea.select();
-                textArea.focus();
-
-                document.execCommand('copy');
-                textArea.remove();
-            } else {
-                navigator.clipboard.writeText(copyTextValue);
+        try {
+            const response = await eXeLearning.app.api.getProject(projectId);
+            // Response format: { responseMessage: 'OK', project: { visibility: '...' } }
+            if (response?.responseMessage === 'OK' && response.project?.visibility) {
+                this.updateVisibilityPill(response.project.visibility);
             }
-        });
+        } catch (error) {
+            console.warn('[ShareButton] Could not load project visibility:', error);
+        }
     }
 
     /**
-     * Get element to append
-     *
-     * @param {*} result
-     * @returns
+     * Get current document URL for sharing
+     * Note: Uses 'project' query parameter to match server-side pages.ts route
+     * @returns {string}
      */
-    makeBodyElementShareUrl(result) {
-        let element = document.createElement('div');
-        element.classList.add('element-share-url');
-        element.append(this.makeUrlBody(result));
-        return element;
-    }
+    getCurrentDocumentUrl() {
+        const url = new URL(window.location.href);
+        const projectUuid =
+            eXeLearning.app.project?.odeId ||
+            eXeLearning.app.project?.requestedProjectId ||
+            url.searchParams.get('project');
 
-    /**
-     * Make body content to show the share url
-     *
-     * @param {*} result
-     * @returns
-     */
-    makeUrlBody(result) {
-        let element = document.createElement('div');
-        let p = document.createElement('p');
-        let urlDiv = document.createElement('div');
-        let urlString = document.createElement('div');
-        let urlButton = document.createElement('button');
+        if (projectUuid) {
+            // Use 'project' param to match server-side route handling
+            url.searchParams.set('project', projectUuid);
+            // Clean up legacy parameters
+            url.searchParams.delete('projectId');
+            url.searchParams.delete('odeSessionId');
+        }
 
-        element.classList.add('share-link-div');
-
-        p.classList.add('share-link-text');
-        p.innerHTML = _('The share link is:');
-
-        urlDiv.classList.add('share-link-div-content');
-
-        urlString.classList.add('share-link-code-string');
-        urlString.id = 'shareLinkCode';
-        urlString.innerHTML = `<strong> ${result.shareSessionUrl}</strong>`;
-
-        urlButton.id = 'shareUrlButton';
-        urlButton.title = _('Copy to clipboard');
-        // urlButton.classList.add('exe-icon');
-        // urlButton.classList.add('share-url-button');
-        urlButton.innerHTML =
-            '<i class="auto-icon" aria-hidden="true">content_paste</i><span class="visually-hidden">' +
-            _('Copy to clipboard') +
-            '</span>';
-
-        urlDiv.append(urlString);
-        urlDiv.append(urlButton);
-
-        element.append(p);
-        element.append(urlDiv);
-
-        return element;
+        return url.toString();
     }
 }

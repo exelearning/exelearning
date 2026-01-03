@@ -33,6 +33,7 @@ nav:
       - Internationalization: development/internationalization.md
       - Real Time: development/real-time.md
       - Customization: development/customization.md
+      - Styles: development/styles.md
       - Installers: development/installers.md
       - REST API: development/rest-api.md
       - Authentication: development/authentication.md

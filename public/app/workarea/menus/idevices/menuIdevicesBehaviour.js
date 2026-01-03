@@ -96,14 +96,21 @@ export default class MenuIdevicesBehaviour {
 
     /**
      * Helper method for calculating positioning of elements
+     * On mobile (< 768px), skip horizontal positioning and let CSS handle vertical layout
      */
     positionSibling(label) {
         const category = label.parentNode;
-        const rect = category.getBoundingClientRect();
         const sibling = label.nextElementSibling;
 
         if (!sibling) return;
 
+        // Skip horizontal positioning on mobile - let CSS handle vertical layout
+        if (window.innerWidth < 768) {
+            sibling.style.left = ''; // Clear inline style
+            return;
+        }
+
+        const rect = category.getBoundingClientRect();
         sibling.style.left = `${rect.right + 14}px`;
     }
 
@@ -111,18 +118,17 @@ export default class MenuIdevicesBehaviour {
      *
      */
     changeAttributePosBehaviour() {
-        var parent = this;
-        var observer = new MutationObserver(function (mutations) {
-            mutations.forEach(function (mutation) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
                 if (
                     mutation.type === 'attributes' &&
                     mutation.attributeName == 'size'
                 ) {
-                    parent.parent.categoriesIdevices.forEach((category) => {
+                    this.parent.categoriesIdevices.forEach((category) => {
                         category.classList.remove('on');
                         category.classList.add('off');
                     });
-                    let lastOpen = parent.parent.menuIdevices.querySelector(
+                    let lastOpen = this.parent.menuIdevices.querySelector(
                         '.idevice_category.last-open'
                     );
                     if (lastOpen) {

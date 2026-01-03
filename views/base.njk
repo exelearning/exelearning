@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ locale or 'en' }}">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="robots" content="noindex">
+        <title>{% block title %}{% endblock %}</title>
+        <link rel="icon" href="{{ '/favicon.ico' | asset }}">
+        {% block stylesheets %}
+        {# Default stylesheets #}
+        <link rel="stylesheet" href="{{ '/style/server.css' | asset }}">
+        {% endblock %}
+        <link class="exe" rel="stylesheet" href="{{ '/style/workarea/custom.css' | asset }}">
+        <script class="exe" src="{{ '/libs/jquery/jquery.min.js' | asset }}"></script>
+        {% block javascripts %}
+        {# Additional JavaScript will be added here #}
+        {% endblock %}
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body class="{% block class %}{% endblock %}" id="{% block id %}{% endblock %}">
+        {% block body %}{% endblock %}
+        <script src="{{ '/app/workarea/custom.js' | asset }}"></script>
+    </body>
+</html>

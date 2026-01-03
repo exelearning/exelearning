@@ -1,6 +1,21 @@
 #menu_idevices {
     border: none;
-    /* max-height: 50%; */
+
+    // Flex layout: don't grow, don't shrink - stay at bottom
+    flex: 0 0 auto;
+    max-height: 45vh; // Don't take more than 45% of viewport
+    overflow: hidden;
+
+    // When accordion is collapsed, only show header height
+    &:has(.accordion-button.collapsed) {
+        min-height: auto; // Just the header
+    }
+
+    // When accordion is expanded, ensure minimum content area
+    &:has(.accordion-button:not(.collapsed)) {
+        min-height: 180px;
+    }
+
     .accordion-button {
         color: var(--text) !important;
         justify-content: flex-start;
@@ -39,10 +54,16 @@
         }
     }
     #menu_idevices_content {
+        // Flex: take available space within idevices panel
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: calc(45vh - 50px); // Account for accordion header
+        overflow-y: auto;
+        overflow-x: hidden;
+
         &.show {
             display: flex;
             flex-wrap: wrap;
-            height: 100%;
         }
         .menu_content {
             padding: 12px;
@@ -317,6 +338,91 @@
 
             &.show {
                 opacity: 1;
+            }
+        }
+    }
+}
+
+/* ========================================================================
+   Mobile Responsive Styles (< 768px) - Vertical Category Expansion
+   ======================================================================== */
+@media (max-width: 767.98px) {
+    #menu_idevices {
+        // When accordion is collapsed, only show header height (mobile)
+        &:has(.accordion-button.collapsed) {
+            min-height: auto !important;
+            max-height: none;
+        }
+
+        // When accordion is expanded, ensure minimum content area (mobile)
+        &:has(.accordion-button:not(.collapsed)) {
+            min-height: 150px;
+            max-height: 250px;
+        }
+
+        #menu_idevices_content {
+            &.show {
+                height: auto !important;
+                flex: 1;
+            }
+        }
+
+        #list_menu_idevices {
+            height: auto !important;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+
+            .idevice_category {
+                flex-direction: column;
+
+                &.on {
+                    // Expanded category styling for mobile
+                    .idevices {
+                        position: relative !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        right: 0 !important;
+                        width: 100% !important;
+                        max-width: 100%;
+                        max-height: none;
+                        margin-top: 10px;
+                        margin-bottom: 10px;
+                        box-shadow: none;
+                        background: var(--gray-50);
+                        border-radius: 8px;
+                        padding: 8px;
+
+                        // Hide title and description on mobile to save space
+                        .idevices-category-title {
+                            display: none;
+                        }
+
+                        .idevices-category-description {
+                            display: none;
+                        }
+
+                        // Reduce gap for 3 items per row
+                        gap: 4px !important;
+
+                        // 3 items per row on mobile
+                        .idevice_item {
+                            width: calc(33.33% - 3px);
+                            height: 65px;
+                            padding: 4px;
+                            gap: 2px;
+                            border-radius: 8px;
+
+                            .idevice_icon {
+                                font-size: 18px;
+                            }
+
+                            .idevice_title {
+                                font-size: 8px;
+                                line-height: 1.1;
+                            }
+                        }
+                    }
+                }
             }
         }
     }

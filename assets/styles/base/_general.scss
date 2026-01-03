@@ -133,3 +133,41 @@ body {
 }
     */
 
+/* ========================================================================
+   Mobile Responsive Styles (< 768px)
+   ======================================================================== */
+@media (max-width: 767.98px) {
+    // Main content should be full width on mobile
+    body main {
+        min-width: 100%;
+        width: 100% !important;
+    }
+
+    // Backdrop for mobile sidebar - clickable to close
+    // Only apply to workarea (body#main), not login page
+    body#main:not(.left-column-hidden)::after {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        pointer-events: auto;
+        cursor: pointer;
+        opacity: 1;
+        transition: opacity var(--sidebar);
+    }
+
+    body#main.left-column-hidden::after {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    // Properties page should fill available height without extra padding
+    body main #node-content-container.properties-page {
+        height: calc(100% - 12px);
+    }
+}
+

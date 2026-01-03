@@ -2,10 +2,14 @@
 
 #menu_nav {
     border: none;
-    /* min-height: 48%;
-    height: 100%; */
     overflow: hidden;
     padding: 0 20px;
+
+    // Flex layout: take available space, shrink to allow iDevices panel visibility
+    flex: 1 1 auto;
+    min-height: 0; // CRITICAL: Allow flex shrinking, will use min-height on nav_list instead
+    display: flex;
+    flex-direction: column;
     .accordion-header {
         display: flex;
         flex-flow: row nowrap;
@@ -103,7 +107,13 @@
         }
     }
     #menu_nav_content {
-        height: calc(100% - 30px);
+        // Flex: take remaining space and scroll internally
+        flex: 1 1 auto;
+        min-height: 0; // CRITICAL: Allow flex children to shrink
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+
         &.show {
             display: flex;
             flex-direction: column;
@@ -117,7 +127,9 @@
             /*background-color: hsl(220 23% 96% / 1);*/
             border-bottom-left-radius: 8px;
             border-bottom-right-radius: 8px;
-            max-height: calc(100% - 15px);
+            // Flex: take remaining space and scroll
+            flex: 1 1 auto;
+            min-height: 100px; // Minimum visible area for pages
             overflow-y: auto;
             overflow-x: hidden;
             .nav-element {
@@ -196,7 +208,8 @@
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
-                        width: 94%;
+                        flex: 1;
+                        min-width: 0;
                         text-align: left;
                         height: 23px;
                         line-height: 24px;
@@ -211,12 +224,40 @@
                         font-size: 15px;
                         font-weight: normal;
                         cursor: pointer;
+                        flex-shrink: 0;
                         &:hover {
                             font-weight: normal;
                             background-color: var(--white);
                         }
                         &:focus-visible {
                             display: block !important;
+                            visibility: visible !important;
+                        }
+                    }
+                    // "+" button for adding subpages
+                    .node-add-button {
+                        display: none;
+                        visibility: hidden;
+                        font-family: var(--icons-ff);
+                        width: 22px;
+                        height: 22px;
+                        border-radius: 4px;
+                        font-size: 18px;
+                        font-weight: normal;
+                        cursor: pointer;
+                        margin-right: 2px;
+                        flex-shrink: 0;
+                        .exe-icon {
+                            font-size: 18px;
+                            line-height: 1;
+                            color: var(--icon-primary);
+                        }
+                        &:hover {
+                            background-color: var(--white);
+                            border: 1px solid var(--gray-200);
+                        }
+                        &:focus-visible {
+                            display: flex !important;
                             visibility: visible !important;
                         }
                     }
@@ -250,6 +291,10 @@
                     > .nav-element-text {
                         .node-menu-button {
                             display: block !important;
+                            visibility: visible !important;
+                        }
+                        .node-add-button {
+                            display: flex !important;
                             visibility: visible !important;
                         }
                     }
@@ -384,6 +429,10 @@
                         transition: var(--tr-02);
                         > .nav-element-text > .node-menu-button {
                             display: block;
+                            visibility: visible;
+                        }
+                        > .nav-element-text > .node-add-button {
+                            display: flex;
                             visibility: visible;
                         }
                     }

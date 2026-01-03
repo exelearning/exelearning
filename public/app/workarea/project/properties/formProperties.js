@@ -1,3 +1,6 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class FormProperties {
     constructor(properties) {
         this.properties = properties;
@@ -8,20 +11,47 @@ export default class FormProperties {
             '#main #workarea #node-content'
         );
         this.addBehaviourBodyToHideHelpDialogs();
+
+        // Yjs properties binding instance
+        this.yjsBinding = null;
     }
 
     show() {
         this.combineMetadataProperties();
         const formElement = this.makeBodyElement(this.metadataProperties);
         this.setBodyElement(formElement);
-        this.addBehaviourSaveButton();
         this.addBehaviourExeHelp();
-        this.addBehaviourTextInputs();
+
+        // Initialize Yjs binding for real-time sync
+        this.initYjsBinding();
+
         setTimeout(() => {
             this.focusTextInput(
                 this.nodeContent.querySelector('input[type="text"')
             );
         }, 500);
+    }
+
+    /**
+     * Initialize Yjs binding for automatic property sync
+     */
+    initYjsBinding() {
+        const project = this.properties.project;
+        if (project._yjsBridge && project._yjsBridge.initialized) {
+            const documentManager = project._yjsBridge.getDocumentManager();
+            if (documentManager && documentManager.initialized && window.YjsPropertiesBinding) {
+                // Cleanup previous binding if exists
+                if (this.yjsBinding) {
+                    this.yjsBinding.unbindForm();
+                }
+
+                // Create new binding
+                this.yjsBinding = new window.YjsPropertiesBinding(documentManager);
+                this.yjsBinding.bindForm(this.propertiesFormElement);
+
+                Logger.log('[FormProperties] Yjs binding initialized - changes sync automatically');
+            }
+        }
     }
 
     combineMetadataProperties() {
@@ -60,6 +90,11 @@ export default class FormProperties {
     }
 
     remove() {
+        // Cleanup Yjs binding
+        if (this.yjsBinding) {
+            this.yjsBinding.unbindForm();
+            this.yjsBinding = null;
+        }
         if (this.propertiesFormElement) this.propertiesFormElement.remove();
     }
 
@@ -79,9 +114,7 @@ export default class FormProperties {
 
         this.addRowsFlatWithSectionTitles(properties, propertiesTableElement);
 
-        const saveButton = this.makeSaveButton();
-
-        formContentElement.append(saveButton);
+        // No save button - changes sync automatically via Yjs
         formContentElement.append(propertiesTableElement);
 
         setTimeout(() => element.classList.remove('loading'), 100);
@@ -136,7 +169,7 @@ export default class FormProperties {
             groupElementTitle.setAttribute('data-bs-toggle', 'collapse');
             groupElementTitle.setAttribute('data-bs-target', `#${collapseId}`);
             groupElementTitle.setAttribute('role', 'button');
-            console.log(topGroupKey, topGroupTitle, property);
+            Logger.log(topGroupKey, topGroupTitle, property);
             if (topGroupKey === 'properties_package') {
                 groupElementTitle.setAttribute('aria-expanded', 'true');
             } else {
@@ -634,7 +667,7 @@ export default class FormProperties {
             childrenLabel.id = newId;
             childrenLabel.setAttribute('for', newId);
             childrenLabel.addEventListener('click', () => {
-                childrenValue && childrenValue.focus();
+                childrenValue?.focus();
             });
         }
         if (childrenValue) {
@@ -650,12 +683,7 @@ export default class FormProperties {
                 childrenValue.value = '';
         }
 
-        cloneRow.querySelectorAll('input[type="text"]').forEach((input) => {
-            input.addEventListener('keyup', (event) => {
-                event.preventDefault();
-                if (event.key === 'Enter') this.saveAction();
-            });
-        });
+        // Note: No save action needed - changes sync automatically via Yjs
         const actionsContainer = cloneRow.querySelector(
             '.actions-duplicate-properties-container'
         );
@@ -682,176 +710,8 @@ export default class FormProperties {
     }
 
     /*******************************************************************************
-     * SAVE
-     *******************************************************************************/
-
-    saveAction() {
-        this.hideHelpContentAll();
-        const propertiesDict = this.getPropertiesData();
-        let missingFields = false;
-        const query = `#properties-node-content-form .property-value.required`;
-        this.nodeContent.querySelectorAll(query).forEach((field) => {
-            const value = this.getFieldValueByType(field);
-            if (value === '') {
-                field.classList.add('field-missing', 'is-invalid');
-                missingFields = true;
-            } else {
-                field.classList.remove('field-missing', 'is-invalid');
-            }
-        });
-
-        if (missingFields) {
-            eXeLearning.app.modals.alert.show({
-                title: _('Project properties'),
-                body: _('Please fill in all required fields.'),
-                contentId: 'error',
-            });
-        } else {
-            this.saveProperties(propertiesDict, false).then((response) => {
-                this.properties.project.app.locale.loadContentTranslationsStrings(
-                    propertiesDict.pp_lang
-                );
-                const toastData = {
-                    title: _('Project properties'),
-                    body: _('Project properties saved.'),
-                    icon: 'downloading',
-                };
-                const toast =
-                    window.eXeLearning.app.toasts.createToast(toastData);
-                setTimeout(() => {
-                    toast.remove();
-                }, 1000);
-            });
-        }
-    }
-
-    getPropertiesData() {
-        const propertiesDict = {};
-        const propertiesGroupNum = {};
-        const propertiesValueElements =
-            this.nodeContent.querySelectorAll('.property-value');
-        propertiesValueElements.forEach((propertyValue) => {
-            const property =
-                this.metadataProperties[propertyValue.getAttribute('property')];
-            const value = this.getFieldValueByType(propertyValue);
-            const propertyKeyBase = propertyValue.getAttribute('property');
-            let propertyKey;
-            if (propertyValue.classList.contains('copied')) {
-                propertyKey = this.getPropertyKeyMultiple(
-                    propertyValue,
-                    property,
-                    propertyKeyBase,
-                    propertiesGroupNum,
-                    propertiesDict
-                );
-            } else {
-                propertyKey = propertyKeyBase;
-            }
-            propertiesDict[propertyKey] = value;
-        });
-
-        return propertiesDict;
-    }
-
-    getPropertyKeyMultiple(
-        propertyValue,
-        property,
-        propertyKeyBase,
-        propertiesGroupNum,
-        propertiesDict
-    ) {
-        const propertyKeyPrefixGroup = propertyValue.getAttribute('group');
-        let prevGroup = '';
-        let propertyKey = '';
-        for (const group of Object.keys(property.groups || {})) {
-            const groupDiff = group.replace(prevGroup, '');
-            if (group == propertyKeyPrefixGroup) {
-                const propertyPre = propertyKey + groupDiff;
-                const numStringSuffix = propertiesGroupNum[propertyPre]
-                    ? propertiesGroupNum[propertyPre]
-                    : '';
-                const groupSuffix = propertyKeyBase.replace(
-                    propertyKeyPrefixGroup,
-                    ''
-                );
-                const propertyKeyPrototipe =
-                    propertyKey + groupDiff + numStringSuffix + groupSuffix;
-                if (propertiesDict[propertyKeyPrototipe] !== undefined) {
-                    const numGroup = propertiesGroupNum[propertyPre]
-                        ? propertiesGroupNum[propertyPre] + 1
-                        : 2;
-                    propertiesGroupNum[propertyPre] = numGroup;
-                }
-                const numGroupString = propertiesGroupNum[propertyPre]
-                    ? propertiesGroupNum[propertyPre]
-                    : '';
-                propertyKey += groupDiff + numGroupString + groupSuffix;
-            } else {
-                const numStringGroup = propertiesGroupNum[propertyKey]
-                    ? propertiesGroupNum[propertyKey]
-                    : '';
-                propertyKey += groupDiff + numStringGroup;
-            }
-            prevGroup = group;
-        }
-        return propertyKey || propertyKeyBase;
-    }
-
-    getFieldValueByType(propertyValue) {
-        let value = '';
-        switch (propertyValue.getAttribute('data-type')) {
-            case 'checkbox':
-                value = propertyValue.checked ? 'true' : 'false';
-                break;
-            case 'select':
-                value = propertyValue.selectedOptions[0].value.trim();
-                break;
-            case 'text':
-            case 'date':
-            case 'textarea':
-                value = propertyValue.value.trim();
-                break;
-        }
-        return value;
-    }
-
-    async saveProperties(propertiesDict, inherit) {
-        return await this.properties.apiSaveProperties(propertiesDict, inherit);
-    }
-
-    /*******************************************************************************
      * BEHAVIOUR
      *******************************************************************************/
-
-    makeSaveButton() {
-        const footer = document.createElement('div');
-        footer.classList.add('footer');
-
-        const buttonSave = document.createElement('button');
-        buttonSave.setAttribute('type', 'button');
-        buttonSave.classList.add('confirm', 'btn', 'btn-primary', 'mb-3');
-        buttonSave.innerHTML = _('Save metadata and properties');
-
-        footer.append(buttonSave);
-        return footer;
-    }
-
-    addBehaviourSaveButton() {
-        const saveButton =
-            this.propertiesFormElement.querySelector('button.confirm');
-        saveButton.addEventListener('click', () => this.saveAction());
-    }
-
-    addBehaviourTextInputs() {
-        this.propertiesFormElement
-            .querySelectorAll('input[type="text"]')
-            .forEach((input) => {
-                input.addEventListener('keyup', (event) => {
-                    event.preventDefault();
-                    if (event.key == 'Enter') this.saveAction();
-                });
-            });
-    }
 
     addBehaviourExeHelp() {
         const exeHelp = this.nodeContent.querySelectorAll('.exe-form-help');

@@ -276,6 +276,8 @@
 pre.mermaid {
     margin: 1.5em 0;
     text-align: center;
+    width: 100%;
+    min-width: 200px;
 }
 
 /* Blocks */
@@ -710,4 +712,42 @@ video {
 /* Teacher mode */
 html:not(.mode-teacher) .js .teacher-only {
     display: none !important;
+}
+
+/* ========================================
+   Architecture v3.1 - Common Theme Overrides
+   ========================================
+   These rules support the new HTML structure and
+   load BEFORE theme-specific styles.
+   ======================================== */
+
+/* Navigation: Hide nested sections by default, show active paths */
+#siteNav .other-section {
+    display: none;
+}
+#siteNav li.active > .other-section,
+#siteNav li.current-page-parent > .other-section {
+    display: block;
+}
+
+/* Site footer extra section */
+#siteFooterExtra {
+    margin-bottom: 2em;
+    color: #555;
+    font-size: 0.95em;
+}
+
+/* Print styles for header elements */
+@media print {
+    body #header,
+    body #emptyHeader,
+    body #nodeDecoration {
+        height: auto !important;
+        min-height: 0;
+        border: none;
+        padding: 0;
+    }
+    body #headerContent {
+        padding-top: 40px;
+    }
 }

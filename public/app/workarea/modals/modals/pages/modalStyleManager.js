@@ -117,16 +117,6 @@ export default class ModalStyleManager extends Modal {
                     .nodeSelected;
             let selectedPageId = nodeSelected.getAttribute('page-id');
             await this.themes.manager.selectTheme(this.themeSelectedId, true);
-            // Timeout to wait to the insert on the BBDD
-            setTimeout(() => {
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    selectedPageId,
-                    null,
-                    null,
-                    'RELOAD_NAV_MAP'
-                );
-            }, 250);
         }
     }
 
@@ -282,7 +272,7 @@ export default class ModalStyleManager extends Modal {
     getBaseThemes(themes) {
         let baseThemes = {};
         for (let [key, value] of Object.entries(themes)) {
-            if (value.type == eXeLearning.symfony.themeTypeBase) {
+            if (value.type == eXeLearning.config.themeTypeBase) {
                 baseThemes[key] = value;
             }
         }
@@ -298,7 +288,7 @@ export default class ModalStyleManager extends Modal {
     getUserThemes(themes) {
         let userThemes = {};
         for (let [key, value] of Object.entries(themes)) {
-            if (value.type == eXeLearning.symfony.themeTypeUser) {
+            if (value.type == eXeLearning.config.themeTypeUser) {
                 userThemes[key] = value;
             }
         }
@@ -1007,7 +997,7 @@ export default class ModalStyleManager extends Modal {
         if (value)
             imgElement.setAttribute(
                 'src',
-                `${eXeLearning.symfony.basePath}${value}?v=${Date.now()}`
+                `${eXeLearning.config.basePath}${value}?v=${Date.now()}`
             );
         // - Input
         let inputFileElement = document.createElement('input');

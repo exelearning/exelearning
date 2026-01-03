@@ -11285,6 +11285,10 @@
         <source>Title HTML</source>
         <target>Título HTML</target>
       </trans-unit>
+      <trans-unit id="HdPgTtl1" resname="Hide page title">
+        <source>Hide page title</source>
+        <target>Ocultar título de la página</target>
+      </trans-unit>
       <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
         <source>Advanced (SEO)</source>
         <target>Avanzado (SEO)</target>
@@ -12996,6 +13000,64 @@
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
         <target>Añade información adicional al título principal.</target>
+      </trans-unit>
+      <!-- Error page translations -->
+      <trans-unit id="error.page_not_found" resname="error.page_not_found">
+        <source>Page not found</source>
+        <target>Página no encontrada</target>
+      </trans-unit>
+      <trans-unit id="error.page_cannot_be_displayed" resname="error.page_cannot_be_displayed">
+        <source>Sorry, but the page cannot be displayed.</source>
+        <target>Lo sentimos, la página no se puede mostrar.</target>
+      </trans-unit>
+      <trans-unit id="error.server_error_try_again" resname="error.server_error_try_again">
+        <source>The server encountered an error and could not complete your request. Please try again later.</source>
+        <target>El servidor ha encontrado un error y no ha podido completar su solicitud. Por favor, inténtelo de nuevo más tarde.</target>
+      </trans-unit>
+      <trans-unit id="error.return_to_workarea" resname="error.return_to_workarea">
+        <source>Return to work area</source>
+        <target>Volver al área de trabajo</target>
+      </trans-unit>
+      <trans-unit id="error.return_to_login" resname="error.return_to_login">
+        <source>Return to login</source>
+        <target>Volver al inicio de sesión</target>
+      </trans-unit>
+      <trans-unit id="error.create_new_project" resname="error.create_new_project">
+        <source>Create New Project</source>
+        <target>Crear nuevo proyecto</target>
+      </trans-unit>
+      <trans-unit id="error.back_to_login" resname="error.back_to_login">
+        <source>Back to Login</source>
+        <target>Volver al inicio de sesión</target>
+      </trans-unit>
+      <trans-unit id="error.access_denied" resname="error.access_denied">
+        <source>Access denied</source>
+        <target>Acceso denegado</target>
+      </trans-unit>
+      <trans-unit id="error.server_error" resname="error.server_error">
+        <source>Server error</source>
+        <target>Error del servidor</target>
+      </trans-unit>
+      <!-- Logical exception translations -->
+      <trans-unit id="error.autosave_recent_save" resname="error.autosave_recent_save">
+        <source>Autosave not needed - recent save exists</source>
+        <target>Autoguardado no necesario - existe un guardado reciente</target>
+      </trans-unit>
+      <trans-unit id="error.insufficient_space" resname="error.insufficient_space">
+        <source>Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%</source>
+        <target>Espacio de almacenamiento insuficiente. Usado: %usedSpace%, Máximo: %maxSpace%</target>
+      </trans-unit>
+      <trans-unit id="error.session_already_open" resname="error.session_already_open">
+        <source>User already has an open session</source>
+        <target>El usuario ya tiene una sesión abierta</target>
+      </trans-unit>
+      <trans-unit id="error.extension_not_installed" resname="error.extension_not_installed">
+        <source>Required extension %extension% is not installed</source>
+        <target>La extensión requerida %extension% no está instalada</target>
+      </trans-unit>
+      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
+        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
+        <target>Este archivo fue creado con una versión más reciente de eXeLearning. Es posible que no funcione correctamente. Por favor, actualiza la aplicación.</target>
       </trans-unit>
     </body>
   </file>

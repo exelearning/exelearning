@@ -17,13 +17,19 @@
   </p>
 </div>
 
+<p align="center">
+  <a href="https://codecov.io/gh/exelearning/exelearning">
+    <img src="https://codecov.io/gh/exelearning/exelearning/graph/badge.svg" alt="codecov" />
+  </a>
+</p>
+
 ## About the Project
 
 eXeLearning 3.0 is a modern re-implementation of the original eXeLearning authoring tool, initially created in the eXeLearning.org project in New Zealand and subsequently continued by eXeLearning.net project by the Spanish Ministry of Education, Vocational Training and Sports (MEFPD) through Cedec-INTEF.
 
 The new code has been created within the collaboration between the MEFPD and the regional educational administrations of Andalucía and Extremadura. The revision and further developments of eXe 3.0 are carried out also with the participation of other regional administrations (Canarias, Madrid, Comunidad Valenciana and Galicia).
 
-This version is built with modern technologies (PHP 8, Symfony 7) and provides an accessible and up-to-date user interface for creating interactive educational content.
+This version is built with modern technologies (Bun, Elysia, Kysely) and provides an accessible and up-to-date user interface for creating interactive educational content.
 
 ### Key Features
 
@@ -32,8 +38,9 @@ This version is built with modern technologies (PHP 8, Symfony 7) and provides a
 * Multilingual support
 * Exportation to various formats
 * Moodle integration
-* [RESTful API](./doc/development/rest-api.md) Self-documented with Swagger
-* Real-time collaborative features powered by [Mercure](https://mercure.rocks/)
+* RESTful API built with [Elysia](https://elysiajs.com/)
+* Real-time collaborative editing powered by [Yjs](https://yjs.dev/) WebSocket
+* [Architecture Documentation](./doc/architecture.md)
 * Modern and accessible interface built with [Bootstrap](https://getbootstrap.com/)
 * Multiple authentication methods (Password, CAS, OpenID Connect)
 * Compatible with MySQL, PostgreSQL, and SQLite databases
@@ -41,23 +48,34 @@ This version is built with modern technologies (PHP 8, Symfony 7) and provides a
 
 ### Built With
 
-* [![PHP][PHP.badge]][PHP-url]
-* [![Symfony][Symfony.badge]][Symfony-url]
-* [![Docker][Docker.badge]][Docker-url]
+* [![TypeScript][TypeScript.badge]][TypeScript-url]
+* [![Bun][Bun.badge]][Bun-url]
+* [![Elysia][Elysia.badge]][Elysia-url]
 
 ## Quick Start
 
-First install Docker if you don't have it yet. Then...
-
-To try out eXeLearning instantly, run:
+### Using Docker
 
 ```bash
 docker run --pull always -p 8080:8080 --name exelearning exelearning/exelearning:latest
 ```
 
-This will start eXeLearning at `http://localhost:8080` with the default credentials, user `user@exelearning.net` and the password `1234`.
+This will start eXeLearning at `http://localhost:8080` with the default credentials: `user@exelearning.net` / `1234`.
 
-Offline installers for Linux, Windows and macOS are also available on the [Releases page](https://github.com/exelearning/exelearning/releases). The online version is recommended for most use cases.
+### Local Development
+
+First install [Bun](https://bun.sh/) if you don't have it yet. Then:
+
+```bash
+git clone https://github.com/exelearning/exelearning.git
+cd exelearning
+bun install
+bun run start:dev
+```
+
+This will start eXeLearning at `http://localhost:8080`.
+
+Offline installers for Linux, Windows and macOS are also available on the [Releases page](https://github.com/exelearning/exelearning/releases).
 
 ## Deployment
 
@@ -70,42 +88,37 @@ To deploy eXeLearning in a production environment, see:
 
 See [doc/development/environment.md](./doc/development/environment.md) for full setup instructions.
 
-To start developing:
-
 ```bash
 git clone https://github.com/exelearning/exelearning.git
 cd exelearning
-make up
+bun install
+bun run start:dev
 ```
 
-This will start all services and make the app available at `http://localhost:8080`.
+This will start the development server at `http://localhost:8080` with hot reload.
 
-More development tools, options, and real-time collaboration info are documented in the `doc/` folder.
-
-A SCSS watcher is implemented which compiles any style automatically, without the need to launch any command. SCSS can be laid out directly in the same way as CSS.
+More development tools, options, and real-time collaboration info are documented in the `doc/` folder. See also [Architecture Documentation](./doc/architecture.md).
 
 ## Project Structure
 
-The application follows the standard Symfony project structure, with some specific folders for managing iDevices and educational resources.
-
 ```
 exelearning/
-├── bin/                   # Symfony CLI commands
-├── config/                # Configuration files
-├── doc/                   # Full project documentation
-├── docker/                # Docker configuration
-├── public/                # Public files
-├── src/                   # Application source code
-│   ├── Controller/        # Controllers
-│   ├── Entity/            # Entities and models
-│   ├── Repository/        # Data repositories
-│   └── ...
-├── templates/             # Twig templates
-├── tests/                 # Automated tests
-├── translations/          # Translation files
-├── docker-compose.yml     # Docker Compose configuration
-├── Makefile               # Useful development commands
-└── README.md              # This file
+├── src/                   # Elysia backend (TypeScript)
+│   ├── routes/            # API routes
+│   ├── services/          # Business logic
+│   ├── db/                # Kysely database (queries, migrations)
+│   └── websocket/         # Yjs WebSocket collaboration
+├── public/                # Static files
+│   ├── app/               # Vanilla JS frontend
+│   │   └── yjs/           # Yjs integration (real-time)
+│   ├── libs/              # jQuery, Bootstrap, TinyMCE
+│   └── style/             # CSS/SCSS
+├── views/                 # Nunjucks templates
+├── doc/                   # Documentation
+├── test/                  # Integration tests
+├── main.js                # Electron main process
+├── Makefile               # Build commands
+└── package.json           # Dependencies
 ```
 
 ## Usage
@@ -149,16 +162,14 @@ See our [versioning guide](./doc/development/version-control.md) for details abo
 The project includes a Makefile to simplify development tasks:
 
 ```
-make up               # Start Docker containers in interactive mode
-make upd              # Start Docker containers in background mode
-make down             # Stop and remove Docker containers
-make lint             # Run the linter to check PHP code style
-make fix              # Automatically fix PHP style issues
-make test             # Run unit tests with PHPUnit
-make test-e2e         # Run e2e tests with PHPUnit
-make shell            # Open a shell inside the exelearning container
-make translations     # Update translation strings
-make create-user      # Create a user using the Symfony console
+make install          # Install dependencies (bun install)
+make start:dev        # Start development server with hot reload
+make test-unit        # Run unit tests
+make test-coverage    # Run tests with coverage report
+make build            # Build for production
+make package          # Build Electron installers for all platforms
+make lint             # Run ESLint
+make fix              # Automatically fix linting issues
 ```
 
 To see all available commands, run:
@@ -187,9 +198,9 @@ Distributed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0. See `LICENSE` for 
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
-[PHP.badge]: https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white
-[PHP-url]: https://www.php.net/
-[Symfony.badge]: https://img.shields.io/badge/Symfony-000000?style=for-the-badge&logo=symfony&logoColor=white
-[Symfony-url]: https://symfony.com/
-[Docker.badge]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
-[Docker-url]: https://www.docker.com/
+[TypeScript.badge]: https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white
+[TypeScript-url]: https://www.typescriptlang.org/
+[Bun.badge]: https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white
+[Bun-url]: https://bun.sh/
+[Elysia.badge]: https://img.shields.io/badge/Elysia-7C3AED?style=for-the-badge
+[Elysia-url]: https://elysiajs.com/

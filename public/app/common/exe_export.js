@@ -1,4 +1,4 @@
-$exeExport = {
+const $exeExport = window.$exeExport = {
 
     isTogglingBox: false,
     delayLoadingPageTime: 200,
@@ -202,9 +202,15 @@ $exeExport = {
         // Idevice export object
         let exportIdevice = this.getIdeviceObject(ideviceType);
         if (exportIdevice === undefined) return false;
+        // Clear interval immediately - we only need to run once
+        clearInterval(window[intervalName]);
         // Get json data and initializes each page component of the indicated type
         let idevicesNodes = document.querySelectorAll(`.idevice_node.${ideviceType}`);
         idevicesNodes.forEach(ideviceNode => {
+            // Skip if already loaded or loading (prevents duplicate fetches)
+            if (ideviceNode.classList.contains('loaded') || ideviceNode.classList.contains('loading')) {
+                return;
+            }
             // Loading class
             ideviceNode.classList.add('loading');
             // Get json data
@@ -228,23 +234,81 @@ $exeExport = {
             jsonData.ideviceId = ideviceNode.id;
             // Get accesibility
             let accesibility = null;
-            // Get template
-            let template = ideviceNode.getAttribute('data-idevice-template');
+            // Get template filename and path
+            let templateFilename = ideviceNode.getAttribute('data-idevice-template');
+            let idevicePath = ideviceNode.getAttribute('data-idevice-path');
             // Idevice export function 1: renderView
-            if (ideviceNode.classList.contains('db-no-data')) {
-                let htmlIdevice = exportIdevice.renderView(jsonData, accesibility, template);
-                if (htmlIdevice) ideviceNode.innerHTML = htmlIdevice;
+            // JSON iDevices that store ALL content in jsonProperties (not in htmlView) need renderView
+            // to generate the complete interface. These iDevices have empty htmlView by design.
+            // Other JSON iDevices (like text) may have pre-rendered content in htmlView.
+            const isJsonIdevice = ideviceNode.getAttribute('data-idevice-component-type') === 'json';
+            // JSON-only iDevices that store ALL content in jsonProperties (not in htmlView)
+            // and need renderView to generate the complete interface.
+            // 'trueorfalse' added for legacy imports that have empty htmlView.
+            const jsonOnlyIdevices = ['casestudy', 'form', 'image-gallery', 'magnifier', 'trueorfalse'];
+            const ideviceType = ideviceNode.getAttribute('data-idevice-type');
+            const needsJsonRender = isJsonIdevice && jsonOnlyIdevices.includes(ideviceType);
+            if (needsJsonRender || ideviceNode.classList.contains('db-no-data')) {
+                // Load template content if we only have filename
+                this.loadTemplateAndRender(ideviceNode, exportIdevice, jsonData, accesibility, templateFilename, idevicePath);
+            } else {
+                // No renderView needed, just behaviour and init
+                exportIdevice.renderBehaviour(jsonData, accesibility);
+                exportIdevice.init(jsonData, accesibility);
+                ideviceNode.classList.add('loaded');
+                setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
             }
-            // Idevice export function 2: renderBehaviour
-            exportIdevice.renderBehaviour(jsonData, accesibility);
-            // Idevice export function 3: init
-            exportIdevice.init(jsonData, accesibility);
-            // Loaded
-            ideviceNode.classList.add('loaded');
-            setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
         })
-        // Clear interval
-        clearInterval(window[intervalName]);
+    },
+
+    /**
+     * Load template content and render idevice
+     * Templates are loaded from idevicePath + templateFilename
+     */
+    loadTemplateAndRender: function (ideviceNode, exportIdevice, jsonData, accesibility, templateFilename, idevicePath) {
+        // If template is already full content (contains {content}), use it directly
+        if (templateFilename && templateFilename.includes('{content}')) {
+            this.renderWithTemplate(ideviceNode, exportIdevice, jsonData, accesibility, templateFilename);
+            return;
+        }
+
+        // If we have path and filename, fetch the template
+        if (idevicePath && templateFilename) {
+            const templateUrl = idevicePath + templateFilename;
+            fetch(templateUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Template not found: ${templateUrl}`);
+                    }
+                    return response.text();
+                })
+                .then(templateContent => {
+                    this.renderWithTemplate(ideviceNode, exportIdevice, jsonData, accesibility, templateContent);
+                })
+                .catch(error => {
+                    console.warn(`[exe_export] Could not load template: ${error.message}`);
+                    // Fallback: render without template (just the generated HTML)
+                    this.renderWithTemplate(ideviceNode, exportIdevice, jsonData, accesibility, '{content}');
+                });
+        } else {
+            // No template info, use simple wrapper
+            this.renderWithTemplate(ideviceNode, exportIdevice, jsonData, accesibility, '{content}');
+        }
+    },
+
+    /**
+     * Render idevice with loaded template content
+     */
+    renderWithTemplate: function (ideviceNode, exportIdevice, jsonData, accesibility, templateContent) {
+        let htmlIdevice = exportIdevice.renderView(jsonData, accesibility, templateContent);
+        if (htmlIdevice) ideviceNode.innerHTML = htmlIdevice;
+        // Idevice export function 2: renderBehaviour
+        exportIdevice.renderBehaviour(jsonData, accesibility);
+        // Idevice export function 3: init
+        exportIdevice.init(jsonData, accesibility);
+        // Loaded
+        ideviceNode.classList.add('loaded');
+        setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
     },
 
 
@@ -329,6 +393,19 @@ $exeExport.searchBar = {
     deepLinking : false,
     markResults : false,
     query : '',
+    /**
+     * Normalize text for search comparison: lowercase and remove diacritical marks
+     * (accents, tildes, umlauts, cedillas, etc.)
+     * @param {string} text - The text to normalize
+     * @returns {string} - Normalized text without diacritical marks
+     */
+    normalizeText : function(text) {
+        if (!text) return '';
+        return text
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, ''); // Remove combining diacritical marks
+    },
     init : function(){
         var searchWrapper = $('#exe-client-search');
         if (searchWrapper.length != 1) return;
@@ -336,7 +413,15 @@ $exeExport.searchBar = {
         this.isIndex = $("html").attr('id') == 'exe-index';
         this.isPreview = window.location.href.indexOf('/file/resources?resource=/tmp/') != -1;
         this.createSearchForm();
-        this.data = JSON.parse(searchWrapper.attr('data-pages'));
+        // Try window.exeSearchData first (from search_index.js), fallback to data-pages attribute
+        if (window.exeSearchData) {
+            this.data = window.exeSearchData;
+        } else {
+            var dataPagesAttr = searchWrapper.attr('data-pages');
+            if (dataPagesAttr) {
+                this.data = JSON.parse(dataPagesAttr);
+            }
+        }
 
         let page = document.querySelector('.exe-content > .page');
         let searchContainer = document.querySelector('#exe-client-search');
@@ -396,12 +481,12 @@ $exeExport.searchBar = {
         var i;
         let res = '';
         let str = $exeExport.searchBar.query;
-        str = str.toLowerCase();
+        str = this.normalizeText(str);
         let data = this.data;
         for (i in data) {
             var node = data[i];
             var nodeTitle = node.name;
-            var nodetitle = nodeTitle.toLowerCase();
+            var nodetitle = this.normalizeText(nodeTitle);
             if (nodetitle.indexOf(str) != -1) {
                 this.results.push(i);
                 let lnk = this.getLink(node.fileUrl);
@@ -447,6 +532,12 @@ $exeExport.searchBar = {
         }
         $("#exe-client-search-results-list a").on("click", function(){
             if (!$("#siteNav").is(":visible")) this.href += '?nav=false';
+            // Close search box and restore page content
+            $("main > header, main div.page-content").show();
+            $("#exe-client-search-reset").removeClass("visible");
+            $('#exe-client-search-results-list').html('');
+            $('#exe-client-search').hide();
+            $('#exe-client-search-text').val('');
         });
     },
     searchInBlocks : function(i, str, fullLink) {
@@ -466,7 +557,7 @@ $exeExport.searchBar = {
             var box = boxes[x];
             var boxOrder = box.order;
             var boxTitle = box.name;
-            var boxtitle = boxTitle.toLowerCase();
+            var boxtitle = this.normalizeText(boxTitle);
 
             // Add the HTML of the iDevices to boxtitle so it searches there too
             var iDevices = box.idevices;
@@ -478,7 +569,7 @@ $exeExport.searchBar = {
                     var tmp = $("<div></div>");
                         tmp.html(iDeviceHTML);
                     var iDeviceText = tmp.text();
-                        iDeviceText = iDeviceText.toLowerCase();
+                        iDeviceText = this.normalizeText(iDeviceText);
                     boxtitle += ' ' + iDeviceText;
                 }
             }

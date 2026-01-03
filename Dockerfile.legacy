@@ -1,0 +1,66 @@
+# =============================================================================
+# Dockerfile.legacy - Node.js runtime for legacy systems (Core2 Duo)
+# =============================================================================
+#
+# WARNING: This is an UNSUPPORTED legacy mode for developers whose systems
+# cannot run Bun (e.g., older CPUs like Core2 Duo that lack AVX instructions).
+#
+# LIMITATIONS:
+# - No WebSocket support (real-time collaboration disabled)
+# - Runs in offline/single-user mode (APP_ONLINE_MODE=0)
+# - Performance may be slower than Bun
+# - Not recommended for production use
+#
+# For full functionality, use the standard Dockerfile with Bun.
+#
+# Usage: make up-legacy
+# =============================================================================
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install build tools for native modules (better-sqlite3)
+RUN apk add --no-cache python3 make g++ dumb-init
+
+# Copy package files
+COPY package.json package-lock.json* bun.lock* ./
+
+# Install dependencies with npm
+RUN npm install
+
+# Install Node.js-specific dependencies (not in package.json)
+RUN npm install @elysiajs/node better-sqlite3 tsx
+
+# Copy source code
+COPY . .
+
+# Build CSS (using npx instead of bunx)
+RUN npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map
+
+# Build frontend bundles (using esbuild instead of bun build)
+RUN npx esbuild public/app/app.js --bundle --outfile=public/app/app.bundle.js --minify --platform=browser --format=iife
+
+# Build exporters bundle for browser (preview functionality)
+RUN node scripts/build-exporters-bundle.js
+
+# Create data directories
+RUN mkdir -p /app/data /mnt/data
+
+# Environment defaults
+ENV NODE_ENV=development
+ENV APP_ENV=dev
+ENV PORT=8080
+ENV FILES_DIR=/mnt/data/
+ENV DB_PATH=/app/data/exelearning.db
+
+# IMPORTANT: Force offline mode - WebSockets not supported in Node.js adapter
+ENV APP_ONLINE_MODE=0
+
+EXPOSE 8080
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
+# Run with tsx (TypeScript executor for Node.js)
+CMD ["npx", "tsx", "src/index-node.ts"]

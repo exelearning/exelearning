@@ -1,152 +1,439 @@
 # Testing
 
-This document explains the testing framework used in eXeLearning Web, including both unit and end-to-end (E2E) tests.
+This document explains the testing framework used in eXeLearning, including unit, integration, frontend, and end-to-end (E2E) tests.
 
 ## Test Structure
 
-Tests are divided into two main categories:
+Tests are organized by type and location:
 
-1. **Unit Tests** – Test individual components in isolation.
-2. **End-to-End (E2E) Tests** – Simulate real user interactions with the full application stack.
+| Type | Runner | Location | Command |
+|------|--------|----------|---------|
+| **Unit** | Bun test | `src/**/*.spec.ts` | `make test-unit` |
+| **Integration** | Bun test | `test/integration/` | `make test-integration` |
+| **Frontend** | Vitest | `public/app/**/*.spec.js` | `make test-frontend` |
+| **E2E** | Playwright | `test/e2e/playwright/` | `make test-e2e` |
 
-All tests are located in the `tests/` directory.
-
-## Unit Tests
-
-Unit tests use PHPUnit to validate isolated components such as controllers, services, and repositories.
-
-### Unit Test Configuration
-
-eXeLearning Web uses an SQLite in-memory database for unit testing to ensure:
-
-* Clean data for each test run
-* Fast execution without requiring an external database
-* No conflicts between test sessions
-
-The `tests/bootstrap.php` file:
-
-* Configures the testing environment
-* Runs migrations to build the schema
-* Loads assets needed for test execution
-
-### Running Unit Tests
-
-To run unit tests:
+Run all tests with:
 
 ```bash
 make test
 ```
 
-## End-to-End (E2E) & Real-Time Tests
+## Coverage Requirements
 
-E2E tests are implemented using Symfony Panther, which integrates WebDriver to run real browser tests on the application.
+**Minimum coverage: 90%** for all new code in unit tests.
 
-### E2E Architecture
+Check coverage with:
 
-The E2E framework follows these design principles:
+```bash
+make test-coverage
+```
 
-1. **Page Object Model (POM)** – Separates UI interaction from test logic
-2. **Factory Pattern** – Creates test data and scenarios consistently
-3. **Utility Classes** – Provide helper functions for common operations
+Coverage reports are generated in the terminal. Files below 90% should be prioritized for improvement.
 
-### Main Components
+## Unit Tests
 
-* **ExelearningE2EBase** – Base class extended by all test cases
-* **ExelearningRealTimeE2EBase** – Specialized base for real-time multi-client tests
-* **Page Objects** – Encapsulate UI actions for specific pages
-* **Factories** – Generate test data, nodes, documents, assertions
-* **Utilities** – Screenshot capture, modal handling, waiting, assertions, file upload, etc.
+Unit tests validate individual components in isolation. They are located **next to the source files** they test.
+
+### Naming Convention
+
+```
+src/
+├── services/
+│   ├── session-manager.ts
+│   └── session-manager.spec.ts    # Test file next to source
+├── routes/
+│   ├── project.ts
+│   └── project.spec.ts
+└── websocket/
+    ├── room-manager.ts
+    └── room-manager.spec.ts
+```
+
+### Running Unit Tests
+
+```bash
+# Run all unit tests with coverage
+make test-unit
+
+# Run specific test file
+DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/test bun test src/services/session-manager.spec.ts
+
+# Run tests matching pattern
+DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/test bun test --filter "session"
+```
+
+### Test Configuration
+
+Unit tests use an in-memory SQLite database for:
+- Clean data for each test run
+- Fast execution without external database
+- No conflicts between test sessions
+
+Configuration is in `bunfig.toml`:
+
+```toml
+[test]
+root = "."
+ignore = ["nestjs_legacy/**", "symfony_legacy/**", "node_modules/**"]
+env = { DB_PATH = ":memory:", ELYSIA_FILES_DIR = "/tmp/exelearning-test" }
+```
+
+### Dependency Injection Pattern
+
+**NEVER use `mock.module()`** - it causes test pollution in Bun.
+
+Use the Dependency Injection pattern instead:
+
+```typescript
+// Source file: session-manager.ts
+export interface SessionManagerDependencies {
+    db: Kysely<Database>;
+    queries: { findById: typeof findByIdDefault };
+}
+
+const defaultDeps: SessionManagerDependencies = {
+    db: defaultDb,
+    queries: { findById: findByIdDefault },
+};
+
+let deps = defaultDeps;
+
+export function configure(newDeps: Partial<SessionManagerDependencies>): void {
+    deps = { ...defaultDeps, ...newDeps };
+}
+
+export function resetDependencies(): void {
+    deps = defaultDeps;
+}
+```
+
+```typescript
+// Test file: session-manager.spec.ts
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { configure, resetDependencies, getSession } from './session-manager';
+
+describe('SessionManager', () => {
+    const mockDb = { /* mock implementation */ };
+    const mockQueries = {
+        findById: async () => ({ id: 1, name: 'test' }),
+    };
+
+    beforeEach(() => {
+        configure({
+            db: mockDb,
+            queries: mockQueries,
+        });
+    });
+
+    afterEach(() => {
+        resetDependencies();
+    });
+
+    it('should return session by id', async () => {
+        const session = await getSession('test-id');
+        expect(session).toBeDefined();
+    });
+});
+```
+
+### Test Helpers
+
+Common test utilities are in `test/helpers/`:
+
+```typescript
+import { createTestDb, createMockSession } from '../../test/helpers';
+
+describe('MyService', () => {
+    it('should work with test db', async () => {
+        const db = await createTestDb();
+        const session = createMockSession({ projectId: 123 });
+        // ...
+    });
+});
+```
+
+## Integration Tests
+
+Integration tests verify multiple services working together. Located in `test/integration/`.
+
+### Running Integration Tests
+
+```bash
+make test-integration
+```
+
+### Structure
+
+```
+test/integration/
+├── export/              # Export format tests
+│   ├── scorm12-export.integration.spec.ts
+│   ├── epub3-export.integration.spec.ts
+│   └── html5-export.integration.spec.ts
+├── routes/              # API route integration tests
+├── websocket/           # WebSocket integration tests
+├── fixtures/            # Test data fixtures
+└── helpers/             # Integration test helpers
+```
+
+### Example Integration Test
+
+```typescript
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { Elysia } from 'elysia';
+import { projectRoutes } from '../../src/routes/project';
+
+describe('Project API Integration', () => {
+    let app: Elysia;
+
+    beforeAll(async () => {
+        app = new Elysia()
+            .use(projectRoutes);
+    });
+
+    it('should create and retrieve project', async () => {
+        const createRes = await app.handle(
+            new Request('http://localhost/api/projects', {
+                method: 'POST',
+                body: JSON.stringify({ name: 'Test Project' }),
+            })
+        );
+        expect(createRes.status).toBe(201);
+
+        const data = await createRes.json();
+        expect(data.uuid).toBeDefined();
+    });
+});
+```
+
+## Frontend Tests
+
+Frontend tests use **Vitest** with **happy-dom** for DOM simulation.
+
+### Running Frontend Tests
+
+```bash
+# Run all frontend tests
+make test-frontend
+
+# Run with UI
+bun run test:frontend:ui
+```
+
+### Configuration
+
+Frontend tests are configured in `vitest.config.ts`:
+
+```typescript
+export default defineConfig({
+    test: {
+        environment: 'happy-dom',
+        include: ['public/app/**/*.spec.js'],
+    },
+});
+```
+
+### Example Frontend Test
+
+```javascript
+// public/app/yjs/AssetManager.spec.js
+import { describe, it, expect, vi } from 'vitest';
+
+describe('AssetManager', () => {
+    it('should generate content-addressable URL', async () => {
+        const manager = new AssetManager('project-123');
+        const hash = 'abc123...';
+        const url = manager.hashToUUID(hash);
+        expect(url).toMatch(/^[0-9a-f-]{36}$/);
+    });
+});
+```
+
+## End-to-End Tests
+
+E2E tests use **Playwright** to simulate real browser interactions.
 
 ### Running E2E Tests
 
-To run all E2E tests:
-
 ```bash
+# Run all E2E tests
 make test-e2e
+
+# Run with Playwright UI
+make test-e2e-ui
+
+# Run specific test file
+npx playwright test test/e2e/playwright/specs/login.spec.ts
 ```
 
-> Note: Real-time and standard E2E tests are separated to avoid exceeding PHPUnit’s 5-minute timeout.
+### Structure
 
-To run specific tests, use the test shell (starts the Selenium container and gives you an interactive shell):
-
-```bash
-make test-shell
+```
+test/e2e/playwright/
+├── specs/               # Test specifications
+│   ├── login.spec.ts
+│   ├── project.spec.ts
+│   └── collaboration.spec.ts
+├── pages/               # Page Object Model classes
+│   ├── login.page.ts
+│   ├── workarea.page.ts
+│   └── project-modal.page.ts
+├── fixtures/            # Test fixtures and setup
+└── helpers/             # E2E helper utilities
 ```
 
-Inside the shell:
+### Page Object Model
 
-```bash
-# Run a specific test
-composer phpunit tests/Command/CreateUserCommandTest.php
+E2E tests follow the Page Object Model pattern:
 
-# Filter by class or name
-vendor/bin/phpunit --filter=LoginTest
-vendor/bin/phpunit --debug --filter=RealTime
-```
+```typescript
+// pages/login.page.ts
+export class LoginPage {
+    constructor(private page: Page) {}
 
-### E2E Environment Variables
+    async navigate() {
+        await this.page.goto('/login');
+    }
 
-* `APP_ONLINE_MODE`: `1` for online, `0` for offline
-* `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`: Main user
-* `CAPTURE_SCREENSHOTS`: `true` to capture screenshots automatically on failures
-
-### E2E Examples
-
-#### Basic Login Test
-
-```php
-public function testLoginFlow(): void
-{
-    $workareaPage = $this->login();
-    $this->assertStringContainsString('/workarea', $this->client->getCurrentURL());
+    async login(email: string, password: string) {
+        await this.page.fill('[data-testid="email"]', email);
+        await this.page.fill('[data-testid="password"]', password);
+        await this.page.click('[data-testid="submit"]');
+    }
 }
 ```
 
-#### Using Page Objects
+```typescript
+// specs/login.spec.ts
+import { test, expect } from '@playwright/test';
+import { LoginPage } from '../pages/login.page';
 
-```php
-public function testLogin(): void
-{
-    $loginPage = new LoginPage($this->client);
+test.describe('Login', () => {
+    test('should login successfully', async ({ page }) => {
+        const loginPage = new LoginPage(page);
+        await loginPage.navigate();
+        await loginPage.login('user@exelearning.net', '1234');
 
-    $workareaPage = $loginPage
-        ->navigate(self::$baseUrl)
-        ->login(self::$defaultUserEmail, self::$defaultUserPass);
-
-    $this->assertStringContainsString('/workarea', $this->client->getCurrentURL());
-}
+        await expect(page).toHaveURL(/\/workarea/);
+    });
+});
 ```
 
-#### Using Factories
+### Test Users
 
-```php
-public function testCreateDocument(): void
-{
-    $workareaPage = $this->login();
-    $documentFactory = $this->createDocumentFactory($workareaPage);
+Default test users:
 
-    $documentFactory->createNewDocument();
-    $documentFactory->assertDocumentCreated($this);
-}
+| User | Email | Password |
+|------|-------|----------|
+| User 1 | `user@exelearning.net` | `1234` |
+| User 2 | `user2@exelearning.net` | `1234` |
+
+### Collaboration Tests
+
+For real-time collaboration testing, use multiple browser contexts:
+
+```typescript
+test('should sync changes between users', async ({ browser }) => {
+    const context1 = await browser.newContext();
+    const context2 = await browser.newContext();
+
+    const page1 = await context1.newPage();
+    const page2 = await context2.newPage();
+
+    // Login as different users
+    await loginAs(page1, 'user@exelearning.net', '1234');
+    await loginAs(page2, 'user2@exelearning.net', '1234');
+
+    // Open same project
+    await openProject(page1, projectId);
+    await openProject(page2, projectId);
+
+    // Make changes and verify sync
+    await page1.fill('.editor', 'Hello from User 1');
+    await expect(page2.locator('.editor')).toContainText('Hello from User 1');
+});
 ```
 
 ## Continuous Integration
 
-All tests run in GitHub Actions for every pull request and on main branches. Failing tests block merges to keep the project stable.
+All tests run in GitHub Actions on every pull request:
+
+1. **Unit tests** - Must pass with 90%+ coverage
+2. **Integration tests** - Must pass
+3. **Frontend tests** - Must pass
+4. **E2E tests** - Must pass (with retry on flaky tests)
+
+Failing tests block merges to keep the project stable.
 
 ## Best Practices
 
-1. Use Page Objects for all UI interactions
-2. Avoid using `sleep()`; prefer explicit waits
-3. Use factories to generate test data
-4. Keep tests independent and self-contained
-5. Capture screenshots on failure for debugging
-6. Use `TestLogger` for detailed logs during test runs
-7. Use the real-time base class for collaborative feature testing
+### General
+
+1. **One assertion per test** when possible - makes failures easier to diagnose
+2. **Use descriptive test names** - `it('should return 404 when project not found')`
+3. **Keep tests independent** - no shared state between tests
+4. **Clean up after tests** - use `afterEach` to reset state
+
+### Unit Tests
+
+1. **Use Dependency Injection** - never `mock.module()`
+2. **Always call `resetDependencies()`** in `afterEach`
+3. **Test edge cases** - null, undefined, empty arrays, errors
+4. **Mock external dependencies** - database, file system, network
+
+### Integration Tests
+
+1. **Use real database** - in-memory SQLite for speed
+2. **Test the full request/response cycle**
+3. **Include error scenarios** - 400, 401, 404, 500
+
+### E2E Tests
+
+1. **Use Page Objects** - encapsulate UI interactions
+2. **Avoid `sleep()`** - use Playwright's auto-waiting
+3. **Take screenshots on failure** - for debugging
+4. **Retry flaky tests** - with `test.retry(2)`
+
+### Coverage
+
+1. **Aim for 90%+ coverage** on all new code
+2. **Don't test trivial code** - getters, setters, type definitions
+3. **Focus on business logic** - services, utils, complex routes
+4. **Test error paths** - not just happy paths
+
+---
+
+## Quick Reference
+
+```bash
+# All tests
+make test
+
+# Unit tests (src/**/*.spec.ts)
+make test-unit
+
+# Integration tests (test/integration/)
+make test-integration
+
+# Frontend tests (Vitest)
+make test-frontend
+
+# E2E tests (Playwright)
+make test-e2e
+make test-e2e-ui  # With UI
+
+# Coverage report
+make test-coverage
+
+# Single file
+DB_PATH=:memory: bun test src/path/to/file.spec.ts
+```
 
 ---
 
 ## See Also
 
-- Developer environment: [development/environment.md](environment.md)
-- Real‑time: [development/real-time.md](real-time.md)
+- [Architecture Overview](../architecture.md) - System architecture
+- [Development Environment](environment.md) - Setup guide
+- [Real-Time Collaboration](real-time.md) - WebSocket and Yjs

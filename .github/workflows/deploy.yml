@@ -1,62 +1,48 @@
-name: Docker Compose Database Compatibility Matrix
+name: E2E Database Compatibility Matrix
 
 on:
   push:
-   branches:
-     - main
+    branches:
+      - main
+      - 'release/3.1'
+  workflow_dispatch:
 
 jobs:
-  test-compose:
+  test-e2e:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - db: postgres
-            app_port: 8081
-          - db: mariadb
-            app_port: 8082
-          - db: sqlite
-            app_port: 8083
-
-    env:
-      TAG: main
+        db: [sqlite, postgres, mariadb]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Start ${{ matrix.db }} stack
-        run: docker compose -p ${{ matrix.db }} -f doc/deploy/docker-compose.${{ matrix.db }}.yml up -d
-        env:
-          APP_PORT: ${{ matrix.app_port }}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
-      - name: Wait for app to be ready
-        run: |
-          echo "Waiting for app to be available at http://localhost:${{ matrix.app_port }}"
-          for i in {1..30}; do
-            if curl -s http://localhost:${{ matrix.APP_PORT }} | grep -q '<!DOCTYPE'; then
-              echo "App is up!"
-              exit 0
-            fi
-            echo "Waiting..."
-            sleep 3
-          done
-          echo "App did not become ready in time" >&2
-          docker compose -f doc/deploy/docker-compose.${{ matrix.db }}.yml logs
-          exit 1
+      - name: Install dependencies
+        run: bun install
 
-      - name: Dump Docker Compose logs on failure
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests with ${{ matrix.db }}
+        run: make test-e2e-${{ matrix.db }}
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
         if: failure()
-        run: |
-          # Print all service logs for debugging
-          docker compose -p ${{ matrix.db }} \
-            -f doc/deploy/docker-compose.${{ matrix.db }}.yml \
-            logs
-
-      - name: Stop services
-        if: always()
-        run: docker compose -f doc/deploy/docker-compose.${{ matrix.db }}.yml down -v
+        with:
+          name: playwright-report-${{ matrix.db }}
+          path: playwright-report/
+          retention-days: 7

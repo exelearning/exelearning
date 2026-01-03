@@ -725,7 +725,7 @@ var $eXeHiddenImage = {
             $eXeHiddenImage.ramdonOptions(instance);
         }
 
-        $('#hiPQuestion-' + instance).text(mQuestion.question);
+        $('#hiPQuestion-' + instance).html(mQuestion.question);
         $('#hiPLinkAudio-' + instance).hide();
         $eXeHiddenImage.showAuthor('', instance);
 
@@ -749,7 +749,7 @@ var $eXeHiddenImage = {
         $eXeHiddenImage.drawQuestions(instance);
 
         const html = $('#hiPQuestionDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -1178,7 +1178,7 @@ var $eXeHiddenImage = {
                         color: $eXeHiddenImage.colors.black,
                         'border-width': '1px',
                     })
-                    .text(option || '')
+                    .html(option || '')
                     .toggle(!!option);
             }
         );

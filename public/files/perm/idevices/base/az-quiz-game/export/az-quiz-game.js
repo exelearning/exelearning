@@ -978,7 +978,7 @@ var $azquizgame = {
                 mWord.type === 0 ? msgs.msgStartWith : msgs.msgContaint
             ).replace('%1', letter);
 
-        $('#roscoPDefinition-' + instance).text(definition);
+        $('#roscoPDefinition-' + instance).html(definition);
         $('#roscoPStartWith-' + instance).text(start);
         $('#roscoEdReply-' + instance).val('');
         $('#roscoPMessages-' + instance).val('');
@@ -1024,7 +1024,7 @@ var $azquizgame = {
                 .fadeIn();
 
         const html = $('#roscoPDefinition-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(

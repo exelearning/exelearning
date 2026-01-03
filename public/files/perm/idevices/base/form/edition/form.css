@@ -49,6 +49,13 @@ ul#formPreview .FormView_question {
     padding: 10px;
     background-color: var(--file-odd);
     margin-bottom: 6px;
+    overflow: auto;
+}
+
+ul#formPreview .FormView_question::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 ul#formPreview .FormView_question.dragging {
@@ -64,6 +71,17 @@ ul#formPreview .FormView_question.dragging:nth-child(even) {
 /* ul#formPreview li:nth-child(even) {
   background-color: rgba(220, 220, 220, 0.8);
 } */
+
+ul#formPreview [id^="questionTopBar"] {
+    overflow: auto;
+    clear: both;
+}
+
+ul#formPreview [id^="questionTopBar"]::after {
+    content: "";
+    display: table;
+    clear: both;
+}
 
 ul#formPreview .FormView_question .QuestionLabel_ButtonsContainer {
     float: right;
@@ -98,6 +116,18 @@ ul#formPreview .FormView_question .QuestionLabel_edit {
 ul#formPreview .FormView_question .FormViewContainer {
     margin-top: 5px;
     margin-bottom: 5px;
+    overflow: auto;
+}
+
+ul#formPreview .FormView_question .FormViewContainer > div[title] {
+    overflow: auto;
+    clear: both;
+}
+
+ul#formPreview .FormView_question .FormViewContainer > div[title]::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 ul#formPreview .FormView_question .FormViewContainer p {
@@ -527,6 +557,16 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
     }
 }
 
+
+#formPreview .FormViewContainer img {
+    max-width: 100%;
+    height: auto;
+}
+
+#formPreview .FormViewContainer img[style*="float"] {
+    max-width: 60%;
+}
+
 #formIdeviceForm #formIdeviceFormTab2 label {
     display: block;
     margin-bottom: .2em;
@@ -580,4 +620,26 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
     color: #000;
     background: #FFF;
     font-weight: 500
+}
+
+/* Question editing - Bootstrap improvements */
+#formIdeviceForm .feedback-container {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+}
+
+#formIdeviceForm .feedback-container .form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 6px;
+}
+
+#formIdeviceForm .feedback-container .form-control {
+    font-size: 0.95rem;
+}
+
+#formIdeviceForm .row.g-3 {
+    margin-top: 0;
 }

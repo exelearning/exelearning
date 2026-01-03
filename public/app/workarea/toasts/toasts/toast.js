@@ -14,8 +14,51 @@ export default class Toast {
             '.toast-header > .toast-title'
         );
         this.toastBody = this.toastElement.querySelector('.toast-body');
+        this.progressContainer = this.toastElement.querySelector('.toast-progress-container');
+        this.progressBar = this.toastElement.querySelector('.toast-progress-bar');
         this.toast = new bootstrap.Toast(this.toastElement, {});
         this.hidingTime = 2000;
+    }
+
+    /**
+     * Shows the progress bar
+     */
+    showProgress() {
+        if (this.progressContainer) {
+            this.progressContainer.style.display = 'block';
+            this.setProgress(0);
+        }
+    }
+
+    /**
+     * Hides the progress bar
+     */
+    hideProgress() {
+        if (this.progressContainer) {
+            this.progressContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * Sets the progress percentage
+     * @param {number} percent - Percentage from 0 to 100
+     */
+    setProgress(percent) {
+        if (this.progressBar) {
+            const clampedPercent = Math.min(100, Math.max(0, percent));
+            this.progressBar.style.width = `${clampedPercent}%`;
+        }
+    }
+
+    /**
+     * Updates the body text with progress percentage
+     * @param {string} message - Base message
+     * @param {number} percent - Percentage
+     */
+    updateBodyWithProgress(message, percent) {
+        const roundedPercent = Math.round(percent);
+        this.toastBody.innerHTML = `${message} (${roundedPercent}%)`;
+        this.setProgress(percent);
     }
 
     /**

@@ -1,7 +1,11 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class NavbarFile {
     constructor(menu) {
         this.menu = menu;
         this.button = this.menu.navbar.querySelector('#dropdownStyles');
+        this.menuButton = this.menu.navbar.querySelector('#navbar-button-styles');
         this.readers = [];
         this.paramsInfo = JSON.parse(
             JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
@@ -32,10 +36,37 @@ export default class NavbarFile {
             const theme = this.themes[key];
             if (theme.type === 'user') {
                 this.userThemes.push(theme);
-            } else if (theme.type === 'base') {
+            } else if (theme.type === 'base' || theme.type === 'site' || theme.type === 'admin') {
+                // Include base, site, and admin (legacy) themes in the System tab
                 this.baseThemes.push(theme);
             }
         }
+    }
+
+    /**
+     * Update the selected theme in the UI (for remote Yjs changes)
+     * @param {string} themeId - The theme ID that was selected
+     */
+    updateSelectedTheme(themeId) {
+        // Update base themes selection
+        document.querySelectorAll('#exestylescontent .theme-card').forEach(card => {
+            if (card.dataset.themeId === themeId) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+
+        // Update user themes selection
+        document.querySelectorAll('#importedstylescontent .user-theme-item').forEach(item => {
+            if (item.dataset.themeId === themeId) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+
+        Logger.log('[NavbarStyles] Updated selected theme UI:', themeId);
     }
 
     /**
@@ -44,9 +75,11 @@ export default class NavbarFile {
      *
      */
     setStyleManagerEvent() {
-        this.button.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.styleManagerEvent();
+        [this.button, this.menuButton].filter(Boolean).forEach((button) => {
+            button.addEventListener('click', () => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                this.styleManagerEvent();
+            });
         });
     }
 
@@ -76,7 +109,8 @@ export default class NavbarFile {
             const theme = this.baseThemes[key];
             const themeCard = document.createElement('div');
             themeCard.classList.add('theme-card');
-            if (theme.manager.selected.name === theme.name) {
+            themeCard.dataset.themeId = theme.id;
+            if (theme.manager.selected && theme.manager.selected.name === theme.name) {
                 themeCard.classList.add('selected');
             }
             const header = document.createElement('div');
@@ -211,7 +245,8 @@ export default class NavbarFile {
 
             const item = document.createElement('div');
             item.classList.add('user-theme-item');
-            if (theme.manager.selected.name === theme.name) {
+            item.dataset.themeId = theme.id;
+            if (theme.manager.selected && theme.manager.selected.name === theme.name) {
                 item.classList.add('selected');
             }
 
@@ -219,7 +254,7 @@ export default class NavbarFile {
             icon.classList.add('medium-icon', 'palette-icon-green');
             const title = document.createElement('span');
             title.classList.add('user-theme-title');
-            title.textContent = theme.name;
+            title.textContent = theme.title;
 
             const button = document.createElement('div');
             button.classList.add(
@@ -895,7 +930,7 @@ export default class NavbarFile {
         if (value) {
             imgElement.setAttribute(
                 'src',
-                `${eXeLearning.symfony.basePath}${value}?v=${Date.now()}`
+                `${eXeLearning.config.basePath}${value}?v=${Date.now()}`
             );
         }
 

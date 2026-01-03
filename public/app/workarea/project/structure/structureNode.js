@@ -1,3 +1,6 @@
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 export default class StructureNode {
     constructor(structure, data) {
         this.structure = structure;
@@ -84,10 +87,23 @@ export default class StructureNode {
      *******************************************************************************/
 
     /**
+     * Check if Yjs collaborative mode is enabled
+     * @returns {boolean}
+     */
+    isYjsEnabled() {
+        return eXeLearning.app?.project?._yjsEnabled === true;
+    }
+
+    /**
      *
      */
     async create() {
-        // Save new node in database
+        // Check if Yjs mode is enabled - use Yjs for collaborative editing
+        if (this.isYjsEnabled() && eXeLearning.app.project.addPageViaYjs) {
+            return await this.createViaYjs();
+        }
+
+        // Legacy: Save new node in database via REST API
         let params = this.getDictBaseValuesData();
         // Add params
         params.pageName = this.pageName;
@@ -100,25 +116,6 @@ export default class StructureNode {
             this.setParams(response.odeNavStructureSync);
             // Add estructure node to array
             this.structure.data.push(this);
-            // Synchronize others users
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                params.odePageId,
-                null,
-                null,
-                'ADD'
-            );
-            // Send operation log to bbdd
-            let additionalData = {
-                pageId: params.odePageId,
-                navId: response.odeNavStructureSyncId,
-            };
-            eXeLearning.app.project.sendOdeOperationLog(
-                this.pageId,
-                this.pageId,
-                'ADD_PAGE',
-                additionalData
-            );
             // Other nodes that have been modifications
             if (response.odeNavStructureSyncs) {
                 // Update order of pages
@@ -139,30 +136,69 @@ export default class StructureNode {
     }
 
     /**
+     * Create page via Yjs collaborative editing
+     * @returns {Object}
+     */
+    async createViaYjs() {
+        try {
+            const project = eXeLearning.app.project;
+
+            // Use parent ID or 'root' for top-level pages
+            const parentId = this.parent === 'root' ? null : this.parent;
+
+            // Create page via Yjs - this syncs automatically to other clients
+            const page = project.addPageViaYjs(this.pageName, parentId);
+
+            if (page) {
+                // Update local state with Yjs-generated data
+                this.id = page.id;
+                this.pageId = page.id;
+                this.order = page.order || 0;
+
+                // Add to structure data
+                this.structure.data.push(this);
+
+                Logger.log('[StructureNode] Created page via Yjs:', page.id);
+
+                return {
+                    responseMessage: 'OK',
+                    odeNavStructureSyncId: page.id,
+                    odeNavStructureSync: {
+                        id: page.id,
+                        pageId: page.id,
+                        pageName: page.title,
+                        parent: page.parentId,
+                        order: page.order,
+                    },
+                };
+            } else {
+                throw new Error('Failed to create page via Yjs');
+            }
+        } catch (error) {
+            console.error('[StructureNode] Yjs create error:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Structure node error'),
+                body: _('An error occurred while creating the page'),
+                contentId: 'error',
+            });
+            return false;
+        }
+    }
+
+    /**
      *
      */
     async clone() {
+        // Check if Yjs mode is enabled
+        if (this.isYjsEnabled() && eXeLearning.app.project.clonePageViaYjs) {
+            return await this.cloneViaYjs();
+        }
+
+        // Legacy: Clone via API
         let params = ['odeNavStructureSyncId'];
         let data = this.generateDataObject(params);
         let response = await eXeLearning.app.api.postClonePage(data);
-        if (response.responseMessage && response.responseMessage == 'OK') {
-            //
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                response.odeNavStructureSync.pageId,
-                null,
-                null,
-                'ADD'
-            );
-            // Send operation log to bbdd
-            let additionalData = { navId: response.odeNavStructureSync.id };
-            eXeLearning.app.project.sendOdeOperationLog(
-                response.odeNavStructureSync.pageId,
-                response.odeNavStructureSync.pageId,
-                'CLONE_PAGE',
-                additionalData
-            );
-        } else {
+        if (response.responseMessage !== 'OK') {
             eXeLearning.app.modals.alert.show({
                 title: _('Structure node error'),
                 body: _('An error occurred while cloning the node in database'),
@@ -174,11 +210,53 @@ export default class StructureNode {
     }
 
     /**
+     * Clone page via Yjs collaborative editing
+     * @returns {Object}
+     */
+    async cloneViaYjs() {
+        try {
+            const project = eXeLearning.app.project;
+
+            // Clone via Yjs - syncs to other clients automatically
+            const clonedPage = project.clonePageViaYjs(this.id);
+
+            if (clonedPage) {
+                Logger.log('[StructureNode] Cloned page via Yjs:', clonedPage.id);
+                return {
+                    responseMessage: 'OK',
+                    odeNavStructureSync: {
+                        id: clonedPage.id,
+                        pageId: clonedPage.pageId,
+                        pageName: clonedPage.pageName,
+                        parent: clonedPage.parentId,
+                        order: clonedPage.order,
+                    },
+                };
+            } else {
+                throw new Error('Failed to clone page via Yjs');
+            }
+        } catch (error) {
+            console.error('[StructureNode] Yjs clone error:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Structure node error'),
+                body: _('An error occurred while cloning the page'),
+                contentId: 'error',
+            });
+            return false;
+        }
+    }
+
+    /**
      *
      * @param {*} newName
      */
     async rename(newName) {
-        // Rename Element
+        // Check if Yjs mode is enabled
+        if (this.isYjsEnabled() && eXeLearning.app.project.renamePageViaYjs) {
+            return await this.renameViaYjs(newName);
+        }
+
+        // Legacy: Rename Element
         this.pageName = newName;
         // Save in database
         let params = ['odeNavStructureSyncId'];
@@ -191,13 +269,6 @@ export default class StructureNode {
             // Set property title node
             this.properties.titleNode.value =
                 response.odeNavStructureSync.odeNavStructureSyncProperties.titleNode.value;
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                this.pageId,
-                null,
-                null,
-                'EDIT'
-            );
         } else {
             eXeLearning.app.modals.alert.show({
                 title: _('Structure node error'),
@@ -212,33 +283,63 @@ export default class StructureNode {
     }
 
     /**
+     * Rename page via Yjs collaborative editing
+     * @param {string} newName
+     * @returns {Object}
+     */
+    async renameViaYjs(newName) {
+        try {
+            const project = eXeLearning.app.project;
+
+            // Update local state
+            this.pageName = newName;
+            this.properties.titleNode.value = newName;
+
+            // Rename via Yjs - syncs to other clients automatically
+            const success = project.renamePageViaYjs(this.id, newName);
+
+            if (success) {
+                Logger.log('[StructureNode] Renamed page via Yjs:', this.id);
+                return {
+                    responseMessage: 'OK',
+                    odeNavStructureSync: {
+                        id: this.id,
+                        pageName: newName,
+                        odeNavStructureSyncProperties: {
+                            titleNode: { value: newName },
+                        },
+                    },
+                };
+            } else {
+                throw new Error('Failed to rename page via Yjs');
+            }
+        } catch (error) {
+            console.error('[StructureNode] Yjs rename error:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Structure node error'),
+                body: _('An error occurred while renaming the page'),
+                contentId: 'error',
+            });
+            return false;
+        }
+    }
+
+    /**
      *
      */
     async remove() {
-        // Remove node in structure list
+        // Check if Yjs mode is enabled
+        if (this.isYjsEnabled() && eXeLearning.app.project.deletePageViaYjs) {
+            return await this.removeViaYjs();
+        }
+
+        // Legacy: Remove node in structure list
         this.structure.data = this.structure.data.filter((node, index, arr) => {
             return node.id != this.id;
         });
         // Call api to remove node in database
         let response = await eXeLearning.app.api.deletePage(this.id);
-        if (response.responseMessage && response.responseMessage == 'OK') {
-            // update current ode users update flag
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                this.pageId,
-                null,
-                null,
-                'DELETE'
-            );
-            // Send ode operation log to bbdd
-            let additionalData = {};
-            eXeLearning.app.project.sendOdeOperationLog(
-                this.pageId,
-                this.pageId,
-                'REMOVE_PAGE',
-                additionalData
-            );
-        } else {
+        if (response.responseMessage !== 'OK') {
             eXeLearning.app.modals.alert.show({
                 title: _('Structure node error'),
                 body: _('An error occurred while remove the node in database'),
@@ -250,10 +351,71 @@ export default class StructureNode {
     }
 
     /**
+     * Remove page via Yjs collaborative editing
+     * @returns {Object}
+     */
+    async removeViaYjs() {
+        try {
+            const project = eXeLearning.app.project;
+            const pageId = this.id;
+
+            // Delete via Yjs first - syncs to other clients automatically
+            // This also deletes all descendants recursively
+            const success = project.deletePageViaYjs(pageId);
+
+            if (success) {
+                // Only remove from local structure if Yjs deletion succeeded
+                // Also remove all descendants from local structure
+                const descendantIds = this._collectLocalDescendantIds(pageId);
+                const idsToRemove = new Set([pageId, ...descendantIds]);
+
+                this.structure.data = this.structure.data.filter((node) => {
+                    return !idsToRemove.has(node.id);
+                });
+
+                Logger.log('[StructureNode] Removed page via Yjs:', pageId);
+                return { responseMessage: 'OK' };
+            } else {
+                throw new Error(`Page ${pageId} not found in Yjs document`);
+            }
+        } catch (error) {
+            console.error('[StructureNode] Yjs remove error:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Structure node error'),
+                body: _('An error occurred while removing the page'),
+                contentId: 'error',
+            });
+            return false;
+        }
+    }
+
+    /**
+     * Collect all descendant page IDs from local structure data
+     * @param {string} parentId
+     * @returns {string[]}
+     */
+    _collectLocalDescendantIds(parentId) {
+        const descendants = [];
+        for (const node of this.structure.data) {
+            if (node.parent === parentId) {
+                descendants.push(node.id);
+                descendants.push(...this._collectLocalDescendantIds(node.id));
+            }
+        }
+        return descendants;
+    }
+
+    /**
      *
      * @param {*} parentId
      */
     async apiUpdateParent(parentId, newOrder) {
+        // Check if Yjs mode is enabled
+        if (this.isYjsEnabled() && eXeLearning.app.project.movePageViaYjs) {
+            return await this.updateParentViaYjs(parentId, newOrder);
+        }
+
+        // Legacy: Update via API
         this.structure.movingNode = true;
         this.updateParam('moving', true);
         // Modify parent in object
@@ -282,10 +444,67 @@ export default class StructureNode {
     }
 
     /**
+     * Update parent via Yjs collaborative editing
+     * @param {string} parentId
+     * @param {number} newOrder
+     */
+    async updateParentViaYjs(parentId, newOrder) {
+        // Store original values for rollback
+        const originalParent = this.parent;
+        const originalOrder = this.order;
+
+        try {
+            this.structure.movingNode = true;
+            this.updateParam('moving', true);
+
+            // Modify local object
+            this.parent = parentId;
+            if (newOrder !== undefined && newOrder !== null) this.order = newOrder;
+
+            // Move via Yjs - syncs to other clients automatically
+            const project = eXeLearning.app.project;
+            const result = project.movePageViaYjs(this.id, parentId, newOrder);
+
+            if (!result) {
+                // Rollback local changes if Yjs update failed
+                console.warn('[StructureNode] Yjs updateParent failed, rolling back:', this.id);
+                this.parent = originalParent;
+                this.order = originalOrder;
+
+                // Refresh structure to show correct state
+                this.structure.movingNode = false;
+                this.updateParam('moving', false);
+                this.structure.reloadStructureMenu();
+                return false;
+            }
+
+            this.structure.movingNode = false;
+            this.updateParam('moving', false);
+
+            Logger.log('[StructureNode] Updated parent via Yjs:', this.id, '->', parentId);
+            return true;
+        } catch (error) {
+            console.error('[StructureNode] Yjs updateParent error:', error);
+            // Rollback on error
+            this.parent = originalParent;
+            this.order = originalOrder;
+            this.structure.movingNode = false;
+            this.updateParam('moving', false);
+            return false;
+        }
+    }
+
+    /**
      *
      * @param {*} newOrder
      */
     async apiUpdateOrder(newOrder) {
+        // Check if Yjs mode is enabled
+        if (this.isYjsEnabled() && eXeLearning.app.project.movePageViaYjs) {
+            return await this.updateOrderViaYjs(newOrder);
+        }
+
+        // Legacy: Update via API
         this.structure.movingNode = true;
         this.updateParam('moving', true);
         // Modify order in object
@@ -308,21 +527,82 @@ export default class StructureNode {
                     contentId: 'error',
                 });
             }
+        }).catch((error) => {
+            console.error('Failed to reorder page:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Structure node error'),
+                body: _('An error occurred while reordering the page. Please try again.'),
+                contentId: 'error',
+            });
         });
     }
 
     /**
-     * Save properties in database
+     * Update order via Yjs collaborative editing
+     * @param {*} newOrder - Can be '+', '-', or a number
+     */
+    async updateOrderViaYjs(newOrder) {
+        // Store original order for rollback
+        const originalOrder = this.order;
+
+        try {
+            this.structure.movingNode = true;
+            this.updateParam('moving', true);
+
+            // Calculate new order
+            this.updateOrderByParam(newOrder);
+
+            // Move via Yjs - syncs to other clients automatically
+            const project = eXeLearning.app.project;
+            const result = project.movePageViaYjs(this.id, this.parent, this.order);
+
+            if (!result) {
+                // Rollback local order if Yjs update failed
+                console.warn('[StructureNode] Yjs updateOrder failed, rolling back:', this.id);
+                this.order = originalOrder;
+
+                // Refresh structure to show correct state
+                this.structure.movingNode = false;
+                this.updateParam('moving', false);
+                this.structure.reloadStructureMenu();
+                return false;
+            }
+
+            this.structure.movingNode = false;
+            this.updateParam('moving', false);
+
+            Logger.log('[StructureNode] Updated order via Yjs:', this.id, '->', this.order);
+            return true;
+        } catch (error) {
+            console.error('[StructureNode] Yjs updateOrder error:', error);
+            // Rollback on error
+            this.order = originalOrder;
+            this.structure.movingNode = false;
+            this.updateParam('moving', false);
+            return false;
+        }
+    }
+
+    /**
+     * Save properties in database or Yjs
      *
      * @param {*} properties
      * @param {*} inherit
      */
     async apiSaveProperties(properties, inherit) {
-        // Update array of properties
+        // Update local array of properties
         for (let [key, value] of Object.entries(properties)) {
-            this.properties[key].value = value;
+            if (this.properties[key]) {
+                this.properties[key].value = value;
+            }
         }
-        // Generate params array
+
+        // Check if Yjs mode is enabled
+        if (this.isYjsEnabled()) {
+            return await this.savePropertiesViaYjs(properties);
+        }
+
+        // Legacy: Save via API
         let params = { odeNavStructureSyncId: this.id };
         if (inherit) params.updateChildsProperties = 'true';
         for (let [key, value] of Object.entries(this.properties)) {
@@ -345,6 +625,78 @@ export default class StructureNode {
                 });
             }
         });
+    }
+
+    /**
+     * Save properties via Yjs
+     * @param {Object} properties - Properties to save
+     */
+    async savePropertiesViaYjs(properties) {
+        try {
+            const project = eXeLearning.app.project;
+            const bridge = project._yjsBridge;
+
+            if (!bridge || !bridge.structureBinding) {
+                console.warn('[StructureNode] Yjs structure binding not available');
+                return false;
+            }
+
+            // Save properties to Yjs
+            const success = bridge.structureBinding.updatePageProperties(this.id, properties);
+
+            if (success) {
+                Logger.log('[StructureNode] Saved properties via Yjs:', this.id);
+
+                // Rename node if titleNode changed
+                if (properties.titleNode) {
+                    this.pageName = properties.titleNode;
+                    this.structure.renameNodeAndReload(this.id, properties.titleNode);
+                }
+
+                // Reload page content to reflect changes
+                this.structure.project.idevices.loadApiIdevicesInPage(true);
+
+                return { responseMessage: 'OK' };
+            } else {
+                throw new Error('Failed to save properties via Yjs');
+            }
+        } catch (error) {
+            console.error('[StructureNode] Yjs saveProperties error:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Structure node error'),
+                body: _("An error occurred while saving page properties"),
+                contentId: 'error',
+            });
+            return false;
+        }
+    }
+
+    /**
+     * Load properties from Yjs
+     * Updates local properties object with values from Yjs
+     */
+    loadPropertiesFromYjs() {
+        if (!this.isYjsEnabled()) return;
+
+        const project = eXeLearning.app.project;
+        const bridge = project._yjsBridge;
+
+        if (!bridge || !bridge.structureBinding) return;
+
+        const yjsProperties = bridge.structureBinding.getPageProperties(this.id);
+        if (yjsProperties) {
+            for (let [key, value] of Object.entries(yjsProperties)) {
+                if (this.properties[key]) {
+                    // Convert booleans back to strings for compatibility
+                    if (typeof value === 'boolean') {
+                        this.properties[key].value = value ? 'true' : 'false';
+                    } else {
+                        this.properties[key].value = value;
+                    }
+                }
+            }
+            Logger.log('[StructureNode] Loaded properties from Yjs:', this.id);
+        }
     }
 
     /**
@@ -447,9 +799,12 @@ export default class StructureNode {
      * PROPERTIES */
 
     /**
-     *
+     * Show modal for editing page properties
      */
     showModalProperties() {
+        // Load properties from Yjs if available (ensures we have latest values)
+        this.loadPropertiesFromYjs();
+
         eXeLearning.app.modals.properties.show({
             node: this,
             title: _('Page properties'),

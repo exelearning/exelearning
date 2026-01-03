@@ -43,5 +43,18 @@
             font-size: 12px;
             font-weight: 500;
         }
+        .toast-progress-container {
+            height: 3px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .toast-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--bs-primary, #0d6efd);
+            transition: width 0.2s ease;
+        }
     }
 }

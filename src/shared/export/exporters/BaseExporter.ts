@@ -1,0 +1,803 @@
+/**
+ * BaseExporter
+ *
+ * Abstract base class for all export implementations.
+ * Uses dependency injection for document, resources, and assets,
+ * enabling the same export logic to work in both browser and server environments.
+ */
+
+import type {
+    ExportDocument,
+    ExportPage,
+    ExportBlock,
+    ExportComponent,
+    ExportMetadata,
+    ResourceProvider,
+    AssetProvider,
+    ZipProvider,
+    ExportOptions,
+    ExportResult,
+} from '../interfaces';
+import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
+import { PageRenderer } from '../renderers/PageRenderer';
+import { LibraryDetector } from '../utils/LibraryDetector';
+
+/**
+ * Abstract base class for exporters
+ *
+ * Provides common utilities for:
+ * - Structure access (pages, blocks, components)
+ * - String utilities (escaping, sanitizing)
+ * - Navigation helpers
+ * - Asset URL transformation
+ */
+export abstract class BaseExporter {
+    protected document: ExportDocument;
+    protected resources: ResourceProvider;
+    protected assets: AssetProvider;
+    protected zip: ZipProvider;
+
+    protected ideviceRenderer: IdeviceRenderer;
+    protected pageRenderer: PageRenderer;
+    protected libraryDetector: LibraryDetector;
+
+    // Cache for asset filename lookups
+    protected assetFilenameMap: Map<string, string> | null = null;
+
+    constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
+        this.document = document;
+        this.resources = resources;
+        this.assets = assets;
+        this.zip = zip;
+
+        // Initialize renderers and detector
+        this.ideviceRenderer = new IdeviceRenderer();
+        this.pageRenderer = new PageRenderer(this.ideviceRenderer);
+        this.libraryDetector = new LibraryDetector();
+    }
+
+    // =========================================================================
+    // Abstract Methods (must be implemented by subclasses)
+    // =========================================================================
+
+    /**
+     * Export the project - must be implemented by subclasses
+     */
+    abstract export(options?: ExportOptions): Promise<ExportResult>;
+
+    /**
+     * Get file extension for this export format (e.g., '.zip', '.epub')
+     */
+    abstract getFileExtension(): string;
+
+    /**
+     * Get file suffix for this export format (e.g., '_web', '_scorm')
+     */
+    abstract getFileSuffix(): string;
+
+    // =========================================================================
+    // Structure Access Methods
+    // =========================================================================
+
+    /**
+     * Get project metadata
+     */
+    getMetadata(): ExportMetadata {
+        return this.document.getMetadata();
+    }
+
+    /**
+     * Get navigation structure (pages)
+     */
+    getNavigation(): ExportPage[] {
+        return this.document.getNavigation();
+    }
+
+    /**
+     * Build a flat list of pages from the navigation structure
+     */
+    buildPageList(): ExportPage[] {
+        return this.getNavigation();
+    }
+
+    /**
+     * Get list of unique iDevice types used in the project
+     */
+    getUsedIdevices(pages: ExportPage[]): string[] {
+        const types = new Set<string>();
+
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.type) {
+                        types.add(component.type);
+                    }
+                }
+            }
+        }
+
+        return Array.from(types);
+    }
+
+    /**
+     * Get list of iDevice types used in a specific page
+     */
+    getUsedIdevicesForPage(page: ExportPage): string[] {
+        const types = new Set<string>();
+
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                if (component.type) {
+                    types.add(component.type);
+                }
+            }
+        }
+
+        return Array.from(types);
+    }
+
+    /**
+     * Get root pages (pages without parent)
+     */
+    getRootPages(pages: ExportPage[]): ExportPage[] {
+        return pages.filter(p => !p.parentId);
+    }
+
+    /**
+     * Get child pages of a given page
+     */
+    getChildPages(parentId: string, pages: ExportPage[]): ExportPage[] {
+        return pages.filter(p => p.parentId === parentId);
+    }
+
+    // =========================================================================
+    // String Utilities
+    // =========================================================================
+
+    /**
+     * Escape XML special characters
+     */
+    escapeXml(str: string | null | undefined): string {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+    }
+
+    /**
+     * Escape content for use in CDATA sections
+     * CDATA cannot contain the sequence ]]> as it closes the CDATA block.
+     * We split it into multiple CDATA sections when this sequence appears.
+     */
+    escapeCdata(str: string | null | undefined): string {
+        if (!str) return '';
+        // Replace ]]> with ]]]]><![CDATA[> to split the CDATA section
+        return String(str).replace(/\]\]>/g, ']]]]><![CDATA[>');
+    }
+
+    /**
+     * Escape HTML special characters
+     */
+    escapeHtml(str: string | null | undefined): string {
+        if (!str) return '';
+        const map: Record<string, string> = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;',
+        };
+        return String(str).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * Sanitize string for use as filename (with accent normalization)
+     */
+    sanitizeFilename(str: string | null | undefined, maxLength = 50): string {
+        if (!str) return 'export';
+        return str
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove accents
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .substring(0, maxLength);
+    }
+
+    /**
+     * Sanitize page title for use as filename (with accent normalization)
+     */
+    sanitizePageFilename(title: string | null | undefined): string {
+        if (!title) return 'page';
+        return title
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove accents
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .substring(0, 50);
+    }
+
+    /**
+     * Generate unique identifier with optional prefix
+     */
+    generateId(prefix = ''): string {
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).substring(2, 8);
+        return `${prefix}${timestamp}${random}`.toUpperCase();
+    }
+
+    // =========================================================================
+    // File Handling
+    // =========================================================================
+
+    /**
+     * Build export filename from metadata
+     */
+    buildFilename(): string {
+        const meta = this.getMetadata();
+        const title = meta.title || 'export';
+        const sanitized = this.sanitizeFilename(title);
+        return `${sanitized}${this.getFileSuffix()}${this.getFileExtension()}`;
+    }
+
+    /**
+     * Add assets to ZIP
+     */
+    async addAssetsToZip(prefix = ''): Promise<number> {
+        let assetsAdded = 0;
+
+        try {
+            const assets = await this.assets.getAllAssets();
+
+            for (const asset of assets) {
+                const assetId = asset.id;
+                const filename = asset.filename || `asset-${assetId}`;
+                // Use originalPath if available, otherwise construct from id/filename
+                const assetPath = asset.originalPath || `${assetId}/${filename}`;
+                const zipPath = prefix ? `${prefix}${assetPath}` : assetPath;
+
+                this.zip.addFile(zipPath, asset.data);
+                assetsAdded++;
+            }
+        } catch (e) {
+            console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
+        }
+
+        return assetsAdded;
+    }
+
+    /**
+     * Add assets to ZIP with content/resources/ prefix
+     * @param trackingList - Optional array to track added file paths (for ELPX manifest)
+     */
+    async addAssetsToZipWithResourcePath(trackingList?: string[] | null): Promise<number> {
+        let assetsAdded = 0;
+
+        try {
+            const assets = await this.assets.getAllAssets();
+            console.log(`[BaseExporter] addAssetsToZipWithResourcePath: Found ${assets.length} assets to add`);
+
+            for (const asset of assets) {
+                console.log(`[BaseExporter] Adding asset: ${asset.id}/${asset.filename} (${asset.mime})`);
+
+                // Use originalPath if available
+                // Strip content/resources/ prefix if present (ELP files include it)
+                let assetPath = asset.originalPath || `${asset.id}/${asset.filename || `asset-${asset.id}`}`;
+
+                // Normalize: remove content/resources/ prefix if already present
+                if (assetPath.startsWith('content/resources/')) {
+                    assetPath = assetPath.substring('content/resources/'.length);
+                }
+                if (assetPath.startsWith('content/')) {
+                    assetPath = assetPath.substring('content/'.length);
+                }
+
+                // Store in content/resources/{path}
+                const zipPath = `content/resources/${assetPath}`;
+
+                this.zip.addFile(zipPath, asset.data);
+                if (trackingList) trackingList.push(zipPath);
+                assetsAdded++;
+            }
+        } catch (e) {
+            console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
+        }
+
+        return assetsAdded;
+    }
+
+    // =========================================================================
+    // Navigation Helpers
+    // =========================================================================
+
+    /**
+     * Check if a page is an ancestor of another page
+     */
+    isAncestorOf(potentialAncestor: ExportPage, childId: string, allPages: ExportPage[]): boolean {
+        const child = allPages.find(p => p.id === childId);
+        if (!child || !child.parentId) return false;
+        if (child.parentId === potentialAncestor.id) return true;
+        return this.isAncestorOf(potentialAncestor, child.parentId, allPages);
+    }
+
+    /**
+     * Get page link (index.html for first page, id.html for others)
+     */
+    getPageLink(page: ExportPage, allPages: ExportPage[], extension = '.html'): string {
+        if (page.id === allPages[0]?.id) {
+            return `index${extension}`;
+        }
+        return `${page.id}${extension}`;
+    }
+
+    /**
+     * Get previous page in flat list
+     */
+    getPreviousPage(currentPage: ExportPage, allPages: ExportPage[]): ExportPage | null {
+        const currentIndex = allPages.findIndex(p => p.id === currentPage.id);
+        return currentIndex > 0 ? allPages[currentIndex - 1] : null;
+    }
+
+    /**
+     * Get next page in flat list
+     */
+    getNextPage(currentPage: ExportPage, allPages: ExportPage[]): ExportPage | null {
+        const currentIndex = allPages.findIndex(p => p.id === currentPage.id);
+        return currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
+    }
+
+    // =========================================================================
+    // Asset URL Transformation
+    // =========================================================================
+
+    /**
+     * Get file extension from MIME type
+     */
+    getExtensionFromMime(mime: string): string {
+        const mimeToExt: Record<string, string> = {
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/webp': '.webp',
+            'image/svg+xml': '.svg',
+            'image/bmp': '.bmp',
+            'image/tiff': '.tiff',
+            'image/x-icon': '.ico',
+            'application/pdf': '.pdf',
+            'video/mp4': '.mp4',
+            'video/webm': '.webm',
+            'video/ogg': '.ogv',
+            'video/quicktime': '.mov',
+            'audio/mpeg': '.mp3',
+            'audio/ogg': '.ogg',
+            'audio/wav': '.wav',
+            'audio/webm': '.weba',
+            'application/zip': '.zip',
+            'application/json': '.json',
+            'text/plain': '.txt',
+            'text/html': '.html',
+            'text/css': '.css',
+            'application/javascript': '.js',
+            'application/octet-stream': '.bin',
+        };
+        return mimeToExt[mime] || '.bin';
+    }
+
+    /**
+     * Build asset filename map for URL transformation
+     */
+    async buildAssetFilenameMap(): Promise<Map<string, string>> {
+        if (this.assetFilenameMap) {
+            return this.assetFilenameMap;
+        }
+
+        this.assetFilenameMap = new Map<string, string>();
+
+        try {
+            const assets = await this.assets.getAllAssets();
+
+            for (const asset of assets) {
+                const id = asset.id;
+                let filename = asset.filename;
+
+                if (!filename) {
+                    // Generate filename from mime type
+                    const ext = this.getExtensionFromMime(asset.mimeType || 'application/octet-stream');
+                    filename = `asset-${id.substring(0, 8)}${ext}`;
+                }
+
+                this.assetFilenameMap.set(id, filename);
+            }
+        } catch (e) {
+            console.warn('[BaseExporter] Failed to build asset map:', e);
+        }
+
+        return this.assetFilenameMap;
+    }
+
+    /**
+     * Add filenames to asset:// URLs without changing the protocol
+     * Transforms asset://uuid to asset://uuid/filename.ext
+     */
+    async addFilenamesToAssetUrls(content: string): Promise<string> {
+        if (!content) return '';
+
+        const assetMap = await this.buildAssetFilenameMap();
+        if (assetMap.size === 0) {
+            return content;
+        }
+
+        // Transform asset://uuid to asset://uuid/filename (keeping asset:// protocol)
+        return content.replace(/asset:\/\/([a-f0-9-]+)(?![/a-zA-Z0-9._-])/gi, (match, uuid) => {
+            const filename = assetMap.get(uuid);
+            if (filename) {
+                return `asset://${uuid}/${filename}`;
+            }
+            return match;
+        });
+    }
+
+    /**
+     * Pre-process pages to add filenames to asset URLs in all component content
+     * Also replaces exe-package:elp protocol for download-source-file iDevice
+     * And converts internal links (exe-node:) to proper page URLs
+     */
+    async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
+        const meta = this.getMetadata();
+        const projectTitle = meta.title || 'eXeLearning';
+
+        // Build page URL map for internal link conversion
+        const pageUrlMap = this.buildPageUrlMap(pages);
+
+        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+            const page = pages[pageIndex];
+            const isIndex = pageIndex === 0;
+
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        // Add filenames to asset URLs
+                        component.content = await this.addFilenamesToAssetUrls(component.content);
+                        // Replace exe-package:elp protocol for client-side download
+                        component.content = this.replaceElpxProtocol(component.content, projectTitle);
+                        // Convert internal links to proper page URLs
+                        component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
+                    }
+                }
+            }
+        }
+        return pages;
+    }
+
+    /**
+     * Build a map of page IDs to their export URLs
+     * Used for internal link (exe-node:) conversion
+     */
+    protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
+        const map = new Map<string, { url: string; urlFromSubpage: string }>();
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            const isFirstPage = i === 0;
+
+            if (isFirstPage) {
+                // First page is index.html
+                map.set(page.id, {
+                    url: 'index.html',
+                    urlFromSubpage: '../index.html',
+                });
+            } else {
+                // Other pages are in html/ directory
+                const filename = this.sanitizePageFilename(page.title);
+                map.set(page.id, {
+                    url: `html/${filename}.html`,
+                    urlFromSubpage: `${filename}.html`,
+                });
+            }
+        }
+
+        return map;
+    }
+
+    /**
+     * Replace exe-node: internal links with proper page URLs
+     *
+     * @param content - HTML content
+     * @param pageUrlMap - Map of page IDs to their export URLs
+     * @param isFromIndex - Whether the content is from the index page (affects relative paths)
+     * @returns Content with internal links replaced
+     */
+    protected replaceInternalLinks(
+        content: string,
+        pageUrlMap: Map<string, { url: string; urlFromSubpage: string }>,
+        isFromIndex: boolean,
+    ): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        // Replace href="exe-node:pageId" with actual page URLs
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageId) => {
+            const pageUrls = pageUrlMap.get(pageId);
+            if (pageUrls) {
+                // Use the appropriate URL based on whether we're on index or subpage
+                const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
+                return `href="${url}"`;
+            }
+            // If page not found, leave the link unchanged (might be an external link or error)
+            console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);
+            return match;
+        });
+    }
+
+    /**
+     * Replace exe-package:elp protocol with client-side download handler
+     * This enables the download-source-file iDevice to generate ELPX files on-the-fly
+     *
+     * @param content - HTML content
+     * @param projectTitle - Project title for the download filename
+     * @returns Content with exe-package:elp replaced with onclick handler
+     */
+    replaceElpxProtocol(content: string, projectTitle: string): string {
+        if (!content) return '';
+
+        // Check if content contains the exe-package:elp protocol
+        if (!content.includes('exe-package:elp')) {
+            return content;
+        }
+
+        // Replace href="exe-package:elp" with onclick handler
+        // Uses <a onclick> approach for styling compatibility
+        let result = content.replace(
+            /href="exe-package:elp"/g,
+            'href="#" onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"',
+        );
+
+        // Replace download="exe-package:elp-name" with actual filename
+        const safeTitle = this.escapeXml(projectTitle);
+        result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
+
+        return result;
+    }
+
+    /**
+     * Collect all HTML content from all pages (for library detection)
+     */
+    collectAllHtmlContent(pages: ExportPage[]): string {
+        const htmlParts: string[] = [];
+
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        htmlParts.push(component.content);
+                    }
+                }
+            }
+        }
+
+        return htmlParts.join('\n');
+    }
+
+    // =========================================================================
+    // Download Source File iDevice Detection
+    // =========================================================================
+
+    /**
+     * Check if any page contains the download-source-file iDevice
+     * (needs ELPX manifest for client-side ZIP recreation)
+     */
+    protected needsElpxDownloadSupport(pages: ExportPage[]): boolean {
+        return pages.some(page => this.pageHasDownloadSourceFile(page));
+    }
+
+    /**
+     * Check if a specific page contains the download-source-file iDevice
+     */
+    protected pageHasDownloadSourceFile(page: ExportPage): boolean {
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                // Check by iDevice type
+                const type = (component.type || '').toLowerCase();
+                if (type.includes('download-source-file') || type.includes('downloadsourcefile')) {
+                    return true;
+                }
+                // Also check content for the CSS class (more reliable)
+                if (component.content?.includes('exe-download-package-link')) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // =========================================================================
+    // ELPX Manifest Generation (for download-source-file iDevice)
+    // =========================================================================
+
+    /**
+     * Generate ELPX manifest as a standalone JS file
+     * Used for HTML5 exports where the manifest is a separate file
+     *
+     * @param fileList - List of file paths in the export
+     * @returns JavaScript file content
+     */
+    protected generateElpxManifestFile(fileList: string[]): string {
+        const manifest = {
+            version: 1,
+            files: fileList,
+            projectTitle: this.getMetadata().title || 'eXeLearning-project',
+        };
+
+        return `/**
+ * ELPX Manifest - Auto-generated for download-source-file iDevice
+ * Used by exe_elpx_download.js to recreate the complete export package
+ */
+window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
+`;
+    }
+
+    // =========================================================================
+    // Content XML Generation (for re-import capability)
+    // =========================================================================
+
+    /**
+     * Generate content.xml from document structure
+     */
+    generateContentXml(): string {
+        const metadata = this.getMetadata();
+        const pages = this.getNavigation();
+
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        xml += '<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">\n';
+        xml += this.generatePropertiesXml(metadata);
+        xml += '<odeNavStructures>\n';
+
+        for (let i = 0; i < pages.length; i++) {
+            xml += this.generatePageXml(pages[i], i);
+        }
+
+        xml += '</odeNavStructures>\n';
+        xml += '</ode>';
+        return xml;
+    }
+
+    /**
+     * Generate properties XML section
+     */
+    protected generatePropertiesXml(metadata: ExportMetadata): string {
+        let xml = '<odeProperties>\n';
+        const props: Record<string, string> = {
+            pp_title: metadata.title || 'Untitled',
+            pp_author: metadata.author || '',
+            pp_lang: metadata.language || 'en',
+            pp_description: metadata.description || '',
+            pp_license: metadata.license || '',
+            pp_theme: metadata.theme || 'base',
+            // Export options
+            pp_addExeLink: String(metadata.addExeLink ?? true),
+            pp_addPagination: String(metadata.addPagination ?? false),
+            pp_addSearchBox: String(metadata.addSearchBox ?? false),
+            pp_addAccessibilityToolbar: String(metadata.addAccessibilityToolbar ?? false),
+            pp_addMathJax: String(metadata.addMathJax ?? false),
+            exportSource: String(metadata.exportSource ?? true),
+        };
+
+        // Add custom content if present
+        if (metadata.extraHeadContent) {
+            props['pp_extraHeadContent'] = metadata.extraHeadContent;
+        }
+        if (metadata.footer) {
+            props['footer'] = metadata.footer;
+        }
+
+        for (const [key, value] of Object.entries(props)) {
+            xml += `  <${key}>${this.escapeXml(value)}</${key}>\n`;
+        }
+
+        xml += '</odeProperties>\n';
+        return xml;
+    }
+
+    /**
+     * Generate page XML
+     */
+    protected generatePageXml(page: ExportPage, index: number): string {
+        const pageId = page.id;
+        const pageName = page.title || 'Page';
+        const parentId = page.parentId || '';
+        const order = page.order ?? index;
+
+        let xml = `<odeNavStructure odeNavStructureId="${this.escapeXml(pageId)}" `;
+        xml += `odePageName="${this.escapeXml(pageName)}" odeNavStructureOrder="${order}" `;
+        if (parentId) {
+            xml += `parentOdeNavStructureId="${this.escapeXml(parentId)}" `;
+        }
+        xml += `>\n`;
+
+        for (let i = 0; i < (page.blocks || []).length; i++) {
+            xml += this.generateBlockXml(page.blocks![i], i);
+        }
+
+        xml += '</odeNavStructure>\n';
+        return xml;
+    }
+
+    /**
+     * Generate block XML
+     */
+    protected generateBlockXml(block: ExportBlock, index: number): string {
+        const blockId = block.id;
+        const blockName = block.name || '';
+        const order = block.order ?? index;
+
+        let xml = `  <odePagStructure odePagStructureId="${this.escapeXml(blockId)}" `;
+        xml += `blockName="${this.escapeXml(blockName)}" odePagStructureOrder="${order}">\n`;
+
+        for (let i = 0; i < (block.components || []).length; i++) {
+            xml += this.generateComponentXml(block.components![i], i);
+        }
+
+        xml += '  </odePagStructure>\n';
+        return xml;
+    }
+
+    /**
+     * Generate component XML
+     */
+    protected generateComponentXml(component: ExportComponent, index: number): string {
+        const compId = component.id;
+        const ideviceType = component.type || 'FreeTextIdevice';
+        const order = component.order ?? index;
+
+        let xml = `    <odeComponent odeComponentId="${this.escapeXml(compId)}" `;
+        xml += `odeIdeviceTypeDirName="${this.escapeXml(ideviceType)}" odeComponentOrder="${order}">\n`;
+
+        if (component.content) {
+            xml += `      <htmlView><![CDATA[${this.escapeCdata(component.content)}]]></htmlView>\n`;
+        }
+
+        if (component.properties && Object.keys(component.properties).length > 0) {
+            xml += `      <jsonProperties><![CDATA[${this.escapeCdata(JSON.stringify(component.properties))}]]></jsonProperties>\n`;
+        }
+
+        xml += '    </odeComponent>\n';
+        return xml;
+    }
+
+    // =========================================================================
+    // Fallback Styles (used when resources can't be fetched)
+    // =========================================================================
+
+    /**
+     * Get fallback theme CSS
+     */
+    getFallbackThemeCss(): string {
+        return `/* Default theme CSS */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+`;
+    }
+
+    /**
+     * Get fallback theme JS
+     */
+    getFallbackThemeJs(): string {
+        return `// Default theme JS
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Theme initialization
+    console.log('[Theme] Default theme loaded');
+  });
+})();
+`;
+    }
+}

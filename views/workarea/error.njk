@@ -1,0 +1,31 @@
+{% extends "base.njk" %}
+
+{% block title %}{{ error }} - eXeLearning{% endblock %}
+
+{% block stylesheets %}
+    <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/base.css' | asset }}">
+{% endblock %}
+
+{% block javascripts %}
+    <script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
+{% endblock %}
+
+{% block id %}error-page{% endblock %}
+{% block body %}
+    <div class="container d-flex flex-column align-items-center justify-content-center vh-100">
+        <div class="text-center">
+            <h1 class="display-4 text-danger mb-4">{{ error }}</h1>
+            <p class="lead text-muted mb-4">{{ message }}</p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="{{ basePath }}/workarea" class="btn btn-primary">
+                    {{ 'error.create_new_project' | trans }}
+                </a>
+                <a href="{{ basePath }}/login" class="btn btn-outline-secondary">
+                    {{ 'error.back_to_login' | trans }}
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

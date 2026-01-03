@@ -6,8 +6,8 @@ Only the latest version of `exelearning` is supported with security updates. `ex
 
 | Version | Supported |
 | ------- | --------- |
-| 3.x     | ✅        |
-| < 3.x   | ❌        |
+| 3.1     | ✅        |
+| < 3.1   | ❌        |
 
 Older versions (below 3.x) are no longer maintained or supported.
 

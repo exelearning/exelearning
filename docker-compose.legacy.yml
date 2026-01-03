@@ -1,0 +1,67 @@
+# =============================================================================
+# docker-compose.legacy.yml - Node.js runtime for legacy systems (Core2 Duo)
+# =============================================================================
+#
+# WARNING: This is an UNSUPPORTED legacy mode for developers whose systems
+# cannot run Bun (e.g., older CPUs like Core2 Duo that lack AVX instructions).
+#
+# LIMITATIONS:
+# - No WebSocket support (real-time collaboration disabled)
+# - Runs in offline/single-user mode (APP_ONLINE_MODE=0)
+# - Performance may be slower than Bun
+# - Not recommended for production use
+#
+# For full functionality, use the standard docker-compose.yml with Bun.
+#
+# Usage: make up-legacy
+# =============================================================================
+---
+services:
+
+  exelearning:
+    build:
+      context: .
+      dockerfile: Dockerfile.legacy
+    container_name: exelearning-legacy
+    hostname: exelearning
+    env_file:
+      - .env.dist
+      - .env
+    ports:
+      - ${APP_PORT:-8080}:8080
+    restart: unless-stopped
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./templates:/app/templates
+      - ./translations:/app/translations
+      - ./public/files:/app/public/files
+      - ./assets:/app/assets
+      - ./scripts:/app/scripts
+      - ./views:/app/views
+      - ./package.json:/app/package.json
+
+      # Persistent data
+      - mnt-data-legacy:/mnt/data:rw
+      - ./data:/app/data:rw
+
+    environment:
+      # IMPORTANT: Force offline mode - WebSockets not supported in Node.js adapter
+      APP_ONLINE_MODE: "0"
+
+    # Start with Node.js + tsx
+    # dev (default): tsx watch mode
+    # prod: tsx without watch
+    command: >
+      sh -c "if [ \"$$APP_ENV\" = 'prod' ]; then
+        echo 'Building assets for production...' &&
+        npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map &&
+        echo 'Starting with Node.js (prod mode)...' &&
+        npx tsx src/index-node.ts;
+      else
+        echo 'Starting with Node.js (dev mode with watch)...' &&
+        npx tsx watch src/index-node.ts;
+      fi"
+
+volumes:
+  mnt-data-legacy:

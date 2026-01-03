@@ -90,10 +90,8 @@
 
                 #head-top-download-button,
                 #exe-last-edition,
-                #navbar-button-preview,
                 #navbar-button-idevice-manager {
                     display: none;
-
                 }
 
                 .auto-icon {
@@ -114,6 +112,10 @@
                         bottom: 5px;
                         left: 7px;
                         border: 2px solid #fff;
+                    }
+                    &.saving {
+                        opacity: 0.7;
+                        pointer-events: none;
                     }
                     &:disabled {
                         background-color: var(--gray-600);
@@ -191,6 +193,13 @@
         position: relative;
         border-radius: 50%;
         border: 1px solid var(--head-icon-border-color);
+
+        // Offline mode: scale down logo to fit inside circle
+        &.exe-gravatar--offline {
+            width: 32px;
+            padding: 4px;
+            background-color: #fff;
+        }
     }
 
     #exe-concurrent-users {
@@ -285,6 +294,109 @@
         position: relative;
         top: 2px;
         left: -2px;
+    }
+}
+
+/* ========================================================================
+   Mobile Responsive Styles (< 768px)
+   ======================================================================== */
+@media (max-width: 767.98px) {
+    #head {
+        margin: 8px;
+        height: auto;
+        min-height: 48px;
+        padding: 4px 0;
+
+        .navbar {
+            padding: 0 4px;
+
+            .top .main-menu {
+                flex-wrap: nowrap;
+                gap: 4px;
+                align-items: center;
+
+                .main-menu-left {
+                    flex: 0 0 auto;
+                    gap: 2px;
+
+                    // Ocultar menú desktop (File/Utilities/Help)
+                    #navbarMainMenu {
+                        display: none !important;
+                    }
+                }
+
+                .main-menu-right {
+                    flex: 1;
+                    justify-content: flex-end;
+                    gap: 2px;
+                    flex-wrap: nowrap;
+                    overflow: visible; // Permitir que dropdown salga del contenedor
+                }
+
+                // Dropdown del usuario debe salir por encima de todo
+                #head-bottom-user-logged {
+                    position: static; // Para que el dropdown se posicione respecto al header
+
+                    .dropdown-menu {
+                        position: fixed !important;
+                        top: 56px !important;
+                        right: 8px !important;
+                        left: auto !important;
+                        z-index: 10000 !important;
+                        max-height: calc(100vh - 70px);
+                        overflow-y: auto;
+                    }
+                }
+
+                // Ocultar texto del botón Save en móviles
+                #head-top-save-button {
+                    padding: 6px 8px !important;
+                    min-width: 36px;
+                    margin-right: 0;
+
+                    span {
+                        display: none;
+                    }
+                }
+
+                // Ocultar título del proyecto en móviles
+                #exe-title {
+                    display: none !important;
+                }
+
+                // Ocultar texto "Download"
+                #head-top-download-button {
+                    .btn-label {
+                        display: none;
+                    }
+                }
+
+                // Usuarios concurrentes más compacto
+                #exe-concurrent-users {
+                    display: none;
+                }
+
+                // Botones más compactos en móvil
+                .btn {
+                    padding: 4px 8px;
+                    min-height: 36px;
+                }
+
+                .button-square {
+                    width: 36px;
+                    height: 36px;
+                    padding: 4px;
+                }
+            }
+        }
+
+        // Toggle de paneles siempre visible
+        #exe-panels-toggler {
+            display: flex !important;
+            width: 36px;
+            height: 36px;
+            padding: 4px;
+        }
     }
 }
 

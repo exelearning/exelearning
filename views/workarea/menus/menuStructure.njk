@@ -1,0 +1,69 @@
+<div id="menu_nav" class="menu long accordion-item" size="long" pos="left" iddrag="menu">
+    <div class="accordion-header" id="menu_nav_header">
+        <div class="accordion-button">
+            <div class="content_action_buttons buttons_action_container_right">
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-left button_nav_action action_move_prev"
+                        title="{{ t.move_up or 'Move up' }}"
+                        data-testid="nav-move-up">
+                    <i class="small-icon arrow-up-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ t.move_up or 'Move up' }}</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-center button_nav_action action_move_next"
+                        title="{{ t.move_down or 'Move down' }}"
+                        data-testid="nav-move-down">
+                    <i class="small-icon arrow-down-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ t.move_down or 'Move down' }}</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-center button_nav_action action_move_up"
+                        title="{{ t.move_left or 'Move left (up in hierarchy)' }}"
+                        data-testid="nav-move-left">
+                    <i class="small-icon arrow-left-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ t.move_left or 'Move left (up in hierarchy)' }}</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-right button_nav_action action_move_down"
+                        title="{{ t.move_right or 'Move right (down in hierarchy)' }}"
+                        data-testid="nav-move-right">
+                    <i class="small-icon arrow-right-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ t.move_right or 'Move right (down in hierarchy)' }}</span>
+                </button>
+            </div>
+            <div class="content_action_buttons buttons_action_container_left" id="nav_actions">
+                <button class="button_nav_action action_properties d-none"
+                        title="{{ t.page_properties or 'Page properties' }}"
+                        data-testid="nav-properties">
+                    <i class="exe-icon" aria-hidden="true">settings</i>
+                    <span class="visually-hidden">{{ t.page_properties or 'Page properties' }}</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-square button-combo combo-left button_nav_action action_delete"
+                        title="{{ t.delete_page or 'Delete page' }}"
+                        data-testid="nav-delete">
+                    <i class="small-icon delete-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ t.delete_page or 'Delete page' }}</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-square button-combo combo-center button_nav_action action_clone"
+                        title="{{ t.clone_page or 'Clone page' }}"
+                        data-testid="nav-clone">
+                    <i class="small-icon duplicate-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ t.clone_page or 'Clone page' }}</span>
+                </button>
+                <button class="btn button-secondary secondary-green button-square button-combo combo-right button_nav_action action_import_idevices"
+                        title="{{ t.import_idevices or 'Import iDevices' }}"
+                        data-testid="nav-import-idevices">
+                    <i class="small-icon import-icon-green" aria-hidden="true"></i>
+                    <span class="visually-hidden">{{ t.import_idevices or 'Import iDevices' }}</span>
+                </button>
+            </div>
+            <div class="content_action_buttons add-page">
+                <button class="button_nav_action action_add" title="{{ t.new_page or 'New page' }}" aria-label="{{ t.new_page or 'New page' }}" data-testid="nav-add-page">
+                    <span class="exe-icon" aria-hidden="true">add</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+    <div id="menu_nav_content" class="menu_content accordion-collapse collapse show" aria-labelledby="menu_nav_header">
+        <div id="nav_list" role="tree">
+            <div id="nav_document_root_node"></div>
+        </div>
+    </div>
+</div>

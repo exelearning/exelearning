@@ -1,9 +1,11 @@
-import RealTimeEventNotifier from '../../../../RealTimeEventNotifier/RealTimeEventNotifier.js';
 import {
     downloadComponentFile,
     buildComponentFileName,
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
+
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
 /**
  * eXeLearning
  *
@@ -14,18 +16,23 @@ export default class IdeviceNode {
     constructor(parent, data) {
         this.engine = parent;
         this.id = data.id ? data.id : null;
+        // Use Yjs-style IDs when Yjs is enabled for consistency with Yjs structure
+        const yjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
         this.odeIdeviceId = data.odeIdeviceId
             ? data.odeIdeviceId
-            : this.engine.generateId();
+            : yjsEnabled
+                ? `idevice-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+                : this.engine.generateId();
         this.odeIdeviceTypeName = data.odeIdeviceTypeName
             ? data.odeIdeviceTypeName
             : '';
-        // Idevice type data class
-        this.idevice = eXeLearning.app.idevices.getIdeviceInstalled(
-            this.odeIdeviceTypeName
-        );
+        // Idevice type data class - try multiple name variants
+        this.idevice = this.findInstalledIdevice(this.odeIdeviceTypeName);
         // Set api params
         this.setParams(data);
+        // Yjs collaboration flags
+        this.fromYjs = data.fromYjs || false;
+        this.yjsComponentId = data.yjsComponentId || null;
         // Control parameters
         this.accesibility = 1;
         this.loading = data.loading ? data.loading : this.id ? false : true;
@@ -53,12 +60,6 @@ export default class IdeviceNode {
 
         this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
 
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey
-            );
-        }
         this.nodeContainer = document.querySelector('#node-content-container');
 
         this.timeIdeviceEditing = null;
@@ -108,6 +109,43 @@ export default class IdeviceNode {
     parseParams = ['jsonProperties'];
 
     /**
+     * Check if Yjs collaborative mode is enabled
+     * @returns {boolean}
+     */
+    isYjsEnabled() {
+        return eXeLearning.app?.project?._yjsEnabled === true;
+    }
+
+    /**
+     * Load properties from Yjs
+     * Updates local properties object with values from Yjs
+     * Should be called before showing the properties modal to get latest values
+     */
+    loadPropertiesFromYjs() {
+        if (!this.isYjsEnabled()) return;
+
+        const project = eXeLearning.app.project;
+        const bridge = project._yjsBridge;
+
+        if (!bridge || !bridge.structureBinding) return;
+
+        const yjsProperties = bridge.structureBinding.getComponentProperties(this.odeIdeviceId);
+        if (yjsProperties) {
+            for (let [key, value] of Object.entries(yjsProperties)) {
+                if (this.properties[key]) {
+                    // Convert booleans back to strings for compatibility with modal
+                    if (typeof value === 'boolean') {
+                        this.properties[key].value = value ? 'true' : 'false';
+                    } else {
+                        this.properties[key].value = value;
+                    }
+                }
+            }
+            Logger.log('[IdeviceNode] Loaded properties from Yjs:', this.odeIdeviceId, yjsProperties);
+        }
+    }
+
+    /**
      * Set values of api object
      *
      * @param {Array} data
@@ -120,6 +158,10 @@ export default class IdeviceNode {
             this[param] = this.parseParams.includes(param)
                 ? JSON.parse(value)
                 : value;
+        }
+        // Debug: Log htmlView to verify it's being set
+        if (data.htmlView !== undefined) {
+            console.debug(`[IdeviceNode] setParams: Component ${data.odeIdeviceId || data.id} htmlView length: ${this.htmlView?.length || 0}`);
         }
         if (data.odeComponentsSyncProperties) {
             this.setProperties(data.odeComponentsSyncProperties);
@@ -134,6 +176,11 @@ export default class IdeviceNode {
      */
     setProperties(properties, onlyHeritable) {
         for (let [key, value] of Object.entries(this.properties)) {
+            // Check if property exists in the data from backend
+            if (!properties || !properties[key]) {
+                continue;
+            }
+
             if (onlyHeritable) {
                 if (properties[key].heritable)
                     value.value = properties[key].value;
@@ -238,6 +285,7 @@ export default class IdeviceNode {
             this.ideviceBody.classList.add(`${this.idevice.cssClass}Idevice`);
         }
         this.ideviceBody.setAttribute('idevice-id', this.odeIdeviceId);
+        this.ideviceBody.id = this.odeIdeviceId;
         // Add events
         this.addBehaviourEditionIdeviceDoubleClick();
 
@@ -302,9 +350,22 @@ export default class IdeviceNode {
             case 'export':
                 // action edition
                 let blockButtonEditClass = ' disabled';
-                if (this.haveEdition && this.valid) {
+                let lockIndicator = '';
+
+                // Check if locked by another user via Yjs
+                const isLockedByOther = this.isLockedByOtherUser();
+
+                if (this.haveEdition && this.valid && !isLockedByOther) {
                     // In some cases the idevice will not be able to be edited
                     blockButtonEditClass = '';
+                }
+
+                // If locked by another user, show who has it locked
+                if (isLockedByOther) {
+                    const lockInfo = this.getLockInfo();
+                    const lockUserName = lockInfo?.lockUserName || this.lockUserName || _('Another user');
+                    const lockUserColor = lockInfo?.lockUserColor || this.lockUserColor || '#999';
+                    lockIndicator = `<span class="lock-indicator" style="color: ${lockUserColor}; font-size: 10px; margin-left: 4px;" title="${_('Editing by')} ${lockUserName}">🔒 ${lockUserName}</span>`;
                 }
                 // Set the Minify iDevice icon
                 let minifyIdeviceIcon = 'chevron-down-icon-green';
@@ -314,11 +375,15 @@ export default class IdeviceNode {
                 if (iDevice.is(':hidden')) {
                     minifyIdeviceIcon = 'chevron-up-icon-green';
                 }
+                // Build iDevice type icon
+                const ideviceTypeIcon = this._getIdeviceTypeIconHtml();
                 blockButtonsHTML = `
                 <div class="dropdown exe-actions-menu">
+                    <div class="idevice-editor-avatar" data-component-id="${id}"></div>
+                    ${ideviceTypeIcon}
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}"><span class="small-icon arrow-up-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move up')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}"><span class="small-icon arrow-down-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move down')}</span></button>
-                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-edit-idevice ${blockButtonEditClass}" type="button" id=editIdevice${id} title="${_('Edit')}" ${blockButtonEditClass}><span class="small-icon edit-icon-green" aria-hidden="true"></span>${_('Edit')}</button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-edit-idevice ${blockButtonEditClass}" type="button" id=editIdevice${id} title="${_('Edit')}" ${blockButtonEditClass}><span class="small-icon edit-icon-green" aria-hidden="true"></span>${_('Edit')}${lockIndicator}</button>
                     <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice" type="button" id=deleteIdevice${id} title="${_('Delete')}"><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete')}</span></button>                    
                     <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center exe-advanced" type="button" id="dropdownMenuButtonIdevice${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}"><span class="micro-icon dots-menu-horizontal-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Actions')}</span></button>
                     <ul class="dropdown-menu${dropdownColumns} button-action-block exe-advanced" aria-labelledby="dropdownMenuButtonIdevice${id}">
@@ -366,6 +431,91 @@ export default class IdeviceNode {
     }
 
     /**
+     * Check if this iDevice is locked by another user via Yjs
+     * @returns {boolean}
+     */
+    isLockedByOtherUser() {
+        // Check if marked as locked by remote (set during remote rendering)
+        if (this.lockedByRemote) {
+            return true;
+        }
+
+        // Check via Yjs lockManager
+        const lockManager = this.getLockManager();
+        if (!lockManager) {
+            return false;
+        }
+
+        const componentId = this.yjsComponentId || this.odeIdeviceId;
+        return lockManager.isLocked(componentId);
+    }
+
+    /**
+     * Get lock info for this iDevice from Yjs
+     * @returns {Object|null} Lock info with userName, userColor, etc.
+     */
+    getLockInfo() {
+        // If locked by remote, use stored info
+        if (this.lockedByRemote) {
+            return {
+                lockUserName: this.lockUserName || _('Another user'),
+                lockUserColor: this.lockUserColor || '#999',
+            };
+        }
+
+        // Get from Yjs lockManager
+        const lockManager = this.getLockManager();
+        if (!lockManager) {
+            return null;
+        }
+
+        const componentId = this.yjsComponentId || this.odeIdeviceId;
+        const lockInfo = lockManager.getLockInfo(componentId);
+
+        if (lockInfo) {
+            return {
+                lockUserName: lockInfo.user?.name || _('Another user'),
+                lockUserColor: lockInfo.user?.color || '#999',
+                clientId: lockInfo.clientId,
+                timestamp: lockInfo.timestamp,
+            };
+        }
+
+        // Try to get from Yjs component data
+        const bridge = this.engine?.project?._yjsBridge;
+        if (bridge) {
+            const compMap = bridge.structureBinding?.getComponentMap(componentId);
+            if (compMap) {
+                return {
+                    lockUserName: compMap.get('lockUserName') || _('Another user'),
+                    lockUserColor: compMap.get('lockUserColor') || '#999',
+                };
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the Yjs lock manager
+     * @returns {YjsLockManager|null}
+     */
+    getLockManager() {
+        return this.engine?.project?._yjsBridge?.lockManager || null;
+    }
+
+    /**
+     * Update the lock indicator in the iDevice header
+     * Called when lock status changes (e.g., when content is saved by remote user)
+     */
+    updateLockIndicator() {
+        // Simply re-render the buttons which includes the lock indicator
+        if (this.ideviceButtons) {
+            this.makeIdeviceButtonsElement();
+        }
+    }
+
+    /**
      * Create a button to add a Text iDevice
      */
     createAddTextBtn() {
@@ -384,7 +534,7 @@ export default class IdeviceNode {
      */
     inactivityInElement(elementId, timeoutSeconds, callback) {
         // Debug
-        console.log(`Setting up inactivity tracker for ${elementId}`);
+        Logger.log(`Setting up inactivity tracker for ${elementId}`);
 
         // Debug
         if (!elementId) {
@@ -401,7 +551,7 @@ export default class IdeviceNode {
         const element = document.getElementById(elementId);
 
         if (!element) {
-            console.log(`Element with ID ${elementId} not found`);
+            Logger.log(`Element with ID ${elementId} not found`);
             return () => {};
         }
 
@@ -415,11 +565,11 @@ export default class IdeviceNode {
         }
 
         const resetTimer = () => {
-            // console.log(`[Inactivity] Event triggered on ${elementId}`);
+            // Logger.log(`[Inactivity] Event triggered on ${elementId}`);
 
             // If inactive ? now active ? send HIDE_UNLOCK
             if (this.inactiveStates[elementId]) {
-                console.log(
+                Logger.log(
                     `[Inactivity] User is active again, sending HIDE_UNLOCK for ${elementId}`
                 );
                 this.updateResourceLockStatus({
@@ -439,7 +589,7 @@ export default class IdeviceNode {
                     'saveIdevice' + elementId
                 );
 
-                console.log(
+                Logger.log(
                     `[${now.toLocaleTimeString()}] Inactivity timeout for ${elementId}. Sending FORCE_UNLOCK...`
                 );
 
@@ -507,7 +657,7 @@ export default class IdeviceNode {
             clearTimeout(this.inactivityTimers[elementId]);
             delete this.inactivityTimers[elementId];
             delete this.inactiveStates[elementId];
-            console.log(`Inactivity tracker cleaned for ${elementId}`);
+            Logger.log(`Inactivity tracker cleaned for ${elementId}`);
 
             events.forEach((event) => {
                 element.removeEventListener(event, resetTimer);
@@ -551,16 +701,7 @@ export default class IdeviceNode {
         destinationPageId = '',
         pageId = '', // Collaborative
     } = {}) {
-        eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-            odeSessionId,
-            odeNavStructureSyncId,
-            blockId,
-            odeIdeviceId,
-            actionType,
-            destinationPageId,
-            this.timeIdeviceEditing,
-            pageId // Collaborative
-        );
+        // No-op: Yjs handles synchronization now
     }
 
     /**
@@ -600,7 +741,7 @@ export default class IdeviceNode {
                 eXeLearning.app.api
                     .getResourceLockTimeout()
                     .then((timeout) => {
-                        console.log('Lock timeout:', timeout);
+                        Logger.log('Lock timeout:', timeout);
                         setupInactivityTracker(timeout);
                     })
                     .catch((error) => {
@@ -647,19 +788,19 @@ export default class IdeviceNode {
      */
     cleanupInactivityTracker() {
         // Debug
-        console.log('Attempting to clean up timer');
+        Logger.log('Attempting to clean up timer');
 
         if (this.inactivityCleanup) {
-            console.log('Cleaning up inactivity timer');
+            Logger.log('Cleaning up inactivity timer');
             this.inactivityCleanup();
             this.inactivityCleanup = null;
         } else {
-            console.log('No inactivityCleanup function to call');
+            Logger.log('No inactivityCleanup function to call');
         }
 
         // Clear the timer directly
         if (this.inactivityTimer) {
-            console.log('Clearing inactivity timer directly');
+            Logger.log('Clearing inactivity timer directly');
             clearTimeout(this.inactivityTimer);
             this.inactivityTimer = null;
         }
@@ -701,6 +842,8 @@ export default class IdeviceNode {
                                 contentId: 'error',
                             });
                         } else {
+                            // Load latest properties from Yjs before showing modal
+                            this.loadPropertiesFromYjs();
                             eXeLearning.app.modals.properties.show({
                                 node: this,
                                 title: _('iDevice properties'),
@@ -722,6 +865,17 @@ export default class IdeviceNode {
             .addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (e.target.disabled) return;
+                // Check if locked by another user - don't allow editing
+                if (this.isLockedByOtherUser()) {
+                    const lockInfo = this.getLockInfo();
+                    const lockUserName = lockInfo?.lockUserName || this.lockUserName || _('Another user');
+                    eXeLearning.app.modals.alert.show({
+                        title: _('iDevice locked'),
+                        body: _('This iDevice is being edited by') + ' ' + lockUserName,
+                        contentId: 'warning',
+                    });
+                    return;
+                }
                 this.toogleIdeviceButtonsState(true);
                 eXeLearning.app.project
                     .changeUserFlagOnEdit(
@@ -743,19 +897,6 @@ export default class IdeviceNode {
                                 contentId: 'error',
                             });
                         } else {
-                            // Send operation log action to bbdd
-                            let additionalData = {
-                                blockId: this.blockId,
-                                odeIdeviceId: this.odeIdeviceId,
-                            };
-                            eXeLearning.app.project.sendOdeOperationLog(
-                                this.block?.pageId ??
-                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
-                                this.block?.pageId ??
-                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
-                                'EDIT_IDEVICE',
-                                additionalData
-                            );
                             this.edition();
                         }
                     });
@@ -769,6 +910,17 @@ export default class IdeviceNode {
         this.timeIdeviceEditing = new Date().getTime();
         this.ideviceBody.addEventListener('dblclick', (element) => {
             if (this.mode == 'export') {
+                // Check if locked by another user - don't allow editing
+                if (this.isLockedByOtherUser()) {
+                    const lockInfo = this.getLockInfo();
+                    const lockUserName = lockInfo?.lockUserName || this.lockUserName || _('Another user');
+                    eXeLearning.app.modals.alert.show({
+                        title: _('iDevice locked'),
+                        body: _('This iDevice is being edited by') + ' ' + lockUserName,
+                        contentId: 'warning',
+                    });
+                    return;
+                }
                 eXeLearning.app.project
                     .changeUserFlagOnEdit(
                         true,
@@ -789,19 +941,6 @@ export default class IdeviceNode {
                                 contentId: 'error',
                             });
                         } else {
-                            // Send operation log action to bbdd
-                            let additionalData = {
-                                blockId: this.blockId,
-                                odeIdeviceId: this.odeIdeviceId,
-                            };
-                            eXeLearning.app.project.sendOdeOperationLog(
-                                this.block?.pageId ??
-                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
-                                this.block?.pageId ??
-                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
-                                'EDIT_IDEVICE',
-                                additionalData
-                            );
                             this.edition();
                             this.clearSelection();
                         }
@@ -848,34 +987,7 @@ export default class IdeviceNode {
                                 ),
                                 confirmButtonText: _('Yes'),
                                 confirmExec: () => {
-                                    eXeLearning.app.project
-                                        .updateCurrentOdeUsersUpdateFlag(
-                                            false,
-                                            null,
-                                            this.blockId,
-                                            this.odeIdeviceId,
-                                            'DELETE',
-                                            null,
-                                            null, // Collaborative
-                                            this.block?.pageId ??
-                                                eXeLearning.app.project.structure.getSelectNodePageId() // Collaborative
-                                        )
-                                        .then((response) => {
-                                            // Send operation log action to bbdd
-                                            let additionalData = {
-                                                blockId: this.blockId,
-                                                odeIdeviceId: this.odeIdeviceId,
-                                            };
-                                            eXeLearning.app.project.sendOdeOperationLog(
-                                                this.block?.pageId ??
-                                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
-                                                this.block?.pageId ??
-                                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
-                                                'REMOVE_IDEVICE',
-                                                additionalData
-                                            );
-                                            this.remove(true);
-                                        });
+                                    this.remove(true);
                                 },
                             });
                         }
@@ -990,19 +1102,6 @@ export default class IdeviceNode {
                                                 this.ideviceContent,
                                                 previousIdevice
                                             );
-                                            // Send operation log action to bbdd
-                                            let additionalData = {
-                                                blockId: this.blockId,
-                                                odeIdeviceId: this.odeIdeviceId,
-                                                previousOrder:
-                                                    idevicePreviousOrder,
-                                            };
-                                            eXeLearning.app.project.sendOdeOperationLog(
-                                                this.block.pageId,
-                                                this.block.pageId,
-                                                'MOVE_IDEVICE_ON',
-                                                additionalData
-                                            );
                                         }
                                     });
                                 }
@@ -1053,19 +1152,6 @@ export default class IdeviceNode {
                                             this.block.blockContent.insertBefore(
                                                 this.ideviceContent,
                                                 nextIdevice.nextSibling
-                                            );
-                                            // Send operation log action to bbdd
-                                            let additionalData = {
-                                                blockId: this.blockId,
-                                                odeIdeviceId: this.odeIdeviceId,
-                                                previousOrder:
-                                                    idevicePreviousOrder,
-                                            };
-                                            eXeLearning.app.project.sendOdeOperationLog(
-                                                this.block.pageId,
-                                                this.block.pageId,
-                                                'MOVE_IDEVICE_ON',
-                                                additionalData
                                             );
                                         }
                                     });
@@ -1142,28 +1228,7 @@ export default class IdeviceNode {
                                         parseInt(newPageId) !==
                                         this.odeNavStructureSyncId
                                     ) {
-                                        eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                                            false,
-                                            null,
-                                            null,
-                                            this.odeIdeviceId,
-                                            'MOVE_TO_PAGE',
-                                            odePageId
-                                        );
-                                        // Send operation log action to bbdd
-                                        let additionalData = {
-                                            previousPageId: previousPageId,
-                                            newPageId: newPageId,
-                                            blockId: previousBlockId,
-                                            odeIdeviceId: this.odeIdeviceId,
-                                            previousOrder: this.order,
-                                        };
-                                        eXeLearning.app.project.sendOdeOperationLog(
-                                            previousOdePageId,
-                                            odePageId,
-                                            'MOVE_IDEVICE_TO',
-                                            additionalData
-                                        );
+                                        // Yjs handles undo/redo
                                     }
                                 },
                             });
@@ -1277,44 +1342,43 @@ export default class IdeviceNode {
     */
 
     /**
-     *
+     * Download iDevice as .idevice file
      * @param {*} odeBlockId
      * @param {*} odeIdeviceId
      */
     async downloadIdeviceSelected(odeBlockId, odeIdeviceId) {
-        let odeSessionId = eXeLearning.app.project.odeSession;
+        try {
+            // Get the Yjs bridge and document manager
+            const yjsBridge = eXeLearning.app.project._yjsBridge;
+            if (!yjsBridge) {
+                throw new Error('Yjs bridge not initialized');
+            }
+            const documentManager = yjsBridge.documentManager;
+            const assetCache = eXeLearning.app.project._assetCache || null;
+            const assetManager = yjsBridge.assetManager || null;
 
-        let response = await eXeLearning.app.api.getOdeIdevicesDownload(
-            odeSessionId,
-            odeBlockId,
-            odeIdeviceId
-        );
-        const responseBody = response['response'];
-        if (
-            typeof responseBody === 'string' &&
-            responseBody.includes('responseMessage')
-        ) {
-            // Response to show always on 3
-            let bodyResponse = responseBody.split('"');
-            eXeLearning.app.modals.alert.show({
-                title: _('Download error'),
-                body: bodyResponse[3],
-                contentId: 'error',
-            });
-        } else {
-            const downloadUrl = response['url'];
-            if (downloadUrl) {
-                const fileName = buildComponentFileName(
-                    odeIdeviceId,
-                    '.idevice'
-                );
-                await downloadComponentFile(downloadUrl, fileName, {
-                    absoluteKey: buildComponentStorageKey(
-                        odeIdeviceId,
-                        'idevice'
-                    ),
+            const exporter = window.createExporter(
+                'COMPONENT',
+                documentManager,
+                assetCache,
+                null,
+                assetManager
+            );
+            const result = await exporter.exportAndDownload(odeBlockId, odeIdeviceId);
+            if (!result.success) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Download error'),
+                    body: result.error || _('Failed to export iDevice'),
+                    contentId: 'error',
                 });
             }
+        } catch (error) {
+            console.error('[ideviceNode] Export failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Download error'),
+                body: error.message,
+                contentId: 'error',
+            });
         }
     }
 
@@ -1458,7 +1522,7 @@ export default class IdeviceNode {
 
     /**
      * Get html view
-     *
+     * Resolves {{context_path}} URLs to blob URLs from IndexedDB cache
      */
     exportHtmlView() {
         let html;
@@ -1471,6 +1535,29 @@ export default class IdeviceNode {
         } else {
             html = this.htmlView;
         }
+
+        // Escape HTML entities inside <pre><code> blocks to display code examples correctly
+        if (typeof window.escapePreCodeContent === 'function') {
+            html = window.escapePreCodeContent(html);
+        }
+
+        // Add MIME types to media elements BEFORE resolving URLs
+        // (while asset:// URLs still contain filename with extension)
+        if (typeof window.addMediaTypes === 'function') {
+            html = window.addMediaTypes(html);
+        }
+
+        // Simplify MediaElement.js structures to native HTML5 video/audio
+        // (fixes playback issues with large videos)
+        if (typeof window.simplifyMediaElements === 'function') {
+            html = window.simplifyMediaElements(html);
+        }
+
+        // Resolve asset:// URLs to blob URLs from cache
+        if (typeof window.resolveAssetUrls === 'function') {
+            html = window.resolveAssetUrls(html);
+        }
+
         return html;
     }
 
@@ -1494,6 +1581,26 @@ export default class IdeviceNode {
      *
      */
     async ideviceInitExport() {
+        // Check if this iDevice is locked by another user (remote editing)
+        // For JSON-type iDevices without content, show placeholder instead of failing
+        if (this.isLockedByOtherUser()) {
+            const hasNoContent = !this.htmlView || this.htmlView.trim() === '';
+            const isJsonType = this.idevice?.componentType === 'json';
+
+            // For JSON iDevices without content, show placeholder
+            // (the export object won't load without content)
+            if (isJsonType && hasNoContent) {
+                Logger.log(`[IdeviceNode] Remote JSON iDevice ${this.odeIdeviceId} locked without content, showing placeholder`);
+                return this.showLockedPlaceholder();
+            }
+
+            // For HTML iDevices without content, also show placeholder
+            if (!isJsonType && hasNoContent) {
+                Logger.log(`[IdeviceNode] Remote HTML iDevice ${this.odeIdeviceId} locked without content, showing placeholder`);
+                return this.showLockedPlaceholder();
+            }
+        }
+
         let exportLoad;
         let componentType =
             this.idevice && this.idevice.componentType
@@ -1542,6 +1649,52 @@ export default class IdeviceNode {
     ideviceInitExportLoadError() {
         clearInterval(this.checkDeviceLoadInterval);
         this.exportLoadedError();
+    }
+
+    /**
+     * Show a placeholder for iDevices being edited by another user
+     * Used when a remote iDevice is locked and cannot be rendered normally
+     *
+     * @returns {Object} Response indicating placeholder was shown
+     */
+    showLockedPlaceholder() {
+        const lockInfo = this.getLockInfo();
+        const userName = lockInfo?.lockUserName || _('Another user');
+        const userColor = lockInfo?.lockUserColor || '#999';
+
+        // Create placeholder HTML
+        const placeholderHtml = `
+            <div class="idevice-locked-placeholder" style="
+                background-color: #f8f9fa;
+                border: 2px dashed ${userColor};
+                border-radius: 8px;
+                padding: 30px 20px;
+                text-align: center;
+                min-height: 100px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+            ">
+                <span style="font-size: 24px;">🔒</span>
+                <p style="margin: 0; color: #666; font-size: 14px;">
+                    ${_('Being edited by')}
+                    <strong style="color: ${userColor};">${userName}</strong>
+                </p>
+                <p style="margin: 0; color: #999; font-size: 12px;">
+                    ${_('Content will appear when saved')}
+                </p>
+            </div>
+        `;
+
+        // Set the placeholder in the body
+        if (this.ideviceBody) {
+            this.ideviceBody.innerHTML = placeholderHtml;
+        }
+
+        Logger.log(`[IdeviceNode] Showing locked placeholder for ${this.odeIdeviceId}, locked by ${userName}`);
+        return { init: 'locked', lockedBy: userName };
     }
 
     /**
@@ -1602,6 +1755,8 @@ export default class IdeviceNode {
                 this.odeIdeviceId
             );
             this.ideviceBody.innerHTML = this.exportHtmlView();
+            // Ensure ideviceId is in jsonProperties for renderBehaviour selectors
+            this.jsonProperties.ideviceId = this.odeIdeviceId;
             // Idevice export function 2: renderBehaviour
             this.exportObject.renderBehaviour(
                 this.jsonProperties,
@@ -1624,8 +1779,10 @@ export default class IdeviceNode {
             response = new Promise((resolve, reject) => {
                 // In case the idevice has no json data, We try to load the viewhtml of it
                 this.ideviceBody.innerHTML = this.exportHtmlView();
-                this.exportObject.renderBehaviour({}, this.accesibility);
-                this.exportObject.init({}, this.accesibility);
+                // Pass ideviceId even when jsonProperties is empty - needed for renderBehaviour selectors
+                const fallbackData = { ideviceId: this.odeIdeviceId };
+                this.exportObject.renderBehaviour(fallbackData, this.accesibility);
+                this.exportObject.init(fallbackData, this.accesibility);
                 resolve({ init: 'true' });
             });
             return response;
@@ -1683,7 +1840,7 @@ export default class IdeviceNode {
             params.push('order');
         }
         // Save new idevice in database
-        console.log(params);
+        Logger.log(params);
         let response = await this.apiSendDataService(
             'putSaveIdevice',
             params,
@@ -1702,6 +1859,15 @@ export default class IdeviceNode {
         );*/
 
         if (response.responseMessage == 'OK') {
+            // Store the component ID from response (important for Yjs mode)
+            if (response.odeComponentsSyncId) {
+                this.odeComponentsSyncId = response.odeComponentsSyncId;
+                this.id = response.odeComponentsSyncId;
+            }
+            if (response.odeComponentsSync?.id) {
+                this.odeComponentsSyncId = this.odeComponentsSyncId || response.odeComponentsSync.id;
+                this.id = this.id || response.odeComponentsSync.id;
+            }
             // Set properties of idevice
             this.setProperties(
                 response.odeComponentsSync.odeComponentsSyncProperties
@@ -1752,15 +1918,6 @@ export default class IdeviceNode {
                 ) {
                     // Reset idevice content
                     this.makeIdeviceContentNode(false);
-                    // Synchronize current users
-                    eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                        false,
-                        null,
-                        this.blockId,
-                        this.odeIdeviceId,
-                        'EDIT',
-                        null
-                    );
                 } else {
                     eXeLearning.app.modals.alert.show({
                         title: _('iDevice error'),
@@ -1834,6 +1991,11 @@ export default class IdeviceNode {
      * @returns {Array}
      */
     async apiUpdateBlock() {
+        // Use Yjs for moving to different block when enabled
+        if (this.isYjsEnabled()) {
+            return await this.moveToBlockViaYjs();
+        }
+
         let params2 = {
             odeSessionId: eXeLearning.app.project.odeSession,
             odeIdeviceId: this.odeIdeviceId,
@@ -1886,6 +2048,50 @@ export default class IdeviceNode {
     }
 
     /**
+     * Move component to different block via Yjs
+     * @returns {Object} Mock response object
+     */
+    async moveToBlockViaYjs() {
+        try {
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            const structureBinding = bridge?.structureBinding;
+
+            if (!structureBinding) {
+                console.warn('[IdeviceNode] Cannot move to block via Yjs: structureBinding not available');
+                return { responseMessage: 'ERROR' };
+            }
+
+            // Try with multiple component IDs
+            const componentIds = [this.yjsComponentId, this.odeIdeviceId, this.id].filter(Boolean);
+            // Try with multiple block IDs
+            const blockIds = [this.block?.blockId, this.blockId, this.block?.id].filter(Boolean);
+
+            let success = false;
+            for (const componentId of componentIds) {
+                for (const targetBlockId of blockIds) {
+                    success = structureBinding.moveComponentToBlock(componentId, targetBlockId, this.order);
+                    if (success) {
+                        Logger.log('[IdeviceNode] Move to block succeeded with compId:', componentId, 'blockId:', targetBlockId);
+                        break;
+                    }
+                }
+                if (success) break;
+            }
+
+            if (success) {
+                // Update list of components to assign the idevices to their respective blocks
+                this.engine.setParentsAndChildrenIdevicesBlocks(true);
+                return { responseMessage: 'OK' };
+            }
+
+            return { responseMessage: 'ERROR' };
+        } catch (error) {
+            console.error('[IdeviceNode] Error moving to block via Yjs:', error);
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
      * Update page of idevice in database
      *
      * @return {Array}
@@ -1893,6 +2099,12 @@ export default class IdeviceNode {
     async apiUpdatePage(odeNavStructureSyncId) {
         // Can't move component to current page
         if (this.odeNavStructureSyncId == odeNavStructureSyncId) return false;
+
+        // Use Yjs for moving to different page when enabled
+        if (this.isYjsEnabled()) {
+            return await this.moveToPageViaYjs(odeNavStructureSyncId);
+        }
+
         // Required parameters
         let params = [
             'odeComponentsSyncId',
@@ -1904,6 +2116,8 @@ export default class IdeviceNode {
             'odeBlockId',
             'blockName',
             'iconName',
+            'odeIdeviceId',
+            'odeIdeviceTypeName',
         ];
         // Generate new block
         let blockData = {
@@ -1939,11 +2153,62 @@ export default class IdeviceNode {
     }
 
     /**
+     * Move component to different page via Yjs
+     * @param {string} targetPageId - Target page ID
+     * @returns {Object} Mock response object
+     */
+    async moveToPageViaYjs(targetPageId) {
+        try {
+            const blockName = this.idevice?.title || '';
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            const structureBinding = bridge?.structureBinding;
+
+            if (!structureBinding) {
+                console.warn('[IdeviceNode] Cannot move to page via Yjs: structureBinding not available');
+                return { responseMessage: 'ERROR' };
+            }
+
+            // Try with multiple component IDs
+            const componentIds = [this.yjsComponentId, this.odeIdeviceId, this.id].filter(Boolean);
+            let result = null;
+            for (const componentId of componentIds) {
+                result = structureBinding.moveComponentToPage(componentId, targetPageId, blockName);
+                if (result) {
+                    Logger.log('[IdeviceNode] Move to page succeeded with compId:', componentId);
+                    break;
+                }
+            }
+
+            if (result) {
+                // Update internal references
+                this.odeNavStructureSyncId = targetPageId;
+                this.blockId = result.blockId;
+
+                // Remove idevice view
+                this.remove();
+                // Update list of components to assign the idevices to their respective blocks
+                this.engine.setParentsAndChildrenIdevicesBlocks(true);
+                return { responseMessage: 'OK' };
+            }
+
+            return { responseMessage: 'ERROR' };
+        } catch (error) {
+            console.error('[IdeviceNode] Error moving to page via Yjs:', error);
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
      * Update order of idevice in database
      *
      * @return {Array}
      */
     async apiUpdateOrder() {
+        // Use Yjs for reordering when enabled
+        if (this.isYjsEnabled()) {
+            return await this.reorderViaYjs();
+        }
+
         let params = ['odeComponentsSyncId', 'order'];
         // Update order in database
         let response = await this.apiSendDataService(
@@ -1952,15 +2217,6 @@ export default class IdeviceNode {
             true
         );
         if (response.responseMessage == 'OK') {
-            // Activate Update flag to the others current users
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                null,
-                this.odeIdeviceId,
-                'MOVE_ON_PAGE',
-                null
-            );
             // Update the order of other components if necessary
             this.engine.updateComponentsIdevices(response.odeComponentsSyncs, [
                 'order',
@@ -1983,54 +2239,52 @@ export default class IdeviceNode {
     }
 
     /**
+     * Reorder component via Yjs
+     * @returns {Object} Mock response object
+     */
+    async reorderViaYjs() {
+        try {
+            const bridge = eXeLearning.app?.project?._yjsBridge;
+            const structureBinding = bridge?.structureBinding;
+
+            if (!structureBinding) {
+                console.warn('[IdeviceNode] Cannot reorder via Yjs: structureBinding not available');
+                return { responseMessage: 'ERROR' };
+            }
+
+            // Try with multiple IDs: yjsComponentId, odeIdeviceId, id
+            const idsToTry = [this.yjsComponentId, this.odeIdeviceId, this.id].filter(Boolean);
+            let success = false;
+            for (const componentId of idsToTry) {
+                success = structureBinding.reorderComponent(componentId, this.order);
+                if (success) {
+                    Logger.log('[IdeviceNode] Reorder succeeded with id:', componentId);
+                    break;
+                }
+            }
+
+            if (success) {
+                // Remove class moving of idevice
+                setTimeout(() => {
+                    this.ideviceContent?.classList.remove('moving');
+                }, this.engine.movingClassDuration);
+                return { responseMessage: 'OK' };
+            }
+
+            return { responseMessage: 'ERROR' };
+        } catch (error) {
+            console.error('[IdeviceNode] Error reordering via Yjs:', error);
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
      * Clone the idevice
      *
      */
     async apiCloneIdevice() {
-        let params = ['odeComponentsSyncId'];
-        let response = await this.apiSendDataService(
-            'postCloneIdevice',
-            params,
-            true
-        );
-        if (response.responseMessage == 'OK') {
-            await this.engine.cloneIdeviceInContent(
-                this,
-                response.odeComponentsSync
-            );
-            // Activate Update flag to the others current users
-            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                false,
-                null,
-                this.blockId,
-                response.odeComponentsSync.odeIdeviceId,
-                'ADD',
-                null
-            );
-            // Send operation log action to bbdd
-            let additionalData = {
-                blockId: this.blockId,
-                odeIdeviceId: response.odeComponentsSync.odeIdeviceId,
-            };
-            eXeLearning.app.project.sendOdeOperationLog(
-                this.block.pageId,
-                this.block.pageId,
-                'CLONE_IDEVICE',
-                additionalData
-            );
-            eXeLearning.app.modals.alert.show({
-                title: _('Information'),
-                body: _(
-                    'Identical contents in the same page might cause errors. Edit the new one or move it to another page.'
-                ),
-            });
-        } else {
-            let defaultErrorMessage = _(
-                'An error occurred while clone component in database'
-            );
-            this.showModalMessageErrorDatabase(response, defaultErrorMessage);
-        }
-        return response;
+        // Use Yjs for cloning (legacy API removed)
+        return await this.cloneViaYjs();
     }
 
     /**
@@ -2038,6 +2292,12 @@ export default class IdeviceNode {
      *
      */
     async apiDeleteIdevice() {
+        // Check if Yjs mode is enabled
+        if (this.isYjsEnabled() && eXeLearning.app.project.deleteComponentViaYjs) {
+            return await this.deleteViaYjs();
+        }
+
+        // Legacy: Delete via API
         eXeLearning.app.api.deleteIdevice(this.id).then((response) => {
             if (response.responseMessage && response.responseMessage == 'OK') {
                 // All idevices that have been modified
@@ -2066,10 +2326,115 @@ export default class IdeviceNode {
     }
 
     /**
+     * Delete idevice via Yjs collaborative editing
+     * @returns {Object}
+     */
+    async deleteViaYjs() {
+        try {
+            const project = eXeLearning.app.project;
+
+            // Delete via Yjs - syncs to other clients automatically
+            const success = project.deleteComponentViaYjs(this.id);
+
+            if (success) {
+                Logger.log('[IdeviceNode] Deleted component via Yjs:', this.id);
+                return { responseMessage: 'OK' };
+            } else {
+                throw new Error('Failed to delete component via Yjs');
+            }
+        } catch (error) {
+            console.error('[IdeviceNode] Yjs delete error:', error);
+            let defaultErrorMessage = _(
+                'An error occurred while removing the component'
+            );
+            this.showModalMessageErrorDatabase(
+                { responseMessage: 'ERROR' },
+                defaultErrorMessage
+            );
+            return false;
+        }
+    }
+
+    /**
+     * Clone idevice via Yjs collaborative editing
+     * @returns {Object}
+     */
+    async cloneViaYjs() {
+        try {
+            const project = eXeLearning.app.project;
+            // Try multiple sources for pageId (same pattern as other methods)
+            const pageId =
+                this.block?.pageId ??
+                this.odeNavStructureSyncId ??
+                this.pageId ??
+                project.structure?.getSelectNodePageId?.() ??
+                project.structure?.nodeSelected?.id;
+            // Try multiple sources for blockId
+            const blockId = this.block?.blockId ?? this.blockId ?? this.block?.id;
+
+            if (!pageId || !blockId) {
+                console.error('[IdeviceNode] cloneViaYjs missing IDs:', { pageId, blockId, block: this.block });
+                throw new Error('Missing pageId or blockId for clone');
+            }
+
+            // Clone via Yjs - syncs to other clients automatically
+            const clonedComponent = project.cloneComponentViaYjs(pageId, blockId, this.id);
+
+            if (clonedComponent) {
+                Logger.log('[IdeviceNode] Cloned component via Yjs:', this.id, '→', clonedComponent.id);
+
+                // Reload page content to show the cloned idevice
+                await this.engine.loadApiIdevicesInPage(true);
+
+                return { responseMessage: 'OK', clonedComponent };
+            } else {
+                throw new Error('Failed to clone component via Yjs');
+            }
+        } catch (error) {
+            console.error('[IdeviceNode] Yjs clone error:', error);
+            let defaultErrorMessage = _(
+                'An error occurred while cloning the component'
+            );
+            this.showModalMessageErrorDatabase(
+                { responseMessage: 'ERROR' },
+                defaultErrorMessage
+            );
+            return { responseMessage: 'ERROR' };
+        }
+    }
+
+    /**
+     * Convert base64 data URL to File object
+     * @param {string} base64 - Data URL (e.g., data:image/jpeg;base64,...)
+     * @param {string} filename - Filename
+     * @returns {File} File object
+     */
+    base64ToFile(base64, filename) {
+        // Extract MIME type and base64 data
+        const match = base64.match(/^data:([^;]+);base64,(.+)$/);
+        if (!match) {
+            throw new Error('Invalid base64 data URL');
+        }
+        const mimeType = match[1];
+        const base64Data = match[2];
+
+        // Decode base64 to binary
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create File object
+        return new File([bytes], filename, { type: mimeType });
+    }
+
+    /**
+     * Upload file and also create asset for client-side display
      *
-     * @param {File} file
+     * @param {string} file - Base64 data URL
      * @param {String} filename
-     * @returns {Boolean}
+     * @returns {Object} Response with asset:// URLs
      */
     async apiUploadFile(file, filename) {
         let params = {
@@ -2079,6 +2444,43 @@ export default class IdeviceNode {
             createThumbnail: true,
         };
         let response = await eXeLearning.app.api.postUploadFileResource(params);
+
+        // Also create asset for client-side display (preview, blob URLs)
+        const assetManager = eXeLearning.app?.project?._yjsBridge?.assetManager;
+        if (assetManager && response?.savedPath) {
+            try {
+                // Convert base64 to File object
+                const fileObj = this.base64ToFile(file, filename);
+
+                // Create asset using AssetManager
+                const assetUrl = await assetManager.insertImage(fileObj);
+
+                // Parse the asset URL: asset://uuid/filename
+                const assetMatch = assetUrl.match(/^asset:\/\/([^/]+)\/(.+)$/);
+                if (assetMatch) {
+                    const assetId = assetMatch[1];
+                    const assetFilename = assetMatch[2];
+
+                    // Update response to use asset:// URLs
+                    // savedPath ends with / so savedPath + savedFilename = asset://uuid/filename
+                    response.savedPath = `asset://${assetId}/`;
+                    response.savedFilename = assetFilename;
+                    // Use same asset for thumbnail (full image works as thumbnail)
+                    response.savedThumbnailName = assetFilename;
+
+                    // Provide a blob URL for preview in dialogs (audio/video players can't use asset:// directly)
+                    const blobUrl = await assetManager.resolveAssetURL(assetUrl);
+                    if (blobUrl) {
+                        response.previewUrl = blobUrl;
+                    }
+
+                    Logger.log(`[IdeviceNode] Created asset for upload: ${assetUrl}`);
+                }
+            } catch (e) {
+                Logger.warn('[IdeviceNode] Failed to create asset from upload:', e);
+                // Fallback to server paths if asset creation fails
+            }
+        }
 
         return response;
     }
@@ -2337,6 +2739,7 @@ export default class IdeviceNode {
      * @returns {String}
      */
     getViewHTML() {
+        console.debug(`[IdeviceNode] getViewHTML: Component ${this.odeIdeviceId} htmlView length: ${this.htmlView?.length || 0}`);
         if (
             this.htmlView &&
             !['undefined', 'null', 'false'].includes(this.htmlView)
@@ -2437,8 +2840,38 @@ export default class IdeviceNode {
             this.blockId,
             this.odeIdeviceId
         );
+
+        // Release the lock and clear editing state in Yjs
+        if (this.isYjsEnabled()) {
+            const componentId = this.yjsComponentId || this.odeIdeviceId;
+            const bridge = this.engine?.project?._yjsBridge;
+
+            // Release the lock
+            const lockManager = this.getLockManager();
+            if (lockManager) {
+                lockManager.releaseLock(componentId);
+            }
+
+            // Clear lock info from the component in Yjs
+            if (bridge?.structureBinding) {
+                bridge.structureBinding.updateComponent(componentId, {
+                    lockedBy: null,
+                    lockUserName: null,
+                    lockUserColor: null
+                });
+            }
+
+            // Clear editing component in awareness
+            const documentManager = bridge?.getDocumentManager();
+            if (documentManager?.setEditingComponent) {
+                documentManager.setEditingComponent(null);
+            }
+        }
+
         if (saveOk) {
             // this.sendPublishedNotification();
+            // Note: generateContentExportView is called by loadInitScriptIdevice('export')
+            // through ideviceInitExportLoadSuccess after ensuring export scripts are loaded
 
             this.resetWindowHash();
             this.goWindowToIdevice(100);
@@ -2481,6 +2914,16 @@ export default class IdeviceNode {
             this.goWindowToIdevice(100);
             this.loadInitScriptIdevice('edition');
             this.engine.updateMode();
+
+            // Set editing component in Yjs awareness
+            if (this.isYjsEnabled()) {
+                const componentId = this.yjsComponentId || this.odeIdeviceId;
+                const bridge = this.engine?.project?._yjsBridge;
+                const documentManager = bridge?.getDocumentManager();
+                if (documentManager?.setEditingComponent) {
+                    documentManager.setEditingComponent(componentId);
+                }
+            }
         } else {
             eXeLearning.app.modals.alert.show({
                 title: _('Not allowed'),
@@ -2542,17 +2985,6 @@ export default class IdeviceNode {
                         ),
                         confirmButtonText: _('Yes'),
                         confirmExec: () => {
-                            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                                false,
-                                null,
-                                this.blockId,
-                                this.odeIdeviceId,
-                                'DELETE',
-                                null,
-                                null, // Collaborative
-                                this.block?.pageId ??
-                                    eXeLearning.app.project.structure.getSelectNodePageId() // Collaborative
-                            );
                             this.block.remove(true);
                             eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
                         },
@@ -2667,6 +3099,88 @@ export default class IdeviceNode {
      *
      * @returns {Boolean}
      */
+    /**
+     * Find installed iDevice by type name with fallbacks
+     * Handles different naming conventions (e.g., "text", "FreeTextIdevice", "FreeText")
+     * @param {string} typeName - The type name to search for
+     * @returns {Object|null} - The installed iDevice or null
+     */
+    findInstalledIdevice(typeName) {
+        if (!typeName) return null;
+
+        const idevicesManager = eXeLearning.app.idevices;
+
+        // Try direct match first
+        let idevice = idevicesManager.getIdeviceInstalled(typeName);
+        if (idevice) return idevice;
+
+        // Map of legacy/alternative names to actual iDevice IDs
+        const typeMapping = {
+            'FreeTextIdevice': 'text',
+            'FreeText': 'text',
+            'freetext': 'text',
+            'TextIdevice': 'text',
+        };
+
+        // Try mapped name
+        const mappedName = typeMapping[typeName];
+        if (mappedName) {
+            idevice = idevicesManager.getIdeviceInstalled(mappedName);
+            if (idevice) {
+                // Update our type name to the correct one
+                this.odeIdeviceTypeName = mappedName;
+                return idevice;
+            }
+        }
+
+        // Try removing common suffixes
+        const nameWithoutSuffix = typeName.replace(/Idevice$/i, '').toLowerCase();
+        idevice = idevicesManager.getIdeviceInstalled(nameWithoutSuffix);
+        if (idevice) {
+            this.odeIdeviceTypeName = nameWithoutSuffix;
+            return idevice;
+        }
+
+        // Fallback: search all installed iDevices by cssClass
+        // This helps find iDevices when the type name doesn't match the id but matches the cssClass
+        const installedNames = Object.keys(idevicesManager.installed || {});
+        for (const name of installedNames) {
+            const installed = idevicesManager.installed[name];
+            if (installed && installed.cssClass === typeName) {
+                console.log(`[IdeviceNode] Found iDevice by cssClass match: ${typeName} -> ${installed.name}`);
+                this.odeIdeviceTypeName = installed.name;
+                return installed;
+            }
+        }
+
+        console.warn(`[IdeviceNode] Could not find installed iDevice for type: ${typeName}`);
+        return null;
+    }
+
+    /**
+     * Generate HTML for the iDevice type icon in the toolbar
+     * @returns {string} HTML string for the icon
+     */
+    _getIdeviceTypeIconHtml() {
+        if (!this.idevice || !this.idevice.icon) {
+            return '';
+        }
+
+        const icon = this.idevice.icon;
+        const title = this.idevice.title || this.odeIdeviceTypeName;
+
+        if (icon.type === 'exe-icon') {
+            // exe-icon type: inline SVG content in icon.name
+            return `<div class="idevice-type-icon exe-app-tooltip" title="${title}">${icon.name}</div>`;
+        } else if (icon.type === 'img' && icon.url) {
+            // img type: background image from file
+            const iconUrl = `${this.idevice.path}/${icon.url}`;
+            return `<div class="idevice-type-icon idevice-img-icon exe-app-tooltip" style="background-image: url('${iconUrl}')" title="${title}"></div>`;
+        }
+
+        return '';
+    }
+
     checkIsValid() {
         this.valid = true;
         if (!this.odeIdeviceId || !this.odeIdeviceTypeName || !this.idevice) {
@@ -2717,6 +3231,9 @@ export default class IdeviceNode {
         $exeABCmusic.init();
 
         $exeFX.init();
+
+        // Render mermaid diagrams after save
+        $exe.mermaid.init();
     }
 
     /**
@@ -2762,36 +3279,52 @@ export default class IdeviceNode {
 
     /**
      * eXe filepicker/imagepicker functionality
-     *
+     * Uses the filemanager modal to select assets from the media library
      */
     legacyExeIdevicesFilePicker() {
+        const filemanager = window.eXeLearning?.app?.modals?.filemanager;
+
         this.ideviceBody
             .querySelectorAll('.exe-file-picker,.exe-image-picker')
             .forEach((e) => {
                 let id = e.id;
-                let css = e.classList.contains('exe-image-picker')
-                    ? 'exe-pick-image'
-                    : 'exe-pick-any-file';
-                let type = css == 'exe-pick-image' ? 'image' : 'media';
-                // Input file element
-                let inputElement = document.createElement('input');
-                inputElement.id = '_browseFor' + id;
-                inputElement.setAttribute('type', 'file');
-                if (type == 'image')
-                    inputElement.setAttribute('accept', 'image/*');
-                inputElement.addEventListener('change', (field) => {
-                    this.processFile(field.target.files[0], id, type);
-                });
+                let isImage = e.classList.contains('exe-image-picker');
+                let css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
+
+                // Determine accept filter based on class and id
+                let accept = null;
+                if (isImage) {
+                    accept = 'image';
+                } else if (id.toLowerCase().includes('audio')) {
+                    accept = 'audio';
+                } else if (id.toLowerCase().includes('video')) {
+                    accept = 'video';
+                }
+                // If generic exe-file-picker, accept = null (show all files)
+
                 // Input button element
-                let buttontElement = document.createElement('input');
-                buttontElement.classList.add(css);
-                buttontElement.setAttribute('type', 'button');
-                buttontElement.setAttribute('value', _('Select a file'));
-                buttontElement.addEventListener('click', (event) => {
-                    inputElement.click();
+                let buttonElement = document.createElement('input');
+                buttonElement.classList.add(css);
+                buttonElement.setAttribute('type', 'button');
+                buttonElement.setAttribute('value', _('Select a file'));
+                buttonElement.addEventListener('click', () => {
+                    if (filemanager) {
+                        filemanager.show({
+                            accept: accept,
+                            onSelect: async (result) => {
+                                // Store asset:// URL in input for persistence
+                                e.value = result.assetUrl;
+                                // Store blob URL as data attribute for display
+                                e.dataset.blobUrl = result.blobUrl;
+                                // Dispatch change event for iDevice to react
+                                e.dispatchEvent(new Event('change'));
+                            },
+                        });
+                    }
                 });
-                // Append inputs
-                e.parentNode.insertBefore(buttontElement, e.nextSibling);
+
+                // Append button
+                e.parentNode.insertBefore(buttonElement, e.nextSibling);
             });
     }
 
@@ -2807,7 +3340,9 @@ export default class IdeviceNode {
             // let buffer = await this.readFile(file);
             // await this.addUploadImage(buffer, file.name, id, type);
             await this.addUploadImage(file, file.name, id, type);
-        } catch (err) {}
+        } catch (_err) {
+            /* Silently ignore upload errors */
+        }
     }
 
     /**

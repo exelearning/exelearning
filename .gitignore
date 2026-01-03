@@ -97,3 +97,20 @@ symfony.lock
 .idea/
 
 runtime/
+symfony_legacy
+nestjs_legacy
+test-results/
+coverage/
+test/temp/
+playwright-report/
+.env
+release/
+
+# Generated bundles
+public/app/app.bundle.js
+public/app/yjs/exporters.bundle.js
+public/app/dist/
+
+###> claude-code ###
+.claude/settings.local.json
+###< claude-code ###

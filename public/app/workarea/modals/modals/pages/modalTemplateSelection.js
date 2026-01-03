@@ -46,9 +46,10 @@ export default class modalTemplateSelection extends Modal {
     async fetchTemplates() {
         try {
             const locale =
-                eXeLearning.app.locale.lang || eXeLearning.symfony.locale;
+                eXeLearning.app.locale.lang || eXeLearning.config.locale;
             const response = await eXeLearning.app.api.getTemplates(locale);
-            this.templates = response || [];
+            // API returns { templates: [...], locale, supportedLocales }
+            this.templates = response?.templates || [];
         } catch (error) {
             console.error('Error fetching templates:', error);
             this.templates = [];
@@ -109,7 +110,9 @@ export default class modalTemplateSelection extends Modal {
             // Clear the original file path to prevent it from being used
             try {
                 delete window.__originalElpPath;
-            } catch (_e) {}
+            } catch (_e) {
+                // Intentional: property may not exist or be non-configurable
+            }
 
             // Fetch the template file
             const response = await fetch(template.path);
@@ -120,7 +123,7 @@ export default class modalTemplateSelection extends Modal {
             const blob = await response.blob();
 
             // Use a generic filename to avoid confusion
-            const genericFilename = 'New Project.elpx';
+            const genericFilename = _('Untitled document') + '.elpx';
             const file = new File([blob], genericFilename, {
                 type: 'application/octet-stream',
             });
