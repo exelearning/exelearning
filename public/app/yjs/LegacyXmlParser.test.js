@@ -418,6 +418,79 @@ describe('LegacyXmlParser', () => {
 
       expect(nodes).toHaveLength(0);
     });
+
+    it('filters out parentNode references embedded in fields', () => {
+      // This XML simulates the legacy structure where TextAreaField contains
+      // a "parentNode" that is an inlined Node instance (not a reference).
+      // These embedded nodes should NOT be treated as real pages.
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="4">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Real Page"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="1">
+                  <dictionary>
+                    <string role="key" value="content"/>
+                    <instance class="exe.engine.field.TextAreaField" reference="3">
+                      <dictionary>
+                        <string role="key" value="parentNode"/>
+                        <instance class="exe.engine.node.Node" reference="8">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Embedded Node"/>
+                            <string role="key" value="parent"/>
+                            <none/>
+                            <string role="key" value="children"/>
+                            <list></list>
+                          </dictionary>
+                        </instance>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Should only find the real page node (ref=4), not the embedded parentNode (ref=8)
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0].getAttribute('reference')).toBe('4');
+    });
+
+    it('keeps nodes that are in children list even if they have parentNode sibling pattern elsewhere', () => {
+      // Ensure we don't accidentally filter real child nodes
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Parent"/>
+              <string role="key" value="children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="2">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Child"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Both nodes should be found (parent and child)
+      expect(nodes).toHaveLength(2);
+    });
   });
 
   describe('buildParentReferenceMap', () => {
