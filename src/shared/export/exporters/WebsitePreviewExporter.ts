@@ -566,6 +566,15 @@ html:not(.mode-teacher) .js .teacher-only {
     text-decoration: none;
 }
 
+/* Navigation: Expand active sections and parent paths */
+#siteNav .other-section {
+    display: none;
+}
+#siteNav li.active > .other-section,
+#siteNav li.current-page-parent > .other-section {
+    display: block;
+}
+
 /* Button text hiding - visually hidden but accessible */
 .nav-buttons .nav-button span,
 button.toggler span,

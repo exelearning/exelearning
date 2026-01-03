@@ -1,21 +1,21 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-Regular.woff") format("woff");
+    src: url(fonts/Fredoka-Regular.woff) format("woff");
     font-weight: 400;
     font-style: normal;
 }
 
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-SemiBold.woff") format("woff");
+    src: url(fonts/Fredoka-SemiBold.woff) format("woff");
     font-weight: 600;
     font-style: normal;
 }
 
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-Bold.woff") format("woff");
+    src: url(fonts/Fredoka-Bold.woff) format("woff");
     font-weight: 700;
     font-style: normal;
 }
@@ -28,6 +28,11 @@ a {
     font-weight: bold;
     color: white;
     margin-top: 40px;
+}
+
+.exe-web-site .page-title,
+.exe-single-page .page-title {
+    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
 }
 
 .exe-epub .page-title, .exe-scorm .page-title, .exe-ims .page-title {
@@ -48,9 +53,9 @@ a {
     width: calc(100% - 550px);
 }
 
-.exe-scorm .page header .page-title,
-.exe-ims .page header .page-title,
-.exe-epub .page header .page-title {
+.exe-scorm .page .page-header .page-title,
+.exe-ims .page .page-header .page-title,
+.exe-epub .page .page-header .page-title {
     width: 100%;
 }
 
@@ -132,6 +137,10 @@ body.exe-export.exe-scorm,
 body.exe-export.exe-ims,
 body.exe-export.exe-epub {
     padding: 0;
+}
+
+.exe-web-site .package-header {
+    width: 100%;
 }
 
 body.exe-scorm .package-title,
@@ -359,17 +368,8 @@ body.exe-export.exe-epub .exe-content {
     display: none;
 }
 
-#siteFooterExtra {
-    margin-bottom: 2em;
-    color: #555;
-    font-size: 0.95em;
-}
 #siteNav .other-section {
     display: none;
-}
-#siteNav li.active > .other-section,
-#siteNav li.current-page-parent > .other-section {
-    display: block;
 }
 #sidebar-nav.fixed,
 #sidebar-nav {
@@ -758,7 +758,8 @@ body.siteNav-off button#siteNavToggler .sr-av {
 }
 
 /* iDevice buttons */
-.exe-content .iDevice_buttons input {
+.exe-content .iDevice_buttons input,
+.exe-content .iDevice_buttons button {
     background: #fff;
     color: #555;
     border: 1px solid #ccc;
@@ -767,7 +768,9 @@ body.siteNav-off button#siteNavToggler .sr-av {
     transition: 0.5s ease;
 }
 .exe-content .iDevice_buttons input:hover,
-.exe-content .iDevice_buttons input:focus {
+.exe-content .iDevice_buttons input:focus,
+.exe-content .iDevice_buttons button:hover,
+.exe-content .iDevice_buttons button:focus {
     box-shadow: 2px 2px 4px #dbdbdb;
     color: #000;
     border-color: #bbb;
@@ -903,6 +906,9 @@ body.siteNav-off button#searchBarTogger {
     background-repeat: no-repeat;
     background-position: right center;
     background-size: 28px;
+}
+.exe-single-page #teacher-mode-toggler-wrapper {
+    right: 20px;
 }
 #teacher-mode-toggler-wrapper .form-check-label {
     position: absolute;
@@ -1260,16 +1266,8 @@ body.siteNav-off button#searchBarTogger {
     @page {
         margin: 1.5cm;
     }
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
+    .exe-export .page-title {
+        text-shadow: none;
     }
     #packageLicense.cc {
         background: none;
