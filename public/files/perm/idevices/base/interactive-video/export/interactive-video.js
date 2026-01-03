@@ -318,8 +318,8 @@ var $interactivevideo = {
             }
         }
         if (!(InteractiveVideo.description && videoTitle == '...'))
-            cover = '<h2>' + videoTitle + '</h2>';
-        if (InteractiveVideo.description) cover += InteractiveVideo.description;
+            cover = '<h2>' + $exeSanitize.escapeHtml(videoTitle) + '</h2>';
+        if (InteractiveVideo.description) cover += $exeSanitize.sanitizeHtml(InteractiveVideo.description);
 
         // Cover (poster)
         if (
@@ -331,7 +331,7 @@ var $interactivevideo = {
             );
             if (img.length == 1) {
                 img = img.eq(0);
-                cover = "<h2 class='sr-av'>" + videoTitle + '</h2>';
+                cover = "<h2 class='sr-av'>" + $exeSanitize.escapeHtml(videoTitle) + '</h2>';
                 cover +=
                     "<span class='activity-cover-img-content'>" +
                     img.html() +
@@ -1360,7 +1360,7 @@ var $interactivevideo = {
         else if (type == 'info') k = 'info';
         k = 'exe-block-' + k;
         var msg =
-            '<div class="exe-block-msg ' + k + '"><p>' + txt + '</p></div>';
+            '<div class="exe-block-msg ' + k + '"><p>' + $exeSanitize.escapeHtml(txt) + '</p></div>';
         if (rightAnswer) msg += rightAnswer;
         $('#' + formId + 'Message').html(msg);
     },
@@ -1409,7 +1409,7 @@ var $interactivevideo = {
 
             // Text
             if (e.type == 'text') {
-                slide.html(e.text);
+                slide.html($exeSanitize.sanitizeHtml(e.text));
                 for (var i = 0; i < InteractiveVideo.slides.length; i++) {
                     if (e == InteractiveVideo.slides[i]) {
                         $interactivevideo.updateResult(i, i18n.seen);
@@ -1525,7 +1525,7 @@ var $interactivevideo = {
                 order,
                 'dropdownActivity'
             );
-            html += '<p class="question">' + e.text + '</p>';
+            html += '<p class="question">' + $exeSanitize.sanitizeHtml(e.text) + '</p>';
             html += '<p class="actions">';
             html += $interactivevideo.getForm.sendButton(
                 id,
@@ -1634,7 +1634,7 @@ var $interactivevideo = {
         getRightAnswer: function (rightAnswers) {
             var rightAnswer = '';
             for (var i = 0; i < rightAnswers.length; i++) {
-                rightAnswer += '<li>' + rightAnswers[i] + '</li>';
+                rightAnswer += '<li>' + $exeSanitize.escapeHtml(rightAnswers[i]) + '</li>';
             }
             if (rightAnswer != '') rightAnswer = '<ul>' + rightAnswer + '</ul>';
             return (
@@ -1898,12 +1898,12 @@ var $interactivevideo = {
         getRightAnswer: function (rightAnswers) {
             var rightAnswer = '';
             for (var i = 0; i < rightAnswers.length; i++) {
-                rightAnswer += '<li>' + rightAnswers[i] + '</li>';
+                rightAnswer += '<li>' + $exeSanitize.escapeHtml(rightAnswers[i]) + '</li>';
             }
             if (rightAnswer != '') rightAnswer = '<ul>' + rightAnswer + '</ul>';
             return (
                 '<p><strong>' +
-                InteractiveVideo.i18n.rightAnswer +
+                $exeSanitize.escapeHtml(InteractiveVideo.i18n.rightAnswer) +
                 ' </strong>' +
                 rightAnswer +
                 '</p>'
@@ -1952,7 +1952,7 @@ var $interactivevideo = {
                 order,
                 'clozeActivity'
             );
-            html += '<p class="question">' + e.text + '</p>';
+            html += '<p class="question">' + $exeSanitize.sanitizeHtml(e.text) + '</p>';
             html += '<p class="actions">';
             html += $interactivevideo.getForm.sendButton(
                 id,
@@ -2042,12 +2042,12 @@ var $interactivevideo = {
         getRightAnswer: function (rightAnswers) {
             var rightAnswer = '';
             for (var i = 0; i < rightAnswers.length; i++) {
-                rightAnswer += '<li>' + rightAnswers[i] + '</li>';
+                rightAnswer += '<li>' + $exeSanitize.escapeHtml(rightAnswers[i]) + '</li>';
             }
             if (rightAnswer != '') rightAnswer = '<ul>' + rightAnswer + '</ul>';
             return (
                 '<p><strong>' +
-                InteractiveVideo.i18n.rightAnswer +
+                $exeSanitize.escapeHtml(InteractiveVideo.i18n.rightAnswer) +
                 ' </strong>' +
                 rightAnswer +
                 '</p>'
@@ -2264,15 +2264,15 @@ var $interactivevideo = {
             for (var i = 0; i < rightAnswers.length; i++) {
                 rightAnswer +=
                     '<li>' +
-                    rightAnswers[i][0] +
+                    $exeSanitize.escapeHtml(rightAnswers[i][0]) +
                     ' - ' +
-                    rightAnswers[i][1] +
+                    $exeSanitize.escapeHtml(rightAnswers[i][1]) +
                     '</li>';
             }
             if (rightAnswer != '') rightAnswer = '<ul>' + rightAnswer + '</ul>';
             return (
                 '<p><strong>' +
-                InteractiveVideo.i18n.rightAnswer +
+                $exeSanitize.escapeHtml(InteractiveVideo.i18n.rightAnswer) +
                 ' </strong>' +
                 rightAnswer +
                 '</p>'
@@ -2469,9 +2469,9 @@ var $interactivevideo = {
             }
             return (
                 '<p><strong>' +
-                InteractiveVideo.i18n.rightAnswer +
+                $exeSanitize.escapeHtml(InteractiveVideo.i18n.rightAnswer) +
                 ' </strong>' +
-                rightAnswer +
+                $exeSanitize.escapeHtml(rightAnswer) +
                 '</p>'
             );
         },
@@ -2600,12 +2600,12 @@ var $interactivevideo = {
             }
             var rightAnswer = '<ul>';
             for (var z = 0; z < rightAnswers.length; z++) {
-                rightAnswer += '<li>' + rightAnswers[z] + '</li>';
+                rightAnswer += '<li>' + $exeSanitize.escapeHtml(rightAnswers[z]) + '</li>';
             }
             rightAnswer += '</ul>';
             return (
                 '<p><strong>' +
-                InteractiveVideo.i18n.rightAnswer +
+                $exeSanitize.escapeHtml(InteractiveVideo.i18n.rightAnswer) +
                 ' </strong></p>' +
                 rightAnswer
             );

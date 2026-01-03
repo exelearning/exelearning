@@ -625,7 +625,7 @@ var $exeDevice = {
             _('Button text') +
             ': </label>\
 						<input type="text" value="' +
-            btnTxt +
+            $exeSanitize.escapeHtml(btnTxt) +
             '" placeholder="' +
             _('Empty = No button') +
             '" />\
@@ -681,11 +681,11 @@ var $exeDevice = {
             ': </strong><span class="sr-only-explanation" title="' +
             _('Accessible hidden content') +
             '">' +
-            txtA +
+            $exeSanitize.escapeHtml(txtA) +
             '</span> <span title="' +
             _('Visible') +
             '">' +
-            txtB +
+            $exeSanitize.escapeHtml(txtB) +
             '</span>\
 					</p>\
 					<div class="udlContentFormBlockTxt udlContentField">\

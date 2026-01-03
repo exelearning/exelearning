@@ -115,6 +115,9 @@ function generateHead(
     head += `
 <script>document.querySelector("html").classList.add("js");</script>`;
     head += `<script src="${resourcesPrefix}libs/jquery/jquery.min.js"> </script>`;
+    // DOMPurify and sanitization utilities must load before iDevice scripts
+    head += `<script src="${resourcesPrefix}libs/purify.min.js"> </script>`;
+    head += `<script src="${resourcesPrefix}libs/sanitize.js"> </script>`;
     head += `<script src="${resourcesPrefix}libs/common_i18n.js"> </script>`;
     head += `<script src="${resourcesPrefix}libs/common.js"> </script>`;
     head += `<script src="${resourcesPrefix}libs/exe_export.js"> </script>`;

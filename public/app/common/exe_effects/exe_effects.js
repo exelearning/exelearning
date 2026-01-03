@@ -255,16 +255,18 @@ $exeFX = {
               partTitle = "";
               partContent = "";
             } else {
+              var escapedColor = $exeSanitize.escapeCss(mainColor);
+              var escapedShowHide = $exeSanitize.escapeHtml($exeFX_i18n.show) + '/' + $exeSanitize.escapeHtml($exeFX_i18n.hide);
               if (oldB) {
                 partContent = partContent.replace(/\<\/H3>/g, '</a></h3>\n<div class="fx-timeline-event" style="display:none">');
-                partContent = partContent.replace(/\<H3>/g, '</div>\n<h3 class="fx-timeline-event-trigger"><a href="#" style="color:' + mainColor + '" title="' + $exeFX_i18n.show + '/' + $exeFX_i18n.hide + '">');
+                partContent = partContent.replace(/\<H3>/g, '</div>\n<h3 class="fx-timeline-event-trigger"><a href="#" style="color:' + escapedColor + '" title="' + escapedShowHide + '">');
               } else {
                 partContent = partContent.replace(/\<\/h3>/g, '</a></h3>\n<div class="fx-timeline-event" style="display:none">');
-                partContent = partContent.replace(/\<h3>/g, '</div>\n<h3 class="fx-timeline-event-trigger"><a href="#" style="color:' + mainColor + '" title="' + $exeFX_i18n.show + '/' + $exeFX_i18n.hide + '">');
+                partContent = partContent.replace(/\<h3>/g, '</div>\n<h3 class="fx-timeline-event-trigger"><a href="#" style="color:' + escapedColor + '" title="' + escapedShowHide + '">');
               }
               partContent = partContent.replace('</div>', '');
               partContent += '</div>';
-              partContent = '<div class="fx-timeline-major">\n<h2 class="fx-timeline-marker" title="' + $exeFX_i18n.show + '/' + $exeFX_i18n.hide + '"><span><a href="#" style="background:' + mainColor + '">' + partTitle + '</a></span></h2>\n<div class="fx-timeline-minor">\n' + partContent + '\n</div>\n</div>'
+              partContent = '<div class="fx-timeline-major">\n<h2 class="fx-timeline-marker" title="' + escapedShowHide + '"><span><a href="#" style="background:' + escapedColor + '">' + partTitle + '</a></span></h2>\n<div class="fx-timeline-minor">\n' + partContent + '\n</div>\n</div>'
               html += partContent;
             }
           }
@@ -278,7 +280,7 @@ $exeFX = {
           html = html.replace(/<h2/g, '<span class="fx-ie-dash">—</span><h2');
           e.html(html);
         } else {
-          e.html('<div class="fx-timeline-toggler"><p><a href="#" class="fx-timeline-expand" style="background-color:' + mainColor + ';color:' + titlesColor + '">' + $exeFX_i18n.show + '</a></p></div>' + html)
+          e.html('<div class="fx-timeline-toggler"><p><a href="#" class="fx-timeline-expand" style="background-color:' + $exeSanitize.escapeCss(mainColor) + ';color:' + $exeSanitize.escapeCss(titlesColor) + '">' + $exeSanitize.escapeHtml($exeFX_i18n.show) + '</a></p></div>' + html)
         }
         $(".fx-timeline-event", e).each(function (z) {
           this.id = "event-" + e.attr("id") + "-" + z + "EX";
@@ -380,7 +382,7 @@ $exeFX = {
           c += ' class="fx-current fx-C2"';
           this.className += " fx-current fx-default-panel";
         }
-        ul += '<li' + c + ' id="' + id + '-link"><a href="#' + id + '" class="exeFXTabLink' + gID + '_' + id + '">' + t + '</a></li>\n';
+        ul += '<li' + c + ' id="' + id + '-link"><a href="#' + id + '" class="exeFXTabLink' + gID + '_' + id + '">' + $exeSanitize.escapeHtml(t) + '</a></li>\n';
         this.id = id;
       });
       ul += '</ul>';

@@ -1179,15 +1179,6 @@ var $exeDevice = {
         }
     },
 
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
     save: function () {
         if (!$exeDevice.validateQuestion()) return false;
         const dataGame = $exeDevice.validateData();
@@ -2607,14 +2598,14 @@ var $exeDevice = {
 
         const words = [];
         $entries.find('ENTRY').each(function () {
-            const concept = $(this).find('CONCEPT').text(),
-                definition = $(this)
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, '');
+            const concept = $(this).find('CONCEPT').text();
+            // First get text, then strip any remaining HTML tags, then escape special chars
+            let definition = $(this).find('DEFINITION').text();
+            definition = definition.replace(/<[^>]*>/g, '');
+            definition = $exeSanitize.escapeHtml(definition);
             if (concept && definition) {
                 let wd = {
-                    word: concept,
+                    word: $exeSanitize.escapeHtml(concept),
                     definition: definition,
                 };
                 words.push(wd);

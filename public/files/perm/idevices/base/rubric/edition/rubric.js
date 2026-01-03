@@ -140,7 +140,7 @@ var $exeDevice = {
 
         // Get original data (the iDevice content) and put it in #ri_PreviousContent
         var originalHTML = this.idevicePreviousData;
-        $('#ri_PreviousContent').html(originalHTML);
+        $('#ri_PreviousContent').html($exeSanitize.sanitizeHtml(originalHTML));
 
         // Save the content in a JSON object (the Rubric information won't be in it yet)
         var data = this.tableToJSON('ri_PreviousContent');

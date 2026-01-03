@@ -1360,6 +1360,43 @@ if (typeof window !== 'undefined') {
   window.$exeFX = global.$exeFX;
 }
 
+/**
+ * Mock $exeSanitize object for HTML sanitization.
+ * Provides the same API as public/app/common/sanitize.js
+ */
+global.$exeSanitize = {
+  escapeHtml: vi.fn((str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }),
+  escapeCss: vi.fn((str) => {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[<>&"'\\]/g, (char) => '\\' + char);
+  }),
+  sanitizeHtml: vi.fn((html) => {
+    if (html === null || html === undefined) return '';
+    // Simple mock - in production this uses DOMPurify
+    return String(html);
+  }),
+  escapeUrl: vi.fn((url) => {
+    if (url === null || url === undefined) return '';
+    return encodeURI(String(url));
+  }),
+  sanitizeFilename: vi.fn((filename) => {
+    if (filename === null || filename === undefined) return '';
+    return String(filename).replace(/[<>:"/\\|?*]/g, '_');
+  }),
+};
+
+if (typeof window !== 'undefined') {
+  window.$exeSanitize = global.$exeSanitize;
+}
+
 // ============================================================================
 // Cleanup after each test
 // ============================================================================

@@ -2,11 +2,12 @@
  * Unit tests for flipcards iDevice
  *
  * Tests pure functions that don't depend on DOM manipulation:
- * - escapeHtml: HTML character escaping
  * - validTime: Time format validation
  * - removeTags: HTML tag removal (with mocked jQuery)
  * - getCardDefault: Default card object structure
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
+ *
+ * Note: escapeHtml has been moved to global $exeSanitize module (see sanitize.test.js)
  */
 
 /* eslint-disable no-undef */
@@ -43,38 +44,6 @@ describe('flipcards iDevice', () => {
 
     // Load iDevice and get reference
     $exeDevice = loadIdevice(code);
-  });
-
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple special characters', () => {
-      const input = '<script>alert("xss")</script>';
-      const expected = '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-      expect($exeDevice.escapeHtml(input)).toBe(expected);
-    });
-
-    it('returns empty string for empty input', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
-    });
   });
 
   describe('validTime', () => {

@@ -227,7 +227,7 @@ var $exeDevice = {
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>');
-            wrapper.html(originalHTML);
+            wrapper.html($exeSanitize.sanitizeHtml(originalHTML));
             let json = $('.listacotejo-DataGame', wrapper).text();
             json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
 

@@ -402,7 +402,7 @@ var $exeDevice = {
             const isRequired = i < this.items_min;
             const requiredAttr = isRequired ? 'required' : '';
             const requiredClass = isRequired ? 'required' : '';
-            const value = i < options.length ? options[i] : '';
+            const value = i < options.length ? $exeSanitize.escapeHtml(options[i]) : '';
             inputList += `
                 <li class="${requiredClass}">
                     <label for="sortableListFormList${i}" class="sr-av"></label>

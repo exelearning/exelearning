@@ -102,6 +102,9 @@ export class FileSystemResourceProvider implements ResourceProvider {
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
             { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
+            // Sanitization utilities (DOMPurify + wrapper)
+            { src: 'app/common/edicuatex/js/DOMPurify/purify.min.js', dest: 'purify.min.js' },
+            { src: 'app/common/sanitize.js', dest: 'sanitize.js' },
             // exe_lightbox (always included - hardcoded in PageRenderer)
             { src: 'app/common/exe_lightbox/exe_lightbox.js', dest: 'exe_lightbox/exe_lightbox.js' },
             { src: 'app/common/exe_lightbox/exe_lightbox.css', dest: 'exe_lightbox/exe_lightbox.css' },

@@ -895,15 +895,6 @@ var $exeDevice = {
         }
     },
 
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
     save: function () {
         if (!$exeDevice.validateCard()) return;
 
@@ -1742,13 +1733,13 @@ var $exeDevice = {
         const cardsJson = $entries
             .find('ENTRY')
             .map((_, entry) => {
-                const concept = $(entry).find('CONCEPT').text(),
-                    definition = $(entry)
-                        .find('DEFINITION')
-                        .text()
-                        .replace(/<[^>]*>/g, '');
+                const concept = $(entry).find('CONCEPT').text();
+                // First get text, then strip any remaining HTML tags, then escape special chars
+                let definition = $(entry).find('DEFINITION').text();
+                definition = definition.replace(/<[^>]*>/g, '');
+                definition = $exeSanitize.escapeHtml(definition);
                 return concept && definition
-                    ? { eText: concept, eTextBk: definition }
+                    ? { eText: $exeSanitize.escapeHtml(concept), eTextBk: definition }
                     : null;
             })
             .get();

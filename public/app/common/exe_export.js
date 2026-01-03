@@ -1,6 +1,7 @@
 const $exeExport = window.$exeExport = {
 
     isTogglingBox: false,
+
     delayLoadingPageTime: 200,
     delayLoadingIdevicesJson: 50,
     delayLoadScorm: 50,
@@ -69,7 +70,7 @@ const $exeExport = window.$exeExport = {
             if (document.getElementById("teacher-mode-toggler")) return;
             if ($("body").hasClass("exe-epub")) return;
             document.body.classList.add('exe-teacher-mode-toggler');
-            var btn = '<div class="form-check form-switch" id="teacher-mode-toggler-wrapper"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
+            var btn = '<div class="form-check form-switch" id="teacher-mode-toggler-wrapper"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+ $exeSanitize.escapeHtml($exe_i18n.teacher_mode) +'</label></div>';
             if ($("body").hasClass("exe-single-page")) $("header.package-header").before(btn);
             else $("header.page-header").prepend(btn);
             this.toggler = $("#teacher-mode-toggler");
@@ -490,7 +491,7 @@ $exeExport.searchBar = {
             if (nodetitle.indexOf(str) != -1) {
                 this.results.push(i);
                 let lnk = this.getLink(node.fileUrl);
-                res += '<li><a href="' + lnk +'">' + nodeTitle + '</a><span> ' + this.searchInBlocks(i, str, false) + '</span></li>';
+                res += '<li><a href="' + $exeSanitize.escapeHtml(lnk) +'">' + $exeSanitize.escapeHtml(nodeTitle) + '</a><span> ' + this.searchInBlocks(i, str, false) + '</span></li>';
             } else {
                 res += this.searchInBlocks(i, str, true);
             }
@@ -579,11 +580,11 @@ $exeExport.searchBar = {
                 let lnk = this.getLink(node.fileUrl);
                 if (fullLink) {
                     if (this.deepLinking) lnk += '#' + x;
-                    res += '<li><a href="' + lnk+ '">' + nodeTitle + '</a>';
-                    if (boxCounter > 1) res += '<span> (bloque ' + boxOrder + ')</span></li>';
+                    res += '<li><a href="' + $exeSanitize.escapeHtml(lnk) + '">' + $exeSanitize.escapeHtml(nodeTitle) + '</a>';
+                    if (boxCounter > 1) res += '<span> (bloque ' + $exeSanitize.escapeHtml(boxOrder) + ')</span></li>';
                 }
                 else {
-                    if (boxCounter > 1) res += ', <a href="' + lnk +'#' + x + '">bloque ' + boxOrder + '</a>';
+                    if (boxCounter > 1) res += ', <a href="' + $exeSanitize.escapeHtml(lnk) +'#' + $exeSanitize.escapeHtml(x) + '">bloque ' + $exeSanitize.escapeHtml(boxOrder) + '</a>';
                 }
             }
         }
