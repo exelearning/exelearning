@@ -222,12 +222,35 @@ class LegacyXmlParser {
 
   /**
    * Find all Node instances in the document
-   * @returns {Element[]} Array of Node instance elements
+   *
+   * Filters out "parentNode" references embedded in TextAreaField/iDevice elements.
+   * In legacy XML, fields store their parent node as an inlined instance, not a reference.
+   * These are NOT real pages and should be excluded.
+   *
+   * @returns {Element[]} Array of Node instance elements (real pages only)
    */
   findAllNodes() {
-    return Array.from(
+    const allNodes = Array.from(
       this.xmlDoc.querySelectorAll('instance[class="exe.engine.node.Node"]')
     );
+
+    // Filter out parentNode references embedded in fields/idevices
+    // Real page nodes are either:
+    // 1. Direct children of _nodeIdDict value
+    // 2. Inside a "children" list of another node
+    return allNodes.filter(nodeEl => {
+      // Check if this node is a "parentNode" inside a field
+      // If the preceding sibling is <string role="key" value="parentNode"/>, skip it
+      const prevSibling = nodeEl.previousElementSibling;
+      if (prevSibling?.tagName === 'string' &&
+          prevSibling.getAttribute('role') === 'key' &&
+          prevSibling.getAttribute('value') === 'parentNode') {
+        const ref = nodeEl.getAttribute('reference');
+        Logger.log(`[LegacyXmlParser] Skipping parentNode reference=${ref} (not a real page)`);
+        return false;
+      }
+      return true;
+    });
   }
 
   /**

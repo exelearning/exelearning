@@ -418,6 +418,335 @@ describe('LegacyXmlParser', () => {
 
       expect(nodes).toHaveLength(0);
     });
+
+    it('filters out parentNode references embedded in fields', () => {
+      // This XML simulates the legacy structure where TextAreaField contains
+      // a "parentNode" that is an inlined Node instance (not a reference).
+      // These embedded nodes should NOT be treated as real pages.
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="4">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Real Page"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="1">
+                  <dictionary>
+                    <string role="key" value="content"/>
+                    <instance class="exe.engine.field.TextAreaField" reference="3">
+                      <dictionary>
+                        <string role="key" value="parentNode"/>
+                        <instance class="exe.engine.node.Node" reference="8">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Embedded Node"/>
+                            <string role="key" value="parent"/>
+                            <none/>
+                            <string role="key" value="children"/>
+                            <list></list>
+                          </dictionary>
+                        </instance>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Should only find the real page node (ref=4), not the embedded parentNode (ref=8)
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0].getAttribute('reference')).toBe('4');
+    });
+
+    it('keeps nodes that are in children list even if they have parentNode sibling pattern elsewhere', () => {
+      // Ensure we don't accidentally filter real child nodes
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Parent"/>
+              <string role="key" value="children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="2">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Child"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Both nodes should be found (parent and child)
+      expect(nodes).toHaveLength(2);
+    });
+
+    it('filters multiple parentNode references from different fields', () => {
+      // Multiple iDevices with their own parentNode references
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Real Page"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice">
+                  <dictionary>
+                    <string role="key" value="content"/>
+                    <instance class="exe.engine.field.TextAreaField">
+                      <dictionary>
+                        <string role="key" value="parentNode"/>
+                        <instance class="exe.engine.node.Node" reference="10">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Embedded 1"/>
+                          </dictionary>
+                        </instance>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.jsidevice.JsIdevice">
+                  <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                      <instance class="exe.engine.field.TextAreaField">
+                        <dictionary>
+                          <string role="key" value="parentNode"/>
+                          <instance class="exe.engine.node.Node" reference="20">
+                            <dictionary>
+                              <string role="key" value="_title"/>
+                              <unicode value="Embedded 2"/>
+                            </dictionary>
+                          </instance>
+                        </dictionary>
+                      </instance>
+                    </list>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Should only find the real page (ref=1), not the two embedded ones (ref=10, ref=20)
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0].getAttribute('reference')).toBe('1');
+    });
+
+    it('keeps nodes when preceding sibling has different key value', () => {
+      // Node preceded by a string with role="key" but value is NOT "parentNode"
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="_nodeIdDict"/>
+              <instance class="exe.engine.node.Node" reference="2">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Page in nodeIdDict"/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Both nodes should be found (different key value, not "parentNode")
+      expect(nodes).toHaveLength(2);
+    });
+
+    it('keeps nodes when preceding sibling is not a string element', () => {
+      // Node preceded by non-string element
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <list>
+            <instance class="exe.engine.node.Node" reference="1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Node in list"/>
+              </dictionary>
+            </instance>
+          </list>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Node should be found (no string sibling before it)
+      expect(nodes).toHaveLength(1);
+    });
+
+    it('keeps nodes without any preceding sibling', () => {
+      // Node is first child (no preceding sibling at all)
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="First Node"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Node should be found
+      expect(nodes).toHaveLength(1);
+    });
+
+    it('handles mixed real nodes with children and embedded parentNode references', () => {
+      // Complex structure similar to mujeres_huella.elp
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="4">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root Page"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice">
+                  <dictionary>
+                    <string role="key" value="content"/>
+                    <instance class="exe.engine.field.TextAreaField">
+                      <dictionary>
+                        <string role="key" value="parentNode"/>
+                        <instance class="exe.engine.node.Node" reference="8">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Root Page"/>
+                            <string role="key" value="parent"/>
+                            <none/>
+                            <string role="key" value="children"/>
+                            <list></list>
+                          </dictionary>
+                        </instance>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+              </list>
+              <string role="key" value="parent"/>
+              <none/>
+              <string role="key" value="children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="15">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Child Page 1"/>
+                    <string role="key" value="parent"/>
+                    <reference key="4"/>
+                  </dictionary>
+                </instance>
+                <instance class="exe.engine.node.Node" reference="16">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Child Page 2"/>
+                    <string role="key" value="parent"/>
+                    <reference key="4"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Should find 3 real nodes (ref=4, ref=15, ref=16), not the embedded parentNode (ref=8)
+      expect(nodes).toHaveLength(3);
+      const refs = nodes.map(n => n.getAttribute('reference')).sort();
+      expect(refs).toEqual(['15', '16', '4']);
+    });
+
+    it('keeps node when preceding sibling string has no role attribute', () => {
+      // Edge case: string element without role="key"
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <dictionary>
+            <string value="parentNode"/>
+            <instance class="exe.engine.node.Node" reference="1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Page"/>
+              </dictionary>
+            </instance>
+          </dictionary>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Node should be found (string doesn't have role="key")
+      expect(nodes).toHaveLength(1);
+    });
+
+    it('deeply nested parentNode references are filtered', () => {
+      // parentNode deeply nested inside multiple levels of fields
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.node.Node" reference="1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Real Page"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.idevice.Idevice">
+                  <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                      <instance class="exe.engine.field.Field">
+                        <dictionary>
+                          <string role="key" value="subFields"/>
+                          <list>
+                            <instance class="exe.engine.field.TextAreaField">
+                              <dictionary>
+                                <string role="key" value="parentNode"/>
+                                <instance class="exe.engine.node.Node" reference="99">
+                                  <dictionary>
+                                    <string role="key" value="_title"/>
+                                    <unicode value="Deeply Nested"/>
+                                  </dictionary>
+                                </instance>
+                              </dictionary>
+                            </instance>
+                          </list>
+                        </dictionary>
+                      </instance>
+                    </list>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const nodes = parser.findAllNodes();
+
+      // Should only find the real page (ref=1), not the deeply nested one (ref=99)
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0].getAttribute('reference')).toBe('1');
+    });
   });
 
   describe('buildParentReferenceMap', () => {
