@@ -286,7 +286,7 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.showMessage(1, '', instance);
 
         $(`#slcmpAudioDef-${instance}`).hide();
-        $(`#slcmpQuestion-${instance}`).html(mOptions.phrase.definition).show();
+        $(`#slcmpQuestion-${instance}`).html($exeSanitize.sanitizeHtml(mOptions.phrase.definition)).show();
 
         if (num > 0) {
             if (
@@ -897,7 +897,7 @@ var $eXeSeleccionaMedias = {
         }
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
-            $('#slcmpAuthorGame-' + instance).html(
+            $('#slcmpAuthorGame-' + instance).text(
                 mOptions.msgs.msgAuthor + '; ' + mOptions.author
             );
             $('#slcmpAuthorGame-' + instance).show();
@@ -1119,7 +1119,7 @@ var $eXeSeleccionaMedias = {
         mOptions.nattempts = mOptions.attempts > 0 ? mOptions.attempts : 0;
 
         $('#slcmpQuestion-' + instance).html(
-            mOptions.phrasesGame[0].definition
+            $exeSanitize.sanitizeHtml(mOptions.phrasesGame[0].definition)
         );
         $('#slcmpQuestion-' + instance).show();
         $('#slcmpGameButtons-' + instance).css('display', 'flex');
@@ -1447,7 +1447,7 @@ var $eXeSeleccionaMedias = {
             ];
         let color = colors[type],
             $slcmpMessage = $('#slcmpMessage-' + instance);
-        $slcmpMessage.html(message);
+        $slcmpMessage.html($exeSanitize.sanitizeHtml(message));
         $slcmpMessage.css({
             color: color,
             'font-style': 'bold',
@@ -1459,7 +1459,7 @@ var $eXeSeleccionaMedias = {
             if (mOptions.score >= 6) {
                 color = 2;
             }
-            $('#slcmpMesasgeEnd-' + instance).html(message);
+            $('#slcmpMesasgeEnd-' + instance).html($exeSanitize.sanitizeHtml(message));
             $('#slcmpMesasgeEnd-' + instance).css({
                 color: color,
             });

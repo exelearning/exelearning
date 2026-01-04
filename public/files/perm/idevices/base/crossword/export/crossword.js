@@ -1424,8 +1424,8 @@ var $eXeCrucigrama = {
             q = mOptions.wordsGame[num];
 
         $('#ccgmDetails-' + instance).show();
-        $('#ccgmAuthorPoint-' + instance).html(q.author);
-        $('#ccgmFooterPoint-' + instance).html(q.definition);
+        $('#ccgmAuthorPoint-' + instance).text(q.author);
+        $('#ccgmFooterPoint-' + instance).html($exeSanitize.sanitizeHtml(q.definition));
 
         if (q.definition.length > 0) {
             $('#ccgmFooterPoint-' + instance).show();
@@ -1456,7 +1456,7 @@ var $eXeCrucigrama = {
             $cursor = $('#ccgmCursor-' + instance),
             $Author = $('#ccgmAuthorPoint-' + instance);
 
-        $Author.html(author || '');
+        $Author.text(author || '');
         $Image
             .prop('src', url)
             .on('load', function () {

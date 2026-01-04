@@ -1118,7 +1118,7 @@ var $eXeRelaciona = {
             $rlcAuthorGameSelector = `#rlcAuthorGame-${instance}`;
         if (author && author.length > 0) {
             $($rlcAuthorGameSelector)
-                .html(`${mOptions.msgs.msgAuthor}: ${author}`)
+                .text(`${mOptions.msgs.msgAuthor}: ${author}`)
                 .show();
         }
     },
@@ -1129,7 +1129,7 @@ var $eXeRelaciona = {
             $rlcAuthorGameSelector = `#rlcAuthorGame-${instance}`;
         if (mOptions.author && mOptions.author.length > 0) {
             $($rlcAuthorGameSelector)
-                .html(`${mOptions.msgs.msgAuthor}: ${author}`)
+                .text(`${mOptions.msgs.msgAuthor}: ${author}`)
                 .show();
         } else {
             $($rlcAuthorGameSelector).hide();

@@ -1402,20 +1402,22 @@ var $eXeFlipCards = {
 
     createCardMemory: function (j, card, instance) {
         const mOptions = $eXeFlipCards.options[instance],
+            esc = $exeSanitize.escapeHtml,
+            san = $exeSanitize.sanitizeHtml,
             fullimageback =
                 card.url.length > 3
-                    ? `<a href = "#" class="FLCDSP-FullLinkImage FLCDSP-FullLinkImage-Memory" data-url="${card.url}" title = "${mOptions.msgs.msgFullScreen}" aria - label="${mOptions.msgs.msgFullScreen}" >
+                    ? `<a href = "#" class="FLCDSP-FullLinkImage FLCDSP-FullLinkImage-Memory" data-url="${esc(card.url)}" title = "${esc(mOptions.msgs.msgFullScreen)}" aria - label="${esc(mOptions.msgs.msgFullScreen)}" >
                         <div class="exeQuextIcons exeQuextIcons-FullImage FLCDSP-Activo" aria-hidden="true"></div>
-                        <span class="sr-av">${mOptions.msgs.msgFullScreen}</span>
+                        <span class="sr-av">${esc(mOptions.msgs.msgFullScreen)}</span>
                     </a> `
                     : '',
-            malt = card.alt || '',
+            malt = esc(card.alt || ''),
             saudio =
                 card.url.trim().length === 0 && card.eText.trim() === ''
-                    ? `<a href = "#" data-audio="${card.audio}" class="FLCDSP-LinkAudioMemoryBig" title = "Audio" >
+                    ? `<a href = "#" data-audio="${esc(card.audio)}" class="FLCDSP-LinkAudioMemoryBig" title = "Audio" >
     <img src="${$eXeFlipCards.idevicePath}exequextplayaudio.svg" class="FLCDSP-Audio" alt="Audio">
     </a>`
-                    : `<a href = "#" data-audio="${card.audio}" class="FLCDSP-LinkAudioMemory" title = "Audio" >
+                    : `<a href = "#" data-audio="${esc(card.audio)}" class="FLCDSP-LinkAudioMemory" title = "Audio" >
     <img src="${$eXeFlipCards.idevicePath}exequextplayaudio.svg" class="FLCDSP-Audio" alt="Audio">
     </a>`,
             scard = `
@@ -1424,12 +1426,12 @@ var $eXeFlipCards = {
                 <div class="FLCDSP-CardFrontMemory"></div>
                 <div class="FLCDSP-CardBackMemory">
                     <div class="FLCDSP-ImageContainMemory">
-                        <img src="" class="FLCDSP-ImageMemory" data-url="${card.url}" data-x="${card.x}" data-y="${card.y}" alt="${malt}" />
+                        <img src="" class="FLCDSP-ImageMemory" data-url="${esc(card.url)}" data-x="${card.x}" data-y="${card.y}" alt="${malt}" />
                         <img class="FLCDSP-CursorMemory" src="${$eXeFlipCards.idevicePath}exequextcursor.gif" alt="" />
                         ${fullimageback}
                     </div>
-                    <div class="FLCDSP-ETextMemory" data-color="${card.color}" data-backcolor="${card.backcolor}">
-                        <div class="FLCDSP-ETextDinamyc">${card.eText}</div>
+                    <div class="FLCDSP-ETextMemory" data-color="${esc(card.color)}" data-backcolor="${esc(card.backcolor)}">
+                        <div class="FLCDSP-ETextDinamyc">${san(card.eText)}</div>
                     </div>
                     ${saudio}
                 </div>
@@ -1441,21 +1443,23 @@ var $eXeFlipCards = {
 
     createCard: function (j, card, instance) {
         const mOptions = $eXeFlipCards.options[instance],
+            esc = $exeSanitize.escapeHtml,
+            san = $exeSanitize.sanitizeHtml,
             imgMsgClass = card.isCorrect
                 ? 'FLCDSP-ImageMessageOK'
                 : 'FLCDSP-ImageMessageKO',
             fullimagefront =
                 card.url.length > 3
-                    ? `<a href = "#" class="FLCDSP-FullLinkImage FLCDSP-FullLinkImage-Front" data-url="${card.url}" title = "${mOptions.msgs.msgFullScreen}" aria - label="${mOptions.msgs.msgFullScreen}" >
+                    ? `<a href = "#" class="FLCDSP-FullLinkImage FLCDSP-FullLinkImage-Front" data-url="${esc(card.url)}" title = "${esc(mOptions.msgs.msgFullScreen)}" aria - label="${esc(mOptions.msgs.msgFullScreen)}" >
                         <div class="exeQuextIcons exeQuextIcons-FullImage FLCDSP-Activo" aria-hidden="true"></div>
-                        <span class="sr-av">${mOptions.msgs.msgFullScreen}</span>
+                        <span class="sr-av">${esc(mOptions.msgs.msgFullScreen)}</span>
                     </a> `
                     : '',
             fullimageback =
                 card.urlBk.length > 3
-                    ? `<a href = "#" class="FLCDSP-FullLinkImage FLCDSP-FullLinkImage-Back" data-url="${card.urlBk}" title = "${mOptions.msgs.msgFullScreen}" aria - label="${mOptions.msgs.msgFullScreen}" >
+                    ? `<a href = "#" class="FLCDSP-FullLinkImage FLCDSP-FullLinkImage-Back" data-url="${esc(card.urlBk)}" title = "${esc(mOptions.msgs.msgFullScreen)}" aria - label="${esc(mOptions.msgs.msgFullScreen)}" >
                         <div class="exeQuextIcons exeQuextIcons-FullImage FLCDSP-Activo" aria-hidden="true"></div>
-                        <span class="sr-av">${mOptions.msgs.msgFullScreen}</span>
+                        <span class="sr-av">${esc(mOptions.msgs.msgFullScreen)}</span>
                     </a> `
                     : '',
             scard = `<div id = "flcdsCardDraw-${j}" data-number="${j}" class="FLCDSP-CardDraw" >
@@ -1463,27 +1467,27 @@ var $eXeFlipCards = {
                     <div class="FLCDSP-FlipCardInner">
                         <div class="FLCDSP-FlipCardFront">
                             <div class="FLCDSP-ImageContain">
-                                <img src="${card.url}" class="FLCDSP-Image FLCDSP-ImageFront" data-url="${card.url}" data-x="${card.x}" data-y="${card.y}" alt="${card.alt}" />
+                                <img src="${esc(card.url)}" class="FLCDSP-Image FLCDSP-ImageFront" data-url="${esc(card.url)}" data-x="${card.x}" data-y="${card.y}" alt="${esc(card.alt)}" />
                                 <img class="FLCDSP-Cursor FLCDSP-CursorFront" src="${$eXeFlipCards.idevicePath}exequextcursor.gif" alt="" />
                                 ${fullimagefront}
                             </div>
-                            <div class="FLCDSP-EText FLCDSP-ETextFront" data-color="${card.color}" data-backcolor="${card.backcolor}">
-                                <div class="FLCDSP-ETextDinamyc">${card.eText}</div>
+                            <div class="FLCDSP-EText FLCDSP-ETextFront" data-color="${esc(card.color)}" data-backcolor="${esc(card.backcolor)}">
+                                <div class="FLCDSP-ETextDinamyc">${san(card.eText)}</div>
                             </div>
-                            <a href="#" data-audio="${card.audio}" class="FLCDSP-LinkAudio FLCDSP-LinkAudioFront" title="Audio">
+                            <a href="#" data-audio="${esc(card.audio)}" class="FLCDSP-LinkAudio FLCDSP-LinkAudioFront" title="Audio">
                                 <img src="${$eXeFlipCards.idevicePath}exequextplayaudio.svg" class="FLCDSP-Audio" alt="Audio" />
                             </a>
                         </div>
                         <div class="FLCDSP-FlipCardBack">
                             <div class="FLCDSP-ImageContain">
-                                <img src="${card.urlBk}" class="FLCDSP-Image FLCDSP-ImageBack" data-url="${card.urlBk}" data-x="${card.xBk}" data-y="${card.yBk}" alt="${card.altBk}" />
+                                <img src="${esc(card.urlBk)}" class="FLCDSP-Image FLCDSP-ImageBack" data-url="${esc(card.urlBk)}" data-x="${card.xBk}" data-y="${card.yBk}" alt="${esc(card.altBk)}" />
                                 <img class="FLCDSP-Cursor FLCDSP-Cursor-Back" src="${$eXeFlipCards.idevicePath}exequextcursor.gif" alt="" />
                                 ${fullimageback}
                             </div>
-                            <div class="FLCDSP-EText FLCDSP-ETextBack" data-color="${card.colorBk}" data-backcolor="${card.backcolorBk}">
-                                <div class="FLCDSP-ETextDinamyc">${card.eTextBk}</div>
+                            <div class="FLCDSP-EText FLCDSP-ETextBack" data-color="${esc(card.colorBk)}" data-backcolor="${esc(card.backcolorBk)}">
+                                <div class="FLCDSP-ETextDinamyc">${san(card.eTextBk)}</div>
                             </div>
-                            <a href="#" data-audio="${card.audioBk}" class="FLCDSP-LinkAudio FLCDSP-LinkAudioBack" title="Audio">
+                            <a href="#" data-audio="${esc(card.audioBk)}" class="FLCDSP-LinkAudio FLCDSP-LinkAudioBack" title="Audio">
                                 <img src="${$eXeFlipCards.idevicePath}exequextplayaudio.svg" class="FLCDSP-Audio" alt="Audio" />
                             </a>
                         </div>
@@ -1592,7 +1596,7 @@ var $eXeFlipCards = {
         $('#flcdsPErrors-' + instance).text(mOptions.hits);
         if (mOptions.author.trim() && !mOptions.fullscreen) {
             $('#flcdsAuthorGame-' + instance)
-                .html(`${mOptions.msgs.msgAuthor}: ${mOptions.author} `)
+                .text(`${mOptions.msgs.msgAuthor}: ${mOptions.author} `)
                 .show();
         }
 
@@ -2407,7 +2411,7 @@ var $eXeFlipCards = {
             ],
             color = colors[type],
             $flcdsMessage = $('#flcdsMessage-' + instance);
-        $flcdsMessage.html(message);
+        $flcdsMessage.html($exeSanitize.sanitizeHtml(message));
         $flcdsMessage.css({
             color: color,
             'font-style': 'bold',

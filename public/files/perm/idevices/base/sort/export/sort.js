@@ -738,16 +738,18 @@ var $eXeOrdena = {
         instance
     ) {
         const mOptions = $eXeOrdena.options[instance],
-            malt = alt || '',
+            malt = $exeSanitize.escapeHtml(alt || ''),
+            sanitizedText = $exeSanitize.sanitizeHtml(text || ''),
+            escapedMsgFullScreen = $exeSanitize.escapeHtml(mOptions.msgs.msgFullScreen),
             fullimage =
                 url.length > 3
-                    ? `<a href="#" class="ODNP-FullLinkImage" title="${mOptions.msgs.msgFullScreen}">
-                <strong><span class="sr-av">${mOptions.msgs.msgFullScreen}:</span></strong>
+                    ? `<a href="#" class="ODNP-FullLinkImage" title="${escapedMsgFullScreen}">
+                <strong><span class="sr-av">${escapedMsgFullScreen}:</span></strong>
                 <div  class="exeQuextIcons exeQuextIcons-FullImage ODNP-Activo"></div>
             </a>`
                     : '',
             saudio = `
-            <a href="#" data-audio="${audio}" class="ODNP-LinkAudio" title="Audio">
+            <a href="#" data-audio="${$exeSanitize.escapeHtml(audio || '')}" class="ODNP-LinkAudio" title="Audio">
                 <img src="${$eXeOrdena.idevicePath}exequextplayaudio.svg" class="ODNP-Audio" alt="Audio">
             </a>
         `;
@@ -758,12 +760,12 @@ var $eXeOrdena = {
                         <div class="ODNP-CardFront"></div>
                         <div class="ODNP-CardBack">
                             <div class="ODNP-ImageContain">
-                                <img src="" class="ODNP-Image" data-url="${url}" data-x="${x}" data-y="${y}" alt="${malt}" />
+                                <img src="" class="ODNP-Image" data-url="${$exeSanitize.escapeHtml(url || '')}" data-x="${x}" data-y="${y}" alt="${malt}" />
                                 <img class="ODNP-Cursor" src="${$eXeOrdena.idevicePath}exequextcursor.gif" alt="" />
                                 ${fullimage}
                             </div>
-                            <div class="ODNP-EText" data-color="${color}" data-backcolor="${backcolor}">
-                                <div class="ODNP-ETextDinamyc">${text}</div>
+                            <div class="ODNP-EText" data-color="${$exeSanitize.escapeHtml(color || '')}" data-backcolor="${$exeSanitize.escapeHtml(backcolor || '')}">
+                                <div class="ODNP-ETextDinamyc">${sanitizedText}</div>
                             </div>
                             ${saudio}
                         </div>
@@ -1004,7 +1006,7 @@ var $eXeOrdena = {
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $(`#ordenaAuthorGame-${instance}`)
-                .html(`${mOptions.msgs.msgAuthor}; ${mOptions.author}`)
+                .text(`${mOptions.msgs.msgAuthor}; ${mOptions.author}`)
                 .show();
         }
 
@@ -1058,7 +1060,7 @@ var $eXeOrdena = {
                     );
                 }
             }
-            $(`#ordenaHistsGame-${instance}`).html(msg).css('color', color);
+            $(`#ordenaHistsGame-${instance}`).html($exeSanitize.sanitizeHtml(msg)).css('color', color);
             if (mOptions.type === 1 && mOptions.showSolution) {
                 $eXeOrdena.activeCorrects(instance, response.valids);
             }
@@ -2091,7 +2093,7 @@ var $eXeOrdena = {
             color = colors[type],
             $ordenaMessage = $('#ordenaMessage-' + instance);
 
-        $ordenaMessage.html(message);
+        $ordenaMessage.html($exeSanitize.sanitizeHtml(message));
         $ordenaMessage.css({
             color: color,
             'font-style': 'bold',

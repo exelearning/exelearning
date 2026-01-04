@@ -537,7 +537,7 @@ var $eXeIdentifica = {
             });
             mOptions.initGame = true;
             $messageClue
-                .html(message)
+                .html($exeSanitize.sanitizeHtml(message))
                 .fadeOut(400)
                 .fadeIn(300)
                 .fadeOut(400)
@@ -595,7 +595,7 @@ var $eXeIdentifica = {
             e.preventDefault();
             if (!mOptions.gameStarted) return;
             $messageClue.html(
-                mOptions.questionsGame[mOptions.activeQuestion].question
+                $exeSanitize.sanitizeHtml(mOptions.questionsGame[mOptions.activeQuestion].question)
             );
         });
 
@@ -660,7 +660,7 @@ var $eXeIdentifica = {
             $(this).css('cursor', 'pointer');
         });
 
-        $('#idfMessageClue-' + instance).html(clue);
+        $('#idfMessageClue-' + instance).html($exeSanitize.sanitizeHtml(clue));
         $('#idfMessageClue-' + instance)
             .fadeOut(400)
             .fadeIn(300)
@@ -679,14 +679,14 @@ var $eXeIdentifica = {
 
         $('#idfPoints-' + instance).text(mOptions.pointsClue.toFixed(2));
         mOptions.activeClue++;
-        $('#idfUseClue-' + instance).html(mOptions.msgs.msgShowNewClue);
+        $('#idfUseClue-' + instance).text(mOptions.msgs.msgShowNewClue);
         if (mOptions.activeClue >= numclues) {
             $('#idfUseClue-' + instance).hide();
             message = mOptions.msgs.msgUseAllClues.replace(
                 '%s',
                 mOptions.pointsClue.toFixed(2)
             );
-            $('#idfUseClue-' + instance).html(mOptions.msgs.msgShowClue);
+            $('#idfUseClue-' + instance).text(mOptions.msgs.msgShowClue);
         }
 
         $eXeIdentifica.showMessage(0, message, instance);
@@ -1113,8 +1113,8 @@ var $eXeIdentifica = {
             $(`#idfLinkAudio-${instance}`).hide();
         }
 
-        $(`#idfMessageClue-${instance}`).html(q.question);
-        $(`#idfPAuthor-${instance}`).html(q.author);
+        $(`#idfMessageClue-${instance}`).html($exeSanitize.sanitizeHtml(q.question));
+        $(`#idfPAuthor-${instance}`).text(q.author);
         $eXeIdentifica.showCluesLinks(q.numberClues, instance);
         $eXeIdentifica.showMessage(0, '', instance);
 

@@ -704,7 +704,7 @@ var $eXeClasifica = {
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#clasificaAuthorGame-' + instance)
-                .html(mOptions.msgs.msgAuthor + ': ' + mOptions.author)
+                .text(mOptions.msgs.msgAuthor + ': ' + mOptions.author)
                 .show();
         }
 

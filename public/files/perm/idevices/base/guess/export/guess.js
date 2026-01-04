@@ -1339,7 +1339,7 @@ var $guess = {
                     $image.show();
                     $cursor.show();
                     $noImage.hide();
-                    $author.html(mQuestion.author);
+                    $author.text(mQuestion.author);
                     $image.attr('alt', mQuestion.alt);
                     $guess.centerImage(instance);
                 }

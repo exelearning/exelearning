@@ -1068,7 +1068,7 @@ var $eXeDescubre = {
         }
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
-            $('#descubreAuthorGame-' + instance).html(
+            $('#descubreAuthorGame-' + instance).text(
                 mOptions.msgs.msgAuthor + '; ' + mOptions.author
             );
             $('#descubreAuthorGame-' + instance).show();

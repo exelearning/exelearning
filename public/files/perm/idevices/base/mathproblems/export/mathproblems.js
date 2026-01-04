@@ -607,8 +607,8 @@ var $eXeMathProblems = {
         const mOptions = $eXeMathProblems.options[instance],
             q = mOptions.questions[num];
 
-        $('#mthpMultimedia-' + instance).html(q.wording);
-        $('#mthpFeedBackMessage-' + instance).html(q.textFeedBack);
+        $('#mthpMultimedia-' + instance).html($exeSanitize.sanitizeHtml(q.wording));
+        $('#mthpFeedBackMessage-' + instance).html($exeSanitize.sanitizeHtml(q.textFeedBack));
         $('#mthpBtnReply-' + instance).prop('disabled', false);
         $('#mthpBtnMoveOn-' + instance).prop('disabled', false);
         $('#mthpEdAnswer-' + instance).prop('disabled', false);

@@ -295,7 +295,7 @@ var $eXePuzzle = {
         });
 
         $('#pzlAttemps-' + instance).text('0');
-        $('#pzlAuthor-' + instance).html(mOptions.puzzle.author);
+        $('#pzlAuthor-' + instance).text(mOptions.puzzle.author);
         $('#pzlImage-' + instance).attr(
             'alt',
             mOptions.puzzle.atl || mOptions.msgs.msgNoImage
@@ -630,22 +630,22 @@ var $eXePuzzle = {
     showCompletedWindows: function (instance) {
         const mOptions = $eXePuzzle.options[instance],
             q = mOptions.puzzlesGame[mOptions.active],
-            ms = q.clue && q.clue.length > 0 ? q.clue : '',
+            ms = q.clue && q.clue.length > 0 ? $exeSanitize.sanitizeHtml(q.clue) : '',
             mr =
                 mOptions.active == mOptions.puzzlesGame.length - 1
-                    ? mOptions.msgs.msgsTerminate
-                    : mOptions.msgs.msgsNext,
+                    ? $exeSanitize.escapeHtml(mOptions.msgs.msgsTerminate)
+                    : $exeSanitize.escapeHtml(mOptions.msgs.msgsNext),
             wd = `<div class="PZLP-Completed">
         <div class="PZLP-CompletedLeft">
-            <img src="${$eXePuzzle.idevicePath}exequextlost.png" alt="${mOptions.msgs.msgsCompletedPuzzle}">
+            <img src="${$eXePuzzle.idevicePath}exequextlost.png" alt="${$exeSanitize.escapeHtml(mOptions.msgs.msgsCompletedPuzzle)}">
         </div>
         <div class="PZLP-CompletedRight">
             <div class="PZLP-CompletedText">
-                <p>${mOptions.msgs.msgsCompletedPuzzle}</p>
+                <p>${$exeSanitize.escapeHtml(mOptions.msgs.msgsCompletedPuzzle)}</p>
                 <p>${ms}</p>
             </div>
             <div class="PZLP-CompletedButtons">
-                <button type="button" class="PZLP-RepeatPuzzle btn btn-primary">${mOptions.msgs.msgsRepeat}</button>
+                <button type="button" class="PZLP-RepeatPuzzle btn btn-primary">${$exeSanitize.escapeHtml(mOptions.msgs.msgsRepeat)}</button>
                 <button type="button" class="PZLP-NextPuzzle btn btn-primary">${mr}</button>
             </div>
         </div>
@@ -1187,7 +1187,7 @@ var $eXePuzzle = {
         }
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
-            $('#pzlAuthorGame-' + instance).html(
+            $('#pzlAuthorGame-' + instance).text(
                 mOptions.msgs.msgAuthor + ': ' + mOptions.author
             );
             $('#pzlAuthorGame-' + instance).show();
@@ -1856,13 +1856,13 @@ var $eXePuzzle = {
             color = colors[type],
             $pzlMessage = $('#pzlMessage-' + instance);
 
-        $pzlMessage.html(message).css({ color, 'font-style': 'bold' }).show();
+        $pzlMessage.html($exeSanitize.sanitizeHtml(message)).css({ color, 'font-style': 'bold' }).show();
 
         if (end) {
             $pzlMessage.hide();
             let endColor = mOptions.score >= 6 ? 2 : 1;
             $('#pzlMesasgeEnd-' + instance)
-                .html(message)
+                .html($exeSanitize.sanitizeHtml(message))
                 .css({ color: colors[endColor] });
             $eXePuzzle.showMessage(message);
         }

@@ -2223,7 +2223,7 @@ var $eXeMapa = {
             return false;
         }
 
-        $Author.html(author);
+        $Author.text(author);
         $Image
             .prop('src', url)
             .on('load', function () {
@@ -2450,7 +2450,7 @@ var $eXeMapa = {
             $('#mapaLinkAreas-' + instance).hide();
         }
 
-        $('#mapaAutorLicence-' + instance).html(mOptions.authorImage);
+        $('#mapaAutorLicence-' + instance).text(mOptions.authorImage);
         $('#mapaWordDiv-' + instance).hide();
 
         if (mOptions.isScorm > 0) {
@@ -3251,7 +3251,7 @@ var $eXeMapa = {
             q.slides[i].alt,
             instance
         );
-        $('#mapaAuthorPoint-' + instance).html(q.slides[i].author);
+        $('#mapaAuthorPoint-' + instance).text(q.slides[i].author);
         $('#mapaTitlePoint-' + instance).text(q.slides[i].title);
         $('#mapaFooterPoint-' + instance).text(q.slides[i].footer);
         $('#mapaMultimediaPoint-' + instance).show();
@@ -4908,7 +4908,7 @@ var $eXeMapa = {
         }
 
         $('#mapaMultimediaPoint-' + instance).show();
-        $('#mapaAuthorPoint-' + instance).html(q.author);
+        $('#mapaAuthorPoint-' + instance).text(q.author);
         $('#mapaTitlePoint-' + instance).text(q.title);
         $('#mapaTitlePointSound-' + instance).text(q.title);
         $('#mapaFooterPoint-' + instance).text(q.footer);

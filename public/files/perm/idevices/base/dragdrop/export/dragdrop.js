@@ -1035,7 +1035,7 @@ var $eXeDragDrop = {
             $dadPAuthorGameSelector = `#dadPAuthorGame-${instance}`;
         if (author && author.length > 0) {
             $($dadPAuthorGameSelector)
-                .html(`${mOptions.msgs.msgAuthor}: ${author}`)
+                .text(`${mOptions.msgs.msgAuthor}: ${author}`)
                 .show();
         }
     },
@@ -1046,7 +1046,7 @@ var $eXeDragDrop = {
             $dadPAuthorGameSelector = `#dadPAuthorGame-${instance}`;
         if (mOptions.author && mOptions.author.length > 0) {
             $($dadPAuthorGameSelector)
-                .html(`${mOptions.msgs.msgAuthor}: ${author}`)
+                .text(`${mOptions.msgs.msgAuthor}: ${author}`)
                 .show();
         } else {
             $($dadPAuthorGameSelector).hide();

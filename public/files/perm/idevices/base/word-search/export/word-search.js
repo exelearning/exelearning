@@ -546,8 +546,8 @@ var $eXeSopa = {
         const $container = $('#sopaMainContainer-' + instanceId);
 
         $container.find('#sopaMFDetails-' + instanceId).show();
-        $container.find('#sopaMAuthorPoint-' + instanceId).html(q.author);
-        $container.find('#sopaMFooterPoint-' + instanceId).html(q.definition);
+        $container.find('#sopaMAuthorPoint-' + instanceId).text(q.author);
+        $container.find('#sopaMFooterPoint-' + instanceId).html($exeSanitize.sanitizeHtml(q.definition));
 
         if (q.definition.length > 0) {
             $container.find('#sopaMFooterPoint-' + instanceId).show();
@@ -592,7 +592,7 @@ var $eXeSopa = {
             $cursor = $container.find('#sopaMCursor-' + instanceId),
             $Author = $container.find('#sopaMAuthorPoint-' + instanceId);
 
-        $Author.html(author);
+        $Author.text(author);
         $Image
             .prop('src', url)
             .on('load', function () {
