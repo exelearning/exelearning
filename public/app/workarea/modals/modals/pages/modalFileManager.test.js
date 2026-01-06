@@ -2105,4 +2105,1096 @@ describe('ModalFilemanager', () => {
       expect(modal.insertBtn?.disabled).toBe(true);
     });
   });
+
+  describe('createFolderGridItem', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.currentPath = '';
+    });
+
+    it('should create a folder item with correct structure', () => {
+      const item = modal.createFolderGridItem('test-folder');
+
+      expect(item.className).toContain('media-library-item');
+      expect(item.className).toContain('media-library-folder');
+      expect(item.dataset.folderName).toBe('test-folder');
+      expect(item.innerHTML).toContain('folder');
+      expect(item.innerHTML).toContain('test-folder');
+    });
+
+    it('should escape HTML in folder name', () => {
+      const item = modal.createFolderGridItem('<script>alert(1)</script>');
+
+      expect(item.innerHTML).not.toContain('<script>');
+      expect(item.innerHTML).toContain('&lt;script&gt;');
+    });
+
+    it('should handle click to select folder', () => {
+      modal.grid = document.createElement('div');
+      modal.selectedAsset = { id: 'some-asset' };
+      modal.selectedAssets = [{ id: 'some-asset' }];
+
+      const item = modal.createFolderGridItem('my-folder');
+      modal.grid.appendChild(item);
+
+      const showSidebarSpy = vi.spyOn(modal, 'showFolderSidebarContent');
+      item.click();
+
+      expect(modal.selectedAsset).toBeNull();
+      expect(modal.selectedAssets).toEqual([]);
+      expect(showSidebarSpy).toHaveBeenCalledWith('my-folder');
+    });
+
+    it('should handle double-click to enter folder', () => {
+      const item = modal.createFolderGridItem('my-folder');
+      const enterSpy = vi.spyOn(modal, 'enterFolder');
+
+      item.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+      expect(enterSpy).toHaveBeenCalledWith('my-folder');
+    });
+  });
+
+  describe('showFolderSidebarContent', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.currentPath = '';
+      modal.assets = [
+        { id: 'a1', folderPath: 'docs', filename: 'file1.txt' },
+        { id: 'a2', folderPath: 'docs', filename: 'file2.txt' },
+        { id: 'a3', folderPath: 'docs/sub', filename: 'file3.txt' },
+        { id: 'a4', folderPath: 'other', filename: 'file4.txt' },
+      ];
+
+      // Add required elements
+      modal.sidebarEmpty = document.createElement('div');
+      modal.sidebarContent = document.createElement('div');
+      modal.previewFile = document.createElement('div');
+      modal.previewFile.innerHTML = '<span class="file-icon"></span>';
+      modal.filenameSpan = document.createElement('span');
+      modal.typeSpan = document.createElement('span');
+      modal.sizeSpan = document.createElement('span');
+      modal.dimensionsRow = document.createElement('div');
+      modal.dateSpan = document.createElement('span');
+      modal.urlInput = document.createElement('input');
+    });
+
+    it('should display folder info in sidebar', () => {
+      modal.showFolderSidebarContent('docs');
+
+      expect(modal.selectedFolder).toBe('docs');
+      expect(modal.selectedFolderPath).toBe('docs');
+      expect(modal.filenameSpan.textContent).toBe('docs');
+      expect(modal.typeSpan.textContent).toBe('Folder');
+      expect(modal.sizeSpan.textContent).toContain('3'); // 3 items in docs folder
+    });
+
+    it('should count nested folder contents', () => {
+      modal.showFolderSidebarContent('docs');
+
+      // Should count files in docs and docs/sub
+      expect(modal.sizeSpan.textContent).toContain('3');
+    });
+
+    it('should hide dimensions row for folders', () => {
+      modal.showFolderSidebarContent('docs');
+
+      expect(modal.dimensionsRow.style.display).toBe('none');
+    });
+
+    it('should update button states', () => {
+      const updateSpy = vi.spyOn(modal, 'updateButtonStates');
+      modal.showFolderSidebarContent('docs');
+
+      expect(updateSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('createFolderListRow', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.currentPath = '';
+      modal.assets = [
+        { id: 'a1', folderPath: 'docs', filename: 'file1.txt' },
+        { id: 'a2', folderPath: 'docs/sub', filename: 'file2.txt' },
+      ];
+    });
+
+    it('should create a table row with correct structure', () => {
+      const row = modal.createFolderListRow('docs');
+
+      expect(row.tagName).toBe('TR');
+      expect(row.className).toContain('media-library-folder-row');
+      expect(row.dataset.folderName).toBe('docs');
+    });
+
+    it('should include folder icon', () => {
+      const row = modal.createFolderListRow('docs');
+      const thumbCell = row.querySelector('.col-thumb');
+
+      expect(thumbCell.innerHTML).toContain('folder');
+    });
+
+    it('should show folder name', () => {
+      const row = modal.createFolderListRow('my-folder');
+      const nameCell = row.querySelector('.col-name');
+
+      expect(nameCell.textContent).toBe('my-folder');
+    });
+
+    it('should show item count in size column', () => {
+      const row = modal.createFolderListRow('docs');
+      const sizeCell = row.querySelector('.col-size');
+
+      // Should count 2 files (docs and docs/sub)
+      expect(sizeCell.textContent).toContain('2');
+    });
+
+    it('should handle double-click to enter folder', () => {
+      const row = modal.createFolderListRow('docs');
+      const enterSpy = vi.spyOn(modal, 'enterFolder');
+
+      row.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+      expect(enterSpy).toHaveBeenCalledWith('docs');
+    });
+  });
+
+  describe('countAssetReferences', () => {
+    it('should return 0 for null/undefined assetId', () => {
+      expect(modal.countAssetReferences(null)).toBe(0);
+      expect(modal.countAssetReferences(undefined)).toBe(0);
+      expect(modal.countAssetReferences('')).toBe(0);
+    });
+
+    it('should return 0 when yjsBridge is not available', () => {
+      window.eXeLearning = { app: { project: {} } };
+
+      const count = modal.countAssetReferences('some-asset-id');
+
+      expect(count).toBe(0);
+    });
+
+    it('should return 0 when navigation is empty', () => {
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockReturnValue({ length: 0 })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('some-asset-id');
+
+      expect(count).toBe(0);
+    });
+
+    it('should handle errors gracefully', () => {
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockImplementation(() => {
+                    throw new Error('Test error');
+                  })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('some-asset-id');
+
+      expect(count).toBe(0);
+    });
+  });
+
+  describe('calculateAllAssetUsages', () => {
+    beforeEach(() => {
+      modal.assets = [
+        { id: 'asset-1', filename: 'file1.jpg' },
+        { id: 'asset-2', filename: 'file2.jpg' },
+        { id: null, filename: 'no-id.jpg' },
+      ];
+      modal.assetUsageCounts = new Map();
+    });
+
+    it('should calculate usage counts for all assets with IDs', () => {
+      const countSpy = vi.spyOn(modal, 'countAssetReferences').mockReturnValue(2);
+
+      modal.calculateAllAssetUsages();
+
+      expect(countSpy).toHaveBeenCalledTimes(2); // Only for assets with IDs
+      expect(modal.assetUsageCounts.get('asset-1')).toBe(2);
+      expect(modal.assetUsageCounts.get('asset-2')).toBe(2);
+    });
+
+    it('should clear previous cache', () => {
+      modal.assetUsageCounts.set('old-asset', 5);
+      vi.spyOn(modal, 'countAssetReferences').mockReturnValue(1);
+
+      modal.calculateAllAssetUsages();
+
+      expect(modal.assetUsageCounts.has('old-asset')).toBe(false);
+    });
+  });
+
+  describe('getAssetUsageCount', () => {
+    beforeEach(() => {
+      modal.assetUsageCounts = new Map();
+    });
+
+    it('should return cached count if available', () => {
+      modal.assetUsageCounts.set('asset-1', 5);
+      const countSpy = vi.spyOn(modal, 'countAssetReferences');
+
+      const count = modal.getAssetUsageCount('asset-1');
+
+      expect(count).toBe(5);
+      expect(countSpy).not.toHaveBeenCalled();
+    });
+
+    it('should calculate and cache count if not cached', () => {
+      vi.spyOn(modal, 'countAssetReferences').mockReturnValue(3);
+
+      const count = modal.getAssetUsageCount('asset-2');
+
+      expect(count).toBe(3);
+      expect(modal.assetUsageCounts.get('asset-2')).toBe(3);
+    });
+  });
+
+  describe('renameSelectedAsset', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.assetManager = {
+        renameFolder: vi.fn().mockResolvedValue(),
+        renameAsset: vi.fn().mockResolvedValue(),
+        getAssetUrl: vi.fn((id) => `asset://${id}`),
+      };
+      modal.filenameSpan = document.createElement('span');
+      modal.urlInput = document.createElement('input');
+      modal.currentPath = '';
+      modal.createdFolders = new Set();
+    });
+
+    it('should do nothing if prompt returns null for folder', async () => {
+      modal.selectedFolder = 'test-folder';
+      modal.selectedFolderPath = 'test-folder';
+      window.prompt.mockReturnValue(null);
+
+      await modal.renameSelectedAsset();
+
+      expect(modal.assetManager.renameFolder).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing if new name equals current folder name', async () => {
+      modal.selectedFolder = 'test-folder';
+      modal.selectedFolderPath = 'test-folder';
+      window.prompt.mockReturnValue('test-folder');
+
+      await modal.renameSelectedAsset();
+
+      expect(modal.assetManager.renameFolder).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid folder names', async () => {
+      modal.selectedFolder = 'test-folder';
+      modal.selectedFolderPath = 'test-folder';
+      window.prompt.mockReturnValue('invalid/name');
+      window.alert = vi.fn();
+
+      await modal.renameSelectedAsset();
+
+      expect(window.alert).toHaveBeenCalled();
+      expect(modal.assetManager.renameFolder).not.toHaveBeenCalled();
+    });
+
+    it('should rename folder successfully', async () => {
+      modal.selectedFolder = 'old-folder';
+      modal.selectedFolderPath = 'old-folder';
+      window.prompt.mockReturnValue('new-folder');
+      modal.loadAssets = vi.fn().mockResolvedValue();
+
+      await modal.renameSelectedAsset();
+
+      expect(modal.assetManager.renameFolder).toHaveBeenCalledWith('old-folder', 'new-folder');
+      expect(modal.loadAssets).toHaveBeenCalled();
+    });
+
+    it('should update createdFolders when renaming a created folder', async () => {
+      modal.selectedFolder = 'my-folder';
+      modal.selectedFolderPath = 'my-folder';
+      modal.createdFolders.add('my-folder');
+      window.prompt.mockReturnValue('renamed-folder');
+      modal.loadAssets = vi.fn().mockResolvedValue();
+
+      await modal.renameSelectedAsset();
+
+      expect(modal.createdFolders.has('my-folder')).toBe(false);
+      expect(modal.createdFolders.has('renamed-folder')).toBe(true);
+    });
+
+    it('should rename file successfully', async () => {
+      modal.selectedFolder = null;
+      modal.selectedAsset = { id: 'asset-1', filename: 'old-name.jpg' };
+      window.prompt.mockReturnValue('new-name.jpg');
+      modal.loadAssets = vi.fn().mockResolvedValue();
+
+      await modal.renameSelectedAsset();
+
+      expect(modal.assetManager.renameAsset).toHaveBeenCalledWith('asset-1', 'new-name.jpg');
+      expect(modal.loadAssets).toHaveBeenCalled();
+    });
+
+    it('should handle rename errors', async () => {
+      modal.selectedFolder = 'test-folder';
+      modal.selectedFolderPath = 'test-folder';
+      window.prompt.mockReturnValue('new-name');
+      window.alert = vi.fn();
+      modal.assetManager.renameFolder.mockRejectedValue(new Error('Rename failed'));
+
+      await modal.renameSelectedAsset();
+
+      expect(window.alert).toHaveBeenCalled();
+    });
+  });
+
+  describe('showSearchIndicator', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.breadcrumbs = document.createElement('div');
+      modal.searchIndicator = document.createElement('div');
+      modal.searchIndicator.innerHTML = '<span class="search-term"></span>';
+      modal.locationColumnHeader = document.createElement('th');
+      modal.locationColumnHeader.classList.add('d-none');
+    });
+
+    it('should hide breadcrumbs and show search indicator', () => {
+      modal.showSearchIndicator('test search');
+
+      expect(modal.breadcrumbs.classList.contains('d-none')).toBe(true);
+      expect(modal.searchIndicator.classList.contains('d-none')).toBe(false);
+    });
+
+    it('should display search term', () => {
+      modal.showSearchIndicator('my query');
+
+      const termSpan = modal.searchIndicator.querySelector('.search-term');
+      expect(termSpan.textContent).toBe('my query');
+    });
+
+    it('should show location column header', () => {
+      modal.showSearchIndicator('query');
+
+      expect(modal.locationColumnHeader.classList.contains('d-none')).toBe(false);
+    });
+  });
+
+  describe('renderGrid with folders', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.grid = document.createElement('div');
+      modal.grid.className = 'media-library-grid';
+      modal.emptyState = document.createElement('div');
+      modal.folders = ['folder1', 'folder2'];
+      modal.filteredAssets = [
+        { id: 'a1', filename: 'file.jpg', mime: 'image/jpeg' }
+      ];
+      modal.isSearchMode = false;
+      modal.assetManager = {
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        getBlobURLSynced: vi.fn(() => 'blob:test'),
+        generateLoadingPlaceholder: vi.fn(() => 'placeholder')
+      };
+    });
+
+    it('should render folders and files', () => {
+      modal.renderGrid();
+
+      const items = modal.grid.querySelectorAll('.media-library-item');
+      expect(items.length).toBe(3); // 2 folders + 1 file
+    });
+
+    it('should hide folders in search mode', () => {
+      modal.isSearchMode = true;
+
+      modal.renderGrid();
+
+      const folders = modal.grid.querySelectorAll('.media-library-folder');
+      expect(folders.length).toBe(0);
+    });
+
+    it('should show empty state when no content', () => {
+      modal.folders = [];
+      modal.filteredAssets = [];
+      const showEmptySpy = vi.spyOn(modal, 'showEmptyState');
+
+      modal.renderGrid();
+
+      expect(showEmptySpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('renderList with folders', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.listTbody = document.createElement('tbody');
+      modal.emptyState = document.createElement('div');
+      modal.folders = ['folder1'];
+      modal.filteredAssets = [
+        { id: 'a1', filename: 'file.jpg', mime: 'image/jpeg', size: 1024 }
+      ];
+      modal.isSearchMode = false;
+      modal.currentPath = '';
+      modal.assets = [];
+      modal.assetManager = {
+        formatFileSize: vi.fn(() => '1 KB'),
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        getBlobURLSynced: vi.fn(() => 'blob:test'),
+        generateLoadingPlaceholder: vi.fn(() => 'placeholder')
+      };
+    });
+
+    it('should render folders and files in list view', () => {
+      modal.renderList();
+
+      const rows = modal.listTbody.querySelectorAll('tr');
+      expect(rows.length).toBe(2); // 1 folder + 1 file
+    });
+
+    it('should hide folders in search mode', () => {
+      modal.isSearchMode = true;
+
+      modal.renderList();
+
+      const folderRows = modal.listTbody.querySelectorAll('.media-library-folder-row');
+      expect(folderRows.length).toBe(0);
+    });
+  });
+
+  describe('getFileTypeLabel', () => {
+    it('should return Image for image mime types', () => {
+      expect(modal.getFileTypeLabel('image/jpeg')).toBe('Image');
+      expect(modal.getFileTypeLabel('image/png')).toBe('Image');
+      expect(modal.getFileTypeLabel('image/gif')).toBe('Image');
+    });
+
+    it('should return Video for video mime types', () => {
+      expect(modal.getFileTypeLabel('video/mp4')).toBe('Video');
+      expect(modal.getFileTypeLabel('video/webm')).toBe('Video');
+    });
+
+    it('should return Audio for audio mime types', () => {
+      expect(modal.getFileTypeLabel('audio/mp3')).toBe('Audio');
+      expect(modal.getFileTypeLabel('audio/wav')).toBe('Audio');
+    });
+
+    it('should return PDF for pdf mime type', () => {
+      expect(modal.getFileTypeLabel('application/pdf')).toBe('PDF');
+    });
+
+    it('should return File for other mime types', () => {
+      expect(modal.getFileTypeLabel('application/zip')).toBe('File');
+      expect(modal.getFileTypeLabel('text/plain')).toBe('File');
+    });
+
+    it('should return Unknown for undefined mime', () => {
+      expect(modal.getFileTypeLabel(undefined)).toBe('Unknown');
+      expect(modal.getFileTypeLabel(null)).toBe('Unknown');
+      expect(modal.getFileTypeLabel('')).toBe('Unknown');
+    });
+  });
+
+  describe('showMoveDialog', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.folderPicker = document.createElement('div');
+      modal.folderPicker.style.display = 'none';
+      modal.folderPickerList = document.createElement('div');
+      modal.assets = [];
+      modal.createdFolders = new Set();
+    });
+
+    it('should do nothing if no folderPicker', () => {
+      modal.folderPicker = null;
+      modal.selectedAsset = { id: 'a1' };
+
+      modal.showMoveDialog();
+
+      // No error thrown
+    });
+
+    it('should do nothing if no asset or folder selected', () => {
+      modal.selectedAsset = null;
+      modal.selectedFolderPath = null;
+
+      modal.showMoveDialog();
+
+      expect(modal.folderPicker.style.display).toBe('none');
+    });
+
+    it('should show picker when asset is selected', () => {
+      modal.selectedAsset = { id: 'a1', filename: 'test.jpg', folderPath: '' };
+      modal.buildFolderPickerList = vi.fn();
+
+      modal.showMoveDialog();
+
+      expect(modal.folderPicker.style.display).toBe('flex');
+      expect(modal.buildFolderPickerList).toHaveBeenCalled();
+    });
+
+    it('should show picker when folder is selected', () => {
+      modal.selectedFolderPath = 'my-folder';
+      modal.buildFolderPickerList = vi.fn();
+
+      modal.showMoveDialog();
+
+      expect(modal.folderPicker.style.display).toBe('flex');
+      expect(modal.buildFolderPickerList).toHaveBeenCalled();
+    });
+  });
+
+  describe('hideFolderPicker', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.folderPicker = document.createElement('div');
+      modal.folderPicker.style.display = 'flex';
+      modal.selectedMoveTarget = 'some-path';
+    });
+
+    it('should hide folder picker and clear selection', () => {
+      modal.hideFolderPicker();
+
+      expect(modal.folderPicker.style.display).toBe('none');
+      expect(modal.selectedMoveTarget).toBeNull();
+    });
+
+    it('should not error if folderPicker is null', () => {
+      modal.folderPicker = null;
+
+      modal.hideFolderPicker();
+
+      expect(modal.selectedMoveTarget).toBeNull();
+    });
+  });
+
+  describe('buildFolderPickerList', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.folderPickerList = document.createElement('div');
+      modal.assets = [
+        { id: 'a1', filename: 'file1.jpg', folderPath: 'photos' },
+        { id: 'a2', filename: 'file2.jpg', folderPath: 'photos/2024' },
+        { id: 'a3', filename: 'file3.jpg', folderPath: '' },
+      ];
+      modal.createdFolders = new Set(['docs']);
+      modal.selectedAsset = { id: 'a1', folderPath: 'photos' };
+      modal.selectedFolderPath = null;
+    });
+
+    it('should build list with all folders including root', () => {
+      modal.buildFolderPickerList();
+
+      const items = modal.folderPickerList.querySelectorAll('.folder-picker-item');
+      expect(items.length).toBeGreaterThan(0);
+      // Should include root
+      expect(modal.folderPickerList.innerHTML).toContain('Root');
+    });
+
+    it('should mark current folder for file selection', () => {
+      modal.buildFolderPickerList();
+
+      const currentItem = modal.folderPickerList.querySelector('.folder-picker-item.current');
+      expect(currentItem).not.toBeNull();
+      expect(currentItem.dataset.path).toBe('photos');
+    });
+
+    it('should exclude source folder when moving a folder', () => {
+      modal.selectedAsset = null;
+      modal.selectedFolderPath = 'photos/2024';
+      modal.selectedFolder = '2024';
+
+      modal.buildFolderPickerList();
+
+      const paths = Array.from(modal.folderPickerList.querySelectorAll('.folder-picker-item'))
+        .map(item => item.dataset.path);
+
+      expect(paths).not.toContain('photos/2024');
+    });
+
+    it('should add click handlers to folder items', () => {
+      modal.buildFolderPickerList();
+
+      const item = modal.folderPickerList.querySelector('.folder-picker-item');
+      item.click();
+
+      expect(item.classList.contains('selected')).toBe(true);
+      expect(modal.selectedMoveTarget).toBe(item.dataset.path);
+    });
+
+    it('should do nothing if folderPickerList is null', () => {
+      modal.folderPickerList = null;
+
+      modal.buildFolderPickerList();
+
+      // No error thrown
+    });
+  });
+
+  describe('confirmMove', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.folderPicker = document.createElement('div');
+      modal.folderPicker.style.display = 'flex';
+      modal.assetManager = {
+        moveFolder: vi.fn().mockResolvedValue(),
+        updateAssetFolderPath: vi.fn().mockResolvedValue(),
+      };
+      modal.assets = [];
+      modal.createdFolders = new Set();
+      modal.loadAssets = vi.fn().mockResolvedValue();
+      modal.showSidebarEmpty = vi.fn();
+      window.alert = vi.fn();
+    });
+
+    it('should alert if no destination selected', async () => {
+      modal.selectedMoveTarget = null;
+
+      await modal.confirmMove();
+
+      expect(window.alert).toHaveBeenCalledWith('Please select a destination folder');
+    });
+
+    it('should hide picker if assetManager is missing', async () => {
+      modal.assetManager = null;
+      modal.selectedMoveTarget = 'folder';
+      modal.hideFolderPicker = vi.fn();
+
+      await modal.confirmMove();
+
+      expect(modal.hideFolderPicker).toHaveBeenCalled();
+    });
+
+    it('should alert if folder is already in destination', async () => {
+      modal.selectedFolderPath = 'parent/myfolder';
+      modal.selectedFolder = 'myfolder';
+      modal.selectedMoveTarget = 'parent';
+
+      await modal.confirmMove();
+
+      expect(window.alert).toHaveBeenCalledWith('Folder is already in this location');
+    });
+
+    it('should alert if destination has folder with same name', async () => {
+      modal.selectedFolderPath = 'source/myfolder';
+      modal.selectedFolder = 'myfolder';
+      modal.selectedMoveTarget = 'dest';
+      modal.assets = [{ id: 'a1', folderPath: 'dest/myfolder' }];
+
+      await modal.confirmMove();
+
+      expect(window.alert).toHaveBeenCalledWith('A folder with this name already exists in the destination.');
+    });
+
+    it('should move folder successfully', async () => {
+      modal.selectedFolderPath = 'source/myfolder';
+      modal.selectedFolder = 'myfolder';
+      modal.selectedMoveTarget = 'newdest';
+      modal.hideFolderPicker = vi.fn();
+
+      await modal.confirmMove();
+
+      expect(modal.assetManager.moveFolder).toHaveBeenCalledWith('source/myfolder', 'newdest');
+      expect(modal.hideFolderPicker).toHaveBeenCalled();
+      expect(modal.loadAssets).toHaveBeenCalled();
+    });
+
+    it('should alert if file is already in destination folder', async () => {
+      modal.selectedAsset = { id: 'a1', filename: 'test.jpg', folderPath: 'current' };
+      modal.selectedFolderPath = null;
+      modal.selectedMoveTarget = 'current';
+
+      await modal.confirmMove();
+
+      expect(window.alert).toHaveBeenCalledWith('File is already in this folder');
+    });
+
+    it('should move file successfully', async () => {
+      modal.selectedAsset = { id: 'a1', filename: 'test.jpg', folderPath: 'old' };
+      modal.selectedFolderPath = null;
+      modal.selectedMoveTarget = 'new';
+      modal.hideFolderPicker = vi.fn();
+
+      await modal.confirmMove();
+
+      expect(modal.assetManager.updateAssetFolderPath).toHaveBeenCalledWith('a1', 'new');
+      expect(modal.hideFolderPicker).toHaveBeenCalled();
+      expect(modal.loadAssets).toHaveBeenCalled();
+    });
+
+    it('should handle folder move error', async () => {
+      modal.selectedFolderPath = 'folder';
+      modal.selectedFolder = 'folder';
+      modal.selectedMoveTarget = 'dest';
+      modal.assetManager.moveFolder.mockRejectedValue(new Error('Move failed'));
+
+      await modal.confirmMove();
+
+      expect(window.alert).toHaveBeenCalledWith('Failed to move folder');
+    });
+
+    it('should handle file move error', async () => {
+      modal.selectedAsset = { id: 'a1', filename: 'test.jpg', folderPath: 'old' };
+      modal.selectedFolderPath = null;
+      modal.selectedMoveTarget = 'new';
+      modal.assetManager.updateAssetFolderPath.mockRejectedValue(new Error('Move failed'));
+
+      await modal.confirmMove();
+
+      expect(window.alert).toHaveBeenCalledWith('Failed to move file');
+    });
+
+    it('should hide picker if no asset selected when moving file', async () => {
+      modal.selectedAsset = null;
+      modal.selectedFolderPath = null;
+      modal.selectedMoveTarget = 'dest';
+      modal.hideFolderPicker = vi.fn();
+
+      await modal.confirmMove();
+
+      expect(modal.hideFolderPicker).toHaveBeenCalled();
+    });
+  });
+
+  describe('showSidebarEmpty', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.sidebarContent = document.createElement('div');
+      modal.sidebarEmpty = document.createElement('div');
+      modal.sidebarEmpty.style.display = 'none';
+      modal.sidebarContent.style.display = 'block';
+    });
+
+    it('should show empty state and hide content', () => {
+      modal.showSidebarEmpty();
+
+      expect(modal.sidebarEmpty.style.display).toBe('block');
+      expect(modal.sidebarContent.style.display).toBe('none');
+    });
+  });
+
+  describe('filterAssets', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.grid = document.createElement('div');
+      modal.listContainer = document.createElement('div');
+      modal.listTbody = document.createElement('tbody');
+      modal.emptyState = document.createElement('div');
+      modal.assets = [
+        { id: 'a1', filename: 'photo.jpg', folderPath: 'images', mime: 'image/jpeg' },
+        { id: 'a2', filename: 'document.pdf', folderPath: '', mime: 'application/pdf' },
+        { id: 'a3', filename: 'photo-backup.jpg', folderPath: 'backup', mime: 'image/jpeg' },
+      ];
+      modal.assetManager = {
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        getBlobURLSynced: vi.fn(() => 'blob:test'),
+        generateLoadingPlaceholder: vi.fn(() => 'placeholder'),
+        formatFileSize: vi.fn(() => '1 KB'),
+      };
+      modal.viewMode = 'grid';
+      modal.currentPath = '';
+      modal.createdFolders = new Set();
+    });
+
+    it('should reset currentPage when called', () => {
+      modal.currentPage = 5;
+      modal.applyFiltersAndRender = vi.fn();
+
+      modal.filterAssets('photo');
+
+      expect(modal.currentPage).toBe(1);
+    });
+
+    it('should call applyFiltersAndRender', () => {
+      modal.applyFiltersAndRender = vi.fn();
+
+      modal.filterAssets('test');
+
+      expect(modal.applyFiltersAndRender).toHaveBeenCalled();
+    });
+  });
+
+  describe('renderCurrentView', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.grid = document.createElement('div');
+      modal.listContainer = document.createElement('div');
+      modal.listTbody = document.createElement('tbody');
+      modal.assetManager = {
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        getBlobURLSynced: vi.fn(() => 'blob:test'),
+        generateLoadingPlaceholder: vi.fn(() => 'placeholder'),
+        formatFileSize: vi.fn(() => '1 KB'),
+      };
+      modal.filteredAssets = [];
+      modal.folders = [];
+    });
+
+    it('should render grid view when mode is grid', () => {
+      modal.viewMode = 'grid';
+      modal.renderGrid = vi.fn();
+      modal.renderList = vi.fn();
+
+      modal.renderCurrentView();
+
+      expect(modal.renderGrid).toHaveBeenCalled();
+      expect(modal.renderList).not.toHaveBeenCalled();
+    });
+
+    it('should render list view when mode is list', () => {
+      modal.viewMode = 'list';
+      modal.renderGrid = vi.fn();
+      modal.renderList = vi.fn();
+
+      modal.renderCurrentView();
+
+      expect(modal.renderList).toHaveBeenCalled();
+      expect(modal.renderGrid).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('selectAssetInList', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.listTbody = document.createElement('tbody');
+      modal.assetManager = {
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        getBlobURLSynced: vi.fn(() => 'blob:test'),
+        generateLoadingPlaceholder: vi.fn(() => 'placeholder'),
+        formatFileSize: vi.fn(() => '1 KB'),
+      };
+      modal.showSidebarContent = vi.fn();
+      modal.selectedAsset = null;
+    });
+
+    it('should select asset and update row styling', async () => {
+      const row = document.createElement('tr');
+      row.classList.add('media-library-list-row');
+      modal.listTbody.appendChild(row);
+
+      const asset = { id: 'a1', filename: 'test.jpg', mime: 'image/jpeg' };
+
+      await modal.selectAssetInList(asset, row);
+
+      expect(modal.selectedAsset).toBe(asset);
+      expect(row.classList.contains('selected')).toBe(true);
+      expect(modal.showSidebarContent).toHaveBeenCalledWith(asset);
+    });
+
+    it('should deselect previous selection', async () => {
+      const prevRow = document.createElement('tr');
+      prevRow.classList.add('media-library-list-row', 'selected');
+      const newRow = document.createElement('tr');
+      newRow.classList.add('media-library-list-row');
+      modal.listTbody.appendChild(prevRow);
+      modal.listTbody.appendChild(newRow);
+
+      const asset = { id: 'a2', filename: 'new.jpg' };
+
+      await modal.selectAssetInList(asset, newRow);
+
+      expect(prevRow.classList.contains('selected')).toBe(false);
+      expect(newRow.classList.contains('selected')).toBe(true);
+    });
+
+    it('should add asset to selectedAssets array', async () => {
+      const row = document.createElement('tr');
+      const asset = { id: 'a1', filename: 'test.jpg' };
+
+      await modal.selectAssetInList(asset, row);
+
+      expect(modal.selectedAssets).toContain(asset);
+      expect(modal.selectedAssets.length).toBe(1);
+    });
+  });
+
+  describe('createListRow', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.assetManager = {
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        getBlobURLSynced: vi.fn(() => 'blob:test'),
+        generateLoadingPlaceholder: vi.fn(() => 'placeholder'),
+        formatFileSize: vi.fn((size) => `${size} B`),
+      };
+      modal.currentPath = '';
+      modal.isSearchMode = false;
+    });
+
+    it('should create a row with asset info', () => {
+      const asset = {
+        id: 'a1',
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 1024,
+        timestamp: Date.now(),
+      };
+
+      const row = modal.createListRow(asset);
+
+      expect(row.tagName).toBe('TR');
+      expect(row.dataset.assetId).toBe('a1');
+      expect(row.dataset.filename).toBe('photo.jpg');
+    });
+
+    it('should show location column in search mode', () => {
+      modal.isSearchMode = true;
+
+      const asset = {
+        id: 'a1',
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 1024,
+        folderPath: 'images/2024',
+      };
+
+      const row = modal.createListRow(asset);
+      const locationCell = row.querySelector('td:nth-child(5)');
+
+      expect(locationCell).not.toBeNull();
+    });
+
+    it('should handle missing timestamp', () => {
+      const asset = {
+        id: 'a1',
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+        size: 1024,
+        timestamp: null,
+      };
+
+      const row = modal.createListRow(asset);
+
+      expect(row).not.toBeNull();
+    });
+  });
+
+  describe('createGridItem', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.assetManager = {
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        getBlobURLSynced: vi.fn(() => 'blob:test-url'),
+        generateLoadingPlaceholder: vi.fn(() => 'data:image/svg+xml,placeholder'),
+      };
+    });
+
+    it('should create grid item for image asset', () => {
+      const asset = {
+        id: 'a1',
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+      };
+
+      const item = modal.createGridItem(asset);
+
+      expect(item.classList.contains('media-library-item')).toBe(true);
+      expect(item.dataset.assetId).toBe('a1');
+      expect(item.dataset.filename).toBe('photo.jpg');
+    });
+
+    it('should create grid item for video asset with icon', () => {
+      const asset = {
+        id: 'a2',
+        filename: 'video.mp4',
+        mime: 'video/mp4',
+      };
+
+      const item = modal.createGridItem(asset);
+
+      expect(item.classList.contains('media-library-item')).toBe(true);
+      const icon = item.querySelector('.exe-icon');
+      expect(icon).not.toBeNull();
+    });
+
+    it('should create grid item for audio asset with icon', () => {
+      const asset = {
+        id: 'a3',
+        filename: 'audio.mp3',
+        mime: 'audio/mpeg',
+      };
+
+      const item = modal.createGridItem(asset);
+
+      expect(item.classList.contains('media-library-item')).toBe(true);
+      const icon = item.querySelector('.exe-icon');
+      expect(icon).not.toBeNull();
+    });
+
+    it('should create grid item for PDF asset', () => {
+      const asset = {
+        id: 'a4',
+        filename: 'document.pdf',
+        mime: 'application/pdf',
+      };
+
+      const item = modal.createGridItem(asset);
+
+      expect(item.classList.contains('media-library-item')).toBe(true);
+    });
+
+    it('should create grid item for ZIP asset', () => {
+      const asset = {
+        id: 'a5',
+        filename: 'archive.zip',
+        mime: 'application/zip',
+      };
+
+      const item = modal.createGridItem(asset);
+
+      expect(item.classList.contains('media-library-item')).toBe(true);
+    });
+
+    it('should add click handler for selection', () => {
+      const asset = { id: 'a1', filename: 'test.jpg', mime: 'image/jpeg' };
+      modal.selectAsset = vi.fn();
+
+      const item = modal.createGridItem(asset);
+      item.click();
+
+      expect(modal.selectAsset).toHaveBeenCalled();
+    });
+
+    it('should add double-click handler when callback exists', () => {
+      const asset = { id: 'a1', filename: 'test.jpg', mime: 'image/jpeg' };
+      modal.onSelectCallback = vi.fn();
+      modal.insertSelectedAsset = vi.fn();
+      modal.selectAsset = vi.fn().mockResolvedValue();
+
+      const item = modal.createGridItem(asset);
+
+      // Simulate double click
+      const dblclickEvent = new Event('dblclick');
+      item.dispatchEvent(dblclickEvent);
+
+      // The insertSelectedAsset should be called after selectAsset resolves
+    });
+  });
 });
