@@ -195,6 +195,13 @@ export interface ResourceProvider {
      * @returns Map of relative path -> content buffer
      */
     fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Fetch global font files for embedding in exports
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'boo')
+     * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
+     */
+    fetchGlobalFontFiles(fontId: string): Promise<Map<string, Uint8Array>>;
 }
 
 /**

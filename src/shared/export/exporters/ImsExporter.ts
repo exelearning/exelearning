@@ -164,8 +164,7 @@ export class ImsExporter extends Html5Exporter {
             // 5b. Fetch and add global font files (if selected)
             if (meta.globalFont && meta.globalFont !== 'default') {
                 try {
-                    // Use FileSystemResourceProvider's fetchGlobalFontFiles if available
-                    const fontFiles = await (this.resources as any).fetchGlobalFontFiles?.(meta.globalFont);
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
                     if (fontFiles) {
                         for (const [filePath, content] of fontFiles) {
                             this.zip.addFile(filePath, content);

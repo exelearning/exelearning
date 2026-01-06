@@ -259,8 +259,7 @@ export class Html5Exporter extends BaseExporter {
             // 9.5. Fetch and add global font files (if selected)
             if (meta.globalFont && meta.globalFont !== 'default') {
                 try {
-                    // Use FileSystemResourceProvider's fetchGlobalFontFiles if available
-                    const fontFiles = await (this.resources as any).fetchGlobalFontFiles?.(meta.globalFont);
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
                     if (fontFiles) {
                         for (const [filePath, content] of fontFiles) {
                             addFile(filePath, content);

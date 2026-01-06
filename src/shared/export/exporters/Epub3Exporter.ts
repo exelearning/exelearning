@@ -266,7 +266,7 @@ export class Epub3Exporter extends BaseExporter {
             // 8.5. Fetch and add global font files (if selected)
             if (meta.globalFont && meta.globalFont !== 'default') {
                 try {
-                    const fontFiles = await (this.resources as any).fetchGlobalFontFiles?.(meta.globalFont);
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
                     if (fontFiles) {
                         for (const [filePath, content] of fontFiles) {
                             this.zip.addFile(`EPUB/${filePath}`, content);
