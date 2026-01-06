@@ -45,6 +45,7 @@ window.YjsModules = {
   // UI Integration
   YjsProjectBridge: window.YjsProjectBridge,
   YjsTinyMCEBinding: window.YjsTinyMCEBinding,
+  YjsProseMirrorBinding: window.YjsProseMirrorBinding,
   YjsStructureTreeAdapter: window.YjsStructureTreeAdapter,
   YjsProjectManagerMixin: window.YjsProjectManagerMixin,
   YjsPropertiesBinding: window.YjsPropertiesBinding,
@@ -185,6 +186,77 @@ window.YjsModules = {
       userId: this._bridge.app?.user?.id || 'unknown',
       userName: this._bridge.app?.user?.name || 'User',
     });
+
+    return binding;
+  },
+
+  /**
+   * Create a ProseMirror binding for an editor
+   * @param {ProseMirrorEditor} editor - ProseMirror editor instance
+   * @param {string} pageId - Page ID
+   * @param {string} blockId - Block ID
+   * @param {string} componentId - Component ID
+   * @param {string} [fieldName='htmlContent'] - Field name in component for content
+   * @returns {YjsProseMirrorBinding|null}
+   */
+  bindProseMirror(editor, pageId, blockId, componentId, fieldName = 'htmlContent') {
+    if (!this._bridge) {
+      console.warn('[YjsModules] Bridge not initialized');
+      return null;
+    }
+
+    if (!window.YjsProseMirrorBinding) {
+      console.warn('[YjsModules] YjsProseMirrorBinding not loaded. Call YjsLoader.loadProseMirror() first.');
+      return null;
+    }
+
+    const component = this._bridge.structureBinding.getComponent(pageId, blockId, componentId);
+    if (!component) {
+      console.warn('[YjsModules] Component not found:', componentId);
+      return null;
+    }
+
+    // Get or create Y.XmlFragment for ProseMirror content
+    // Note: y-prosemirror uses XmlFragment, not Text like TinyMCE
+    let yXmlFragment = component.get(fieldName);
+
+    // Handle case where field is a plain string (from import) or doesn't exist
+    if (!yXmlFragment || typeof yXmlFragment === 'string' || !(yXmlFragment instanceof window.Y.XmlFragment)) {
+      // Check for existing HTML content to migrate
+      let existingContent = '';
+      if (typeof yXmlFragment === 'string' && yXmlFragment) {
+        existingContent = yXmlFragment;
+      } else {
+        // Try htmlView (from import)
+        const htmlView = component.get('htmlView');
+        if (typeof htmlView === 'string' && htmlView) {
+          existingContent = htmlView;
+        }
+      }
+
+      // Create new XmlFragment
+      yXmlFragment = new window.Y.XmlFragment();
+      component.set(fieldName, yXmlFragment);
+
+      // If there's existing HTML, set it via the editor after binding
+      if (existingContent && editor) {
+        // Defer setting content until binding is complete
+        setTimeout(() => {
+          if (!editor.isDestroyed()) {
+            editor.setHTML(existingContent);
+          }
+        }, 0);
+      }
+    }
+
+    // Create binding
+    const binding = new window.YjsProseMirrorBinding(editor, yXmlFragment, {
+      awareness: this._bridge.documentManager?.awareness,
+      userId: this._bridge.app?.user?.id || 'unknown',
+      userName: this._bridge.app?.user?.name || 'User',
+    });
+
+    Logger.log('[YjsModules] ProseMirror binding created for', componentId, fieldName);
 
     return binding;
   },

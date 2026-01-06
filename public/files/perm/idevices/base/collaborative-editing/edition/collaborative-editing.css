@@ -1,0 +1,149 @@
+/**
+ * Collaborative Editing iDevice - Edition Styles
+ */
+
+/* Form container */
+.collab-edit-form {
+	padding: 10px 0;
+}
+
+.collab-edit-form .exe-field {
+	margin-bottom: 15px;
+}
+
+.collab-edit-form .exe-field > label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 5px;
+	color: #333;
+}
+
+.collab-edit-form .exe-input {
+	width: 100%;
+	max-width: 400px;
+	padding: 8px 12px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 14px;
+}
+
+.collab-edit-form .exe-input:focus {
+	border-color: #4285f4;
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+/* Fieldset styling */
+.collab-edit-form .exe-fieldset {
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: 0;
+	margin: 15px 0;
+}
+
+.collab-edit-form .exe-fieldset-legend {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 15px;
+	cursor: pointer;
+	background: #f8f9fa;
+	border-radius: 4px 4px 0 0;
+	margin: 0;
+	font-weight: 600;
+	color: #333;
+	user-select: none;
+}
+
+.collab-edit-form .exe-fieldset-legend:hover {
+	background: #e9ecef;
+}
+
+.collab-edit-form .exe-fieldset-legend .icon {
+	transition: transform 0.2s ease;
+}
+
+.collab-edit-form .exe-fieldset-open .exe-fieldset-legend .icon {
+	transform: rotate(90deg);
+}
+
+.collab-edit-form .exe-fieldset-content {
+	padding: 15px;
+	display: none;
+}
+
+.collab-edit-form .exe-fieldset-open .exe-fieldset-content {
+	display: block;
+}
+
+.collab-edit-form .exe-fieldset-closed .exe-fieldset-legend {
+	border-radius: 4px;
+}
+
+/* ProseMirror editor container */
+.collab-edit-form .prosemirror-editor-container {
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	background: #fff;
+	overflow: hidden;
+}
+
+.collab-edit-form .prosemirror-editor-container:focus-within {
+	border-color: #4285f4;
+	box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+.collab-edit-form .prosemirror-editor {
+	min-height: 200px;
+	padding: 12px 15px;
+}
+
+.collab-edit-form .exe-fieldset .prosemirror-editor {
+	min-height: 150px;
+}
+
+/* Collaborative indicator */
+.collab-edit-form .collab-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	color: #666;
+	margin-top: 5px;
+}
+
+.collab-edit-form .collab-status .status-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #ccc;
+}
+
+.collab-edit-form .collab-status.connected .status-dot {
+	background: #4caf50;
+}
+
+.collab-edit-form .collab-status.disconnected .status-dot {
+	background: #f44336;
+}
+
+/* User avatars (for showing collaborators) */
+.collab-edit-form .collab-users {
+	display: flex;
+	gap: -8px;
+	margin-left: auto;
+}
+
+.collab-edit-form .collab-user-avatar {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: 2px solid #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
+	font-weight: 600;
+	color: #fff;
+	text-transform: uppercase;
+}

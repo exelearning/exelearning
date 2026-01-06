@@ -49,6 +49,9 @@
     `${getLIBS_PATH()}/y-websocket.min.js`,          // y-websocket provider (exports window.WebsocketProvider)
   ];
 
+  // ProseMirror bundle path (lazy loaded when needed)
+  const getProseMirrorBundlePath = () => assetPath('/libs/prosemirror/prosemirror.bundle.js');
+
   // Local modules organized in parallel-loadable groups
   // Each group is loaded in parallel, groups are loaded sequentially
   const LOCAL_MODULE_GROUPS = [
@@ -144,6 +147,29 @@
       script.onload = () => resolve();
       script.onerror = () => reject(new Error(`Failed to load: ${src}`));
       document.head.appendChild(script);
+    });
+  }
+
+  /**
+   * Load a CSS stylesheet dynamically
+   * @param {string} href - Stylesheet URL
+   * @returns {Promise<void>}
+   */
+  function loadCSS(href) {
+    return new Promise((resolve, reject) => {
+      // Check if already loaded
+      const existing = document.querySelector(`link[href="${href}"]`);
+      if (existing) {
+        resolve();
+        return;
+      }
+
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error(`Failed to load CSS: ${href}`));
+      document.head.appendChild(link);
     });
   }
 
@@ -298,9 +324,54 @@
         loading: this.loading,
         yjsAvailable: isYjsLoaded(),
         modulesAvailable: areModulesLoaded(),
+        prosemirrorAvailable: isProseMirrorLoaded(),
       };
     },
+
+    /**
+     * Load ProseMirror bundle (lazy loading)
+     * @returns {Promise<void>}
+     */
+    async loadProseMirror() {
+      if (isProseMirrorLoaded()) {
+        Logger.log('[YjsLoader] ProseMirror already loaded');
+        return;
+      }
+
+      Logger.log('[YjsLoader] Loading ProseMirror bundle...');
+      await loadScript(getProseMirrorBundlePath());
+
+      if (!isProseMirrorLoaded()) {
+        throw new Error('ProseMirror bundle failed to load');
+      }
+
+      // Load ProseMirror integration modules
+      const prosemirrorBasePath = assetPath('/app/prosemirror');
+      const prosemirrorModules = [
+        'ProseMirrorSchema.js',
+        'ProseMirrorEditor.js',
+        'ProseMirrorToolbar.js',
+        'YjsProseMirrorBinding.js',
+      ];
+
+      // Load CSS (including Bootstrap Icons for toolbar) and JS in parallel
+      await Promise.all([
+        loadCSS('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css'),
+        loadCSS(`${prosemirrorBasePath}/prosemirror.css`),
+        loadScriptsParallel(prosemirrorModules.map(m => `${prosemirrorBasePath}/${m}`)),
+      ]);
+
+      Logger.log('[YjsLoader] ProseMirror loaded successfully');
+    },
   };
+
+  /**
+   * Check if ProseMirror is loaded
+   * @returns {boolean}
+   */
+  function isProseMirrorLoaded() {
+    return typeof window.ProseMirrorBundle !== 'undefined';
+  }
 
   // Auto-load if data attribute is present
   if (document.currentScript?.dataset.autoload !== undefined) {

@@ -1,0 +1,107 @@
+/**
+ * Collaborative Editing iDevice - Export Styles
+ */
+
+/* Container */
+.collaborativeEditingContent {
+	line-height: 1.6;
+}
+
+/* Main content */
+.collaborativeEditingContent-main {
+	margin-bottom: 1em;
+}
+
+.collaborativeEditingContent-main > *:first-child {
+	margin-top: 0;
+}
+
+.collaborativeEditingContent-main > *:last-child {
+	margin-bottom: 0;
+}
+
+/* Feedback section */
+.idevice_node.collaborative-editing .iDevice_buttons.feedback-button {
+	margin-bottom: 1em;
+}
+
+.idevice_node.collaborative-editing .feedback-content {
+	padding: 15px;
+	background: #f8f9fa;
+	border-left: 3px solid #4285f4;
+	border-radius: 0 4px 4px 0;
+	margin-top: 10px;
+}
+
+.idevice_node.collaborative-editing .feedback-content > *:first-child {
+	margin-top: 0;
+}
+
+.idevice_node.collaborative-editing .feedback-content > *:last-child {
+	margin-bottom: 0;
+}
+
+/* Table styles in exported content */
+.collaborativeEditingContent table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 1em 0;
+}
+
+.collaborativeEditingContent th,
+.collaborativeEditingContent td {
+	border: 1px solid #ddd;
+	padding: 8px 12px;
+	text-align: left;
+}
+
+.collaborativeEditingContent th {
+	background: #f5f5f5;
+	font-weight: 600;
+}
+
+/* Code blocks */
+.collaborativeEditingContent pre {
+	background: #f5f5f5;
+	padding: 1em;
+	border-radius: 4px;
+	overflow-x: auto;
+}
+
+.collaborativeEditingContent code {
+	background: #f0f0f0;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-family: 'Fira Code', 'Consolas', monospace;
+	font-size: 0.9em;
+}
+
+.collaborativeEditingContent pre code {
+	background: none;
+	padding: 0;
+}
+
+/* Blockquotes */
+.collaborativeEditingContent blockquote {
+	border-left: 3px solid #ccc;
+	margin: 1em 0;
+	padding-left: 1em;
+	color: #666;
+}
+
+/* Images */
+.collaborativeEditingContent img {
+	max-width: 100%;
+	height: auto;
+}
+
+/* Media */
+.collaborativeEditingContent video,
+.collaborativeEditingContent audio {
+	max-width: 100%;
+}
+
+.collaborativeEditingContent iframe {
+	max-width: 100%;
+	border: none;
+}

@@ -1,8 +1,28 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <idevice>
-	<title>Collaborative editing</title>
-	<css-class>collaborative-editing</css-class>
-	<category>Information and presentation</category>
-	<icon>groups</icon>
-	<downloadable>0</downloadable>
+    <name>collaborative-editing</name>
+    <title>Collaborative Text</title>
+    <css-class>collaborative-editing</css-class>
+    <category>Information and presentation</category>
+    <icon>groups</icon>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <edition-js>
+        <filename>collaborative-editing.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>collaborative-editing.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>collaborative-editing.js</filename>
+    </export-js>
+    <export-css>
+        <filename>collaborative-editing.css</filename>
+    </export-css>
+    <export-template-filename>collaborative-editing.html</export-template-filename>
+    <author>eXeLearning</author>
+    <license>AGPL-3.0</license>
+    <description>Collaborative rich text editor with real-time sync using ProseMirror</description>
+    <downloadable>0</downloadable>
 </idevice>
