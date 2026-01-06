@@ -212,12 +212,14 @@ test.describe('Magnifier iDevice', () => {
             await expect(previewImg).toBeVisible({ timeout: 5000 });
 
             // Verify the file input has the custom image path with asset:// URL format
+            // New format is asset://uuid.ext (content-addressable, no filename)
             const fileInputValue = await page.locator('#mnfFileInput').inputValue();
             console.log('File input value:', fileInputValue);
             expect(fileInputValue).toBeTruthy();
-            expect(fileInputValue).toContain('sample-3');
-            // The file input should contain asset:// URL, not blob: URL
+            // The file input should contain asset:// URL with uuid.ext format
             expect(fileInputValue.startsWith('asset://')).toBe(true);
+            // Should have .jpg extension (from original file)
+            expect(fileInputValue).toMatch(/^asset:\/\/[a-f0-9-]+\.jpg$/);
 
             // Save the iDevice
             const block = page.locator('#node-content article .idevice_node.magnifier').first();

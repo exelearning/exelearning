@@ -487,8 +487,8 @@ check-tests: check-bun
 check-coverage: check-bun ## Check that all files have at least 90% coverage
 	@bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
 
-# Test environment: in-memory database for isolation
-TEST_ENV := DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test
+# Test environment: in-memory database for isolation, no BASE_PATH
+TEST_ENV := BASE_PATH="" DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test
 
 .PHONY: test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
