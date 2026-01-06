@@ -4372,3 +4372,301 @@ describe('AssetManager moveFolder prevents moving into itself', () => {
     await expect(assetManager.moveFolder('parent', 'parent/child')).rejects.toThrow('Cannot move folder into itself');
   });
 });
+
+describe('AssetManager getAssetsInFolder', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('returns assets in root folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: '', filename: 'root.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'images', filename: 'photo.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { filename: 'legacy.jpg' }); // no folderPath (treated as root)
+
+    const rootAssets = await assetManager.getAssetsInFolder('');
+    expect(rootAssets.length).toBe(2);
+    expect(rootAssets.map(a => a.filename)).toContain('root.jpg');
+    expect(rootAssets.map(a => a.filename)).toContain('legacy.jpg');
+  });
+
+  it('returns assets in specific folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: '', filename: 'root.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'images', filename: 'photo.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'images/icons', filename: 'icon.svg' });
+
+    const imageAssets = await assetManager.getAssetsInFolder('images');
+    expect(imageAssets.length).toBe(1);
+    expect(imageAssets[0].filename).toBe('photo.jpg');
+  });
+
+  it('returns empty array for empty folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: '', filename: 'root.jpg' });
+
+    const emptyFolder = await assetManager.getAssetsInFolder('nonexistent');
+    expect(emptyFolder).toEqual([]);
+  });
+});
+
+describe('AssetManager getSubfolders', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('returns subfolders at root level', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'images', filename: 'photo.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'documents', filename: 'doc.pdf' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'images/icons', filename: 'icon.svg' });
+
+    const subfolders = await assetManager.getSubfolders('');
+    expect(subfolders).toEqual(['documents', 'images']);
+  });
+
+  it('returns nested subfolders', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'images/icons', filename: 'icon.svg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'images/photos', filename: 'photo.jpg' });
+
+    const subfolders = await assetManager.getSubfolders('images');
+    expect(subfolders).toEqual(['icons', 'photos']);
+  });
+
+  it('returns empty array when no subfolders', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'images', filename: 'photo.jpg' });
+
+    const subfolders = await assetManager.getSubfolders('images');
+    expect(subfolders).toEqual([]);
+  });
+
+  it('returns sorted subfolders', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'z-folder', filename: 'z.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'a-folder', filename: 'a.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'm-folder', filename: 'm.jpg' });
+
+    const subfolders = await assetManager.getSubfolders('');
+    expect(subfolders).toEqual(['a-folder', 'm-folder', 'z-folder']);
+  });
+});
+
+describe('AssetManager updateAssetFolderPath', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('updates folder path for existing asset', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'old-folder', filename: 'test.jpg', uploaded: true });
+
+    const result = await assetManager.updateAssetFolderPath('asset-1', 'new-folder');
+
+    expect(result).toBe(true);
+    const metadata = mockYjsBridge._assetsMap.get('asset-1');
+    expect(metadata.folderPath).toBe('new-folder');
+    expect(metadata.uploaded).toBe(false); // Should be marked for re-upload
+  });
+
+  it('returns false for non-existent asset', async () => {
+    const result = await assetManager.updateAssetFolderPath('nonexistent', 'new-folder');
+    expect(result).toBe(false);
+  });
+
+  it('can move asset to root folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'some-folder', filename: 'test.jpg' });
+
+    const result = await assetManager.updateAssetFolderPath('asset-1', '');
+
+    expect(result).toBe(true);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('');
+  });
+});
+
+describe('AssetManager moveFolder', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('moves folder to new destination', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'source', filename: 'a.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'source/sub', filename: 'b.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'other', filename: 'c.jpg' });
+
+    const count = await assetManager.moveFolder('source', 'destination');
+
+    expect(count).toBe(2);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('destination/source');
+    expect(mockYjsBridge._assetsMap.get('asset-2').folderPath).toBe('destination/source/sub');
+    expect(mockYjsBridge._assetsMap.get('asset-3').folderPath).toBe('other'); // unchanged
+  });
+
+  it('moves folder to root', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'parent/child', filename: 'a.jpg' });
+
+    const count = await assetManager.moveFolder('parent/child', '');
+
+    expect(count).toBe(1);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('child');
+  });
+
+  it('returns 0 when moving to same location', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'folder', filename: 'a.jpg' });
+
+    const count = await assetManager.moveFolder('folder', '');
+
+    expect(count).toBe(0);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('folder'); // unchanged
+  });
+
+  it('throws when Yjs bridge not available', async () => {
+    assetManager.setYjsBridge(null);
+
+    await expect(assetManager.moveFolder('source', 'dest')).rejects.toThrow('Yjs bridge not available');
+  });
+});
+
+describe('AssetManager renameFolder', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('renames folder and updates all assets', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'old-name', filename: 'a.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'old-name/sub', filename: 'b.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'other', filename: 'c.jpg' });
+
+    const count = await assetManager.renameFolder('old-name', 'new-name');
+
+    expect(count).toBe(2);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('new-name');
+    expect(mockYjsBridge._assetsMap.get('asset-2').folderPath).toBe('new-name/sub');
+    expect(mockYjsBridge._assetsMap.get('asset-3').folderPath).toBe('other'); // unchanged
+  });
+
+  it('renames nested folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'parent/child', filename: 'a.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'parent/child/deep', filename: 'b.jpg' });
+
+    const count = await assetManager.renameFolder('parent/child', 'parent/renamed');
+
+    expect(count).toBe(2);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('parent/renamed');
+    expect(mockYjsBridge._assetsMap.get('asset-2').folderPath).toBe('parent/renamed/deep');
+  });
+
+  it('throws when Yjs bridge not available', async () => {
+    assetManager.setYjsBridge(null);
+
+    await expect(assetManager.renameFolder('old', 'new')).rejects.toThrow('Yjs bridge not available');
+  });
+});

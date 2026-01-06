@@ -1541,4 +1541,568 @@ describe('ModalFilemanager', () => {
       });
     });
   });
+
+  describe('folder navigation', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.assets = [
+        { id: 'root1', filename: 'root-file.jpg', folderPath: '', mime: 'image/jpeg' },
+        { id: 'docs1', filename: 'doc.pdf', folderPath: 'docs', mime: 'application/pdf' },
+        { id: 'docs2', filename: 'note.txt', folderPath: 'docs', mime: 'text/plain' },
+        { id: 'sub1', filename: 'nested.jpg', folderPath: 'docs/images', mime: 'image/jpeg' },
+        { id: 'deep1', filename: 'deep.png', folderPath: 'docs/images/icons', mime: 'image/png' },
+      ];
+      modal.createdFolders = new Set();
+    });
+
+    describe('deriveSubfolders', () => {
+      it('should derive root-level folders', () => {
+        const folders = modal.deriveSubfolders(modal.assets, '');
+        expect(folders).toEqual(['docs']);
+      });
+
+      it('should derive subfolders at a specific path', () => {
+        const folders = modal.deriveSubfolders(modal.assets, 'docs');
+        expect(folders).toEqual(['images']);
+      });
+
+      it('should derive deeply nested subfolders', () => {
+        const folders = modal.deriveSubfolders(modal.assets, 'docs/images');
+        expect(folders).toEqual(['icons']);
+      });
+
+      it('should return empty array for leaf folders', () => {
+        const folders = modal.deriveSubfolders(modal.assets, 'docs/images/icons');
+        expect(folders).toEqual([]);
+      });
+
+      it('should handle assets with no folderPath', () => {
+        modal.assets = [
+          { id: 'a1', filename: 'test.jpg', mime: 'image/jpeg' },
+        ];
+        const folders = modal.deriveSubfolders(modal.assets, '');
+        expect(folders).toEqual([]);
+      });
+
+      it('should sort folders alphabetically case-insensitive', () => {
+        modal.assets = [
+          { id: 'a1', filename: 'test.jpg', folderPath: 'Zebra', mime: 'image/jpeg' },
+          { id: 'a2', filename: 'test2.jpg', folderPath: 'alpha', mime: 'image/jpeg' },
+          { id: 'a3', filename: 'test3.jpg', folderPath: 'Beta', mime: 'image/jpeg' },
+        ];
+        const folders = modal.deriveSubfolders(modal.assets, '');
+        expect(folders).toEqual(['alpha', 'Beta', 'Zebra']);
+      });
+    });
+
+    describe('getCreatedSubfolders', () => {
+      it('should return created folders at root level', () => {
+        modal.createdFolders = new Set(['empty1', 'empty2']);
+        const folders = modal.getCreatedSubfolders('');
+        expect(folders).toContain('empty1');
+        expect(folders).toContain('empty2');
+      });
+
+      it('should return created subfolders at a specific path', () => {
+        modal.createdFolders = new Set(['docs/new-folder', 'docs/another']);
+        const folders = modal.getCreatedSubfolders('docs');
+        expect(folders).toContain('new-folder');
+        expect(folders).toContain('another');
+      });
+
+      it('should not return folders from other paths', () => {
+        modal.createdFolders = new Set(['other/folder', 'docs/subfolder']);
+        const folders = modal.getCreatedSubfolders('docs');
+        expect(folders).not.toContain('folder');
+        expect(folders).toContain('subfolder');
+      });
+
+      it('should return unique folder names', () => {
+        modal.createdFolders = new Set(['docs/sub', 'docs/sub/nested']);
+        const folders = modal.getCreatedSubfolders('docs');
+        // Should only have 'sub' once even though it appears in multiple paths
+        expect(folders.filter(f => f === 'sub').length).toBe(1);
+      });
+    });
+
+    describe('loadFolderContents', () => {
+      it('should set currentPath', () => {
+        modal.loadFolderContents('docs');
+        expect(modal.currentPath).toBe('docs');
+      });
+
+      it('should filter assets to current folder', () => {
+        modal.loadFolderContents('docs');
+        expect(modal.filteredAssets.length).toBe(2);
+        expect(modal.filteredAssets.map(a => a.id)).toContain('docs1');
+        expect(modal.filteredAssets.map(a => a.id)).toContain('docs2');
+      });
+
+      it('should derive subfolders for current path', () => {
+        modal.loadFolderContents('docs');
+        expect(modal.folders).toContain('images');
+      });
+
+      it('should include created empty folders', () => {
+        modal.createdFolders.add('docs/empty-folder');
+        modal.loadFolderContents('docs');
+        expect(modal.folders).toContain('empty-folder');
+      });
+
+      it('should load root when path is empty', () => {
+        modal.loadFolderContents('');
+        expect(modal.currentPath).toBe('');
+        expect(modal.filteredAssets.length).toBe(1);
+        expect(modal.filteredAssets[0].id).toBe('root1');
+      });
+    });
+
+    describe('navigateToFolder', () => {
+      it('should clear selections when navigating', () => {
+        modal.selectedAsset = { id: 'test' };
+        modal.selectedAssets = [{ id: 'test' }];
+        modal.selectedFolder = 'test';
+
+        modal.navigateToFolder('docs');
+
+        expect(modal.selectedAsset).toBeNull();
+        expect(modal.selectedAssets).toEqual([]);
+        expect(modal.selectedFolder).toBeNull();
+      });
+
+      it('should reset to page 1', () => {
+        modal.currentPage = 3;
+        modal.navigateToFolder('docs');
+        expect(modal.currentPage).toBe(1);
+      });
+
+      it('should load folder contents', () => {
+        const loadSpy = vi.spyOn(modal, 'loadFolderContents');
+        modal.navigateToFolder('docs/images');
+        expect(loadSpy).toHaveBeenCalledWith('docs/images');
+      });
+    });
+
+    describe('enterFolder', () => {
+      it('should navigate to subfolder from root', () => {
+        modal.currentPath = '';
+        const navSpy = vi.spyOn(modal, 'navigateToFolder');
+
+        modal.enterFolder('docs');
+
+        expect(navSpy).toHaveBeenCalledWith('docs');
+      });
+
+      it('should navigate to nested subfolder', () => {
+        modal.currentPath = 'docs';
+        const navSpy = vi.spyOn(modal, 'navigateToFolder');
+
+        modal.enterFolder('images');
+
+        expect(navSpy).toHaveBeenCalledWith('docs/images');
+      });
+    });
+
+    describe('navigateUp', () => {
+      it('should do nothing when at root', () => {
+        modal.currentPath = '';
+        const navSpy = vi.spyOn(modal, 'navigateToFolder');
+
+        modal.navigateUp();
+
+        expect(navSpy).not.toHaveBeenCalled();
+      });
+
+      it('should navigate to parent folder', () => {
+        modal.currentPath = 'docs/images';
+        const navSpy = vi.spyOn(modal, 'navigateToFolder');
+
+        modal.navigateUp();
+
+        expect(navSpy).toHaveBeenCalledWith('docs');
+      });
+
+      it('should navigate to root from top-level folder', () => {
+        modal.currentPath = 'docs';
+        const navSpy = vi.spyOn(modal, 'navigateToFolder');
+
+        modal.navigateUp();
+
+        expect(navSpy).toHaveBeenCalledWith('');
+      });
+    });
+
+    describe('renderBreadcrumbs', () => {
+      beforeEach(() => {
+        modal.breadcrumbs = document.createElement('div');
+      });
+
+      it('should render home icon for root', () => {
+        modal.currentPath = '';
+        modal.renderBreadcrumbs();
+
+        expect(modal.breadcrumbs.innerHTML).toContain('home');
+        expect(modal.breadcrumbs.querySelector('[data-path=""]')).not.toBeNull();
+      });
+
+      it('should render path segments', () => {
+        modal.currentPath = 'docs/images/icons';
+        modal.renderBreadcrumbs();
+
+        expect(modal.breadcrumbs.innerHTML).toContain('docs');
+        expect(modal.breadcrumbs.innerHTML).toContain('images');
+        expect(modal.breadcrumbs.innerHTML).toContain('icons');
+      });
+
+      it('should include separators between segments', () => {
+        modal.currentPath = 'docs/images';
+        modal.renderBreadcrumbs();
+
+        const separators = modal.breadcrumbs.querySelectorAll('.breadcrumb-separator');
+        expect(separators.length).toBe(2); // After home and after docs
+      });
+
+      it('should not render if breadcrumbs element is missing', () => {
+        modal.breadcrumbs = null;
+        expect(() => modal.renderBreadcrumbs()).not.toThrow();
+      });
+    });
+
+    describe('createNewFolder', () => {
+      beforeEach(() => {
+        modal.currentPath = '';
+        modal.folders = [];
+        modal.createdFolders = new Set();
+      });
+
+      it('should do nothing if prompt returns null', async () => {
+        window.prompt.mockReturnValue(null);
+
+        await modal.createNewFolder();
+
+        expect(modal.createdFolders.size).toBe(0);
+      });
+
+      it('should do nothing if prompt returns empty string', async () => {
+        window.prompt.mockReturnValue('');
+
+        await modal.createNewFolder();
+
+        expect(modal.createdFolders.size).toBe(0);
+      });
+
+      it('should reject invalid folder names', async () => {
+        window.prompt.mockReturnValue('invalid/name');
+        window.alert = vi.fn();
+
+        await modal.createNewFolder();
+
+        expect(window.alert).toHaveBeenCalled();
+        expect(modal.createdFolders.size).toBe(0);
+      });
+
+      it('should reject duplicate folder names', async () => {
+        modal.folders = ['existing'];
+        window.prompt.mockReturnValue('existing');
+        window.alert = vi.fn();
+
+        await modal.createNewFolder();
+
+        expect(window.alert).toHaveBeenCalled();
+        expect(modal.createdFolders.size).toBe(0);
+      });
+
+      it('should create folder at root level', async () => {
+        window.prompt.mockReturnValue('new-folder');
+
+        await modal.createNewFolder();
+
+        expect(modal.createdFolders.has('new-folder')).toBe(true);
+        expect(modal.folders).toContain('new-folder');
+      });
+
+      it('should create nested folder', async () => {
+        modal.currentPath = 'docs';
+        window.prompt.mockReturnValue('subfolder');
+
+        await modal.createNewFolder();
+
+        expect(modal.createdFolders.has('docs/subfolder')).toBe(true);
+        expect(modal.folders).toContain('subfolder');
+      });
+    });
+
+    describe('isValidFolderName', () => {
+      it('should reject empty names', () => {
+        expect(modal.isValidFolderName('')).toBe(false);
+        expect(modal.isValidFolderName(null)).toBe(false);
+        expect(modal.isValidFolderName(undefined)).toBe(false);
+      });
+
+      it('should reject names with leading/trailing whitespace', () => {
+        expect(modal.isValidFolderName(' name')).toBe(false);
+        expect(modal.isValidFolderName('name ')).toBe(false);
+        expect(modal.isValidFolderName(' name ')).toBe(false);
+      });
+
+      it('should reject . and ..', () => {
+        expect(modal.isValidFolderName('.')).toBe(false);
+        expect(modal.isValidFolderName('..')).toBe(false);
+      });
+
+      it('should reject special characters', () => {
+        expect(modal.isValidFolderName('test/name')).toBe(false);
+        expect(modal.isValidFolderName('test\\name')).toBe(false);
+        expect(modal.isValidFolderName('test:name')).toBe(false);
+        expect(modal.isValidFolderName('test*name')).toBe(false);
+        expect(modal.isValidFolderName('test?name')).toBe(false);
+        expect(modal.isValidFolderName('test"name')).toBe(false);
+        expect(modal.isValidFolderName('test<name')).toBe(false);
+        expect(modal.isValidFolderName('test>name')).toBe(false);
+        expect(modal.isValidFolderName('test|name')).toBe(false);
+      });
+
+      it('should accept valid names', () => {
+        expect(modal.isValidFolderName('valid-name')).toBe(true);
+        expect(modal.isValidFolderName('valid_name')).toBe(true);
+        expect(modal.isValidFolderName('valid name')).toBe(true);
+        expect(modal.isValidFolderName('123')).toBe(true);
+        expect(modal.isValidFolderName('folder.name')).toBe(true);
+        expect(modal.isValidFolderName('Ñoño')).toBe(true);
+        expect(modal.isValidFolderName('日本語')).toBe(true);
+      });
+    });
+  });
+
+  describe('asset actions', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.assetManager = {
+        getAssetUrl: vi.fn((id, filename) => `asset://${id}`),
+        getBlobURLSynced: vi.fn(() => 'blob:test-url'),
+        blobURLCache: new Map([['asset1', 'blob:cached-url']]),
+      };
+      modal.selectedAsset = {
+        id: 'asset1',
+        filename: 'test-image.jpg',
+        mime: 'image/jpeg',
+      };
+    });
+
+    describe('downloadSelectedAsset', () => {
+      it('should do nothing if no asset selected', () => {
+        modal.selectedAsset = null;
+        const appendSpy = vi.spyOn(document.body, 'appendChild');
+
+        modal.downloadSelectedAsset();
+
+        expect(appendSpy).not.toHaveBeenCalled();
+      });
+
+      it('should download asset using blob URL from getBlobURLSynced', () => {
+        const appendSpy = vi.spyOn(document.body, 'appendChild');
+        const removeSpy = vi.spyOn(document.body, 'removeChild');
+
+        modal.downloadSelectedAsset();
+
+        expect(appendSpy).toHaveBeenCalled();
+        expect(removeSpy).toHaveBeenCalled();
+        const link = appendSpy.mock.calls[0][0];
+        expect(link.download).toBe('test-image.jpg');
+      });
+
+      it('should use blobURLCache if getBlobURLSynced not available', () => {
+        modal.assetManager.getBlobURLSynced = undefined;
+        modal.assetManager.blobURLCache.set('asset1', 'blob:from-cache');
+
+        const appendSpy = vi.spyOn(document.body, 'appendChild');
+        modal.downloadSelectedAsset();
+
+        expect(appendSpy).toHaveBeenCalled();
+      });
+
+      it('should create blob URL from asset.blob if no cached URL', () => {
+        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
+        modal.assetManager.blobURLCache = new Map();
+        modal.selectedAsset.blob = new Blob(['test'], { type: 'image/jpeg' });
+
+        const createURLSpy = vi.spyOn(URL, 'createObjectURL');
+        const appendSpy = vi.spyOn(document.body, 'appendChild');
+
+        modal.downloadSelectedAsset();
+
+        expect(createURLSpy).toHaveBeenCalled();
+        expect(appendSpy).toHaveBeenCalled();
+      });
+
+      it('should not download if no blob URL available', () => {
+        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
+        modal.assetManager.blobURLCache = new Map();
+        modal.selectedAsset.blob = null;
+
+        const appendSpy = vi.spyOn(document.body, 'appendChild');
+        modal.downloadSelectedAsset();
+
+        expect(appendSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('copyAssetUrl', () => {
+      beforeEach(() => {
+        navigator.clipboard = {
+          writeText: vi.fn().mockResolvedValue(),
+        };
+      });
+
+      it('should do nothing if no asset selected', () => {
+        modal.selectedAsset = null;
+
+        modal.copyAssetUrl();
+
+        expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+      });
+
+      it('should copy asset URL to clipboard', async () => {
+        modal.copyAssetUrl();
+
+        expect(modal.assetManager.getAssetUrl).toHaveBeenCalledWith('asset1', 'test-image.jpg');
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith('asset://asset1');
+      });
+
+      it('should handle clipboard errors gracefully', async () => {
+        navigator.clipboard.writeText.mockRejectedValue(new Error('Clipboard error'));
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        modal.copyAssetUrl();
+
+        // Wait for promise to resolve
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
+      });
+    });
+
+    describe('viewFullSize', () => {
+      beforeEach(() => {
+        window.open = vi.fn();
+      });
+
+      it('should do nothing if no asset selected', () => {
+        modal.selectedAsset = null;
+
+        modal.viewFullSize();
+
+        expect(window.open).not.toHaveBeenCalled();
+      });
+
+      it('should open asset in new tab', () => {
+        modal.viewFullSize();
+
+        expect(window.open).toHaveBeenCalledWith('blob:test-url', '_blank');
+      });
+
+      it('should use blobURLCache if getBlobURLSynced not available', () => {
+        modal.assetManager.getBlobURLSynced = undefined;
+
+        modal.viewFullSize();
+
+        expect(window.open).toHaveBeenCalledWith('blob:cached-url', '_blank');
+      });
+
+      it('should create blob URL from asset.blob if no cached URL', () => {
+        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
+        modal.assetManager.blobURLCache = new Map();
+        modal.selectedAsset.blob = new Blob(['test'], { type: 'image/jpeg' });
+
+        const createURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:created-url');
+
+        modal.viewFullSize();
+
+        expect(createURLSpy).toHaveBeenCalled();
+        expect(window.open).toHaveBeenCalledWith('blob:created-url', '_blank');
+      });
+
+      it('should not open if no blob URL available', () => {
+        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
+        modal.assetManager.blobURLCache = new Map();
+        modal.selectedAsset.blob = null;
+
+        modal.viewFullSize();
+
+        expect(window.open).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('escapeHtml', () => {
+    it('should escape HTML special characters', () => {
+      expect(modal.escapeHtml('<script>')).toBe('&lt;script&gt;');
+      expect(modal.escapeHtml('a & b')).toBe('a &amp; b');
+      // Note: textContent doesn't escape quotes, they pass through as-is
+      expect(modal.escapeHtml('"quoted"')).toBe('"quoted"');
+    });
+
+    it('should handle normal text', () => {
+      expect(modal.escapeHtml('Hello World')).toBe('Hello World');
+      expect(modal.escapeHtml('test-file.jpg')).toBe('test-file.jpg');
+    });
+  });
+
+  describe('updateButtonStates', () => {
+    beforeEach(() => {
+      modal.initElements();
+      // Add the missing buttons to the modal element
+      const footer = modal.modalElement.querySelector('.media-library-footer');
+      footer.innerHTML = `
+        <button class="media-library-delete-btn">Delete</button>
+        <button class="media-library-insert-btn">Insert</button>
+        <button class="media-library-rename-btn">Rename</button>
+        <button class="media-library-duplicate-btn">Duplicate</button>
+        <button class="media-library-move-btn">Move</button>
+        <button class="media-library-download-btn">Download</button>
+        <button class="media-library-more-btn">More</button>
+        <button class="media-library-extract-btn">Extract</button>
+        <button class="media-library-copyurl-btn">Copy URL</button>
+        <button class="media-library-fullsize-btn">Full Size</button>
+      `;
+      modal.initElements(); // Re-init to pick up new buttons
+    });
+
+    it('should disable all buttons when no selection', () => {
+      modal.selectedAsset = null;
+      modal.selectedFolder = null;
+
+      modal.updateButtonStates();
+
+      expect(modal.deleteBtn?.disabled).toBe(true);
+      expect(modal.insertBtn?.disabled).toBe(true);
+    });
+
+    it('should enable buttons when asset is selected', () => {
+      modal.selectedAsset = { id: 'test', filename: 'test.jpg', mime: 'image/jpeg' };
+
+      modal.updateButtonStates();
+
+      expect(modal.deleteBtn?.disabled).toBe(false);
+    });
+
+    it('should enable insert button when file is selected', () => {
+      // Insert button is enabled based on file selection, not callback
+      modal.selectedAsset = { id: 'test', filename: 'test.jpg', mime: 'image/jpeg' };
+
+      modal.updateButtonStates();
+
+      expect(modal.insertBtn?.disabled).toBe(false);
+    });
+
+    it('should disable insert button when no file is selected', () => {
+      modal.selectedAsset = null;
+      modal.selectedFolder = 'some-folder';
+
+      modal.updateButtonStates();
+
+      expect(modal.insertBtn?.disabled).toBe(true);
+    });
+  });
 });
