@@ -285,6 +285,13 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     right: 12px;
 }
 
+/* File Manager modal - close button in flex flow, not absolute */
+#modalFileManager .modal-header .close {
+    position: relative;
+    top: auto;
+    right: auto;
+}
+
 .modal-open .modal-header .close:hover {
     background: rgb(235 237 250);
     color: var(--gray-600) !important;

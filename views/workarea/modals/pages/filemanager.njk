@@ -2,89 +2,109 @@
     <div class="modal-dialog modal-dialog-centered modal-xl modal-confirm" role="document">
         <div class="modal-content" id="modalFileManagerContent">
             <div class="modal-header">
-                <div class="modal-title">Media Library</div>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <div class="modal-title">{{ 'File manager' | trans }}</div>
+                <div class="media-library-header-search">
+                    <input type="search" class="form-control media-library-search" placeholder="{{ 'Search files...' | trans }}">
+                </div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body media-library-body">
                 <div class="media-library-toolbar">
                     <button type="button" class="btn btn-primary media-library-upload-btn">
-                        <span class="exe-icon">add</span> Add file
+                        <span class="exe-icon">add</span> {{ 'Add file' | trans }}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary media-library-newfolder-btn" title="{{ 'New folder' | trans }}">
+                        <span class="exe-icon">create_new_folder</span>
                     </button>
                     <input type="file" class="media-library-upload-input" accept="image/*,video/*,audio/*,.pdf,.zip,.elp,.elpx" multiple style="display:none;">
 
                     <div class="media-library-view-controls">
-                        <button type="button" class="media-library-view-btn active" data-view="grid" title="Grid view">
+                        <button type="button" class="media-library-view-btn active" data-view="grid" title="{{ 'Grid view' | trans }}">
                             <span class="exe-icon">grid_view</span>
                         </button>
-                        <button type="button" class="media-library-view-btn" data-view="list" title="List view">
+                        <button type="button" class="media-library-view-btn" data-view="list" title="{{ 'List view' | trans }}">
                             <span class="exe-icon">view_list</span>
                         </button>
                     </div>
 
                     <div class="media-library-sort-controls">
-                        <label>Sort:</label>
-                        <select class="form-control media-library-sort">
-                            <option value="name-asc">Name A-Z</option>
-                            <option value="name-desc">Name Z-A</option>
-                            <option value="date-desc" selected>Newest first</option>
-                            <option value="date-asc">Oldest first</option>
-                            <option value="size-desc">Largest first</option>
-                            <option value="size-asc">Smallest first</option>
-                            <option value="type-asc">Type A-Z</option>
-                            <option value="type-desc">Type Z-A</option>
+                        <label>{{ 'Sort:' | trans }}</label>
+                        <select class="form-select media-library-sort">
+                            <option value="name-asc">{{ 'Name A-Z' | trans }}</option>
+                            <option value="name-desc">{{ 'Name Z-A' | trans }}</option>
+                            <option value="date-desc" selected>{{ 'Newest first' | trans }}</option>
+                            <option value="date-asc">{{ 'Oldest first' | trans }}</option>
+                            <option value="size-desc">{{ 'Largest first' | trans }}</option>
+                            <option value="size-asc">{{ 'Smallest first' | trans }}</option>
+                            <option value="type-asc">{{ 'Type A-Z' | trans }}</option>
+                            <option value="type-desc">{{ 'Type Z-A' | trans }}</option>
                         </select>
                     </div>
 
                     <div class="media-library-filter-controls">
-                        <label>Type:</label>
-                        <select class="form-control media-library-filter">
-                            <option value="">All</option>
+                        <label>{{ 'Type:' | trans }}</label>
+                        <select class="form-select media-library-filter">
+                            <option value="">{{ 'All' | trans }}</option>
                         </select>
                     </div>
 
-                    <input type="text" class="form-control media-library-search" placeholder="Search...">
+                    <div class="media-library-refcount-toggle">
+                        <label class="form-check-label">
+                            <input type="checkbox" class="form-check-input media-library-show-refcount">
+                            {{ 'Show references' | trans }}
+                        </label>
+                    </div>
+
+                    <div class="media-library-file-count">
+                        <span class="media-library-count-value">0</span> {{ 'files' | trans }}
+                    </div>
                 </div>
 
                 <div class="media-library-container">
                     <div class="media-library-main">
+                        <div class="media-library-breadcrumbs">
+                            <span class="breadcrumb-item" data-path="" title="{{ 'Root' | trans }}">
+                                <span class="exe-icon">home</span>
+                            </span>
+                        </div>
+                        <div class="media-library-search-indicator d-none">
+                            <span class="breadcrumb-home exe-icon" title="{{ 'Go to root' | trans }}">home</span>
+                            <span class="breadcrumb-separator">/</span>
+                            <span>{{ 'Search results for' | trans }}: <strong class="search-term"></strong></span>
+                            <button type="button" class="btn btn-sm btn-link clear-search-btn p-0 ms-2" title="{{ 'Clear search' | trans }}">
+                                <span class="exe-icon">close</span>
+                            </button>
+                        </div>
                         <div class="media-library-empty">
-                            <p>No media files yet</p>
-                            <p class="media-library-empty-hint">Click "Add file" or drop files here to upload</p>
+                            <p>{{ 'No media files yet' | trans }}</p>
+                            <p class="media-library-empty-hint">{{ 'Click "Add file" or drop files here to upload' | trans }}</p>
                         </div>
                         <div class="media-library-grid">
-                            <div class="media-library-loading">Loading assets...</div>
+                            <div class="media-library-loading">{{ 'Loading assets...' | trans }}</div>
                         </div>
                         <div class="media-library-list-container" style="display:none;">
                             <table class="media-library-list">
                                 <thead>
                                     <tr>
                                         <th class="col-thumb"></th>
-                                        <th class="col-name" data-sort="name">Name</th>
-                                        <th class="col-type" data-sort="type">Type</th>
-                                        <th class="col-size" data-sort="size">Size</th>
-                                        <th class="col-date" data-sort="date">Date</th>
+                                        <th class="col-name" data-sort="name">{{ 'Name' | trans }}</th>
+                                        <th class="col-location d-none">{{ 'Location' | trans }}</th>
+                                        <th class="col-type" data-sort="type">{{ 'Type' | trans }}</th>
+                                        <th class="col-size" data-sort="size">{{ 'Size' | trans }}</th>
+                                        <th class="col-date" data-sort="date">{{ 'Date' | trans }}</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
                         </div>
 
-                        <div class="media-library-pagination">
-                            <button type="button" class="media-library-page-btn" data-action="prev" disabled>
-                                <span class="exe-icon">chevron_left</span>
-                            </button>
-                            <span class="media-library-page-info">Page 1 of 1</span>
-                            <button type="button" class="media-library-page-btn" data-action="next" disabled>
-                                <span class="exe-icon">chevron_right</span>
-                            </button>
-                        </div>
                     </div>
 
                     <div class="media-library-sidebar">
                         <div class="media-library-sidebar-empty">
-                            <p>Select an item to view details</p>
+                            <p>{{ 'Select an item to view details' | trans }}</p>
                         </div>
                         <div class="media-library-sidebar-content" style="display:none;">
                             <div class="media-library-preview">
@@ -97,43 +117,107 @@
                                 </div>
                             </div>
                             <div class="media-library-metadata">
-                                <div class="metadata-row">
-                                    <label>Filename:</label>
-                                    <input type="text" class="form-control media-library-filename" readonly>
+                                <div class="metadata-row metadata-filename">
+                                    <span class="media-library-filename"></span>
                                 </div>
                                 <div class="metadata-row">
-                                    <label>Type:</label>
+                                    <label>{{ 'Type:' | trans }}</label>
                                     <span class="media-library-type"></span>
                                 </div>
                                 <div class="metadata-row">
-                                    <label>Size:</label>
+                                    <label>{{ 'Size:' | trans }}</label>
                                     <span class="media-library-size"></span>
                                 </div>
                                 <div class="metadata-row media-library-dimensions-row">
-                                    <label>Dimensions:</label>
+                                    <label>{{ 'Dimensions:' | trans }}</label>
                                     <span class="media-library-dimensions"></span>
                                 </div>
                                 <div class="metadata-row">
-                                    <label>Date:</label>
+                                    <label>{{ 'Date:' | trans }}</label>
                                     <span class="media-library-date"></span>
                                 </div>
-                                <div class="metadata-row">
-                                    <label>URL:</label>
-                                    <input type="text" class="form-control media-library-url" readonly>
+                                <div class="metadata-row media-library-usage-row">
+                                    <label>{{ 'Usage:' | trans }}</label>
+                                    <span class="badge bg-light text-dark border media-library-usage">0 iDevices</span>
+                                </div>
+                                <div class="metadata-row media-library-location-row" style="display: none;">
+                                    <label>{{ 'Location:' | trans }}</label>
+                                    <div class="d-flex align-items-center gap-1 flex-grow-1 min-w-0">
+                                        <span class="media-library-location-value text-truncate flex-grow-1">/</span>
+                                        <button type="button" class="btn btn-sm btn-link media-library-open-folder-btn p-0" title="{{ 'Open containing folder' | trans }}">
+                                            <span class="exe-icon">folder_open</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="metadata-row metadata-url-row">
+                                    <label>{{ 'URL:' | trans }}</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control media-library-url" readonly>
+                                        <button type="button" class="btn btn-outline-secondary media-library-copy-url-btn" title="{{ 'Copy URL' | trans }}">
+                                            <span class="exe-icon">content_copy</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="media-library-actions">
-                                <button type="button" class="btn btn-secondary media-library-unzip-btn" style="display:none;" title="Extract ZIP contents">
-                                    <span class="exe-icon">folder_zip</span> Extract
-                                </button>
-                                <button type="button" class="btn btn-danger media-library-delete-btn">
-                                    <span class="exe-icon">delete</span> Delete
-                                </button>
-                                <button type="button" class="btn btn-primary media-library-insert-btn">
-                                    <span class="exe-icon">add_photo_alternate</span> Insert
-                                </button>
-                            </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer media-library-footer">
+                <div class="media-library-footer-actions">
+                    <button type="button" class="btn btn-danger media-library-delete-btn" disabled>
+                        <span class="exe-icon">delete</span> {{ 'Delete' | trans }}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary media-library-rename-btn" disabled>
+                        <span class="exe-icon">edit</span> {{ 'Rename' | trans }}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary media-library-duplicate-btn" disabled>
+                        <span class="exe-icon">content_copy</span> {{ 'Duplicate' | trans }}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary media-library-move-btn" disabled>
+                        <span class="exe-icon">drive_file_move</span> {{ 'Move' | trans }}
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary media-library-download-btn" disabled>
+                        <span class="exe-icon">download</span> {{ 'Download' | trans }}
+                    </button>
+
+                    <!-- Dropdown More Options -->
+                    <div class="dropdown d-inline-block">
+                        <button type="button" class="btn btn-outline-secondary media-library-more-btn dropdown-toggle" data-bs-toggle="dropdown" disabled>
+                            <span class="exe-icon">more_horiz</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item media-library-extract-btn d-none" href="#">
+                                <span class="exe-icon">folder_zip</span> {{ 'Extract ZIP' | trans }}
+                            </a></li>
+                            <li><a class="dropdown-item media-library-copyurl-btn" href="#">
+                                <span class="exe-icon">link</span> {{ 'Copy URL' | trans }}
+                            </a></li>
+                            <li><a class="dropdown-item media-library-fullsize-btn" href="#">
+                                <span class="exe-icon">open_in_new</span> {{ 'View full size' | trans }}
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-primary media-library-insert-btn ms-auto" disabled>
+                    <span class="exe-icon">arrow_forward</span> {{ 'Insert' | trans }}
+                </button>
+            </div>
+            <!-- Folder Picker Dialog (inside modal-content for proper positioning) -->
+            <div class="media-library-folder-picker" style="display:none;">
+                <div class="folder-picker-overlay"></div>
+                <div class="folder-picker-dialog">
+                    <div class="folder-picker-header">
+                        <span class="folder-picker-title">{{ 'Move to folder' | trans }}</span>
+                        <button type="button" class="folder-picker-close">&times;</button>
+                    </div>
+                    <div class="folder-picker-body">
+                        <div class="folder-picker-list"></div>
+                    </div>
+                    <div class="folder-picker-footer">
+                        <button type="button" class="btn btn-secondary folder-picker-cancel">{{ 'Cancel' | trans }}</button>
+                        <button type="button" class="btn btn-primary folder-picker-confirm">{{ 'Move here' | trans }}</button>
                     </div>
                 </div>
             </div>

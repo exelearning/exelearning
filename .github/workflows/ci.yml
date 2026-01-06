@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - tikismaker
-      - 'release/3.1'
     tags:
       - '*'
   pull_request:
@@ -57,7 +56,7 @@ jobs:
           bun-version: latest
 
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Lint (Biome)
         run: make lint

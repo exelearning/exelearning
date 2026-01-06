@@ -123,13 +123,14 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
 
     /**
      * Encode asset message as binary with prefix byte
+     * Returns Buffer for proper binary handling in Bun WebSocket
      */
-    function encodeAssetMessage(message: AssetMessage): Uint8Array {
+    function encodeAssetMessage(message: AssetMessage): Buffer {
         const jsonStr = JSON.stringify(message);
-        const jsonBytes = new TextEncoder().encode(jsonStr);
-        const result = new Uint8Array(1 + jsonBytes.length);
+        const jsonBytes = Buffer.from(jsonStr, 'utf-8');
+        const result = Buffer.alloc(1 + jsonBytes.length);
         result[0] = ASSET_MESSAGE_PREFIX;
-        result.set(jsonBytes, 1);
+        jsonBytes.copy(result, 1);
         return result;
     }
 
@@ -173,6 +174,26 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             } catch (err: unknown) {
                 const errMessage = err instanceof Error ? err.message : String(err);
                 console.error(`[AssetCoordinator] Failed to broadcast to ${cId}:`, errMessage);
+            }
+        });
+    }
+
+    /**
+     * Broadcast message to all clients in project except one (the sender)
+     */
+    function broadcastToProjectExcept(projectUuid: string, excludeClientId: string, message: AssetMessage): void {
+        const projectSocketsMap = clientSockets.get(projectUuid);
+        if (!projectSocketsMap) return;
+
+        const binaryMessage = encodeAssetMessage(message);
+        projectSocketsMap.forEach((socket, cId) => {
+            if (cId !== excludeClientId) {
+                try {
+                    socket.send(binaryMessage);
+                } catch (err: unknown) {
+                    const errMessage = err instanceof Error ? err.message : String(err);
+                    console.error(`[AssetCoordinator] Failed to broadcast to ${cId}:`, errMessage);
+                }
             }
         });
     }

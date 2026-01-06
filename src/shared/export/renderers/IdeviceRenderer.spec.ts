@@ -467,18 +467,28 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('fixAssetUrls', () => {
-        it('should convert asset:// URLs to content/resources/', () => {
+        it('should convert asset:// URLs to content/resources/ (skipping UUID)', () => {
+            // New format: asset://uuid/exportPath → content/resources/exportPath
+            // The UUID is the first path segment and should be skipped
             const content = '<img src="asset://uuid-123/image.png">';
             const fixed = renderer.fixAssetUrls(content, '');
 
-            expect(fixed).toBe('<img src="content/resources/uuid-123/image.png">');
+            expect(fixed).toBe('<img src="content/resources/image.png">');
         });
 
-        it('should apply basePath to asset URLs', () => {
+        it('should apply basePath to asset URLs (skipping UUID)', () => {
             const content = '<img src="asset://uuid-123/image.png">';
             const fixed = renderer.fixAssetUrls(content, '../');
 
-            expect(fixed).toBe('<img src="../content/resources/uuid-123/image.png">');
+            expect(fixed).toBe('<img src="../content/resources/image.png">');
+        });
+
+        it('should preserve folder structure after UUID in asset URLs', () => {
+            // asset://uuid/folder/subfolder/file.png → content/resources/folder/subfolder/file.png
+            const content = '<img src="asset://abc123/images/photos/vacation.jpg">';
+            const fixed = renderer.fixAssetUrls(content, '');
+
+            expect(fixed).toBe('<img src="content/resources/images/photos/vacation.jpg">');
         });
 
         it('should handle files/tmp/ paths', () => {
@@ -999,47 +1009,48 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('transformPropertiesUrls', () => {
-        it('should transform URLs in nested object arrays', () => {
-            // Tests lines 410-413
+        it('should transform URLs in nested object arrays (skipping UUID)', () => {
+            // New format: asset://uuid/path → content/resources/path (UUID skipped)
             const props = {
                 items: [
-                    { image: 'asset://uuid/photo.png', text: 'Item 1' },
-                    { image: 'asset://uuid/image.jpg', text: 'Item 2' },
+                    { image: 'asset://uuid/images/photo.png', text: 'Item 1' },
+                    { image: 'asset://uuid/photos/image.jpg', text: 'Item 2' },
                 ],
             };
 
             // Access private method via any
             const transformed = (renderer as any).transformPropertiesUrls(props, '', false);
 
-            expect(transformed.items[0].image).toBe('content/resources/uuid/photo.png');
-            expect(transformed.items[1].image).toBe('content/resources/uuid/image.jpg');
+            expect(transformed.items[0].image).toBe('content/resources/images/photo.png');
+            expect(transformed.items[1].image).toBe('content/resources/photos/image.jpg');
         });
 
-        it('should handle arrays with mixed types', () => {
+        it('should handle arrays with mixed types (skipping UUID)', () => {
             const props = {
-                data: ['asset://uuid/file.png', 123, { url: 'asset://uuid/nested.jpg' }, null],
+                data: ['asset://uuid/docs/file.png', 123, { url: 'asset://uuid/images/nested.jpg' }, null],
             };
 
             const transformed = (renderer as any).transformPropertiesUrls(props, '../', false);
 
-            expect(transformed.data[0]).toBe('../content/resources/uuid/file.png');
+            expect(transformed.data[0]).toBe('../content/resources/docs/file.png');
             expect(transformed.data[1]).toBe(123);
-            expect(transformed.data[2].url).toBe('../content/resources/uuid/nested.jpg');
+            expect(transformed.data[2].url).toBe('../content/resources/images/nested.jpg');
             expect(transformed.data[3]).toBeNull();
         });
 
-        it('should handle deeply nested objects', () => {
+        it('should handle deeply nested objects (skipping UUID)', () => {
             const props = {
                 level1: {
                     level2: {
-                        image: 'asset://deep/nested.png',
+                        // asset://uuid/path → content/resources/path
+                        image: 'asset://deep/folders/nested.png',
                     },
                 },
             };
 
             const transformed = (renderer as any).transformPropertiesUrls(props, '', false);
 
-            expect(transformed.level1.level2.image).toBe('content/resources/deep/nested.png');
+            expect(transformed.level1.level2.image).toBe('content/resources/folders/nested.png');
         });
 
         it('should preserve non-URL values', () => {
