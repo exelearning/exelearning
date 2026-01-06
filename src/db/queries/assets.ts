@@ -141,6 +141,189 @@ export async function findAllAssetsForProject(db: Kysely<Database>, projectId: n
         .execute();
 }
 
+// ============================================================================
+// FOLDER QUERIES
+// ============================================================================
+
+/**
+ * Find assets in a specific folder (exact match, not recursive)
+ * @param folderPath - Empty string for root, or path like "images/icons"
+ */
+export async function findAssetsInFolder(
+    db: Kysely<Database>,
+    projectId: number,
+    folderPath: string,
+): Promise<Asset[]> {
+    return db
+        .selectFrom('assets')
+        .selectAll()
+        .where('project_id', '=', projectId)
+        .where('folder_path', '=', folderPath)
+        .orderBy('filename', 'asc')
+        .execute();
+}
+
+/**
+ * Find an asset by its folder path and filename (for conflict detection)
+ */
+export async function findAssetByPath(
+    db: Kysely<Database>,
+    projectId: number,
+    folderPath: string,
+    filename: string,
+): Promise<Asset | undefined> {
+    return db
+        .selectFrom('assets')
+        .selectAll()
+        .where('project_id', '=', projectId)
+        .where('folder_path', '=', folderPath)
+        .where('filename', '=', filename)
+        .executeTakeFirst();
+}
+
+/**
+ * Get unique subfolders at a given path
+ * For example, if folderPath is "" (root), returns first-level folders
+ * If folderPath is "images", returns folders like "icons", "photos" (without the prefix)
+ */
+export async function getSubfolders(db: Kysely<Database>, projectId: number, parentPath: string): Promise<string[]> {
+    // We need to find all unique folder paths that:
+    // 1. Are under parentPath (start with parentPath + "/" or equal to a child)
+    // 2. Extract just the immediate subfolder name
+
+    const prefix = parentPath ? `${parentPath}/` : '';
+
+    const assets = await db
+        .selectFrom('assets')
+        .select('folder_path')
+        .distinct()
+        .where('project_id', '=', projectId)
+        .where('folder_path', 'like', `${prefix}%`)
+        .where('folder_path', '!=', parentPath) // Exclude the parent itself
+        .execute();
+
+    // Extract unique immediate subfolders
+    const subfolders = new Set<string>();
+
+    for (const asset of assets) {
+        const path = asset.folder_path;
+        // Remove the parent prefix
+        const remainder = path.substring(prefix.length);
+        // Get the first segment (immediate subfolder)
+        const slashIndex = remainder.indexOf('/');
+        const subfolder = slashIndex > 0 ? remainder.substring(0, slashIndex) : remainder;
+        if (subfolder) {
+            subfolders.add(subfolder);
+        }
+    }
+
+    return Array.from(subfolders).sort();
+}
+
+/**
+ * Count assets in a folder (recursively)
+ */
+export async function countAssetsInFolderRecursive(
+    db: Kysely<Database>,
+    projectId: number,
+    folderPath: string,
+): Promise<number> {
+    const prefix = folderPath ? `${folderPath}/` : '';
+
+    const result = await db
+        .selectFrom('assets')
+        .select(eb => eb.fn.count<number>('id').as('count'))
+        .where('project_id', '=', projectId)
+        .where(eb => eb.or([eb('folder_path', '=', folderPath), eb('folder_path', 'like', `${prefix}%`)]))
+        .executeTakeFirst();
+
+    return Number(result?.count ?? 0);
+}
+
+/**
+ * Update folder path for a single asset
+ */
+export async function updateAssetFolderPath(
+    db: Kysely<Database>,
+    assetId: number,
+    newFolderPath: string,
+): Promise<Asset | undefined> {
+    return updateByIdAndReturn(db, 'assets', assetId, {
+        folder_path: newFolderPath,
+        updated_at: now(),
+    });
+}
+
+/**
+ * Update folder path prefix for all assets in a folder (for moving/renaming folders)
+ * Changes all assets where folder_path starts with oldPrefix to start with newPrefix
+ * Uses bulk UPDATE with REPLACE for efficiency (2 queries instead of N+1)
+ * @returns Number of assets updated
+ */
+export async function updateFolderPathPrefix(
+    db: Kysely<Database>,
+    projectId: number,
+    oldPrefix: string,
+    newPrefix: string,
+): Promise<number> {
+    const timestamp = now();
+
+    // First, update assets that are exactly in the old folder
+    const exactResult = await db
+        .updateTable('assets')
+        .set({
+            folder_path: newPrefix,
+            updated_at: timestamp,
+        })
+        .where('project_id', '=', projectId)
+        .where('folder_path', '=', oldPrefix)
+        .execute();
+
+    // Then, update assets in subfolders using bulk REPLACE
+    // This replaces "old/path/subfolder" -> "new/path/subfolder" in a single query
+    const oldPrefixWithSlash = `${oldPrefix}/`;
+    const newPrefixWithSlash = `${newPrefix}/`;
+
+    // Single bulk UPDATE using REPLACE (works on SQLite, PostgreSQL, MySQL)
+    const nestedResult = await db
+        .updateTable('assets')
+        .set({
+            folder_path: sql`REPLACE(folder_path, ${oldPrefixWithSlash}, ${newPrefixWithSlash})`,
+            updated_at: timestamp,
+        })
+        .where('project_id', '=', projectId)
+        .where('folder_path', 'like', `${oldPrefixWithSlash}%`)
+        .execute();
+
+    return Number(exactResult[0]?.numUpdatedRows ?? 0) + Number(nestedResult[0]?.numUpdatedRows ?? 0);
+}
+
+/**
+ * Delete all assets in a folder (recursively)
+ * @returns Number of assets deleted
+ */
+export async function deleteAssetsInFolderRecursive(
+    db: Kysely<Database>,
+    projectId: number,
+    folderPath: string,
+): Promise<number> {
+    const prefix = folderPath ? `${folderPath}/` : '';
+
+    // Count first
+    const count = await countAssetsInFolderRecursive(db, projectId, folderPath);
+
+    if (count > 0) {
+        // Delete assets in folder and subfolders
+        await db
+            .deleteFrom('assets')
+            .where('project_id', '=', projectId)
+            .where(eb => eb.or([eb('folder_path', '=', folderPath), eb('folder_path', 'like', `${prefix}%`)]))
+            .execute();
+    }
+
+    return count;
+}
+
 export async function getProjectStorageSize(db: Kysely<Database>, projectId: number): Promise<number> {
     const result = await db
         .selectFrom('assets')
@@ -208,6 +391,29 @@ export async function updateAssetClientId(db: Kysely<Database>, id: number, clie
         })
         .where('id', '=', id)
         .execute();
+}
+
+/**
+ * Update asset filename by client_id (UUID) for a specific project
+ * Used for real-time rename sync via WebSocket
+ */
+export async function updateAssetFilenameByClientId(
+    db: Kysely<Database>,
+    clientId: string,
+    projectId: number,
+    newFilename: string,
+): Promise<boolean> {
+    const result = await db
+        .updateTable('assets')
+        .set({
+            filename: newFilename,
+            updated_at: now(),
+        })
+        .where('client_id', '=', clientId)
+        .where('project_id', '=', projectId)
+        .execute();
+
+    return result.length > 0 && Number(result[0].numUpdatedRows) > 0;
 }
 
 export async function deleteAsset(db: Kysely<Database>, id: number): Promise<void> {

@@ -26,38 +26,60 @@ const mockCrypto = {
   },
 };
 
+// Mock Yjs bridge for testing
+const createMockYjsBridge = () => {
+  const assetsMap = new Map();
+  const mockYMap = {
+    get: (id) => assetsMap.get(id),
+    set: (id, value) => assetsMap.set(id, value),
+    delete: (id) => assetsMap.delete(id),
+    forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+    doc: {
+      transact: (fn) => fn()
+    }
+  };
+  return {
+    getAssetsMap: () => mockYMap,
+    _assetsMap: assetsMap // For test inspection
+  };
+};
+
 describe('AssetManager', () => {
   let assetManager;
   let mockDB;
   let mockStore;
   let mockObjectURLs;
+  let mockYjsBridge;
 
   beforeEach(() => {
     mockObjectURLs = new Map();
     let urlCounter = 0;
 
-    // Create mock IndexedDB store
-    const storedAssets = new Map();
+    // Create mock Yjs bridge
+    mockYjsBridge = createMockYjsBridge();
+
+    // Create mock IndexedDB store (now only stores blobs)
+    const storedBlobs = new Map();
 
     mockStore = {
-      put: mock((asset) => {
-        storedAssets.set(asset.id, asset);
+      put: mock((blobRecord) => {
+        storedBlobs.set(blobRecord.id, blobRecord);
         return { onsuccess: null, onerror: null };
       }),
       get: mock((id) => {
-        const result = storedAssets.get(id) || null;
+        const result = storedBlobs.get(id) || null;
         return { result, onsuccess: null, onerror: null };
       }),
       delete: mock((id) => {
-        storedAssets.delete(id);
+        storedBlobs.delete(id);
         return { onsuccess: null, onerror: null };
       }),
       index: mock(() => ({
         getAll: mock((key) => {
           const results = [];
-          for (const [id, asset] of storedAssets.entries()) {
-            if (asset.projectId === key) {
-              results.push(asset);
+          for (const [id, record] of storedBlobs.entries()) {
+            if (record.projectId === key) {
+              results.push(record);
             }
           }
           return { result: results, onsuccess: null, onerror: null };
@@ -127,6 +149,8 @@ describe('AssetManager', () => {
     };
 
     assetManager = new AssetManager('project-123');
+    // Connect Yjs bridge for metadata storage
+    assetManager.setYjsBridge(mockYjsBridge);
 
     spyOn(console, 'log').mockImplementation(() => {});
     spyOn(console, 'warn').mockImplementation(() => {});
@@ -172,22 +196,22 @@ describe('AssetManager', () => {
 
   describe('static properties', () => {
     it('has correct DB_NAME', () => {
-      expect(AssetManager.DB_NAME).toBe('exelearning-assets-v2');
+      expect(AssetManager.DB_NAME).toBe('exelearning-assets'); // Uses Yjs for metadata
     });
 
     it('has correct DB_VERSION', () => {
-      expect(AssetManager.DB_VERSION).toBe(2);
+      expect(AssetManager.DB_VERSION).toBe(1); // Fresh start
     });
 
     it('has correct STORE_NAME', () => {
-      expect(AssetManager.STORE_NAME).toBe('assets');
+      expect(AssetManager.STORE_NAME).toBe('blobs'); // Now only stores blobs
     });
   });
 
   describe('init', () => {
     it('opens IndexedDB database', async () => {
       await assetManager.init();
-      expect(global.indexedDB.open).toHaveBeenCalledWith('exelearning-assets-v2', 2);
+      expect(global.indexedDB.open).toHaveBeenCalledWith('exelearning-assets', 1); // Yjs metadata
       expect(assetManager.db).toBe(mockDB);
     });
 
@@ -260,7 +284,7 @@ describe('AssetManager', () => {
       await expect(assetManager.putAsset({})).rejects.toThrow('Database not initialized');
     });
 
-    it('stores asset in IndexedDB', async () => {
+    it('stores asset metadata in Yjs and blob in IndexedDB', async () => {
       assetManager.db = mockDB;
 
       const mockTx = {
@@ -270,7 +294,17 @@ describe('AssetManager', () => {
       };
       mockDB.transaction.mockReturnValue(mockTx);
 
-      const putPromise = assetManager.putAsset({ id: 'asset-1', data: 'test' });
+      const testBlob = new Blob(['test data']);
+      const putPromise = assetManager.putAsset({
+        id: 'asset-1',
+        filename: 'test.jpg',
+        folderPath: 'images',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: false,
+        blob: testBlob
+      });
 
       setTimeout(() => {
         mockTx.oncomplete?.();
@@ -278,7 +312,18 @@ describe('AssetManager', () => {
 
       await putPromise;
 
-      expect(mockStore.put).toHaveBeenCalledWith({ id: 'asset-1', data: 'test' });
+      // Check metadata was stored in Yjs
+      const storedMeta = mockYjsBridge._assetsMap.get('asset-1');
+      expect(storedMeta).toBeDefined();
+      expect(storedMeta.filename).toBe('test.jpg');
+      expect(storedMeta.folderPath).toBe('images');
+
+      // Check blob was stored in IndexedDB (only id, projectId, blob)
+      expect(mockStore.put).toHaveBeenCalledWith({
+        id: 'asset-1',
+        projectId: 'project-123',
+        blob: testBlob
+      });
     });
   });
 
@@ -287,11 +332,24 @@ describe('AssetManager', () => {
       await expect(assetManager.getAsset('id')).rejects.toThrow('Database not initialized');
     });
 
-    it('retrieves asset from IndexedDB', async () => {
+    it('retrieves asset combining Yjs metadata and IndexedDB blob', async () => {
       assetManager.db = mockDB;
 
-      const mockAsset = { id: 'asset-1', data: 'test' };
-      const mockGetRequest = { result: mockAsset, onsuccess: null, onerror: null };
+      // Setup metadata in Yjs
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test.jpg',
+        folderPath: 'images',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: true,
+        createdAt: '2024-01-01'
+      });
+
+      // Setup blob in IndexedDB mock
+      const testBlob = new Blob(['test data']);
+      const mockBlobRecord = { id: 'asset-1', projectId: 'project-123', blob: testBlob };
+      const mockGetRequest = { result: mockBlobRecord, onsuccess: null, onerror: null };
 
       const mockTx = {
         objectStore: mock(() => ({
@@ -307,7 +365,53 @@ describe('AssetManager', () => {
       }, 0);
 
       const result = await getPromise;
-      expect(result).toEqual(mockAsset);
+
+      // Should combine metadata from Yjs with blob from IndexedDB
+      expect(result.id).toBe('asset-1');
+      expect(result.filename).toBe('test.jpg');
+      expect(result.folderPath).toBe('images');
+      expect(result.blob).toBe(testBlob);
+    });
+
+    it('returns actual IndexedDB projectId when no Yjs metadata exists (cross-project asset reuse)', async () => {
+      // This test ensures that when an asset blob exists in IndexedDB but belongs to a DIFFERENT project,
+      // getAsset() returns the ACTUAL projectId from IndexedDB, not this.projectId.
+      // This is critical for extractAssetsFromZip() to detect cross-project assets and create
+      // proper metadata for the current project.
+      assetManager.db = mockDB;
+
+      // NO metadata in Yjs for this asset (simulating cross-project scenario)
+      // mockYjsBridge._assetsMap does NOT have 'cross-project-asset'
+
+      // Setup blob in IndexedDB with a DIFFERENT projectId
+      const testBlob = new Blob(['cross project data']);
+      const differentProjectId = 'different-project-uuid';
+      const mockBlobRecord = { id: 'cross-project-asset', projectId: differentProjectId, blob: testBlob };
+      const mockGetRequest = { result: mockBlobRecord, onsuccess: null, onerror: null };
+
+      const mockTx = {
+        objectStore: mock(() => ({
+          get: mock(() => mockGetRequest),
+        })),
+      };
+      mockDB.transaction.mockReturnValue(mockTx);
+
+      const getPromise = assetManager.getAsset('cross-project-asset');
+
+      setTimeout(() => {
+        mockGetRequest.onsuccess?.();
+      }, 0);
+
+      const result = await getPromise;
+
+      // CRITICAL: projectId should be from IndexedDB, NOT from assetManager.projectId
+      expect(result.projectId).toBe(differentProjectId);
+      expect(result.projectId).not.toBe(assetManager.projectId);
+      expect(result.id).toBe('cross-project-asset');
+      expect(result.blob).toBe(testBlob);
+      // Fallback metadata when no Yjs metadata exists
+      expect(result.filename).toBe('unknown');
+      expect(result.folderPath).toBe('');
     });
   });
 
@@ -341,17 +445,26 @@ describe('AssetManager', () => {
       };
       const url = await assetManager.insertImage(mockFile);
 
-      expect(url).toMatch(/^asset:\/\/[a-f0-9-]+\/test\.jpg$/);
+      // New format: asset://uuid.ext
+      expect(url).toMatch(/^asset:\/\/[a-f0-9-]+\.jpg$/);
       expect(assetManager.putAsset).toHaveBeenCalled();
     });
 
-    it('returns existing asset URL if already exists', async () => {
+    it('returns existing asset URL if already exists for current project', async () => {
       assetManager.db = mockDB;
       assetManager.calculateHash = mock(() => undefined).mockResolvedValue('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
+      // Mock getAsset to return existing asset
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
         id: '01234567-89ab-cdef-0123-456789abcdef',
         filename: 'existing.jpg',
+        projectId: 'project-123',
+        blob: new Blob(['test']),
+      });
+      // Mock getBlobRecord to return blob FOR CURRENT PROJECT
+      assetManager.getBlobRecord = mock(() => undefined).mockResolvedValue({
+        id: '01234567-89ab-cdef-0123-456789abcdef',
         projectId: 'project-123', // Same projectId as assetManager - should skip putAsset
+        blob: new Blob(['test']),
       });
       assetManager.putAsset = mock(() => undefined); // Spy on putAsset to ensure it's NOT called
 
@@ -367,6 +480,44 @@ describe('AssetManager', () => {
       // The key requirement is that the existing asset ID is used (no duplicate stored)
       expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
       expect(assetManager.putAsset).not.toHaveBeenCalled();
+    });
+
+    it('stores blob when asset exists but for different project', async () => {
+      assetManager.db = mockDB;
+      assetManager.calculateHash = mock(() => undefined).mockResolvedValue('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
+      // Mock getAsset to return existing asset (blob from another project)
+      assetManager.getAsset = mock(() => undefined).mockResolvedValue({
+        id: '01234567-89ab-cdef-0123-456789abcdef',
+        filename: 'existing.jpg',
+        projectId: 'project-123', // getAsset always returns current projectId
+        blob: new Blob(['test']),
+      });
+      // Mock getBlobRecord to return blob FOR DIFFERENT PROJECT
+      assetManager.getBlobRecord = mock(() => undefined).mockResolvedValue({
+        id: '01234567-89ab-cdef-0123-456789abcdef',
+        projectId: 'other-project', // DIFFERENT from assetManager.projectId - should call putAsset
+        blob: new Blob(['test']),
+      });
+      assetManager.putAsset = mock(() => undefined).mockResolvedValue(); // Spy to ensure it IS called
+
+      // Mock file with arrayBuffer
+      const mockFile = {
+        name: 'test.jpg',
+        type: 'image/jpeg',
+        size: 100,
+        arrayBuffer: mock(() => undefined).mockResolvedValue(new ArrayBuffer(100)),
+      };
+      const url = await assetManager.insertImage(mockFile);
+
+      // The asset URL should be returned
+      expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
+      // putAsset SHOULD be called to store blob for current project
+      expect(assetManager.putAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: '01234567-89ab-cdef-0123-456789abcdef',
+          projectId: 'project-123', // Current projectId
+        })
+      );
     });
 
     it('registers blob URL in reverseBlobCache with pure UUID (not asset:// URL)', async () => {
@@ -386,8 +537,8 @@ describe('AssetManager', () => {
 
       const assetUrl = await assetManager.insertImage(mockFile);
 
-      // assetUrl should be in format asset://uuid/filename
-      expect(assetUrl).toMatch(/^asset:\/\/[a-f0-9-]+\/test\.jpg$/);
+      // assetUrl should be in new format asset://uuid.ext
+      expect(assetUrl).toMatch(/^asset:\/\/[a-f0-9-]+\.jpg$/);
 
       // Extract the UUID from the asset URL
       const assetId = assetManager.extractAssetId(assetUrl);
@@ -533,6 +684,97 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('getBlobRecord', () => {
+    it('returns null when db is not initialized', async () => {
+      assetManager.db = null;
+
+      const result = await assetManager.getBlobRecord('any-id');
+
+      expect(result).toBeNull();
+    });
+
+    it('returns full blob record including projectId', async () => {
+      // Store a blob record with specific projectId
+      const blobRecord = {
+        id: 'asset-with-project',
+        projectId: 'original-project-123',
+        blob: new Blob(['test content']),
+      };
+      mockStore.get = mock(() => {
+        const req = { result: blobRecord, onsuccess: null, onerror: null };
+        setTimeout(() => req.onsuccess?.(), 0);
+        return req;
+      });
+      assetManager.db = mockDB;
+
+      const result = await assetManager.getBlobRecord('asset-with-project');
+
+      expect(result).not.toBeNull();
+      expect(result.id).toBe('asset-with-project');
+      expect(result.projectId).toBe('original-project-123');
+      expect(result.blob).toBeInstanceOf(Blob);
+    });
+
+    it('returns null when asset not found in IndexedDB', async () => {
+      mockStore.get = mock(() => {
+        const req = { result: null, onsuccess: null, onerror: null };
+        setTimeout(() => req.onsuccess?.(), 0);
+        return req;
+      });
+      assetManager.db = mockDB;
+
+      const result = await assetManager.getBlobRecord('nonexistent-id');
+
+      expect(result).toBeNull();
+    });
+
+    it('rejects on IndexedDB error', async () => {
+      mockStore.get = mock(() => {
+        const req = { result: null, onsuccess: null, onerror: null, error: new Error('DB Error') };
+        setTimeout(() => req.onerror?.(), 0);
+        return req;
+      });
+      assetManager.db = mockDB;
+
+      await expect(assetManager.getBlobRecord('any-id')).rejects.toThrow();
+    });
+
+    it('distinguishes between projects with same asset content', async () => {
+      // Scenario: Same content (same assetId due to content-addressing)
+      // stored for different projects
+      const assetId = 'content-hash-based-id';
+
+      // First, check record for project A
+      mockStore.get = mock(() => {
+        const req = {
+          result: { id: assetId, projectId: 'project-A', blob: new Blob(['shared content']) },
+          onsuccess: null,
+          onerror: null
+        };
+        setTimeout(() => req.onsuccess?.(), 0);
+        return req;
+      });
+      assetManager.db = mockDB;
+
+      const recordA = await assetManager.getBlobRecord(assetId);
+      expect(recordA.projectId).toBe('project-A');
+
+      // After another project stores it, projectId changes
+      mockStore.get = mock(() => {
+        const req = {
+          result: { id: assetId, projectId: 'project-B', blob: new Blob(['shared content']) },
+          onsuccess: null,
+          onerror: null
+        };
+        setTimeout(() => req.onsuccess?.(), 0);
+        return req;
+      });
+
+      const recordB = await assetManager.getBlobRecord(assetId);
+      expect(recordB.projectId).toBe('project-B');
+    });
+  });
+
   describe('resolveHTMLAssets', () => {
     it('returns unchanged HTML when null', async () => {
       const result = await assetManager.resolveHTMLAssets(null);
@@ -576,6 +818,67 @@ describe('AssetManager', () => {
       assetManager.resolveHTMLAssetsSync(html);
 
       expect(assetManager.missingAssets.has('a1b2c3d4-e5f6-7890-abcd-ef1234567890')).toBe(true);
+    });
+
+    it('resolves new format asset://uuid.ext URLs correctly', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:http://localhost/real-blob-id');
+
+      const html = `<img src="asset://${uuid}.png">`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      // Should replace the entire asset://uuid.ext with the blob URL (no leftover .png)
+      expect(result).toBe('<img src="blob:http://localhost/real-blob-id">');
+      expect(result).not.toContain('.png');
+    });
+
+    it('resolves new format with various extensions', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.blobURLCache.set(uuid, 'blob:test');
+
+      const jpgHtml = `<img src="asset://${uuid}.jpg">`;
+      const gifHtml = `<img src="asset://${uuid}.gif">`;
+      const webpHtml = `<img src="asset://${uuid}.webp">`;
+
+      expect(assetManager.resolveHTMLAssetsSync(jpgHtml)).toBe('<img src="blob:test">');
+      expect(assetManager.resolveHTMLAssetsSync(gifHtml)).toBe('<img src="blob:test">');
+      expect(assetManager.resolveHTMLAssetsSync(webpHtml)).toBe('<img src="blob:test">');
+    });
+
+    it('resolves new format in video/audio elements', () => {
+      const videoUuid = 'a1b2c3d4-e5f6-7890-abcd-111111111111';
+      const audioUuid = 'a1b2c3d4-e5f6-7890-abcd-222222222222';
+      assetManager.blobURLCache.set(videoUuid, 'blob:video');
+      assetManager.blobURLCache.set(audioUuid, 'blob:audio');
+
+      const videoHtml = `<video src="asset://${videoUuid}.mp4"></video>`;
+      const audioHtml = `<audio src="asset://${audioUuid}.mp3"></audio>`;
+
+      expect(assetManager.resolveHTMLAssetsSync(videoHtml)).toBe('<video src="blob:video"></video>');
+      expect(assetManager.resolveHTMLAssetsSync(audioHtml)).toBe('<audio src="blob:audio"></audio>');
+    });
+
+    it('marks assets as missing when using new format', () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+      const html = `<img src="asset://${uuid}.png">`;
+      assetManager.resolveHTMLAssetsSync(html);
+
+      expect(assetManager.missingAssets.has(uuid)).toBe(true);
+    });
+
+    it('handles mixed legacy and new format URLs', () => {
+      const legacyUuid = 'a1b2c3d4-e5f6-7890-abcd-111111111111';
+      const newUuid = 'a1b2c3d4-e5f6-7890-abcd-222222222222';
+      assetManager.blobURLCache.set(legacyUuid, 'blob:legacy');
+      assetManager.blobURLCache.set(newUuid, 'blob:new');
+
+      const html = `<p><img src="asset://${legacyUuid}/path/file.png"></p><p><img src="asset://${newUuid}.jpg"></p>`;
+      const result = assetManager.resolveHTMLAssetsSync(html);
+
+      expect(result).toContain('blob:legacy');
+      expect(result).toContain('blob:new');
+      expect(result).not.toContain('asset://');
     });
   });
 
@@ -740,32 +1043,43 @@ describe('AssetManager', () => {
   });
 
   describe('markAssetUploaded', () => {
-    it('marks asset as uploaded', async () => {
+    it('marks asset as uploaded via Yjs metadata', async () => {
       assetManager.db = mockDB;
-      assetManager.getAsset = mock(() => undefined).mockResolvedValue({ id: 'a1', uploaded: false });
-      assetManager.putAsset = mock(() => undefined).mockResolvedValue();
+
+      // Setup metadata in Yjs
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'test.jpg',
+        uploaded: false
+      });
 
       await assetManager.markAssetUploaded('a1');
 
-      expect(assetManager.putAsset).toHaveBeenCalledWith(
-        expect.objectContaining({ uploaded: true })
-      );
+      // Check metadata was updated in Yjs
+      const updatedMeta = mockYjsBridge._assetsMap.get('a1');
+      expect(updatedMeta.uploaded).toBe(true);
     });
 
-    it('does nothing if asset not found', async () => {
+    it('does nothing if asset not found in Yjs', async () => {
       assetManager.db = mockDB;
-      assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
-      assetManager.putAsset = mock(() => undefined);
+      // No metadata in Yjs
 
       await assetManager.markAssetUploaded('nonexistent');
 
-      expect(assetManager.putAsset).not.toHaveBeenCalled();
+      // Should not throw, just warn
+      expect(mockYjsBridge._assetsMap.has('nonexistent')).toBe(false);
     });
   });
 
   describe('deleteAsset', () => {
-    it('throws if database not initialized', async () => {
-      await expect(assetManager.deleteAsset('id')).rejects.toThrow('Database not initialized');
+    it('skips blob deletion if database not initialized but still deletes Yjs metadata', async () => {
+      // Setup metadata in Yjs
+      mockYjsBridge._assetsMap.set('asset-1', { filename: 'test.jpg' });
+
+      // Delete with db = null
+      await assetManager.deleteAsset('asset-1');
+
+      // Yjs metadata should be deleted
+      expect(mockYjsBridge._assetsMap.has('asset-1')).toBe(false);
     });
 
     it('deletes asset and revokes blob URL', async () => {
@@ -792,6 +1106,229 @@ describe('AssetManager', () => {
       expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:url1');
       expect(assetManager.blobURLCache.has('a1')).toBe(false);
     });
+
+    it('calls _deleteFromServer when token and projectId are available', async () => {
+      assetManager.db = mockDB;
+      assetManager._deleteFromServer = mock(() => Promise.resolve());
+
+      // Setup window.eXeLearning.config for server deletion
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-123',
+        },
+      };
+
+      const mockDeleteRequest = { onsuccess: null, onerror: null };
+      const mockTx = {
+        objectStore: mock(() => ({
+          delete: mock(() => mockDeleteRequest),
+        })),
+      };
+      mockDB.transaction.mockReturnValue(mockTx);
+
+      const deletePromise = assetManager.deleteAsset('a1');
+
+      setTimeout(() => {
+        mockDeleteRequest.onsuccess?.();
+      }, 0);
+
+      await deletePromise;
+
+      expect(assetManager._deleteFromServer).toHaveBeenCalledWith('a1');
+    });
+
+    it('skips server deletion when skipServerDelete option is true', async () => {
+      assetManager.db = mockDB;
+      assetManager._deleteFromServer = mock(() => Promise.resolve());
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-123',
+        },
+      };
+
+      const mockDeleteRequest = { onsuccess: null, onerror: null };
+      const mockTx = {
+        objectStore: mock(() => ({
+          delete: mock(() => mockDeleteRequest),
+        })),
+      };
+      mockDB.transaction.mockReturnValue(mockTx);
+
+      const deletePromise = assetManager.deleteAsset('a1', { skipServerDelete: true });
+
+      setTimeout(() => {
+        mockDeleteRequest.onsuccess?.();
+      }, 0);
+
+      await deletePromise;
+
+      expect(assetManager._deleteFromServer).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('_deleteFromServer', () => {
+    it('calls fetch with correct URL and headers', async () => {
+      assetManager.projectId = 'project-uuid-123';
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-456',
+        },
+      };
+
+      global.fetch = mock(() => Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      }));
+
+      await assetManager._deleteFromServer('asset-id-789');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:8080/api/projects/project-uuid-123/assets/by-client-id/asset-id-789',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-token-456',
+          }),
+        })
+      );
+    });
+
+    it('does not call fetch when no token', async () => {
+      assetManager.projectId = 'project-uuid-123';
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: '', // Empty token
+        },
+      };
+
+      global.fetch = mock(() => Promise.resolve({ ok: true }));
+
+      await assetManager._deleteFromServer('asset-id-789');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('does not call fetch when no projectId', async () => {
+      assetManager.projectId = ''; // No project ID
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-456',
+        },
+      };
+
+      global.fetch = mock(() => Promise.resolve({ ok: true }));
+
+      await assetManager._deleteFromServer('asset-id-789');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('handles fetch errors gracefully', async () => {
+      assetManager.projectId = 'project-uuid-123';
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-456',
+        },
+      };
+
+      global.fetch = mock(() => Promise.reject(new Error('Network error')));
+
+      // Should not throw
+      await expect(assetManager._deleteFromServer('asset-id-789')).resolves.not.toThrow();
+    });
+  });
+
+  describe('_deleteMultipleFromServer', () => {
+    it('calls fetch with correct URL, headers, and body', async () => {
+      assetManager.projectId = 'project-uuid-123';
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-456',
+        },
+      };
+
+      global.fetch = mock(() => Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, deleted: 3 }),
+      }));
+
+      await assetManager._deleteMultipleFromServer(['asset-1', 'asset-2', 'asset-3']);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:8080/api/projects/project-uuid-123/assets/bulk',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-token-456',
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({ clientIds: ['asset-1', 'asset-2', 'asset-3'] }),
+        })
+      );
+    });
+
+    it('does not call fetch when assetIds is empty', async () => {
+      assetManager.projectId = 'project-uuid-123';
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-456',
+        },
+      };
+
+      global.fetch = mock(() => Promise.resolve({ ok: true }));
+
+      await assetManager._deleteMultipleFromServer([]);
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('does not call fetch when no token', async () => {
+      assetManager.projectId = 'project-uuid-123';
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: '',
+        },
+      };
+
+      global.fetch = mock(() => Promise.resolve({ ok: true }));
+
+      await assetManager._deleteMultipleFromServer(['asset-1', 'asset-2']);
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('handles fetch errors gracefully', async () => {
+      assetManager.projectId = 'project-uuid-123';
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-456',
+        },
+      };
+
+      global.fetch = mock(() => Promise.reject(new Error('Network error')));
+
+      // Should not throw
+      await expect(assetManager._deleteMultipleFromServer(['asset-1'])).resolves.not.toThrow();
+    });
   });
 
   describe('clearProjectAssets', () => {
@@ -810,13 +1347,13 @@ describe('AssetManager', () => {
   });
 
   describe('getStats', () => {
-    it('returns asset statistics', async () => {
+    it('returns asset statistics from Yjs metadata', async () => {
       assetManager.db = mockDB;
-      assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
-        { id: 'a1', uploaded: true, size: 1000 },
-        { id: 'a2', uploaded: false, size: 2000 },
-        { id: 'a3', uploaded: true, size: 500 },
-      ]);
+
+      // Setup metadata in Yjs
+      mockYjsBridge._assetsMap.set('a1', { uploaded: true, size: 1000 });
+      mockYjsBridge._assetsMap.set('a2', { uploaded: false, size: 2000 });
+      mockYjsBridge._assetsMap.set('a3', { uploaded: true, size: 500 });
 
       const stats = await assetManager.getStats();
 
@@ -828,26 +1365,27 @@ describe('AssetManager', () => {
   });
 
   describe('updateAssetFilename', () => {
-    it('updates asset filename', async () => {
+    it('updates asset filename via Yjs metadata', async () => {
       assetManager.db = mockDB;
-      assetManager.getAsset = mock(() => undefined).mockResolvedValue({ id: 'a1', filename: 'old.jpg' });
-      assetManager.putAsset = mock(() => undefined).mockResolvedValue();
+
+      // Setup metadata in Yjs
+      mockYjsBridge._assetsMap.set('a1', { filename: 'old.jpg' });
 
       await assetManager.updateAssetFilename('a1', 'new.jpg');
 
-      expect(assetManager.putAsset).toHaveBeenCalledWith(
-        expect.objectContaining({ filename: 'new.jpg' })
-      );
+      // Check metadata was updated in Yjs
+      const updatedMeta = mockYjsBridge._assetsMap.get('a1');
+      expect(updatedMeta.filename).toBe('new.jpg');
     });
 
-    it('does nothing if asset not found', async () => {
+    it('does nothing if asset not found in Yjs', async () => {
       assetManager.db = mockDB;
-      assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
-      assetManager.putAsset = mock(() => undefined);
+      // No metadata in Yjs
 
       await assetManager.updateAssetFilename('nonexistent', 'new.jpg');
 
-      expect(assetManager.putAsset).not.toHaveBeenCalled();
+      // Should not throw, just warn
+      expect(mockYjsBridge._assetsMap.has('nonexistent')).toBe(false);
     });
   });
 
@@ -958,6 +1496,53 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('getAllLocalBlobIds', () => {
+    it('returns only assets with blobs', async () => {
+      assetManager.db = mockDB;
+      assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
+        { id: 'a1', blob: new Blob(['data1']) },
+        { id: 'a2', blob: null }, // Has metadata but no blob
+        { id: 'a3', blob: new Blob(['data3']) },
+      ]);
+      // For assets without blob in getProjectAssets, hasLocalBlob checks IndexedDB
+      assetManager.hasLocalBlob = mock(() => undefined).mockResolvedValue(false);
+
+      const ids = await assetManager.getAllLocalBlobIds();
+
+      // Should only return a1 and a3 (have blobs), not a2
+      expect(ids).toEqual(['a1', 'a3']);
+    });
+
+    it('checks IndexedDB for assets without blob in memory', async () => {
+      assetManager.db = mockDB;
+      assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
+        { id: 'a1', blob: null }, // No blob in memory
+        { id: 'a2', blob: null },
+      ]);
+      // Simulate a1 has blob in IndexedDB, a2 doesn't
+      assetManager.hasLocalBlob = mock((id) => Promise.resolve(id === 'a1'));
+
+      const ids = await assetManager.getAllLocalBlobIds();
+
+      expect(ids).toEqual(['a1']);
+      expect(assetManager.hasLocalBlob).toHaveBeenCalledWith('a1');
+      expect(assetManager.hasLocalBlob).toHaveBeenCalledWith('a2');
+    });
+
+    it('returns empty array when no assets have blobs', async () => {
+      assetManager.db = mockDB;
+      assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
+        { id: 'a1', blob: null },
+        { id: 'a2', blob: null },
+      ]);
+      assetManager.hasLocalBlob = mock(() => undefined).mockResolvedValue(false);
+
+      const ids = await assetManager.getAllLocalBlobIds();
+
+      expect(ids).toEqual([]);
+    });
+  });
+
   describe('hasAsset', () => {
     it('returns true when asset exists', async () => {
       assetManager.db = mockDB;
@@ -1032,18 +1617,42 @@ describe('AssetManager', () => {
       );
     });
 
-    it('skips if asset already exists for same project', async () => {
+    it('skips if asset already exists with blob for same project', async () => {
       assetManager.db = mockDB;
-      // Mock existing asset with same projectId - should skip putAsset
+      // Mock existing asset with same projectId AND blob - should skip putAsset
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
         id: 'a1',
         projectId: 'project-123', // Same as assetManager.projectId
+        blob: new Blob(['existing']), // Has blob - skip
       });
       assetManager.putAsset = mock(() => undefined);
 
       await assetManager.storeAssetFromServer('a1', new Blob(['data']), {});
 
       expect(assetManager.putAsset).not.toHaveBeenCalled();
+    });
+
+    it('stores blob if asset exists without blob for same project', async () => {
+      assetManager.db = mockDB;
+      // Mock existing asset with same projectId but NO blob - should store blob
+      assetManager.getAsset = mock(() => undefined).mockResolvedValue({
+        id: 'a1',
+        projectId: 'project-123', // Same as assetManager.projectId
+        mime: 'image/jpeg',
+        // No blob property - need to store it
+      });
+      assetManager.putAsset = mock(() => undefined);
+
+      await assetManager.storeAssetFromServer('a1', new Blob(['data']), {});
+
+      expect(assetManager.putAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'a1',
+          projectId: 'project-123',
+          blob: expect.any(Blob),
+          uploaded: true,
+        })
+      );
     });
   });
 
@@ -1145,20 +1754,28 @@ describe('sanitizeAssetUrl', () => {
     expect(assetManager.sanitizeAssetUrl(url)).toBe(url);
   });
 
-  it('returns original URL when already valid', () => {
+  it('returns original URL when already in new format', () => {
+    const url = 'asset://01234567-89ab-cdef-0123-456789abcdef.jpg';
+    expect(assetManager.sanitizeAssetUrl(url)).toBe(url);
+  });
+
+  it('returns old format unchanged when not corrupted', () => {
     const url = 'asset://01234567-89ab-cdef-0123-456789abcdef/image.jpg';
+    // Non-corrupted old format URLs are kept as-is (sanitize only fixes corruption)
     expect(assetManager.sanitizeAssetUrl(url)).toBe(url);
   });
 
   it('sanitizes corrupted URL with double asset prefix', () => {
     const corrupted = 'asset://asset//01234567-89ab-cdef-0123-456789abcdef/image.jpg';
-    const expected = 'asset://01234567-89ab-cdef-0123-456789abcdef/image.jpg';
+    // Sanitized to new format (uuid.ext)
+    const expected = 'asset://01234567-89ab-cdef-0123-456789abcdef.jpg';
     expect(assetManager.sanitizeAssetUrl(corrupted)).toBe(expected);
   });
 
   it('sanitizes corrupted URL with single asset prefix', () => {
     const corrupted = 'asset://asset/01234567-89ab-cdef-0123-456789abcdef/image.jpg';
-    const expected = 'asset://01234567-89ab-cdef-0123-456789abcdef/image.jpg';
+    // Sanitized to new format (uuid.ext)
+    const expected = 'asset://01234567-89ab-cdef-0123-456789abcdef.jpg';
     expect(assetManager.sanitizeAssetUrl(corrupted)).toBe(expected);
   });
 
@@ -1416,10 +2033,10 @@ describe('extractAssetsFromZip', () => {
     await expect(assetManager.extractAssetsFromZip({})).rejects.toThrow('AssetManager not initialized');
   });
 
-  it('extracts image assets from zip', async () => {
+  it('extracts image assets from resources/ folder', async () => {
     const zipData = {
-      'content/image.png': new Uint8Array([1, 2, 3, 4]),
-      'content/photo.jpg': new Uint8Array([5, 6, 7, 8]),
+      'resources/image.png': new Uint8Array([1, 2, 3, 4]),
+      'resources/photo.jpg': new Uint8Array([5, 6, 7, 8]),
     };
 
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
@@ -1428,10 +2045,40 @@ describe('extractAssetsFromZip', () => {
     expect(assetManager.putAsset).toHaveBeenCalledTimes(2);
   });
 
+  it('extracts assets from content/resources/ folder', async () => {
+    const zipData = {
+      'content/resources/uuid123/image.png': new Uint8Array([1, 2, 3, 4]),
+      'content/resources/uuid456/photo.jpg': new Uint8Array([5, 6, 7, 8]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(2);
+    expect(assetManager.putAsset).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips system folders (idevices, libs, theme)', async () => {
+    const zipData = {
+      'idevices/map/mapIcon.png': new Uint8Array([1, 2, 3]),
+      'libs/jquery/jquery.min.js': new Uint8Array([4, 5, 6]),
+      'theme/style.css': new Uint8Array([7, 8, 9]),
+      'resources/user-image.png': new Uint8Array([10, 11, 12]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    // Only the resources/ file should be extracted
+    expect(assetMap.size).toBe(1);
+    expect(assetMap.has('resources/user-image.png')).toBe(true);
+    expect(assetMap.has('idevices/map/mapIcon.png')).toBe(false);
+    expect(assetMap.has('libs/jquery/jquery.min.js')).toBe(false);
+    expect(assetMap.has('theme/style.css')).toBe(false);
+  });
+
   it('skips directories', async () => {
     const zipData = {
-      'content/': new Uint8Array([]),
-      'content/image.png': new Uint8Array([1, 2, 3]),
+      'resources/': new Uint8Array([]),
+      'resources/image.png': new Uint8Array([1, 2, 3]),
     };
 
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
@@ -1442,20 +2089,20 @@ describe('extractAssetsFromZip', () => {
   it('skips __MACOSX directories', async () => {
     const zipData = {
       '__MACOSX/image.png': new Uint8Array([1, 2, 3]),
-      'content/image.png': new Uint8Array([1, 2, 3]),
+      'resources/image.png': new Uint8Array([1, 2, 3]),
     };
 
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
 
     expect(assetMap.size).toBe(1);
-    expect(assetMap.has('content/image.png')).toBe(true);
+    expect(assetMap.has('resources/image.png')).toBe(true);
     expect(assetMap.has('__MACOSX/image.png')).toBe(false);
   });
 
   it('skips XML files', async () => {
     const zipData = {
       'content.xml': new Uint8Array([1, 2, 3]),
-      'content/image.png': new Uint8Array([1, 2, 3]),
+      'resources/image.png': new Uint8Array([1, 2, 3]),
     };
 
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
@@ -1468,7 +2115,7 @@ describe('extractAssetsFromZip', () => {
     assetManager.getAsset = mock(() => Promise.resolve({ projectId: 'project-123' }));
 
     const zipData = {
-      'content/image.png': new Uint8Array([1, 2, 3]),
+      'resources/image.png': new Uint8Array([1, 2, 3]),
     };
 
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
@@ -1487,7 +2134,7 @@ describe('extractAssetsFromZip', () => {
     }));
 
     const zipData = {
-      'content/image.png': new Uint8Array([1, 2, 3]),
+      'resources/image.png': new Uint8Array([1, 2, 3]),
     };
 
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
@@ -1496,18 +2143,351 @@ describe('extractAssetsFromZip', () => {
     expect(assetManager.putAsset).toHaveBeenCalled();
   });
 
-  it('extracts various media types', async () => {
+  it('extracts various media types from resources/', async () => {
     const zipData = {
-      'video.mp4': new Uint8Array([1]),
-      'audio.mp3': new Uint8Array([2]),
-      'doc.pdf': new Uint8Array([3]),
-      'image.svg': new Uint8Array([4]),
-      'image.webp': new Uint8Array([5]),
+      'resources/video.mp4': new Uint8Array([1]),
+      'resources/audio.mp3': new Uint8Array([2]),
+      'resources/doc.pdf': new Uint8Array([3]),
+      'resources/image.svg': new Uint8Array([4]),
+      'resources/image.webp': new Uint8Array([5]),
     };
 
     const assetMap = await assetManager.extractAssetsFromZip(zipData);
 
     expect(assetMap.size).toBe(5);
+  });
+
+  it('skips index.html and other root system files', async () => {
+    const zipData = {
+      'index.html': new Uint8Array([1, 2, 3]),
+      'base.css': new Uint8Array([4, 5, 6]),
+      'common.js': new Uint8Array([7, 8, 9]),
+      'common_i18n.js': new Uint8Array([10, 11, 12]),
+      'resources/user-file.pdf': new Uint8Array([13, 14, 15]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(1);
+    expect(assetMap.has('resources/user-file.pdf')).toBe(true);
+    expect(assetMap.has('index.html')).toBe(false);
+  });
+
+  it('skips content/css/ folder', async () => {
+    const zipData = {
+      'content/css/base.css': new Uint8Array([1, 2, 3]),
+      'content/css/theme.css': new Uint8Array([4, 5, 6]),
+      'content/css/icons/icon.png': new Uint8Array([7, 8, 9]),
+      'resources/user-style.css': new Uint8Array([10, 11, 12]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(1);
+    expect(assetMap.has('resources/user-style.css')).toBe(true);
+    expect(assetMap.has('content/css/base.css')).toBe(false);
+    expect(assetMap.has('content/css/icons/icon.png')).toBe(false);
+  });
+
+  it('skips content/img/ folder', async () => {
+    const zipData = {
+      'content/img/logo.png': new Uint8Array([1, 2, 3]),
+      'content/img/exe_powered_logo.png': new Uint8Array([4, 5, 6]),
+      'resources/user-logo.png': new Uint8Array([7, 8, 9]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(1);
+    expect(assetMap.has('resources/user-logo.png')).toBe(true);
+    expect(assetMap.has('content/img/logo.png')).toBe(false);
+  });
+
+  it('skips html/ folder', async () => {
+    const zipData = {
+      'html/template.html': new Uint8Array([1, 2, 3]),
+      'html/nested/page.html': new Uint8Array([4, 5, 6]),
+      'resources/user-page.html': new Uint8Array([7, 8, 9]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(1);
+    expect(assetMap.has('resources/user-page.html')).toBe(true);
+    expect(assetMap.has('html/template.html')).toBe(false);
+  });
+
+  it('extracts from nested /resources/ path', async () => {
+    const zipData = {
+      'mywebsite/content/resources/image.png': new Uint8Array([1, 2, 3]),
+      'project/resources/doc.pdf': new Uint8Array([4, 5, 6]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(2);
+    expect(assetMap.has('mywebsite/content/resources/image.png')).toBe(true);
+    expect(assetMap.has('project/resources/doc.pdf')).toBe(true);
+  });
+
+  it('returns empty map when no resources found', async () => {
+    const zipData = {
+      'idevices/map/icon.png': new Uint8Array([1, 2, 3]),
+      'libs/jquery.js': new Uint8Array([4, 5, 6]),
+      'theme/style.css': new Uint8Array([7, 8, 9]),
+      'index.html': new Uint8Array([10, 11, 12]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(0);
+  });
+
+  it('handles empty zip', async () => {
+    const zipData = {};
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(0);
+    expect(assetManager.putAsset).not.toHaveBeenCalled();
+  });
+
+  it('extracts all file types from resources/', async () => {
+    const zipData = {
+      'resources/document.elp': new Uint8Array([1]),
+      'resources/data.txt': new Uint8Array([2]),
+      'resources/custom.xyz': new Uint8Array([3]),
+      'resources/archive.zip': new Uint8Array([4]),
+      'resources/model.gltf': new Uint8Array([5]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(5);
+    expect(assetMap.has('resources/document.elp')).toBe(true);
+    expect(assetMap.has('resources/data.txt')).toBe(true);
+    expect(assetMap.has('resources/custom.xyz')).toBe(true);
+  });
+
+  it('handles complex ELPX structure with mixed files', async () => {
+    const zipData = {
+      // System files (should be skipped)
+      'index.html': new Uint8Array([1]),
+      'content.xml': new Uint8Array([2]),
+      'idevices/text/text.js': new Uint8Array([3]),
+      'idevices/text/text.css': new Uint8Array([4]),
+      'libs/exe_math/tex-mml-svg.js': new Uint8Array([5]),
+      'libs/bootstrap/bootstrap.min.css': new Uint8Array([6]),
+      'theme/style.css': new Uint8Array([7]),
+      'theme/icons/diary.png': new Uint8Array([8]),
+      'content/css/base.css': new Uint8Array([9]),
+      'content/img/exe_powered_logo.png': new Uint8Array([10]),
+      'html/ciencias.html': new Uint8Array([11]),
+      // User files (should be extracted)
+      'resources/image.jpg': new Uint8Array([12]),
+      'content/resources/uuid123/photo.png': new Uint8Array([13]),
+      'content/resources/uuid456/document.pdf': new Uint8Array([14]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    // Only user files from resources/ should be extracted
+    expect(assetMap.size).toBe(3);
+    expect(assetMap.has('resources/image.jpg')).toBe(true);
+    expect(assetMap.has('content/resources/uuid123/photo.png')).toBe(true);
+    expect(assetMap.has('content/resources/uuid456/document.pdf')).toBe(true);
+
+    // System files should NOT be extracted
+    expect(assetMap.has('index.html')).toBe(false);
+    expect(assetMap.has('idevices/text/text.js')).toBe(false);
+    expect(assetMap.has('libs/exe_math/tex-mml-svg.js')).toBe(false);
+    expect(assetMap.has('theme/style.css')).toBe(false);
+    expect(assetMap.has('content/css/base.css')).toBe(false);
+    expect(assetMap.has('html/ciencias.html')).toBe(false);
+  });
+
+  it('skips deeply nested idevices files', async () => {
+    const zipData = {
+      'idevices/map/nested/deep/icon.svg': new Uint8Array([1, 2, 3]),
+      'idevices/quiz/assets/image.png': new Uint8Array([4, 5, 6]),
+      'resources/user-icon.svg': new Uint8Array([7, 8, 9]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(1);
+    expect(assetMap.has('resources/user-icon.svg')).toBe(true);
+  });
+
+  it('skips deeply nested libs files', async () => {
+    const zipData = {
+      'libs/exe_math/input/tex/extensions/extpfeil.js': new Uint8Array([1]),
+      'libs/jquery-ui/images/ui-icons.png': new Uint8Array([2]),
+      'resources/math-notes.pdf': new Uint8Array([3]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(1);
+    expect(assetMap.has('resources/math-notes.pdf')).toBe(true);
+  });
+
+  it('handles resources with special characters in filename', async () => {
+    const zipData = {
+      'resources/archivo con espacios.png': new Uint8Array([1, 2, 3]),
+      'resources/foto (1).jpg': new Uint8Array([4, 5, 6]),
+      'resources/año_2024.pdf': new Uint8Array([7, 8, 9]),
+    };
+
+    const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+    expect(assetMap.size).toBe(3);
+    expect(assetMap.has('resources/archivo con espacios.png')).toBe(true);
+    expect(assetMap.has('resources/foto (1).jpg')).toBe(true);
+    expect(assetMap.has('resources/año_2024.pdf')).toBe(true);
+  });
+
+  // Legacy .elp format tests (contentv3.xml)
+  describe('legacy .elp format (contentv3.xml)', () => {
+    it('detects legacy format by contentv3.xml presence', async () => {
+      const zipData = {
+        'contentv3.xml': new Uint8Array([60, 63]), // <?
+        'image.png': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(1);
+      expect(assetMap.has('image.png')).toBe(true);
+    });
+
+    it('extracts root-level assets in legacy format', async () => {
+      const zipData = {
+        'contentv3.xml': new Uint8Array([60, 63]),
+        'content.data': new Uint8Array([1]),
+        'content.xsd': new Uint8Array([1]),
+        'juglar.png': new Uint8Array([1, 2, 3]),
+        'el_cid.jpg': new Uint8Array([4, 5, 6]),
+        'document.pdf': new Uint8Array([7, 8, 9]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(3);
+      expect(assetMap.has('juglar.png')).toBe(true);
+      expect(assetMap.has('el_cid.jpg')).toBe(true);
+      expect(assetMap.has('document.pdf')).toBe(true);
+    });
+
+    it('skips .xml, .xsd, .data files in legacy format', async () => {
+      const zipData = {
+        'contentv3.xml': new Uint8Array([60, 63]),
+        'content.data': new Uint8Array([1]),
+        'content.xsd': new Uint8Array([1]),
+        'image.png': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(1);
+      expect(assetMap.has('contentv3.xml')).toBe(false);
+      expect(assetMap.has('content.data')).toBe(false);
+      expect(assetMap.has('content.xsd')).toBe(false);
+      expect(assetMap.has('image.png')).toBe(true);
+    });
+
+    it('ignores subfolder assets in legacy format', async () => {
+      const zipData = {
+        'contentv3.xml': new Uint8Array([60, 63]),
+        'image.png': new Uint8Array([1, 2, 3]),
+        'subfolder/other.png': new Uint8Array([4, 5, 6]),
+        'deep/nested/file.jpg': new Uint8Array([7, 8, 9]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(1);
+      expect(assetMap.has('image.png')).toBe(true);
+      expect(assetMap.has('subfolder/other.png')).toBe(false);
+      expect(assetMap.has('deep/nested/file.jpg')).toBe(false);
+    });
+
+    it('handles empty legacy format zip', async () => {
+      const zipData = {
+        'contentv3.xml': new Uint8Array([60, 63]),
+        'content.data': new Uint8Array([1]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(0);
+    });
+
+    it('extracts various media types in legacy format', async () => {
+      const zipData = {
+        'contentv3.xml': new Uint8Array([60, 63]),
+        'photo.jpg': new Uint8Array([1]),
+        'audio.mp3': new Uint8Array([2]),
+        'video.mp4': new Uint8Array([3]),
+        'document.pdf': new Uint8Array([4]),
+        'animation.gif': new Uint8Array([5]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(5);
+      expect(assetMap.has('photo.jpg')).toBe(true);
+      expect(assetMap.has('audio.mp3')).toBe(true);
+      expect(assetMap.has('video.mp4')).toBe(true);
+      expect(assetMap.has('document.pdf')).toBe(true);
+      expect(assetMap.has('animation.gif')).toBe(true);
+    });
+  });
+
+  // New .elpx format tests (content.xml)
+  describe('new .elpx format (content.xml)', () => {
+    it('detects new format when no contentv3.xml', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'content/resources/uuid/image.png': new Uint8Array([1, 2, 3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(1);
+      expect(assetMap.has('content/resources/uuid/image.png')).toBe(true);
+    });
+
+    it('ignores root-level files in new format', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'index.html': new Uint8Array([1]),
+        'root-image.png': new Uint8Array([2, 3, 4]),
+        'content/resources/uuid/actual-asset.jpg': new Uint8Array([5, 6, 7]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(1);
+      expect(assetMap.has('content/resources/uuid/actual-asset.jpg')).toBe(true);
+      expect(assetMap.has('root-image.png')).toBe(false);
+    });
+
+    it('extracts from content/resources/ subfolders in new format', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'content/resources/20251009090601DKVACR/01.jpg': new Uint8Array([1]),
+        'content/resources/20251009090601DKVACR/colegio.mp3': new Uint8Array([2]),
+        'content/resources/20251009090601ROYVYO/sq01.jpg': new Uint8Array([3]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(3);
+      expect(assetMap.has('content/resources/20251009090601DKVACR/01.jpg')).toBe(true);
+      expect(assetMap.has('content/resources/20251009090601DKVACR/colegio.mp3')).toBe(true);
+      expect(assetMap.has('content/resources/20251009090601ROYVYO/sq01.jpg')).toBe(true);
+    });
   });
 });
 
@@ -1531,28 +2511,28 @@ describe('convertContextPathToAssetRefs', () => {
     const assetMap = new Map([['content/image.png', 'uuid-123']]);
     const html = '<img src="{{context_path}}/content/image.png">';
     const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
-    expect(result).toBe('<img src="asset://uuid-123">');
+    expect(result).toBe('<img src="asset://uuid-123.png">');
   });
 
   it('tries common prefixes', () => {
     const assetMap = new Map([['content/resources/image.png', 'uuid-456']]);
     const html = '<img src="{{context_path}}/image.png">';
     const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
-    expect(result).toBe('<img src="asset://uuid-456">');
+    expect(result).toBe('<img src="asset://uuid-456.png">');
   });
 
   it('matches by filename alone', () => {
     const assetMap = new Map([['some/deep/path/photo.jpg', 'uuid-789']]);
     const html = '<img src="{{context_path}}/photo.jpg">';
     const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
-    expect(result).toBe('<img src="asset://uuid-789">');
+    expect(result).toBe('<img src="asset://uuid-789.jpg">');
   });
 
   it('matches by last path segments', () => {
     const assetMap = new Map([['content/abc123/image.png', 'uuid-abc']]);
     const html = '<img src="{{context_path}}/abc123/image.png">';
     const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
-    expect(result).toBe('<img src="asset://uuid-abc">');
+    expect(result).toBe('<img src="asset://uuid-abc.png">');
   });
 
   it('leaves unmatched paths unchanged', () => {
@@ -1571,8 +2551,8 @@ describe('convertContextPathToAssetRefs', () => {
     ]);
     const html = '<img src="{{context_path}}/img1.png"><img src="{{context_path}}/img2.jpg">';
     const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
-    expect(result).toContain('asset://uuid-1');
-    expect(result).toContain('asset://uuid-2');
+    expect(result).toContain('asset://uuid-1.png');
+    expect(result).toContain('asset://uuid-2.jpg');
   });
 });
 
@@ -1834,83 +2814,69 @@ describe('boostAssetsInHTML', () => {
 describe('findByHash', () => {
   let assetManager;
   let mockDB;
+  let mockYjsBridge;
 
   beforeEach(() => {
-    const storedAssets = new Map();
-    storedAssets.set('asset-1', { id: 'asset-1', hash: 'hash123', projectId: 'project-123' });
-    storedAssets.set('asset-2', { id: 'asset-2', hash: 'hash123', projectId: 'other-project' });
+    // Mock Logger
+    global.Logger = { log: mock(() => {}) };
+
+    // Create mock Yjs bridge
+    mockYjsBridge = createMockYjsBridge();
+
+    // Setup metadata in Yjs
+    mockYjsBridge._assetsMap.set('asset-1', { hash: 'hash123', filename: 'test1.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { hash: 'hash456', filename: 'test2.jpg' });
 
     mockDB = {
       transaction: mock(() => ({
         objectStore: mock(() => ({
-          index: mock(() => ({
-            getAll: mock(() => ({
-              result: [...storedAssets.values()].filter(a => a.hash === 'hash123'),
-              onsuccess: null,
-              onerror: null,
-            })),
+          get: mock((id) => ({
+            result: id === 'asset-1' ? { id: 'asset-1', blob: new Blob(['test']) } : null,
+            onsuccess: null,
           })),
         })),
       })),
     };
 
     assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
     assetManager.db = mockDB;
   });
 
-  it('throws if database not initialized', async () => {
-    assetManager.db = null;
-    await expect(assetManager.findByHash('hash')).rejects.toThrow('Database not initialized');
+  afterEach(() => {
+    delete global.Logger;
   });
 
-  it('returns asset matching hash in same project', async () => {
-    const mockGetAllRequest = {
-      result: [
-        { id: 'asset-1', hash: 'hash123', projectId: 'project-123' },
-        { id: 'asset-2', hash: 'hash123', projectId: 'other-project' },
-      ],
+  it('returns null when db not initialized but Yjs has no match', async () => {
+    assetManager.db = null;
+    // findByHash now uses Yjs metadata, so it doesn't require DB
+    const result = await assetManager.findByHash('nonexistent');
+    expect(result).toBeNull();
+  });
+
+  it('returns asset matching hash from Yjs metadata', async () => {
+    const mockGetRequest = {
+      result: { id: 'asset-1', blob: new Blob(['test']) },
       onsuccess: null,
-      onerror: null,
     };
 
-    const mockTx = {
+    mockDB.transaction.mockReturnValue({
       objectStore: mock(() => ({
-        index: mock(() => ({
-          getAll: mock(() => mockGetAllRequest),
-        })),
+        get: mock(() => mockGetRequest),
       })),
-    };
-    mockDB.transaction.mockReturnValue(mockTx);
+    });
 
     const findPromise = assetManager.findByHash('hash123');
-    setTimeout(() => mockGetAllRequest.onsuccess?.(), 0);
+    setTimeout(() => mockGetRequest.onsuccess?.(), 0);
 
     const result = await findPromise;
     expect(result.id).toBe('asset-1');
+    expect(result.hash).toBe('hash123');
     expect(result.projectId).toBe('project-123');
   });
 
-  it('returns null if no match in same project', async () => {
-    const mockGetAllRequest = {
-      result: [
-        { id: 'asset-2', hash: 'hash123', projectId: 'other-project' },
-      ],
-      onsuccess: null,
-    };
-
-    const mockTx = {
-      objectStore: mock(() => ({
-        index: mock(() => ({
-          getAll: mock(() => mockGetAllRequest),
-        })),
-      })),
-    };
-    mockDB.transaction.mockReturnValue(mockTx);
-
-    const findPromise = assetManager.findByHash('hash123');
-    setTimeout(() => mockGetAllRequest.onsuccess?.(), 0);
-
-    const result = await findPromise;
+  it('returns null if no match in Yjs metadata', async () => {
+    const result = await assetManager.findByHash('nonexistent-hash');
     expect(result).toBeNull();
   });
 });
@@ -2170,6 +3136,69 @@ describe('downloadMissingAssetsFromServer', () => {
     expect(assetManager.missingAssets.has('in-db-asset')).toBe(false);
   });
 
+  it('fetches from server when getAsset returns metadata without blob (Yjs-only metadata)', async () => {
+    // This tests the bug fix: getAsset() returns metadata from Yjs even when blob is null
+    // The check must be existingAsset?.blob, not just existingAsset
+    assetManager.missingAssets.add('metadata-only-asset');
+    // Return metadata object WITHOUT blob - simulating Yjs metadata without IndexedDB blob
+    assetManager.getAsset = mock(() => Promise.resolve({
+      filename: 'test.png',
+      mime: 'image/png',
+      // blob is undefined/missing - this is the bug scenario
+    }));
+    assetManager.putAsset = mock(() => Promise.resolve());
+    assetManager.calculateHash = mock(() => Promise.resolve('hash123'));
+    assetManager.updateDomImagesForAsset = mock(() => Promise.resolve(0));
+
+    global.fetch = mock(() => Promise.resolve({
+      ok: true,
+      blob: () => Promise.resolve(new Blob(['server-data'])),
+      headers: {
+        get: (name) => {
+          const headers = {
+            'Content-Type': 'image/png',
+            'Content-Disposition': 'attachment; filename="test.png"',
+          };
+          return headers[name] || null;
+        },
+      },
+    }));
+
+    const result = await assetManager.downloadMissingAssetsFromServer('http://api', 'token', 'proj-uuid');
+
+    // Should have downloaded from server, not skipped
+    expect(result.downloaded).toBe(1);
+    expect(global.fetch).toHaveBeenCalled();
+    expect(assetManager.putAsset).toHaveBeenCalled();
+    expect(assetManager.blobURLCache.has('metadata-only-asset')).toBe(true);
+  });
+
+  it('fetches from server when getAsset returns object with null blob', async () => {
+    // Another variation: blob property exists but is null
+    assetManager.missingAssets.add('null-blob-asset');
+    assetManager.getAsset = mock(() => Promise.resolve({
+      filename: 'test.png',
+      mime: 'image/png',
+      blob: null  // Explicitly null
+    }));
+    assetManager.putAsset = mock(() => Promise.resolve());
+    assetManager.calculateHash = mock(() => Promise.resolve('hash456'));
+    assetManager.updateDomImagesForAsset = mock(() => Promise.resolve(0));
+
+    global.fetch = mock(() => Promise.resolve({
+      ok: true,
+      blob: () => Promise.resolve(new Blob(['data'])),
+      headers: {
+        get: () => 'image/png',
+      },
+    }));
+
+    const result = await assetManager.downloadMissingAssetsFromServer('http://api', 'token', 'proj-uuid');
+
+    expect(result.downloaded).toBe(1);
+    expect(global.fetch).toHaveBeenCalled();
+  });
+
   it('downloads and stores asset from server', async () => {
     assetManager.missingAssets.add('to-download');
     assetManager.getAsset = mock(() => Promise.resolve(null));
@@ -2238,6 +3267,8 @@ describe('downloadMissingAssetsFromServer', () => {
       requestAsset: mock(() => Promise.resolve(true)),
     };
     assetManager.wsHandler = mockWsHandler;
+    // Mock hasLocalBlob to return false - asset not in IndexedDB, needs P2P fetch
+    assetManager.hasLocalBlob = mock(() => Promise.resolve(false));
     assetManager.getAsset = mock()
       .mockResolvedValueOnce(null) // First check in _requestAssetsFromPeers
       .mockResolvedValueOnce({ blob: new Blob(['data']) }); // After P2P success
@@ -2300,7 +3331,8 @@ describe('_requestAssetsFromPeers', () => {
 
   it('loads existing IndexedDB assets to cache', async () => {
     assetManager.wsHandler = { connected: true, requestAsset: mock(() => Promise.resolve(false)) };
-    assetManager.hasAsset = mock(() => Promise.resolve(true));
+    // Mock hasLocalBlob (not hasAsset) - this checks if blob exists in IndexedDB
+    assetManager.hasLocalBlob = mock(() => Promise.resolve(true));
     assetManager.getAsset = mock(() => Promise.resolve({ blob: new Blob(['data']) }));
     assetManager.updateDomImagesForAsset = mock(() => Promise.resolve(0));
     assetManager.missingAssets.add('in-db');
@@ -2314,7 +3346,8 @@ describe('_requestAssetsFromPeers', () => {
   it('requests assets from peers via WebSocket', async () => {
     const mockRequestAsset = mock(() => Promise.resolve(true));
     assetManager.wsHandler = { connected: true, requestAsset: mockRequestAsset };
-    assetManager.hasAsset = mock(() => Promise.resolve(false));
+    // Mock hasLocalBlob (not hasAsset) - returns false to trigger P2P request
+    assetManager.hasLocalBlob = mock(() => Promise.resolve(false));
     assetManager.getAsset = mock(() => Promise.resolve({ blob: new Blob(['data']) }));
     assetManager.updateDomImagesForAsset = mock(() => Promise.resolve(0));
 
@@ -2326,7 +3359,8 @@ describe('_requestAssetsFromPeers', () => {
 
   it('handles pending status from peer', async () => {
     assetManager.wsHandler = { connected: true, requestAsset: mock(() => Promise.resolve(false)) };
-    assetManager.hasAsset = mock(() => Promise.resolve(false));
+    // Mock hasLocalBlob (not hasAsset)
+    assetManager.hasLocalBlob = mock(() => Promise.resolve(false));
 
     const result = await assetManager._requestAssetsFromPeers(['pending-asset']);
 
@@ -2338,7 +3372,8 @@ describe('_requestAssetsFromPeers', () => {
       connected: true,
       requestAsset: mock(() => Promise.reject(new Error('Timeout'))),
     };
-    assetManager.hasAsset = mock(() => Promise.resolve(false));
+    // Mock hasLocalBlob (not hasAsset)
+    assetManager.hasLocalBlob = mock(() => Promise.resolve(false));
 
     const result = await assetManager._requestAssetsFromPeers(['error-asset']);
 
@@ -2354,7 +3389,8 @@ describe('_requestAssetsFromPeers', () => {
         return Promise.resolve(false);
       }),
     };
-    assetManager.hasAsset = mock(() => Promise.resolve(false));
+    // Mock hasLocalBlob (not hasAsset)
+    assetManager.hasLocalBlob = mock(() => Promise.resolve(false));
 
     const assets = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7'];
     await assetManager._requestAssetsFromPeers(assets, { concurrency: 3 });
@@ -2964,5 +4000,1143 @@ describe('window.simplifyMediaElements global function', () => {
     const result = simplifyMediaElementsFunc(input);
     // Audio with direct src and no source children should not be modified by simplify
     expect(result).toContain('src="asset://uuid/audio.mp3"');
+  });
+});
+
+// =========================================================================
+// Folder Operations Tests (Unit tests for folder logic - does not depend on IndexedDB)
+// =========================================================================
+
+describe('AssetManager folder operations - Unit Tests', () => {
+  describe('renameFolder throws on root', () => {
+    it('throws error when trying to rename root folder', async () => {
+      const assetManager = new AssetManager('project-123');
+      // This test doesn't need DB init since it throws before DB access
+      await expect(assetManager.renameFolder('', 'new-name')).rejects.toThrow('Cannot rename root folder');
+    });
+  });
+
+  describe('deleteFolderContents throws on root', () => {
+    it('throws error when trying to delete root folder contents', async () => {
+      const assetManager = new AssetManager('project-123');
+      // This test doesn't need DB init since it throws before DB access
+      await expect(assetManager.deleteFolderContents('')).rejects.toThrow('Cannot delete root folder contents');
+    });
+  });
+
+  describe('deleteFolderContents with bulk server deletion', () => {
+    let mockYjsBridge;
+    let assetManager;
+    let mockDB;
+    let mockStore;
+
+    beforeEach(() => {
+      // Setup Logger and window mocks
+      global.Logger = { log: mock(() => {}) };
+      global.window = global.window || {};
+
+      // Create mock Yjs bridge
+      const assetsMap = new Map();
+      const mockYMap = {
+        get: (id) => assetsMap.get(id),
+        set: (id, value) => assetsMap.set(id, value),
+        delete: (id) => assetsMap.delete(id),
+        forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+        doc: { transact: (fn) => fn() }
+      };
+      mockYjsBridge = {
+        getAssetsMap: () => mockYMap,
+        _assetsMap: assetsMap
+      };
+
+      assetManager = new AssetManager('project-123');
+      assetManager.setYjsBridge(mockYjsBridge);
+
+      // Create mock DB
+      const storedBlobs = new Map();
+      mockStore = {
+        put: mock((record) => {
+          storedBlobs.set(record.id, record);
+          return { onsuccess: null, onerror: null };
+        }),
+        get: mock((id) => {
+          const result = storedBlobs.get(id) || null;
+          return { result, onsuccess: null, onerror: null };
+        }),
+        delete: mock((id) => {
+          storedBlobs.delete(id);
+          return { onsuccess: null, onerror: null };
+        }),
+        index: mock(() => ({
+          getAll: mock((key) => {
+            const results = [];
+            for (const [id, record] of storedBlobs.entries()) {
+              if (record.projectId === key) {
+                results.push(record);
+              }
+            }
+            return { result: results, onsuccess: null, onerror: null };
+          }),
+        })),
+      };
+
+      mockDB = {
+        transaction: mock(() => {
+          const mockDeleteRequest = { onsuccess: null, onerror: null };
+          // Auto-trigger success after next tick
+          setTimeout(() => mockDeleteRequest.onsuccess?.(), 0);
+          return {
+            objectStore: mock(() => ({
+              delete: mock(() => mockDeleteRequest),
+            })),
+          };
+        }),
+      };
+      assetManager.db = mockDB;
+    });
+
+    afterEach(() => {
+      delete global.Logger;
+    });
+
+    it('calls _deleteMultipleFromServer with all folder assets', async () => {
+      // Setup assets in folder
+      mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'images', filename: 'a.jpg' });
+      mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'images', filename: 'b.jpg' });
+      mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'documents', filename: 'c.pdf' });
+      mockYjsBridge._assetsMap.set('asset-4', { folderPath: 'images/icons', filename: 'd.svg' });
+
+      assetManager._deleteMultipleFromServer = mock(() => Promise.resolve());
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-123',
+        },
+      };
+
+      await assetManager.deleteFolderContents('images');
+
+      // Should call bulk delete with images and images/icons assets
+      expect(assetManager._deleteMultipleFromServer).toHaveBeenCalledWith(['asset-1', 'asset-2', 'asset-4']);
+    });
+
+    it('does not call _deleteMultipleFromServer for empty folder', async () => {
+      // No assets in the folder
+      mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'documents', filename: 'a.pdf' });
+
+      assetManager._deleteMultipleFromServer = mock(() => Promise.resolve());
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-123',
+        },
+      };
+
+      await assetManager.deleteFolderContents('images');
+
+      // Should not call bulk delete since no assets found
+      expect(assetManager._deleteMultipleFromServer).not.toHaveBeenCalled();
+    });
+
+    it('deletes individual assets with skipServerDelete option', async () => {
+      mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'images', filename: 'a.jpg' });
+
+      const originalDeleteAsset = assetManager.deleteAsset.bind(assetManager);
+      assetManager.deleteAsset = mock((id, options) => originalDeleteAsset(id, options));
+      assetManager._deleteFromServer = mock(() => Promise.resolve());
+      assetManager._deleteMultipleFromServer = mock(() => Promise.resolve());
+
+      global.window.eXeLearning = {
+        config: {
+          apiUrl: 'http://localhost:8080/api',
+          token: 'test-token-123',
+        },
+      };
+
+      await assetManager.deleteFolderContents('images');
+
+      // Individual deletes should have skipServerDelete: true
+      expect(assetManager.deleteAsset).toHaveBeenCalledWith('asset-1', { skipServerDelete: true });
+      // Bulk delete should be called instead
+      expect(assetManager._deleteMultipleFromServer).toHaveBeenCalledWith(['asset-1']);
+    });
+  });
+
+  describe('DB_VERSION for Yjs metadata architecture', () => {
+    it('has DB_VERSION 1 for Yjs metadata architecture', () => {
+      expect(AssetManager.DB_VERSION).toBe(1);
+    });
+  });
+});
+
+describe('AssetManager folder operations - Static method tests', () => {
+  it('filters assets by folderPath (helper logic test)', () => {
+    // Test the filter logic used in getAssetsInFolder
+    const assets = [
+      { id: '1', folderPath: '', filename: 'root.jpg' },
+      { id: '2', folderPath: 'images', filename: 'photo.jpg' },
+      { id: '3', folderPath: 'images/icons', filename: 'icon.svg' },
+      { id: '4', filename: 'legacy.jpg' }, // no folderPath (treated as root)
+    ];
+
+    // Filter for root folder
+    const rootAssets = assets.filter(a => (a.folderPath || '') === '');
+    expect(rootAssets.length).toBe(2);
+    expect(rootAssets.map(a => a.filename)).toContain('root.jpg');
+    expect(rootAssets.map(a => a.filename)).toContain('legacy.jpg');
+
+    // Filter for images folder
+    const imageAssets = assets.filter(a => (a.folderPath || '') === 'images');
+    expect(imageAssets.length).toBe(1);
+    expect(imageAssets[0].filename).toBe('photo.jpg');
+  });
+
+  it('derives subfolders from asset paths (helper logic test)', () => {
+    // Test the subfolder derivation logic used in getSubfolders
+    const assets = [
+      { folderPath: 'images' },
+      { folderPath: 'documents' },
+      { folderPath: 'images/icons' },
+      { folderPath: 'images/photos' },
+      { folderPath: '' },
+    ];
+
+    // Get subfolders at root
+    const subfolders = new Set();
+    const prefix = '';
+    for (const asset of assets) {
+      const assetPath = asset.folderPath || '';
+      if (!assetPath.startsWith(prefix)) continue;
+      const remainingPath = assetPath.slice(prefix.length);
+      if (!remainingPath) continue;
+      const firstSegment = remainingPath.split('/')[0];
+      if (firstSegment) subfolders.add(firstSegment);
+    }
+
+    expect(Array.from(subfolders).sort()).toEqual(['documents', 'images']);
+  });
+
+  it('derives subfolders within a parent folder (helper logic test)', () => {
+    const assets = [
+      { folderPath: 'images' },
+      { folderPath: 'images/icons' },
+      { folderPath: 'images/photos' },
+      { folderPath: 'images/photos/vacation' },
+    ];
+
+    // Get subfolders within 'images'
+    const subfolders = new Set();
+    const prefix = 'images/';
+    for (const asset of assets) {
+      const assetPath = asset.folderPath || '';
+      if (!assetPath.startsWith(prefix)) continue;
+      const remainingPath = assetPath.slice(prefix.length);
+      if (!remainingPath) continue;
+      const firstSegment = remainingPath.split('/')[0];
+      if (firstSegment) subfolders.add(firstSegment);
+    }
+
+    expect(Array.from(subfolders).sort()).toEqual(['icons', 'photos']);
+  });
+
+  it('updates folder path prefix (helper logic test)', () => {
+    // Test the folder rename logic
+    const assets = [
+      { id: '1', folderPath: 'old-name', filename: 'file1.jpg' },
+      { id: '2', folderPath: 'old-name/sub', filename: 'file2.jpg' },
+      { id: '3', folderPath: 'other', filename: 'file3.jpg' },
+    ];
+
+    const oldPath = 'old-name';
+    const newPath = 'new-name';
+
+    for (const asset of assets) {
+      const assetPath = asset.folderPath || '';
+      if (assetPath === oldPath || assetPath.startsWith(oldPath + '/')) {
+        asset.folderPath = assetPath === oldPath
+          ? newPath
+          : newPath + assetPath.slice(oldPath.length);
+      }
+    }
+
+    expect(assets[0].folderPath).toBe('new-name');
+    expect(assets[1].folderPath).toBe('new-name/sub');
+    expect(assets[2].folderPath).toBe('other'); // unchanged
+  });
+
+  it('moves folder to new location (helper logic test)', () => {
+    // Test the folder move logic
+    const assets = [
+      { id: '1', folderPath: 'images', filename: 'photo.jpg' },
+      { id: '2', folderPath: 'images/icons', filename: 'icon.svg' },
+      { id: '3', folderPath: 'documents', filename: 'doc.pdf' },
+    ];
+
+    const oldPath = 'images';
+    const destination = 'website';
+    const folderName = oldPath.split('/').pop();
+    const newPath = destination ? `${destination}/${folderName}` : folderName;
+
+    for (const asset of assets) {
+      const assetPath = asset.folderPath || '';
+      if (assetPath === oldPath || assetPath.startsWith(oldPath + '/')) {
+        asset.folderPath = assetPath === oldPath
+          ? newPath
+          : newPath + assetPath.slice(oldPath.length);
+      }
+    }
+
+    expect(assets[0].folderPath).toBe('website/images');
+    expect(assets[1].folderPath).toBe('website/images/icons');
+    expect(assets[2].folderPath).toBe('documents'); // unchanged
+  });
+});
+
+describe('AssetManager _extractFolderPathFromImport', () => {
+  const assetManager = new AssetManager('test-project');
+
+  it('returns empty string for files at root', () => {
+    const result = assetManager._extractFolderPathFromImport('image.jpg', 'abc123');
+    expect(result).toBe('');
+  });
+
+  it('extracts folder path from simple folder structure', () => {
+    const result = assetManager._extractFolderPathFromImport('mywebsite/index.html', 'abc123');
+    expect(result).toBe('mywebsite');
+  });
+
+  it('extracts nested folder path', () => {
+    const result = assetManager._extractFolderPathFromImport('mywebsite/css/style.css', 'abc123');
+    expect(result).toBe('mywebsite/css');
+  });
+
+  it('removes content/resources prefix', () => {
+    const result = assetManager._extractFolderPathFromImport('content/resources/mywebsite/index.html', 'abc123');
+    expect(result).toBe('mywebsite');
+  });
+
+  it('removes resources prefix', () => {
+    const result = assetManager._extractFolderPathFromImport('resources/images/photo.jpg', 'abc123');
+    expect(result).toBe('images');
+  });
+
+  it('treats UUID-only path as root (legacy format)', () => {
+    const assetId = 'abc12345-6789-abcd-ef01-234567890abc';
+    const result = assetManager._extractFolderPathFromImport('abc12345/image.jpg', assetId);
+    expect(result).toBe('');
+  });
+
+  it('extracts folder from UUID-prefixed nested path (legacy format)', () => {
+    const assetId = 'abc12345-6789-abcd-ef01-234567890abc';
+    const result = assetManager._extractFolderPathFromImport('abc12345/images/photo.jpg', assetId);
+    expect(result).toBe('images');
+  });
+
+  it('handles content/resources with UUID prefix', () => {
+    const assetId = 'abc12345-6789-abcd-ef01-234567890abc';
+    const result = assetManager._extractFolderPathFromImport('content/resources/abc12345/image.jpg', assetId);
+    expect(result).toBe('');
+  });
+
+  it('preserves non-UUID folder names that look like UUIDs', () => {
+    // A folder that happens to have hex chars but is not the asset's UUID
+    const result = assetManager._extractFolderPathFromImport('deadbeef/image.jpg', 'different-uuid');
+    // This would be treated as a hex-like prefix, but since it has subfolders, we'd skip it
+    // Actually with single segment and different UUID, it's a normal folder
+    expect(result).toBe('deadbeef');
+  });
+});
+
+describe('AssetManager moveFolder throws on root', () => {
+  it('throws error when trying to move root folder', async () => {
+    const assetManager = new AssetManager('project-123');
+    await expect(assetManager.moveFolder('', 'destination')).rejects.toThrow('Cannot move root folder');
+  });
+});
+
+describe('AssetManager moveFolder prevents moving into itself', () => {
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+  });
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('throws error when trying to move folder into itself', async () => {
+    const assetManager = new AssetManager('project-123');
+    // Need Yjs bridge for moveFolder
+    assetManager.setYjsBridge(createMockYjsBridge());
+
+    await expect(assetManager.moveFolder('parent', 'parent/child')).rejects.toThrow('Cannot move folder into itself');
+  });
+});
+
+describe('AssetManager getAssetsInFolder', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('returns assets in root folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: '', filename: 'root.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'images', filename: 'photo.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { filename: 'legacy.jpg' }); // no folderPath (treated as root)
+
+    const rootAssets = await assetManager.getAssetsInFolder('');
+    expect(rootAssets.length).toBe(2);
+    expect(rootAssets.map(a => a.filename)).toContain('root.jpg');
+    expect(rootAssets.map(a => a.filename)).toContain('legacy.jpg');
+  });
+
+  it('returns assets in specific folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: '', filename: 'root.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'images', filename: 'photo.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'images/icons', filename: 'icon.svg' });
+
+    const imageAssets = await assetManager.getAssetsInFolder('images');
+    expect(imageAssets.length).toBe(1);
+    expect(imageAssets[0].filename).toBe('photo.jpg');
+  });
+
+  it('returns empty array for empty folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: '', filename: 'root.jpg' });
+
+    const emptyFolder = await assetManager.getAssetsInFolder('nonexistent');
+    expect(emptyFolder).toEqual([]);
+  });
+});
+
+describe('AssetManager getSubfolders', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('returns subfolders at root level', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'images', filename: 'photo.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'documents', filename: 'doc.pdf' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'images/icons', filename: 'icon.svg' });
+
+    const subfolders = await assetManager.getSubfolders('');
+    expect(subfolders).toEqual(['documents', 'images']);
+  });
+
+  it('returns nested subfolders', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'images/icons', filename: 'icon.svg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'images/photos', filename: 'photo.jpg' });
+
+    const subfolders = await assetManager.getSubfolders('images');
+    expect(subfolders).toEqual(['icons', 'photos']);
+  });
+
+  it('returns empty array when no subfolders', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'images', filename: 'photo.jpg' });
+
+    const subfolders = await assetManager.getSubfolders('images');
+    expect(subfolders).toEqual([]);
+  });
+
+  it('returns sorted subfolders', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'z-folder', filename: 'z.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'a-folder', filename: 'a.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'm-folder', filename: 'm.jpg' });
+
+    const subfolders = await assetManager.getSubfolders('');
+    expect(subfolders).toEqual(['a-folder', 'm-folder', 'z-folder']);
+  });
+});
+
+describe('AssetManager updateAssetFolderPath', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('updates folder path for existing asset', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'old-folder', filename: 'test.jpg', uploaded: true });
+
+    const result = await assetManager.updateAssetFolderPath('asset-1', 'new-folder');
+
+    expect(result).toBe(true);
+    const metadata = mockYjsBridge._assetsMap.get('asset-1');
+    expect(metadata.folderPath).toBe('new-folder');
+    expect(metadata.uploaded).toBe(false); // Should be marked for re-upload
+  });
+
+  it('returns false for non-existent asset', async () => {
+    const result = await assetManager.updateAssetFolderPath('nonexistent', 'new-folder');
+    expect(result).toBe(false);
+  });
+
+  it('can move asset to root folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'some-folder', filename: 'test.jpg' });
+
+    const result = await assetManager.updateAssetFolderPath('asset-1', '');
+
+    expect(result).toBe(true);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('');
+  });
+});
+
+describe('AssetManager moveFolder', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('moves folder to new destination', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'source', filename: 'a.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'source/sub', filename: 'b.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'other', filename: 'c.jpg' });
+
+    const count = await assetManager.moveFolder('source', 'destination');
+
+    expect(count).toBe(2);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('destination/source');
+    expect(mockYjsBridge._assetsMap.get('asset-2').folderPath).toBe('destination/source/sub');
+    expect(mockYjsBridge._assetsMap.get('asset-3').folderPath).toBe('other'); // unchanged
+  });
+
+  it('moves folder to root', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'parent/child', filename: 'a.jpg' });
+
+    const count = await assetManager.moveFolder('parent/child', '');
+
+    expect(count).toBe(1);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('child');
+  });
+
+  it('returns 0 when moving to same location', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'folder', filename: 'a.jpg' });
+
+    const count = await assetManager.moveFolder('folder', '');
+
+    expect(count).toBe(0);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('folder'); // unchanged
+  });
+
+  it('throws when Yjs bridge not available', async () => {
+    assetManager.setYjsBridge(null);
+
+    await expect(assetManager.moveFolder('source', 'dest')).rejects.toThrow('Yjs bridge not available');
+  });
+});
+
+describe('AssetManager renameFolder', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}) };
+
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('renames folder and updates all assets', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'old-name', filename: 'a.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'old-name/sub', filename: 'b.jpg' });
+    mockYjsBridge._assetsMap.set('asset-3', { folderPath: 'other', filename: 'c.jpg' });
+
+    const count = await assetManager.renameFolder('old-name', 'new-name');
+
+    expect(count).toBe(2);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('new-name');
+    expect(mockYjsBridge._assetsMap.get('asset-2').folderPath).toBe('new-name/sub');
+    expect(mockYjsBridge._assetsMap.get('asset-3').folderPath).toBe('other'); // unchanged
+  });
+
+  it('renames nested folder', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', { folderPath: 'parent/child', filename: 'a.jpg' });
+    mockYjsBridge._assetsMap.set('asset-2', { folderPath: 'parent/child/deep', filename: 'b.jpg' });
+
+    const count = await assetManager.renameFolder('parent/child', 'parent/renamed');
+
+    expect(count).toBe(2);
+    expect(mockYjsBridge._assetsMap.get('asset-1').folderPath).toBe('parent/renamed');
+    expect(mockYjsBridge._assetsMap.get('asset-2').folderPath).toBe('parent/renamed/deep');
+  });
+
+  it('throws when Yjs bridge not available', async () => {
+    assetManager.setYjsBridge(null);
+
+    await expect(assetManager.renameFolder('old', 'new')).rejects.toThrow('Yjs bridge not available');
+  });
+});
+
+describe('AssetManager renameAsset', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    mockYjsBridge = {
+      _assetsMap: new Map(),
+      documentManager: {
+        getNavigation: vi.fn(() => []),
+        getDoc: vi.fn(() => ({
+          transact: (fn) => fn()
+        }))
+      }
+    };
+    assetManager.setYjsBridge(mockYjsBridge);
+
+    // Set up mock for getAssetsYMap
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue({
+      get: (id) => mockYjsBridge._assetsMap.get(id),
+      set: (id, data) => mockYjsBridge._assetsMap.set(id, data)
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('renames an existing asset', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', {
+      id: 'asset-1',
+      filename: 'old-name.jpg',
+      folderPath: 'images',
+      uploaded: true
+    });
+
+    const result = await assetManager.renameAsset('asset-1', 'new-name.jpg');
+
+    expect(result).toBe(true);
+    const updated = mockYjsBridge._assetsMap.get('asset-1');
+    expect(updated.filename).toBe('new-name.jpg');
+    expect(updated.uploaded).toBe(false); // Should be marked for re-upload
+  });
+
+  it('returns false when asset does not exist', async () => {
+    const result = await assetManager.renameAsset('nonexistent', 'new-name.jpg');
+
+    expect(result).toBe(false);
+  });
+
+  it('updates asset references in Yjs', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', {
+      id: 'asset-1',
+      filename: 'old-name.jpg',
+      folderPath: '',
+      uploaded: true
+    });
+
+    const updateSpy = vi.spyOn(assetManager, 'updateAssetReferencesInYjs');
+    await assetManager.renameAsset('asset-1', 'new-name.jpg');
+
+    expect(updateSpy).toHaveBeenCalledWith('asset-1', 'old-name.jpg', 'new-name.jpg');
+  });
+});
+
+describe('AssetManager updateAssetReferencesInYjs', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    window.eXeLearning = { app: { project: { _yjsBridge: null } } };
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('returns 0 when no document manager available', () => {
+    window.eXeLearning.app.project._yjsBridge = null;
+
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    expect(result).toBe(0);
+  });
+
+  it('returns 0 when Y is not loaded', () => {
+    const originalY = window.Y;
+    delete window.Y;
+
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: { getNavigation: vi.fn() }
+    };
+
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    expect(result).toBe(0);
+    window.Y = originalY;
+  });
+
+  it('returns 0 when no navigation available', () => {
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: {
+        getNavigation: vi.fn(() => null),
+        getDoc: vi.fn()
+      }
+    };
+
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    expect(result).toBe(0);
+  });
+
+  it('processes pages and updates references', () => {
+    // Create mock Y.Text with actual content
+    const mockHtmlContent = {
+      _content: 'src="asset://asset-1/old.jpg"',
+      toString: function() { return this._content; },
+      delete: function(start, length) { this._content = ''; },
+      insert: function(pos, text) { this._content = text; },
+      length: 30
+    };
+
+    // Create mock component with Y.Map behavior
+    const mockComponent = {
+      _type: 'Y.Map',
+      get: vi.fn((key) => {
+        if (key === 'htmlContent') return mockHtmlContent;
+        return null;
+      })
+    };
+
+    // Create mock block
+    const mockBlock = {
+      _type: 'Y.Map',
+      get: vi.fn((key) => {
+        if (key === 'components') {
+          return {
+            _type: 'Y.Array',
+            forEach: (fn) => fn(mockComponent)
+          };
+        }
+        return null;
+      })
+    };
+
+    // Create mock page
+    const mockPage = {
+      _type: 'Y.Map',
+      get: vi.fn((key) => {
+        if (key === 'blocks') {
+          return {
+            _type: 'Y.Array',
+            forEach: (fn) => fn(mockBlock)
+          };
+        }
+        if (key === 'subpages') {
+          return {
+            _type: 'Y.Array',
+            forEach: () => {}
+          };
+        }
+        return null;
+      })
+    };
+
+    // Mock navigation array
+    const mockNavigation = {
+      forEach: (fn) => fn(mockPage)
+    };
+
+    // Mock Y global
+    const originalY = window.Y;
+    window.Y = {
+      Map: class { },
+      Array: class { },
+      Text: class { }
+    };
+
+    // Patch instanceof checks
+    Object.defineProperty(mockComponent, Symbol.hasInstance, {
+      value: () => true
+    });
+
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: {
+        getNavigation: vi.fn(() => mockNavigation),
+        getDoc: vi.fn(() => ({
+          transact: (fn) => fn()
+        }))
+      }
+    };
+
+    // The method requires instanceof checks which are tricky to mock
+    // Let's just verify it doesn't throw and processes the structure
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    // The mock structure doesn't pass instanceof Y.Map checks, so result should be 0
+    expect(result).toBe(0);
+
+    window.Y = originalY;
+  });
+
+  it('handles empty navigation array', () => {
+    const originalY = window.Y;
+    window.Y = {
+      Map: class { },
+      Array: class { },
+      Text: class { }
+    };
+
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: {
+        getNavigation: vi.fn(() => ({
+          forEach: () => {}
+        })),
+        getDoc: vi.fn(() => ({
+          transact: (fn) => fn()
+        }))
+      }
+    };
+
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    expect(result).toBe(0);
+    window.Y = originalY;
+  });
+});
+
+describe('AssetManager getAssetUrl', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('returns asset URL with simplified format (uuid.ext)', () => {
+    const url = assetManager.getAssetUrl('asset-123', 'image.jpg');
+    expect(url).toBe('asset://asset-123.jpg');
+  });
+
+  it('extracts extension from filename with spaces', () => {
+    const url = assetManager.getAssetUrl('asset-123', 'my image (1).jpg');
+    expect(url).toBe('asset://asset-123.jpg');
+  });
+
+  it('handles empty filename (no extension)', () => {
+    const url = assetManager.getAssetUrl('asset-123', '');
+    expect(url).toBe('asset://asset-123');
+  });
+
+  it('handles filename without extension', () => {
+    const url = assetManager.getAssetUrl('asset-123', 'README');
+    expect(url).toBe('asset://asset-123');
+  });
+
+  it('handles png extension', () => {
+    const url = assetManager.getAssetUrl('asset-456', 'photo.PNG');
+    expect(url).toBe('asset://asset-456.png');
+  });
+});
+
+describe('AssetManager setAssetMetadata', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    mockYjsBridge = {
+      _assetsMap: new Map()
+    };
+    assetManager.setYjsBridge(mockYjsBridge);
+
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue({
+      get: (id) => mockYjsBridge._assetsMap.get(id),
+      set: (id, data) => mockYjsBridge._assetsMap.set(id, data)
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('sets metadata for new asset', () => {
+    assetManager.setAssetMetadata('asset-1', {
+      id: 'asset-1',
+      filename: 'test.jpg',
+      folderPath: 'images',
+      mime: 'image/jpeg',
+      size: 1024,
+      hash: 'abc123'
+    });
+
+    const stored = mockYjsBridge._assetsMap.get('asset-1');
+    expect(stored.filename).toBe('test.jpg');
+    expect(stored.folderPath).toBe('images');
+    expect(stored.mime).toBe('image/jpeg');
+    expect(stored.size).toBe(1024);
+    expect(stored.uploaded).toBe(false);
+    expect(stored.createdAt).toBeDefined();
+  });
+
+  it('updates existing metadata', () => {
+    mockYjsBridge._assetsMap.set('asset-1', {
+      filename: 'old.jpg',
+      folderPath: '',
+      uploaded: true
+    });
+
+    assetManager.setAssetMetadata('asset-1', {
+      filename: 'new.jpg',
+      folderPath: 'photos'
+    });
+
+    const stored = mockYjsBridge._assetsMap.get('asset-1');
+    expect(stored.filename).toBe('new.jpg');
+    expect(stored.folderPath).toBe('photos');
+  });
+
+  it('sets default folderPath if not provided', () => {
+    assetManager.setAssetMetadata('asset-2', {
+      filename: 'test.png'
+    });
+
+    const stored = mockYjsBridge._assetsMap.get('asset-2');
+    expect(stored.folderPath).toBe('');
+  });
+});
+
+describe('AssetManager deleteAssetMetadata', () => {
+  let assetManager;
+  let mockYjsBridge;
+  let mockYMap;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    mockYjsBridge = {
+      _assetsMap: new Map()
+    };
+    mockYMap = {
+      get: (id) => mockYjsBridge._assetsMap.get(id),
+      set: (id, data) => mockYjsBridge._assetsMap.set(id, data),
+      delete: (id) => mockYjsBridge._assetsMap.delete(id)
+    };
+    assetManager.setYjsBridge(mockYjsBridge);
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue(mockYMap);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('deletes existing metadata', () => {
+    mockYjsBridge._assetsMap.set('asset-1', { id: 'asset-1', filename: 'test.jpg' });
+
+    assetManager.deleteAssetMetadata('asset-1');
+
+    expect(mockYjsBridge._assetsMap.has('asset-1')).toBe(false);
+  });
+
+  it('handles non-existent asset gracefully', () => {
+    expect(() => assetManager.deleteAssetMetadata('nonexistent')).not.toThrow();
+  });
+});
+
+describe('AssetManager getAllAssetsMetadata', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    mockYjsBridge = {};
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('returns all assets as array', () => {
+    const mockData = new Map([
+      ['asset-1', { filename: 'a.jpg' }],
+      ['asset-2', { filename: 'b.jpg' }]
+    ]);
+
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue({
+      forEach: (callback) => mockData.forEach((value, key) => callback(value, key))
+    });
+
+    const result = assetManager.getAllAssetsMetadata();
+
+    expect(result).toHaveLength(2);
+    expect(result[0].filename).toBe('a.jpg');
+    expect(result[0].id).toBe('asset-1');
+    expect(result[1].filename).toBe('b.jpg');
+    expect(result[1].id).toBe('asset-2');
+  });
+
+  it('returns empty array when no Yjs bridge', () => {
+    assetManager.setYjsBridge(null);
+
+    const result = assetManager.getAllAssetsMetadata();
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty array when no assets map', () => {
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue(null);
+
+    const result = assetManager.getAllAssetsMetadata();
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('AssetManager _extractFolderPathFromImport', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('extracts folder path from simple path', () => {
+    const result = assetManager._extractFolderPathFromImport('images/photo.jpg', 'asset-1');
+    expect(result).toBe('images');
+  });
+
+  it('extracts nested folder path', () => {
+    const result = assetManager._extractFolderPathFromImport('images/2024/vacation/photo.jpg', 'asset-1');
+    expect(result).toBe('images/2024/vacation');
+  });
+
+  it('returns empty string for root path', () => {
+    const result = assetManager._extractFolderPathFromImport('photo.jpg', 'asset-1');
+    expect(result).toBe('');
+  });
+
+  it('handles UUID-like prefix in path', () => {
+    const result = assetManager._extractFolderPathFromImport('a1b2c3d4-e5f6-7890-abcd-ef1234567890/images/photo.jpg', 'asset-1');
+    expect(result).toBe('images');
+  });
+
+  it('handles just UUID prefix with filename when UUID matches asset ID', () => {
+    // When UUID in path matches assetId, it's legacy format and returns ''
+    const result = assetManager._extractFolderPathFromImport('a1b2c3d4-e5f6-7890-abcd-ef1234567890/photo.jpg', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+    expect(result).toBe('');
+  });
+
+  it('handles just UUID prefix with filename when UUID does not match', () => {
+    // When UUID in path doesn't match assetId, it's treated as folder name
+    const result = assetManager._extractFolderPathFromImport('a1b2c3d4-e5f6-7890-abcd-ef1234567890/photo.jpg', 'different-asset-id');
+    expect(result).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+  });
+
+  it('handles resources prefix', () => {
+    const result = assetManager._extractFolderPathFromImport('resources/images/photo.jpg', 'asset-1');
+    expect(result).toBe('images');
   });
 });

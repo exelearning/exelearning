@@ -8,6 +8,7 @@ import * as fse from 'fs-extra';
 import * as path from 'path';
 import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
+import { getBasePath } from '../utils/basepath.util';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
 
 /**
@@ -593,6 +594,8 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
 function rewriteCSSUrls(content: string, resourcePath: string): string {
     // Get the directory of the CSS file (relative to public/files)
     const dir = path.dirname(resourcePath);
+    // Get BASE_PATH for subdirectory installations (e.g., /web/exelearning)
+    const basePath = getBasePath();
 
     return content.replace(/url\(['"]?([^'"()]+)['"]?\)/g, (match, urlPath) => {
         // Skip absolute URLs, data URIs, and HTTP(S) URLs
@@ -608,8 +611,8 @@ function rewriteCSSUrls(content: string, resourcePath: string): string {
         // Resolve relative path (e.g., ../fonts/open-sans.woff2)
         const resolvedPath = path.posix.normalize(path.posix.join(dir, urlPath));
 
-        // Create the full API URL
-        return `url(/api/idevices/download-file-resources?resource=${encodeURIComponent(resolvedPath)})`;
+        // Create the full API URL with BASE_PATH prefix
+        return `url(${basePath}/api/idevices/download-file-resources?resource=${encodeURIComponent(resolvedPath)})`;
     });
 }
 

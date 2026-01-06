@@ -1138,4 +1138,89 @@ describe('Asset Coordinator Service (DI)', () => {
             expect(socket2.messages.length).toBeGreaterThan(0);
         });
     });
+
+    // Note: Rename sync tests removed - Yjs now handles rename sync automatically
+
+    describe('Edge cases - broadcastToProject error handling', () => {
+        it('should handle socket send error during broadcast', async () => {
+            const errorSocket = createMockSocket();
+            const normalSocket = createMockSocket();
+            errorSocket.send = () => {
+                throw new Error('Socket send error');
+            };
+
+            coordinator.registerClient('broadcast-error-project', 'error-client', errorSocket);
+            coordinator.registerClient('broadcast-error-project', 'normal-client', normalSocket);
+
+            // Both clients announce assets
+            await coordinator.handleMessage('broadcast-error-project', 'error-client', {
+                type: 'awareness-update',
+                data: { availableAssets: ['shared-asset'] },
+            });
+
+            // Trigger broadcast via bulk-upload-progress
+            await coordinator.handleMessage('broadcast-error-project', 'normal-client', {
+                type: 'bulk-upload-progress',
+                data: {
+                    status: 'completed',
+                    total: 5,
+                    completed: 5,
+                    failed: 0,
+                    uploadedAssetIds: ['asset-1', 'asset-2'],
+                },
+            });
+
+            // Should not throw, error is caught internally
+            coordinator.cleanupProject('broadcast-error-project');
+        });
+    });
+
+    describe('Edge cases - requestUploadFromPeerWithPriority only requester has asset', () => {
+        it('should return early when only the requester has the requested asset', async () => {
+            const socket1 = createMockSocket();
+            coordinator.registerClient('single-owner-project', 'owner-client', socket1);
+
+            // Only owner-client announces the asset
+            await coordinator.handleMessage('single-owner-project', 'owner-client', {
+                type: 'awareness-update',
+                data: { availableAssets: ['self-owned-asset'] },
+            });
+
+            // Owner requests their own asset - should return early since no other peer has it
+            await coordinator.handleMessage('single-owner-project', 'owner-client', {
+                type: 'priority-update',
+                data: {
+                    assetId: 'self-owned-asset',
+                    priority: 75,
+                    reason: 'render',
+                },
+            });
+
+            // Should not crash and not send upload-request to itself
+            coordinator.cleanupProject('single-owner-project');
+        });
+    });
+
+    describe('Edge cases - handleMessage with non-Error exception', () => {
+        it('should handle thrown string errors', async () => {
+            // Create coordinator with handler that throws a string
+            const stringThrowingCoordinator = createAssetCoordinator({
+                ...mockDeps,
+                findProjectByUuid: async () => {
+                    throw 'String error message'; // eslint-disable-line @typescript-eslint/no-throw-literal
+                },
+            });
+
+            const socket = createMockSocket();
+            stringThrowingCoordinator.registerClient('string-error-project', 'client-1', socket);
+
+            // Should not throw - error should be caught and converted to string
+            await stringThrowingCoordinator.handleMessage('string-error-project', 'client-1', {
+                type: 'request-asset',
+                data: { assetId: 'test-asset' },
+            });
+
+            stringThrowingCoordinator.cleanupProject('string-error-project');
+        });
+    });
 });

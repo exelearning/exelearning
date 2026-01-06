@@ -149,7 +149,7 @@ services:
 
   # PostgreSQL Database
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"

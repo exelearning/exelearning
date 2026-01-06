@@ -242,6 +242,73 @@ describe('Assets Routes', () => {
             expect(body.success).toBe(true);
             expect(body.data.componentId).toBe('idevice-abc');
         });
+
+        it('should update existing asset instead of creating duplicate (idempotent upload)', async () => {
+            // Pre-create an asset with a specific clientId (simulates existing asset from earlier upload)
+            const existingClientId = 'existing-client-id-123';
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                client_id: existingClientId,
+                filename: 'original.txt',
+                storage_path: '/old/path/original.txt',
+                mime_type: 'text/plain',
+                file_size: '100',
+                folder_path: '',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            });
+
+            // Upload file with SAME clientId (simulates bulk upload during collaboration join)
+            const formData = new FormData();
+            formData.append('file', new Blob(['updated content'], { type: 'text/plain' }), 'updated.txt');
+            formData.append('clientId', existingClientId);
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets`, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.data).toBeDefined();
+
+            // Should have same ID (updated, not new record)
+            expect(body.data.id).toBe(1);
+            // Filename should be updated
+            expect(body.data.filename).toBe('updated.txt');
+
+            // Verify only 1 asset exists (no duplicate created)
+            expect(mockAssets.size).toBe(1);
+        });
+
+        it('should create new asset when clientId does not exist', async () => {
+            // Ensure no assets exist initially
+            expect(mockAssets.size).toBe(0);
+
+            const formData = new FormData();
+            formData.append('file', new Blob(['new content'], { type: 'text/plain' }), 'new.txt');
+            formData.append('clientId', 'new-client-id-456');
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets`, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.data.filename).toBe('new.txt');
+            expect(body.data.clientId).toBe('new-client-id-456');
+
+            // Verify asset was created
+            expect(mockAssets.size).toBe(1);
+        });
     });
 
     describe('GET /api/projects/:projectId/assets - List Assets', () => {
@@ -450,6 +517,165 @@ describe('Assets Routes', () => {
             );
 
             expect(res.status).toBe(404);
+        });
+    });
+
+    describe('DELETE /api/projects/:projectId/assets/by-client-id/:clientId', () => {
+        it('should delete asset by client ID', async () => {
+            const filePath = path.join(testDir, 'client-delete.txt');
+            await fs.writeFile(filePath, 'Delete me');
+
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                filename: 'client-delete.txt',
+                storage_path: filePath,
+                client_id: 'delete-client-id-123',
+            });
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/delete-client-id-123`, {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.message).toContain('deleted');
+            expect(mockAssets.has(1)).toBe(false);
+        });
+
+        it('should return success when asset not found on server (idempotent)', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/non-existent-client`, {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.message).toContain('not found on server');
+        });
+
+        it('should return 404 for non-existent project', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/non-existent-uuid/assets/by-client-id/any-client`, {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toContain('Project not found');
+        });
+    });
+
+    describe('DELETE /api/projects/:projectId/assets/bulk', () => {
+        it('should delete multiple assets by client IDs', async () => {
+            const filePath1 = path.join(testDir, 'bulk-delete-1.txt');
+            const filePath2 = path.join(testDir, 'bulk-delete-2.txt');
+            await fs.writeFile(filePath1, 'Delete me 1');
+            await fs.writeFile(filePath2, 'Delete me 2');
+
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                filename: 'bulk-delete-1.txt',
+                storage_path: filePath1,
+                client_id: 'bulk-client-1',
+            });
+            mockAssets.set(2, {
+                id: 2,
+                project_id: 1,
+                filename: 'bulk-delete-2.txt',
+                storage_path: filePath2,
+                client_id: 'bulk-client-2',
+            });
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets/bulk`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientIds: ['bulk-client-1', 'bulk-client-2'] }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.deleted).toBe(2);
+            expect(mockAssets.has(1)).toBe(false);
+            expect(mockAssets.has(2)).toBe(false);
+        });
+
+        it('should return success with deleted=0 when clientIds array is empty', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets/bulk`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientIds: [] }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.deleted).toBe(0);
+        });
+
+        it('should return success with deleted=0 when no body provided', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets/bulk`, {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.deleted).toBe(0);
+        });
+
+        it('should return 404 for non-existent project', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/non-existent-uuid/assets/bulk`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientIds: ['any-id'] }),
+                }),
+            );
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toContain('Project not found');
+        });
+
+        it('should only delete assets that exist (partial match)', async () => {
+            const filePath = path.join(testDir, 'partial-delete.txt');
+            await fs.writeFile(filePath, 'Delete me');
+
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 1,
+                filename: 'partial-delete.txt',
+                storage_path: filePath,
+                client_id: 'existing-client',
+            });
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/projects/1/assets/bulk`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientIds: ['existing-client', 'non-existent-client'] }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.deleted).toBe(1); // Only 1 existed
         });
     });
 

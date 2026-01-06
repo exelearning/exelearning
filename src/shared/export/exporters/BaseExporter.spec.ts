@@ -624,14 +624,14 @@ describe('BaseExporter', () => {
             expect(result).toBe('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/image.jpg">');
         });
 
-        it('should not modify asset URLs that already have filenames', async () => {
+        it('should replace existing paths with correct export path based on folderPath', async () => {
             assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
 
             const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/existing.png">';
             const result = await exporter.addFilenamesToAssetUrls(content);
 
-            // Should not modify since it already has a path
-            expect(result).toBe(content);
+            // Should replace with correct export path (folderPath/filename or just filename if no folderPath)
+            expect(result).toBe('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/image.jpg">');
         });
 
         it('should return empty string for empty content', async () => {

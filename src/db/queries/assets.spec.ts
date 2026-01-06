@@ -23,6 +23,15 @@ import {
     deleteAsset,
     deleteAllAssetsForProject,
     bulkUpdateClientIds,
+    // Folder queries
+    findAssetsInFolder,
+    findAssetByPath,
+    getSubfolders,
+    countAssetsInFolderRecursive,
+    updateAssetFolderPath,
+    updateFolderPathPrefix,
+    deleteAssetsInFolderRecursive,
+    bulkUpdateAssets,
 } from './assets';
 import { createUser } from './users';
 import { createProject } from './projects';
@@ -566,6 +575,601 @@ describe('Asset Queries', () => {
         it('should return 0 for project with no assets', async () => {
             const count = await deleteAllAssetsForProject(db, testProjectId);
             expect(count).toBe(0);
+        });
+    });
+
+    // ============================================================================
+    // FOLDER QUERIES
+    // ============================================================================
+
+    describe('findAssetsInFolder', () => {
+        it('should find assets in root folder (empty string)', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'root.png',
+                storage_path: '/root',
+                folder_path: '',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'nested.png',
+                storage_path: '/nested',
+                folder_path: 'images',
+            });
+
+            const assets = await findAssetsInFolder(db, testProjectId, '');
+
+            expect(assets.length).toBe(1);
+            expect(assets[0].filename).toBe('root.png');
+        });
+
+        it('should find assets in specific folder', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                folder_path: 'images',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.png',
+                storage_path: '/b',
+                folder_path: 'images',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.png',
+                storage_path: '/c',
+                folder_path: 'images/icons',
+            });
+
+            const assets = await findAssetsInFolder(db, testProjectId, 'images');
+
+            expect(assets.length).toBe(2);
+            expect(assets.map(a => a.filename).sort()).toEqual(['a.png', 'b.png']);
+        });
+
+        it('should find assets in nested folder', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'icon.svg',
+                storage_path: '/icon',
+                folder_path: 'website/assets/icons',
+            });
+
+            const assets = await findAssetsInFolder(db, testProjectId, 'website/assets/icons');
+
+            expect(assets.length).toBe(1);
+            expect(assets[0].filename).toBe('icon.svg');
+        });
+
+        it('should return empty array for empty folder', async () => {
+            const assets = await findAssetsInFolder(db, testProjectId, 'nonexistent');
+            expect(assets).toEqual([]);
+        });
+
+        it('should sort assets by filename', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'zebra.png',
+                storage_path: '/z',
+                folder_path: 'sorted',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'alpha.png',
+                storage_path: '/a',
+                folder_path: 'sorted',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'beta.png',
+                storage_path: '/b',
+                folder_path: 'sorted',
+            });
+
+            const assets = await findAssetsInFolder(db, testProjectId, 'sorted');
+
+            expect(assets.map(a => a.filename)).toEqual(['alpha.png', 'beta.png', 'zebra.png']);
+        });
+    });
+
+    describe('findAssetByPath', () => {
+        it('should find asset by folder_path and filename', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'style.css',
+                storage_path: '/style',
+                folder_path: 'website/css',
+            });
+
+            const found = await findAssetByPath(db, testProjectId, 'website/css', 'style.css');
+
+            expect(found).toBeDefined();
+            expect(found?.filename).toBe('style.css');
+            expect(found?.folder_path).toBe('website/css');
+        });
+
+        it('should not find asset with same name in different folder', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'index.html',
+                storage_path: '/idx1',
+                folder_path: 'site1',
+            });
+
+            const found = await findAssetByPath(db, testProjectId, 'site2', 'index.html');
+
+            expect(found).toBeUndefined();
+        });
+
+        it('should detect conflicts for duplicate filenames in same folder', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'app.js',
+                storage_path: '/app',
+                folder_path: 'js',
+            });
+
+            const existing = await findAssetByPath(db, testProjectId, 'js', 'app.js');
+
+            expect(existing).toBeDefined();
+            // This enables conflict detection before upload
+        });
+
+        it('should return undefined for non-existent path', async () => {
+            const found = await findAssetByPath(db, testProjectId, 'fake/path', 'fake.txt');
+            expect(found).toBeUndefined();
+        });
+    });
+
+    describe('getSubfolders', () => {
+        it('should get immediate subfolders from root', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                folder_path: 'images',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.css',
+                storage_path: '/b',
+                folder_path: 'css',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.js',
+                storage_path: '/c',
+                folder_path: 'js',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'd.png',
+                storage_path: '/d',
+                folder_path: 'images/icons', // Nested, should not appear as immediate subfolder
+            });
+
+            const subfolders = await getSubfolders(db, testProjectId, '');
+
+            expect(subfolders.sort()).toEqual(['css', 'images', 'js']);
+        });
+
+        it('should get subfolders under a parent path', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                folder_path: 'website/images',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.css',
+                storage_path: '/b',
+                folder_path: 'website/css',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.js',
+                storage_path: '/c',
+                folder_path: 'website/js',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'd.png',
+                storage_path: '/d',
+                folder_path: 'website/images/icons', // Deep nested
+            });
+
+            const subfolders = await getSubfolders(db, testProjectId, 'website');
+
+            expect(subfolders.sort()).toEqual(['css', 'images', 'js']);
+        });
+
+        it('should return unique subfolder names', async () => {
+            // Multiple assets in same folder should only show folder once
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                folder_path: 'images',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.png',
+                storage_path: '/b',
+                folder_path: 'images',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.png',
+                storage_path: '/c',
+                folder_path: 'images',
+            });
+
+            const subfolders = await getSubfolders(db, testProjectId, '');
+
+            expect(subfolders).toEqual(['images']);
+        });
+
+        it('should return empty array for leaf folder', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'icon.svg',
+                storage_path: '/icon',
+                folder_path: 'icons',
+            });
+
+            const subfolders = await getSubfolders(db, testProjectId, 'icons');
+
+            expect(subfolders).toEqual([]);
+        });
+
+        it('should return sorted subfolder names', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.txt',
+                storage_path: '/a',
+                folder_path: 'zebra',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.txt',
+                storage_path: '/b',
+                folder_path: 'alpha',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.txt',
+                storage_path: '/c',
+                folder_path: 'beta',
+            });
+
+            const subfolders = await getSubfolders(db, testProjectId, '');
+
+            expect(subfolders).toEqual(['alpha', 'beta', 'zebra']);
+        });
+    });
+
+    describe('countAssetsInFolderRecursive', () => {
+        it('should count all assets in folder and subfolders', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                folder_path: 'website',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.css',
+                storage_path: '/b',
+                folder_path: 'website/css',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.js',
+                storage_path: '/c',
+                folder_path: 'website/js',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'd.svg',
+                storage_path: '/d',
+                folder_path: 'website/images/icons',
+            });
+
+            const count = await countAssetsInFolderRecursive(db, testProjectId, 'website');
+
+            expect(count).toBe(4);
+        });
+
+        it('should count only assets in specified folder tree', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.css',
+                storage_path: '/a',
+                folder_path: 'css',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.js',
+                storage_path: '/b',
+                folder_path: 'js',
+            });
+
+            const cssCount = await countAssetsInFolderRecursive(db, testProjectId, 'css');
+            const jsCount = await countAssetsInFolderRecursive(db, testProjectId, 'js');
+
+            expect(cssCount).toBe(1);
+            expect(jsCount).toBe(1);
+        });
+
+        it('should return 0 for empty folder', async () => {
+            const count = await countAssetsInFolderRecursive(db, testProjectId, 'nonexistent');
+            expect(count).toBe(0);
+        });
+
+        it('should count all assets when starting from root', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'root.txt',
+                storage_path: '/root',
+                folder_path: '',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'nested.txt',
+                storage_path: '/nested',
+                folder_path: 'folder',
+            });
+
+            const count = await countAssetsInFolderRecursive(db, testProjectId, '');
+
+            expect(count).toBe(2);
+        });
+    });
+
+    describe('updateAssetFolderPath', () => {
+        it('should move asset to new folder', async () => {
+            const asset = await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'moveme.png',
+                storage_path: '/moveme',
+                folder_path: 'old-folder',
+            });
+
+            const updated = await updateAssetFolderPath(db, asset.id, 'new-folder');
+
+            expect(updated).toBeDefined();
+            expect(updated?.folder_path).toBe('new-folder');
+        });
+
+        it('should move asset to root', async () => {
+            const asset = await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'toroot.png',
+                storage_path: '/toroot',
+                folder_path: 'some/deep/path',
+            });
+
+            const updated = await updateAssetFolderPath(db, asset.id, '');
+
+            expect(updated?.folder_path).toBe('');
+        });
+
+        it('should update timestamp', async () => {
+            const asset = await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'timestamp.png',
+                storage_path: '/ts',
+                folder_path: '',
+            });
+
+            const originalUpdatedAt = asset.updated_at;
+
+            // Wait a bit to ensure timestamp difference
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            const updated = await updateAssetFolderPath(db, asset.id, 'new-folder');
+
+            expect(updated?.updated_at).toBeGreaterThan(originalUpdatedAt!);
+        });
+
+        it('should return undefined for non-existent asset', async () => {
+            const result = await updateAssetFolderPath(db, 99999, 'folder');
+            expect(result).toBeUndefined();
+        });
+    });
+
+    describe('updateFolderPathPrefix', () => {
+        it('should rename folder by updating all asset prefixes', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                folder_path: 'old-name',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.css',
+                storage_path: '/b',
+                folder_path: 'old-name/css',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.js',
+                storage_path: '/c',
+                folder_path: 'old-name/js',
+            });
+
+            const count = await updateFolderPathPrefix(db, testProjectId, 'old-name', 'new-name');
+
+            expect(count).toBe(3);
+
+            // Verify all paths updated
+            const inOld = await findAssetsInFolder(db, testProjectId, 'old-name');
+            expect(inOld.length).toBe(0);
+
+            const inNew = await findAssetsInFolder(db, testProjectId, 'new-name');
+            expect(inNew.length).toBe(1);
+
+            const inNewCss = await findAssetsInFolder(db, testProjectId, 'new-name/css');
+            expect(inNewCss.length).toBe(1);
+        });
+
+        it('should move folder to new parent', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'icon.svg',
+                storage_path: '/icon',
+                folder_path: 'images/icons',
+            });
+
+            await updateFolderPathPrefix(db, testProjectId, 'images/icons', 'assets/icons');
+
+            const moved = await findAssetsInFolder(db, testProjectId, 'assets/icons');
+            expect(moved.length).toBe(1);
+            expect(moved[0].filename).toBe('icon.svg');
+        });
+
+        it('should not affect assets in other projects', async () => {
+            const otherProjectId = await seedTestProject(db, testUserId, {
+                title: 'Other',
+                uuid: `other-proj-${Date.now()}-4`,
+            });
+
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'mine.png',
+                storage_path: '/mine',
+                folder_path: 'shared-name',
+            });
+            await createAsset(db, {
+                project_id: otherProjectId,
+                filename: 'theirs.png',
+                storage_path: '/theirs',
+                folder_path: 'shared-name',
+            });
+
+            await updateFolderPathPrefix(db, testProjectId, 'shared-name', 'renamed');
+
+            // My asset moved
+            const myAssets = await findAssetsInFolder(db, testProjectId, 'renamed');
+            expect(myAssets.length).toBe(1);
+
+            // Their asset stayed
+            const theirAssets = await findAssetsInFolder(db, otherProjectId, 'shared-name');
+            expect(theirAssets.length).toBe(1);
+        });
+
+        it('should return 0 for non-existent folder', async () => {
+            const count = await updateFolderPathPrefix(db, testProjectId, 'nonexistent', 'new');
+            expect(count).toBe(0);
+        });
+    });
+
+    describe('deleteAssetsInFolderRecursive', () => {
+        it('should delete all assets in folder and subfolders', async () => {
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a.png',
+                storage_path: '/a',
+                folder_path: 'delete-me',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'b.css',
+                storage_path: '/b',
+                folder_path: 'delete-me/css',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'c.js',
+                storage_path: '/c',
+                folder_path: 'delete-me/js/vendor',
+            });
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'keep.txt',
+                storage_path: '/keep',
+                folder_path: 'keep-me',
+            });
+
+            const count = await deleteAssetsInFolderRecursive(db, testProjectId, 'delete-me');
+
+            expect(count).toBe(3);
+
+            // Verify deleted
+            const deleted = await findAssetsInFolder(db, testProjectId, 'delete-me');
+            expect(deleted.length).toBe(0);
+
+            // Verify kept
+            const kept = await findAssetsInFolder(db, testProjectId, 'keep-me');
+            expect(kept.length).toBe(1);
+        });
+
+        it('should return 0 for empty folder', async () => {
+            const count = await deleteAssetsInFolderRecursive(db, testProjectId, 'nonexistent');
+            expect(count).toBe(0);
+        });
+
+        it('should not delete assets from other projects', async () => {
+            const otherProjectId = await seedTestProject(db, testUserId, {
+                title: 'Other',
+                uuid: `other-proj-${Date.now()}-5`,
+            });
+
+            await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'mine.png',
+                storage_path: '/mine',
+                folder_path: 'shared-folder',
+            });
+            await createAsset(db, {
+                project_id: otherProjectId,
+                filename: 'theirs.png',
+                storage_path: '/theirs',
+                folder_path: 'shared-folder',
+            });
+
+            await deleteAssetsInFolderRecursive(db, testProjectId, 'shared-folder');
+
+            // Their asset should remain
+            const theirAssets = await findAssetsInFolder(db, otherProjectId, 'shared-folder');
+            expect(theirAssets.length).toBe(1);
+        });
+    });
+
+    describe('bulkUpdateAssets', () => {
+        it('should update multiple assets at once', async () => {
+            const a1 = await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a1.png',
+                storage_path: '/a1',
+            });
+            const a2 = await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'a2.png',
+                storage_path: '/a2',
+            });
+
+            await bulkUpdateAssets(db, [
+                { id: a1.id, data: { folder_path: 'folder1', filename: 'renamed1.png' } },
+                { id: a2.id, data: { folder_path: 'folder2', filename: 'renamed2.png' } },
+            ]);
+
+            const found1 = await findAssetById(db, a1.id);
+            const found2 = await findAssetById(db, a2.id);
+
+            expect(found1?.folder_path).toBe('folder1');
+            expect(found1?.filename).toBe('renamed1.png');
+            expect(found2?.folder_path).toBe('folder2');
+            expect(found2?.filename).toBe('renamed2.png');
+        });
+
+        it('should do nothing for empty input', async () => {
+            // Should not throw
+            await bulkUpdateAssets(db, []);
         });
     });
 });

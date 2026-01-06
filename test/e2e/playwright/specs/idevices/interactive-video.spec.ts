@@ -488,10 +488,12 @@ test.describe('Interactive Video iDevice', () => {
             // Upload video file
             await uploadVideoFile(page, TEST_DATA.videoFixture);
 
-            // Verify the file path is set
+            // Verify the file path is set with asset:// URL format (uuid.ext)
             const fileInput = page.locator('#interactiveVideoFile');
             const filePath = await fileInput.inputValue();
-            expect(filePath).toContain('sample-video-480-900kb.webm');
+            expect(filePath.startsWith('asset://')).toBe(true);
+            // Should have .webm extension (from original file)
+            expect(filePath).toMatch(/^asset:\/\/[a-f0-9-]+\.webm$/);
 
             // Save the iDevice
             await saveInteractiveVideoIdevice(page);

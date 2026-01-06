@@ -448,6 +448,7 @@
     .modal-content {
         width: 1000px;
         height: 650px;
+        position: relative;
 
         .hide {
             display: none;
@@ -458,6 +459,57 @@
             max-height: calc(100% - 32px);
             display: flex;
             flex-direction: column;
+        }
+    }
+
+    /* Header with title, search, and close button aligned */
+    .modal-header {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px !important; /* Override 70px right padding */
+        gap: 16px;
+
+        .modal-title {
+            flex-shrink: 0;
+        }
+
+        .media-library-header-search {
+            margin-left: auto;
+            position: relative;
+
+            &::before {
+                content: "search";
+                font-family: var(--icons-ff);
+                position: absolute;
+                left: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: var(--gray-500);
+                font-size: 18px;
+                pointer-events: none;
+            }
+
+            .media-library-search {
+                padding-left: 36px;
+                min-width: 200px;
+                border-radius: var(--radius);
+                border: 1px solid var(--elements-hover);
+
+                &:focus {
+                    border-color: var(--exe-color);
+                    box-shadow: 0 0 0 2px rgba(var(--exe-color-rgb), 0.1);
+                }
+            }
+        }
+
+        .close {
+            position: relative !important;
+            top: auto !important;
+            right: auto !important;
+            flex-shrink: 0;
+            margin-left: 8px;
+            align-self: center !important;
+            transform: none !important;
         }
     }
 
@@ -479,6 +531,18 @@
             .exe-icon {
                 font-family: var(--icons-ff);
                 font-size: 18px;
+            }
+        }
+
+        .media-library-newfolder-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 20px;
             }
         }
 
@@ -534,6 +598,28 @@
                 width: auto;
                 padding: 4px 8px;
                 font-size: 13px;
+            }
+        }
+
+        .media-library-refcount-toggle {
+            display: flex;
+            align-items: center;
+            margin-left: 8px;
+
+            label {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin: 0;
+                font-size: 13px;
+                color: var(--icon-gray);
+                cursor: pointer;
+                white-space: nowrap;
+
+                input[type="checkbox"] {
+                    margin: 0;
+                    cursor: pointer;
+                }
             }
         }
 
@@ -711,6 +797,29 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+
+        /* Usage count badge (grid) */
+        .badge {
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            line-height: 12px;
+            padding: 3px 5px;
+            z-index: 1;
+        }
+    }
+
+    /* Small badge for list view */
+    .badge-sm {
+        font-size: 9px;
+        font-weight: 600;
+        min-width: 14px;
+        height: 14px;
+        line-height: 10px;
+        padding: 2px 4px;
+        vertical-align: middle;
+        margin-left: 6px;
     }
 
     /* List view container */
@@ -982,6 +1091,154 @@
 
         .media-library-insert-btn {
             flex: 1;
+        }
+    }
+
+    // Folder Picker Dialog (nested inside File Manager modal)
+    .media-library-folder-picker {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1060;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .folder-picker-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .folder-picker-dialog {
+            position: relative;
+            background: var(--white, #fff);
+            border-radius: var(--radius, 8px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            max-width: 90%;
+            max-height: 80%;
+            display: flex;
+            flex-direction: column;
+            z-index: 1;
+        }
+
+        .folder-picker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200, #e2e8f0);
+
+            .folder-picker-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--gray-800, #2d3748);
+                margin: 0;
+            }
+
+            .folder-picker-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                color: var(--gray-500, #718096);
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+
+                &:hover {
+                    color: var(--gray-700, #4a5568);
+                }
+            }
+        }
+
+        .folder-picker-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            min-height: 200px;
+            max-height: 400px;
+        }
+
+        .folder-picker-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+
+            .folder-picker-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: background 0.15s;
+                border: 2px solid transparent;
+
+                &:hover {
+                    background: var(--gray-100, #f7fafc);
+                }
+
+                &.selected {
+                    background: var(--blue-50, #ebf8ff);
+                    border-color: var(--blue-500, #4299e1);
+                }
+
+                &.current {
+                    opacity: 0.6;
+                    cursor: default;
+
+                    &:hover {
+                        background: transparent;
+                    }
+                }
+
+                .exe-icon {
+                    font-size: 20px;
+                    color: var(--yellow-500, #ecc94b);
+                }
+
+                .folder-picker-name {
+                    flex: 1;
+                    font-size: 14px;
+                    color: var(--gray-700, #4a5568);
+                }
+
+                .folder-picker-current {
+                    font-size: 12px;
+                    color: var(--gray-400, #a0aec0);
+                    font-style: italic;
+                }
+            }
+        }
+
+        .folder-picker-empty {
+            text-align: center;
+            padding: 32px;
+            color: var(--gray-500, #718096);
+
+            .exe-icon {
+                font-size: 48px;
+                margin-bottom: 12px;
+                display: block;
+            }
+        }
+
+        .folder-picker-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 20px;
+            border-top: 1px solid var(--gray-200, #e2e8f0);
+
+            .btn {
+                min-width: 100px;
+            }
         }
     }
 }
