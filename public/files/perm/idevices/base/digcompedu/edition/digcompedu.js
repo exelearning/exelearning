@@ -511,6 +511,14 @@ var $exeDevice = {
                         </header>
                         <div class="digcompedu-table-wrapper" role="region" aria-live="polite">
                             <table class="digcompedu-table" aria-describedby="${this.selectionCounterId}">
+                                <colgroup>
+                                    <col class="digcompedu-col-area">
+                                    <col class="digcompedu-col-competence">
+                                    <col class="digcompedu-col-stage">
+                                    <col class="digcompedu-col-level">
+                                    <col class="digcompedu-col-indicator">
+                                    <col class="digcompedu-col-performance">
+                                </colgroup>
                                 <thead>
                                     <tr>
                                         <th scope="col">${_('Area')}</th>
@@ -934,7 +942,8 @@ var $exeDevice = {
         const performanceCell = this.createPerformanceCell(entry);
 
         const indicatorCell = document.createElement('td');
-        indicatorCell.classList.add('digcompedu-indicator');
+        const indicatorWrapper = document.createElement('div');
+        indicatorWrapper.classList.add('digcompedu-indicator');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.name = entry.entryId;
@@ -985,8 +994,9 @@ var $exeDevice = {
         }
 
         checkbox.id = entry.entryId;
-        indicatorCell.appendChild(checkbox);
-        indicatorCell.appendChild(indicatorLabel);
+        indicatorWrapper.appendChild(checkbox);
+        indicatorWrapper.appendChild(indicatorLabel);
+        indicatorCell.appendChild(indicatorWrapper);
 
         const cells = [
             areaCell,
@@ -1759,26 +1769,12 @@ var $exeDevice = {
             ) {
                 const basePath = idevice.pathEdition || idevice.path || '';
                 if (basePath) {
-                    try {
-                        const absolute = new URL(
-                            relativePath,
-                            basePath
-                        ).toString();
-                        const normalized = absolute.replace(
-                            /(\/perm\/idevices\/base\/)([^/]+)\//,
-                            `$1${this.prefix}/`
-                        );
-                        return idevice.getResourceServicePath(normalized);
-                    } catch (error) {
-                        const manual =
-                            basePath.replace(/\/$/, '/') +
-                            relativePath.replace(/^\.\//, '');
-                        const normalizedManual = manual.replace(
-                            /(\/perm\/idevices\/base\/)([^/]+)\//,
-                            `$1${this.prefix}/`
-                        );
-                        return idevice.getResourceServicePath(normalizedManual);
-                    }
+                    // Resolve relative path manually (basePath is not a full URL)
+                    const resolved = this.resolveRelativePath(
+                        basePath,
+                        relativePath
+                    );
+                    return idevice.getResourceServicePath(resolved);
                 }
             }
         }
@@ -1787,15 +1783,41 @@ var $exeDevice = {
         if (!base) {
             return relativePath;
         }
+        // Try to resolve using window.location as base for full URL construction
         try {
-            const resolved = new URL(relativePath, base).toString();
-            return resolved.replace(
-                /(perm\/idevices\/base\/)([^/]+)\//,
-                `$1${this.prefix}/`
-            );
+            const fullBase = new URL(base, window.location.href).href;
+            const resolved = new URL(relativePath, fullBase).pathname;
+            return resolved;
         } catch (error) {
-            return relativePath;
+            return this.resolveRelativePath(base, relativePath);
         }
+    },
+
+    /**
+     * Resolve a relative path against a base path using string manipulation.
+     * @param {string} basePath - The base path (e.g., '/v1/files/perm/idevices/base/digcompedu/edition/')
+     * @param {string} relativePath - The relative path (e.g., '../data/digcompedu_es.json')
+     * @returns {string} The resolved absolute path
+     */
+    resolveRelativePath: function (basePath, relativePath) {
+        // Remove trailing slash and split into segments
+        const baseSegments = basePath.replace(/\/$/, '').split('/');
+
+        // Handle relative path segments
+        const relativeSegments = relativePath.split('/');
+
+        for (let i = 0; i < relativeSegments.length; i++) {
+            const segment = relativeSegments[i];
+            if (segment === '..') {
+                // Go up one directory
+                baseSegments.pop();
+            } else if (segment !== '.' && segment !== '') {
+                // Add the segment
+                baseSegments.push(segment);
+            }
+        }
+
+        return baseSegments.join('/');
     },
 
     /**

@@ -27,6 +27,7 @@
         <filename>digcompedu.css</filename>
     </export-css>
     <export-template-filename>digcompedu.html</export-template-filename>
+    <export-object>$Digcompedu</export-object>
     <author>erseco</author>
     <author-url>https://github.com/erseco</author-url>
     <license>AGPL-3.0-or-later</license>

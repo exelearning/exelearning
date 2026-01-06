@@ -29,23 +29,22 @@ var $Digcompedu = {
         const summaryTableHtml = this.buildSummaryTable(data);
         const summaryTextHtml = this.buildTextSummary(data, lang);
 
-        let html = `<div class="${this.ideviceClass}" data-lang="${lang}" data-display="${displayMode}">`;
+        // Note: The outer container div is provided by the template (digcompedu.html)
+        // We only generate the inner content here
+        let html = '';
 
         if (!summaryTableHtml) {
-            html += `<div class="digcompedu-empty">${_('No indicators were selected for this activity.')}</div>`;
-            html += '</div>';
-            return html;
+            return `<div class="digcompedu-empty">${_('No indicators were selected for this activity.')}</div>`;
         }
 
         html += `<h3>${_('DigCompEdu summary')}</h3>`;
         html += `<p>${_('Selected indicators: ')}${selectedCount}</p>`;
-        html += `<div class="digcompedu-summary-wrapper">${summaryTableHtml}</div>`;
+        html += `<div class="digcompedu-summary-wrapper" data-lang="${lang}" data-display="${displayMode}">${summaryTableHtml}</div>`;
 
         if (displayMode === 'table+summary' && summaryTextHtml) {
             html += `<div class="digcompedu-text-summary">${summaryTextHtml}</div>`;
         }
 
-        html += '</div>';
         return html;
     },
 
