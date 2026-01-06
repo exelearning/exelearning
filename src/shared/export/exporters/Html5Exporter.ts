@@ -16,6 +16,7 @@
 
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Html5ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class Html5Exporter extends BaseExporter {
     /**
@@ -255,6 +256,24 @@ export class Html5Exporter extends BaseExporter {
                 }
             }
 
+            // 9.5. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    // Use FileSystemResourceProvider's fetchGlobalFontFiles if available
+                    const fontFiles = await (this.resources as any).fetchGlobalFontFiles?.(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                        }
+                        console.log(
+                            `[Html5Exporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`,
+                        );
+                    }
+                } catch (e) {
+                    console.warn(`[Html5Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
             // 10. Add project assets (with tracking)
             await this.addAssetsToZipWithResourcePath(fileList);
 
@@ -316,11 +335,21 @@ export class Html5Exporter extends BaseExporter {
         const usedIdevices = this.getUsedIdevicesForPage(page);
         const currentPageIndex = pageIndex ?? allPages.findIndex(p => p.id === page.id);
 
+        // Generate global font CSS if a font is selected
+        let customStyles = meta.customStyles || '';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
+            if (globalFontCss) {
+                // Prepend global font CSS to customStyles (font CSS should come first)
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+        }
+
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
             language: meta.language || 'en',
             theme: meta.theme || 'base',
-            customStyles: meta.customStyles || '',
+            customStyles,
             allPages,
             basePath,
             isIndex,

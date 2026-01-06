@@ -262,7 +262,22 @@ export class ElpxExporter extends Html5Exporter {
                 }
             }
 
-            // 1.9 Add project assets
+            // 1.9 Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await (this.resources as any).fetchGlobalFontFiles?.(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            this.zip.addFile(filePath, content);
+                        }
+                        console.log(`[ElpxExporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`);
+                    }
+                } catch (e) {
+                    console.warn(`[ElpxExporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
+            // 1.10 Add project assets
             await this.addAssetsToZipWithResourcePath();
 
             // =========================================================================
@@ -404,6 +419,7 @@ export class ElpxExporter extends Html5Exporter {
             pp_category: meta.category,
             pp_addAccessibilityToolbar: meta.addAccessibilityToolbar,
             pp_addMathJax: meta.addMathJax,
+            pp_globalFont: meta.globalFont,
             pp_customStyles: meta.customStyles,
             pp_exelearning_version: meta.exelearningVersion,
         };

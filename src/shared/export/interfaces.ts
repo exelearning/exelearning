@@ -48,6 +48,7 @@ export interface ExportMetadata {
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
+    globalFont?: string; // Global font: 'default' | 'opendyslexic' | 'andika' | 'nunito' | 'boo'
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>

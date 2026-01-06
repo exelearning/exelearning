@@ -19,6 +19,7 @@ import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '..
 import { Html5Exporter } from './Html5Exporter';
 import { Scorm2004ManifestGenerator } from '../generators/Scorm2004Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class Scorm2004Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm2004ManifestGenerator | null = null;
@@ -207,6 +208,25 @@ export class Scorm2004Exporter extends Html5Exporter {
                 }
             }
 
+            // 6b. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    // Use FileSystemResourceProvider's fetchGlobalFontFiles if available
+                    const fontFiles = await (this.resources as any).fetchGlobalFontFiles?.(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            this.zip.addFile(filePath, content);
+                            commonFiles.push(filePath);
+                        }
+                        console.log(
+                            `[Scorm2004Exporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`,
+                        );
+                    }
+                } catch (e) {
+                    console.warn(`[Scorm2004Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
             // 7. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
@@ -256,11 +276,21 @@ export class Scorm2004Exporter extends Html5Exporter {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
 
+        // Generate global font CSS if a font is selected
+        let customStyles = meta.customStyles || '';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
+            if (globalFontCss) {
+                // Prepend global font CSS to customStyles (font CSS should come first)
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+        }
+
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
             language: meta.language || 'en',
             theme: meta.theme || 'base',
-            customStyles: meta.customStyles || '',
+            customStyles,
             allPages,
             basePath,
             isIndex,

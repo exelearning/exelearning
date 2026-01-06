@@ -16,6 +16,7 @@
 
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Epub3ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 /**
  * EPUB3 XML namespaces
@@ -262,6 +263,26 @@ export class Epub3Exporter extends BaseExporter {
                 }
             }
 
+            // 8.5. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await (this.resources as any).fetchGlobalFontFiles?.(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            this.zip.addFile(`EPUB/${filePath}`, content);
+                            const ext = this.getFileExtensionFromPath(filePath);
+                            const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+                            this.addManifestItem(this.generateUniqueId(`font-${filePath}`), filePath, mimeType);
+                        }
+                        console.log(
+                            `[Epub3Exporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`,
+                        );
+                    }
+                } catch (e) {
+                    console.warn(`[Epub3Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
             // 9. Add project assets
             const _assetsAdded = await this.addEpubAssets();
 
@@ -479,12 +500,22 @@ export class Epub3Exporter extends BaseExporter {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
 
+        // Generate global font CSS if a font is selected
+        let customStyles = meta.customStyles || '';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
+            if (globalFontCss) {
+                // Prepend global font CSS to customStyles
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+        }
+
         // Generate page content HTML then convert to XHTML
         const pageHtml = this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
             language: lang,
             theme: meta.theme || 'base',
-            customStyles: meta.customStyles || '',
+            customStyles,
             allPages,
             basePath,
             isIndex,
