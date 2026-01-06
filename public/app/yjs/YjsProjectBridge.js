@@ -86,14 +86,16 @@ class YjsProjectBridge {
     // Use the lock manager created by document manager (already has the correct Y.Doc reference)
     this.lockManager = this.documentManager.lockManager;
 
-    // Create new AssetManager (with asset:// URLs)
+    // Create new AssetManager (with asset:// URLs, Yjs metadata)
     let preloadedAssetCount = 0;
     if (window.AssetManager) {
       this.assetManager = new window.AssetManager(projectId);
+      // Connect AssetManager to Yjs bridge for metadata storage
+      this.assetManager.setYjsBridge(this);
       await this.assetManager.init();
       // Preload all assets from IndexedDB into memory cache
       preloadedAssetCount = await this.assetManager.preloadAllAssets();
-      Logger.log(`[YjsProjectBridge] AssetManager initialized, preloaded ${preloadedAssetCount} assets`);
+      Logger.log(`[YjsProjectBridge] AssetManager initialized with Yjs metadata, preloaded ${preloadedAssetCount} assets`);
     }
 
     // Create legacy asset cache (for backward compatibility)
@@ -136,6 +138,9 @@ class YjsProjectBridge {
         }
       );
       await this.assetWebSocketHandler.initialize();
+
+      // Connect AssetManager to the WebSocket handler for rename sync
+      this.assetManager.setWebSocketHandler(this.assetWebSocketHandler);
 
       // Listen for asset received events to update DOM
       this.assetWebSocketHandler.on('assetReceived', async ({ assetId }) => {
@@ -1728,6 +1733,18 @@ class YjsProjectBridge {
       createdAt: metadata.get('createdAt'),
       modifiedAt: metadata.get('modifiedAt'),
     };
+  }
+
+  /**
+   * Get assets Y.Map for instant sync of asset metadata
+   * Structure: Map<uuid, {filename, folderPath, mime, size, hash, uploaded, createdAt}>
+   * @returns {Y.Map} The Yjs Map containing all asset metadata
+   */
+  getAssetsMap() {
+    if (!this.documentManager) {
+      throw new Error('[YjsProjectBridge] Not initialized');
+    }
+    return this.documentManager.getAssets();
   }
 
   /**

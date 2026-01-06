@@ -159,17 +159,99 @@ describe('Config Routes', () => {
             }
         });
 
-        it('should return API routes', async () => {
-            const response = await app.handle(
-                new Request('http://localhost/api/parameter-management/parameters/data/list'),
-            );
+        it('should return API routes without BASE_PATH prefix when not set', async () => {
+            const originalBasePath = process.env.BASE_PATH;
+            delete process.env.BASE_PATH;
 
-            const data = await response.json();
-            expect(data.routes).toBeDefined();
-            expect(typeof data.routes).toBe('object');
-            // Check some key routes
-            expect(data.routes.api_auth_login).toBeDefined();
-            expect(data.routes.api_auth_login.path).toBe('/api/auth/login');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/api/parameter-management/parameters/data/list'),
+                );
+
+                const data = await response.json();
+                expect(data.routes).toBeDefined();
+                expect(typeof data.routes).toBe('object');
+                // Check some key routes - should have no prefix
+                expect(data.routes.api_auth_login).toBeDefined();
+                expect(data.routes.api_auth_login.path).toBe('/api/auth/login');
+                expect(data.routes.api_idevices_download_file_resources.path).toBe(
+                    '/api/idevices/download-file-resources',
+                );
+            } finally {
+                if (originalBasePath !== undefined) {
+                    process.env.BASE_PATH = originalBasePath;
+                }
+            }
+        });
+
+        it('should prefix API routes with BASE_PATH when set', async () => {
+            const originalBasePath = process.env.BASE_PATH;
+            process.env.BASE_PATH = '/web/exelearning';
+
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/api/parameter-management/parameters/data/list'),
+                );
+
+                const data = await response.json();
+                expect(data.routes).toBeDefined();
+                // Check routes have BASE_PATH prefix
+                expect(data.routes.api_auth_login.path).toBe('/web/exelearning/api/auth/login');
+                expect(data.routes.api_idevices_download_file_resources.path).toBe(
+                    '/web/exelearning/api/idevices/download-file-resources',
+                );
+                expect(data.routes.api_export_html5.path).toBe('/web/exelearning/api/export/html5');
+            } finally {
+                if (originalBasePath !== undefined) {
+                    process.env.BASE_PATH = originalBasePath;
+                } else {
+                    delete process.env.BASE_PATH;
+                }
+            }
+        });
+
+        it('should prefix API routes with single-level BASE_PATH', async () => {
+            const originalBasePath = process.env.BASE_PATH;
+            process.env.BASE_PATH = '/exelearning';
+
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/api/parameter-management/parameters/data/list'),
+                );
+
+                const data = await response.json();
+                expect(data.routes.api_auth_login.path).toBe('/exelearning/api/auth/login');
+                expect(data.routes.api_idevices_download_file_resources.path).toBe(
+                    '/exelearning/api/idevices/download-file-resources',
+                );
+            } finally {
+                if (originalBasePath !== undefined) {
+                    process.env.BASE_PATH = originalBasePath;
+                } else {
+                    delete process.env.BASE_PATH;
+                }
+            }
+        });
+
+        it('should handle BASE_PATH with trailing slash', async () => {
+            const originalBasePath = process.env.BASE_PATH;
+            process.env.BASE_PATH = '/web/exelearning/';
+
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/api/parameter-management/parameters/data/list'),
+                );
+
+                const data = await response.json();
+                // Trailing slash should be removed
+                expect(data.routes.api_auth_login.path).toBe('/web/exelearning/api/auth/login');
+            } finally {
+                if (originalBasePath !== undefined) {
+                    process.env.BASE_PATH = originalBasePath;
+                } else {
+                    delete process.env.BASE_PATH;
+                }
+            }
         });
 
         it('should generate unique item key', async () => {

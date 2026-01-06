@@ -27,8 +27,13 @@ class MockWebSocket {
 
 // Mock AssetManager
 const createMockAssetManager = () => ({
+  projectId: 'project-123',
   getAllAssetIds: mock(() => undefined).mockResolvedValue(['asset-1', 'asset-2']),
+  getAllLocalBlobIds: mock(() => undefined).mockResolvedValue(['asset-1', 'asset-2']),
   hasAsset: mock(() => undefined).mockResolvedValue(false),
+  hasLocalBlob: mock(() => undefined).mockResolvedValue(false),
+  getAsset: mock(() => undefined).mockResolvedValue(null),
+  putAsset: mock(() => undefined).mockResolvedValue(),
   getAssetForUpload: mock(() => undefined).mockResolvedValue({
     blob: new Blob(['test']),
     mime: 'image/png',
@@ -277,7 +282,7 @@ describe('AssetWebSocketHandler', () => {
     it('sends empty array when no assets', async () => {
       mockWsProvider.wsconnected = true;
       handler.connected = true;
-      mockAssetManager.getAllAssetIds.mockResolvedValue([]);
+      mockAssetManager.getAllLocalBlobIds.mockResolvedValue([]);
 
       await handler.announceAssetAvailability();
 
@@ -297,8 +302,8 @@ describe('AssetWebSocketHandler', () => {
   });
 
   describe('requestAsset', () => {
-    it('returns true if asset already exists', async () => {
-      mockAssetManager.hasAsset.mockResolvedValue(true);
+    it('returns true if asset blob already exists locally', async () => {
+      mockAssetManager.hasLocalBlob.mockResolvedValue(true);
 
       const result = await handler.requestAsset('asset-1');
 
@@ -979,4 +984,171 @@ describe('AssetWebSocketHandler', () => {
       );
     });
   });
+
+  describe('syncAssetsMetadataFromServer', () => {
+    it('returns early if projectId is missing', async () => {
+      handler.config.projectId = null;
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('returns early if assetManager is missing', async () => {
+      handler.assetManager = null;
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('fetches assets metadata from server', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'asset-1', filename: 'test.jpg', mimeType: 'image/jpeg', size: 1000, folderPath: 'images' },
+          ],
+        }),
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:3001/api/projects/project-123/assets',
+        expect.objectContaining({
+          headers: { 'Authorization': 'Bearer test-token' },
+        })
+      );
+    });
+
+    it('creates metadata entry for new assets', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'new-asset', filename: 'test.jpg', mimeType: 'image/jpeg', size: 1000, folderPath: 'images' },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue(null);
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.putAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'new-asset',
+          filename: 'test.jpg',
+          mime: 'image/jpeg',
+          size: 1000,
+          folderPath: 'images',
+          uploaded: true,
+          blob: null,
+        })
+      );
+    });
+
+    it('updates existing asset metadata if missing fields', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'existing-asset', filename: 'test.jpg', mimeType: 'image/jpeg', size: 1000, folderPath: 'images' },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue({
+        id: 'existing-asset',
+        projectId: 'project-123',
+        filename: null,
+        folderPath: undefined,
+        mime: null,
+        size: null,
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.putAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'existing-asset',
+          filename: 'test.jpg',
+          folderPath: 'images',
+          mime: 'image/jpeg',
+          size: 1000,
+        })
+      );
+    });
+
+    it('skips update if asset already has all metadata', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'complete-asset', filename: 'test.jpg', mimeType: 'image/jpeg', size: 1000, folderPath: 'images' },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue({
+        id: 'complete-asset',
+        projectId: 'project-123',
+        filename: 'test.jpg',
+        folderPath: 'images',
+        mime: 'image/jpeg',
+        size: 1000,
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.putAsset).not.toHaveBeenCalled();
+    });
+
+    it('handles fetch error gracefully', async () => {
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to fetch assets metadata: 500')
+      );
+    });
+
+    it('handles no assets on server', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [],
+        }),
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.putAsset).not.toHaveBeenCalled();
+    });
+
+    it('skips assets without clientId', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { filename: 'test.jpg', mimeType: 'image/jpeg' }, // No clientId
+          ],
+        }),
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.getAsset).not.toHaveBeenCalled();
+      expect(mockAssetManager.putAsset).not.toHaveBeenCalled();
+    });
+  });
+
 });

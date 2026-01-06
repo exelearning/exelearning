@@ -29,6 +29,7 @@ import { getFilesDir } from '../utils/admin-route-helpers';
 import * as path from 'path';
 import { getDefaultTheme, getDefaultThemeRecord } from '../db/queries/themes';
 import { SUPPORTED_LOCALES } from '../services/admin-upload-validator';
+import { getBasePath } from '../utils/basepath.util';
 
 /**
  * Available licenses for content
@@ -582,6 +583,28 @@ interface TemplateItem {
     description?: string;
 }
 
+/**
+ * Prefix all API route paths with BASE_PATH for subdirectory installations.
+ * This ensures frontend code makes requests to the correct prefixed URLs.
+ */
+function prefixRoutesWithBasePath(
+    routes: Record<string, { path: string; methods: string[] }>,
+): Record<string, { path: string; methods: string[] }> {
+    const basePath = getBasePath();
+    if (!basePath) {
+        return routes; // No prefix needed
+    }
+
+    const prefixedRoutes: Record<string, { path: string; methods: string[] }> = {};
+    for (const [key, route] of Object.entries(routes)) {
+        prefixedRoutes[key] = {
+            ...route,
+            path: `${basePath}${route.path}`,
+        };
+    }
+    return prefixedRoutes;
+}
+
 async function getDefaultParameters(uploadLimits: { maxFileSize: number }) {
     const authMethods = await getAuthMethods(defaultDb, process.env.APP_AUTH_METHODS || 'password,guest');
 
@@ -705,8 +728,8 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
             autosaveIntervalTime,
             generateNewItemKey: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 
-            // API routes
-            routes: API_ROUTES.routes,
+            // API routes - prefix all paths with BASE_PATH for subdirectory installations
+            routes: prefixRoutesWithBasePath(API_ROUTES.routes),
         };
     })
 

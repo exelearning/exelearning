@@ -29,16 +29,38 @@ window.MathJax = window.MathJax || (function() {
     // For workarea: use versioned path from eXeLearning config or detect from script tags
     // For exports: use relative paths (./libs or ../libs)
     var version = (window.eXeLearning && window.eXeLearning.version) || '';
-    if (!version && isWorkarea) {
-        // Try to detect version from existing script tags (e.g., /v0.0.0-alpha/app/...)
+    var configBasePath = '';
+    if (isWorkarea) {
+        // Try to detect version and basePath from existing script tags (e.g., /web/exelearning/v0.0.0-alpha/app/...)
         var scriptTag = document.querySelector('script[src*="/app/common/"]');
         if (scriptTag) {
-            var match = scriptTag.src.match(/\/(v[\d.]+[^/]*)\//);
-            if (match) version = match[1];
+            var src = scriptTag.src;
+            // Extract version (e.g., v0.0.0-alpha)
+            var versionMatch = src.match(/\/(v[\d.]+[^/]*)\//);
+            if (versionMatch) version = versionMatch[1];
+            // Extract basePath - everything before /v... or /app/
+            // URL might be: /web/exelearning/v0.0.0/app/common/... or /v0.0.0/app/common/...
+            try {
+                var url = new URL(src);
+                var pathname = url.pathname;
+                // Find where the versioned path or /app/ starts
+                var appIndex = pathname.indexOf('/app/common/');
+                if (appIndex > 0) {
+                    var beforeApp = pathname.substring(0, appIndex);
+                    // If there's a version, remove it from the path
+                    if (version && beforeApp.endsWith('/' + version)) {
+                        configBasePath = beforeApp.substring(0, beforeApp.length - version.length - 1);
+                    } else {
+                        configBasePath = beforeApp;
+                    }
+                }
+            } catch (e) {
+                // If URL parsing fails, leave configBasePath empty
+            }
         }
     }
     var basePath = isWorkarea
-        ? (version ? '/' + version + '/app/common/exe_math' : '/app/common/exe_math')
+        ? (version ? configBasePath + '/' + version + '/app/common/exe_math' : configBasePath + '/app/common/exe_math')
         : (isIndex ? './libs/exe_math' : '../libs/exe_math');
     
     var externalExtensions = [
@@ -1437,16 +1459,39 @@ var $exeDevices = {
                     if (isExport) {
                         basePath = $("html").prop("id") == "exe-index" ? "./libs/exe_math" : "../libs/exe_math";
                     } else {
-                        // Workarea: detect version from script tags
+                        // Workarea: detect version and basePath from script tags
                         var version = (window.eXeLearning && window.eXeLearning.version) || '';
-                        if (!version) {
-                            var scriptTag = document.querySelector('script[src*="/app/common/"]');
-                            if (scriptTag) {
-                                var match = scriptTag.src.match(/\/(v[\d.]+[^/]*)\//);
-                                if (match) version = match[1];
+                        var configBasePath = '';
+                        // Try to get basePath from parsed config first (if available)
+                        if (window.eXeLearning && window.eXeLearning.config && typeof window.eXeLearning.config === 'object') {
+                            configBasePath = window.eXeLearning.config.basePath || '';
+                        }
+                        // Detect version and basePath from script tags as fallback
+                        var scriptTag = document.querySelector('script[src*="/app/common/"]');
+                        if (scriptTag) {
+                            var src = scriptTag.src;
+                            if (!version) {
+                                var versionMatch = src.match(/\/(v[\d.]+[^/]*)\//);
+                                if (versionMatch) version = versionMatch[1];
+                            }
+                            // Detect basePath from script src if not already set
+                            if (!configBasePath) {
+                                try {
+                                    var url = new URL(src);
+                                    var pathname = url.pathname;
+                                    var appIndex = pathname.indexOf('/app/common/');
+                                    if (appIndex > 0) {
+                                        var beforeApp = pathname.substring(0, appIndex);
+                                        if (version && beforeApp.endsWith('/' + version)) {
+                                            configBasePath = beforeApp.substring(0, beforeApp.length - version.length - 1);
+                                        } else {
+                                            configBasePath = beforeApp;
+                                        }
+                                    }
+                                } catch (e) {}
                             }
                         }
-                        basePath = version ? '/' + version + '/app/common/exe_math' : '/app/common/exe_math';
+                        basePath = version ? configBasePath + '/' + version + '/app/common/exe_math' : configBasePath + '/app/common/exe_math';
                     }
                     if (!window.MathJax) {
                         window.MathJax = self.engineConfig;

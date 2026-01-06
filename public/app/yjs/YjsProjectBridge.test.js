@@ -100,6 +100,10 @@ class MockAssetCacheManager {
 class MockAssetManager {
   constructor(projectId) {
     this.projectId = projectId;
+    this.yjsBridge = null;
+  }
+  setYjsBridge(bridge) {
+    this.yjsBridge = bridge;
   }
   async init() {}
   async preloadAllAssets() { return 0; }
