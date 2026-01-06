@@ -280,9 +280,114 @@ class AssetWebSocketHandler {
 
       // Announce our assets
       await this.announceAssetAvailability();
+
+      // Sync asset metadata from server (for collaborative projects)
+      // This ensures we have metadata for assets uploaded by other clients
+      await this.syncAssetsMetadataFromServer();
     } else if (status === 'disconnected') {
       this.connected = false;
       Logger.log('[AssetWebSocketHandler] Disconnected');
+    }
+  }
+
+  /**
+   * Sync asset metadata from server to local IndexedDB
+   * This fetches asset metadata (filename, folderPath, mime, etc.) for all project assets
+   * without downloading the binary blobs. Essential for File Manager to display assets
+   * uploaded by other clients.
+   * @returns {Promise<void>}
+   */
+  async syncAssetsMetadataFromServer() {
+    if (!this.config?.projectId || !this.assetManager) {
+      Logger.log('[AssetWebSocketHandler] Cannot sync metadata: missing projectId or assetManager');
+      return;
+    }
+
+    try {
+      Logger.log('[AssetWebSocketHandler] Syncing asset metadata from server...');
+
+      // Fetch all asset metadata from server
+      const response = await fetch(
+        `${this.config.apiUrl}/projects/${this.config.projectId}/assets`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.config.token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.warn(`[AssetWebSocketHandler] Failed to fetch assets metadata: ${response.status}`);
+        return;
+      }
+
+      const result = await response.json();
+      const serverAssets = result.data || [];
+
+      if (serverAssets.length === 0) {
+        Logger.log('[AssetWebSocketHandler] No assets on server');
+        return;
+      }
+
+      Logger.log(`[AssetWebSocketHandler] Found ${serverAssets.length} assets on server`);
+
+      // Update local IndexedDB with metadata (without overwriting existing blobs)
+      let syncedCount = 0;
+      for (const serverAsset of serverAssets) {
+        const assetId = serverAsset.clientId;
+        if (!assetId) continue;
+
+        // Check if we already have this asset locally
+        const localAsset = await this.assetManager.getAsset(assetId);
+
+        if (localAsset && localAsset.projectId === this.assetManager.projectId) {
+          // Asset exists locally - update metadata if missing (e.g., folderPath)
+          let needsUpdate = false;
+
+          if (!localAsset.filename && serverAsset.filename) {
+            localAsset.filename = serverAsset.filename;
+            needsUpdate = true;
+          }
+          if (localAsset.folderPath === undefined && serverAsset.folderPath !== undefined) {
+            localAsset.folderPath = serverAsset.folderPath;
+            needsUpdate = true;
+          }
+          if (!localAsset.mime && serverAsset.mimeType) {
+            localAsset.mime = serverAsset.mimeType;
+            needsUpdate = true;
+          }
+          if (!localAsset.size && serverAsset.size) {
+            localAsset.size = serverAsset.size;
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            await this.assetManager.putAsset(localAsset);
+            syncedCount++;
+          }
+        } else {
+          // Asset doesn't exist locally - create metadata entry (without blob)
+          // The blob will be fetched on-demand when needed
+          const metadataEntry = {
+            id: assetId,
+            projectId: this.assetManager.projectId,
+            filename: serverAsset.filename,
+            mime: serverAsset.mimeType,
+            size: serverAsset.size,
+            folderPath: serverAsset.folderPath || '',
+            uploaded: true, // It's on the server
+            createdAt: serverAsset.createdAt || new Date().toISOString(),
+            // No blob yet - will be fetched when needed
+            blob: null,
+          };
+          await this.assetManager.putAsset(metadataEntry);
+          syncedCount++;
+        }
+      }
+
+      Logger.log(`[AssetWebSocketHandler] Synced metadata for ${syncedCount} assets`);
+    } catch (error) {
+      console.error('[AssetWebSocketHandler] Failed to sync asset metadata:', error);
     }
   }
 
@@ -368,7 +473,8 @@ class AssetWebSocketHandler {
     }
 
     try {
-      const assetIds = await this.assetManager.getAllAssetIds();
+      // Get only assets with local blobs - don't announce assets we can't serve
+      const assetIds = await this.assetManager.getAllLocalBlobIds();
 
       // Mark as announced even if no assets (to prevent unnecessary retries)
       this._hasAnnounced = true;
@@ -407,10 +513,10 @@ class AssetWebSocketHandler {
    * @returns {Promise<boolean>} - True if asset was retrieved
    */
   async requestAsset(assetId, timeout = 30000) {
-    // Check if we already have it
-    const exists = await this.assetManager.hasAsset(assetId);
-    if (exists) {
-      Logger.log(`[AssetWebSocketHandler] Asset ${assetId.substring(0, 8)}... already exists`);
+    // Check if we already have the blob locally (not just metadata)
+    const hasBlob = await this.assetManager.hasLocalBlob(assetId);
+    if (hasBlob) {
+      Logger.log(`[AssetWebSocketHandler] Asset ${assetId.substring(0, 8)}... already has local blob`);
       return true;
     }
 
@@ -461,7 +567,7 @@ class AssetWebSocketHandler {
    * @param {Object} payload
    */
   async _handleUploadRequest(payload) {
-    const { assetId, requestId, uploadUrl } = payload;
+    const { assetId, requestId, requestedBy, uploadUrl } = payload;
 
     Logger.log(`[AssetWebSocketHandler] Upload request for ${assetId.substring(0, 8)}...`);
 
@@ -477,6 +583,7 @@ class AssetWebSocketHandler {
           data: {
             assetId,
             requestId,
+            requestedBy,
             success: false,
             error: 'Asset not found in local storage',
           },
@@ -512,6 +619,7 @@ class AssetWebSocketHandler {
           data: {
             assetId,
             requestId,
+            requestedBy,
             success: true,
             size: assetData.blob.size,
           },
@@ -526,6 +634,7 @@ class AssetWebSocketHandler {
           data: {
             assetId,
             requestId,
+            requestedBy,
             success: false,
             error: `HTTP ${response.status}: ${errorText}`,
           },
@@ -540,6 +649,7 @@ class AssetWebSocketHandler {
         data: {
           assetId,
           requestId,
+          requestedBy,
           success: false,
           error: error.message || 'Unknown error',
         },
@@ -697,20 +807,22 @@ class AssetWebSocketHandler {
    * @param {Object} payload
    */
   async _handleAssetReady(payload) {
-    const { assetId } = payload;
+    const { assetId, url } = payload;
 
     Logger.log(`[AssetWebSocketHandler] Asset ready: ${assetId.substring(0, 8)}...`);
 
     try {
+      // Use server-provided URL or construct fallback
+      const downloadUrl = url
+        ? `${this.config.apiUrl}${url}`
+        : `${this.config.apiUrl}/api/projects/${this.config.projectId}/assets/by-client-id/${assetId}`;
+
       // Download from server
-      const response = await fetch(
-        `${this.config.apiUrl}/projects/${this.config.projectId}/assets/by-client-id/${assetId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${this.config.token}`,
-          },
-        }
-      );
+      const response = await fetch(downloadUrl, {
+        headers: {
+          'Authorization': `Bearer ${this.config.token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Download failed: ${response.status}`);
@@ -720,6 +832,8 @@ class AssetWebSocketHandler {
       const mime = response.headers.get('X-Original-Mime') || 'application/octet-stream';
       const hash = response.headers.get('X-Asset-Hash') || '';
       const filename = response.headers.get('X-Filename') || undefined;
+      const folderPath = response.headers.get('X-Folder-Path') || '';
+      const size = parseInt(response.headers.get('X-File-Size') || '0', 10);
 
       // Get blob
       const blob = await response.blob();
@@ -729,6 +843,8 @@ class AssetWebSocketHandler {
         mime,
         hash,
         filename,
+        folderPath,
+        size: size || blob.size,
       });
 
       // Resolve pending request if any
@@ -845,12 +961,16 @@ class AssetWebSocketHandler {
         const mime = response.headers.get('X-Original-Mime') || 'application/octet-stream';
         const hash = response.headers.get('X-Asset-Hash') || '';
         const filename = response.headers.get('X-Filename') || undefined;
+        const folderPath = response.headers.get('X-Folder-Path') || '';
+        const size = parseInt(response.headers.get('X-File-Size') || '0', 10);
         const blob = await response.blob();
 
         await this.assetManager.storeAssetFromServer(assetId, blob, {
           mime,
           hash,
           filename,
+          folderPath,
+          size: size || blob.size,
         });
 
         Logger.log(`[AssetWebSocketHandler] Prefetched ${assetId.substring(0, 8)}...`);

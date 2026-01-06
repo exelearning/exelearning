@@ -1138,4 +1138,6 @@ describe('Asset Coordinator Service (DI)', () => {
             expect(socket2.messages.length).toBeGreaterThan(0);
         });
     });
+
+    // Note: Rename sync tests removed - Yjs now handles rename sync automatically
 });

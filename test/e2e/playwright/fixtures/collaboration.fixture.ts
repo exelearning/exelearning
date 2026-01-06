@@ -92,8 +92,19 @@ export const test = authTest.extend<CollaborationFixtures>({
         const getShareUrlFn = async (page: Page): Promise<string> => {
             const shareModal = new ShareModalPage(page);
 
-            // Open share button
+            // Dismiss any alert modals that might be blocking
+            const alertModal = page.locator('#modalAlert[data-open="true"]');
+            if (await alertModal.isVisible()) {
+                const alertCloseBtn = alertModal.locator('.btn-close, .close, [data-bs-dismiss="modal"], .btn-primary');
+                if (await alertCloseBtn.first().isVisible()) {
+                    await alertCloseBtn.first().click();
+                    await page.waitForTimeout(500);
+                }
+            }
+
+            // Open share button - ensure it's visible and clickable first
             const shareButton = page.locator('#head-top-share-button, .btn-share-pill, [data-action="share"]');
+            await shareButton.waitFor({ state: 'visible', timeout: 10000 });
             await shareButton.click();
 
             // Wait for modal to open

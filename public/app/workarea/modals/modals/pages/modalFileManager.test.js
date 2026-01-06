@@ -10,7 +10,10 @@ describe('ModalFilemanager', () => {
   beforeEach(() => {
     // Mock translation function
     window._ = vi.fn((key) => key);
-    
+
+    // Mock prompt function (not available in happy-dom)
+    window.prompt = vi.fn();
+
     // Mock eXeLearning global
     window.eXeLearning = {
       app: {
@@ -22,9 +25,16 @@ describe('ModalFilemanager', () => {
                     formatFileSize: vi.fn(b => `${b} bytes`),
                     insertImage: vi.fn().mockResolvedValue(),
                     deleteAsset: vi.fn().mockResolvedValue(),
+                    getAsset: vi.fn().mockResolvedValue(null),
                     getImageDimensions: vi.fn().mockResolvedValue({ width: 640, height: 480 }),
+                    getAssetUrl: vi.fn((assetId, filename) => {
+                        const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+                        return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+                    }),
+                    generateLoadingPlaceholder: vi.fn(() => 'data:image/svg+xml,loading-placeholder'),
                     blobURLCache: new Map(),
-                    reverseBlobCache: new Map()
+                    reverseBlobCache: new Map(),
+                    pendingFetches: new Set()
                 }
             }
         },
@@ -38,51 +48,71 @@ describe('ModalFilemanager', () => {
     mockElement = document.createElement('div');
     mockElement.id = 'modalFileManager';
     mockElement.innerHTML = `
-      <div class="media-library-main">
-        <div class="media-library-empty"></div>
-        <div class="media-library-grid"></div>
-        <div class="media-library-list-container" style="display:none;"><table class="media-library-list"><thead><th data-sort="name"></th></thead><tbody></tbody></table></div>
-        <div class="media-library-pagination"></div>
+      <div class="modal-header">
+        <h5 class="modal-title"></h5>
+        <div class="media-library-header-search">
+          <input class="media-library-search" type="search">
+        </div>
       </div>
-      <div class="media-library-sidebar">
-        <div class="media-library-sidebar-empty"></div>
-        <div class="media-library-sidebar-content"></div>
-      </div>
-      <button class="media-library-upload-btn">Upload</button>
-      <input class="media-library-upload-input" type="file">
-      <input class="media-library-search">
-      <button class="media-library-delete-btn">Delete</button>
-      <button class="media-library-insert-btn">Insert</button>
-      <div class="media-library-view-btn" data-view="grid"></div>
-      <div class="media-library-view-btn" data-view="list"></div>
-      <select class="media-library-sort">
-        <option value="name-asc">name-asc</option>
-        <option value="size-asc">size-asc</option>
-        <option value="type-asc">type-asc</option>
-        <option value="type-desc">type-desc</option>
-      </select>
-      <select class="media-library-filter">
-        <option value="">All</option>
-      </select>
-      <div class="media-library-page-info"></div>
-      <button class="media-library-page-btn" data-action="prev"></button>
-      <button class="media-library-page-btn" data-action="next"></button>
-      
-      <img class="media-library-preview-img">
-      <video class="media-library-preview-video"></video>
-      <audio class="media-library-preview-audio"></audio>
-      <div class="media-library-preview-file"></div>
-      <iframe class="media-library-preview-pdf"></iframe>
-      
-      <input class="media-library-filename">
-      <span class="media-library-type"></span>
-      <span class="media-library-size"></span>
-      <div class="media-library-dimensions-row"><span class="media-library-dimensions"></span></div>
-      <span class="media-library-date"></span>
-      <input class="media-library-url">
+      <div class="modal-body">
+        <div class="media-library-main">
+          <div class="media-library-empty"></div>
+          <div class="media-library-grid"></div>
+          <div class="media-library-list-container" style="display:none;"><table class="media-library-list"><thead><th data-sort="name"></th></thead><tbody></tbody></table></div>
+        </div>
+        <div class="media-library-sidebar">
+          <div class="media-library-sidebar-empty"></div>
+          <div class="media-library-sidebar-content"></div>
+        </div>
+        <button class="media-library-upload-btn">Upload</button>
+        <input class="media-library-upload-input" type="file">
+        <div class="media-library-view-btn" data-view="grid"></div>
+        <div class="media-library-view-btn" data-view="list"></div>
+        <select class="media-library-sort">
+          <option value="name-asc">name-asc</option>
+          <option value="size-asc">size-asc</option>
+          <option value="type-asc">type-asc</option>
+          <option value="type-desc">type-desc</option>
+        </select>
+        <select class="media-library-filter">
+          <option value="">All</option>
+        </select>
 
-      <div class="modal-header"><h5 class="modal-title"></h5></div>
-      <div class="modal-body"></div>
+        <img class="media-library-preview-img">
+        <video class="media-library-preview-video"></video>
+        <audio class="media-library-preview-audio"></audio>
+        <div class="media-library-preview-file"></div>
+        <iframe class="media-library-preview-pdf"></iframe>
+
+        <span class="media-library-filename"></span>
+        <span class="media-library-type"></span>
+        <span class="media-library-size"></span>
+        <div class="media-library-dimensions-row"><span class="media-library-dimensions"></span></div>
+        <span class="media-library-date"></span>
+        <div class="url-input-group">
+          <input class="media-library-url" readonly>
+          <button class="media-library-copy-url-btn"><span class="exe-icon">content_copy</span></button>
+        </div>
+        <span class="media-library-count-value">0</span>
+      </div>
+      <div class="media-library-footer">
+        <div class="media-library-footer-actions">
+          <button class="media-library-delete-btn">Delete</button>
+          <button class="media-library-rename-btn">Rename</button>
+          <button class="media-library-duplicate-btn">Duplicate</button>
+          <button class="media-library-move-btn">Move</button>
+          <button class="media-library-download-btn">Download</button>
+          <div class="dropdown">
+            <button class="media-library-more-btn dropdown-toggle">More</button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item media-library-extract-btn d-none" href="#">Extract ZIP</a></li>
+              <li><a class="dropdown-item media-library-copyurl-btn" href="#">Copy URL</a></li>
+              <li><a class="dropdown-item media-library-fullsize-btn" href="#">View full size</a></li>
+            </ul>
+          </div>
+        </div>
+        <button class="media-library-insert-btn">Insert</button>
+      </div>
     `;
     document.body.appendChild(mockElement);
 
@@ -229,16 +259,7 @@ describe('ModalFilemanager', () => {
       expect(applySpy).toHaveBeenCalled();
     });
 
-    it('should move pages with pagination buttons', () => {
-      modal.filteredAssets = new Array(120).fill(null).map((_, i) => ({ id: i }));
-      modal.currentPage = 2;
-      modal.prevBtn.click();
-      expect(modal.currentPage).toBe(1);
-
-      modal.currentPage = 1;
-      modal.nextBtn.click();
-      expect(modal.currentPage).toBe(2);
-    });
+    // Pagination has been removed - now using infinite scroll
   });
 
   describe('handleHeaderSort', () => {
@@ -305,6 +326,179 @@ describe('ModalFilemanager', () => {
       expect(modal.filteredAssets.length).toBe(1);
       expect(renderSpy).toHaveBeenCalled();
     });
+
+    it('should search recursively across all folders when search term is entered', () => {
+      modal.currentPath = '';
+      modal.searchInput.value = 'test';
+      modal.assets = [
+        { id: '1', filename: 'test.png', mime: 'image/png', folderPath: '' },
+        { id: '2', filename: 'test-sub.png', mime: 'image/png', folderPath: 'folder1' },
+        { id: '3', filename: 'test-deep.png', mime: 'image/png', folderPath: 'folder1/subfolder' },
+        { id: '4', filename: 'other.png', mime: 'image/png', folderPath: '' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.isSearchMode).toBe(true);
+      expect(modal.filteredAssets.length).toBe(3);
+      expect(modal.filteredAssets.map(a => a.id)).toContain('1');
+      expect(modal.filteredAssets.map(a => a.id)).toContain('2');
+      expect(modal.filteredAssets.map(a => a.id)).toContain('3');
+    });
+
+    it('should set isSearchMode to true when search term is present', () => {
+      modal.searchInput.value = 'something';
+      modal.assets = [];
+      modal.applyFiltersAndRender();
+      expect(modal.isSearchMode).toBe(true);
+    });
+
+    it('should set isSearchMode to false when search term is empty', () => {
+      modal.searchInput.value = '';
+      modal.assets = [];
+      modal.applyFiltersAndRender();
+      expect(modal.isSearchMode).toBe(false);
+    });
+
+    it('should only show current folder assets when not searching', () => {
+      modal.currentPath = 'folder1';
+      modal.searchInput.value = '';
+      modal.assets = [
+        { id: '1', filename: 'root.png', mime: 'image/png', folderPath: '' },
+        { id: '2', filename: 'folder1.png', mime: 'image/png', folderPath: 'folder1' },
+        { id: '3', filename: 'subfolder.png', mime: 'image/png', folderPath: 'folder1/sub' },
+      ];
+      modal.applyFiltersAndRender();
+      expect(modal.isSearchMode).toBe(false);
+      expect(modal.filteredAssets.length).toBe(1);
+      expect(modal.filteredAssets[0].id).toBe('2');
+    });
+  });
+
+  describe('recursive search - folders and path display', () => {
+    it('should hide folders when in search mode', () => {
+      modal.isSearchMode = true;
+      modal.folders = ['folder1', 'folder2'];
+      modal.filteredAssets = [{ id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) }];
+      modal.renderGrid(modal.filteredAssets);
+      expect(modal.grid.querySelectorAll('.media-library-folder').length).toBe(0);
+    });
+
+    it('should show folders when not in search mode', () => {
+      modal.isSearchMode = false;
+      modal.folders = ['folder1', 'folder2'];
+      modal.filteredAssets = [{ id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) }];
+      modal.renderGrid(modal.filteredAssets);
+      expect(modal.grid.querySelectorAll('.media-library-folder').length).toBe(2);
+    });
+
+    it('should show path badge in grid item when in search mode', () => {
+      modal.isSearchMode = true;
+      const asset = { id: '1', filename: 'a.png', mime: 'image/png', folderPath: 'images/photos', blob: new Blob(['x']) };
+      const item = modal.createGridItem(asset);
+      expect(item.querySelector('.item-path-badge')).not.toBeNull();
+      expect(item.querySelector('.item-path-badge').textContent).toContain('/images/photos');
+    });
+
+    it('should not show path badge in grid item when not in search mode', () => {
+      modal.isSearchMode = false;
+      const asset = { id: '1', filename: 'a.png', mime: 'image/png', folderPath: 'images/photos', blob: new Blob(['x']) };
+      const item = modal.createGridItem(asset);
+      expect(item.querySelector('.item-path-badge')).toBeNull();
+    });
+
+    it('should show visible location cell in list row when in search mode', () => {
+      modal.isSearchMode = true;
+      const asset = { id: '1', filename: 'a.png', mime: 'image/png', folderPath: 'docs/pdfs', blob: new Blob(['x']) };
+      const row = modal.createListRow(asset);
+      const locationCell = row.querySelector('.col-location');
+      expect(locationCell).not.toBeNull();
+      expect(locationCell.classList.contains('d-none')).toBe(false);
+      const locationLink = locationCell.querySelector('.location-link');
+      expect(locationLink).not.toBeNull();
+      expect(locationLink.textContent).toContain('/docs/pdfs');
+    });
+
+    it('should hide location cell in list row when not in search mode', () => {
+      modal.isSearchMode = false;
+      const asset = { id: '1', filename: 'a.png', mime: 'image/png', folderPath: 'docs/pdfs', blob: new Blob(['x']) };
+      const row = modal.createListRow(asset);
+      const locationCell = row.querySelector('.col-location');
+      expect(locationCell).not.toBeNull();
+      expect(locationCell.classList.contains('d-none')).toBe(true);
+    });
+  });
+
+  describe('showSearchIndicator', () => {
+    it('should show location column header when entering search mode', () => {
+      // Setup: add location column header to mock DOM
+      const th = document.createElement('th');
+      th.className = 'col-location d-none';
+      modal.locationColumnHeader = th;
+
+      modal.showSearchIndicator('test');
+
+      expect(th.classList.contains('d-none')).toBe(false);
+    });
+
+    it('should hide breadcrumbs and show search indicator', () => {
+      // Setup mock DOM elements
+      const breadcrumbs = document.createElement('div');
+      breadcrumbs.className = 'media-library-breadcrumbs';
+      modal.breadcrumbs = breadcrumbs;
+
+      const searchIndicator = document.createElement('div');
+      searchIndicator.className = 'media-library-search-indicator d-none';
+      searchIndicator.innerHTML = '<strong class="search-term"></strong>';
+      modal.searchIndicator = searchIndicator;
+
+      modal.showSearchIndicator('query');
+
+      expect(breadcrumbs.classList.contains('d-none')).toBe(true);
+      expect(searchIndicator.classList.contains('d-none')).toBe(false);
+      expect(searchIndicator.querySelector('.search-term').textContent).toBe('query');
+    });
+  });
+
+  describe('showBreadcrumbs', () => {
+    it('should hide location column header when exiting search mode', () => {
+      // Setup: add location column header to mock DOM
+      const th = document.createElement('th');
+      th.className = 'col-location'; // visible
+      modal.locationColumnHeader = th;
+
+      modal.showBreadcrumbs();
+
+      expect(th.classList.contains('d-none')).toBe(true);
+    });
+
+    it('should show breadcrumbs and hide search indicator', () => {
+      // Setup mock DOM elements
+      const breadcrumbs = document.createElement('div');
+      breadcrumbs.className = 'media-library-breadcrumbs d-none';
+      modal.breadcrumbs = breadcrumbs;
+
+      const searchIndicator = document.createElement('div');
+      searchIndicator.className = 'media-library-search-indicator';
+      searchIndicator.innerHTML = '<strong class="search-term">test</strong>';
+      modal.searchIndicator = searchIndicator;
+
+      // Call showBreadcrumbs
+      modal.showBreadcrumbs();
+
+      expect(breadcrumbs.classList.contains('d-none')).toBe(false);
+      expect(searchIndicator.classList.contains('d-none')).toBe(true);
+    });
+  });
+
+  describe('clearSearchAndNavigate', () => {
+    it('should clear search input and navigate to folder', () => {
+      modal.searchInput.value = 'test';
+      modal.isSearchMode = true;
+      const navigateSpy = vi.spyOn(modal, 'navigateToFolder');
+      modal.clearSearchAndNavigate('some/path');
+      expect(modal.searchInput.value).toBe('');
+      expect(modal.isSearchMode).toBe(false);
+      expect(navigateSpy).toHaveBeenCalledWith('some/path');
+    });
   });
 
   describe('sortAssets', () => {
@@ -324,7 +518,6 @@ describe('ModalFilemanager', () => {
       modal.renderGrid([]);
       expect(modal.emptyState.classList.contains('visible')).toBe(true);
       expect(modal.grid.style.display).toBe('none');
-      expect(modal.pagination.style.display).toBe('none');
     });
 
     it('should hide empty state when has assets', () => {
@@ -332,7 +525,6 @@ describe('ModalFilemanager', () => {
       modal.renderGrid([asset]);
       expect(modal.emptyState.classList.contains('visible')).toBe(false);
       expect(modal.grid.style.display).toBe('grid');
-      expect(modal.pagination.style.display).toBe('flex');
     });
 
     it('should render grid and list items', () => {
@@ -345,12 +537,11 @@ describe('ModalFilemanager', () => {
   });
 
   describe('showEmptyState/hideEmptyState', () => {
-    it('should show empty state and hide grid/list/pagination', () => {
+    it('should show empty state and hide grid/list', () => {
       modal.showEmptyState();
       expect(modal.emptyState.classList.contains('visible')).toBe(true);
       expect(modal.grid.style.display).toBe('none');
       expect(modal.listContainer.style.display).toBe('none');
-      expect(modal.pagination.style.display).toBe('none');
     });
 
     it('should hide empty state and show grid in grid mode', () => {
@@ -359,7 +550,6 @@ describe('ModalFilemanager', () => {
       expect(modal.emptyState.classList.contains('visible')).toBe(false);
       expect(modal.grid.style.display).toBe('grid');
       expect(modal.listContainer.style.display).toBe('none');
-      expect(modal.pagination.style.display).toBe('flex');
     });
 
     it('should hide empty state and show list in list mode', () => {
@@ -368,7 +558,6 @@ describe('ModalFilemanager', () => {
       expect(modal.emptyState.classList.contains('visible')).toBe(false);
       expect(modal.grid.style.display).toBe('none');
       expect(modal.listContainer.style.display).toBe('flex');
-      expect(modal.pagination.style.display).toBe('flex');
     });
   });
 
@@ -414,8 +603,19 @@ describe('ModalFilemanager', () => {
       const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
       const file = new File(['x'], 'sample.png', { type: 'image/png' });
       await modal.uploadFiles([file]);
-      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file);
+      // Now uploads to current folder (empty = root by default)
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file, { folderPath: '' });
       expect(loadSpy).toHaveBeenCalled();
+    });
+
+    it('should upload files to current folder', async () => {
+      const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+      modal.currentPath = 'images/icons';
+      const file = new File(['x'], 'icon.svg', { type: 'image/svg+xml' });
+      await modal.uploadFiles([file]);
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(file, { folderPath: 'images/icons' });
+      expect(loadSpy).toHaveBeenCalled();
+      modal.currentPath = ''; // Reset
     });
 
     it('should keep going when upload fails', async () => {
@@ -443,6 +643,172 @@ describe('ModalFilemanager', () => {
     });
   });
 
+  describe('generateUniqueCopyName', () => {
+    it('should generate name with (copy) suffix when no conflict', () => {
+      const result = modal.generateUniqueCopyName('image.png', []);
+      expect(result).toBe('image (copy).png');
+    });
+
+    it('should generate name with (copy) (1) when copy exists', () => {
+      const result = modal.generateUniqueCopyName('image.png', ['image (copy).png']);
+      expect(result).toBe('image (copy) (1).png');
+    });
+
+    it('should generate name with (copy) (2) when copy and (1) exist', () => {
+      const result = modal.generateUniqueCopyName('image.png', ['image (copy).png', 'image (copy) (1).png']);
+      expect(result).toBe('image (copy) (2).png');
+    });
+
+    it('should handle case-insensitive comparison', () => {
+      const result = modal.generateUniqueCopyName('Image.PNG', ['IMAGE (copy).PNG']);
+      expect(result).toBe('Image (copy) (1).PNG');
+    });
+
+    it('should handle files without extension', () => {
+      const result = modal.generateUniqueCopyName('README', []);
+      expect(result).toBe('README (copy)');
+    });
+
+    it('should handle files without extension with conflicts', () => {
+      const result = modal.generateUniqueCopyName('README', ['README (copy)', 'README (copy) (1)']);
+      expect(result).toBe('README (copy) (2)');
+    });
+
+    it('should handle multiple dots in filename', () => {
+      const result = modal.generateUniqueCopyName('file.backup.tar.gz', []);
+      expect(result).toBe('file.backup.tar (copy).gz');
+    });
+  });
+
+  describe('duplicateSelectedAsset', () => {
+    it('should duplicate asset with unique name', async () => {
+      const blob = new Blob(['test'], { type: 'image/png' });
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
+      modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
+
+      // Mock prompt to return the suggested name (which is 'image (copy).png')
+      window.prompt.mockReturnValueOnce('image (copy).png');
+
+      await modal.duplicateSelectedAsset();
+
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(
+        expect.any(File),
+        expect.objectContaining({ folderPath: '', forceNewId: true })
+      );
+      const insertedFile = window.eXeLearning.app.project._yjsBridge.assetManager.insertImage.mock.calls[0][0];
+      expect(insertedFile.name).toBe('image (copy).png');
+    });
+
+    it('should generate unique name when copy already exists', async () => {
+      const blob = new Blob(['test'], { type: 'image/png' });
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
+      modal.assets = [
+        { id: '1', filename: 'image.png', folderPath: '' },
+        { id: '2', filename: 'image (copy).png', folderPath: '' }
+      ];
+
+      // Mock prompt to return the suggested unique name
+      window.prompt.mockReturnValueOnce('image (copy) (1).png');
+
+      await modal.duplicateSelectedAsset();
+
+      const insertedFile = window.eXeLearning.app.project._yjsBridge.assetManager.insertImage.mock.calls[0][0];
+      expect(insertedFile.name).toBe('image (copy) (1).png');
+    });
+
+    it('should duplicate in same folder', async () => {
+      const blob = new Blob(['test'], { type: 'image/png' });
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: 'images/icons' };
+      modal.assets = [{ id: '1', filename: 'image.png', folderPath: 'images/icons' }];
+
+      // Mock prompt to return the suggested name
+      window.prompt.mockReturnValueOnce('image (copy).png');
+
+      await modal.duplicateSelectedAsset();
+
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).toHaveBeenCalledWith(
+        expect.any(File),
+        expect.objectContaining({ folderPath: 'images/icons', forceNewId: true })
+      );
+    });
+
+    it('should not duplicate if no asset selected', async () => {
+      modal.selectedAsset = null;
+      await modal.duplicateSelectedAsset();
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).not.toHaveBeenCalled();
+    });
+
+    it('should not duplicate if user cancels prompt', async () => {
+      const blob = new Blob(['test'], { type: 'image/png' });
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
+      modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
+
+      // Mock prompt to return null (user cancelled)
+      window.prompt.mockReturnValueOnce(null);
+
+      await modal.duplicateSelectedAsset();
+
+      expect(modal.assetManager.insertImage).not.toHaveBeenCalled();
+    });
+
+    it('should show error if user enters empty name', async () => {
+      const blob = new Blob(['test'], { type: 'image/png' });
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
+      modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
+
+      // Mock prompt to return empty string
+      window.prompt.mockReturnValueOnce('   ');
+
+      await modal.duplicateSelectedAsset();
+
+      expect(window.alert).toHaveBeenCalledWith('Please enter a valid filename');
+      expect(modal.assetManager.insertImage).not.toHaveBeenCalled();
+    });
+
+    it('should show error if name already exists', async () => {
+      const blob = new Blob(['test'], { type: 'image/png' });
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
+      modal.assets = [
+        { id: '1', filename: 'image.png', folderPath: '' },
+        { id: '2', filename: 'existing.png', folderPath: '' }
+      ];
+
+      // Mock prompt to return a name that already exists
+      window.prompt.mockReturnValueOnce('existing.png');
+
+      await modal.duplicateSelectedAsset();
+
+      expect(window.alert).toHaveBeenCalledWith('A file with this name already exists in this folder');
+      expect(modal.assetManager.insertImage).not.toHaveBeenCalled();
+    });
+
+    it('should fetch blob if not present on asset', async () => {
+      const blob = new Blob(['test'], { type: 'image/png' });
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', folderPath: '' };
+      modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
+      modal.assetManager.getAsset.mockResolvedValue({ blob });
+
+      // Mock prompt to return the suggested name
+      window.prompt.mockReturnValueOnce('image (copy).png');
+
+      await modal.duplicateSelectedAsset();
+
+      expect(modal.assetManager.getAsset).toHaveBeenCalledWith('1');
+      expect(modal.assetManager.insertImage).toHaveBeenCalled();
+    });
+
+    it('should show error if blob cannot be retrieved', async () => {
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', folderPath: '' };
+      modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
+      modal.assetManager.getAsset.mockResolvedValue(null);
+
+      await modal.duplicateSelectedAsset();
+
+      expect(window.alert).toHaveBeenCalledWith('Could not read file');
+      expect(modal.assetManager.insertImage).not.toHaveBeenCalled();
+    });
+  });
+
   describe('insertSelectedAsset', () => {
     it('should call onSelect callback and close', () => {
       modal.selectedAsset = { id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) };
@@ -450,7 +816,7 @@ describe('ModalFilemanager', () => {
       const closeSpy = vi.spyOn(modal, 'close');
       modal.onSelectCallback = cb;
       modal.insertSelectedAsset();
-      expect(cb).toHaveBeenCalledWith(expect.objectContaining({ assetUrl: 'asset://1/a.png' }));
+      expect(cb).toHaveBeenCalledWith(expect.objectContaining({ assetUrl: 'asset://1.png' }));
       expect(closeSpy).toHaveBeenCalled();
     });
 
@@ -467,7 +833,7 @@ describe('ModalFilemanager', () => {
       window.tinymce = null;
       modal.selectedAsset = { id: '1', filename: 'a.txt', mime: 'text/plain' };
       modal.insertSelectedAsset();
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('asset://1/a.txt');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('asset://1.txt');
     });
   });
 
@@ -667,27 +1033,26 @@ describe('ModalFilemanager', () => {
       expect(warnSpy).toHaveBeenCalledWith('[MediaLibrary] Selected file is not a ZIP');
     });
 
-    it('should show unzip button only for ZIP files', async () => {
-      // Mock unzip button
-      const unzipBtn = document.createElement('button');
-      unzipBtn.className = 'media-library-unzip-btn';
-      mockElement.appendChild(unzipBtn);
-      modal.unzipBtn = unzipBtn;
+    it('should show extract button only for ZIP files', async () => {
+      // Extract button should be visible (no d-none class) for ZIP files
+      // and hidden (has d-none class) for non-ZIP files
 
       // Test with ZIP file
       const zipAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['x']) };
+      modal.selectedAsset = zipAsset;
       await modal.showSidebarContent(zipAsset);
-      expect(unzipBtn.style.display).toBe('inline-flex');
+      expect(modal.extractBtn.classList.contains('d-none')).toBe(false);
 
       // Test with non-ZIP file
       const pngAsset = { id: '2', filename: 'test.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.selectedAsset = pngAsset;
       await modal.showSidebarContent(pngAsset);
-      expect(unzipBtn.style.display).toBe('none');
+      expect(modal.extractBtn.classList.contains('d-none')).toBe(true);
     });
 
-    it('should not extract if user cancels confirmation', async () => {
+    it('should not extract if user cancels prompt', async () => {
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['x']) };
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      vi.spyOn(window, 'prompt').mockReturnValue(null); // User clicked Cancel
       const loadSpy = vi.spyOn(modal, 'loadAssets');
       await modal.extractZipAsset();
       expect(loadSpy).not.toHaveBeenCalled();
@@ -696,7 +1061,7 @@ describe('ModalFilemanager', () => {
     it('should show error if blob is not available', async () => {
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: null };
       modal.assetManager.getAsset = vi.fn().mockResolvedValue(null);
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      vi.spyOn(window, 'prompt').mockReturnValue('extracted-folder');
       const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
       await modal.extractZipAsset();
       expect(alertSpy).toHaveBeenCalled();
@@ -704,7 +1069,7 @@ describe('ModalFilemanager', () => {
 
     it('should show error if fflate is not available', async () => {
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['x']) };
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      vi.spyOn(window, 'prompt').mockReturnValue('extracted-folder');
       const originalFflate = window.fflate;
       window.fflate = undefined;
       const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
@@ -714,12 +1079,6 @@ describe('ModalFilemanager', () => {
     });
 
     it('should extract files from ZIP and reload assets', async () => {
-      // Setup unzip button
-      const unzipBtn = document.createElement('button');
-      unzipBtn.innerHTML = '<span class="exe-icon">folder_zip</span> Extract';
-      mockElement.appendChild(unzipBtn);
-      modal.unzipBtn = unzipBtn;
-
       // Mock fflate
       window.fflate = {
         unzipSync: vi.fn().mockReturnValue({
@@ -731,7 +1090,7 @@ describe('ModalFilemanager', () => {
       };
 
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['zipdata']) };
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      vi.spyOn(window, 'prompt').mockReturnValue('test');
       vi.spyOn(window, 'alert').mockImplementation(() => {});
       modal.assetManager.insertImage = vi.fn().mockResolvedValue({ id: 'new-id' });
       const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
@@ -750,7 +1109,7 @@ describe('ModalFilemanager', () => {
       };
 
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['bad']) };
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      vi.spyOn(window, 'prompt').mockReturnValue('test');
       const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -762,7 +1121,7 @@ describe('ModalFilemanager', () => {
 
     it('should detect ZIP by extension when mime is not set', async () => {
       modal.selectedAsset = { id: '1', filename: 'archive.ZIP', mime: 'application/octet-stream', blob: new Blob(['x']) };
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
+      vi.spyOn(window, 'prompt').mockReturnValue(null); // User cancels
       // Should not warn about non-ZIP (means it detected it as ZIP)
       const warnSpy = vi.spyOn(console, 'warn');
       await modal.extractZipAsset();
@@ -991,6 +1350,195 @@ describe('ModalFilemanager', () => {
       // Should only have one overlay
       const overlays = mainArea.querySelectorAll('.media-library-dropzone-overlay');
       expect(overlays.length).toBe(1);
+    });
+  });
+
+  describe('triggerAssetFetch', () => {
+    it('should request asset via WebSocket handler when available', async () => {
+      const mockWsHandler = {
+        requestAsset: vi.fn().mockResolvedValue(),
+      };
+      window.eXeLearning.app.project._yjsBridge.assetWebSocketHandler = mockWsHandler;
+
+      modal.triggerAssetFetch('test-asset-id');
+
+      expect(mockWsHandler.requestAsset).toHaveBeenCalledWith('test-asset-id');
+      expect(modal.assetManager.pendingFetches.has('test-asset-id')).toBe(true);
+
+      // Wait for promise to resolve
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(modal.assetManager.pendingFetches.has('test-asset-id')).toBe(false);
+    });
+
+    it('should not request if asset is already being fetched', () => {
+      const mockWsHandler = {
+        requestAsset: vi.fn().mockResolvedValue(),
+      };
+      window.eXeLearning.app.project._yjsBridge.assetWebSocketHandler = mockWsHandler;
+
+      // Add to pending
+      modal.assetManager.pendingFetches.add('test-asset-id');
+
+      modal.triggerAssetFetch('test-asset-id');
+
+      expect(mockWsHandler.requestAsset).not.toHaveBeenCalled();
+    });
+
+    it('should not fail when WebSocket handler is not available', () => {
+      window.eXeLearning.app.project._yjsBridge.assetWebSocketHandler = null;
+
+      // Should not throw
+      expect(() => modal.triggerAssetFetch('test-asset-id')).not.toThrow();
+    });
+
+    it('should call updateDomImagesForAsset when P2P fetch succeeds', async () => {
+      const mockUpdateDom = vi.fn().mockResolvedValue(1);
+      modal.assetManager.updateDomImagesForAsset = mockUpdateDom;
+
+      const mockWsHandler = {
+        requestAsset: vi.fn().mockResolvedValue(true), // Success
+      };
+      window.eXeLearning.app.project._yjsBridge.assetWebSocketHandler = mockWsHandler;
+
+      modal.triggerAssetFetch('test-asset-id');
+
+      // Wait for promises to resolve
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(mockUpdateDom).toHaveBeenCalledWith('test-asset-id');
+    });
+
+    it('should not call updateDomImagesForAsset when P2P fetch fails', async () => {
+      const mockUpdateDom = vi.fn().mockResolvedValue(1);
+      modal.assetManager.updateDomImagesForAsset = mockUpdateDom;
+
+      const mockWsHandler = {
+        requestAsset: vi.fn().mockResolvedValue(false), // Failed
+      };
+      window.eXeLearning.app.project._yjsBridge.assetWebSocketHandler = mockWsHandler;
+
+      modal.triggerAssetFetch('test-asset-id');
+
+      // Wait for promises to resolve
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(mockUpdateDom).not.toHaveBeenCalled();
+    });
+
+    it('should use loading placeholder in createGridItem when blob is not available', () => {
+      const asset = { id: 'peer-asset', filename: 'test.jpg', mime: 'image/jpeg' };
+      // No blob, no cache
+      modal.assetManager.blobURLCache.clear();
+
+      const item = modal.createGridItem(asset);
+
+      const img = item.querySelector('img');
+      expect(img).toBeTruthy();
+      expect(img.src).toContain('data:image/svg+xml');
+      expect(img.getAttribute('data-asset-id')).toBe('peer-asset');
+      expect(img.getAttribute('data-asset-loading')).toBe('true');
+    });
+  });
+
+  describe('Yjs observers', () => {
+    let mockYMap;
+
+    beforeEach(() => {
+      // Create mock Y.Map with observe/unobserve
+      mockYMap = {
+        observe: vi.fn(),
+        unobserve: vi.fn(),
+      };
+      modal.assetManager.getAssetsYMap = vi.fn(() => mockYMap);
+    });
+
+    describe('_subscribeToYjsChanges', () => {
+      it('should subscribe to Yjs assets map changes', () => {
+        modal._subscribeToYjsChanges();
+
+        expect(modal.assetManager.getAssetsYMap).toHaveBeenCalled();
+        expect(mockYMap.observe).toHaveBeenCalledWith(expect.any(Function));
+        expect(modal._assetsMap).toBe(mockYMap);
+        expect(modal._onYjsAssetsChange).toBeDefined();
+      });
+
+      it('should not subscribe when Yjs map is not available', () => {
+        modal.assetManager.getAssetsYMap = vi.fn(() => null);
+
+        modal._subscribeToYjsChanges();
+
+        expect(mockYMap.observe).not.toHaveBeenCalled();
+        expect(modal._assetsMap).toBeUndefined();
+      });
+
+      it('should not subscribe when assetManager is null', () => {
+        modal.assetManager = null;
+
+        modal._subscribeToYjsChanges();
+
+        expect(mockYMap.observe).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('_unsubscribeFromYjsChanges', () => {
+      it('should unsubscribe from Yjs map when subscribed', () => {
+        // First subscribe
+        modal._subscribeToYjsChanges();
+        const handler = modal._onYjsAssetsChange;
+
+        // Then unsubscribe
+        modal._unsubscribeFromYjsChanges();
+
+        expect(mockYMap.unobserve).toHaveBeenCalledWith(handler);
+        expect(modal._assetsMap).toBeNull();
+        expect(modal._onYjsAssetsChange).toBeNull();
+      });
+
+      it('should do nothing when not subscribed', () => {
+        modal._assetsMap = null;
+        modal._onYjsAssetsChange = null;
+
+        modal._unsubscribeFromYjsChanges();
+
+        expect(mockYMap.unobserve).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('_handleYjsAssetsChange', () => {
+      it('should reload assets on remote Yjs change', () => {
+        const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+        const event = {
+          transaction: { local: false }
+        };
+
+        modal._handleYjsAssetsChange(event);
+
+        expect(loadSpy).toHaveBeenCalled();
+      });
+
+      it('should ignore local Yjs changes', () => {
+        const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+        const event = {
+          transaction: { local: true }
+        };
+
+        modal._handleYjsAssetsChange(event);
+
+        expect(loadSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('close unsubscribes from Yjs', () => {
+      it('should unsubscribe from Yjs when modal closes', () => {
+        // Subscribe first
+        modal._subscribeToYjsChanges();
+        const unsubSpy = vi.spyOn(modal, '_unsubscribeFromYjsChanges');
+
+        // Close modal
+        modal.close();
+
+        expect(unsubSpy).toHaveBeenCalled();
+      });
     });
   });
 });

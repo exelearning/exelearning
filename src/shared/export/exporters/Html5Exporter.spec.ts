@@ -94,12 +94,26 @@ class MockAssetProvider implements AssetProvider {
         Array<{
             id: string;
             filename: string;
-            path: string;
-            mimeType: string;
+            originalPath: string;
+            folderPath?: string;
+            mime: string;
             data: Buffer;
         }>
     > {
         return [];
+    }
+
+    async getProjectAssets(): Promise<
+        Array<{
+            id: string;
+            filename: string;
+            originalPath: string;
+            folderPath?: string;
+            mime: string;
+            data: Buffer;
+        }>
+    > {
+        return this.getAllAssets();
     }
 }
 
@@ -507,8 +521,8 @@ describe('Html5Exporter', () => {
     });
 
     describe('Asset Inclusion', () => {
-        it('should include assets in content/resources/ folder', async () => {
-            // Create asset provider that returns actual assets
+        it('should include assets in content/resources/ folder using folderPath', async () => {
+            // Create asset provider that returns actual assets with folderPath
             const assetsWithData: AssetProvider = {
                 async getAsset() {
                     return null;
@@ -518,18 +532,23 @@ describe('Html5Exporter', () => {
                         {
                             id: 'uuid-123',
                             filename: 'image.png',
-                            originalPath: 'uuid-123/image.png',
+                            originalPath: 'images/image.png',
+                            folderPath: 'images',
                             mime: 'image/png',
                             data: Buffer.from('fake-image-data'),
                         },
                         {
                             id: 'uuid-456',
                             filename: 'photo.jpg',
-                            originalPath: 'uuid-456/photo.jpg',
+                            originalPath: 'photo.jpg',
+                            folderPath: '', // Root level
                             mime: 'image/jpeg',
                             data: Buffer.from('fake-photo-data'),
                         },
                     ];
+                },
+                async getProjectAssets() {
+                    return this.getAllAssets();
                 },
             };
 
@@ -539,12 +558,12 @@ describe('Html5Exporter', () => {
 
             expect(result.success).toBe(true);
 
-            // Verify assets are in content/resources/ folder
-            expect(zip.files.has('content/resources/uuid-123/image.png')).toBe(true);
-            expect(zip.files.has('content/resources/uuid-456/photo.jpg')).toBe(true);
+            // Verify assets are in content/resources/ folder using folderPath structure
+            expect(zip.files.has('content/resources/images/image.png')).toBe(true);
+            expect(zip.files.has('content/resources/photo.jpg')).toBe(true);
 
             // Verify asset data is correct
-            const imageData = zip.files.get('content/resources/uuid-123/image.png') as Buffer;
+            const imageData = zip.files.get('content/resources/images/image.png') as Buffer;
             expect(imageData.toString()).toBe('fake-image-data');
         });
 
@@ -555,9 +574,9 @@ describe('Html5Exporter', () => {
             expect(result.success).toBe(true);
         });
 
-        it('should normalize asset paths correctly', async () => {
-            // Asset with content/resources/ prefix already (from ELP import)
-            const assetsWithPrefix: AssetProvider = {
+        it('should export root assets directly under content/resources/', async () => {
+            // Assets without folderPath (at root level)
+            const assetsWithoutFolder: AssetProvider = {
                 async getAsset() {
                     return null;
                 },
@@ -566,20 +585,23 @@ describe('Html5Exporter', () => {
                         {
                             id: 'abc',
                             filename: 'file.pdf',
-                            originalPath: 'content/resources/abc/file.pdf', // Already has prefix
+                            originalPath: 'file.pdf',
+                            folderPath: '', // Root level
                             mime: 'application/pdf',
                             data: Buffer.from('pdf-data'),
                         },
                     ];
                 },
+                async getProjectAssets() {
+                    return this.getAllAssets();
+                },
             };
 
-            const exporterWithPrefixedAssets = new Html5Exporter(document, resources, assetsWithPrefix, zip);
-            await exporterWithPrefixedAssets.export();
+            const exporterWithRootAssets = new Html5Exporter(document, resources, assetsWithoutFolder, zip);
+            await exporterWithRootAssets.export();
 
-            // Should NOT double-prefix (not content/resources/content/resources/...)
-            expect(zip.files.has('content/resources/abc/file.pdf')).toBe(true);
-            expect(zip.files.has('content/resources/content/resources/abc/file.pdf')).toBe(false);
+            // Should be directly under content/resources/ (no subfolder)
+            expect(zip.files.has('content/resources/file.pdf')).toBe(true);
         });
     });
 
@@ -1069,6 +1091,254 @@ describe('Html5Exporter', () => {
             // sanitizePageFilename converts "Page 2" to "page-2"
             const page2Html = zip.files.get('html/page-2.html') as string;
             expect(page2Html).toContain('elpx-manifest.js');
+        });
+    });
+
+    describe('FolderPath-based Asset Export', () => {
+        it('should export assets using folderPath structure', async () => {
+            // Create asset provider that returns assets with folderPath
+            const assetsWithFolderPath: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'uuid-img-1',
+                            filename: 'photo.jpg',
+                            originalPath: 'images/photo.jpg',
+                            folderPath: 'images',
+                            mime: 'image/jpeg',
+                            data: Buffer.from('photo-data'),
+                        },
+                        {
+                            id: 'uuid-css-1',
+                            filename: 'custom.css',
+                            originalPath: 'css/custom.css',
+                            folderPath: 'css',
+                            mime: 'text/css',
+                            data: Buffer.from('css-data'),
+                        },
+                        {
+                            id: 'uuid-root-1',
+                            filename: 'logo.png',
+                            originalPath: 'logo.png',
+                            folderPath: '', // Root level
+                            mime: 'image/png',
+                            data: Buffer.from('logo-data'),
+                        },
+                    ];
+                },
+                async getProjectAssets() {
+                    return this.getAllAssets();
+                },
+            };
+
+            const exporterWithFolderAssets = new Html5Exporter(document, resources, assetsWithFolderPath, zip);
+            const result = await exporterWithFolderAssets.export();
+
+            expect(result.success).toBe(true);
+
+            // Assets with folderPath should be at content/resources/{folderPath}/{filename}
+            expect(zip.files.has('content/resources/images/photo.jpg')).toBe(true);
+            expect(zip.files.has('content/resources/css/custom.css')).toBe(true);
+
+            // Root assets (empty folderPath) should be at content/resources/{filename}
+            expect(zip.files.has('content/resources/logo.png')).toBe(true);
+
+            // Should NOT use UUID folders
+            expect(zip.files.has('content/resources/uuid-img-1/photo.jpg')).toBe(false);
+            expect(zip.files.has('content/resources/uuid-css-1/custom.css')).toBe(false);
+            expect(zip.files.has('content/resources/uuid-root-1/logo.png')).toBe(false);
+        });
+
+        it('should handle filename collisions in same folder', async () => {
+            // Create assets with same filename in same folder
+            const assetsWithCollisions: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'uuid-1',
+                            filename: 'image.png',
+                            originalPath: 'images/image.png',
+                            folderPath: 'images',
+                            mime: 'image/png',
+                            data: Buffer.from('first-image'),
+                        },
+                        {
+                            id: 'uuid-2',
+                            filename: 'image.png', // Same filename!
+                            originalPath: 'images/image.png',
+                            folderPath: 'images',
+                            mime: 'image/png',
+                            data: Buffer.from('second-image'),
+                        },
+                        {
+                            id: 'uuid-3',
+                            filename: 'image.png', // Third with same name!
+                            originalPath: 'images/image.png',
+                            folderPath: 'images',
+                            mime: 'image/png',
+                            data: Buffer.from('third-image'),
+                        },
+                    ];
+                },
+                async getProjectAssets() {
+                    return this.getAllAssets();
+                },
+            };
+
+            const exporterWithCollisions = new Html5Exporter(document, resources, assetsWithCollisions, zip);
+            const result = await exporterWithCollisions.export();
+
+            expect(result.success).toBe(true);
+
+            // First file should have original name
+            expect(zip.files.has('content/resources/images/image.png')).toBe(true);
+            // Second file should have _1 suffix
+            expect(zip.files.has('content/resources/images/image_1.png')).toBe(true);
+            // Third file should have _2 suffix
+            expect(zip.files.has('content/resources/images/image_2.png')).toBe(true);
+
+            // Verify content is correct
+            const firstImage = zip.files.get('content/resources/images/image.png') as Buffer;
+            expect(firstImage.toString()).toBe('first-image');
+            const secondImage = zip.files.get('content/resources/images/image_1.png') as Buffer;
+            expect(secondImage.toString()).toBe('second-image');
+        });
+
+        it('should handle case-insensitive filename collisions (Windows compatibility)', async () => {
+            // Create assets with same filename but different case
+            const assetsWithCaseCollisions: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'uuid-a',
+                            filename: 'Photo.JPG',
+                            originalPath: 'Photo.JPG',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            data: Buffer.from('uppercase'),
+                        },
+                        {
+                            id: 'uuid-b',
+                            filename: 'photo.jpg', // Same name, different case
+                            originalPath: 'photo.jpg',
+                            folderPath: '',
+                            mime: 'image/jpeg',
+                            data: Buffer.from('lowercase'),
+                        },
+                    ];
+                },
+                async getProjectAssets() {
+                    return this.getAllAssets();
+                },
+            };
+
+            const exporterWithCaseCollisions = new Html5Exporter(document, resources, assetsWithCaseCollisions, zip);
+            const result = await exporterWithCaseCollisions.export();
+
+            expect(result.success).toBe(true);
+
+            // Both files should be exported (one with suffix)
+            expect(zip.files.has('content/resources/Photo.JPG')).toBe(true);
+            expect(zip.files.has('content/resources/photo_1.jpg')).toBe(true);
+        });
+
+        it('should handle nested folder paths', async () => {
+            const assetsWithNestedFolders: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'uuid-nested',
+                            filename: 'chart.svg',
+                            originalPath: 'images/charts/sales/chart.svg',
+                            folderPath: 'images/charts/sales',
+                            mime: 'image/svg+xml',
+                            data: Buffer.from('svg-data'),
+                        },
+                    ];
+                },
+                async getProjectAssets() {
+                    return this.getAllAssets();
+                },
+            };
+
+            const exporterWithNested = new Html5Exporter(document, resources, assetsWithNestedFolders, zip);
+            const result = await exporterWithNested.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('content/resources/images/charts/sales/chart.svg')).toBe(true);
+        });
+
+        it('should transform asset URLs in content to use folderPath structure', async () => {
+            // Create pages with asset references (using realistic UUID format)
+            const pagesWithAssets: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content:
+                                        '<p><img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/photo.jpg" /></p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const assetsForUrlTest: AssetProvider = {
+                async getAsset() {
+                    return null;
+                },
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                            filename: 'photo.jpg',
+                            originalPath: 'images/photo.jpg',
+                            folderPath: 'images',
+                            mime: 'image/jpeg',
+                            data: Buffer.from('photo-bytes'),
+                        },
+                    ];
+                },
+                async getProjectAssets() {
+                    return this.getAllAssets();
+                },
+            };
+
+            document = new MockDocument({}, pagesWithAssets);
+            const exporterWithUrls = new Html5Exporter(document, resources, assetsForUrlTest, zip);
+            await exporterWithUrls.export();
+
+            // Check that the HTML contains the transformed URL
+            const indexHtml = zip.files.get('index.html') as string;
+            // After preprocessing: asset://uuid/photo.jpg → asset://uuid/images/photo.jpg
+            // After fixAssetUrls: asset://uuid/images/photo.jpg → content/resources/images/photo.jpg
+            expect(indexHtml).toContain('content/resources/images/photo.jpg');
+            // Should NOT contain UUID-based path
+            expect(indexHtml).not.toContain('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
         });
     });
 

@@ -135,12 +135,34 @@ class YjsDocumentManager {
     const dbName = `exelearning-project-${this.projectId}`;
     this.indexedDBProvider = new IndexeddbPersistence(dbName, this.ydoc);
 
-    // Wait for IndexedDB to sync
+    // Wait for IndexedDB to sync (with timeout to prevent hanging)
+    // y-indexeddb may not fire 'synced' event in certain conditions (e.g., rapid reinit)
     await new Promise((resolve) => {
-      this.indexedDBProvider.on('synced', () => {
+      let resolved = false;
+
+      const onSynced = () => {
+        if (resolved) return;
+        resolved = true;
         Logger.log(`[YjsDocumentManager] Synced from IndexedDB for project ${this.projectId}`);
         resolve();
-      });
+      };
+
+      // Check if already synced (may happen for empty/new databases)
+      if (this.indexedDBProvider.synced) {
+        onSynced();
+        return;
+      }
+
+      // Listen for synced event
+      this.indexedDBProvider.on('synced', onSynced);
+
+      // Timeout after 3 seconds - IndexedDB sync should be fast
+      setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        Logger.log(`[YjsDocumentManager] IndexedDB sync timeout for project ${this.projectId}, proceeding anyway`);
+        resolve();
+      }, 3000);
     });
 
     // Setup WebSocket provider (but don't connect yet)
@@ -922,6 +944,16 @@ class YjsDocumentManager {
   getLocks() {
     this._ensureInitialized();
     return this.ydoc.getMap('locks');
+  }
+
+  /**
+   * Get assets map - stores asset metadata for instant sync
+   * Structure: Map<uuid, {filename, folderPath, mime, size, hash, uploaded, createdAt}>
+   * @returns {Y.Map}
+   */
+  getAssets() {
+    this._ensureInitialized();
+    return this.ydoc.getMap('assets');
   }
 
   /**
