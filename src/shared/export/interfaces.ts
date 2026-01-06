@@ -228,6 +228,8 @@ export interface ExportAsset {
     id: string;
     filename: string;
     originalPath: string;
+    /** Folder path for export structure (empty string = root) */
+    folderPath?: string;
     mime: string;
     data: Uint8Array | Blob;
 }

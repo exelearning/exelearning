@@ -299,6 +299,10 @@ describe('YjsTinyMCEBinding', () => {
           ['blob:http://localhost:8081/xyz', 'my-asset-uuid-1234'],
         ]),
         getAssetById: () => ({ filename: 'image.jpg' }),
+        getAssetUrl: (assetId, filename) => {
+          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+          return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        },
       };
       window.eXeLearning = {
         app: {
@@ -317,8 +321,8 @@ describe('YjsTinyMCEBinding', () => {
       binding.syncFromEditor();
 
       const yTextContent = mockYText.toString();
-      // Should have converted blob: to asset://
-      expect(yTextContent).toContain('asset://my-asset-uuid-1234');
+      // Should have converted blob: to asset:// with new format (uuid.ext)
+      expect(yTextContent).toContain('asset://my-asset-uuid-1234.jpg');
       expect(yTextContent).not.toContain('blob:');
 
       delete window.eXeLearning;
@@ -800,6 +804,10 @@ describe('YjsTinyMCEBinding', () => {
           ['blob:http://localhost:8081/abc-123', '0b034dc2-1fcb-2be8-5fbd-e49a05d9bac0'],
         ]),
         getAssetById: () => ({ filename: 'test.jpg' }),
+        getAssetUrl: (assetId, filename) => {
+          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+          return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        },
       };
       window.eXeLearning = {
         app: {
@@ -814,8 +822,8 @@ describe('YjsTinyMCEBinding', () => {
       const html = '<img src="blob:http://localhost:8081/abc-123">';
       const result = binding.convertBlobUrlsToAssetUrls(html);
 
-      // Should convert to asset:// URL with the UUID
-      expect(result).toContain('asset://0b034dc2-1fcb-2be8-5fbd-e49a05d9bac0/');
+      // Should convert to asset:// URL with the UUID and extension
+      expect(result).toContain('asset://0b034dc2-1fcb-2be8-5fbd-e49a05d9bac0.jpg');
       expect(result).not.toContain('blob:');
 
       // Cleanup
@@ -838,6 +846,10 @@ describe('YjsTinyMCEBinding', () => {
           }
           return url;
         },
+        getAssetUrl: (assetId, filename) => {
+          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+          return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        },
       };
       window.eXeLearning = {
         app: {
@@ -855,8 +867,8 @@ describe('YjsTinyMCEBinding', () => {
       // The defensive code should detect the corrupted cache value and extract the UUID
       // Result should be a clean asset:// URL, NOT "asset://asset://..."
       expect(result).not.toContain('asset://asset://');
-      // Should produce clean output with extracted UUID
-      expect(result).toContain('asset://uuid-123/');
+      // Should produce clean output with extracted UUID (new format: uuid.ext)
+      expect(result).toContain('asset://uuid-123.jpg');
 
       delete window.eXeLearning;
     });
@@ -884,6 +896,10 @@ describe('YjsTinyMCEBinding', () => {
           ['blob:http://localhost:8081/abc123', 'asset-uuid-123'],
         ]),
         getAssetById: () => ({ filename: 'image.png' }),
+        getAssetUrl: (assetId, filename) => {
+          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+          return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        },
       };
       window.eXeLearning = {
         app: {
@@ -898,7 +914,7 @@ describe('YjsTinyMCEBinding', () => {
       const html = '<img src="blob:http://localhost:8081/abc123">';
       const result = binding.convertBlobUrlsToAssetUrls(html);
 
-      expect(result).toBe('<img src="asset://asset-uuid-123/image.png">');
+      expect(result).toBe('<img src="asset://asset-uuid-123.png">');
 
       // Cleanup
       delete window.eXeLearning;
@@ -911,6 +927,10 @@ describe('YjsTinyMCEBinding', () => {
           ['blob:http://localhost:8081/def456', 'uuid-2'],
         ]),
         getAssetById: (id) => ({ filename: id === 'uuid-1' ? 'img1.png' : 'img2.jpg' }),
+        getAssetUrl: (assetId, filename) => {
+          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+          return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        },
       };
       window.eXeLearning = {
         app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
@@ -919,8 +939,8 @@ describe('YjsTinyMCEBinding', () => {
       const html = '<img src="blob:http://localhost:8081/abc123"><img src="blob:http://localhost:8081/def456">';
       const result = binding.convertBlobUrlsToAssetUrls(html);
 
-      expect(result).toContain('asset://uuid-1/img1.png');
-      expect(result).toContain('asset://uuid-2/img2.jpg');
+      expect(result).toContain('asset://uuid-1.png');
+      expect(result).toContain('asset://uuid-2.jpg');
 
       delete window.eXeLearning;
     });
@@ -948,6 +968,10 @@ describe('YjsTinyMCEBinding', () => {
           ['blob:http://localhost:8081/abc123', 'uuid-1'],
         ]),
         getAssetById: () => null, // No asset info
+        getAssetUrl: (assetId, filename) => {
+          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+          return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        },
       };
       window.eXeLearning = {
         app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
@@ -956,7 +980,8 @@ describe('YjsTinyMCEBinding', () => {
       const html = '<img src="blob:http://localhost:8081/abc123">';
       const result = binding.convertBlobUrlsToAssetUrls(html);
 
-      expect(result).toBe('<img src="asset://uuid-1/image">');
+      // With no filename, the new format is just asset://uuid (no extension)
+      expect(result).toBe('<img src="asset://uuid-1">');
 
       delete window.eXeLearning;
     });

@@ -165,6 +165,19 @@ export class WorkareaPage {
             await frame.focus('body');
             await frame.type('body', text, { delay: 5 });
 
+            // Fire change events to ensure Yjs binding is updated
+            await frame.evaluate(() => {
+                const editor = (window.parent as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.fire('change');
+                    editor.fire('input');
+                    editor.setDirty(true);
+                }
+            });
+
+            // Wait for Yjs sync before save
+            await this.page.waitForTimeout(500);
+
             // Save
             const saveBtn = block.locator('.btn-save-idevice');
             if ((await saveBtn.count()) > 0) {
