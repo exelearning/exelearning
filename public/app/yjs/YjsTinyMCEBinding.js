@@ -352,7 +352,8 @@ class YjsTinyMCEBinding {
         }
         const asset = assetManager.getAssetById ? assetManager.getAssetById(assetId) : null;
         const filename = asset?.filename || asset?.name || 'image';
-        return `asset://${assetId}/${filename}`;
+        // Use simplified URL format: asset://uuid.ext
+        return assetManager.getAssetUrl(assetId, filename);
       }
       // If not found in cache, keep original (may be external blob)
       console.warn('[YjsTinyMCEBinding] Blob URL not found in AssetManager cache:', blobUrl);

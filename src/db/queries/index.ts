@@ -70,6 +70,8 @@ export {
     createAssets,
     updateAsset,
     updateAssetClientId,
+    updateAssetFilenameByClientId,
+    updateFolderPathPrefix,
     deleteAsset,
     deleteAllAssetsForProject,
     bulkUpdateClientIds,

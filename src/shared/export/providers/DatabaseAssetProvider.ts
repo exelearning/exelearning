@@ -228,10 +228,14 @@ export class DatabaseAssetProvider implements AssetProvider {
             if (dbAsset.storage_path && (await fs.pathExists(dbAsset.storage_path))) {
                 try {
                     const content = await fs.readFile(dbAsset.storage_path);
+                    const folderPath = dbAsset.folder_path || '';
+                    // Build originalPath based on folderPath
+                    const exportPath = folderPath ? `${folderPath}/${dbAsset.filename}` : dbAsset.filename;
                     const asset: ExportAsset = {
                         id: dbAsset.client_id || String(dbAsset.id),
                         filename: dbAsset.filename,
-                        originalPath: dbAsset.client_id ? `${dbAsset.client_id}/${dbAsset.filename}` : dbAsset.filename,
+                        originalPath: exportPath,
+                        folderPath: folderPath,
                         mime: dbAsset.mime_type || 'application/octet-stream',
                         data: content,
                     };

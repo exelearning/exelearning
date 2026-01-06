@@ -4,16 +4,16 @@ import Modal from '../modal.js';
 const Logger = window.AppLogger || console;
 
 /**
- * Media Library Modal
+ * File Manager Modal
  *
  * Displays project assets from IndexedDB (AssetManager) in a WordPress-style
- * media library interface. Allows viewing, uploading, deleting, and inserting
+ * file manager interface. Allows viewing, uploading, deleting, and inserting
  * assets into TinyMCE editors.
  */
 export default class ModalFilemanager extends Modal {
     constructor(manager) {
         const id = 'modalFileManager';
-        const titleDefault = _('Media Library');
+        const titleDefault = _('File manager');
         super(manager, id, titleDefault, false);
 
         // State
@@ -26,6 +26,15 @@ export default class ModalFilemanager extends Modal {
         this.acceptFilter = null; // 'image', 'audio', 'video', or null for all
         this.typeFilter = ''; // User-selected type filter from dropdown
         this.assetManager = null;
+        this.assetUsageCounts = new Map(); // Cache of asset ID -> usage count in iDevices
+
+        // Folder navigation state
+        this.currentPath = ''; // Current folder path (empty = root)
+        this.folders = []; // Subfolders in current path
+        this.createdFolders = new Set(); // Explicitly created empty folders (full paths)
+
+        // Search mode state
+        this.isSearchMode = false; // True when search term is active (recursive search)
 
         // View state
         this.viewMode = 'grid'; // 'grid' or 'list'
@@ -47,9 +56,13 @@ export default class ModalFilemanager extends Modal {
         this.insertBtn = null;
         this.viewBtns = null;
         this.sortSelect = null;
-        this.paginationInfo = null;
-        this.prevBtn = null;
-        this.nextBtn = null;
+
+        // Footer action buttons
+        this.downloadBtn = null;
+        this.moreBtn = null;
+        this.extractBtn = null;
+        this.copyUrlBtn = null;
+        this.fullSizeBtn = null;
     }
 
     /**
@@ -66,21 +79,35 @@ export default class ModalFilemanager extends Modal {
         this.sidebarContent = this.modalElement.querySelector('.media-library-sidebar-content');
         this.uploadBtn = this.modalElement.querySelector('.media-library-upload-btn');
         this.uploadInput = this.modalElement.querySelector('.media-library-upload-input');
-        this.searchInput = this.modalElement.querySelector('.media-library-search');
-        this.deleteBtn = this.modalElement.querySelector('.media-library-delete-btn');
-        this.insertBtn = this.modalElement.querySelector('.media-library-insert-btn');
-        this.unzipBtn = this.modalElement.querySelector('.media-library-unzip-btn');
+        // Search input is now in header
+        this.searchInput = this.modalElement.querySelector('.media-library-header-search .media-library-search');
+
+        // Footer action buttons
+        const footer = this.modalElement.querySelector('.media-library-footer');
+        this.deleteBtn = footer?.querySelector('.media-library-delete-btn');
+        this.insertBtn = footer?.querySelector('.media-library-insert-btn');
+        this.renameBtn = footer?.querySelector('.media-library-rename-btn');
+        this.duplicateBtn = footer?.querySelector('.media-library-duplicate-btn');
+        this.moveBtn = footer?.querySelector('.media-library-move-btn');
+        this.downloadBtn = footer?.querySelector('.media-library-download-btn');
+        this.moreBtn = footer?.querySelector('.media-library-more-btn');
+
+        // More options dropdown items
+        this.extractBtn = footer?.querySelector('.media-library-extract-btn');
+        this.copyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
+        this.fullSizeBtn = footer?.querySelector('.media-library-fullsize-btn');
+
+        // WebSocket handler reference and bound event handlers for rename sync
+        this._wsHandler = null;
+        this._onAssetRenamed = null;
+        this._onFolderRenamed = null;
 
         // View controls
         this.viewBtns = this.modalElement.querySelectorAll('.media-library-view-btn');
         this.sortSelect = this.modalElement.querySelector('.media-library-sort');
         this.filterSelect = this.modalElement.querySelector('.media-library-filter');
-
-        // Pagination
-        this.pagination = this.modalElement.querySelector('.media-library-pagination');
-        this.paginationInfo = this.modalElement.querySelector('.media-library-page-info');
-        this.prevBtn = this.modalElement.querySelector('.media-library-page-btn[data-action="prev"]');
-        this.nextBtn = this.modalElement.querySelector('.media-library-page-btn[data-action="next"]');
+        this.showRefCountCheckbox = this.modalElement.querySelector('.media-library-show-refcount');
+        this.showRefCount = false; // Badge visibility state (off by default)
 
         // Preview elements
         this.previewImg = this.modalElement.querySelector('.media-library-preview-img');
@@ -89,14 +116,37 @@ export default class ModalFilemanager extends Modal {
         this.previewFile = this.modalElement.querySelector('.media-library-preview-file');
         this.previewPdf = this.modalElement.querySelector('.media-library-preview-pdf');
 
+        // Folder navigation elements
+        this.breadcrumbs = this.modalElement.querySelector('.media-library-breadcrumbs');
+        this.searchIndicator = this.modalElement.querySelector('.media-library-search-indicator');
+        this.newFolderBtn = this.modalElement.querySelector('.media-library-newfolder-btn');
+
+        // Folder picker dialog
+        this.folderPicker = this.modalElement.querySelector('.media-library-folder-picker');
+        this.folderPickerList = this.modalElement.querySelector('.folder-picker-list');
+        this.folderPickerConfirm = this.modalElement.querySelector('.folder-picker-confirm');
+        this.folderPickerCancel = this.modalElement.querySelector('.folder-picker-cancel');
+        this.folderPickerClose = this.modalElement.querySelector('.folder-picker-close');
+        this.folderPickerOverlay = this.modalElement.querySelector('.folder-picker-overlay');
+
         // Metadata elements
-        this.filenameInput = this.modalElement.querySelector('.media-library-filename');
+        this.filenameSpan = this.modalElement.querySelector('.media-library-filename');
+        this.copyUrlBtn = this.modalElement.querySelector('.media-library-copy-url-btn');
+        this.fileCountSpan = this.modalElement.querySelector('.media-library-count-value');
         this.typeSpan = this.modalElement.querySelector('.media-library-type');
         this.sizeSpan = this.modalElement.querySelector('.media-library-size');
         this.dimensionsRow = this.modalElement.querySelector('.media-library-dimensions-row');
         this.dimensionsSpan = this.modalElement.querySelector('.media-library-dimensions');
         this.dateSpan = this.modalElement.querySelector('.media-library-date');
+        this.usageRow = this.modalElement.querySelector('.media-library-usage-row');
+        this.usageSpan = this.modalElement.querySelector('.media-library-usage');
         this.urlInput = this.modalElement.querySelector('.media-library-url');
+        this.locationRow = this.modalElement.querySelector('.media-library-location-row');
+        this.locationValue = this.modalElement.querySelector('.media-library-location-value');
+        this.openFolderBtn = this.modalElement.querySelector('.media-library-open-folder-btn');
+
+        // List view location column header (for toggling visibility in search mode)
+        this.locationColumnHeader = this.listTable?.querySelector('th.col-location');
     }
 
     /**
@@ -143,10 +193,39 @@ export default class ModalFilemanager extends Modal {
             });
         }
 
-        // Unzip button
-        if (this.unzipBtn) {
-            this.unzipBtn.addEventListener('click', () => {
+        // Download button
+        if (this.downloadBtn) {
+            this.downloadBtn.addEventListener('click', () => {
+                this.downloadSelectedAsset();
+            });
+        }
+
+        // More options dropdown items
+        if (this.extractBtn) {
+            this.extractBtn.addEventListener('click', (e) => {
+                e.preventDefault();
                 this.extractZipAsset();
+            });
+        }
+
+        if (this.copyUrlBtn) {
+            this.copyUrlBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.copyAssetUrl();
+            });
+        }
+
+        if (this.fullSizeBtn) {
+            this.fullSizeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.viewFullSize();
+            });
+        }
+
+        // Copy URL button in sidebar metadata
+        if (this.copyUrlBtn) {
+            this.copyUrlBtn.addEventListener('click', () => {
+                this.copyAssetUrl();
             });
         }
 
@@ -180,22 +259,11 @@ export default class ModalFilemanager extends Modal {
             });
         }
 
-        // Pagination buttons
-        if (this.prevBtn) {
-            this.prevBtn.addEventListener('click', () => {
-                if (this.currentPage > 1) {
-                    this.currentPage--;
-                    this.renderCurrentView();
-                }
-            });
-        }
-        if (this.nextBtn) {
-            this.nextBtn.addEventListener('click', () => {
-                const totalPages = Math.ceil(this.filteredAssets.length / this.itemsPerPage);
-                if (this.currentPage < totalPages) {
-                    this.currentPage++;
-                    this.renderCurrentView();
-                }
+        // Show reference count checkbox
+        if (this.showRefCountCheckbox) {
+            this.showRefCountCheckbox.addEventListener('change', (e) => {
+                this.showRefCount = e.target.checked;
+                this.applyFiltersAndRender();
             });
         }
 
@@ -207,6 +275,91 @@ export default class ModalFilemanager extends Modal {
                     const sortKey = th.dataset.sort;
                     this.handleHeaderSort(sortKey);
                 });
+            });
+        }
+
+        // New folder button
+        if (this.newFolderBtn) {
+            this.newFolderBtn.addEventListener('click', () => {
+                this.createNewFolder();
+            });
+        }
+
+        // Breadcrumb navigation (delegated)
+        if (this.breadcrumbs) {
+            this.breadcrumbs.addEventListener('click', (e) => {
+                const item = e.target.closest('.breadcrumb-item');
+                if (item) {
+                    const path = item.dataset.path || '';
+                    this.navigateToFolder(path);
+                }
+            });
+        }
+
+        // Search indicator events
+        if (this.searchIndicator) {
+            // Home icon click - go to root
+            const homeIcon = this.searchIndicator.querySelector('.breadcrumb-home');
+            homeIcon?.addEventListener('click', () => {
+                this.clearSearchAndNavigate('');
+            });
+
+            // X button click - clear search, stay in current view
+            const clearBtn = this.searchIndicator.querySelector('.clear-search-btn');
+            clearBtn?.addEventListener('click', () => {
+                if (this.searchInput) this.searchInput.value = '';
+                this.isSearchMode = false;
+                this.applyFiltersAndRender();
+            });
+        }
+
+        // Open folder button in sidebar
+        if (this.openFolderBtn) {
+            this.openFolderBtn.addEventListener('click', () => {
+                if (this.selectedAsset) {
+                    this.clearSearchAndNavigate(this.selectedAsset.folderPath || '');
+                }
+            });
+        }
+
+        // File operation buttons
+        if (this.renameBtn) {
+            this.renameBtn.addEventListener('click', () => {
+                this.renameSelectedAsset();
+            });
+        }
+
+        if (this.duplicateBtn) {
+            this.duplicateBtn.addEventListener('click', () => {
+                this.duplicateSelectedAsset();
+            });
+        }
+
+        if (this.moveBtn) {
+            this.moveBtn.addEventListener('click', () => {
+                this.showMoveDialog();
+            });
+        }
+
+        // Folder picker dialog events
+        if (this.folderPickerCancel) {
+            this.folderPickerCancel.addEventListener('click', () => {
+                this.hideFolderPicker();
+            });
+        }
+        if (this.folderPickerClose) {
+            this.folderPickerClose.addEventListener('click', () => {
+                this.hideFolderPicker();
+            });
+        }
+        if (this.folderPickerOverlay) {
+            this.folderPickerOverlay.addEventListener('click', () => {
+                this.hideFolderPicker();
+            });
+        }
+        if (this.folderPickerConfirm) {
+            this.folderPickerConfirm.addEventListener('click', () => {
+                this.confirmMove();
             });
         }
     }
@@ -267,7 +420,7 @@ export default class ModalFilemanager extends Modal {
      * @param {string} data.accept - Filter by type ('image', 'audio', 'video')
      */
     async show(data = {}) {
-        this.titleDefault = _('Media Library');
+        this.titleDefault = _('File manager');
         const time = this.manager.closeModals() ? this.timeMax : this.timeMin;
 
         setTimeout(async () => {
@@ -283,11 +436,34 @@ export default class ModalFilemanager extends Modal {
             // Store accept filter ('image', 'audio', 'video', or null for all)
             this.acceptFilter = data.accept || null;
 
+            // Reset selection state
+            this.selectedAsset = null;
+            this.selectedFolder = null;
+            this.selectedFolderPath = null;
+
+            // Reset folder navigation to home
+            this.currentPath = '';
+
             // Initialize elements if not done (MUST be before accessing this.grid)
             if (!this.grid) {
                 this.initElements();
                 this.initBehaviour();
             }
+
+            // Reset reference count toggle (off by default) - after initElements
+            this.showRefCount = false;
+            if (this.showRefCountCheckbox) {
+                this.showRefCountCheckbox.checked = false;
+            }
+
+            // Clear usage count cache so it's recalculated fresh
+            this.assetUsageCounts.clear();
+
+            // Update button states (all disabled since no selection)
+            this.updateButtonStates();
+
+            // Reset sidebar to empty state
+            this.showSidebarEmpty();
 
             // Get AssetManager from YjsProjectBridge
             this.assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
@@ -307,11 +483,65 @@ export default class ModalFilemanager extends Modal {
 
             // Load assets
             await this.loadAssets();
+
+            // Subscribe to Yjs asset changes for real-time sync
+            this._subscribeToYjsChanges();
         }, time);
     }
 
     /**
-     * Load all assets from IndexedDB
+     * Subscribe to Yjs asset changes for real-time sync with other clients
+     * Yjs handles all sync automatically - we just need to refresh the UI
+     */
+    _subscribeToYjsChanges() {
+        // Get the Yjs assets map from AssetManager
+        const assetsMap = this.assetManager?.getAssetsYMap?.();
+        if (!assetsMap) {
+            Logger.log('[MediaLibrary] Yjs assets map not available for real-time sync');
+            return;
+        }
+
+        // Create bound handler for Yjs changes
+        this._onYjsAssetsChange = (event) => this._handleYjsAssetsChange(event);
+
+        // Observe the Y.Map for changes (add, delete, update)
+        assetsMap.observe(this._onYjsAssetsChange);
+        this._assetsMap = assetsMap;
+        Logger.log('[MediaLibrary] Subscribed to Yjs asset changes');
+    }
+
+    /**
+     * Unsubscribe from Yjs asset changes
+     */
+    _unsubscribeFromYjsChanges() {
+        if (!this._assetsMap || !this._onYjsAssetsChange) return;
+
+        this._assetsMap.unobserve(this._onYjsAssetsChange);
+        this._assetsMap = null;
+        this._onYjsAssetsChange = null;
+        Logger.log('[MediaLibrary] Unsubscribed from Yjs asset changes');
+    }
+
+    /**
+     * Handle Yjs assets map changes
+     * @param {Y.YMapEvent} event - Yjs map event
+     */
+    _handleYjsAssetsChange(event) {
+        // Check if change was from this client (transaction origin)
+        if (event.transaction.local) {
+            // Local change - we already have the UI updated
+            return;
+        }
+
+        Logger.log(`[MediaLibrary] Remote Yjs asset change detected`);
+
+        // Reload assets from Yjs (fast - metadata only from memory)
+        this.loadAssets();
+    }
+
+
+    /**
+     * Load all assets (metadata from Yjs, blobs from IndexedDB)
      */
     async loadAssets() {
         if (!this.assetManager) return;
@@ -323,11 +553,228 @@ export default class ModalFilemanager extends Modal {
             Logger.log(`[MediaLibrary] Loaded ${this.assets.length} assets`);
             this.currentPage = 1;
             this.updateFilterOptions();
-            this.applyFiltersAndRender();
+            this.loadFolderContents(this.currentPath);
         } catch (err) {
             console.error('[MediaLibrary] Failed to load assets:', err);
             this.grid.innerHTML = `<div class="media-library-error">${_('Failed to load assets')}</div>`;
         }
+    }
+
+    /**
+     * Load and display contents of a specific folder
+     * @param {string} path - Folder path (empty = root)
+     */
+    loadFolderContents(path = '') {
+        this.currentPath = path;
+
+        // Get assets in this exact folder
+        const assetsInFolder = this.assets.filter(asset =>
+            (asset.folderPath || '') === path
+        );
+
+        // Derive subfolders from all assets
+        const derivedFolders = this.deriveSubfolders(this.assets, path);
+
+        // Also include explicitly created folders that are children of current path
+        const createdSubfolders = this.getCreatedSubfolders(path);
+
+        // Merge and dedupe
+        const allFolders = new Set([...derivedFolders, ...createdSubfolders]);
+        this.folders = Array.from(allFolders).sort((a, b) =>
+            a.toLowerCase().localeCompare(b.toLowerCase())
+        );
+
+        // Store assets for filtering
+        this.filteredAssets = assetsInFolder;
+
+        // Update breadcrumbs
+        this.renderBreadcrumbs();
+
+        // Apply filters and render
+        this.applyFiltersAndRender();
+    }
+
+    /**
+     * Get created folder names that are immediate children of the given path
+     * @param {string} parentPath - Parent path to check
+     * @returns {Array} Subfolder names
+     */
+    getCreatedSubfolders(parentPath) {
+        const subfolders = [];
+        const prefix = parentPath ? parentPath + '/' : '';
+
+        for (const folderPath of this.createdFolders) {
+            // Check if this folder is under parentPath
+            if (parentPath) {
+                if (!folderPath.startsWith(prefix)) continue;
+                const remaining = folderPath.slice(prefix.length);
+                // Get immediate child only
+                const firstSegment = remaining.split('/')[0];
+                if (firstSegment) subfolders.push(firstSegment);
+            } else {
+                // Root level - get first segment
+                const firstSegment = folderPath.split('/')[0];
+                if (firstSegment) subfolders.push(firstSegment);
+            }
+        }
+
+        return [...new Set(subfolders)];
+    }
+
+    /**
+     * Derive unique subfolders at a given path
+     * @param {Array} assets - All assets
+     * @param {string} parentPath - Parent folder path
+     * @returns {Array} Sorted array of subfolder names
+     */
+    deriveSubfolders(assets, parentPath = '') {
+        const subfolders = new Set();
+        const prefix = parentPath ? parentPath + '/' : '';
+
+        for (const asset of assets) {
+            const assetPath = asset.folderPath || '';
+
+            // Skip assets not under this path
+            if (!assetPath.startsWith(prefix)) continue;
+
+            // Get remaining path after prefix
+            const remainingPath = assetPath.slice(prefix.length);
+            if (!remainingPath) continue;
+
+            // Get the first segment (immediate subfolder)
+            const firstSegment = remainingPath.split('/')[0];
+            if (firstSegment) {
+                subfolders.add(firstSegment);
+            }
+        }
+
+        return Array.from(subfolders).sort((a, b) =>
+            a.toLowerCase().localeCompare(b.toLowerCase())
+        );
+    }
+
+    /**
+     * Navigate to a folder
+     * @param {string} path - Target folder path
+     */
+    navigateToFolder(path) {
+        Logger.log(`[MediaLibrary] Navigating to folder: "${path}"`);
+        // Clear all selections
+        this.selectedAsset = null;
+        this.selectedAssets = [];
+        this.selectedFolder = null;
+        this.selectedFolderPath = null;
+        this.showSidebarEmpty();
+        this.updateButtonStates();
+        this.currentPage = 1;
+        this.loadFolderContents(path);
+    }
+
+    /**
+     * Navigate into a subfolder
+     * @param {string} folderName - Name of subfolder to enter
+     */
+    enterFolder(folderName) {
+        const newPath = this.currentPath
+            ? `${this.currentPath}/${folderName}`
+            : folderName;
+        this.navigateToFolder(newPath);
+    }
+
+    /**
+     * Navigate to parent folder
+     */
+    navigateUp() {
+        if (!this.currentPath) return; // Already at root
+
+        const parts = this.currentPath.split('/');
+        parts.pop();
+        this.navigateToFolder(parts.join('/'));
+    }
+
+    /**
+     * Render breadcrumb navigation
+     */
+    renderBreadcrumbs() {
+        if (!this.breadcrumbs) return;
+
+        const parts = this.currentPath ? this.currentPath.split('/') : [];
+
+        // Start with root/home
+        let html = `<span class="breadcrumb-item" data-path="" title="${_('Root')}">
+            <span class="exe-icon">home</span>
+        </span>`;
+
+        // Add path segments
+        let accumulated = '';
+        for (let i = 0; i < parts.length; i++) {
+            accumulated += (i > 0 ? '/' : '') + parts[i];
+            html += `<span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-item" data-path="${accumulated}">${this.escapeHtml(parts[i])}</span>`;
+        }
+
+        this.breadcrumbs.innerHTML = html;
+    }
+
+    /**
+     * Create a new folder
+     */
+    async createNewFolder() {
+        const name = prompt(_('Enter folder name:'));
+        if (!name) return;
+
+        // Validate folder name
+        if (!this.isValidFolderName(name)) {
+            alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+            return;
+        }
+
+        // Check if folder already exists
+        if (this.folders.includes(name)) {
+            alert(_('A folder with this name already exists.'));
+            return;
+        }
+
+        // Create folder path
+        const folderPath = this.currentPath ? `${this.currentPath}/${name}` : name;
+
+        Logger.log(`[MediaLibrary] Creating folder: ${folderPath}`);
+
+        // Track this folder in createdFolders (persists across navigation)
+        this.createdFolders.add(folderPath);
+
+        // Add to local folders list for immediate display
+        this.folders.push(name);
+        this.folders.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+
+        // Re-render to show new folder
+        this.renderCurrentView();
+
+        // TODO: Persist empty folder to server when backend supports it
+    }
+
+    /**
+     * Validate folder name
+     * @param {string} name - Folder name to validate
+     * @returns {boolean} True if valid
+     */
+    isValidFolderName(name) {
+        if (!name || name.trim() !== name) return false;
+        if (name === '.' || name === '..') return false;
+        // Disallow special characters
+        const invalidChars = /[/\\:*?"<>|]/;
+        return !invalidChars.test(name);
+    }
+
+    /**
+     * Escape HTML special characters
+     * @param {string} str - String to escape
+     * @returns {string} Escaped string
+     */
+    escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
 
     /**
@@ -336,8 +783,17 @@ export default class ModalFilemanager extends Modal {
     applyFiltersAndRender() {
         const searchTerm = this.searchInput?.value?.toLowerCase().trim() || '';
 
+        // Determine search mode - when search term is active, search recursively
+        this.isSearchMode = searchTerm.length > 0;
+
+        // When searching: search ALL assets recursively
+        // When not searching: only current folder
+        const assetsToSearch = this.isSearchMode
+            ? this.assets
+            : this.assets.filter(asset => (asset.folderPath || '') === this.currentPath);
+
         // Filter
-        this.filteredAssets = this.assets.filter(asset => {
+        this.filteredAssets = assetsToSearch.filter(asset => {
             // Filter by file type (accept filter - programmatic)
             if (this.acceptFilter) {
                 const mime = asset.mime || '';
@@ -356,11 +812,63 @@ export default class ModalFilemanager extends Modal {
             return filename.includes(searchTerm);
         });
 
+        // Update file count
+        if (this.fileCountSpan) {
+            this.fileCountSpan.textContent = this.filteredAssets.length;
+        }
+
+        // Toggle breadcrumb/search indicator
+        if (this.isSearchMode) {
+            this.showSearchIndicator(searchTerm);
+        } else {
+            this.showBreadcrumbs();
+        }
+
         // Sort
         this.sortAssets();
 
         // Render
         this.renderCurrentView();
+    }
+
+    /**
+     * Show search indicator (replaces breadcrumbs during search)
+     * @param {string} term - Search term to display
+     */
+    showSearchIndicator(term) {
+        if (this.breadcrumbs) this.breadcrumbs.classList.add('d-none');
+        if (this.searchIndicator) {
+            this.searchIndicator.classList.remove('d-none');
+            const termSpan = this.searchIndicator.querySelector('.search-term');
+            if (termSpan) termSpan.textContent = term;
+        }
+        // Show location column header in list view during search
+        if (this.locationColumnHeader) this.locationColumnHeader.classList.remove('d-none');
+    }
+
+    /**
+     * Show breadcrumbs (restore normal navigation)
+     */
+    showBreadcrumbs() {
+        if (this.breadcrumbs) this.breadcrumbs.classList.remove('d-none');
+        if (this.searchIndicator) this.searchIndicator.classList.add('d-none');
+        // Hide location column header in list view when not searching
+        if (this.locationColumnHeader) this.locationColumnHeader.classList.add('d-none');
+    }
+
+    /**
+     * Clear search and navigate to a specific folder
+     * @param {string} path - Target folder path
+     */
+    clearSearchAndNavigate(path) {
+        // Clear search input
+        if (this.searchInput) {
+            this.searchInput.value = '';
+        }
+        // Exit search mode
+        this.isSearchMode = false;
+        // Navigate to folder
+        this.navigateToFolder(path);
     }
 
     /**
@@ -400,17 +908,15 @@ export default class ModalFilemanager extends Modal {
      * Render current view (grid or list) with pagination
      */
     renderCurrentView() {
-        const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-        const endIndex = startIndex + this.itemsPerPage;
-        const pageAssets = this.filteredAssets.slice(startIndex, endIndex);
-
+        // Render all filtered assets (infinite scroll, no pagination)
         if (this.viewMode === 'grid') {
-            this.renderGrid(pageAssets);
+            this.renderGrid(this.filteredAssets);
         } else {
-            this.renderList(pageAssets);
+            this.renderList(this.filteredAssets);
         }
 
-        this.updatePagination();
+        // Update footer button states
+        this.updateButtonStates();
 
         // Restore visual selection for multi-select mode
         if (this.multiSelect && this.selectedAssets.length > 0) {
@@ -438,19 +944,32 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
-     * Update pagination controls
+     * Update footer button states based on current selection
      */
-    updatePagination() {
-        const totalPages = Math.max(1, Math.ceil(this.filteredAssets.length / this.itemsPerPage));
+    updateButtonStates() {
+        const hasFileSelection = this.selectedAsset !== null;
+        const hasFolderSelection = this.selectedFolder !== null;
+        const hasSelection = hasFileSelection || hasFolderSelection;
+        const isZip = hasFileSelection && (
+            this.selectedAsset.mime === 'application/zip' ||
+            this.selectedAsset.mime === 'application/x-zip-compressed' ||
+            this.selectedAsset.filename?.toLowerCase().endsWith('.zip')
+        );
 
-        if (this.paginationInfo) {
-            this.paginationInfo.textContent = `${_('Page')} ${this.currentPage} ${_('of')} ${totalPages}`;
-        }
-        if (this.prevBtn) {
-            this.prevBtn.disabled = this.currentPage <= 1;
-        }
-        if (this.nextBtn) {
-            this.nextBtn.disabled = this.currentPage >= totalPages;
+        // File/folder operation buttons
+        if (this.deleteBtn) this.deleteBtn.disabled = !hasSelection;
+        if (this.renameBtn) this.renameBtn.disabled = !hasSelection;
+        if (this.moveBtn) this.moveBtn.disabled = !hasSelection;
+
+        // File-only buttons
+        if (this.downloadBtn) this.downloadBtn.disabled = !hasFileSelection;
+        if (this.duplicateBtn) this.duplicateBtn.disabled = !hasFileSelection;
+        if (this.insertBtn) this.insertBtn.disabled = !hasFileSelection;
+        if (this.moreBtn) this.moreBtn.disabled = !hasFileSelection;
+
+        // Extract button visibility (only for ZIP files)
+        if (this.extractBtn) {
+            this.extractBtn.classList.toggle('d-none', !isZip);
         }
     }
 
@@ -462,7 +981,12 @@ export default class ModalFilemanager extends Modal {
 
         const assetsToRender = pageAssets || this.filteredAssets;
 
-        if (assetsToRender.length === 0) {
+        // Check if we have folders or files to show
+        // Hide folders when in search mode (recursive search shows files only)
+        const hasFolders = !this.isSearchMode && this.folders.length > 0;
+        const hasFiles = assetsToRender.length > 0;
+
+        if (!hasFolders && !hasFiles) {
             this.showEmptyState();
             return;
         }
@@ -470,11 +994,108 @@ export default class ModalFilemanager extends Modal {
         this.hideEmptyState();
         this.grid.innerHTML = '';
 
+        // Render folders first (only when NOT in search mode)
+        if (!this.isSearchMode) {
+            for (const folderName of this.folders) {
+                const folderItem = this.createFolderGridItem(folderName);
+                this.grid.appendChild(folderItem);
+            }
+        }
+
+        // Then render files
         for (const asset of assetsToRender) {
             const item = this.createGridItem(asset);
             this.grid.appendChild(item);
         }
     }
+
+    /**
+     * Create a grid item for a folder
+     * @param {string} folderName - Name of the folder
+     * @returns {HTMLElement}
+     */
+    createFolderGridItem(folderName) {
+        const item = document.createElement('div');
+        item.className = 'media-library-item media-library-folder';
+        item.dataset.folderName = folderName;
+
+        item.innerHTML = `
+            <div class="media-thumbnail folder-thumbnail">
+                <span class="exe-icon folder-icon">folder</span>
+                <span class="media-label">${this.escapeHtml(folderName)}</span>
+            </div>`;
+
+        // Double-click to enter folder
+        item.addEventListener('dblclick', () => {
+            this.enterFolder(folderName);
+        });
+
+        // Single click to select (for context menu later)
+        item.addEventListener('click', () => {
+            // Clear any file selection
+            this.selectedAsset = null;
+            this.selectedAssets = [];
+
+            // Clear visual selection from files
+            this.grid.querySelectorAll('.media-library-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Select this folder
+            item.classList.add('selected');
+
+            // Show folder info in sidebar
+            this.showFolderSidebarContent(folderName);
+        });
+
+        return item;
+    }
+
+    /**
+     * Show folder details in sidebar
+     * @param {string} folderName - Name of the folder
+     */
+    showFolderSidebarContent(folderName) {
+        if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
+        if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
+
+        // Hide all preview elements
+        if (this.previewImg) this.previewImg.style.display = 'none';
+        if (this.previewVideo) this.previewVideo.style.display = 'none';
+        if (this.previewAudio) this.previewAudio.style.display = 'none';
+        if (this.previewPdf) this.previewPdf.style.display = 'none';
+        if (this.previewFile) {
+            this.previewFile.style.display = 'flex';
+            const icon = this.previewFile.querySelector('.file-icon');
+            if (icon) icon.textContent = 'folder';
+        }
+
+        // Count items in folder
+        const folderPath = this.currentPath
+            ? `${this.currentPath}/${folderName}`
+            : folderName;
+
+        const filesInFolder = this.assets.filter(a => {
+            const path = a.folderPath || '';
+            return path === folderPath || path.startsWith(folderPath + '/');
+        }).length;
+
+        // Update metadata
+        if (this.filenameSpan) this.filenameSpan.textContent = folderName;
+        if (this.typeSpan) this.typeSpan.textContent = _('Folder');
+        if (this.sizeSpan) this.sizeSpan.textContent = `${filesInFolder} ${_('items')}`;
+        if (this.dimensionsRow) this.dimensionsRow.style.display = 'none';
+        if (this.dateSpan) this.dateSpan.textContent = '-';
+        if (this.urlInput) this.urlInput.value = folderPath;
+
+        // Store selected folder info for operations
+        this.selectedFolder = folderName;
+        this.selectedFolderPath = folderPath;
+
+        // Update footer button states
+        this.updateButtonStates();
+    }
+
 
     /**
      * Render the asset list table
@@ -484,7 +1105,12 @@ export default class ModalFilemanager extends Modal {
 
         const assetsToRender = pageAssets || this.filteredAssets;
 
-        if (assetsToRender.length === 0) {
+        // Check if we have folders or files to show
+        // Hide folders when in search mode (recursive search shows files only)
+        const hasFolders = !this.isSearchMode && this.folders.length > 0;
+        const hasFiles = assetsToRender.length > 0;
+
+        if (!hasFolders && !hasFiles) {
             this.showEmptyState();
             return;
         }
@@ -492,10 +1118,100 @@ export default class ModalFilemanager extends Modal {
         this.hideEmptyState();
         this.listTbody.innerHTML = '';
 
+        // Render folders first (only when NOT in search mode)
+        if (!this.isSearchMode) {
+            for (const folderName of this.folders) {
+                const row = this.createFolderListRow(folderName);
+                this.listTbody.appendChild(row);
+            }
+        }
+
+        // Then render files
         for (const asset of assetsToRender) {
             const row = this.createListRow(asset);
             this.listTbody.appendChild(row);
         }
+    }
+
+    /**
+     * Create a table row for a folder in list view
+     * @param {string} folderName - Name of the folder
+     * @returns {HTMLElement}
+     */
+    createFolderListRow(folderName) {
+        const row = document.createElement('tr');
+        row.className = 'media-library-folder-row';
+        row.dataset.folderName = folderName;
+
+        // Thumbnail cell (folder icon)
+        const thumbCell = document.createElement('td');
+        thumbCell.className = 'col-thumb';
+        thumbCell.innerHTML = `<div class="list-thumb-icon"><span class="exe-icon folder-icon">folder</span></div>`;
+        row.appendChild(thumbCell);
+
+        // Name cell
+        const nameCell = document.createElement('td');
+        nameCell.className = 'col-name';
+        nameCell.textContent = folderName;
+        row.appendChild(nameCell);
+
+        // Location cell (hidden - folders only show when not in search mode)
+        const locationCell = document.createElement('td');
+        locationCell.className = 'col-location d-none';
+        row.appendChild(locationCell);
+
+        // Type cell
+        const typeCell = document.createElement('td');
+        typeCell.className = 'col-type';
+        typeCell.textContent = _('Folder');
+        row.appendChild(typeCell);
+
+        // Size cell (item count)
+        const folderPath = this.currentPath
+            ? `${this.currentPath}/${folderName}`
+            : folderName;
+        const filesInFolder = this.assets.filter(a => {
+            const path = a.folderPath || '';
+            return path === folderPath || path.startsWith(folderPath + '/');
+        }).length;
+
+        const sizeCell = document.createElement('td');
+        sizeCell.className = 'col-size';
+        sizeCell.textContent = `${filesInFolder} ${_('items')}`;
+        row.appendChild(sizeCell);
+
+        // Date cell
+        const dateCell = document.createElement('td');
+        dateCell.className = 'col-date';
+        dateCell.textContent = '-';
+        row.appendChild(dateCell);
+
+        // Double-click to enter folder
+        row.addEventListener('dblclick', () => {
+            this.enterFolder(folderName);
+        });
+
+        // Single click to select
+        row.addEventListener('click', () => {
+            // Clear file selections
+            this.selectedAsset = null;
+            this.selectedAssets = [];
+
+            // Clear visual selection
+            if (this.listTbody) {
+                this.listTbody.querySelectorAll('tr').forEach(el => {
+                    el.classList.remove('selected');
+                });
+            }
+
+            // Select this folder
+            row.classList.add('selected');
+
+            // Show folder info in sidebar
+            this.showFolderSidebarContent(folderName);
+        });
+
+        return row;
     }
 
     /**
@@ -528,11 +1244,39 @@ export default class ModalFilemanager extends Modal {
         }
         row.appendChild(thumbCell);
 
-        // Name cell
+        // Name cell (with optional usage badge)
         const nameCell = document.createElement('td');
         nameCell.className = 'col-name';
-        nameCell.textContent = asset.filename || 'Unknown';
+        if (this.showRefCount) {
+            const usageCount = this.getAssetUsageCount(asset.id);
+            const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
+            nameCell.innerHTML = `<span class="filename">${asset.filename || 'Unknown'}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
+        } else {
+            nameCell.textContent = asset.filename || 'Unknown';
+        }
         row.appendChild(nameCell);
+
+        // Location cell (only visible in search mode)
+        const locationCell = document.createElement('td');
+        locationCell.className = this.isSearchMode ? 'col-location' : 'col-location d-none';
+        if (this.isSearchMode) {
+            const displayPath = asset.folderPath ? `/${asset.folderPath}` : '/';
+            locationCell.innerHTML = `
+                <span class="location-link"
+                      data-path="${this.escapeHtml(asset.folderPath || '')}"
+                      title="${this.escapeHtml(displayPath)}">
+                    ${this.escapeHtml(displayPath)}
+                </span>`;
+
+            const locationLink = locationCell.querySelector('.location-link');
+            if (locationLink) {
+                locationLink.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.clearSearchAndNavigate(asset.folderPath || '');
+                });
+            }
+        }
+        row.appendChild(locationCell);
 
         // Type cell
         const typeCell = document.createElement('td');
@@ -762,26 +1506,91 @@ export default class ModalFilemanager extends Modal {
 
         // Get or create blob URL (using synced method to ensure reverseBlobCache consistency)
         let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
+        let isLoading = false;
+
         if (!blobUrl && asset.blob) {
             blobUrl = URL.createObjectURL(asset.blob);
             this.assetManager.blobURLCache.set(asset.id, blobUrl);
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+        } else if (!blobUrl) {
+            // Asset not available locally - show loading placeholder and trigger fetch
+            blobUrl = this.assetManager.generateLoadingPlaceholder(asset.id);
+            isLoading = true;
+            this.triggerAssetFetch(asset.id);
         } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
             // Ensure reverseBlobCache is synced for existing blob URLs
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
+        // Get usage count badge (only when showRefCount is enabled)
+        let usageBadge = '';
+        if (this.showRefCount) {
+            const usageCount = this.getAssetUsageCount(asset.id);
+            const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
+            usageBadge = `<span class="position-absolute top-0 end-0 badge rounded-pill ${badgeClass} m-2 shadow-sm">${usageCount}</span>`;
+        }
+
+        // Path badge (only in search mode)
+        let pathBadgeHtml = '';
+        if (this.isSearchMode) {
+            const displayPath = asset.folderPath ? `/${asset.folderPath}` : '/';
+            pathBadgeHtml = `
+                <span class="item-path-badge text-truncate"
+                      data-path="${this.escapeHtml(asset.folderPath || '')}"
+                      title="${this.escapeHtml(displayPath)}">
+                    <span class="exe-icon">folder</span>
+                    in ${this.escapeHtml(displayPath)}
+                </span>`;
+        }
+
         // Determine content based on type
+        // Add data-asset-id for loading images so updateDomImagesForAsset can update them when asset arrives
+        const loadingAttrs = isLoading ? ` data-asset-id="${asset.id}" data-asset-loading="true"` : '';
         if (asset.mime && asset.mime.startsWith('image/')) {
-            item.innerHTML = `<img src="${blobUrl}" alt="${asset.filename || 'Image'}" loading="lazy">`;
+            if (this.isSearchMode) {
+                // In search mode: show image with info overlay
+                item.innerHTML = `
+                    <img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || 'Image')}" loading="lazy"${loadingAttrs}>
+                    ${usageBadge}
+                    <div class="item-info">
+                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || 'Image')}</span>
+                        ${pathBadgeHtml}
+                    </div>`;
+            } else {
+                // Normal mode: just image
+                item.innerHTML = `<img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || 'Image')}" loading="lazy"${loadingAttrs}>${usageBadge}`;
+            }
         } else {
             // Use icon for non-image files
             const icon = this.getFileIcon(asset.mime, asset.filename);
-            item.innerHTML = `
-                <div class="media-thumbnail file-thumbnail">
-                    <span class="exe-icon">${icon}</span>
-                    <span class="media-label">${asset.filename || 'File'}</span>
-                </div>`;
+            if (this.isSearchMode) {
+                // In search mode: show with info overlay
+                item.innerHTML = `
+                    <div class="media-thumbnail file-thumbnail">
+                        <span class="exe-icon">${icon}</span>
+                    </div>
+                    ${usageBadge}
+                    <div class="item-info">
+                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || 'File')}</span>
+                        ${pathBadgeHtml}
+                    </div>`;
+            } else {
+                // Normal mode: icon with label
+                item.innerHTML = `
+                    <div class="media-thumbnail file-thumbnail">
+                        <span class="exe-icon">${icon}</span>
+                        <span class="media-label">${this.escapeHtml(asset.filename || 'File')}</span>
+                    </div>${usageBadge}`;
+            }
+        }
+
+        // Path badge click handler (navigate to folder)
+        const pathBadge = item.querySelector('.item-path-badge');
+        if (pathBadge) {
+            pathBadge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.clearSearchAndNavigate(asset.folderPath || '');
+            });
         }
 
         // Click handler
@@ -795,6 +1604,34 @@ export default class ModalFilemanager extends Modal {
         });
 
         return item;
+    }
+
+    /**
+     * Trigger background fetch for a missing asset via WebSocket
+     * This is used when a peer has uploaded an asset that we don't have locally yet
+     * @param {string} assetId - Asset UUID
+     */
+    triggerAssetFetch(assetId) {
+        const yjsBridge = window.eXeLearning?.app?.project?._yjsBridge;
+        const wsHandler = yjsBridge?.assetWebSocketHandler;
+
+        if (wsHandler && !this.assetManager.pendingFetches?.has(assetId)) {
+            this.assetManager.pendingFetches?.add(assetId);
+            Logger.log(`[MediaLibrary] Fetching asset ${assetId.substring(0, 8)}... via WebSocket`);
+            wsHandler.requestAsset(assetId).then(success => {
+                if (success) {
+                    // Update DOM images to replace loading placeholder with actual blob URL
+                    this.assetManager.updateDomImagesForAsset(assetId).catch(err => {
+                        console.warn(`[MediaLibrary] Failed to update DOM for ${assetId.substring(0, 8)}:`, err);
+                    });
+                    Logger.log(`[MediaLibrary] Asset ${assetId.substring(0, 8)}... received via P2P`);
+                }
+            }).catch(error => {
+                console.error(`[MediaLibrary] Failed to fetch asset ${assetId.substring(0, 8)}:`, error);
+            }).finally(() => {
+                this.assetManager.pendingFetches?.delete(assetId);
+            });
+        }
     }
 
     /**
@@ -851,9 +1688,6 @@ export default class ModalFilemanager extends Modal {
         if (this.listContainer) {
             this.listContainer.style.display = 'none';
         }
-        if (this.pagination) {
-            this.pagination.style.display = 'none';
-        }
     }
 
     /**
@@ -870,9 +1704,6 @@ export default class ModalFilemanager extends Modal {
             if (this.grid) this.grid.style.display = 'none';
             if (this.listContainer) this.listContainer.style.display = 'flex';
         }
-        if (this.pagination) {
-            this.pagination.style.display = 'flex';
-        }
     }
 
     /**
@@ -881,6 +1712,7 @@ export default class ModalFilemanager extends Modal {
     showSidebarEmpty() {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'block';
         if (this.sidebarContent) this.sidebarContent.style.display = 'none';
+        this.updateButtonStates();
     }
 
     /**
@@ -888,15 +1720,25 @@ export default class ModalFilemanager extends Modal {
      * @param {Object} asset
      */
     async showSidebarContent(asset) {
+        // Clear folder selection when showing file
+        this.selectedFolder = null;
+        this.selectedFolderPath = null;
+
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
 
         // Get blob URL (using synced method to ensure reverseBlobCache consistency)
         let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
+        let isLoading = false;
         if (!blobUrl && asset.blob) {
             blobUrl = URL.createObjectURL(asset.blob);
             this.assetManager.blobURLCache.set(asset.id, blobUrl);
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
+        } else if (!blobUrl) {
+            // Asset not available locally - show loading placeholder and trigger fetch
+            blobUrl = this.assetManager.generateLoadingPlaceholder(asset.id);
+            isLoading = true;
+            this.triggerAssetFetch(asset.id);
         } else if (blobUrl && !this.assetManager.reverseBlobCache.has(blobUrl)) {
             // Ensure reverseBlobCache is synced for existing blob URLs
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
@@ -914,21 +1756,50 @@ export default class ModalFilemanager extends Modal {
             if (this.previewImg) {
                 this.previewImg.src = blobUrl;
                 this.previewImg.style.display = 'block';
+                // Add data-asset-id for loading images so updateDomImagesForAsset can update them
+                if (isLoading) {
+                    this.previewImg.setAttribute('data-asset-id', asset.id);
+                    this.previewImg.setAttribute('data-asset-loading', 'true');
+                } else {
+                    this.previewImg.removeAttribute('data-asset-id');
+                    this.previewImg.removeAttribute('data-asset-loading');
+                }
             }
         } else if (asset.mime && asset.mime.startsWith('video/')) {
             if (this.previewVideo) {
                 this.previewVideo.src = blobUrl;
                 this.previewVideo.style.display = 'block';
+                if (isLoading) {
+                    this.previewVideo.setAttribute('data-asset-id', asset.id);
+                    this.previewVideo.setAttribute('data-asset-loading', 'true');
+                } else {
+                    this.previewVideo.removeAttribute('data-asset-id');
+                    this.previewVideo.removeAttribute('data-asset-loading');
+                }
             }
         } else if (asset.mime && asset.mime.startsWith('audio/')) {
             if (this.previewAudio) {
                 this.previewAudio.src = blobUrl;
                 this.previewAudio.style.display = 'block';
+                if (isLoading) {
+                    this.previewAudio.setAttribute('data-asset-id', asset.id);
+                    this.previewAudio.setAttribute('data-asset-loading', 'true');
+                } else {
+                    this.previewAudio.removeAttribute('data-asset-id');
+                    this.previewAudio.removeAttribute('data-asset-loading');
+                }
             }
         } else if (asset.mime === 'application/pdf') {
             if (this.previewPdf) {
                 this.previewPdf.src = blobUrl;
                 this.previewPdf.style.display = 'block';
+                if (isLoading) {
+                    this.previewPdf.setAttribute('data-asset-id', asset.id);
+                    this.previewPdf.setAttribute('data-asset-loading', 'true');
+                } else {
+                    this.previewPdf.removeAttribute('data-asset-id');
+                    this.previewPdf.removeAttribute('data-asset-loading');
+                }
             }
         } else {
             if (this.previewFile) {
@@ -937,7 +1808,7 @@ export default class ModalFilemanager extends Modal {
         }
 
         // Update metadata
-        if (this.filenameInput) this.filenameInput.value = asset.filename || 'Unknown';
+        if (this.filenameSpan) this.filenameSpan.textContent = asset.filename || 'Unknown';
         if (this.typeSpan) this.typeSpan.textContent = asset.mime || 'Unknown';
         if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager.formatFileSize(asset.size || 0);
 
@@ -947,9 +1818,15 @@ export default class ModalFilemanager extends Modal {
             this.dateSpan.textContent = date ? date.toLocaleDateString() : 'Unknown';
         }
 
+        // Usage count
+        if (this.usageSpan) {
+            const usageCount = this.getAssetUsageCount(asset.id);
+            this.usageSpan.textContent = `${usageCount} iDevices`;
+        }
+
         // URL
         if (this.urlInput) {
-            this.urlInput.value = `asset://${asset.id}/${asset.filename || ''}`;
+            this.urlInput.value = this.assetManager.getAssetUrl(asset.id, asset.filename);
         }
 
         // Dimensions (only for images)
@@ -971,13 +1848,16 @@ export default class ModalFilemanager extends Modal {
             }
         }
 
-        // Show/hide unzip button based on file type
-        if (this.unzipBtn) {
-            const isZip = asset.mime === 'application/zip' ||
-                          asset.mime === 'application/x-zip-compressed' ||
-                          asset.filename?.toLowerCase().endsWith('.zip');
-            this.unzipBtn.style.display = isZip ? 'inline-flex' : 'none';
+        // Location (always show to help user understand where the file is)
+        if (this.locationRow && this.locationValue) {
+            const displayPath = asset.folderPath ? `/${asset.folderPath}` : '/';
+            this.locationRow.style.display = 'flex';
+            this.locationValue.textContent = displayPath;
+            this.locationValue.title = displayPath;
         }
+
+        // Update footer button states
+        this.updateButtonStates();
     }
 
     /**
@@ -987,14 +1867,15 @@ export default class ModalFilemanager extends Modal {
     async uploadFiles(files) {
         if (!this.assetManager) return;
 
-        Logger.log(`[MediaLibrary] uploadFiles: assetManager.projectId = ${this.assetManager.projectId}`);
+        Logger.log(`[MediaLibrary] uploadFiles: assetManager.projectId = ${this.assetManager.projectId}, folder = "${this.currentPath}"`);
 
         let uploadedCount = 0;
 
         for (const file of files) {
             try {
-                Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}`);
-                await this.assetManager.insertImage(file);
+                Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
+                // Upload to current folder
+                await this.assetManager.insertImage(file, { folderPath: this.currentPath });
                 uploadedCount++;
             } catch (err) {
                 console.error(`[MediaLibrary] Failed to upload ${file.name}:`, err);
@@ -1002,7 +1883,7 @@ export default class ModalFilemanager extends Modal {
         }
 
         if (uploadedCount > 0) {
-            Logger.log(`[MediaLibrary] Uploaded ${uploadedCount} files`);
+            Logger.log(`[MediaLibrary] Uploaded ${uploadedCount} files to folder "${this.currentPath}"`);
             await this.loadAssets();
         }
     }
@@ -1017,13 +1898,70 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
-     * Delete selected asset
+     * Delete selected asset or folder
      */
     async deleteSelectedAsset() {
-        if (!this.selectedAsset || !this.assetManager) return;
+        if (!this.assetManager) return;
 
-        const confirmDelete = confirm(_('Are you sure you want to delete this file?'));
-        if (!confirmDelete) return;
+        // Check if folder is selected
+        if (this.selectedFolder && this.selectedFolderPath) {
+            const folderName = this.selectedFolder;
+            const folderPath = this.selectedFolderPath;
+
+            // Count items in folder
+            const itemCount = this.assets.filter(a => {
+                const path = a.folderPath || '';
+                return path === folderPath || path.startsWith(folderPath + '/');
+            }).length;
+
+            const confirmMsg = itemCount > 0
+                ? _('Are you sure you want to delete the folder "%1" and all %2 files inside?').replace('%1', folderName).replace('%2', itemCount)
+                : _('Are you sure you want to delete the empty folder "%1"?').replace('%1', folderName);
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                if (itemCount > 0) {
+                    await this.assetManager.deleteFolderContents(folderPath);
+                }
+
+                // Remove from created folders (for empty folders created with "New folder")
+                this.createdFolders.delete(folderPath);
+                // Also remove any nested created folders
+                for (const path of this.createdFolders) {
+                    if (path.startsWith(folderPath + '/')) {
+                        this.createdFolders.delete(path);
+                    }
+                }
+
+                Logger.log(`[MediaLibrary] Deleted folder: ${folderPath} (${itemCount} items)`);
+
+                // Clear selection
+                this.selectedFolder = null;
+                this.selectedFolderPath = null;
+                this.showSidebarEmpty();
+
+                // Reload grid
+                await this.loadAssets();
+            } catch (err) {
+                console.error('[MediaLibrary] Failed to delete folder:', err);
+                alert(_('Failed to delete folder'));
+            }
+            return;
+        }
+
+        // Delete file
+        if (!this.selectedAsset) return;
+
+        const filename = this.selectedAsset.filename || 'Unknown';
+        const usageCount = this.getAssetUsageCount(this.selectedAsset.id);
+
+        let confirmMsg = _('Delete "%1"?').replace('%1', filename);
+        if (usageCount > 0) {
+            confirmMsg += '\n' + _('This asset is referenced in %1 iDevices.').replace('%1', usageCount);
+        }
+
+        if (!confirm(confirmMsg)) return;
 
         try {
             await this.assetManager.deleteAsset(this.selectedAsset.id);
@@ -1038,6 +1976,547 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Rename the selected asset or folder
+     */
+    async renameSelectedAsset() {
+        if (!this.assetManager) return;
+
+        // Check if folder is selected
+        if (this.selectedFolder && this.selectedFolderPath) {
+            const currentName = this.selectedFolder;
+            const newName = prompt(_('Enter new folder name:'), currentName);
+
+            if (!newName || newName === currentName) return;
+
+            // Validate folder name
+            if (!this.isValidFolderName(newName)) {
+                alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+                return;
+            }
+
+            // Check if folder with same name already exists in parent
+            if (this.folders.includes(newName)) {
+                alert(_('A folder with this name already exists.'));
+                return;
+            }
+
+            try {
+                // Build new path
+                const oldPath = this.selectedFolderPath;
+                const parentPath = this.currentPath;
+                const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+
+                await this.assetManager.renameFolder(oldPath, newPath);
+                Logger.log(`[MediaLibrary] Renamed folder: ${oldPath} to ${newPath}`);
+
+                // Update createdFolders if this folder was explicitly created
+                if (this.createdFolders.has(oldPath)) {
+                    this.createdFolders.delete(oldPath);
+                    this.createdFolders.add(newPath);
+                }
+                // Also update any nested created folders
+                for (const path of [...this.createdFolders]) {
+                    if (path.startsWith(oldPath + '/')) {
+                        this.createdFolders.delete(path);
+                        this.createdFolders.add(newPath + path.slice(oldPath.length));
+                    }
+                }
+
+                // Update local state
+                this.selectedFolder = newName;
+                this.selectedFolderPath = newPath;
+
+                // Update sidebar
+                if (this.filenameSpan) {
+                    this.filenameSpan.textContent = newName;
+                }
+                if (this.urlInput) {
+                    this.urlInput.value = newPath;
+                }
+
+                // Reload to update grid/list
+                await this.loadAssets();
+            } catch (err) {
+                console.error('[MediaLibrary] Failed to rename folder:', err);
+                alert(_('Failed to rename folder'));
+            }
+            return;
+        }
+
+        // Rename file
+        if (!this.selectedAsset) return;
+
+        const currentName = this.selectedAsset.filename || '';
+        const newName = prompt(_('Enter new filename:'), currentName);
+
+        if (!newName || newName === currentName) return;
+
+        // Validate filename
+        if (!this.isValidFolderName(newName)) {
+            alert(_('Invalid filename. Avoid special characters like / \\ : * ? " < > |'));
+            return;
+        }
+
+        try {
+            await this.assetManager.renameAsset(this.selectedAsset.id, newName);
+            Logger.log(`[MediaLibrary] Renamed asset: ${this.selectedAsset.id} to ${newName}`);
+
+            // Update local reference
+            this.selectedAsset.filename = newName;
+
+            // Update sidebar
+            if (this.filenameSpan) {
+                this.filenameSpan.textContent = newName;
+            }
+            if (this.urlInput) {
+                // URL format uses only UUID + extension, path is resolved at export time
+                this.urlInput.value = this.assetManager.getAssetUrl(this.selectedAsset.id, newName);
+            }
+
+            // Reload to update grid/list
+            await this.loadAssets();
+        } catch (err) {
+            console.error('[MediaLibrary] Failed to rename asset:', err);
+            alert(_('Failed to rename file'));
+        }
+    }
+
+    /**
+     * Generate a unique filename for duplication
+     * Count how many iDevices reference a specific asset
+     * @param {string} assetId - Asset UUID to search for
+     * @returns {number} Number of iDevices referencing this asset
+     */
+    countAssetReferences(assetId) {
+        if (!assetId) return 0;
+
+        try {
+            const yjsBridge = window.eXeLearning?.app?.project?._yjsBridge;
+            if (!yjsBridge?.documentManager?.ydoc) return 0;
+
+            const navigation = yjsBridge.documentManager.ydoc.getArray('navigation');
+            if (!navigation) return 0;
+
+            let count = 0;
+            const assetRegex = new RegExp(`asset://${assetId}`, 'gi');
+
+            // Traverse all pages
+            for (let i = 0; i < navigation.length; i++) {
+                const pageMap = navigation.get(i);
+                if (!pageMap) continue;
+
+                const blocks = pageMap.get('blocks');
+                if (!blocks) continue;
+
+                // Traverse all blocks in the page
+                for (let j = 0; j < blocks.length; j++) {
+                    const blockMap = blocks.get(j);
+                    if (!blockMap) continue;
+
+                    const components = blockMap.get('components');
+                    if (!components) continue;
+
+                    // Traverse all components (iDevices) in the block
+                    for (let k = 0; k < components.length; k++) {
+                        const compMap = components.get(k);
+                        if (!compMap) continue;
+
+                        let found = false;
+
+                        // Check htmlView or htmlContent (Y.Text or string)
+                        const htmlContent = compMap.get('htmlView') || compMap.get('htmlContent');
+                        if (htmlContent) {
+                            const content = htmlContent.toString ? htmlContent.toString() : String(htmlContent);
+                            if (assetRegex.test(content)) {
+                                found = true;
+                            }
+                            assetRegex.lastIndex = 0; // Reset for reuse
+                        }
+
+                        // Check jsonProperties or ideviceProperties (Y.Map)
+                        if (!found) {
+                            const ideviceProperties = compMap.get('jsonProperties') || compMap.get('ideviceProperties');
+                            if (ideviceProperties) {
+                                const propsStr = JSON.stringify(
+                                    ideviceProperties.toJSON ? ideviceProperties.toJSON() : ideviceProperties
+                                );
+                                if (assetRegex.test(propsStr)) {
+                                    found = true;
+                                }
+                                assetRegex.lastIndex = 0; // Reset for reuse
+                            }
+                        }
+
+                        // Also check properties (another possible location)
+                        if (!found) {
+                            const properties = compMap.get('properties');
+                            if (properties) {
+                                const propsStr = JSON.stringify(
+                                    properties.toJSON ? properties.toJSON() : properties
+                                );
+                                if (assetRegex.test(propsStr)) {
+                                    found = true;
+                                }
+                                assetRegex.lastIndex = 0; // Reset for reuse
+                            }
+                        }
+
+                        if (found) count++;
+                    }
+                }
+            }
+
+            return count;
+        } catch (err) {
+            Logger.warn('[MediaLibrary] Error counting asset references:', err);
+            return 0;
+        }
+    }
+
+    /**
+     * Calculate usage counts for all assets and cache them
+     */
+    calculateAllAssetUsages() {
+        this.assetUsageCounts.clear();
+        for (const asset of this.assets) {
+            if (asset.id) {
+                const count = this.countAssetReferences(asset.id);
+                this.assetUsageCounts.set(asset.id, count);
+            }
+        }
+    }
+
+    /**
+     * Get usage count for an asset (from cache or calculate)
+     * @param {string} assetId
+     * @returns {number}
+     */
+    getAssetUsageCount(assetId) {
+        if (this.assetUsageCounts.has(assetId)) {
+            return this.assetUsageCounts.get(assetId);
+        }
+        const count = this.countAssetReferences(assetId);
+        this.assetUsageCounts.set(assetId, count);
+        return count;
+    }
+
+    /**
+     * Generate unique copy name for duplication
+     * Pattern: "file (copy).ext", "file (copy) (1).ext", "file (copy) (2).ext", etc.
+     * @param {string} originalName - Original filename
+     * @param {string[]} existingNames - List of existing filenames in the folder
+     * @returns {string} Unique filename
+     */
+    generateUniqueCopyName(originalName, existingNames) {
+        const ext = originalName.lastIndexOf('.') > 0
+            ? originalName.substring(originalName.lastIndexOf('.'))
+            : '';
+        const baseName = ext
+            ? originalName.substring(0, originalName.lastIndexOf('.'))
+            : originalName;
+
+        const copyText = _('copy');
+        const existingSet = new Set(existingNames.map(n => n.toLowerCase()));
+
+        // Try "filename (copy).ext" first
+        let candidate = `${baseName} (${copyText})${ext}`;
+        if (!existingSet.has(candidate.toLowerCase())) {
+            return candidate;
+        }
+
+        // Try "filename (copy) (1).ext", "filename (copy) (2).ext", etc.
+        let counter = 1;
+        while (counter < 1000) { // Safety limit
+            candidate = `${baseName} (${copyText}) (${counter})${ext}`;
+            if (!existingSet.has(candidate.toLowerCase())) {
+                return candidate;
+            }
+            counter++;
+        }
+
+        // Fallback with timestamp
+        return `${baseName} (${copyText}) (${Date.now()})${ext}`;
+    }
+
+    /**
+     * Duplicate the selected asset
+     */
+    async duplicateSelectedAsset() {
+        if (!this.selectedAsset || !this.assetManager) return;
+
+        try {
+            const asset = this.selectedAsset;
+
+            // Get the blob first to validate we can read the file
+            let blob = asset.blob;
+            if (!blob) {
+                const fullAsset = await this.assetManager.getAsset(asset.id);
+                blob = fullAsset?.blob;
+            }
+
+            if (!blob) {
+                alert(_('Could not read file'));
+                return;
+            }
+
+            // Get existing filenames in the same folder to check for duplicates
+            const folderPath = asset.folderPath || '';
+            const assetsInFolder = this.assets.filter(a => (a.folderPath || '') === folderPath);
+            const existingNames = assetsInFolder.map(a => a.filename || '');
+
+            // Generate suggested filename with translated "(copy)" text
+            const originalName = asset.filename || 'file';
+            const suggestedName = this.generateUniqueCopyName(originalName, existingNames);
+
+            // Prompt user for the new filename
+            const newName = prompt(_('Enter name for the duplicate:'), suggestedName);
+
+            // User cancelled
+            if (newName === null) return;
+
+            // Validate the name
+            const trimmedName = newName.trim();
+            if (!trimmedName) {
+                alert(_('Please enter a valid filename'));
+                return;
+            }
+
+            // Check if name already exists (case-insensitive)
+            const existingSet = new Set(existingNames.map(n => n.toLowerCase()));
+            if (existingSet.has(trimmedName.toLowerCase())) {
+                alert(_('A file with this name already exists in this folder'));
+                return;
+            }
+
+            // Create a File object
+            const file = new File([blob], trimmedName, { type: asset.mime || 'application/octet-stream' });
+
+            // Insert as new asset in the same folder (forceNewId to bypass content-addressed storage)
+            await this.assetManager.insertImage(file, { folderPath, forceNewId: true });
+
+            Logger.log(`[MediaLibrary] Duplicated asset: ${asset.id} as ${trimmedName}`);
+
+            // Reload to show new asset
+            await this.loadAssets();
+        } catch (err) {
+            console.error('[MediaLibrary] Failed to duplicate asset:', err);
+            alert(_('Failed to duplicate file'));
+        }
+    }
+
+    /**
+     * Show the move dialog for the selected asset or folder
+     */
+    showMoveDialog() {
+        if (!this.folderPicker) return;
+
+        // Need either a file or folder selected
+        if (!this.selectedAsset && !this.selectedFolderPath) return;
+
+        // Build list of available folders
+        this.buildFolderPickerList();
+
+        // Show the picker
+        this.folderPicker.style.display = 'flex';
+        this.selectedMoveTarget = null;
+    }
+
+    /**
+     * Hide the folder picker dialog
+     */
+    hideFolderPicker() {
+        if (this.folderPicker) {
+            this.folderPicker.style.display = 'none';
+        }
+        this.selectedMoveTarget = null;
+    }
+
+    /**
+     * Build the folder picker list from all available folders
+     */
+    buildFolderPickerList() {
+        if (!this.folderPickerList) return;
+
+        const isMovingFolder = !!this.selectedFolderPath;
+        const movingFolderPath = this.selectedFolderPath || null;
+
+        // Get all unique folder paths from assets AND created folders
+        const folderPaths = new Set(['']); // Always include root
+
+        // Add folders from assets
+        for (const asset of this.assets) {
+            const path = asset.folderPath || '';
+            if (path) {
+                folderPaths.add(path);
+                // Also add parent paths
+                const parts = path.split('/');
+                for (let i = 1; i < parts.length; i++) {
+                    folderPaths.add(parts.slice(0, i).join('/'));
+                }
+            }
+        }
+
+        // Add empty folders from createdFolders set
+        if (this.createdFolders) {
+            for (const folder of this.createdFolders) {
+                if (folder) {
+                    folderPaths.add(folder);
+                    // Also add parent paths
+                    const parts = folder.split('/');
+                    for (let i = 1; i < parts.length; i++) {
+                        folderPaths.add(parts.slice(0, i).join('/'));
+                    }
+                }
+            }
+        }
+
+        // Sort paths
+        let sortedPaths = Array.from(folderPaths).sort((a, b) => {
+            if (a === '') return -1;
+            if (b === '') return 1;
+            return a.localeCompare(b);
+        });
+
+        // If moving a folder, exclude it and its subfolders from destinations
+        if (isMovingFolder) {
+            sortedPaths = sortedPaths.filter(path => {
+                if (path === movingFolderPath) return false;
+                if (path.startsWith(movingFolderPath + '/')) return false;
+                return true;
+            });
+        }
+
+        // Determine current folder (for highlighting)
+        let currentFolderPath;
+        if (isMovingFolder) {
+            // For folder move, current is parent of the folder being moved
+            const parts = movingFolderPath.split('/');
+            parts.pop();
+            currentFolderPath = parts.join('/');
+        } else {
+            // For file move, current is the folder the file is in
+            currentFolderPath = this.selectedAsset?.folderPath || '';
+        }
+
+        // Build HTML
+        let html = '';
+        for (const path of sortedPaths) {
+            const displayName = path === '' ? _('Root') : path.split('/').pop();
+            const indent = path === '' ? 0 : path.split('/').length;
+            const isCurrentFolder = path === currentFolderPath;
+
+            html += `<div class="folder-picker-item${isCurrentFolder ? ' current' : ''}"
+                          data-path="${this.escapeHtml(path)}"
+                          style="padding-left: ${12 + indent * 16}px">
+                <span class="exe-icon">folder</span>
+                <span class="folder-picker-name">${this.escapeHtml(displayName)}</span>
+                ${isCurrentFolder ? `<span class="folder-picker-current">(${_('current')})</span>` : ''}
+            </div>`;
+        }
+
+        this.folderPickerList.innerHTML = html;
+
+        // Add click handlers
+        this.folderPickerList.querySelectorAll('.folder-picker-item').forEach(item => {
+            item.addEventListener('click', () => {
+                // Remove previous selection
+                this.folderPickerList.querySelectorAll('.folder-picker-item').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                // Select this one
+                item.classList.add('selected');
+                this.selectedMoveTarget = item.dataset.path;
+            });
+        });
+    }
+
+    /**
+     * Confirm the move operation
+     */
+    async confirmMove() {
+        if (this.selectedMoveTarget === null || this.selectedMoveTarget === undefined) {
+            alert(_('Please select a destination folder'));
+            return;
+        }
+
+        if (!this.assetManager) {
+            this.hideFolderPicker();
+            return;
+        }
+
+        const destinationPath = this.selectedMoveTarget;
+
+        // Check if moving a folder
+        if (this.selectedFolderPath) {
+            const folderPath = this.selectedFolderPath;
+            const folderName = this.selectedFolder;
+
+            // Get parent path of the folder being moved
+            const parts = folderPath.split('/');
+            parts.pop();
+            const currentParent = parts.join('/');
+
+            if (currentParent === destinationPath) {
+                alert(_('Folder is already in this location'));
+                return;
+            }
+
+            // Check if destination already has a folder with this name
+            const newPath = destinationPath ? `${destinationPath}/${folderName}` : folderName;
+            const existingFolders = this.deriveSubfolders(this.assets, destinationPath);
+            if (existingFolders.includes(folderName)) {
+                alert(_('A folder with this name already exists in the destination.'));
+                return;
+            }
+
+            try {
+                await this.assetManager.moveFolder(folderPath, destinationPath);
+                Logger.log(`[MediaLibrary] Moved folder ${folderPath} to ${newPath}`);
+
+                // Clear selection
+                this.selectedFolder = null;
+                this.selectedFolderPath = null;
+
+                this.hideFolderPicker();
+                this.showSidebarEmpty();
+
+                // Reload assets to reflect the change
+                await this.loadAssets();
+            } catch (err) {
+                console.error('[MediaLibrary] Failed to move folder:', err);
+                alert(_('Failed to move folder'));
+            }
+            return;
+        }
+
+        // Moving a file
+        if (!this.selectedAsset) {
+            this.hideFolderPicker();
+            return;
+        }
+
+        const currentPath = this.selectedAsset.folderPath || '';
+
+        if (currentPath === destinationPath) {
+            alert(_('File is already in this folder'));
+            return;
+        }
+
+        try {
+            await this.assetManager.updateAssetFolderPath(this.selectedAsset.id, destinationPath);
+            Logger.log(`[MediaLibrary] Moved asset ${this.selectedAsset.id} from "${currentPath}" to "${destinationPath}"`);
+
+            this.hideFolderPicker();
+
+            // Reload assets to reflect the change
+            await this.loadAssets();
+        } catch (err) {
+            console.error('[MediaLibrary] Failed to move asset:', err);
+            alert(_('Failed to move file'));
+        }
+    }
+
+    /**
      * Insert selected asset(s) into editor
      */
     insertSelectedAsset() {
@@ -1048,7 +2527,7 @@ export default class ModalFilemanager extends Modal {
         if (this.onSelectCallback) {
             // Build array of asset info for callback
             const assetInfos = assetsToInsert.map(asset => {
-                const assetUrl = `asset://${asset.id}/${asset.filename || ''}`;
+                const assetUrl = this.assetManager.getAssetUrl(asset.id, asset.filename);
 
                 // Get blob URL for immediate display (using synced method to ensure reverseBlobCache consistency)
                 let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
@@ -1080,7 +2559,7 @@ export default class ModalFilemanager extends Modal {
         }
 
         // Single asset for non-callback mode
-        const assetUrl = `asset://${this.selectedAsset.id}/${this.selectedAsset.filename || ''}`;
+        const assetUrl = this.assetManager.getAssetUrl(this.selectedAsset.id, this.selectedAsset.filename);
 
         // Default: try to insert into active TinyMCE editor
         const editor = window.tinymce?.activeEditor;
@@ -1126,7 +2605,81 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Download the selected asset
+     */
+    downloadSelectedAsset() {
+        if (!this.selectedAsset) return;
+
+        const asset = this.selectedAsset;
+
+        // Get blob URL
+        let blobUrl = this.assetManager?.getBlobURLSynced?.(asset.id) ?? this.assetManager?.blobURLCache.get(asset.id);
+        if (!blobUrl && asset.blob) {
+            blobUrl = URL.createObjectURL(asset.blob);
+        }
+
+        if (!blobUrl) {
+            console.error('[MediaLibrary] No blob URL available for download');
+            return;
+        }
+
+        // Create a temporary link and trigger download
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = asset.filename || 'download';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        Logger.log(`[MediaLibrary] Downloaded asset: ${asset.id}`);
+    }
+
+    /**
+     * Copy the asset URL to clipboard
+     */
+    copyAssetUrl() {
+        if (!this.selectedAsset) return;
+
+        const asset = this.selectedAsset;
+        const assetUrl = this.assetManager.getAssetUrl(asset.id, asset.filename);
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(assetUrl).then(() => {
+                // Could show a toast notification here
+                Logger.log(`[MediaLibrary] Copied URL to clipboard: ${assetUrl}`);
+            }).catch(err => {
+                console.error('[MediaLibrary] Failed to copy URL:', err);
+            });
+        }
+    }
+
+    /**
+     * View the asset in full size (new tab)
+     */
+    viewFullSize() {
+        if (!this.selectedAsset) return;
+
+        const asset = this.selectedAsset;
+
+        // Get blob URL
+        let blobUrl = this.assetManager?.getBlobURLSynced?.(asset.id) ?? this.assetManager?.blobURLCache.get(asset.id);
+        if (!blobUrl && asset.blob) {
+            blobUrl = URL.createObjectURL(asset.blob);
+        }
+
+        if (!blobUrl) {
+            console.error('[MediaLibrary] No blob URL available for full size view');
+            return;
+        }
+
+        // Open in new tab
+        window.open(blobUrl, '_blank');
+        Logger.log(`[MediaLibrary] Opened asset in new tab: ${asset.id}`);
+    }
+
+    /**
      * Extract contents of a ZIP file and add them as assets
+     * Preserves the internal folder structure of the ZIP
      */
     async extractZipAsset() {
         if (!this.selectedAsset || !this.assetManager) return;
@@ -1141,9 +2694,29 @@ export default class ModalFilemanager extends Modal {
             return;
         }
 
-        // Confirm extraction
-        const confirmExtract = confirm(_('Extract all files from this ZIP archive?\n\nThis will add all files from the ZIP to your media library.'));
-        if (!confirmExtract) return;
+        // Suggest folder name based on ZIP filename (without extension)
+        const zipFilename = asset.filename || 'archive';
+        const suggestedName = zipFilename.replace(/\.zip$/i, '');
+
+        // Ask for target folder
+        const targetFolder = prompt(
+            _('Extract to folder:') + '\n\n' +
+            _('The internal folder structure of the ZIP will be preserved.'),
+            suggestedName
+        );
+
+        if (targetFolder === null) return; // User cancelled
+
+        // Validate folder name
+        if (targetFolder && !this.isValidFolderName(targetFolder)) {
+            alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+            return;
+        }
+
+        // Build base path (current path + target folder)
+        const basePath = targetFolder
+            ? (this.currentPath ? `${this.currentPath}/${targetFolder}` : targetFolder)
+            : this.currentPath;
 
         try {
             // Get the blob for this asset
@@ -1165,10 +2738,9 @@ export default class ModalFilemanager extends Modal {
                 return;
             }
 
-            // Show loading state
-            if (this.unzipBtn) {
-                this.unzipBtn.disabled = true;
-                this.unzipBtn.innerHTML = `<span class="exe-icon">hourglass_empty</span> ${_('Extracting...')}`;
+            // Show loading state - disable the More button during extraction
+            if (this.moreBtn) {
+                this.moreBtn.disabled = true;
             }
 
             // Convert blob to Uint8Array
@@ -1187,13 +2759,27 @@ export default class ModalFilemanager extends Modal {
                 // Skip empty entries (directories)
                 if (!content || content.length === 0) continue;
 
-                // Get basename
-                const basename = filepath.split('/').pop();
+                // Get filename and folder path from ZIP entry
+                const parts = filepath.split('/');
+                const basename = parts.pop();
 
                 // Skip hidden files and system files
                 if (!basename || basename.startsWith('.') || basename.startsWith('__')) {
                     skippedCount++;
                     continue;
+                }
+
+                // Skip directories like __MACOSX
+                if (parts.some(p => p.startsWith('__') || p.startsWith('.'))) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Build the full folder path for this file
+                let folderPath = basePath;
+                if (parts.length > 0) {
+                    const zipSubpath = parts.join('/');
+                    folderPath = basePath ? `${basePath}/${zipSubpath}` : zipSubpath;
                 }
 
                 try {
@@ -1204,10 +2790,10 @@ export default class ModalFilemanager extends Modal {
                     // Create a File object with the correct name
                     const file = new File([fileBlob], basename, { type: mimeType });
 
-                    // Upload to asset manager
-                    await this.assetManager.insertImage(file);
+                    // Upload to asset manager with folder path
+                    await this.assetManager.insertImage(file, { folderPath });
                     extractedCount++;
-                    Logger.log(`[MediaLibrary] Extracted: ${basename}`);
+                    Logger.log(`[MediaLibrary] Extracted: ${folderPath}/${basename}`);
                 } catch (err) {
                     console.error(`[MediaLibrary] Failed to extract ${filepath}:`, err);
                     skippedCount++;
@@ -1215,14 +2801,13 @@ export default class ModalFilemanager extends Modal {
             }
 
             // Restore button state
-            if (this.unzipBtn) {
-                this.unzipBtn.disabled = false;
-                this.unzipBtn.innerHTML = `<span class="exe-icon">folder_zip</span> ${_('Extract')}`;
+            if (this.moreBtn) {
+                this.moreBtn.disabled = false;
             }
 
             // Show result
             if (extractedCount > 0) {
-                Logger.log(`[MediaLibrary] Extracted ${extractedCount} files from ZIP`);
+                Logger.log(`[MediaLibrary] Extracted ${extractedCount} files from ZIP to "${basePath}"`);
                 // Reload assets to show new files
                 await this.loadAssets();
             }
@@ -1241,9 +2826,8 @@ export default class ModalFilemanager extends Modal {
             alert(_('Failed to extract ZIP file'));
 
             // Restore button state
-            if (this.unzipBtn) {
-                this.unzipBtn.disabled = false;
-                this.unzipBtn.innerHTML = `<span class="exe-icon">folder_zip</span> ${_('Extract')}`;
+            if (this.moreBtn) {
+                this.moreBtn.disabled = false;
             }
         }
     }
@@ -1377,6 +2961,9 @@ export default class ModalFilemanager extends Modal {
      * Override close to clean up
      */
     close(confirm) {
+        // Unsubscribe from Yjs asset changes
+        this._unsubscribeFromYjsChanges();
+
         // Stop any playing media
         if (this.previewVideo) {
             this.previewVideo.pause();
@@ -1390,10 +2977,17 @@ export default class ModalFilemanager extends Modal {
         // Clear selection
         this.selectedAsset = null;
         this.selectedAssets = [];
+        this.selectedFolder = null;
+        this.selectedFolderPath = null;
         this.multiSelect = false;
         this.onSelectCallback = null;
         this.acceptFilter = null;
         this.typeFilter = '';
+
+        // Reset folder navigation
+        this.currentPath = '';
+        this.folders = [];
+        this.createdFolders.clear();
 
         // Reset search and view state
         if (this.searchInput) {

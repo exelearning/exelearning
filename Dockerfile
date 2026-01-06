@@ -13,7 +13,7 @@ WORKDIR /app
 ################################################################################
 FROM base AS deps
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN bun install
 
 ################################################################################
 # Build stage - Compile TypeScript and assets
@@ -33,7 +33,7 @@ RUN bun run build:all && \
 
 # Prune dev dependencies after build
 RUN rm -rf node_modules && \
-    bun install --production --frozen-lockfile && \
+    bun install --production && \
     rm -rf ~/.bun/install/cache
 
 ################################################################################
