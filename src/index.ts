@@ -9,6 +9,7 @@ import { healthRoutes, healthCheckAlias } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { projectRoutes, symfonyCompatProjectRoutes } from './routes/project';
 import { assetsRoutes } from './routes/assets';
+import { fileManagerRoutes } from './routes/filemanager';
 import { exportRoutes } from './routes/export';
 import { convertRoutes } from './routes/convert';
 import { pagesRoutes } from './routes/pages';
@@ -459,6 +460,7 @@ app.use(healthRoutes)
     .use(projectRoutes)
     .use(symfonyCompatProjectRoutes)
     .use(assetsRoutes)
+    .use(fileManagerRoutes)
     .use(exportRoutes)
     .use(convertRoutes)
     .use(configRoutes)
@@ -493,6 +495,7 @@ if (routePrefix) {
             .use(projectRoutes)
             .use(symfonyCompatProjectRoutes)
             .use(assetsRoutes)
+            .use(fileManagerRoutes)
             .use(exportRoutes)
             .use(convertRoutes)
             .use(configRoutes)

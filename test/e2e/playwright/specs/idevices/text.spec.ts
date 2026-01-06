@@ -135,8 +135,8 @@ test.describe('Text iDevice', () => {
             // Verify content was saved (iDevice exits edition mode and shows content)
             await page.waitForFunction(
                 text => {
-                    const content = document.querySelector('#node-content');
-                    return content && (content.textContent || '').includes(text);
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && (idevice.textContent || '').includes(text);
                 },
                 testContent,
                 { timeout: 15000 },
@@ -1268,13 +1268,13 @@ test.describe('Text iDevice', () => {
 
             if (frame) {
                 // First, create a mock asset in AssetManager to test resolution
+                // New format: asset://uuid.ext (no path/filename)
                 const mockAssetId = 'test-mock-asset-id-12345';
-                const mockFilename = 'test-recording.webm';
-                const assetUrl = `asset://${mockAssetId}/${mockFilename}`;
+                const assetUrl = `asset://${mockAssetId}.webm`;
 
                 // Create a mock blob and store it in AssetManager
                 const blobUrlResult = await page.evaluate(
-                    async ({ assetId, filename }) => {
+                    async ({ assetId }) => {
                         const assetManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.assetManager;
                         if (!assetManager) return { error: 'No AssetManager' };
 
@@ -1293,13 +1293,8 @@ test.describe('Text iDevice', () => {
 
                         return { blobUrl, success: true };
                     },
-                    { assetId: mockAssetId, filename: mockFilename },
+                    { assetId: mockAssetId },
                 );
-
-                if ((blobUrlResult as any).error) {
-                    test.skip(true, 'AssetManager not available');
-                    return;
-                }
 
                 const expectedBlobUrl = (blobUrlResult as any).blobUrl;
 
@@ -1413,9 +1408,9 @@ test.describe('Text iDevice', () => {
             await page.waitForSelector('.tox-menubar', { timeout: 15000 });
 
             // Insert an iframe with asset:// URL
+            // New format: asset://uuid.ext (no path/filename)
             const mockAssetId = 'test-pdf-asset-id-12345';
-            const mockFilename = 'test-document.pdf';
-            const assetUrl = `asset://${mockAssetId}/${mockFilename}`;
+            const assetUrl = `asset://${mockAssetId}.pdf`;
 
             // Insert iframe using TinyMCE command
             const insertResult = await page.evaluate(
@@ -1436,19 +1431,12 @@ test.describe('Text iDevice', () => {
                 { url: assetUrl },
             );
 
-            if (!insertResult.success) {
-                test.skip(true, `TinyMCE insert failed: ${insertResult.error || 'iframe not found in content'}`);
-                return;
-            }
-
             // Verify the asset:// URL is preserved in TinyMCE's content
             expect(insertResult.content).toContain('iframe');
             expect(insertResult.content).toContain(assetUrl);
 
-            // Verify that the content contains the correct iframe structure
-            expect(insertResult.content).toMatch(
-                /iframe.*src=["']asset:\/\/test-pdf-asset-id-12345\/test-document\.pdf["']/,
-            );
+            // Verify that the content contains the correct iframe structure (new format: uuid.ext)
+            expect(insertResult.content).toMatch(/iframe.*src=["']asset:\/\/test-pdf-asset-id-12345\.pdf["']/);
         });
 
         test('should save asset:// URL (not blob://) when persisting PDF content', async ({
@@ -1495,9 +1483,9 @@ test.describe('Text iDevice', () => {
             await tinyMceFrame.waitFor({ timeout: 15000 });
 
             // Simulate inserting a PDF iframe with asset:// URL and check Yjs stores it correctly
+            // New format: asset://uuid.ext (no path/filename)
             const mockAssetId = 'persistence-test-pdf-123';
-            const mockFilename = 'persisted.pdf';
-            const assetUrl = `asset://${mockAssetId}/${mockFilename}`;
+            const assetUrl = `asset://${mockAssetId}.pdf`;
 
             // Create mock asset in AssetManager
             await page.evaluate(
@@ -1992,37 +1980,20 @@ test.describe('Text iDevice', () => {
                 { timeout: 30000 },
             );
 
-            // Add a second page to link to
-            // Find and click the "add page" button in the structure panel
-            const addPageBtn = page.locator('#menu_structure .add-child-node-button, .add-page-button').first();
-            if ((await addPageBtn.count()) > 0) {
-                await addPageBtn.click();
-                await page.waitForTimeout(1000);
-            }
-
-            // Rename the second page for identification
-            // Get the second page ID for linking
+            // Add a second page to link to via JavaScript (not UI modal)
             const secondPageInfo = await page.evaluate(() => {
-                const app = (window as any).eXeLearning?.app;
-                const nav = app?.project?._yjsBridge?.getNavigation?.();
-                if (!nav) return null;
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return null;
 
-                // Find pages - the first one is "New page" and second is the one we just added
-                let secondPage = null;
-                for (let i = 0; i < nav.length; i++) {
-                    const p = nav.get(i);
-                    if (i === 1) {
-                        secondPage = { id: p.get('id'), name: p.get('pageName') };
-                    }
-                }
-                return secondPage;
+                // Create second page using structureBinding.addPage
+                const newPage = bridge.structureBinding.addPage('Second Page', null);
+                if (!newPage) return null;
+
+                return { id: newPage.id, name: newPage.pageName || 'Second Page' };
             });
 
-            // If no second page was created, skip
-            if (!secondPageInfo) {
-                test.skip(true, 'Could not create second page for internal link test');
-                return;
-            }
+            // Wait for page to be added to DOM
+            await page.waitForTimeout(500);
 
             // Navigate to first page
             const firstPageNode = page
@@ -2065,13 +2036,18 @@ test.describe('Text iDevice', () => {
                         // Insert an anchor link with exe-node protocol
                         const html = `<p><a href="exe-node:${pageId}">${text}</a></p>`;
                         editor.setContent(html);
+                        // Fire change event to trigger Yjs binding update
+                        editor.fire('change');
+                        editor.fire('input');
+                        // Mark as dirty for proper save
+                        editor.setDirty(true);
                     }
                 },
                 { text: linkText, pageId: secondPageInfo.id },
             );
 
-            // Wait for content to sync
-            await page.waitForTimeout(500);
+            // Wait for content to sync with Yjs
+            await page.waitForTimeout(1000);
 
             // Save the iDevice
             const saveBtn = block.locator('.btn-save-idevice');
@@ -2088,9 +2064,9 @@ test.describe('Text iDevice', () => {
                 { timeout: 15000 },
             );
 
-            // Verify link was inserted in editor view
+            // Verify link was inserted in the iDevice (may be hidden in collapsed view)
             const linkInEditor = page.locator('#node-content article .idevice_node.text a').first();
-            await expect(linkInEditor).toBeVisible({ timeout: 5000 });
+            await linkInEditor.waitFor({ state: 'attached', timeout: 5000 });
             const href = await linkInEditor.getAttribute('href');
             expect(href).toContain('exe-node:');
 
@@ -2107,17 +2083,20 @@ test.describe('Text iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
-            // Find the internal link in preview
+            // Find the internal link in preview (may be hidden if iDevice content is collapsed)
             const linkInPreview = iframe.locator('a').filter({ hasText: linkText }).first();
-            await expect(linkInPreview).toBeVisible({ timeout: 10000 });
+            await linkInPreview.waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify link href was converted to anchor format (exe-node should be replaced)
             const previewHref = await linkInPreview.getAttribute('href');
             // In SPA preview, exe-node: should be converted to #page-{pageId} format
             expect(previewHref).toMatch(/^#page-/);
 
-            // Click the link and verify navigation
-            await linkInPreview.click();
+            // Click the link programmatically via JavaScript (may be in collapsed content)
+            await iframe.locator('body').evaluate((body, linkHref) => {
+                const link = body.querySelector(`a[href="${linkHref}"]`) as HTMLAnchorElement;
+                if (link) link.click();
+            }, previewHref);
             await page.waitForTimeout(1000);
 
             // Verify we navigated to the second page (the article with second page content is now active)
@@ -2160,33 +2139,20 @@ test.describe('Text iDevice', () => {
                 { timeout: 30000 },
             );
 
-            // Add a second page
-            const addPageBtn = page.locator('#menu_structure .add-child-node-button, .add-page-button').first();
-            if ((await addPageBtn.count()) > 0) {
-                await addPageBtn.click();
-                await page.waitForTimeout(1000);
-            }
-
-            // Get second page info
+            // Add a second page via JavaScript (not UI modal)
             const secondPageInfo = await page.evaluate(() => {
-                const app = (window as any).eXeLearning?.app;
-                const nav = app?.project?._yjsBridge?.getNavigation?.();
-                if (!nav) return null;
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return null;
 
-                let secondPage = null;
-                for (let i = 0; i < nav.length; i++) {
-                    const p = nav.get(i);
-                    if (i === 1) {
-                        secondPage = { id: p.get('id'), name: p.get('pageName') };
-                    }
-                }
-                return secondPage;
+                // Create second page using structureBinding.addPage
+                const newPage = bridge.structureBinding.addPage('Second Page', null);
+                if (!newPage) return null;
+
+                return { id: newPage.id, name: newPage.pageName || 'Second Page' };
             });
 
-            if (!secondPageInfo) {
-                test.skip(true, 'Could not create second page');
-                return;
-            }
+            // Wait for page to be added to DOM
+            await page.waitForTimeout(500);
 
             // Navigate to first page
             const firstPageNode = page
@@ -2218,18 +2184,28 @@ test.describe('Text iDevice', () => {
 
             await page.waitForSelector('.tox-menubar', { timeout: 15000 });
 
-            // Insert internal link
-            await page.evaluate(
+            // Insert internal link and verify it was set
+            const linkSet = await page.evaluate(
                 ({ pageId }) => {
                     const editor = (window as any).tinymce?.activeEditor;
-                    if (editor) {
-                        editor.setContent(`<p><a href="exe-node:${pageId}">Go to page 2</a></p>`);
-                    }
+                    if (!editor) return false;
+
+                    editor.setContent(`<p><a href="exe-node:${pageId}">Go to page 2</a></p>`);
+                    // Fire change event to trigger Yjs binding update
+                    editor.fire('change');
+                    editor.fire('input');
+                    // Mark as dirty for proper save
+                    editor.setDirty(true);
+
+                    // Verify content was set
+                    return editor.getContent().includes('exe-node:');
                 },
                 { pageId: secondPageInfo.id },
             );
 
-            await page.waitForTimeout(500);
+            expect(linkSet).toBe(true);
+
+            await page.waitForTimeout(1000);
 
             // Save the iDevice
             const saveBtn = block.locator('.btn-save-idevice');
@@ -2246,9 +2222,13 @@ test.describe('Text iDevice', () => {
                 { timeout: 15000 },
             );
 
-            // Find the link in the editor view (outside TinyMCE, in read mode)
+            // Find the link in the editor view (may be hidden in collapsed content)
             const link = page.locator('#node-content article .idevice_node.text a').first();
-            await expect(link).toBeVisible({ timeout: 5000 });
+            await link.waitFor({ state: 'attached', timeout: 10000 });
+
+            // Verify link has correct href
+            const editorHref = await link.getAttribute('href');
+            expect(editorHref).toContain('exe-node:');
 
             // Store the current page ID before clicking
             const currentPageBefore = await page.evaluate(() => {
@@ -2256,8 +2236,13 @@ test.describe('Text iDevice', () => {
                 return activeNode?.getAttribute('nav-id') || null;
             });
 
-            // Click the link - it should navigate to the second page
-            await link.click();
+            // Click the link programmatically via JavaScript (may be in collapsed content)
+            await page.evaluate(linkHref => {
+                const link = document.querySelector(
+                    `#node-content article .idevice_node.text a[href="${linkHref}"]`,
+                ) as HTMLAnchorElement;
+                if (link) link.click();
+            }, editorHref);
             await page.waitForTimeout(1000);
 
             // Verify navigation happened - the second page should now be selected

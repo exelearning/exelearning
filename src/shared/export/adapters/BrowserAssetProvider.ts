@@ -56,6 +56,7 @@ interface AssetManagerInterface {
             mime: string;
             filename?: string;
             originalPath?: string;
+            folderPath?: string;
             hash?: string;
             size?: number;
             projectId?: string;
@@ -68,6 +69,7 @@ interface AssetManagerInterface {
             mime: string;
             filename?: string;
             originalPath?: string;
+            folderPath?: string;
             hash?: string;
             size?: number;
             projectId?: string;
@@ -235,11 +237,16 @@ export class BrowserAssetProvider implements AssetProvider {
                         const assetId = String(asset.id);
                         const filename = asset.filename || `asset-${assetId}`;
 
-                        // Ensure originalPath includes UUID folder
-                        // Old ELP imports may store just the filename (e.g., "elcid.png")
-                        // but HTML references include UUID: "content/resources/{uuid}/{filename}"
+                        // Determine originalPath based on folderPath (folder support)
+                        // Priority:
+                        // 1. If folderPath is set, use folderPath/filename
+                        // 2. If originalPath includes UUID, use it as-is
+                        // 3. Fallback to uuid/filename
                         let originalPath: string;
-                        if (asset.originalPath?.includes(assetId)) {
+                        if (asset.folderPath) {
+                            // Use folder path for organized assets
+                            originalPath = `${asset.folderPath}/${filename}`;
+                        } else if (asset.originalPath?.includes(assetId)) {
                             // Path already includes UUID (e.g., "abc123/elcid.png" or "content/resources/abc123/elcid.png")
                             originalPath = asset.originalPath;
                         } else {
@@ -251,6 +258,7 @@ export class BrowserAssetProvider implements AssetProvider {
                             id: assetId,
                             filename,
                             originalPath,
+                            folderPath: asset.folderPath || '',
                             mime: asset.mime || 'application/octet-stream',
                             data: new Uint8Array(arrayBuffer),
                         });
@@ -294,8 +302,12 @@ export class BrowserAssetProvider implements AssetProvider {
                                     const arrayBuffer = await asset.blob.arrayBuffer();
                                     const assetId = String(asset.id);
                                     const filename = asset.filename || `asset-${assetId}`;
+
+                                    // Same folderPath logic as above
                                     let originalPath: string;
-                                    if (asset.originalPath?.includes(assetId)) {
+                                    if (asset.folderPath) {
+                                        originalPath = `${asset.folderPath}/${filename}`;
+                                    } else if (asset.originalPath?.includes(assetId)) {
                                         originalPath = asset.originalPath;
                                     } else {
                                         originalPath = `${assetId}/${filename}`;
@@ -305,6 +317,7 @@ export class BrowserAssetProvider implements AssetProvider {
                                         id: assetId,
                                         filename,
                                         originalPath,
+                                        folderPath: asset.folderPath || '',
                                         mime: asset.mime || 'application/octet-stream',
                                         data: new Uint8Array(arrayBuffer),
                                     });

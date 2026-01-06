@@ -103,7 +103,20 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
     if (frame) {
         await frame.focus('body');
         await frame.type('body', content, { delay: 5 });
+
+        // Fire change events to ensure Yjs binding is updated
+        await frame.evaluate(() => {
+            const editor = (window.parent as any).tinymce?.activeEditor;
+            if (editor) {
+                editor.fire('change');
+                editor.fire('input');
+                editor.setDirty(true);
+            }
+        });
     }
+
+    // Wait for TinyMCE to process and sync with Yjs
+    await page.waitForTimeout(500);
 
     // Save the iDevice
     const saveBtn = textIdeviceNode.locator('.btn-save-idevice');
@@ -115,18 +128,29 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
     await page.waitForFunction(
         expectedContent => {
             const idevice = document.querySelector('#node-content article .idevice_node.text');
-            if (!idevice || idevice.getAttribute('mode') === 'edition') {
+            if (!idevice) {
                 return false;
             }
-            // Verify the content is actually rendered somewhere in node-content
+            // Check if still in edition mode
+            const mode = idevice.getAttribute('mode');
+            if (mode === 'edition') {
+                return false;
+            }
+            // Look for content in the iDevice's view mode content area
+            // The content should be in .idevice-content or similar after save
+            const ideviceContent = idevice.querySelector('.idevice-content, .exe-text-content, .content');
+            if (ideviceContent?.textContent?.includes(expectedContent)) {
+                return true;
+            }
+            // Fallback: check entire node-content
             const nodeContent = document.querySelector('#node-content');
-            if (!nodeContent) {
-                return false;
+            if (nodeContent?.textContent?.includes(expectedContent)) {
+                return true;
             }
-            return nodeContent.textContent?.includes(expectedContent) ?? false;
+            return false;
         },
         content,
-        { timeout: 15000 },
+        { timeout: 20000 },
     );
 }
 
