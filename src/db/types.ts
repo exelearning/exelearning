@@ -88,6 +88,7 @@ interface AssetsTable {
     client_id: string | null;
     component_id: string | null;
     content_hash: string | null;
+    folder_path: string; // Relative folder path: "" = root, "website/css" = nested
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }

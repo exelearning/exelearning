@@ -240,9 +240,15 @@ ${contentHtml}
      * @param content - HTML content
      * @param basePath - Base path prefix
      * @param isPreviewMode - If true, skip asset:// transformation (keep for blob resolution)
+     * @param assetExportPathMap - Optional map of asset UUID to export path (for new URL format)
      * @returns Fixed HTML content
      */
-    fixAssetUrls(content: string, basePath: string, isPreviewMode: boolean = false): string {
+    fixAssetUrls(
+        content: string,
+        basePath: string,
+        isPreviewMode: boolean = false,
+        assetExportPathMap?: Map<string, string>,
+    ): string {
         if (!content) return '';
 
         // Skip blob: URLs - they're already resolved display URLs (browser-only)
@@ -262,14 +268,41 @@ ${contentHtml}
             });
         }
 
-        // Fix asset:// protocol URLs (filename can contain spaces)
+        // Fix asset:// protocol URLs
+        // Supports two formats:
+        // 1. New format: asset://uuid.ext (e.g., asset://abc123.jpg) - lookup UUID in assetExportPathMap
+        // 2. Legacy format: asset://uuid/path (e.g., asset://abc123/images/photo.jpg) - use path after UUID
+        // Skip blob: and data: URLs that might be wrapped in asset://
         // In preview mode, keep asset:// URLs for later blob resolution
         if (!isPreviewMode) {
-            result = result.replace(/asset:\/\/([^"']+)/g, (_match, assetPath) => {
-                if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
+            result = result.replace(/asset:\/\/([^"']+)/gi, (_match, fullPath) => {
+                // Skip blob: and data: URLs completely
+                if (fullPath.startsWith('blob:') || fullPath.startsWith('data:')) {
                     return _match; // Keep original, don't transform
                 }
-                return `${basePath}content/resources/${assetPath}`;
+
+                // Check for new format: uuid.ext (no slash, has dot for extension)
+                // UUID pattern: 36 chars with hyphens, optionally followed by .extension
+                const newFormatMatch = fullPath.match(/^([a-f0-9-]{36})(?:\.([a-z0-9]+))?$/i);
+                if (newFormatMatch) {
+                    const uuid = newFormatMatch[1];
+                    // Look up export path in map
+                    if (assetExportPathMap?.has(uuid)) {
+                        const exportPath = assetExportPathMap.get(uuid);
+                        return `${basePath}content/resources/${exportPath}`;
+                    }
+                    // No map or UUID not found - keep original for now
+                    return _match;
+                }
+
+                // Legacy format: uuid/path - extract path after UUID
+                const slashIndex = fullPath.indexOf('/');
+                if (slashIndex === -1) {
+                    // No path after UUID, keep original
+                    return _match;
+                }
+                const exportPath = fullPath.substring(slashIndex + 1);
+                return `${basePath}content/resources/${exportPath}`;
             });
         }
 
@@ -392,28 +425,40 @@ ${contentHtml}
      * @param obj - Properties object (can contain nested objects and arrays)
      * @param basePath - Base path prefix
      * @param isPreviewMode - If true, skip asset:// transformation (keep for blob resolution)
+     * @param assetExportPathMap - Optional map of asset UUID to export path (for new URL format)
      * @returns Transformed properties object with fixed URLs
      */
     transformPropertiesUrls(
         obj: Record<string, unknown>,
         basePath: string,
         isPreviewMode: boolean,
+        assetExportPathMap?: Map<string, string>,
     ): Record<string, unknown> {
         const result: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(obj)) {
             if (typeof value === 'string') {
-                result[key] = this.fixAssetUrls(value, basePath, isPreviewMode);
+                result[key] = this.fixAssetUrls(value, basePath, isPreviewMode, assetExportPathMap);
             } else if (Array.isArray(value)) {
                 result[key] = value.map(item => {
                     if (typeof item === 'string') {
-                        return this.fixAssetUrls(item, basePath, isPreviewMode);
+                        return this.fixAssetUrls(item, basePath, isPreviewMode, assetExportPathMap);
                     } else if (typeof item === 'object' && item !== null) {
-                        return this.transformPropertiesUrls(item as Record<string, unknown>, basePath, isPreviewMode);
+                        return this.transformPropertiesUrls(
+                            item as Record<string, unknown>,
+                            basePath,
+                            isPreviewMode,
+                            assetExportPathMap,
+                        );
                     }
                     return item;
                 });
             } else if (typeof value === 'object' && value !== null) {
-                result[key] = this.transformPropertiesUrls(value as Record<string, unknown>, basePath, isPreviewMode);
+                result[key] = this.transformPropertiesUrls(
+                    value as Record<string, unknown>,
+                    basePath,
+                    isPreviewMode,
+                    assetExportPathMap,
+                );
             } else {
                 result[key] = value;
             }

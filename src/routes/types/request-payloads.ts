@@ -37,6 +37,25 @@ export interface AssetUploadRequest {
     componentId?: string;
     clientId?: string;
     filename?: string;
+    mimetype?: string;
+    folderPath?: string;
+    // Resumable.js fields for chunked uploads
+    resumableIdentifier?: string;
+    resumableChunkNumber?: string;
+    resumableTotalChunks?: string;
+    resumableFilename?: string;
+    identifier?: string; // Alias for resumableIdentifier
+    // Batch sync fields
+    metadata?:
+        | string
+        | Array<{
+              clientId: string;
+              filename: string;
+              mimeType: string;
+              contentHash?: string;
+              folderPath?: string;
+          }>;
+    files?: (Blob | Buffer)[];
 }
 
 /**
