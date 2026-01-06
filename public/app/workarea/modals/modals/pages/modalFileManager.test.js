@@ -3197,4 +3197,376 @@ describe('ModalFilemanager', () => {
       // The insertSelectedAsset should be called after selectAsset resolves
     });
   });
+
+  describe('countAssetReferences - deeper traversal', () => {
+    it('should count references in htmlContent', () => {
+      const mockComponent = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') {
+            return { toString: () => 'src="asset://test-asset-id/image.jpg"' };
+          }
+          return null;
+        })
+      };
+
+      const mockBlock = {
+        get: vi.fn((key) => {
+          if (key === 'components') {
+            return {
+              length: 1,
+              get: () => mockComponent
+            };
+          }
+          return null;
+        })
+      };
+
+      const mockPage = {
+        get: vi.fn((key) => {
+          if (key === 'blocks') {
+            return {
+              length: 1,
+              get: () => mockBlock
+            };
+          }
+          return null;
+        })
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockReturnValue({
+                    length: 1,
+                    get: () => mockPage
+                  })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('test-asset-id');
+      expect(count).toBe(1);
+    });
+
+    it('should count references in jsonProperties', () => {
+      const mockComponent = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent' || key === 'htmlView') return null;
+          if (key === 'jsonProperties') {
+            return { toJSON: () => ({ url: 'asset://test-json-asset/img.png' }) };
+          }
+          return null;
+        })
+      };
+
+      const mockBlock = {
+        get: vi.fn((key) => {
+          if (key === 'components') {
+            return {
+              length: 1,
+              get: () => mockComponent
+            };
+          }
+          return null;
+        })
+      };
+
+      const mockPage = {
+        get: vi.fn((key) => {
+          if (key === 'blocks') {
+            return {
+              length: 1,
+              get: () => mockBlock
+            };
+          }
+          return null;
+        })
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockReturnValue({
+                    length: 1,
+                    get: () => mockPage
+                  })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('test-json-asset');
+      expect(count).toBe(1);
+    });
+
+    it('should count references in properties', () => {
+      const mockComponent = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent' || key === 'htmlView' || key === 'jsonProperties' || key === 'ideviceProperties') return null;
+          if (key === 'properties') {
+            return { toJSON: () => ({ src: 'asset://props-asset/file.mp3' }) };
+          }
+          return null;
+        })
+      };
+
+      const mockBlock = {
+        get: vi.fn((key) => {
+          if (key === 'components') {
+            return {
+              length: 1,
+              get: () => mockComponent
+            };
+          }
+          return null;
+        })
+      };
+
+      const mockPage = {
+        get: vi.fn((key) => {
+          if (key === 'blocks') {
+            return {
+              length: 1,
+              get: () => mockBlock
+            };
+          }
+          return null;
+        })
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockReturnValue({
+                    length: 1,
+                    get: () => mockPage
+                  })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('props-asset');
+      expect(count).toBe(1);
+    });
+
+    it('should not count same component twice when found in htmlContent', () => {
+      const mockComponent = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') {
+            return { toString: () => 'src="asset://multi-asset/image.jpg"' };
+          }
+          if (key === 'jsonProperties') {
+            return { toJSON: () => ({ url: 'asset://multi-asset/image.jpg' }) };
+          }
+          return null;
+        })
+      };
+
+      const mockBlock = {
+        get: vi.fn((key) => {
+          if (key === 'components') {
+            return {
+              length: 1,
+              get: () => mockComponent
+            };
+          }
+          return null;
+        })
+      };
+
+      const mockPage = {
+        get: vi.fn((key) => {
+          if (key === 'blocks') {
+            return {
+              length: 1,
+              get: () => mockBlock
+            };
+          }
+          return null;
+        })
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockReturnValue({
+                    length: 1,
+                    get: () => mockPage
+                  })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('multi-asset');
+      // Should be 1, not 2, because found flag prevents double counting
+      expect(count).toBe(1);
+    });
+
+    it('should handle null page/block/component', () => {
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              documentManager: {
+                ydoc: {
+                  getArray: vi.fn().mockReturnValue({
+                    length: 2,
+                    get: (i) => i === 0 ? null : {
+                      get: () => null
+                    }
+                  })
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const count = modal.countAssetReferences('null-test');
+      expect(count).toBe(0);
+    });
+  });
+
+  describe('duplicateSelectedAsset edge cases', () => {
+    beforeEach(() => {
+      modal.assetManager = {
+        getAsset: vi.fn(),
+        insertImage: vi.fn().mockResolvedValue(),
+        formatFileSize: vi.fn(() => '1 KB'),
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        getBlobURLSynced: vi.fn(() => 'blob:test')
+      };
+      modal.loadAssets = vi.fn().mockResolvedValue();
+    });
+
+    it('should handle asset without blob by fetching from assetManager', async () => {
+      modal.selectedAsset = { id: 'a1', filename: 'test.jpg', mime: 'image/jpeg', folderPath: '' };
+      modal.assets = [];
+
+      // No blob on selectedAsset, but getAsset returns one
+      modal.assetManager.getAsset.mockResolvedValue({
+        blob: new Blob(['test'], { type: 'image/jpeg' })
+      });
+
+      // Mock prompt to return a value
+      const originalPrompt = window.prompt;
+      window.prompt = vi.fn().mockReturnValue('new-name.jpg');
+
+      await modal.duplicateSelectedAsset();
+
+      expect(modal.assetManager.getAsset).toHaveBeenCalledWith('a1');
+      expect(modal.assetManager.insertImage).toHaveBeenCalled();
+
+      window.prompt = originalPrompt;
+    });
+
+    it('should show alert when blob cannot be retrieved', async () => {
+      modal.selectedAsset = { id: 'a1', filename: 'test.jpg', mime: 'image/jpeg' };
+      modal.assets = [];
+
+      // No blob anywhere
+      modal.assetManager.getAsset.mockResolvedValue(null);
+
+      const originalAlert = window.alert;
+      window.alert = vi.fn();
+
+      await modal.duplicateSelectedAsset();
+
+      expect(window.alert).toHaveBeenCalled();
+
+      window.alert = originalAlert;
+    });
+  });
+
+  describe('renameSelectedAsset edge cases', () => {
+    beforeEach(() => {
+      modal.assetManager = {
+        renameAsset: vi.fn().mockResolvedValue(true),
+        formatFileSize: vi.fn(() => '1 KB'),
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map()
+      };
+      modal.applyFiltersAndRender = vi.fn();
+    });
+
+    it('should do nothing when no asset selected', async () => {
+      modal.selectedAsset = null;
+      modal.selectedFolderPath = null;
+
+      await modal.renameSelectedAsset();
+
+      expect(modal.assetManager.renameAsset).not.toHaveBeenCalled();
+    });
+
+    it('should call renameAsset when valid new name is provided', async () => {
+      modal.selectedAsset = { id: 'a1', filename: 'old.jpg', mime: 'image/jpeg', folderPath: '' };
+      modal.assets = [];
+
+      const originalPrompt = window.prompt;
+      window.prompt = vi.fn().mockReturnValue('new.jpg');
+
+      await modal.renameSelectedAsset();
+
+      expect(modal.assetManager.renameAsset).toHaveBeenCalledWith('a1', 'new.jpg');
+
+      window.prompt = originalPrompt;
+    });
+  });
+
+  describe('buildFolderPickerList with empty folders', () => {
+    beforeEach(() => {
+      modal.folderPickerList = document.createElement('div');
+      modal.selectedMoveTarget = null;
+    });
+
+    it('should include created folders in picker list', () => {
+      modal.createdFolders = new Set(['empty-folder', 'empty-folder/sub']);
+      modal.assets = [];
+      modal.selectedAsset = { id: 'a1', folderPath: '' };
+      modal.selectedFolderPath = null;
+
+      modal.buildFolderPickerList();
+
+      // Should have root + empty-folder + empty-folder/sub = 3 items
+      const items = modal.folderPickerList.querySelectorAll('.folder-picker-item');
+      expect(items.length).toBe(3);
+    });
+
+    it('should filter out folder being moved and its subfolders', () => {
+      modal.createdFolders = new Set(['parent', 'parent/child', 'other']);
+      modal.assets = [];
+      modal.selectedAsset = null;
+      modal.selectedFolderPath = 'parent';
+
+      modal.buildFolderPickerList();
+
+      // Should have root + other = 2 items (parent and parent/child excluded)
+      const items = modal.folderPickerList.querySelectorAll('.folder-picker-item');
+      expect(items.length).toBe(2);
+    });
+  });
 });

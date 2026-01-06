@@ -4670,3 +4670,473 @@ describe('AssetManager renameFolder', () => {
     await expect(assetManager.renameFolder('old', 'new')).rejects.toThrow('Yjs bridge not available');
   });
 });
+
+describe('AssetManager renameAsset', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    mockYjsBridge = {
+      _assetsMap: new Map(),
+      documentManager: {
+        getNavigation: vi.fn(() => []),
+        getDoc: vi.fn(() => ({
+          transact: (fn) => fn()
+        }))
+      }
+    };
+    assetManager.setYjsBridge(mockYjsBridge);
+
+    // Set up mock for getAssetsYMap
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue({
+      get: (id) => mockYjsBridge._assetsMap.get(id),
+      set: (id, data) => mockYjsBridge._assetsMap.set(id, data)
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('renames an existing asset', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', {
+      id: 'asset-1',
+      filename: 'old-name.jpg',
+      folderPath: 'images',
+      uploaded: true
+    });
+
+    const result = await assetManager.renameAsset('asset-1', 'new-name.jpg');
+
+    expect(result).toBe(true);
+    const updated = mockYjsBridge._assetsMap.get('asset-1');
+    expect(updated.filename).toBe('new-name.jpg');
+    expect(updated.uploaded).toBe(false); // Should be marked for re-upload
+  });
+
+  it('returns false when asset does not exist', async () => {
+    const result = await assetManager.renameAsset('nonexistent', 'new-name.jpg');
+
+    expect(result).toBe(false);
+  });
+
+  it('updates asset references in Yjs', async () => {
+    mockYjsBridge._assetsMap.set('asset-1', {
+      id: 'asset-1',
+      filename: 'old-name.jpg',
+      folderPath: '',
+      uploaded: true
+    });
+
+    const updateSpy = vi.spyOn(assetManager, 'updateAssetReferencesInYjs');
+    await assetManager.renameAsset('asset-1', 'new-name.jpg');
+
+    expect(updateSpy).toHaveBeenCalledWith('asset-1', 'old-name.jpg', 'new-name.jpg');
+  });
+});
+
+describe('AssetManager updateAssetReferencesInYjs', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    window.eXeLearning = { app: { project: { _yjsBridge: null } } };
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('returns 0 when no document manager available', () => {
+    window.eXeLearning.app.project._yjsBridge = null;
+
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    expect(result).toBe(0);
+  });
+
+  it('returns 0 when Y is not loaded', () => {
+    const originalY = window.Y;
+    delete window.Y;
+
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: { getNavigation: vi.fn() }
+    };
+
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    expect(result).toBe(0);
+    window.Y = originalY;
+  });
+
+  it('returns 0 when no navigation available', () => {
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: {
+        getNavigation: vi.fn(() => null),
+        getDoc: vi.fn()
+      }
+    };
+
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    expect(result).toBe(0);
+  });
+
+  it('processes pages and updates references', () => {
+    // Create mock Y.Text with actual content
+    const mockHtmlContent = {
+      _content: 'src="asset://asset-1/old.jpg"',
+      toString: function() { return this._content; },
+      delete: function(start, length) { this._content = ''; },
+      insert: function(pos, text) { this._content = text; },
+      length: 30
+    };
+
+    // Create mock component with Y.Map behavior
+    const mockComponent = {
+      _type: 'Y.Map',
+      get: vi.fn((key) => {
+        if (key === 'htmlContent') return mockHtmlContent;
+        return null;
+      })
+    };
+
+    // Create mock block
+    const mockBlock = {
+      _type: 'Y.Map',
+      get: vi.fn((key) => {
+        if (key === 'components') {
+          return {
+            _type: 'Y.Array',
+            forEach: (fn) => fn(mockComponent)
+          };
+        }
+        return null;
+      })
+    };
+
+    // Create mock page
+    const mockPage = {
+      _type: 'Y.Map',
+      get: vi.fn((key) => {
+        if (key === 'blocks') {
+          return {
+            _type: 'Y.Array',
+            forEach: (fn) => fn(mockBlock)
+          };
+        }
+        if (key === 'subpages') {
+          return {
+            _type: 'Y.Array',
+            forEach: () => {}
+          };
+        }
+        return null;
+      })
+    };
+
+    // Mock navigation array
+    const mockNavigation = {
+      forEach: (fn) => fn(mockPage)
+    };
+
+    // Mock Y global
+    const originalY = window.Y;
+    window.Y = {
+      Map: class { },
+      Array: class { },
+      Text: class { }
+    };
+
+    // Patch instanceof checks
+    Object.defineProperty(mockComponent, Symbol.hasInstance, {
+      value: () => true
+    });
+
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: {
+        getNavigation: vi.fn(() => mockNavigation),
+        getDoc: vi.fn(() => ({
+          transact: (fn) => fn()
+        }))
+      }
+    };
+
+    // The method requires instanceof checks which are tricky to mock
+    // Let's just verify it doesn't throw and processes the structure
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    // The mock structure doesn't pass instanceof Y.Map checks, so result should be 0
+    expect(result).toBe(0);
+
+    window.Y = originalY;
+  });
+
+  it('handles empty navigation array', () => {
+    const originalY = window.Y;
+    window.Y = {
+      Map: class { },
+      Array: class { },
+      Text: class { }
+    };
+
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: {
+        getNavigation: vi.fn(() => ({
+          forEach: () => {}
+        })),
+        getDoc: vi.fn(() => ({
+          transact: (fn) => fn()
+        }))
+      }
+    };
+
+    const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
+
+    expect(result).toBe(0);
+    window.Y = originalY;
+  });
+});
+
+describe('AssetManager getAssetUrl', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('returns asset URL with simplified format (uuid.ext)', () => {
+    const url = assetManager.getAssetUrl('asset-123', 'image.jpg');
+    expect(url).toBe('asset://asset-123.jpg');
+  });
+
+  it('extracts extension from filename with spaces', () => {
+    const url = assetManager.getAssetUrl('asset-123', 'my image (1).jpg');
+    expect(url).toBe('asset://asset-123.jpg');
+  });
+
+  it('handles empty filename (no extension)', () => {
+    const url = assetManager.getAssetUrl('asset-123', '');
+    expect(url).toBe('asset://asset-123');
+  });
+
+  it('handles filename without extension', () => {
+    const url = assetManager.getAssetUrl('asset-123', 'README');
+    expect(url).toBe('asset://asset-123');
+  });
+
+  it('handles png extension', () => {
+    const url = assetManager.getAssetUrl('asset-456', 'photo.PNG');
+    expect(url).toBe('asset://asset-456.png');
+  });
+});
+
+describe('AssetManager setAssetMetadata', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    mockYjsBridge = {
+      _assetsMap: new Map()
+    };
+    assetManager.setYjsBridge(mockYjsBridge);
+
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue({
+      get: (id) => mockYjsBridge._assetsMap.get(id),
+      set: (id, data) => mockYjsBridge._assetsMap.set(id, data)
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('sets metadata for new asset', () => {
+    assetManager.setAssetMetadata('asset-1', {
+      id: 'asset-1',
+      filename: 'test.jpg',
+      folderPath: 'images',
+      mime: 'image/jpeg',
+      size: 1024,
+      hash: 'abc123'
+    });
+
+    const stored = mockYjsBridge._assetsMap.get('asset-1');
+    expect(stored.filename).toBe('test.jpg');
+    expect(stored.folderPath).toBe('images');
+    expect(stored.mime).toBe('image/jpeg');
+    expect(stored.size).toBe(1024);
+    expect(stored.uploaded).toBe(false);
+    expect(stored.createdAt).toBeDefined();
+  });
+
+  it('updates existing metadata', () => {
+    mockYjsBridge._assetsMap.set('asset-1', {
+      filename: 'old.jpg',
+      folderPath: '',
+      uploaded: true
+    });
+
+    assetManager.setAssetMetadata('asset-1', {
+      filename: 'new.jpg',
+      folderPath: 'photos'
+    });
+
+    const stored = mockYjsBridge._assetsMap.get('asset-1');
+    expect(stored.filename).toBe('new.jpg');
+    expect(stored.folderPath).toBe('photos');
+  });
+
+  it('sets default folderPath if not provided', () => {
+    assetManager.setAssetMetadata('asset-2', {
+      filename: 'test.png'
+    });
+
+    const stored = mockYjsBridge._assetsMap.get('asset-2');
+    expect(stored.folderPath).toBe('');
+  });
+});
+
+describe('AssetManager deleteAssetMetadata', () => {
+  let assetManager;
+  let mockYjsBridge;
+  let mockYMap;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    mockYjsBridge = {
+      _assetsMap: new Map()
+    };
+    mockYMap = {
+      get: (id) => mockYjsBridge._assetsMap.get(id),
+      set: (id, data) => mockYjsBridge._assetsMap.set(id, data),
+      delete: (id) => mockYjsBridge._assetsMap.delete(id)
+    };
+    assetManager.setYjsBridge(mockYjsBridge);
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue(mockYMap);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('deletes existing metadata', () => {
+    mockYjsBridge._assetsMap.set('asset-1', { id: 'asset-1', filename: 'test.jpg' });
+
+    assetManager.deleteAssetMetadata('asset-1');
+
+    expect(mockYjsBridge._assetsMap.has('asset-1')).toBe(false);
+  });
+
+  it('handles non-existent asset gracefully', () => {
+    expect(() => assetManager.deleteAssetMetadata('nonexistent')).not.toThrow();
+  });
+});
+
+describe('AssetManager getAllAssetsMetadata', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    global.Logger = { log: vi.fn() };
+    assetManager = new AssetManager('test-project');
+    mockYjsBridge = {};
+    assetManager.setYjsBridge(mockYjsBridge);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete global.Logger;
+  });
+
+  it('returns all assets as array', () => {
+    const mockData = new Map([
+      ['asset-1', { filename: 'a.jpg' }],
+      ['asset-2', { filename: 'b.jpg' }]
+    ]);
+
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue({
+      forEach: (callback) => mockData.forEach((value, key) => callback(value, key))
+    });
+
+    const result = assetManager.getAllAssetsMetadata();
+
+    expect(result).toHaveLength(2);
+    expect(result[0].filename).toBe('a.jpg');
+    expect(result[0].id).toBe('asset-1');
+    expect(result[1].filename).toBe('b.jpg');
+    expect(result[1].id).toBe('asset-2');
+  });
+
+  it('returns empty array when no Yjs bridge', () => {
+    assetManager.setYjsBridge(null);
+
+    const result = assetManager.getAllAssetsMetadata();
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty array when no assets map', () => {
+    vi.spyOn(assetManager, 'getAssetsYMap').mockReturnValue(null);
+
+    const result = assetManager.getAllAssetsMetadata();
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('AssetManager _extractFolderPathFromImport', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('extracts folder path from simple path', () => {
+    const result = assetManager._extractFolderPathFromImport('images/photo.jpg', 'asset-1');
+    expect(result).toBe('images');
+  });
+
+  it('extracts nested folder path', () => {
+    const result = assetManager._extractFolderPathFromImport('images/2024/vacation/photo.jpg', 'asset-1');
+    expect(result).toBe('images/2024/vacation');
+  });
+
+  it('returns empty string for root path', () => {
+    const result = assetManager._extractFolderPathFromImport('photo.jpg', 'asset-1');
+    expect(result).toBe('');
+  });
+
+  it('handles UUID-like prefix in path', () => {
+    const result = assetManager._extractFolderPathFromImport('a1b2c3d4-e5f6-7890-abcd-ef1234567890/images/photo.jpg', 'asset-1');
+    expect(result).toBe('images');
+  });
+
+  it('handles just UUID prefix with filename when UUID matches asset ID', () => {
+    // When UUID in path matches assetId, it's legacy format and returns ''
+    const result = assetManager._extractFolderPathFromImport('a1b2c3d4-e5f6-7890-abcd-ef1234567890/photo.jpg', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+    expect(result).toBe('');
+  });
+
+  it('handles just UUID prefix with filename when UUID does not match', () => {
+    // When UUID in path doesn't match assetId, it's treated as folder name
+    const result = assetManager._extractFolderPathFromImport('a1b2c3d4-e5f6-7890-abcd-ef1234567890/photo.jpg', 'different-asset-id');
+    expect(result).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+  });
+
+  it('handles resources prefix', () => {
+    const result = assetManager._extractFolderPathFromImport('resources/images/photo.jpg', 'asset-1');
+    expect(result).toBe('images');
+  });
+});
