@@ -563,8 +563,8 @@ describe('Epub3Exporter', () => {
             // DTD file should be included in EPUB folder
             expect(zip.files.has('EPUB/content.dtd')).toBe(true);
             const dtdContent = zip.files.get('EPUB/content.dtd') as string;
-            expect(dtdContent).toContain('<!ELEMENT ode');
-            expect(dtdContent).toContain('ODE Content DTD');
+            expect(dtdContent).toContain('<!ELEMENT exe_document');
+            expect(dtdContent).toContain('eXeLearning Document DTD');
         });
 
         it('should NOT include content.dtd when exportSource is false', async () => {

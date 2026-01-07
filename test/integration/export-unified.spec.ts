@@ -226,7 +226,7 @@ describe('Unified Export System Integration', () => {
 
             // Verify DTD content
             const dtdContent = new TextDecoder().decode(zipFile['content.dtd']);
-            expect(dtdContent).toContain('<!ELEMENT ode');
+            expect(dtdContent).toContain('<!ELEMENT exe_document');
         });
 
         it('SCORM exports include required SCORM files', async () => {
@@ -493,7 +493,7 @@ describe('Unified Export System Integration', () => {
             // content.dtd should exist alongside content.xml
             expect(zipFile['content.dtd']).toBeDefined();
             const dtdContent = new TextDecoder().decode(zipFile['content.dtd']);
-            expect(dtdContent).toContain('<!ELEMENT ode');
+            expect(dtdContent).toContain('<!ELEMENT exe_document');
         });
     });
 });

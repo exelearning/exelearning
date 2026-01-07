@@ -5,7 +5,7 @@
  * ELPX is a complete HTML5 export + content.xml for re-import.
  *
  * ELPX files contain everything HTML5 exports have, plus:
- * - content.xml (ODE format with full project structure for re-import)
+ * - content.xml (exe_document format with full project structure for re-import)
  * - content.dtd (DTD for XML validation)
  * - custom/ directory
  *
@@ -17,35 +17,27 @@
  * - libs/ (shared JavaScript libraries)
  * - theme/ (theme CSS/JS)
  * - idevices/ (iDevice-specific CSS/JS)
- * - content.xml (ODE format)
+ * - content.xml (exe_document format)
  * - content.dtd
  * - custom/
  *
- * The ODE XML format is a hierarchical structure:
- * - odeProperties (metadata)
- * - odeResources (version info, identifiers)
- * - odeNavStructures (pages)
- *   - odePagStructures (blocks)
- *     - odeComponents (iDevices)
+ * The exe_document XML format is a simplified hierarchical structure:
+ * - meta (metadata fields)
+ * - navigation (pages with nested components)
  */
 
 import type {
     ExportPage,
     ExportBlock,
-    ExportComponent,
     ExportMetadata,
     ExportOptions,
     ExportResult,
     ElpxExportOptions,
 } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
-import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
-
-/**
- * ODE XML version identifier
- */
-const ODE_VERSION = '4.0';
+import { buildFromStructure } from '../../../services/xml/xml-builder';
+import type { OdeXmlMeta, NormalizedPage, NormalizedComponent } from '../../../services/xml/interfaces';
 
 export class ElpxExporter extends Html5Exporter {
     /**
@@ -198,23 +190,11 @@ export class ElpxExporter extends Html5Exporter {
             await this.addAssetsToZipWithResourcePath();
 
             // =========================================================================
-            // SECTION 2: Add ELPX-specific files (content.xml with ODE format + DTD)
+            // SECTION 2: Add ELPX-specific files (content.xml with exe_document format + DTD)
             // =========================================================================
 
-            // 2.1 Generate content.xml with full ODE format (for re-import)
-            const contentXml = this.generateOdeXml(meta, pages);
-
-            // Validate generated XML
-            const validation = validateXml(contentXml);
-            if (!validation.valid) {
-                const errorMsg = formatValidationErrors(validation);
-                console.error(`[ElpxExporter] Generated XML failed validation:\n${errorMsg}`);
-                throw new Error(`Generated content.xml is invalid:\n${errorMsg}`);
-            }
-            if (validation.warnings.length > 0) {
-                console.warn(`[ElpxExporter] XML validation warnings:\n${formatValidationErrors(validation)}`);
-            }
-
+            // 2.1 Generate content.xml with exe_document format (for re-import)
+            const contentXml = this.generateContentXml(meta, pages);
             this.zip.addFile('content.xml', contentXml);
 
             // 2.2 Add DTD file
@@ -242,319 +222,118 @@ export class ElpxExporter extends Html5Exporter {
     }
 
     /**
-     * Generate complete ODE XML document
+     * Generate content.xml in exe_document format
+     * Uses xml-builder.ts for consistent output across all exporters
      */
-    private generateOdeXml(meta: ExportMetadata, pages: ExportPage[]): string {
-        const odeId = meta.odeIdentifier || this.generateOdeId();
-        const versionId = this.generateOdeId();
-
-        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-        xml += `<!DOCTYPE ode SYSTEM "${ODE_DTD_FILENAME}">\n`;
-        xml += '<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">\n';
-
-        // User preferences (theme selection)
-        xml += this.generateUserPreferencesXml(meta);
-
-        // ODE resources (version info, IDs)
-        xml += this.generateOdeResourcesXml(odeId, versionId);
-
-        // ODE properties (metadata)
-        xml += this.generateOdePropertiesXml(meta);
-
-        // Navigation structures (pages with blocks and components)
-        xml += '<odeNavStructures>\n';
-        for (let i = 0; i < pages.length; i++) {
-            xml += this.generateOdeNavStructureXml(pages[i], i);
-        }
-        xml += '</odeNavStructures>\n';
-
-        xml += '</ode>';
-        return xml;
-    }
-
-    /**
-     * Generate user preferences section
-     */
-    private generateUserPreferencesXml(meta: ExportMetadata): string {
-        let xml = '<userPreferences>\n';
-
-        xml += this.generateUserPreferenceEntry('theme', meta.theme || 'base');
-
-        xml += '</userPreferences>\n';
-        return xml;
-    }
-
-    /**
-     * Generate single user preference entry
-     */
-    private generateUserPreferenceEntry(key: string, value: string): string {
-        return `  <userPreference>
-    <key>${this.escapeXml(key)}</key>
-    <value>${this.escapeXml(value)}</value>
-  </userPreference>\n`;
-    }
-
-    /**
-     * Generate ODE resources section (identifiers, version)
-     */
-    private generateOdeResourcesXml(odeId: string, versionId: string): string {
-        let xml = '<odeResources>\n';
-
-        xml += this.generateOdeResourceEntry('odeId', odeId);
-        xml += this.generateOdeResourceEntry('odeVersionId', versionId);
-        xml += this.generateOdeResourceEntry('exe_version', ODE_VERSION);
-
-        xml += '</odeResources>\n';
-        return xml;
-    }
-
-    /**
-     * Generate single ODE resource entry
-     */
-    private generateOdeResourceEntry(key: string, value: string): string {
-        return `  <odeResource>
-    <key>${this.escapeXml(key)}</key>
-    <value>${this.escapeXml(value)}</value>
-  </odeResource>\n`;
-    }
-
-    /**
-     * Generate ODE properties section (metadata)
-     */
-    private generateOdePropertiesXml(meta: ExportMetadata): string {
-        let xml = '<odeProperties>\n';
-
-        // Core properties
-        const properties: Record<string, string | boolean | undefined> = {
-            pp_title: meta.title,
-            pp_author: meta.author,
-            pp_lang: meta.language,
-            pp_description: meta.description,
-            pp_license: meta.license,
-            pp_theme: meta.theme,
-            pp_keywords: meta.keywords,
-            pp_category: meta.category,
-            pp_addAccessibilityToolbar: meta.addAccessibilityToolbar,
-            pp_addMathJax: meta.addMathJax,
-            pp_customStyles: meta.customStyles,
-            pp_exelearning_version: meta.exelearningVersion,
+    private generateContentXml(meta: ExportMetadata, pages: ExportPage[]): string {
+        // Convert ExportMetadata → OdeXmlMeta
+        const xmlMeta: OdeXmlMeta = {
+            title: meta.title,
+            subtitle: meta.subtitle || '',
+            author: meta.author,
+            description: meta.description || '',
+            language: meta.language,
+            license: meta.license || '',
+            keywords: meta.keywords || '',
+            theme: meta.theme || 'base',
+            version: '3.0',
+            exelearning_version: meta.exelearningVersion || '3.0',
+            created: new Date().toISOString(),
+            modified: new Date().toISOString(),
+            // Export options
+            addExeLink: meta.addExeLink,
+            addPagination: meta.addPagination,
+            addSearchBox: meta.addSearchBox,
+            addAccessibilityToolbar: meta.addAccessibilityToolbar,
+            addMathJax: meta.addMathJax,
+            exportSource: meta.exportSource,
+            // Custom content
+            extraHeadContent: meta.extraHeadContent,
+            footer: meta.footer,
         };
 
-        for (const [key, value] of Object.entries(properties)) {
-            if (value !== undefined && value !== null && value !== '') {
-                const strValue = typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value);
-                xml += this.generateOdePropertyEntry(key, strValue);
-            }
-        }
+        // Calculate page levels from parent hierarchy
+        const pageLevels = this.calculatePageLevels(pages);
 
-        xml += '</odeProperties>\n';
-        return xml;
+        // Convert ExportPage[] → NormalizedPage[]
+        const normalizedPages: NormalizedPage[] = pages.map((page, idx) => ({
+            id: page.id,
+            title: page.title,
+            level: pageLevels.get(page.id) || 0,
+            parent_id: page.parentId || null,
+            position: page.order ?? idx,
+            components: this.flattenBlocksToComponents(page.blocks || []),
+        }));
+
+        // Build exe_document XML using xml-builder
+        return buildFromStructure({
+            meta: xmlMeta,
+            pages: normalizedPages,
+            navigation: { page: [] },
+            raw: { ode: {} },
+        });
     }
 
     /**
-     * Generate single ODE property entry
+     * Calculate page levels based on parent hierarchy
      */
-    private generateOdePropertyEntry(key: string, value: string): string {
-        return `  <odeProperty>
-    <key>${this.escapeXml(key)}</key>
-    <value>${this.escapeXml(value)}</value>
-  </odeProperty>\n`;
+    private calculatePageLevels(pages: ExportPage[]): Map<string, number> {
+        const levels = new Map<string, number>();
+        const pageMap = new Map<string, ExportPage>();
+
+        // Build page map
+        for (const page of pages) {
+            pageMap.set(page.id, page);
+        }
+
+        // Calculate level for each page
+        const getLevel = (pageId: string): number => {
+            if (levels.has(pageId)) {
+                return levels.get(pageId)!;
+            }
+
+            const page = pageMap.get(pageId);
+            if (!page || !page.parentId) {
+                levels.set(pageId, 0);
+                return 0;
+            }
+
+            const parentLevel = getLevel(page.parentId);
+            const level = parentLevel + 1;
+            levels.set(pageId, level);
+            return level;
+        };
+
+        for (const page of pages) {
+            getLevel(page.id);
+        }
+
+        return levels;
     }
 
     /**
-     * Generate odeNavStructure for a page
+     * Flatten blocks and their components into NormalizedComponent array
      */
-    private generateOdeNavStructureXml(page: ExportPage, order: number): string {
-        const pageId = page.id;
-        const parentId = page.parentId || '';
+    private flattenBlocksToComponents(blocks: ExportBlock[]): NormalizedComponent[] {
+        const components: NormalizedComponent[] = [];
 
-        let xml = `<odeNavStructure>\n`;
-        xml += `  <odePageId>${this.escapeXml(pageId)}</odePageId>\n`;
-        xml += `  <odeParentPageId>${this.escapeXml(parentId)}</odeParentPageId>\n`;
-        xml += `  <pageName>${this.escapeXml(page.title || 'Page')}</pageName>\n`;
-        xml += `  <odeNavStructureOrder>${page.order ?? order}</odeNavStructureOrder>\n`;
-
-        // Page-level properties
-        xml += '  <odeNavStructureProperties>\n';
-        xml += this.generateNavStructurePropertyEntry('titlePage', page.title || '');
-        if (page.properties) {
-            for (const [key, value] of Object.entries(page.properties)) {
-                if (value !== undefined && value !== null) {
-                    xml += this.generateNavStructurePropertyEntry(key, String(value));
-                }
+        for (const block of blocks) {
+            for (const comp of block.components) {
+                components.push({
+                    id: comp.id,
+                    type: comp.type,
+                    content: comp.content,
+                    order: comp.order,
+                    blockId: block.id,
+                    blockName: block.name,
+                    blockIconName: block.iconName,
+                    blockProperties: block.properties as Record<string, string | number | boolean | null>,
+                    properties: comp.structureProperties as Record<string, string | number | boolean | null>,
+                    data: comp.properties,
+                });
             }
         }
-        xml += '  </odeNavStructureProperties>\n';
 
-        // Blocks (odePagStructures)
-        xml += '  <odePagStructures>\n';
-        for (let i = 0; i < (page.blocks || []).length; i++) {
-            xml += this.generateOdePagStructureXml(page.blocks![i], pageId, i);
-        }
-        xml += '  </odePagStructures>\n';
-
-        xml += '</odeNavStructure>\n';
-        return xml;
-    }
-
-    /**
-     * Generate navigation structure property entry
-     */
-    private generateNavStructurePropertyEntry(key: string, value: string): string {
-        return `    <odeNavStructureProperty>
-      <key>${this.escapeXml(key)}</key>
-      <value>${this.escapeXml(value)}</value>
-    </odeNavStructureProperty>\n`;
-    }
-
-    /**
-     * Generate odePagStructure for a block
-     */
-    private generateOdePagStructureXml(block: ExportBlock, pageId: string, order: number): string {
-        const blockId = block.id;
-
-        let xml = `    <odePagStructure>\n`;
-        xml += `      <odePageId>${this.escapeXml(pageId)}</odePageId>\n`;
-        xml += `      <odeBlockId>${this.escapeXml(blockId)}</odeBlockId>\n`;
-        xml += `      <blockName>${this.escapeXml(block.name || '')}</blockName>\n`;
-        xml += `      <iconName>${this.escapeXml(block.iconName || '')}</iconName>\n`;
-        xml += `      <odePagStructureOrder>${block.order ?? order}</odePagStructureOrder>\n`;
-
-        // Block-level properties - export ALL properties
-        xml += '      <odePagStructureProperties>\n';
-        if (block.properties) {
-            const props = block.properties;
-            // Export all 6 block properties
-            if (props.visibility !== undefined) {
-                xml += this.generatePagStructurePropertyEntry('visibility', String(props.visibility));
-            }
-            if (props.teacherOnly !== undefined) {
-                xml += this.generatePagStructurePropertyEntry('teacherOnly', String(props.teacherOnly));
-            }
-            if (props.allowToggle !== undefined) {
-                xml += this.generatePagStructurePropertyEntry('allowToggle', String(props.allowToggle));
-            }
-            if (props.minimized !== undefined) {
-                xml += this.generatePagStructurePropertyEntry('minimized', String(props.minimized));
-            }
-            if (props.identifier !== undefined) {
-                xml += this.generatePagStructurePropertyEntry('identifier', String(props.identifier));
-            }
-            if (props.cssClass !== undefined) {
-                xml += this.generatePagStructurePropertyEntry('cssClass', String(props.cssClass));
-            }
-        }
-        xml += '      </odePagStructureProperties>\n';
-
-        // Components (odeComponents)
-        xml += '      <odeComponents>\n';
-        for (let i = 0; i < (block.components || []).length; i++) {
-            xml += this.generateOdeComponentXml(block.components![i], pageId, blockId, i);
-        }
-        xml += '      </odeComponents>\n';
-
-        xml += `    </odePagStructure>\n`;
-        return xml;
-    }
-
-    /**
-     * Generate page structure property entry
-     */
-    private generatePagStructurePropertyEntry(key: string, value: string): string {
-        return `        <odePagStructureProperty>
-          <key>${this.escapeXml(key)}</key>
-          <value>${this.escapeXml(value)}</value>
-        </odePagStructureProperty>\n`;
-    }
-
-    /**
-     * Generate odeComponent for an iDevice
-     */
-    private generateOdeComponentXml(
-        component: ExportComponent,
-        pageId: string,
-        blockId: string,
-        order: number,
-    ): string {
-        const componentId = component.id;
-        const ideviceType = component.type || 'FreeTextIdevice';
-
-        let xml = `        <odeComponent>\n`;
-        xml += `          <odePageId>${this.escapeXml(pageId)}</odePageId>\n`;
-        xml += `          <odeBlockId>${this.escapeXml(blockId)}</odeBlockId>\n`;
-        xml += `          <odeIdeviceId>${this.escapeXml(componentId)}</odeIdeviceId>\n`;
-        xml += `          <odeIdeviceTypeName>${this.escapeXml(ideviceType)}</odeIdeviceTypeName>\n`;
-
-        // HTML content (wrapped in CDATA)
-        const htmlContent = component.content || '';
-        xml += `          <htmlView><![CDATA[${this.escapeCdata(htmlContent)}]]></htmlView>\n`;
-
-        // JSON properties (wrapped in CDATA)
-        if (component.properties && Object.keys(component.properties).length > 0) {
-            const jsonStr = JSON.stringify(component.properties);
-            xml += `          <jsonProperties><![CDATA[${this.escapeCdata(jsonStr)}]]></jsonProperties>\n`;
-        } else {
-            xml += `          <jsonProperties></jsonProperties>\n`;
-        }
-
-        xml += `          <odeComponentsOrder>${component.order ?? order}</odeComponentsOrder>\n`;
-
-        // Component-level structure properties - export all 4 properties
-        xml += '          <odeComponentsProperties>\n';
-        if (component.structureProperties) {
-            const props = component.structureProperties;
-            if (props.visibility !== undefined) {
-                xml += this.generateComponentPropertyEntry('visibility', String(props.visibility));
-            }
-            if (props.teacherOnly !== undefined) {
-                xml += this.generateComponentPropertyEntry('teacherOnly', String(props.teacherOnly));
-            }
-            if (props.identifier !== undefined) {
-                xml += this.generateComponentPropertyEntry('identifier', String(props.identifier));
-            }
-            if (props.cssClass !== undefined) {
-                xml += this.generateComponentPropertyEntry('cssClass', String(props.cssClass));
-            }
-        } else {
-            // Default visibility if no structure properties
-            xml += this.generateComponentPropertyEntry('visibility', 'true');
-        }
-        xml += '          </odeComponentsProperties>\n';
-
-        xml += `        </odeComponent>\n`;
-        return xml;
-    }
-
-    /**
-     * Generate component property entry
-     */
-    private generateComponentPropertyEntry(key: string, value: string): string {
-        return `            <odeComponentsProperty>
-              <key>${this.escapeXml(key)}</key>
-              <value>${this.escapeXml(value)}</value>
-            </odeComponentsProperty>\n`;
-    }
-
-    /**
-     * Generate ODE identifier
-     * Format: YYYYMMDDHHmmss + 6 random alphanumeric chars
-     */
-    private generateOdeId(): string {
-        const now = new Date();
-        const timestamp =
-            now.getFullYear().toString() +
-            String(now.getMonth() + 1).padStart(2, '0') +
-            String(now.getDate()).padStart(2, '0') +
-            String(now.getHours()).padStart(2, '0') +
-            String(now.getMinutes()).padStart(2, '0') +
-            String(now.getSeconds()).padStart(2, '0');
-
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let random = '';
-        for (let i = 0; i < 6; i++) {
-            random += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-
-        return timestamp + random;
+        return components;
     }
 }
