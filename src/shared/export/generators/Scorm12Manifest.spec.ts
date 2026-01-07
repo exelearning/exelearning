@@ -386,12 +386,7 @@ describe('Scorm12ManifestGenerator', () => {
     describe('imslrm.xml handling', () => {
         it('should include imslrm.xml in COMMON_FILES when present', () => {
             const xml = generator.generate({
-                allZipFiles: [
-                    'index.html',
-                    'libs/jquery.js',
-                    'imslrm.xml',
-                    'imsmanifest.xml',
-                ],
+                allZipFiles: ['index.html', 'libs/jquery.js', 'imslrm.xml', 'imsmanifest.xml'],
                 pageFiles: {
                     'page-1': { fileUrl: 'index.html' },
                 },
@@ -412,13 +407,7 @@ describe('Scorm12ManifestGenerator', () => {
 
         it('should include imslrm.xml alongside other common files', () => {
             const xml = generator.generate({
-                allZipFiles: [
-                    'index.html',
-                    'libs/jquery.js',
-                    'theme/style.css',
-                    'imslrm.xml',
-                    'imsmanifest.xml',
-                ],
+                allZipFiles: ['index.html', 'libs/jquery.js', 'theme/style.css', 'imslrm.xml', 'imsmanifest.xml'],
                 pageFiles: {
                     'page-1': { fileUrl: 'index.html' },
                 },
@@ -436,11 +425,7 @@ describe('Scorm12ManifestGenerator', () => {
 
         it('should not duplicate imslrm.xml in page resources', () => {
             const xml = generator.generate({
-                allZipFiles: [
-                    'index.html',
-                    'imslrm.xml',
-                    'imsmanifest.xml',
-                ],
+                allZipFiles: ['index.html', 'imslrm.xml', 'imsmanifest.xml'],
                 pageFiles: {
                     'page-1': { fileUrl: 'index.html' },
                 },
