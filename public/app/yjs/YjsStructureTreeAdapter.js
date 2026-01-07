@@ -382,85 +382,10 @@ class YjsStructureTreeAdapter {
 
   /**
    * Add CSS styles for the tree
+   * @deprecated Styles are now in assets/styles/components/_collaborative.scss
    */
   addStyles() {
-    if (document.getElementById('yjs-tree-styles')) return;
-
-    const style = document.createElement('style');
-    style.id = 'yjs-tree-styles';
-    style.textContent = `
-      .yjs-tree-root {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 14px;
-      }
-      .yjs-tree-item {
-        list-style: none;
-      }
-      .yjs-tree-children {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
-      .yjs-tree-node {
-        display: flex;
-        align-items: center;
-        padding: 6px 8px;
-        cursor: pointer;
-        border-radius: 4px;
-        margin: 1px 0;
-        transition: background-color 0.15s;
-      }
-      .yjs-tree-node:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-      }
-      .yjs-tree-node.selected {
-        background-color: rgba(66, 133, 244, 0.15);
-      }
-      .yjs-tree-node.dragging {
-        opacity: 0.5;
-      }
-      .yjs-tree-node.drag-over {
-        background-color: rgba(66, 133, 244, 0.3);
-        border: 2px dashed #4285f4;
-      }
-      .yjs-tree-icon {
-        margin-right: 8px;
-        font-size: 18px;
-        color: #666;
-      }
-      .yjs-tree-text {
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .yjs-tree-actions {
-        display: none;
-        gap: 4px;
-      }
-      .yjs-tree-node:hover .yjs-tree-actions {
-        display: flex;
-      }
-      .yjs-tree-btn {
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 12px;
-      }
-      .yjs-tree-btn:hover {
-        background-color: rgba(0, 0, 0, 0.1);
-      }
-      .yjs-tree-btn.yjs-delete:hover {
-        background-color: rgba(220, 53, 69, 0.2);
-        color: #dc3545;
-      }
-    `;
-    document.head.appendChild(style);
+    // No-op: styles moved to _collaborative.scss
   }
 
   /**
