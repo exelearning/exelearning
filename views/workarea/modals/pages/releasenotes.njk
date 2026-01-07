@@ -2,17 +2,17 @@
     <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title">Release notes</div>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <div class="modal-title">{{ 'Release notes' | trans }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body help-modal help-modal-with-logo">
                 <div class="help-modal-top">
-                    <img src="{{ 'style/workarea/images/exelearning.svg' | asset }}" class="exe-logo content" alt="Logo ExeLearning">
+                    <img src="{{ 'style/workarea/images/exelearning.svg' | asset }}" class="exe-logo content" alt="Logo eXeLearning">
                 </div>
                 <div class="help-modal-content">
-                    <h1 class="lead mb-4">Changelog</h1>
+                    <h1 class="lead mb-4">{{ 'Changelog' | trans }}</h1>
                     <div class="body-release">
                         <div class="changelog-content md-converted-content"></div>
                     </div>
