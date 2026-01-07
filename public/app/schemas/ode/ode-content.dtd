@@ -1,15 +1,16 @@
 <!--
-    eXeLearning ODE Document DTD
-    Document Type Definition for eXeLearning content.xml format
+    ODE Content DTD
+    Document Type Definition for eXeLearning ODE XML format (content.xml)
 
     Version: 2.0
+    Namespace: http://www.intef.es/xsd/ode
 
     This DTD defines the structure for eXeLearning project files (ELPX).
-    The ODE format contains:
-    - userPreferences: User settings (theme, etc.)
-    - odeResources: Project resources (odeId, odeVersionId, etc.)
-    - odeProperties: Document properties (title, author, language, etc.)
-    - odeNavStructures: Navigation structure with pages, blocks, and components
+    The ODE format is a hierarchical structure containing:
+    - User preferences (theme, settings)
+    - ODE resources (identifiers, version info)
+    - ODE properties (metadata: title, author, language, etc.)
+    - Navigation structures (pages with blocks and components/iDevices)
 
     Copyright (C) 2025 eXeLearning
     License: AGPL-3.0
@@ -17,126 +18,72 @@
 
 <!-- Root element -->
 <!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
+<!ATTLIST ode
+    xmlns CDATA #FIXED "http://www.intef.es/xsd/ode"
+    version CDATA #IMPLIED>
 
 <!-- ==================== User Preferences ==================== -->
-<!--
-    User preferences like theme selection.
-    Stored as key-value pairs.
--->
+<!-- Stores user configuration settings (e.g., theme selection) -->
 <!ELEMENT userPreferences (userPreference*)>
 <!ELEMENT userPreference (key, value)>
 
 <!-- ==================== ODE Resources ==================== -->
-<!--
-    Project resources including:
-    - odeId: Unique project identifier
-    - odeVersionId: Version identifier
-    - odeVersionName: Version name
-    - isDownload: Download flag
-    - eXeVersion: eXeLearning version
--->
+<!-- Package-level identifiers and version information -->
 <!ELEMENT odeResources (odeResource*)>
 <!ELEMENT odeResource (key, value)>
 
 <!-- ==================== ODE Properties ==================== -->
-<!--
-    Document properties including:
-    - pp_title: Project title
-    - pp_subtitle: Project subtitle
-    - pp_author: Author name
-    - pp_lang: Language code
-    - pp_description: Description
-    - license: License type
-    - exportSource: Export source flag
-    - pp_addExeLink: Add eXe link flag
-    - pp_addPagination: Add pagination flag
-    - pp_addSearchBox: Add search box flag
-    - pp_addAccessibilityToolbar: Add accessibility toolbar flag
-    - pp_extraHeadContent: Extra head content
-    - footer: Footer content
--->
+<!-- Document metadata (title, author, description, export options) -->
 <!ELEMENT odeProperties (odeProperty*)>
 <!ELEMENT odeProperty (key, value)>
 
-<!-- ==================== Navigation Structures ==================== -->
+<!-- ==================== Shared Key-Value Elements ==================== -->
+<!ELEMENT key (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
+
+<!-- ==================== Navigation Structures (Pages) ==================== -->
 <!--
-    Navigation structures define the page hierarchy.
-    Each odeNavStructure represents a page with:
-    - odePageId: Unique page identifier
-    - odeParentPageId: Parent page ID (empty for root pages)
-    - pageName: Page display name
-    - odeNavStructureOrder: Page order within parent
-    - odeNavStructureProperties: Page properties
-    - odePagStructures: Blocks within the page
+    The navigation structure defines the page hierarchy.
+    Each odeNavStructure represents a single page.
+    Pages can have parent-child relationships via odeParentPageId.
 -->
-<!ELEMENT odeNavStructures (odeNavStructure*)>
+<!ELEMENT odeNavStructures (odeNavStructure+)>
 <!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
 
+<!-- Page identification -->
 <!ELEMENT odePageId (#PCDATA)>
 <!ELEMENT odeParentPageId (#PCDATA)>
 <!ELEMENT pageName (#PCDATA)>
 <!ELEMENT odeNavStructureOrder (#PCDATA)>
 
-<!-- Nav Structure Properties -->
-<!--
-    Page properties including:
-    - titleNode: Node title
-    - hidePageTitle: Hide page title flag
-    - titleHtml: HTML title
-    - editableInPage: Editable in page flag
-    - titlePage: Page title
-    - visibility: Visibility flag
-    - highlight: Highlight flag
-    - description: Page description
--->
+<!-- Page-level properties -->
 <!ELEMENT odeNavStructureProperties (odeNavStructureProperty*)>
 <!ELEMENT odeNavStructureProperty (key, value)>
 
-<!-- ==================== Page Structures (Blocks) ==================== -->
+<!-- ==================== Block Structures (odePagStructures) ==================== -->
 <!--
-    Blocks are containers for components (iDevices).
-    Each odePagStructure represents a block with:
-    - odePageId: Parent page ID
-    - odeBlockId: Unique block identifier
-    - blockName: Block display name
-    - iconName: Icon name for the block
-    - odePagStructureOrder: Block order within page
-    - odePagStructureProperties: Block properties
-    - odeComponents: Components within the block
+    Blocks are containers for components within a page.
+    Each block can have visibility settings, custom CSS classes, etc.
 -->
 <!ELEMENT odePagStructures (odePagStructure*)>
 <!ELEMENT odePagStructure (odePageId, odeBlockId, blockName, iconName?, odePagStructureOrder, odePagStructureProperties?, odeComponents?)>
 
+<!-- Block identification -->
 <!ELEMENT odeBlockId (#PCDATA)>
 <!ELEMENT blockName (#PCDATA)>
 <!ELEMENT iconName (#PCDATA)>
 <!ELEMENT odePagStructureOrder (#PCDATA)>
 
-<!-- Block Properties -->
-<!--
-    Block properties including:
-    - visibility: Visibility flag
-    - teacherOnly: Teacher only flag
-    - allowToggle: Allow toggle flag
-    - minimized: Minimized flag
-    - identifier: Custom identifier
-    - cssClass: Custom CSS class
--->
+<!-- Block-level properties -->
 <!ELEMENT odePagStructureProperties (odePagStructureProperty*)>
 <!ELEMENT odePagStructureProperty (key, value)>
 
 <!-- ==================== Components (iDevices) ==================== -->
 <!--
     Components are the interactive learning elements (iDevices).
-    Each odeComponent represents an iDevice with:
-    - odePageId: Parent page ID
-    - odeBlockId: Parent block ID
-    - odeIdeviceId: Unique component identifier
-    - odeIdeviceTypeName: iDevice type name
-    - htmlView: Rendered HTML content
-    - jsonProperties: JSON structured properties
-    - odeComponentsOrder: Component order within block
-    - odeComponentsProperties: Component properties
+    They can store content in two formats:
+    - htmlView: Rendered HTML content (for text-based iDevices)
+    - jsonProperties: Structured JSON data (for interactive iDevices)
 
     Common iDevice types include:
     - text, form, matching, sort, classify, guess, checklist
@@ -146,23 +93,15 @@
 <!ELEMENT odeComponents (odeComponent*)>
 <!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
 
+<!-- Component identification -->
 <!ELEMENT odeIdeviceId (#PCDATA)>
 <!ELEMENT odeIdeviceTypeName (#PCDATA)>
+
+<!-- Component content -->
 <!ELEMENT htmlView (#PCDATA)>
 <!ELEMENT jsonProperties (#PCDATA)>
 <!ELEMENT odeComponentsOrder (#PCDATA)>
 
-<!-- Component Properties -->
-<!--
-    Component properties including:
-    - visibility: Visibility flag
-    - teacherOnly: Teacher only flag
-    - identifier: Custom identifier
-    - cssClass: Custom CSS class
--->
+<!-- Component-level properties -->
 <!ELEMENT odeComponentsProperties (odeComponentsProperty*)>
 <!ELEMENT odeComponentsProperty (key, value)>
-
-<!-- ==================== Common Elements ==================== -->
-<!ELEMENT key (#PCDATA)>
-<!ELEMENT value (#PCDATA)>

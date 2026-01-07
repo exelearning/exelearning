@@ -607,34 +607,40 @@ export function normalizeIdeviceType(typeName: string): string {
 export const ODE_DTD_FILENAME = 'content.dtd';
 
 /**
- * eXeLearning ODE Document DTD
+ * ODE Content DTD
  * Embedded DTD for exports that include content.xml - validates content.xml structure
- * Defines the ODE format with userPreferences, odeResources, odeProperties, odeNavStructures
  */
 export const ODE_DTD_CONTENT = `<!--
-    eXeLearning ODE Document DTD
-    Document Type Definition for eXeLearning content.xml format
+    ODE Content DTD
+    Document Type Definition for eXeLearning ODE XML format (content.xml)
     Version: 2.0
+    Namespace: http://www.intef.es/xsd/ode
     Copyright (C) 2025 eXeLearning - License: AGPL-3.0
 -->
 
-<!-- Root element -->
 <!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
+<!ATTLIST ode
+    xmlns CDATA #FIXED "http://www.intef.es/xsd/ode"
+    version CDATA #IMPLIED>
 
-<!-- ==================== User Preferences ==================== -->
+<!-- User Preferences -->
 <!ELEMENT userPreferences (userPreference*)>
 <!ELEMENT userPreference (key, value)>
 
-<!-- ==================== ODE Resources ==================== -->
+<!-- ODE Resources -->
 <!ELEMENT odeResources (odeResource*)>
 <!ELEMENT odeResource (key, value)>
 
-<!-- ==================== ODE Properties ==================== -->
+<!-- ODE Properties -->
 <!ELEMENT odeProperties (odeProperty*)>
 <!ELEMENT odeProperty (key, value)>
 
-<!-- ==================== Navigation Structures ==================== -->
-<!ELEMENT odeNavStructures (odeNavStructure*)>
+<!-- Shared Key-Value Elements -->
+<!ELEMENT key (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
+
+<!-- Navigation Structures (Pages) -->
+<!ELEMENT odeNavStructures (odeNavStructure+)>
 <!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
 
 <!ELEMENT odePageId (#PCDATA)>
@@ -642,11 +648,10 @@ export const ODE_DTD_CONTENT = `<!--
 <!ELEMENT pageName (#PCDATA)>
 <!ELEMENT odeNavStructureOrder (#PCDATA)>
 
-<!-- Nav Structure Properties -->
 <!ELEMENT odeNavStructureProperties (odeNavStructureProperty*)>
 <!ELEMENT odeNavStructureProperty (key, value)>
 
-<!-- ==================== Page Structures (Blocks) ==================== -->
+<!-- Block Structures -->
 <!ELEMENT odePagStructures (odePagStructure*)>
 <!ELEMENT odePagStructure (odePageId, odeBlockId, blockName, iconName?, odePagStructureOrder, odePagStructureProperties?, odeComponents?)>
 
@@ -655,11 +660,10 @@ export const ODE_DTD_CONTENT = `<!--
 <!ELEMENT iconName (#PCDATA)>
 <!ELEMENT odePagStructureOrder (#PCDATA)>
 
-<!-- Block Properties -->
 <!ELEMENT odePagStructureProperties (odePagStructureProperty*)>
 <!ELEMENT odePagStructureProperty (key, value)>
 
-<!-- ==================== Components (iDevices) ==================== -->
+<!-- Components (iDevices) -->
 <!ELEMENT odeComponents (odeComponent*)>
 <!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
 
@@ -669,11 +673,6 @@ export const ODE_DTD_CONTENT = `<!--
 <!ELEMENT jsonProperties (#PCDATA)>
 <!ELEMENT odeComponentsOrder (#PCDATA)>
 
-<!-- Component Properties -->
 <!ELEMENT odeComponentsProperties (odeComponentsProperty*)>
 <!ELEMENT odeComponentsProperty (key, value)>
-
-<!-- ==================== Common Elements ==================== -->
-<!ELEMENT key (#PCDATA)>
-<!ELEMENT value (#PCDATA)>
 `;
