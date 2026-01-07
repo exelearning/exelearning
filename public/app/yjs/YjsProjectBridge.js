@@ -972,32 +972,6 @@ class YjsProjectBridge {
       </button>
     `;
 
-    // Add styles for undo/redo buttons only
-    const style = document.createElement('style');
-    style.textContent = `
-      .yjs-undo-redo {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        margin-left: 8px;
-      }
-      .btn-undo, .btn-redo {
-        padding: 4px 8px;
-        background: transparent;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .btn-undo:hover:not(:disabled), .btn-redo:hover:not(:disabled) {
-        background: rgba(0,0,0,0.05);
-      }
-      .btn-undo:disabled, .btn-redo:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-    `;
-    document.head.appendChild(style);
-
     // Insert after existing elements
     navbar.appendChild(undoRedoContainer);
 

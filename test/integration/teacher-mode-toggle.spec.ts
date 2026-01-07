@@ -175,10 +175,11 @@ describe('Teacher Mode Toggle Integration', () => {
             expect(result.success).toBe(true);
 
             // exe_export.js teacherMode.init() uses:
-            // $("header.package-header") for single-page
-            // $("header.page-header") for multi-page
-            expect(result.html).toContain('<header class="package-header');
-            expect(result.html).toContain('<header class="page-header"');
+            // $(".package-header") for single-page
+            // $(".page-header") for multi-page
+            // Note: These are now <div> elements inside <header class="main-header">
+            expect(result.html).toContain('class="package-header');
+            expect(result.html).toContain('class="page-header"');
         });
 
         it('should include teacher-only CSS rule in preview', async () => {

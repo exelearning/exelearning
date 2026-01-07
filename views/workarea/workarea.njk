@@ -117,6 +117,9 @@
                     <div class="preview-pinned-header">
                         <h2 class="preview-pinned-title">{{ t.preview or 'Preview' }}</h2>
                         <div class="preview-pinned-actions">
+                            <button id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="{{ t.open_new_tab or 'Open in new tab' }}" aria-label="{{ t.open_new_tab or 'Open preview in new tab' }}">
+                                <span class="small-icon external-link-icon"></span>
+                            </button>
                             <button id="preview-unpin-button" class="btn button-square button-tertiary" title="{{ t.unpin_preview or 'Unpin preview' }}" aria-label="{{ t.unpin_preview or 'Unpin preview' }}">
                                 <span class="small-icon unpin-icon"></span>
                             </button>
@@ -175,6 +178,9 @@
             <div class="preview-panel-header">
                 <h1 class="preview-title">{{ t.preview or 'Preview' }}</h1>
                 <div class="preview-header-actions">
+                    <button id="preview-extract-button" class="btn button-square button-tertiary" title="{{ t.open_new_tab or 'Open in new tab' }}" aria-label="{{ t.open_new_tab or 'Open preview in new tab' }}">
+                        <span class="small-icon external-link-icon"></span>
+                    </button>
                     <button id="preview-pin-button" class="btn button-square button-tertiary" title="{{ t.pin_preview or 'Pin preview' }}" aria-label="{{ t.pin_preview or 'Pin preview to layout' }}">
                         <span class="small-icon pin-icon"></span>
                     </button>
