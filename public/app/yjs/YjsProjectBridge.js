@@ -964,10 +964,10 @@ class YjsProjectBridge {
     undoRedoContainer.id = 'yjs-undo-redo';
     undoRedoContainer.className = 'yjs-undo-redo';
     undoRedoContainer.innerHTML = `
-      <button class="btn btn-sm btn-undo" title="Undo (Ctrl+Z)" disabled>
+      <button class="btn btn-sm btn-undo" title="${_('Undo')} (Ctrl+Z)" disabled>
         <span class="auto-icon" aria-hidden="true">undo</span>
       </button>
-      <button class="btn btn-sm btn-redo" title="Redo (Ctrl+Shift+Z)" disabled>
+      <button class="btn btn-sm btn-redo" title="${_('Redo')} (Ctrl+Shift+Z)" disabled>
         <span class="auto-icon" aria-hidden="true">redo</span>
       </button>
     `;
@@ -1391,7 +1391,7 @@ class YjsProjectBridge {
       Logger.log('[YjsProjectBridge] SaveManager not available, using flush only');
       await this.documentManager.flush();
       this.updateSaveStatus('saved');
-      return { success: true, message: 'Project saved (flush only)' };
+      return { success: true, message: _('Project saved') };
     } catch (e) {
       console.error('[YjsProjectBridge] Save error:', e);
       this.updateSaveStatus('error', e.message);

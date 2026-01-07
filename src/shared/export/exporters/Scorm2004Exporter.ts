@@ -272,6 +272,7 @@ export class Scorm2004Exporter extends Html5Exporter {
 
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
+            projectSubtitle: meta.subtitle || '',
             language: meta.language || 'en',
             theme: meta.theme || 'base',
             customStyles: meta.customStyles || '',

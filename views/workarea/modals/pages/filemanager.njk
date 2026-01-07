@@ -13,7 +13,7 @@
             <div class="modal-body media-library-body">
                 <div class="media-library-toolbar">
                     <button type="button" class="btn btn-primary media-library-upload-btn">
-                        <span class="exe-icon">add</span> {{ 'Add file' | trans }}
+                        <span class="exe-icon">add</span> {{ 'Add files' | trans }}
                     </button>
                     <button type="button" class="btn btn-outline-secondary media-library-newfolder-btn" title="{{ 'New folder' | trans }}">
                         <span class="exe-icon">create_new_folder</span>
@@ -30,7 +30,7 @@
                     </div>
 
                     <div class="media-library-sort-controls">
-                        <label>{{ 'Sort:' | trans }}</label>
+                        <label>{{ 'Sort' | trans }}:</label>
                         <select class="form-select media-library-sort">
                             <option value="name-asc">{{ 'Name A-Z' | trans }}</option>
                             <option value="name-desc">{{ 'Name Z-A' | trans }}</option>
@@ -44,7 +44,7 @@
                     </div>
 
                     <div class="media-library-filter-controls">
-                        <label>{{ 'Type:' | trans }}</label>
+                        <label>{{ 'Type' | trans }}:</label>
                         <select class="form-select media-library-filter">
                             <option value="">{{ 'All' | trans }}</option>
                         </select>
@@ -79,7 +79,7 @@
                         </div>
                         <div class="media-library-empty">
                             <p>{{ 'No media files yet' | trans }}</p>
-                            <p class="media-library-empty-hint">{{ 'Click "Add file" or drop files here to upload' | trans }}</p>
+                            <p class="media-library-empty-hint">{{ 'Click "Add files" or drop files here to upload' | trans }}</p>
                         </div>
                         <div class="media-library-grid">
                             <div class="media-library-loading">{{ 'Loading assets...' | trans }}</div>
@@ -121,7 +121,7 @@
                                     <span class="media-library-filename"></span>
                                 </div>
                                 <div class="metadata-row">
-                                    <label>{{ 'Type:' | trans }}</label>
+                                    <label>{{ 'Type' | trans }}:</label>
                                     <span class="media-library-type"></span>
                                 </div>
                                 <div class="metadata-row">

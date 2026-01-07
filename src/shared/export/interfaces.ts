@@ -25,6 +25,7 @@ export interface ExportDocument {
  */
 export interface ExportMetadata {
     title: string;
+    subtitle?: string;
     author: string;
     language: string;
     theme: string;
@@ -456,6 +457,7 @@ export interface AssetResolverOptions {
  */
 export interface PageRenderOptions {
     projectTitle: string;
+    projectSubtitle?: string;
     language: string;
     theme: string;
     customStyles?: string;

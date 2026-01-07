@@ -1838,10 +1838,10 @@ export default class ModalFilemanager extends Modal {
                     if (dims) {
                         this.dimensionsSpan.textContent = `${dims.width} x ${dims.height} px`;
                     } else {
-                        this.dimensionsSpan.textContent = 'Unknown';
+                        this.dimensionsSpan.textContent = _('Unknown');
                     }
                 } catch (e) {
-                    this.dimensionsSpan.textContent = 'Unknown';
+                    this.dimensionsSpan.textContent = _('Unknown');
                 }
             } else {
                 this.dimensionsRow.style.display = 'none';

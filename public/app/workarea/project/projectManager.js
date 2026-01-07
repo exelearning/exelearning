@@ -1376,7 +1376,7 @@ export default class projectManager {
                 'save';
             document
                 .querySelector('#head-top-download-button')
-                .setAttribute('title', 'Save');
+                .setAttribute('title', _('Save'));
 
             // Expose a stable project key for Electron (per-project save path)
             try {
