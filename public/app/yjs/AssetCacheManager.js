@@ -57,6 +57,12 @@ class AssetCacheManager {
         resolve(this.db);
       };
 
+      // Handle blocked event - occurs when another tab has an older version open
+      request.onblocked = () => {
+        console.warn('[AssetCacheManager] Database upgrade blocked by another tab. Rejecting with empty result.');
+        reject(new Error('Database blocked by another tab'));
+      };
+
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
         if (!db.objectStoreNames.contains(AssetCacheManager.STORE_NAME)) {

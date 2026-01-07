@@ -196,6 +196,12 @@ class AssetManager {
         resolve();
       };
 
+      // Handle blocked event - occurs when another tab has an older version open
+      request.onblocked = () => {
+        console.warn('[AssetManager] Database upgrade blocked by another tab. Rejecting.');
+        reject(new Error('AssetManager database blocked by another tab'));
+      };
+
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
 
