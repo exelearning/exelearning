@@ -95,6 +95,8 @@ export class PageRenderer {
             extraHeadScripts = '',
             onLoadScript = '',
             onUnloadScript = '',
+            // Theme files (CSS/JS from theme root directory)
+            themeFiles = [],
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
@@ -134,7 +136,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -170,6 +172,7 @@ ${madeWithExeHtml}
         extraHeadContent?: string;
         addSearchBox?: boolean;
         detectedLibraries?: string[];
+        themeFiles?: string[];
     }): string {
         const {
             pageTitle,
@@ -185,6 +188,7 @@ ${madeWithExeHtml}
             extraHeadContent = '',
             addSearchBox = false,
             detectedLibraries = [],
+            themeFiles = [],
         } = options;
 
         // Meta tags
@@ -248,8 +252,28 @@ ${madeWithExeHtml}
 
         // Base CSS and theme
         head += `\n<link rel="stylesheet" href="${basePath}content/css/base.css">`;
-        head += `<script src="${basePath}theme/default.js"> </script>`;
-        head += `<link rel="stylesheet" href="${basePath}theme/content.css">`;
+
+        // Theme files: include all JS first, then all CSS, in alphabetical order
+        // If themeFiles is empty, fall back to legacy names for backwards compatibility
+        if (themeFiles.length > 0) {
+            // Sort files alphabetically and separate JS from CSS
+            const sortedFiles = [...themeFiles].sort();
+            const jsFiles = sortedFiles.filter(f => f.endsWith('.js'));
+            const cssFiles = sortedFiles.filter(f => f.endsWith('.css'));
+
+            // JS first (legacy order: scripts before CSS)
+            for (const jsFile of jsFiles) {
+                head += `<script src="${basePath}theme/${jsFile}"> </script>`;
+            }
+            // Then CSS
+            for (const cssFile of cssFiles) {
+                head += `<link rel="stylesheet" href="${basePath}theme/${cssFile}">`;
+            }
+        } else {
+            // Legacy fallback for backwards compatibility
+            head += `<script src="${basePath}theme/default.js"> </script>`;
+            head += `<link rel="stylesheet" href="${basePath}theme/content.css">`;
+        }
 
         // Custom styles
         if (customStyles) {

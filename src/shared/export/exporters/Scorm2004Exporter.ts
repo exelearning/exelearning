@@ -19,6 +19,7 @@ import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '..
 import { Html5Exporter } from './Html5Exporter';
 import { Scorm2004ManifestGenerator } from '../generators/Scorm2004Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 
 export class Scorm2004Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm2004ManifestGenerator | null = null;
@@ -68,13 +69,29 @@ export class Scorm2004Exporter extends Html5Exporter {
             const commonFiles: string[] = [];
             const pageFiles: Record<string, { fileUrl: string; files: string[] }> = {};
 
+            // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes
+            const themeRootFiles: string[] = [];
+            let themeFilesMap: Map<string, Uint8Array> | null = null;
+            try {
+                themeFilesMap = await this.resources.fetchTheme(themeName);
+                for (const [filePath] of themeFilesMap) {
+                    // Track root-level CSS/JS files (no path separator = root level)
+                    if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
+                        themeRootFiles.push(filePath);
+                    }
+                }
+            } catch {
+                // Will use fallback theme later
+                themeRootFiles.push('style.css', 'style.js');
+            }
+
             // 1. Generate HTML pages (with SCORM 2004 support and optional LaTeX pre-rendering)
             let latexWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                let html = this.generateScorm2004PageHtml(page, pages, meta, isIndex);
+                let html = this.generateScorm2004PageHtml(page, pages, meta, isIndex, themeRootFiles);
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
@@ -126,24 +143,16 @@ export class Scorm2004Exporter extends Html5Exporter {
             this.zip.addFile('content/css/base.css', baseCss);
             commonFiles.push('content/css/base.css');
 
-            // 3. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
-            try {
-                const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [filePath, content] of themeFiles) {
-                    // Rename theme files to legacy export format
-                    let exportPath = filePath;
-                    if (filePath === 'style.css') {
-                        exportPath = 'content.css';
-                    } else if (filePath === 'style.js') {
-                        exportPath = 'default.js';
-                    }
-                    this.zip.addFile(`theme/${exportPath}`, content);
-                    commonFiles.push(`theme/${exportPath}`);
+            // 3. Add theme files (already pre-fetched in step 0)
+            if (themeFilesMap) {
+                for (const [filePath, content] of themeFilesMap) {
+                    this.zip.addFile(`theme/${filePath}`, content);
+                    commonFiles.push(`theme/${filePath}`);
                 }
-            } catch {
-                this.zip.addFile('theme/content.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
-                commonFiles.push('theme/content.css', 'theme/default.js');
+            } else {
+                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
+                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
+                commonFiles.push('theme/style.css', 'theme/style.js');
             }
 
             // 4. Fetch and add base libraries
@@ -182,12 +191,14 @@ export class Scorm2004Exporter extends Html5Exporter {
                 // Schema files are optional for package to work
             }
 
-            // 5c. Copy content.xml (always include for re-editing capability)
+            // 5c. Copy content.xml and DTD (always include for re-editing capability)
             try {
                 const contentXml = await this.getContentXml();
                 if (contentXml) {
                     this.zip.addFile('content.xml', contentXml);
                     commonFiles.push('content.xml');
+                    this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                    commonFiles.push(ODE_DTD_FILENAME);
                 }
             } catch {
                 // content.xml is optional
@@ -246,12 +257,18 @@ export class Scorm2004Exporter extends Html5Exporter {
 
     /**
      * Generate SCORM 2004-enabled HTML page
+     * @param page - Page data
+     * @param allPages - All pages in the project
+     * @param meta - Project metadata
+     * @param isIndex - Whether this is the index page
+     * @param themeFiles - List of root-level theme CSS/JS files
      */
     generateScorm2004PageHtml(
         page: ExportPage,
         allPages: ExportPage[],
         meta: ExportMetadata,
         isIndex: boolean,
+        themeFiles?: string[],
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -279,6 +296,8 @@ export class Scorm2004Exporter extends Html5Exporter {
             extraHeadScripts: this.getScorm2004HeadScripts(basePath),
             onLoadScript: 'loadPage()',
             onUnloadScript: 'unloadPage()',
+            // Theme files for HTML head includes
+            themeFiles: themeFiles || [],
         });
     }
 

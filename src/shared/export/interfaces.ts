@@ -497,6 +497,14 @@ export interface PageRenderOptions {
 
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;
+
+    /**
+     * Theme files to include in the HTML head.
+     * Array of filenames (e.g., ['style.css', 'style.js']) from the theme root directory.
+     * Files are included in alphabetical order: JS files first, then CSS files.
+     * If not provided, falls back to legacy 'default.js' and 'content.css'.
+     */
+    themeFiles?: string[];
 }
 
 /**
