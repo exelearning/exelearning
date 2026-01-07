@@ -275,6 +275,13 @@ export interface ZipArchive {
     hasFile(path: string): boolean;
 
     /**
+     * Get all file paths in the archive
+     * Used for generating complete manifest listings
+     * @returns Array of file paths
+     */
+    getFilePaths(): string[];
+
+    /**
      * Generate the ZIP archive
      * @returns ZIP content as buffer
      */

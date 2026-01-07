@@ -101,12 +101,31 @@ class MockAssetProvider implements AssetProvider {
 class MockZipProvider implements ZipProvider {
     files = new Map<string, Uint8Array>();
 
+    createZip() {
+        this.files.clear();
+        return this;
+    }
+
     addFile(path: string, content: Uint8Array | string): void {
         if (typeof content === 'string') {
             this.files.set(path, new TextEncoder().encode(content));
         } else {
             this.files.set(path, content);
         }
+    }
+
+    addFiles(files: Map<string, Uint8Array | string>): void {
+        for (const [path, content] of files) {
+            this.addFile(path, content);
+        }
+    }
+
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
     }
 
     async generate(): Promise<Uint8Array> {

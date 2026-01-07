@@ -110,8 +110,31 @@ class MockAssetProvider implements AssetProvider {
 class MockZipProvider implements ZipProvider {
     files = new Map<string, string | Buffer>();
 
+    createZip() {
+        this.files.clear();
+        return this;
+    }
+
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
+    }
+
+    addFiles(files: Map<string, string | Buffer>): void {
+        for (const [path, content] of files) {
+            this.addFile(path, content);
+        }
+    }
+
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
+    }
+
+    async generate(): Promise<Buffer> {
+        return this.generateAsync();
     }
 
     async generateAsync(): Promise<Buffer> {

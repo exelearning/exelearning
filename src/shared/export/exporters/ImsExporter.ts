@@ -171,10 +171,13 @@ export class ImsExporter extends Html5Exporter {
             // 6. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
-            // 7. Generate imsmanifest.xml
+            // 7. Generate imsmanifest.xml with complete file list
+            // Get all files from the ZIP to ensure the manifest lists ALL resources
+            const allZipFiles = this.zip.getFilePaths();
             const manifestXml = this.manifestGenerator.generate({
                 commonFiles,
                 pageFiles,
+                allZipFiles,
             });
             this.zip.addFile('imsmanifest.xml', manifestXml);
 

@@ -235,4 +235,149 @@ describe('Scorm12ManifestGenerator', () => {
             expect(xml).toContain('</resources>');
         });
     });
+
+    describe('allZipFiles - complete file listing', () => {
+        it('should include all ZIP files in COMMON_FILES when allZipFiles is provided', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'html/chapter-1.html',
+                    'html/section-11.html',
+                    'libs/jquery.js',
+                    'content/css/base.css',
+                    'theme/style.css',
+                    'content/resources/image1.png',
+                    'content/resources/document.pdf',
+                    'imsmanifest.xml',
+                    'imslrm.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                    'page-2': { fileUrl: 'html/chapter-1.html' },
+                    'page-3': { fileUrl: 'html/section-11.html' },
+                },
+            });
+
+            // Common files should be included
+            expect(xml).toContain('<file href="libs/jquery.js"/>');
+            expect(xml).toContain('<file href="content/css/base.css"/>');
+            expect(xml).toContain('<file href="theme/style.css"/>');
+            expect(xml).toContain('<file href="content/resources/image1.png"/>');
+            expect(xml).toContain('<file href="content/resources/document.pdf"/>');
+
+            // Page HTML files should NOT be in COMMON_FILES (they're in page resources)
+            // Check that they're not duplicated in COMMON_FILES section
+            const commonFilesStart = xml.indexOf('identifier="COMMON_FILES"');
+            const commonFilesSection = xml.substring(commonFilesStart);
+            expect(commonFilesSection).not.toContain('href="index.html"');
+
+            // imsmanifest.xml and imslrm.xml should be excluded
+            expect(xml).not.toContain('<file href="imsmanifest.xml"/>');
+            expect(xml).not.toContain('<file href="imslrm.xml"/>');
+        });
+
+        it('should include asset files added after initial file tracking', () => {
+            const xml = generator.generate({
+                commonFiles: ['libs/jquery.js'], // Old tracking (incomplete)
+                allZipFiles: [
+                    'index.html',
+                    'libs/jquery.js',
+                    'content/resources/asset-uuid-1/image.png', // Asset added later
+                    'content/resources/asset-uuid-2/video.mp4', // Asset added later
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            // Should include assets that weren't in the original commonFiles list
+            expect(xml).toContain('<file href="content/resources/asset-uuid-1/image.png"/>');
+            expect(xml).toContain('<file href="content/resources/asset-uuid-2/video.mp4"/>');
+        });
+
+        it('should fallback to commonFiles if allZipFiles is empty', () => {
+            const xml = generator.generate({
+                commonFiles: ['libs/jquery.js', 'theme/style.css'],
+                allZipFiles: [], // Empty array - should fallback
+            });
+
+            expect(xml).toContain('<file href="libs/jquery.js"/>');
+            expect(xml).toContain('<file href="theme/style.css"/>');
+        });
+
+        it('should sort common files alphabetically', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'theme/z-file.css',
+                    'content/a-file.css',
+                    'libs/m-file.js',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            const contentIndex = xml.indexOf('content/a-file.css');
+            const libsIndex = xml.indexOf('libs/m-file.js');
+            const themeIndex = xml.indexOf('theme/z-file.css');
+
+            // Files should be sorted alphabetically
+            expect(contentIndex).toBeLessThan(libsIndex);
+            expect(libsIndex).toBeLessThan(themeIndex);
+        });
+
+        it('should properly categorize files for multi-page projects', () => {
+            const multiPageGenerator = new Scorm12ManifestGenerator('test', createTestPages(), {
+                title: 'Test',
+            });
+
+            const xml = multiPageGenerator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'html/chapter-1.html',
+                    'html/section-11.html',
+                    'libs/common.js',
+                    'content/shared-asset.png',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                    'page-2': { fileUrl: 'html/chapter-1.html' },
+                    'page-3': { fileUrl: 'html/section-11.html' },
+                },
+            });
+
+            // All page resources should exist
+            expect(xml).toContain('identifier="RES-page-1"');
+            expect(xml).toContain('identifier="RES-page-2"');
+            expect(xml).toContain('identifier="RES-page-3"');
+
+            // COMMON_FILES should contain shared resources
+            expect(xml).toContain('<file href="libs/common.js"/>');
+            expect(xml).toContain('<file href="content/shared-asset.png"/>');
+        });
+
+        it('should handle iDevice resources in allZipFiles', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'idevices/text/text.css',
+                    'idevices/text/text.js',
+                    'idevices/quiz/quiz.css',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            // iDevice files should be in COMMON_FILES
+            expect(xml).toContain('<file href="idevices/text/text.css"/>');
+            expect(xml).toContain('<file href="idevices/text/text.js"/>');
+            expect(xml).toContain('<file href="idevices/quiz/quiz.css"/>');
+        });
+    });
 });

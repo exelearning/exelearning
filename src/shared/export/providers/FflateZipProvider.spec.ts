@@ -111,6 +111,63 @@ describe('FflateZipProvider', () => {
             });
         });
 
+        describe('getFilePaths', () => {
+            it('should return empty array for empty archive', () => {
+                const archive = provider.createZip();
+                expect(archive.getFilePaths()).toEqual([]);
+            });
+
+            it('should return all file paths in the archive', () => {
+                const archive = provider.createZip();
+                archive.addFile('file1.txt', 'content1');
+                archive.addFile('folder/file2.txt', 'content2');
+                archive.addFile('folder/subfolder/file3.txt', 'content3');
+
+                const paths = archive.getFilePaths();
+
+                expect(paths).toContain('file1.txt');
+                expect(paths).toContain('folder/file2.txt');
+                expect(paths).toContain('folder/subfolder/file3.txt');
+                expect(paths.length).toBe(3);
+            });
+
+            it('should return paths in insertion order', () => {
+                const archive = provider.createZip();
+                archive.addFile('a.txt', 'a');
+                archive.addFile('b.txt', 'b');
+                archive.addFile('c.txt', 'c');
+
+                const paths = archive.getFilePaths();
+
+                expect(paths[0]).toBe('a.txt');
+                expect(paths[1]).toBe('b.txt');
+                expect(paths[2]).toBe('c.txt');
+            });
+
+            it('should work for manifest generation use case', () => {
+                const archive = provider.createZip();
+
+                // Add typical SCORM export files
+                archive.addFile('index.html', '<html>...</html>');
+                archive.addFile('html/chapter1.html', '<html>...</html>');
+                archive.addFile('libs/jquery.js', '// jquery');
+                archive.addFile('theme/style.css', '/* css */');
+                archive.addFile('content/resources/image1.png', new Uint8Array([1, 2, 3]));
+                archive.addFile('idevices/text/text.css', '/* idevice */');
+
+                const paths = archive.getFilePaths();
+
+                // Verify all files are listed for manifest generation
+                expect(paths.length).toBe(6);
+                expect(paths).toContain('index.html');
+                expect(paths).toContain('html/chapter1.html');
+                expect(paths).toContain('libs/jquery.js');
+                expect(paths).toContain('theme/style.css');
+                expect(paths).toContain('content/resources/image1.png');
+                expect(paths).toContain('idevices/text/text.css');
+            });
+        });
+
         describe('generate', () => {
             it('should generate a valid ZIP buffer', async () => {
                 const archive = provider.createZip();

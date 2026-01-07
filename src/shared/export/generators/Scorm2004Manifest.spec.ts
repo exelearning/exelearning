@@ -148,4 +148,102 @@ describe('Scorm2004ManifestGenerator', () => {
             expect(xml).toContain('</organizations>');
         });
     });
+
+    describe('allZipFiles - complete file listing', () => {
+        it('should include all ZIP files in COMMON_FILES when allZipFiles is provided', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'html/chapter-1.html',
+                    'html/section-11.html',
+                    'libs/jquery.js',
+                    'content/css/base.css',
+                    'theme/style.css',
+                    'content/resources/image1.png',
+                    'imsmanifest.xml',
+                    'imslrm.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                    'page-2': { fileUrl: 'html/chapter-1.html' },
+                    'page-3': { fileUrl: 'html/section-11.html' },
+                },
+            });
+
+            // Common files should be included
+            expect(xml).toContain('<file href="libs/jquery.js"/>');
+            expect(xml).toContain('<file href="content/css/base.css"/>');
+            expect(xml).toContain('<file href="theme/style.css"/>');
+            expect(xml).toContain('<file href="content/resources/image1.png"/>');
+
+            // imsmanifest.xml and imslrm.xml should be excluded
+            expect(xml).not.toContain('<file href="imsmanifest.xml"/>');
+            expect(xml).not.toContain('<file href="imslrm.xml"/>');
+        });
+
+        it('should include asset files added after initial file tracking', () => {
+            const xml = generator.generate({
+                commonFiles: ['libs/jquery.js'],
+                allZipFiles: [
+                    'index.html',
+                    'libs/jquery.js',
+                    'content/resources/asset-uuid-1/image.png',
+                    'content/resources/asset-uuid-2/video.mp4',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            expect(xml).toContain('<file href="content/resources/asset-uuid-1/image.png"/>');
+            expect(xml).toContain('<file href="content/resources/asset-uuid-2/video.mp4"/>');
+        });
+
+        it('should fallback to commonFiles if allZipFiles is empty', () => {
+            const xml = generator.generate({
+                commonFiles: ['libs/jquery.js', 'theme/style.css'],
+                allZipFiles: [],
+            });
+
+            expect(xml).toContain('<file href="libs/jquery.js"/>');
+            expect(xml).toContain('<file href="theme/style.css"/>');
+        });
+
+        it('should use default page URLs when pageFiles not provided', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'html/chapter-1.html',
+                    'html/section-11.html',
+                    'libs/common.js',
+                    'imsmanifest.xml',
+                ],
+            });
+
+            expect(xml).toContain('<file href="libs/common.js"/>');
+        });
+
+        it('should sort common files alphabetically', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'theme/z-file.css',
+                    'content/a-file.css',
+                    'libs/m-file.js',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            const contentIndex = xml.indexOf('content/a-file.css');
+            const libsIndex = xml.indexOf('libs/m-file.js');
+            const themeIndex = xml.indexOf('theme/z-file.css');
+
+            expect(contentIndex).toBeLessThan(libsIndex);
+            expect(libsIndex).toBeLessThan(themeIndex);
+        });
+    });
 });
