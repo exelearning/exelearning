@@ -89,6 +89,8 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch base libraries (jQuery, Bootstrap, common.js, etc.)
+     * Only truly essential libraries - content-specific libraries (exe_lightbox, exe_tooltips,
+     * exe_effects, jquery-ui, etc.) are detected and included via LibraryDetector
      * @returns Map of file paths to content
      */
     async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
@@ -109,9 +111,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
             { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
-            // exe_lightbox (always included - hardcoded in PageRenderer)
-            { src: 'app/common/exe_lightbox/exe_lightbox.js', dest: 'exe_lightbox/exe_lightbox.js' },
-            { src: 'app/common/exe_lightbox/exe_lightbox.css', dest: 'exe_lightbox/exe_lightbox.css' },
         ];
 
         for (const { src, dest } of libsMapping) {

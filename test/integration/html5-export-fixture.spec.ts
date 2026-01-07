@@ -144,11 +144,14 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('libs/bootstrap/bootstrap.bundle.min.js');
         });
 
-        it('should include exe_lightbox scripts', async () => {
+        it('should NOT include exe_lightbox when content does not use lightbox', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('libs/exe_lightbox/exe_lightbox.js');
-            expect(exportedIndexHtml).toContain('libs/exe_lightbox/exe_lightbox.css');
+            // exe_lightbox is now conditionally included only when content uses lightbox
+            // (rel="lightbox" attribute or imageGallery class)
+            // This fixture doesn't use lightbox, so it should not be included
+            expect(exportedIndexHtml).not.toContain('libs/exe_lightbox/exe_lightbox.js');
+            expect(exportedIndexHtml).not.toContain('libs/exe_lightbox/exe_lightbox.css');
         });
 
         it('should use theme/content.css (not style.css)', async () => {
