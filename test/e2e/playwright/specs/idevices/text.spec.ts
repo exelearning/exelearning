@@ -1640,6 +1640,17 @@ test.describe('Text iDevice', () => {
                 { timeout: 15000 },
             );
 
+            // Wait for iframe to appear in the iDevice content (PDF was inserted)
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    if (!idevice) return false;
+                    const iframe = idevice.querySelector('iframe');
+                    return !!iframe;
+                },
+                { timeout: 10000 },
+            );
+
             // Save project
             await workarea.save();
             await page.waitForTimeout(1000);
@@ -1663,21 +1674,21 @@ test.describe('Text iDevice', () => {
                         const card = doc.querySelector('.exe-pdf-preview-card');
                         return !!viewer || !!card;
                     },
-                    { timeout: 30000, polling: 500 },
+                    { timeout: 20000, polling: 500 },
                 )
                 .catch(() => {
                     // If timeout, continue to get diagnostic info
                 });
 
             // Additional wait for canvas rendering
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(1000);
 
             // Check for PDF.js viewer in preview iframe
             // PDF.js renders PDFs to canvas because Chrome blocks native PDF viewer
             // in nested blob URL contexts (see previewPanel.js for detailed explanation)
             const viewerInfo = await page.evaluate(() => {
                 const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                if (!previewIframe?.contentDocument) return { error: 'No preview iframe' };
+                if (!previewIframe?.contentDocument) return { hasPdfJsViewer: false, hasFallbackCard: false };
 
                 const doc = previewIframe.contentDocument;
 
@@ -1689,12 +1700,6 @@ test.describe('Text iDevice', () => {
                 // Fallback card (used if PDF.js fails)
                 const card = doc.querySelector('.exe-pdf-preview-card');
 
-                // Get diagnostic info about what's in the preview
-                const iframes = doc.querySelectorAll('iframe');
-                const objects = doc.querySelectorAll('object[type*="pdf"]');
-                const embeds = doc.querySelectorAll('embed[type*="pdf"]');
-                const allContent = doc.body?.innerHTML?.substring(0, 500) || '';
-
                 return {
                     hasPdfJsViewer: !!viewer,
                     hasToolbar: !!toolbar,
@@ -1702,22 +1707,12 @@ test.describe('Text iDevice', () => {
                     hasFallbackCard: !!card,
                     canvasWidth: (canvas as HTMLCanvasElement)?.width || 0,
                     canvasHeight: (canvas as HTMLCanvasElement)?.height || 0,
-                    // Diagnostic info
-                    iframeCount: iframes.length,
-                    objectCount: objects.length,
-                    embedCount: embeds.length,
-                    contentPreview: allContent,
                 };
             });
 
             // Verify PDF.js viewer rendered successfully
             // Either PDF.js viewer with canvas OR fallback card should be present
             const pdfRendered = viewerInfo.hasPdfJsViewer || viewerInfo.hasFallbackCard;
-
-            // If test fails, provide diagnostic info
-            if (!pdfRendered) {
-                console.log('PDF Preview Debug Info:', JSON.stringify(viewerInfo, null, 2));
-            }
 
             expect(pdfRendered).toBe(true);
 

@@ -690,19 +690,19 @@ export default class PreviewPanelManager {
         // Navigation buttons
         var prevBtn = document.createElement('button');
         prevBtn.innerHTML = '◀';
-        prevBtn.title = _('Previous page');
+        prevBtn.title = 'Previous page';
         prevBtn.style.cssText = 'background:#525659;border:none;color:#fff;padding:4px 8px;' +
             'border-radius:3px;cursor:pointer;font-size:12px;';
         prevBtn.disabled = true;
 
         var pageInfo = document.createElement('span');
         pageInfo.className = 'exe-pdf-page-info';
-        pageInfo.textContent = _('Loading...');
+        pageInfo.textContent = 'Loading...';
         pageInfo.style.cssText = 'color:#fff;font-size:12px;min-width:80px;text-align:center;';
 
         var nextBtn = document.createElement('button');
         nextBtn.innerHTML = '▶';
-        nextBtn.title = _('Next page');
+        nextBtn.title = 'Next page';
         nextBtn.style.cssText = prevBtn.style.cssText;
         nextBtn.disabled = true;
 
@@ -713,7 +713,7 @@ export default class PreviewPanelManager {
         // Zoom controls
         var zoomOutBtn = document.createElement('button');
         zoomOutBtn.innerHTML = '−';
-        zoomOutBtn.title = _('Zoom out');
+        zoomOutBtn.title = 'Zoom out';
         zoomOutBtn.style.cssText = prevBtn.style.cssText + 'font-size:16px;font-weight:bold;';
 
         var zoomInfo = document.createElement('span');
@@ -723,12 +723,12 @@ export default class PreviewPanelManager {
 
         var zoomInBtn = document.createElement('button');
         zoomInBtn.innerHTML = '+';
-        zoomInBtn.title = _('Zoom in');
+        zoomInBtn.title = 'Zoom in';
         zoomInBtn.style.cssText = zoomOutBtn.style.cssText;
 
         var fitBtn = document.createElement('button');
         fitBtn.innerHTML = '⛶';
-        fitBtn.title = _('Fit to width');
+        fitBtn.title = 'Fit to width';
         fitBtn.style.cssText = prevBtn.style.cssText + 'font-size:14px;';
 
         // Separator
@@ -738,7 +738,7 @@ export default class PreviewPanelManager {
         // Open in popup button
         var popupBtn = document.createElement('button');
         popupBtn.innerHTML = '↗';
-        popupBtn.title = _('Open in new window');
+        popupBtn.title = 'Open in new window';
         popupBtn.style.cssText = prevBtn.style.cssText + 'font-size:14px;';
 
         toolbar.appendChild(prevBtn);
@@ -819,7 +819,7 @@ export default class PreviewPanelManager {
             els.zoomInBtn.disabled = state.zoomIndex >= ZOOM_LEVELS.length - 1;
         } catch (e) {
             console.error('[PreviewPanel] Failed to render page:', e);
-            els.pageInfo.textContent = _('Error');
+            els.pageInfo.textContent = 'Error';
         }
 
         state.rendering = false;
@@ -924,7 +924,7 @@ export default class PreviewPanelManager {
             console.log('[PreviewPanel] PDF loaded with', state.totalPages, 'pages');
         } catch (e) {
             console.error('[PreviewPanel] Failed to load PDF:', e);
-            els.pageInfo.textContent = _('Error loading PDF');
+            els.pageInfo.textContent = 'Error loading PDF';
         }
     }
 
@@ -944,11 +944,11 @@ export default class PreviewPanelManager {
         icon.style.cssText = 'margin-bottom:8px;';
 
         var label = document.createElement('div');
-        label.textContent = _('PDF');
+        label.textContent = 'PDF';
         label.style.cssText = 'font-size:14px;font-weight:600;color:#dc3545;margin-bottom:4px;';
 
         var hint = document.createElement('div');
-        hint.textContent = _('Click to open');
+        hint.textContent = 'Click to open';
         hint.style.cssText = 'font-size:12px;color:#666;';
 
         card.appendChild(icon);
@@ -1031,9 +1031,15 @@ export default class PreviewPanelManager {
                 // if we converted to blob URL, Chrome's native PDF viewer doesn't work in
                 // nested blob URL contexts. Solution: use PDF.js to render to canvas.
                 if (src.startsWith('asset://')) {
-                    var match = src.match(/^asset:\\/\\/([^\\/]+)/);
-                    if (!match) continue;
-                    var assetId = match[1];
+                    // Extract asset ID from asset:// URL
+                    // Handles multiple formats:
+                    // - New format: asset://uuid.ext (e.g., asset://abc123.pdf)
+                    // - Legacy format: asset://uuid/filename (e.g., asset://abc123/doc.pdf)
+                    var path = src.replace('asset://', '');
+                    var uuidMatch = path.match(/^([a-f0-9-]{36})(?:\\.[a-z0-9]+)?$/i);
+                    var legacyMatch = path.match(/^([a-f0-9-]+)\\//);
+                    var assetId = uuidMatch ? uuidMatch[1] : (legacyMatch ? legacyMatch[1] : null);
+                    if (!assetId) continue;
 
                     // If PDF.js loaded successfully, render inline with full viewer controls
                     if (pdfjsLib) {
@@ -1046,7 +1052,7 @@ export default class PreviewPanelManager {
                             console.log('[PreviewPanel] Rendered PDF with PDF.js');
                         } catch (e) {
                             console.error('[PreviewPanel] Failed to load PDF:', e);
-                            viewer._elements.pageInfo.textContent = _('Error') + ': ' + e.message;
+                            viewer._elements.pageInfo.textContent = 'Error: ' + e.message;
                         }
                     } else {
                         // Fallback to card
