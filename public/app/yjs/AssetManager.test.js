@@ -5636,6 +5636,222 @@ describe('resolveHtmlWithAssets', () => {
     expect(resolvedHtml).toContain('scrollIntoView');
     expect(resolvedHtml).toContain("href.charAt(0) === '#'");
   });
+
+  it('adds target="_blank" to external links', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<body>
+  <a href="https://example.com">External</a>
+  <a href="http://test.com">Another</a>
+  <a href="./local.html">Local</a>
+</body>
+</html>`;
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+
+    let capturedBlob = null;
+    global.URL.createObjectURL = mock((blob) => {
+      capturedBlob = blob;
+      return 'blob:test-external';
+    });
+
+    mockYjsBridge._assetsMap.set('uuid-external', {
+      filename: 'index.html',
+      folderPath: '',
+      mime: 'text/html'
+    });
+    storedBlobs.set('uuid-external', { id: 'uuid-external', projectId: 'project-123', blob: htmlBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-external');
+    expect(capturedBlob).not.toBeNull();
+    const resolvedHtml = await capturedBlob.text();
+
+    // External links should have target="_blank"
+    expect(resolvedHtml).toContain('target="_blank"');
+    expect(resolvedHtml).toContain('rel="noopener noreferrer"');
+  });
+
+  it('processes inline style url() references', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<body>
+  <div style="background: url('images/bg.png');"></div>
+</body>
+</html>`;
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+
+    let capturedBlob = null;
+    global.URL.createObjectURL = mock((blob) => {
+      capturedBlob = blob;
+      return 'blob:test-inline-style';
+    });
+
+    mockYjsBridge._assetsMap.set('uuid-inline', {
+      filename: 'index.html',
+      folderPath: 'website',
+      mime: 'text/html'
+    });
+    mockYjsBridge._assetsMap.set('uuid-bg', {
+      filename: 'bg.png',
+      folderPath: 'website/images',
+      mime: 'image/png'
+    });
+    storedBlobs.set('uuid-inline', { id: 'uuid-inline', projectId: 'project-123', blob: htmlBlob });
+    storedBlobs.set('uuid-bg', { id: 'uuid-bg', projectId: 'project-123', blob: new Blob(['PNG'], { type: 'image/png' }) });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-inline');
+    expect(result).not.toBeNull();
+    // The inline style should be processed (bg.png resolved)
+  });
+
+  it('processes <style> tag url() references', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .icon { background: url('icons/star.png'); }
+  </style>
+</head>
+<body></body>
+</html>`;
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+
+    let capturedBlob = null;
+    global.URL.createObjectURL = mock((blob) => {
+      capturedBlob = blob;
+      return 'blob:test-style-tag';
+    });
+
+    mockYjsBridge._assetsMap.set('uuid-style', {
+      filename: 'index.html',
+      folderPath: 'site',
+      mime: 'text/html'
+    });
+    mockYjsBridge._assetsMap.set('uuid-star', {
+      filename: 'star.png',
+      folderPath: 'site/icons',
+      mime: 'image/png'
+    });
+    storedBlobs.set('uuid-style', { id: 'uuid-style', projectId: 'project-123', blob: htmlBlob });
+    storedBlobs.set('uuid-star', { id: 'uuid-star', projectId: 'project-123', blob: new Blob(['STAR'], { type: 'image/png' }) });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-style');
+    expect(result).not.toBeNull();
+  });
+
+  it('converts external CSS link to inline style', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body><p>Test</p></body>
+</html>`;
+    const cssContent = '.test { color: red; }';
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+    const cssBlob = new Blob([cssContent], { type: 'text/css' });
+
+    let capturedBlob = null;
+    global.URL.createObjectURL = mock((blob) => {
+      capturedBlob = blob;
+      return 'blob:test-css-inline';
+    });
+
+    mockYjsBridge._assetsMap.set('uuid-html-css', {
+      filename: 'index.html',
+      folderPath: 'mysite',
+      mime: 'text/html'
+    });
+    mockYjsBridge._assetsMap.set('uuid-css', {
+      filename: 'main.css',
+      folderPath: 'mysite/styles',
+      mime: 'text/css'
+    });
+    storedBlobs.set('uuid-html-css', { id: 'uuid-html-css', projectId: 'project-123', blob: htmlBlob });
+    storedBlobs.set('uuid-css', { id: 'uuid-css', projectId: 'project-123', blob: cssBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-html-css');
+    expect(capturedBlob).not.toBeNull();
+    const resolvedHtml = await capturedBlob.text();
+
+    // CSS link should be converted to inline <style>
+    expect(resolvedHtml).toContain('<style>');
+    expect(resolvedHtml).toContain('.test { color: red; }');
+    // Original <link> should be removed
+    expect(resolvedHtml).not.toContain('<link rel="stylesheet"');
+  });
+
+  it('preserves media attribute when converting CSS link to inline style', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="print.css" media="print">
+</head>
+<body></body>
+</html>`;
+    const cssContent = '@media print { body { font-size: 12pt; } }';
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+    const cssBlob = new Blob([cssContent], { type: 'text/css' });
+
+    let capturedBlob = null;
+    global.URL.createObjectURL = mock((blob) => {
+      capturedBlob = blob;
+      return 'blob:test-css-media';
+    });
+
+    mockYjsBridge._assetsMap.set('uuid-html-media', {
+      filename: 'index.html',
+      folderPath: '',
+      mime: 'text/html'
+    });
+    mockYjsBridge._assetsMap.set('uuid-print-css', {
+      filename: 'print.css',
+      folderPath: '',
+      mime: 'text/css'
+    });
+    storedBlobs.set('uuid-html-media', { id: 'uuid-html-media', projectId: 'project-123', blob: htmlBlob });
+    storedBlobs.set('uuid-print-css', { id: 'uuid-print-css', projectId: 'project-123', blob: cssBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-html-media');
+    expect(capturedBlob).not.toBeNull();
+    const resolvedHtml = await capturedBlob.text();
+
+    // Inline style should preserve media attribute
+    expect(resolvedHtml).toContain('media="print"');
+    expect(resolvedHtml).toContain('<style');
+  });
+
+  it('keeps HTML anchor links unchanged for navigation handler', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<body>
+  <a href="./page2.html">Page 2</a>
+  <a href="../other/page3.htm">Page 3</a>
+</body>
+</html>`;
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+
+    let capturedBlob = null;
+    global.URL.createObjectURL = mock((blob) => {
+      capturedBlob = blob;
+      return 'blob:test-nav-links';
+    });
+
+    mockYjsBridge._assetsMap.set('uuid-nav', {
+      filename: 'index.html',
+      folderPath: 'site',
+      mime: 'text/html'
+    });
+    storedBlobs.set('uuid-nav', { id: 'uuid-nav', projectId: 'project-123', blob: htmlBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-nav');
+    expect(capturedBlob).not.toBeNull();
+    const resolvedHtml = await capturedBlob.text();
+
+    // HTML anchor links should remain unchanged (not converted to blob URLs)
+    // They will be handled by the navigation handler script
+    expect(resolvedHtml).toContain('href="./page2.html"');
+    expect(resolvedHtml).toContain('href="../other/page3.htm"');
+  });
 });
 
 describe('_generateLinkHandlerScript', () => {
@@ -5791,6 +6007,111 @@ describe('_resolveUrlsInCssAsDataUrls', () => {
     const result = await assetManager._resolveUrlsInCssAsDataUrls(css, 'folder');
 
     expect(result).toContain('url("missing/image.png")');
+  });
+});
+
+describe('_resolveUrlsInCss (blob URL version)', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('returns unchanged CSS if no url() references', async () => {
+    const css = '.class { color: red; font-size: 14px; }';
+    const resolvedUrls = new Map();
+    const result = await assetManager._resolveUrlsInCss(css, 'folder', resolvedUrls);
+
+    expect(result).toBe(css);
+  });
+
+  it('skips absolute URLs', async () => {
+    const css = '.bg { background: url("https://example.com/image.png"); }';
+    const resolvedUrls = new Map();
+    vi.spyOn(assetManager, 'findAssetByRelativePath');
+
+    const result = await assetManager._resolveUrlsInCss(css, 'folder', resolvedUrls);
+
+    expect(assetManager.findAssetByRelativePath).not.toHaveBeenCalled();
+    expect(result).toContain('https://example.com/image.png');
+  });
+
+  it('skips data URLs', async () => {
+    const css = '.bg { background: url("data:image/png;base64,ABC"); }';
+    const resolvedUrls = new Map();
+    vi.spyOn(assetManager, 'findAssetByRelativePath');
+
+    const result = await assetManager._resolveUrlsInCss(css, 'folder', resolvedUrls);
+
+    expect(assetManager.findAssetByRelativePath).not.toHaveBeenCalled();
+    expect(result).toContain('data:image/png;base64,ABC');
+  });
+
+  it('resolves relative URLs to blob URLs', async () => {
+    const css = '.bg { background: url("images/bg.png"); }';
+    const resolvedUrls = new Map();
+
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue({ id: 'bg-uuid' });
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue('blob:http://localhost/bg-blob');
+
+    const result = await assetManager._resolveUrlsInCss(css, 'folder', resolvedUrls);
+
+    expect(result).toContain('url("blob:http://localhost/bg-blob")');
+    expect(resolvedUrls.get('images/bg.png')).toBe('blob:http://localhost/bg-blob');
+  });
+
+  it('uses already resolved URLs from map', async () => {
+    const css = '.bg { background: url("images/bg.png"); }';
+    const resolvedUrls = new Map([['images/bg.png', 'blob:http://localhost/cached-blob']]);
+
+    vi.spyOn(assetManager, 'findAssetByRelativePath');
+    vi.spyOn(assetManager, 'resolveAssetURL');
+
+    const result = await assetManager._resolveUrlsInCss(css, 'folder', resolvedUrls);
+
+    expect(assetManager.findAssetByRelativePath).not.toHaveBeenCalled();
+    expect(assetManager.resolveAssetURL).not.toHaveBeenCalled();
+    expect(result).toContain('url("blob:http://localhost/cached-blob")');
+  });
+
+  it('handles multiple url() references', async () => {
+    const css = '.a { background: url("a.png"); } .b { background: url("b.png"); }';
+    const resolvedUrls = new Map();
+
+    vi.spyOn(assetManager, 'findAssetByRelativePath')
+      .mockReturnValueOnce({ id: 'a-uuid' })
+      .mockReturnValueOnce({ id: 'b-uuid' });
+    vi.spyOn(assetManager, 'resolveAssetURL')
+      .mockResolvedValueOnce('blob:http://localhost/a-blob')
+      .mockResolvedValueOnce('blob:http://localhost/b-blob');
+
+    const result = await assetManager._resolveUrlsInCss(css, 'folder', resolvedUrls);
+
+    expect(result).toContain('url("blob:http://localhost/a-blob")');
+    expect(result).toContain('url("blob:http://localhost/b-blob")');
+  });
+
+  it('leaves unresolvable URLs unchanged', async () => {
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue(null);
+
+    const css = '.bg { background: url("missing/image.png"); }';
+    const resolvedUrls = new Map();
+    const result = await assetManager._resolveUrlsInCss(css, 'folder', resolvedUrls);
+
+    expect(result).toContain('url("missing/image.png")');
+  });
+
+  it('handles resolveAssetURL returning null', async () => {
+    const css = '.bg { background: url("images/bg.png"); }';
+    const resolvedUrls = new Map();
+
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue({ id: 'bg-uuid' });
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue(null);
+
+    const result = await assetManager._resolveUrlsInCss(css, 'folder', resolvedUrls);
+
+    // URL should remain unchanged when resolution fails
+    expect(result).toContain('url("images/bg.png")');
   });
 });
 
