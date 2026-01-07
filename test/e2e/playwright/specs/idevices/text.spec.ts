@@ -2572,9 +2572,7 @@ test.describe('Text iDevice', () => {
 
             // 6. Navigate into the extracted folder to find index.html
             // Folder items have class "media-library-folder" and data-folder-name attribute
-            const extractedFolder = page.locator(
-                '#modalFileManager .media-library-folder[data-folder-name="aaa_web"]',
-            );
+            const extractedFolder = page.locator('#modalFileManager .media-library-folder[data-folder-name="aaa_web"]');
 
             // Double-click to navigate into the folder
             await expect(extractedFolder).toBeVisible({ timeout: 5000 });
@@ -2585,9 +2583,7 @@ test.describe('Text iDevice', () => {
             await page.waitForFunction(
                 () => {
                     const items = document.querySelectorAll('#modalFileManager .media-library-item');
-                    return Array.from(items).some(item =>
-                        item.textContent?.toLowerCase().includes('index.html'),
-                    );
+                    return Array.from(items).some(item => item.textContent?.toLowerCase().includes('index.html'));
                 },
                 { timeout: 15000 },
             );
