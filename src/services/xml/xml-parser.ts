@@ -189,6 +189,7 @@ function parseRealOdeFormat(parsed: RealOdeXmlDocument): ParsedOdeStructure {
  */
 interface NormalizedMetadata {
     title: string;
+    subtitle: string;
     author: string;
     description: string;
     license: string;
@@ -212,6 +213,7 @@ interface NormalizedMetadata {
 function extractMetadata(meta: OdeXmlMeta): NormalizedMetadata {
     return {
         title: meta.title || 'Untitled',
+        subtitle: meta.subtitle || '',
         author: meta.author || '',
         description: meta.description || '',
         license: meta.license || '',
@@ -240,6 +242,7 @@ function extractMetadataFromOdeProperties(
 ): NormalizedMetadata {
     const meta: NormalizedMetadata = {
         title: 'Untitled',
+        subtitle: '',
         author: '',
         description: '',
         license: '',
@@ -259,8 +262,10 @@ function extractMetadataFromOdeProperties(
         const rawValue = prop.value;
         const stringValue = rawValue !== null && rawValue !== undefined ? String(rawValue) : '';
 
-        if (key.includes('title') || key.includes('pp_title')) {
+        if (key === 'pp_title' || (key.includes('title') && !key.includes('subtitle'))) {
             meta.title = stringValue || meta.title;
+        } else if (key === 'pp_subtitle' || key.includes('subtitle')) {
+            meta.subtitle = stringValue;
         } else if (key.includes('author')) {
             meta.author = stringValue;
         } else if (key.includes('description')) {
