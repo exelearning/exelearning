@@ -127,11 +127,11 @@ export default class ModalOdeBrokenLinks extends Modal {
         switch (status) {
             case 'pending':
             case 'validating':
-                return '<span class="spinner-border spinner-border-sm text-secondary" role="status" aria-label="Validating"></span>';
+                return `<span class="spinner-border spinner-border-sm text-secondary" role="status" aria-label="${_('Validating')}"></span>`;
             case 'valid':
-                return '<span class="text-success" title="Valid">&#10003;</span>';
+                return `<span class="text-success" title="${_('Valid')}">&#10003;</span>`;
             case 'broken':
-                return `<span class="text-danger" title="${error || 'Error'}">&#10007;</span>`;
+                return `<span class="text-danger" title="${error || _('Error')}">&#10007;</span>`;
             default:
                 return '';
         }

@@ -131,11 +131,11 @@ export default class PreviewPanelManager {
                         await project.exportToElpxViaYjs({ saveAs: true });
                     } else {
                         Logger.error('[PreviewPanel] exportToElpxViaYjs not available');
-                        alert('ELPX export not available. Please save your project first.');
+                        alert(_('ELPX export not available. Please save your project first.'));
                     }
                 } catch (err) {
                     Logger.error('[PreviewPanel] ELPX export failed:', err);
-                    alert('Error generating ELPX file: ' + err.message);
+                    alert(_('Error generating ELPX file:') + ' ' + err.message);
                 }
                 return;
             }
@@ -568,19 +568,19 @@ export default class PreviewPanelManager {
         // Navigation buttons
         var prevBtn = document.createElement('button');
         prevBtn.innerHTML = '◀';
-        prevBtn.title = 'Previous page';
+        prevBtn.title = _('Previous page');
         prevBtn.style.cssText = 'background:#525659;border:none;color:#fff;padding:4px 8px;' +
             'border-radius:3px;cursor:pointer;font-size:12px;';
         prevBtn.disabled = true;
 
         var pageInfo = document.createElement('span');
         pageInfo.className = 'exe-pdf-page-info';
-        pageInfo.textContent = 'Loading...';
+        pageInfo.textContent = _('Loading...');
         pageInfo.style.cssText = 'color:#fff;font-size:12px;min-width:80px;text-align:center;';
 
         var nextBtn = document.createElement('button');
         nextBtn.innerHTML = '▶';
-        nextBtn.title = 'Next page';
+        nextBtn.title = _('Next page');
         nextBtn.style.cssText = prevBtn.style.cssText;
         nextBtn.disabled = true;
 
@@ -591,7 +591,7 @@ export default class PreviewPanelManager {
         // Zoom controls
         var zoomOutBtn = document.createElement('button');
         zoomOutBtn.innerHTML = '−';
-        zoomOutBtn.title = 'Zoom out';
+        zoomOutBtn.title = _('Zoom out');
         zoomOutBtn.style.cssText = prevBtn.style.cssText + 'font-size:16px;font-weight:bold;';
 
         var zoomInfo = document.createElement('span');
@@ -601,12 +601,12 @@ export default class PreviewPanelManager {
 
         var zoomInBtn = document.createElement('button');
         zoomInBtn.innerHTML = '+';
-        zoomInBtn.title = 'Zoom in';
+        zoomInBtn.title = _('Zoom in');
         zoomInBtn.style.cssText = zoomOutBtn.style.cssText;
 
         var fitBtn = document.createElement('button');
         fitBtn.innerHTML = '⛶';
-        fitBtn.title = 'Fit to width';
+        fitBtn.title = _('Fit to width');
         fitBtn.style.cssText = prevBtn.style.cssText + 'font-size:14px;';
 
         // Separator
@@ -616,7 +616,7 @@ export default class PreviewPanelManager {
         // Open in popup button
         var popupBtn = document.createElement('button');
         popupBtn.innerHTML = '↗';
-        popupBtn.title = 'Open in new window';
+        popupBtn.title = _('Open in new window');
         popupBtn.style.cssText = prevBtn.style.cssText + 'font-size:14px;';
 
         toolbar.appendChild(prevBtn);
@@ -697,7 +697,7 @@ export default class PreviewPanelManager {
             els.zoomInBtn.disabled = state.zoomIndex >= ZOOM_LEVELS.length - 1;
         } catch (e) {
             console.error('[PreviewPanel] Failed to render page:', e);
-            els.pageInfo.textContent = 'Error';
+            els.pageInfo.textContent = _('Error');
         }
 
         state.rendering = false;
@@ -802,7 +802,7 @@ export default class PreviewPanelManager {
             console.log('[PreviewPanel] PDF loaded with', state.totalPages, 'pages');
         } catch (e) {
             console.error('[PreviewPanel] Failed to load PDF:', e);
-            els.pageInfo.textContent = 'Error loading PDF';
+            els.pageInfo.textContent = _('Error loading PDF');
         }
     }
 
@@ -822,11 +822,11 @@ export default class PreviewPanelManager {
         icon.style.cssText = 'margin-bottom:8px;';
 
         var label = document.createElement('div');
-        label.textContent = 'PDF';
+        label.textContent = _('PDF');
         label.style.cssText = 'font-size:14px;font-weight:600;color:#dc3545;margin-bottom:4px;';
 
         var hint = document.createElement('div');
-        hint.textContent = 'Click to open';
+        hint.textContent = _('Click to open');
         hint.style.cssText = 'font-size:12px;color:#666;';
 
         card.appendChild(icon);
@@ -924,7 +924,7 @@ export default class PreviewPanelManager {
                             console.log('[PreviewPanel] Rendered PDF with PDF.js');
                         } catch (e) {
                             console.error('[PreviewPanel] Failed to load PDF:', e);
-                            viewer._elements.pageInfo.textContent = 'Error: ' + e.message;
+                            viewer._elements.pageInfo.textContent = _('Error') + ': ' + e.message;
                         }
                     } else {
                         // Fallback to card

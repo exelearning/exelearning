@@ -964,10 +964,10 @@ class YjsProjectBridge {
     undoRedoContainer.id = 'yjs-undo-redo';
     undoRedoContainer.className = 'yjs-undo-redo';
     undoRedoContainer.innerHTML = `
-      <button class="btn btn-sm btn-undo" title="Undo (Ctrl+Z)" disabled>
+      <button class="btn btn-sm btn-undo" title="${_('Undo')} (Ctrl+Z)" disabled>
         <span class="auto-icon" aria-hidden="true">undo</span>
       </button>
-      <button class="btn btn-sm btn-redo" title="Redo (Ctrl+Shift+Z)" disabled>
+      <button class="btn btn-sm btn-redo" title="${_('Redo')} (Ctrl+Shift+Z)" disabled>
         <span class="auto-icon" aria-hidden="true">redo</span>
       </button>
     `;
