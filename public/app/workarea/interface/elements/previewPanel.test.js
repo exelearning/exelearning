@@ -866,6 +866,133 @@ describe('PreviewPanelManager', () => {
     });
   });
 
+  describe('resolveHtmlIframeAssetsForStandalone', () => {
+    it('should return html unchanged if AssetManager is not available', async () => {
+      window.eXeLearning.app.project._yjsBridge = null;
+      const html = '<html><body><iframe src="asset://abc123.html"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssetsForStandalone(html);
+      expect(result).toBe(html);
+    });
+
+    it('should return html unchanged if no iframe matches asset:// pattern', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn(),
+        _isHtmlAsset: vi.fn(),
+        resolveHtmlWithAssetsAsDataUrls: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="https://example.com"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssetsForStandalone(html);
+      expect(result).toBe(html);
+      expect(mockAssetManager.getAssetMetadata).not.toHaveBeenCalled();
+    });
+
+    it('should resolve HTML iframes using srcdoc with escaped content', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'text/html', filename: 'index.html' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(true),
+        resolveHtmlWithAssetsAsDataUrls: vi.fn().mockResolvedValue('<html><body>Resolved content with "quotes" & ampersand</body></html>'),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://abc123-def4-5678-9012.html" width="100%"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssetsForStandalone(html);
+
+      expect(mockAssetManager.getAssetMetadata).toHaveBeenCalledWith('abc123-def4-5678-9012');
+      expect(mockAssetManager._isHtmlAsset).toHaveBeenCalledWith('text/html', 'index.html');
+      expect(mockAssetManager.resolveHtmlWithAssetsAsDataUrls).toHaveBeenCalledWith('abc123-def4-5678-9012');
+      // Should use srcdoc instead of src with data URL
+      expect(result).toContain('srcdoc="');
+      // Should escape & and "
+      expect(result).toContain('&amp;');
+      expect(result).toContain('&quot;');
+    });
+
+    it('should skip iframes with non-HTML assets', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'application/pdf', filename: 'doc.pdf' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(false),
+        resolveHtmlWithAssetsAsDataUrls: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://abc123.pdf"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssetsForStandalone(html);
+
+      expect(mockAssetManager._isHtmlAsset).toHaveBeenCalled();
+      expect(mockAssetManager.resolveHtmlWithAssetsAsDataUrls).not.toHaveBeenCalled();
+      expect(result).toBe(html);
+    });
+
+    it('should skip iframes when metadata is not found', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue(null),
+        _isHtmlAsset: vi.fn(),
+        resolveHtmlWithAssetsAsDataUrls: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://nonexistent.html"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssetsForStandalone(html);
+
+      expect(mockAssetManager._isHtmlAsset).not.toHaveBeenCalled();
+      expect(result).toBe(html);
+    });
+
+    it('should handle resolution errors gracefully', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'text/html', filename: 'index.html' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(true),
+        resolveHtmlWithAssetsAsDataUrls: vi.fn().mockRejectedValue(new Error('Resolution failed')),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://abc123.html"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssetsForStandalone(html);
+
+      // Should return original html on error
+      expect(result).toBe(html);
+    });
+
+    it('should handle null resolved content', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'text/html', filename: 'index.html' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(true),
+        resolveHtmlWithAssetsAsDataUrls: vi.fn().mockResolvedValue(null),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://abc123.html"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssetsForStandalone(html);
+
+      // Should return original html when resolution returns null
+      expect(result).toBe(html);
+    });
+
+    it('should resolve multiple HTML iframes for standalone', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'text/html', filename: 'page.html' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(true),
+        resolveHtmlWithAssetsAsDataUrls: vi.fn()
+          .mockResolvedValueOnce('<html>Page 1</html>')
+          .mockResolvedValueOnce('<html>Page 2</html>'),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = `<html><body>
+        <iframe src="asset://abc123-1111-2222-3333.html"></iframe>
+        <iframe src="asset://def456-4444-5555-6666.html"></iframe>
+      </body></html>`;
+      const result = await manager.resolveHtmlIframeAssetsForStandalone(html);
+
+      expect(mockAssetManager.resolveHtmlWithAssetsAsDataUrls).toHaveBeenCalledTimes(2);
+      expect(result).toContain('srcdoc="');
+      expect(result).toContain('Page 1');
+      expect(result).toContain('Page 2');
+    });
+  });
+
   describe('auto-refresh', () => {
     it('should schedule refresh on structure change', () => {
       vi.useFakeTimers();

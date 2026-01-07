@@ -5685,3 +5685,386 @@ describe('_generateLinkHandlerScript', () => {
     expect(script).toContain('exe-resolve-html-link');
   });
 });
+
+describe('_getAssetAsDataUrl', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('returns null if blob not found', async () => {
+    vi.spyOn(assetManager, 'getBlob').mockResolvedValue(null);
+
+    const result = await assetManager._getAssetAsDataUrl('nonexistent');
+    expect(result).toBeNull();
+  });
+
+  it('converts blob to data URL', async () => {
+    const testBlob = new Blob(['test content'], { type: 'text/plain' });
+    vi.spyOn(assetManager, 'getBlob').mockResolvedValue(testBlob);
+
+    const result = await assetManager._getAssetAsDataUrl('test-asset');
+
+    expect(result).toMatch(/^data:text\/plain;base64,/);
+  });
+
+  it('handles binary blobs and returns base64 data URL', async () => {
+    // Note: happy-dom's FileReader may not preserve MIME types correctly,
+    // so we test the data URL structure rather than specific MIME type
+    const binaryData = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+    const binaryBlob = new Blob([binaryData], { type: 'image/png' });
+    vi.spyOn(assetManager, 'getBlob').mockResolvedValue(binaryBlob);
+
+    const result = await assetManager._getAssetAsDataUrl('binary-asset');
+
+    // Should return a data URL with base64 encoding
+    expect(result).toMatch(/^data:[^;]*;base64,/);
+  });
+});
+
+describe('_resolveUrlsInCssAsDataUrls', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('returns unchanged CSS if no url() references', async () => {
+    const css = '.class { color: red; font-size: 16px; }';
+
+    const result = await assetManager._resolveUrlsInCssAsDataUrls(css, 'folder');
+
+    expect(result).toBe(css);
+  });
+
+  it('skips absolute URLs', async () => {
+    const css = `
+      .bg1 { background: url("https://example.com/image.png"); }
+      .bg2 { background: url("data:image/png;base64,abc"); }
+      .bg3 { background: url("//cdn.example.com/image.jpg"); }
+    `;
+
+    const result = await assetManager._resolveUrlsInCssAsDataUrls(css, 'folder');
+
+    expect(result).toBe(css);
+  });
+
+  it('resolves relative URLs to data URLs', async () => {
+    // Set up mock asset
+    const mockAsset = { id: 'asset-bg', filename: 'bg.png' };
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue(mockAsset);
+    vi.spyOn(assetManager, '_getAssetAsDataUrl').mockResolvedValue('data:image/png;base64,ABC123');
+
+    const css = '.bg { background: url("images/bg.png"); }';
+    const result = await assetManager._resolveUrlsInCssAsDataUrls(css, 'theme');
+
+    expect(result).toContain('data:image/png;base64,ABC123');
+    expect(assetManager.findAssetByRelativePath).toHaveBeenCalledWith('theme', 'images/bg.png');
+  });
+
+  it('handles multiple url() references', async () => {
+    const mockAsset1 = { id: 'asset-1', filename: 'icon1.png' };
+    const mockAsset2 = { id: 'asset-2', filename: 'icon2.png' };
+
+    vi.spyOn(assetManager, 'findAssetByRelativePath')
+      .mockReturnValueOnce(mockAsset1)
+      .mockReturnValueOnce(mockAsset2);
+    vi.spyOn(assetManager, '_getAssetAsDataUrl')
+      .mockResolvedValueOnce('data:image/png;base64,ICON1')
+      .mockResolvedValueOnce('data:image/png;base64,ICON2');
+
+    const css = `
+      .icon1 { background: url("icons/icon1.png"); }
+      .icon2 { background: url("icons/icon2.png"); }
+    `;
+    const result = await assetManager._resolveUrlsInCssAsDataUrls(css, 'assets');
+
+    expect(result).toContain('data:image/png;base64,ICON1');
+    expect(result).toContain('data:image/png;base64,ICON2');
+  });
+
+  it('leaves unresolvable URLs unchanged', async () => {
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue(null);
+
+    const css = '.bg { background: url("missing/image.png"); }';
+    const result = await assetManager._resolveUrlsInCssAsDataUrls(css, 'folder');
+
+    expect(result).toContain('url("missing/image.png")');
+  });
+});
+
+describe('_injectStandaloneNavigationHandler', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('injects script before </body>', () => {
+    const html = '<html><body><p>Content</p></body></html>';
+    const pages = [
+      { index: 0, url: 'page1.html', content: '<html><body>Page 1</body></html>' },
+    ];
+
+    const result = assetManager._injectStandaloneNavigationHandler(html, pages);
+
+    expect(result).toContain('<script>');
+    expect(result).toContain('exeNavPages');
+    expect(result).toContain('</script></body>');
+  });
+
+  it('appends script at end if no </body> tag', () => {
+    const html = '<p>Content without body tags</p>';
+    const pages = [
+      { index: 0, url: 'page1.html', content: '<p>Page 1</p>' },
+    ];
+
+    const result = assetManager._injectStandaloneNavigationHandler(html, pages);
+
+    expect(result).toContain('<script>');
+    expect(result).toContain('exeNavPages');
+    expect(result.endsWith('</script>')).toBe(true);
+  });
+
+  it('base64 encodes page content to avoid escaping issues', () => {
+    const html = '<html><body></body></html>';
+    const pages = [
+      { index: 0, url: 'page.html', content: '<html><body>"Quotes" & <special> chars</body></html>' },
+    ];
+
+    const result = assetManager._injectStandaloneNavigationHandler(html, pages);
+
+    // Should contain base64-encoded content, not raw special chars
+    expect(result).toContain('contentBase64');
+    expect(result).not.toContain('"Quotes" & <special>');
+  });
+
+  it('includes navigation handler functions', () => {
+    const html = '<html><body></body></html>';
+    const pages = [
+      { index: 0, url: 'page.html', content: '<html><body>Content</body></html>' },
+    ];
+
+    const result = assetManager._injectStandaloneNavigationHandler(html, pages);
+
+    expect(result).toContain('decodeContent');
+    expect(result).toContain('navigateToPage');
+    expect(result).toContain('data-exe-nav');
+    expect(result).toContain('document.write');
+  });
+
+  it('handles multiple pages', () => {
+    const html = '<html><body></body></html>';
+    const pages = [
+      { index: 0, url: 'page1.html', content: '<html><body>Page 1</body></html>' },
+      { index: 1, url: 'page2.html', content: '<html><body>Page 2</body></html>' },
+      { index: 2, url: 'page3.html', content: '<html><body>Page 3</body></html>' },
+    ];
+
+    const result = assetManager._injectStandaloneNavigationHandler(html, pages);
+
+    // Should log correct number of pages
+    expect(result).toContain('exeNavPages.length');
+  });
+});
+
+describe('resolveHtmlWithAssetsAsDataUrls', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    // Mock Logger if not defined
+    if (typeof global.Logger === 'undefined') {
+      global.Logger = { log: () => {}, error: () => {}, warn: () => {} };
+    }
+    assetManager = new AssetManager('test-project');
+  });
+
+  it('returns null if asset not found', async () => {
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue(null);
+
+    const result = await assetManager.resolveHtmlWithAssetsAsDataUrls('nonexistent');
+    expect(result).toBeNull();
+  });
+
+  it('returns null if blob not found', async () => {
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({
+      filename: 'test.html',
+      mime: 'text/html',
+      folderPath: 'folder',
+    });
+    vi.spyOn(assetManager, 'getBlob').mockResolvedValue(null);
+
+    const result = await assetManager.resolveHtmlWithAssetsAsDataUrls('no-blob');
+    expect(result).toBeNull();
+  });
+
+  it('returns HTML string with resolved data URLs', async () => {
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <img src="image.png">
+</body>
+</html>`;
+
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({
+      filename: 'index.html',
+      mime: 'text/html',
+      folderPath: 'mysite',
+    });
+    vi.spyOn(assetManager, 'getBlob').mockResolvedValue(
+      new Blob([htmlContent], { type: 'text/html' }),
+    );
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue(null);
+
+    const result = await assetManager.resolveHtmlWithAssetsAsDataUrls('html-asset');
+
+    expect(result).toContain('<!DOCTYPE html>');
+    expect(result).toContain('<html>');
+    expect(result).toContain('</html>');
+  });
+
+  it('resolves image src to data URL', async () => {
+    const htmlContent = '<html><body><img src="test.png"></body></html>';
+
+    // Mock getAssetMetadata to return info for both the HTML and the image
+    vi.spyOn(assetManager, 'getAssetMetadata').mockImplementation((id) => {
+      if (id === 'html-asset') {
+        return { filename: 'index.html', mime: 'text/html', folderPath: 'site' };
+      }
+      if (id === 'img-asset') {
+        return { filename: 'test.png', mime: 'image/png', folderPath: 'site' };
+      }
+      return null;
+    });
+    vi.spyOn(assetManager, 'getBlob').mockResolvedValue(
+      new Blob([htmlContent], { type: 'text/html' }),
+    );
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue({
+      id: 'img-asset',
+      filename: 'test.png',
+    });
+    vi.spyOn(assetManager, '_getAssetAsDataUrl').mockResolvedValue('data:image/png;base64,ABC');
+
+    const result = await assetManager.resolveHtmlWithAssetsAsDataUrls('html-asset');
+
+    expect(result).toContain('data:image/png;base64,ABC');
+  });
+
+  it('adds target="_blank" to external links', async () => {
+    const htmlContent = '<html><body><a href="https://example.com">Link</a></body></html>';
+
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({
+      filename: 'index.html',
+      mime: 'text/html',
+      folderPath: 'site',
+    });
+    vi.spyOn(assetManager, 'getBlob').mockResolvedValue(
+      new Blob([htmlContent], { type: 'text/html' }),
+    );
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue(null);
+
+    const result = await assetManager.resolveHtmlWithAssetsAsDataUrls('html-asset');
+
+    expect(result).toContain('target="_blank"');
+    expect(result).toContain('rel="noopener noreferrer"');
+  });
+
+  it('recursively resolves HTML links with navigation handler', async () => {
+    const mainHtml = '<html><body><a href="page2.html">Page 2</a></body></html>';
+    const page2Html = '<html><body>Page 2 content</body></html>';
+
+    const getMetadata = vi.spyOn(assetManager, 'getAssetMetadata');
+    getMetadata.mockImplementation((id) => {
+      if (id === 'main-html') {
+        return { filename: 'index.html', mime: 'text/html', folderPath: 'site' };
+      }
+      if (id === 'page2-html') {
+        return { filename: 'page2.html', mime: 'text/html', folderPath: 'site' };
+      }
+      return null;
+    });
+
+    const getBlob = vi.spyOn(assetManager, 'getBlob');
+    getBlob.mockImplementation((id) => {
+      if (id === 'main-html') {
+        return Promise.resolve(new Blob([mainHtml], { type: 'text/html' }));
+      }
+      if (id === 'page2-html') {
+        return Promise.resolve(new Blob([page2Html], { type: 'text/html' }));
+      }
+      return Promise.resolve(null);
+    });
+
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockImplementation((folder, path) => {
+      if (path === 'page2.html') {
+        return { id: 'page2-html', filename: 'page2.html' };
+      }
+      return null;
+    });
+
+    vi.spyOn(assetManager, '_isHtmlAsset').mockReturnValue(true);
+
+    const result = await assetManager.resolveHtmlWithAssetsAsDataUrls('main-html');
+
+    // Should have navigation markers for internal links
+    expect(result).toContain('data-exe-nav');
+    expect(result).toContain('#exe-nav-');
+    // Should inject standalone navigation handler
+    expect(result).toContain('exeNavPages');
+  });
+
+  it('avoids infinite loops with circular HTML references', async () => {
+    const html1 = '<html><body><a href="page2.html">Page 2</a></body></html>';
+    const html2 = '<html><body><a href="page1.html">Page 1</a></body></html>';
+
+    const getMetadata = vi.spyOn(assetManager, 'getAssetMetadata');
+    getMetadata.mockImplementation((id) => {
+      if (id === 'page1') return { filename: 'page1.html', mime: 'text/html', folderPath: '' };
+      if (id === 'page2') return { filename: 'page2.html', mime: 'text/html', folderPath: '' };
+      return null;
+    });
+
+    const getBlob = vi.spyOn(assetManager, 'getBlob');
+    getBlob.mockImplementation((id) => {
+      if (id === 'page1') return Promise.resolve(new Blob([html1], { type: 'text/html' }));
+      if (id === 'page2') return Promise.resolve(new Blob([html2], { type: 'text/html' }));
+      return Promise.resolve(null);
+    });
+
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockImplementation((folder, path) => {
+      if (path === 'page2.html') return { id: 'page2', filename: 'page2.html' };
+      if (path === 'page1.html') return { id: 'page1', filename: 'page1.html' };
+      return null;
+    });
+
+    vi.spyOn(assetManager, '_isHtmlAsset').mockReturnValue(true);
+
+    // Should complete without infinite recursion
+    const result = await assetManager.resolveHtmlWithAssetsAsDataUrls('page1');
+
+    expect(result).toBeDefined();
+    expect(result).toContain('<!DOCTYPE html>');
+  });
+
+  it('preserves DOCTYPE in output', async () => {
+    const htmlContent = '<!DOCTYPE html><html><head></head><body>Content</body></html>';
+
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({
+      filename: 'index.html',
+      mime: 'text/html',
+      folderPath: '',
+    });
+    vi.spyOn(assetManager, 'getBlob').mockResolvedValue(
+      new Blob([htmlContent], { type: 'text/html' }),
+    );
+    vi.spyOn(assetManager, 'findAssetByRelativePath').mockReturnValue(null);
+
+    const result = await assetManager.resolveHtmlWithAssetsAsDataUrls('html-asset');
+
+    expect(result).toMatch(/^<!DOCTYPE html>/i);
+  });
+});
