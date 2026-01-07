@@ -596,3 +596,83 @@ export function normalizeIdeviceType(typeName: string): string {
     // Look up in map or return as-is
     return IDEVICE_TYPE_MAP[normalized] || normalized || 'text';
 }
+
+// =============================================================================
+// ODE Content DTD (for ELPX and EPUB exports)
+// =============================================================================
+
+/**
+ * ODE DTD filename (included in ELPX and EPUB exports with content.xml)
+ */
+export const ODE_DTD_FILENAME = 'content.dtd';
+
+/**
+ * ODE Content DTD
+ * Embedded DTD for exports that include content.xml - validates content.xml structure
+ */
+export const ODE_DTD_CONTENT = `<!--
+    ODE Content DTD
+    Document Type Definition for eXeLearning ODE XML format (content.xml)
+    Version: 2.0
+    Namespace: http://www.intef.es/xsd/ode
+    Copyright (C) 2025 eXeLearning - License: AGPL-3.0
+-->
+
+<!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
+<!ATTLIST ode
+    xmlns CDATA #FIXED "http://www.intef.es/xsd/ode"
+    version CDATA #IMPLIED>
+
+<!-- User Preferences -->
+<!ELEMENT userPreferences (userPreference*)>
+<!ELEMENT userPreference (key, value)>
+
+<!-- ODE Resources -->
+<!ELEMENT odeResources (odeResource*)>
+<!ELEMENT odeResource (key, value)>
+
+<!-- ODE Properties -->
+<!ELEMENT odeProperties (odeProperty*)>
+<!ELEMENT odeProperty (key, value)>
+
+<!-- Shared Key-Value Elements -->
+<!ELEMENT key (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
+
+<!-- Navigation Structures (Pages) -->
+<!ELEMENT odeNavStructures (odeNavStructure+)>
+<!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
+
+<!ELEMENT odePageId (#PCDATA)>
+<!ELEMENT odeParentPageId (#PCDATA)>
+<!ELEMENT pageName (#PCDATA)>
+<!ELEMENT odeNavStructureOrder (#PCDATA)>
+
+<!ELEMENT odeNavStructureProperties (odeNavStructureProperty*)>
+<!ELEMENT odeNavStructureProperty (key, value)>
+
+<!-- Block Structures -->
+<!ELEMENT odePagStructures (odePagStructure*)>
+<!ELEMENT odePagStructure (odePageId, odeBlockId, blockName, iconName?, odePagStructureOrder, odePagStructureProperties?, odeComponents?)>
+
+<!ELEMENT odeBlockId (#PCDATA)>
+<!ELEMENT blockName (#PCDATA)>
+<!ELEMENT iconName (#PCDATA)>
+<!ELEMENT odePagStructureOrder (#PCDATA)>
+
+<!ELEMENT odePagStructureProperties (odePagStructureProperty*)>
+<!ELEMENT odePagStructureProperty (key, value)>
+
+<!-- Components (iDevices) -->
+<!ELEMENT odeComponents (odeComponent*)>
+<!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
+
+<!ELEMENT odeIdeviceId (#PCDATA)>
+<!ELEMENT odeIdeviceTypeName (#PCDATA)>
+<!ELEMENT htmlView (#PCDATA)>
+<!ELEMENT jsonProperties (#PCDATA)>
+<!ELEMENT odeComponentsOrder (#PCDATA)>
+
+<!ELEMENT odeComponentsProperties (odeComponentsProperty*)>
+<!ELEMENT odeComponentsProperty (key, value)>
+`;
