@@ -25,6 +25,7 @@ import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
+import { mcpRoutes, closeMcpSessions } from './routes/mcp';
 import {
     createWebSocketRoutes,
     initialize as initWebSocket,
@@ -475,6 +476,7 @@ app.use(healthRoutes)
     .use(adminTemplatesRoutes)
     .use(yjsRoutes)
     .use(apiV1Routes)
+    .use(mcpRoutes)
     .use(createWebSocketRoutes())
     .get('/api', () => ({
         name: 'eXeLearning API',
@@ -507,6 +509,7 @@ if (routePrefix) {
             .use(adminRoutes)
             .use(yjsRoutes)
             .use(apiV1Routes)
+            .use(mcpRoutes)
             .use(createWebSocketRoutes())
             .get('/api', () => ({
                 name: 'eXeLearning API',
@@ -640,6 +643,7 @@ async function bootstrap() {
     console.log(`Auth endpoints: /api/auth/login, /api/auth/logout, /api/session/check`);
     console.log(`Project endpoints: /api/project/*, /api/export/*`);
     console.log(`Filemanager endpoints: /filemanager/*`);
+    console.log(`MCP endpoints: /mcp, /mcp/info, /mcp/health`);
     console.log(`WebSocket (Yjs): ws://localhost:${PORT}/yjs/project-<uuid>?token=<jwt>`);
     console.log(`Static files: /public/*`);
 }
@@ -652,6 +656,7 @@ bootstrap().catch(err => {
 // Graceful shutdown
 async function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down...`);
+    await closeMcpSessions();
     stopWebSocket();
     await disconnectRedis();
     process.exit(0);

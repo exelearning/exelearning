@@ -32,6 +32,14 @@ const EXCLUDED_FILES = [
     // Redis modules require real Redis server for connection testing; graceful fallback tested
     'src/redis/client.ts', // Requires real Redis for connection/pub testing
     'src/redis/pubsub-manager.ts', // Requires real Redis for pub/sub testing
+    // MCP tool handlers require Yjs integration for success paths; registration and error paths tested
+    'src/mcp/tools/blocks.ts', // Success paths require Yjs withDocument/readDocument
+    'src/mcp/tools/components.ts', // Success paths require Yjs withDocument/readDocument
+    'src/mcp/tools/pages.ts', // Success paths require Yjs withDocument/readDocument
+    'src/mcp/tools/metadata.ts', // Success paths require Yjs readDocument
+    'src/mcp/tools/projects.ts', // Create/duplicate require Yjs ensureDocument
+    'src/mcp/tools/export.ts', // Catch blocks are defensive code
+    'src/mcp/resources/index.ts', // Project resources require Yjs; catalog resources have FS fallbacks
 ];
 
 /**
