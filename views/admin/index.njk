@@ -1516,7 +1516,7 @@
                         </div>
 
                         <div class="admin-settings-group">
-                            <h6>Autosave</h6>
+                            <h6>{{ t.autosave or 'Autosave' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL</label>
@@ -2139,7 +2139,7 @@
                         <td>${quotaHTML}</td>
                         <td><span class="badge-role ${statusCls}">${statusText}</span></td>
                         <td>
-                            <button class="btn-admin-outline" onclick="editUser(${user.id})" title="Edit">
+                            <button class="btn-admin-outline" onclick="editUser(${user.id})" title="{{ t.edit or 'Edit' }}">
                                 <span class="mi mi-sm">edit</span>
                             </button>
                         </td>
@@ -2409,7 +2409,7 @@
                                 <span class="mi mi-sm">${toggleIcon}</span>
                             </button>
                             ${canArchive ? `
-                            <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, 'archived')" title="Archive">
+                            <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, 'archived')" title="{{ t.archive or 'Archive' }}">
                                 <span class="mi mi-sm">archive</span>
                             </button>
                             ` : ''}

@@ -559,7 +559,7 @@ export default class IdeviceBlockNode {
                         // Open eXe alert modal
                         eXeLearning.app.modals.alert.show({
                             title: _('Broken Links'),
-                            body: "There aren't broken links",
+                            body: _('No broken links found.'),
                         });
                     }
                 });
@@ -913,7 +913,7 @@ export default class IdeviceBlockNode {
                         // Open eXe alert modal
                         eXeLearning.app.modals.alert.show({
                             title: _("Broken Links"),
-                            body: "There aren't broken links",
+                            body: _('No broken links found.'),
                         })
                     }
                 })

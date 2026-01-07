@@ -1417,7 +1417,7 @@ class YjsProjectBridge {
       Logger.log('[YjsProjectBridge] SaveManager not available, using flush only');
       await this.documentManager.flush();
       this.updateSaveStatus('saved');
-      return { success: true, message: 'Project saved (flush only)' };
+      return { success: true, message: _('Project saved') };
     } catch (e) {
       console.error('[YjsProjectBridge] Save error:', e);
       this.updateSaveStatus('error', e.message);

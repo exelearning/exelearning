@@ -364,7 +364,7 @@ class SaveManager {
         this.bridge.isNewProject = false;
       }
 
-      return { success: true, message: 'Project saved successfully' };
+      return { success: true, message: _('Project saved successfully') };
     } catch (error) {
       console.error('[SaveManager] Save failed:', error);
 
