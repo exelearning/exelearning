@@ -3,14 +3,14 @@
     <div class="print-preview-header">
         <div class="print-preview-title">
             <span class="exe-icon">print</span>
-            <span>Print preview</span>
+            <span>{{ 'Print preview' | trans }}</span>
         </div>
         <div class="print-preview-actions">
-            <button type="button" class="print-preview-print-btn" title="Print">
+            <button type="button" class="print-preview-print-btn" title="{{ 'Print' | trans }}">
                 <span class="exe-icon">print</span>
-                <span class="btn-text">Print</span>
+                <span class="btn-text">{{ 'Print' | trans }}</span>
             </button>
-            <button type="button" class="print-preview-close-btn" title="Close">
+            <button type="button" class="print-preview-close-btn" title="{{ 'Close' | trans }}">
                 <span class="exe-icon">close</span>
             </button>
         </div>
@@ -18,8 +18,8 @@
     <div class="print-preview-content">
         <div class="print-preview-loading">
             <div class="spinner-border" role="status"></div>
-            <p>Generating preview...</p>
+            <p>{{ 'Generating preview...' | trans }}</p>
         </div>
-        <iframe class="print-preview-iframe" title="Print preview"></iframe>
+        <iframe class="print-preview-iframe" title="{{ 'Print preview' | trans }}"></iframe>
     </div>
 </div>

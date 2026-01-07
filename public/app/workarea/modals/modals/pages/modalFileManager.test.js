@@ -572,6 +572,20 @@ describe('ModalFilemanager', () => {
       expect(modal.dimensionsSpan.textContent).toContain('640');
     });
 
+    it('should show Unknown for image dimensions when getImageDimensions returns null', async () => {
+      modal.assetManager.getImageDimensions.mockResolvedValueOnce(null);
+      const asset = { id: '1', filename: 'a.png', mime: 'image/png', size: 10, createdAt: Date.now(), blob: new Blob(['x']) };
+      await modal.showSidebarContent(asset);
+      expect(modal.dimensionsSpan.textContent).toBe('Unknown');
+    });
+
+    it('should show Unknown for image dimensions when getImageDimensions throws error', async () => {
+      modal.assetManager.getImageDimensions.mockRejectedValueOnce(new Error('Failed to get dimensions'));
+      const asset = { id: '1', filename: 'a.png', mime: 'image/png', size: 10, createdAt: Date.now(), blob: new Blob(['x']) };
+      await modal.showSidebarContent(asset);
+      expect(modal.dimensionsSpan.textContent).toBe('Unknown');
+    });
+
     it('should use display:flex for sidebar-content to preserve action buttons layout', async () => {
       const asset = { id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) };
       await modal.showSidebarContent(asset);

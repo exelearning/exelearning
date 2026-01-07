@@ -2,62 +2,62 @@
     <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title">Legal notes</div>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <div class="modal-title">{{ 'Legal notes' | trans }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body help-modal help-modal-with-logo">
                 <div class="help-modal-top">
-                    <img src="{{ 'style/workarea/images/exelearning.svg' | asset }}" class="exe-logo content" alt="Logo ExeLearning">
+                    <img src="{{ 'style/workarea/images/exelearning.svg' | asset }}" class="exe-logo content" alt="Logo eXeLearning">
                 </div>
                 <div class="help-modal-content">
                     <ul class="exe-form-tabs">
                         <li>
-                            <a href="#modalLegalNotes-tab-1" class="exe-tab exe-form-active-tab">Credits</a>
+                            <a href="#modalLegalNotes-tab-1" class="exe-tab exe-form-active-tab">{{ 'Credits' | trans }}</a>
                         </li>
                         <li>
-                            <a href="#modalLegalNotes-tab-2" class="exe-tab">Third Libraries</a>
+                            <a href="#modalLegalNotes-tab-2" class="exe-tab">{{ 'Third party libraries' | trans }}</a>
                         </li>
                         <li>
-                            <a href="#modalLegalNotes-tab-3" class="exe-tab">Licenses</a>
+                            <a href="#modalLegalNotes-tab-3" class="exe-tab">{{ 'Licenses' | trans }}</a>
                         </li>
                     </ul>
                     <div id="modalLegalNotes-tab-1" class="exe-form-content exe-form-active-content">
-                        <h3 class="visually-hidden">Credits</h3>
+                        <h3 class="visually-hidden">{{ 'Credits' | trans }}</h3>
                         <h4 class="lead mb-4">eXeLearning 3+</h4>
                         <ul class="main-desc">
                             <li>Copyright (2024):
                                 <ul>
-                                    <li><a href="https://intef.es/" target="_blank" rel="noopener" title="New window">INTEF<span class="visually-hidden"> Instituto Nacional de tecnologías educativas y formación del profesorado</span></a></li></li>
+                                    <li><a href="https://intef.es/" target="_blank" rel="noopener" title="{{ 'Opens in new window' | trans }}">INTEF<span class="visually-hidden"> Instituto Nacional de tecnologías educativas y formación del profesorado</span></a></li></li>
                                     <li>Junta de Andalucía</li>
                                     <li>Junta de Extremadura</li>
                                 </ul>
                             </li>
-                            <li>2025-present <a href="https://exelearning.net/" target="_blank" rel="noopener" title="New window">eXeLearning.net</a>, <a href="mailto:info@exelearning.net" title="mail">info@exelearning.net</a></li>
+                            <li>2025-present <a href="https://exelearning.net/" target="_blank" rel="noopener" title="{{ 'Opens in new window' | trans }}">eXeLearning.net</a>, <a href="mailto:info@exelearning.net" title="{{ 'Send email' | trans }}">info@exelearning.net</a></li>
                         </ul>
-                        <p>License: GNU Affero GPL 3</p>
-                        <h3 class="lead my-4">Participants</h3>
+                        <p>{{ 'License' | trans }}: GNU Affero GPL 3</p>
+                        <h3 class="lead my-4">{{ 'Participants' | trans }}</h3>
                         <ul>
                             <li>Gobierno de Canarias</li>
                             <li>Generalitat Valenciana</li>
                             <li>Comunidad de Madrid</li>
                             <li>Xunta de Galicia</li>
                         </ul>
-                        <h4 class="lead my-4">Previous versions</h4>
+                        <h4 class="lead my-4">{{ 'Previous versions' | trans }}</h4>
                         <ul class="main-desc">
                             <li>Copyright: 2004-2005, University of Auckland</li>
                             <li>2004-2011 eXe Project (exelearning.org)</li>
-                            <li>2011-2025 <a href="https://exelearning.net/" target="_blank" rel="noopener" title="New window">eXeLearning.net</a>, <a href="mailto:info@exelearning.net" title="mail">info@exelearning.net</a></li>
+                            <li>2011-2025 <a href="https://exelearning.net/" target="_blank" rel="noopener" title="{{ 'Opens in new window' | trans }}">eXeLearning.net</a>, <a href="mailto:info@exelearning.net" title="{{ 'Send email' | trans }}">info@exelearning.net</a></li>
                         </ul>
-                        <p>License: GPLv2</p>
+                        <p>{{ 'License' | trans }}: GPLv2</p>
                     </div>
                     <div id="modalLegalNotes-tab-2" class="exe-form-content">
-                        <h3 class="visually-hidden">eXeLearning. Third Libraries</h3>
+                        <h3 class="visually-hidden">{{ 'eXeLearning - Third party libraries' | trans }}</h3>
                         <div class="third-party-content md-converted-content"></div>
                     </div>
                     <div id="modalLegalNotes-tab-3" class="exe-form-content">
-                        <h3 class="visually-hidden">eXeLearning. Licenses</h3>
+                        <h3 class="visually-hidden">{{ 'eXeLearning - Licenses' | trans }}</h3>
                         <div class="licenses-list md-converted-content"></div>
                     </div>
                 </div>

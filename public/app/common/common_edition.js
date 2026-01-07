@@ -816,9 +816,9 @@ var $exeDevicesEdition = {
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
-                            alert(`The following lines are invalid:\n\n${questions.invalidLines.join('\n')}`);
+                            alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
-                            alert('The questions have been added successfully');
+                            alert(_('The questions have been added successfully'));
                             //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
@@ -833,9 +833,9 @@ var $exeDevicesEdition = {
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
-                            alert(`The following lines are invalid:\n\n${questions.invalidLines.join('\n')}`);
+                            alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
-                            alert('The questions have been added successfully');
+                            alert(_('The questions have been added successfully'));
                             //$('.exe-form-tabs li:first-child a').click();
                         }
                     });
