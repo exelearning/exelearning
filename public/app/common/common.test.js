@@ -1455,7 +1455,7 @@ describe('common.js $exeDevices', () => {
               window.onYouTubeIframeAPIReady = () => resolve(window.YT);
               const tag = document.createElement('script');
               tag.src = 'https://www.youtube.com/iframe_api';
-              tag.onerror = () => reject(new Error(global.'Could not load YouTube API'));
+              tag.onerror = () => reject(new Error(global._('Could not load YouTube API')));
               document.head.appendChild(tag);
             });
           }
