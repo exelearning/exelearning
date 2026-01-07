@@ -130,19 +130,23 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // Lightbox for images
+    // isDirectory: true to include sprite images (PNG, GIF) referenced from CSS
     {
         name: 'exe_lightbox',
         type: 'rel',
         pattern: 'lightbox',
         files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
+        isDirectory: true,
     },
 
     // Lightbox for image galleries
+    // isDirectory: true to include sprite images (PNG, GIF) referenced from CSS
     {
         name: 'exe_lightbox_gallery',
         type: 'class',
         pattern: 'imageGallery',
         files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
+        isDirectory: true,
     },
 
     // Tooltips (qTip2)
@@ -287,11 +291,13 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // Accessibility toolbar
+    // isDirectory: true to include font files (woff, woff2) and icon (png) referenced from CSS
     {
         name: 'exe_atools',
         type: 'class',
         pattern: 'exe-atools',
         files: ['exe_atools/exe_atools.js', 'exe_atools/exe_atools.css'],
+        isDirectory: true,
     },
 
     // ELPX download support (for download-source-file iDevice)

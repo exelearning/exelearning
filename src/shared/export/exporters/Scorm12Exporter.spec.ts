@@ -45,8 +45,9 @@ class MockDocument implements ExportDocument {
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('content.css', Buffer.from('/* theme css */'));
-        files.set('default.js', Buffer.from('// theme js'));
+        // Theme files keep their original names (style.css, style.js)
+        files.set('style.css', Buffer.from('/* theme css */'));
+        files.set('style.js', Buffer.from('// theme js'));
         return files;
     }
 

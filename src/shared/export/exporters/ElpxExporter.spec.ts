@@ -517,12 +517,12 @@ describe('ElpxExporter', () => {
             expect(contentXml).toContain('<ode');
         });
 
-        it('should include theme files in ZIP', async () => {
+        it('should include theme files in ZIP with original names', async () => {
             const result = await exporter.export();
             const loadedZip = unzipSync(new Uint8Array(result.data!));
 
-            // ELPX now uses HTML5 export structure: theme/content.css instead of style/base/content.css
-            expect(loadedZip['theme/content.css']).toBeDefined();
+            // Theme file names are preserved as-is (style.css, not renamed to content.css)
+            expect(loadedZip['theme/style.css']).toBeDefined();
         });
 
         it('should include library files in ZIP', async () => {
@@ -903,16 +903,16 @@ describe('ElpxExporter', () => {
         });
     });
 
-    describe('Theme File Renaming', () => {
-        it('should rename style.css to content.css and style.js to default.js', async () => {
+    describe('Theme File Name Preservation', () => {
+        it('should preserve original theme file names (style.css, style.js)', async () => {
             await exporter.export();
 
-            // Original names should be renamed
-            expect(zip.files.has('theme/content.css')).toBe(true);
-            expect(zip.files.has('theme/default.js')).toBe(true);
-            // Original names should NOT exist
-            expect(zip.files.has('theme/style.css')).toBe(false);
-            expect(zip.files.has('theme/style.js')).toBe(false);
+            // Original names should be preserved
+            expect(zip.files.has('theme/style.css')).toBe(true);
+            expect(zip.files.has('theme/style.js')).toBe(true);
+            // Old renamed names should NOT exist
+            expect(zip.files.has('theme/content.css')).toBe(false);
+            expect(zip.files.has('theme/default.js')).toBe(false);
         });
     });
 });

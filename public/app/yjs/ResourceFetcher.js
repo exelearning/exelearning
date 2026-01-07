@@ -476,6 +476,9 @@ class ResourceFetcher {
    */
   async fetchBaseLibraries() {
     const cacheKey = 'libs:base';
+    // Use manifest hash for cache invalidation (if available), otherwise version
+    const libsHash = this.bundleManifest?.libs?.hash;
+    const cacheVersion = libsHash ? `${this.version}-${libsHash.substring(0, 8)}` : this.version;
 
     // 1. Check in-memory cache
     if (this.cache.has(cacheKey)) {
@@ -483,10 +486,10 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
-    // 2. Check IndexedDB cache
+    // 2. Check IndexedDB cache (using hash-based version for proper invalidation)
     if (this.resourceCache) {
       try {
-        const cached = await this.resourceCache.get('libs', 'base', this.version);
+        const cached = await this.resourceCache.get('libs', 'base', cacheVersion);
         if (cached) {
           this.cache.set(cacheKey, cached);
           Logger.log('[ResourceFetcher] Base libraries loaded from IndexedDB cache');
@@ -517,7 +520,7 @@ class ResourceFetcher {
 
     if (libFiles.size > 0 && this.resourceCache) {
       try {
-        await this.resourceCache.set('libs', 'base', this.version, libFiles);
+        await this.resourceCache.set('libs', 'base', cacheVersion, libFiles);
       } catch (e) {
         console.warn('[ResourceFetcher] IndexedDB cache write failed:', e);
       }

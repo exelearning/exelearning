@@ -25,6 +25,7 @@ export interface ExportDocument {
  */
 export interface ExportMetadata {
     title: string;
+    subtitle?: string;
     author: string;
     language: string;
     theme: string;
@@ -464,6 +465,7 @@ export interface AssetResolverOptions {
  */
 export interface PageRenderOptions {
     projectTitle: string;
+    projectSubtitle?: string;
     language: string;
     theme: string;
     customStyles?: string;
@@ -503,6 +505,14 @@ export interface PageRenderOptions {
 
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;
+
+    /**
+     * Theme files to include in the HTML head.
+     * Array of filenames (e.g., ['style.css', 'style.js']) from the theme root directory.
+     * Files are included in alphabetical order: JS files first, then CSS files.
+     * If not provided, falls back to legacy 'default.js' and 'content.css'.
+     */
+    themeFiles?: string[];
 }
 
 /**

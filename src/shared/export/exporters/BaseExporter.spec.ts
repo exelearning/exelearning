@@ -760,13 +760,7 @@ describe('BaseExporter', () => {
             });
 
             it('should include all files in manifest', () => {
-                const fileList = [
-                    'index.html',
-                    'html/page2.html',
-                    'content.xml',
-                    'theme/content.css',
-                    'libs/jquery.js',
-                ];
+                const fileList = ['index.html', 'html/page2.html', 'content.xml', 'theme/style.css', 'libs/jquery.js'];
                 const result = exporter.testGenerateElpxManifestFile(fileList);
 
                 for (const file of fileList) {

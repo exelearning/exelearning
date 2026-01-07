@@ -175,6 +175,96 @@ describe('FileSystemResourceProvider', () => {
 
             expect(files.size).toBe(0);
         });
+
+        it('should include entire directory when isDirectory pattern is passed', async () => {
+            // Create a library directory with multiple files (like exe_atools)
+            await fs.ensureDir(path.join(testDir, 'app', 'common', 'exe_atools'));
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_atools', 'exe_atools.js'), '/* JS */');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_atools', 'exe_atools.css'), '/* CSS */');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_atools', 'exe_atools.png'), 'PNG');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_atools', 'font.woff2'), 'FONT');
+
+            // Pass a pattern with isDirectory: true
+            const patterns = [
+                {
+                    name: 'exe_atools',
+                    type: 'class' as const,
+                    pattern: 'exe-atools',
+                    files: ['exe_atools/exe_atools.js', 'exe_atools/exe_atools.css'],
+                    isDirectory: true,
+                },
+            ];
+
+            const files = await provider.fetchLibraryFiles(
+                ['exe_atools/exe_atools.js', 'exe_atools/exe_atools.css'],
+                patterns,
+            );
+
+            // Should include all files in the directory, not just the requested ones
+            expect(files.size).toBe(4);
+            expect(files.has('exe_atools/exe_atools.js')).toBe(true);
+            expect(files.has('exe_atools/exe_atools.css')).toBe(true);
+            expect(files.has('exe_atools/exe_atools.png')).toBe(true);
+            expect(files.has('exe_atools/font.woff2')).toBe(true);
+        });
+
+        it('should filter out test files when including directory', async () => {
+            await fs.ensureDir(path.join(testDir, 'app', 'common', 'exe_lightbox'));
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_lightbox', 'exe_lightbox.js'), '/* JS */');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_lightbox', 'exe_lightbox.css'), '/* CSS */');
+            await fs.writeFile(
+                path.join(testDir, 'app', 'common', 'exe_lightbox', 'exe_lightbox.test.js'),
+                '/* Test */',
+            );
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_lightbox', 'sprite.png'), 'PNG');
+
+            const patterns = [
+                {
+                    name: 'exe_lightbox',
+                    type: 'rel' as const,
+                    pattern: 'lightbox',
+                    files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
+                    isDirectory: true,
+                },
+            ];
+
+            const files = await provider.fetchLibraryFiles(['exe_lightbox/exe_lightbox.js'], patterns);
+
+            // Should include all files except test files
+            expect(files.size).toBe(3);
+            expect(files.has('exe_lightbox/exe_lightbox.js')).toBe(true);
+            expect(files.has('exe_lightbox/exe_lightbox.css')).toBe(true);
+            expect(files.has('exe_lightbox/sprite.png')).toBe(true);
+            expect(files.has('exe_lightbox/exe_lightbox.test.js')).toBe(false);
+        });
+
+        it('should not include directory if isDirectory is not set', async () => {
+            await fs.ensureDir(path.join(testDir, 'app', 'common', 'exe_effects'));
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_effects', 'exe_effects.js'), '/* JS */');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_effects', 'exe_effects.css'), '/* CSS */');
+            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_effects', 'extra.png'), 'PNG');
+
+            // No isDirectory flag
+            const patterns = [
+                {
+                    name: 'exe_effects',
+                    type: 'class' as const,
+                    pattern: 'exe-fx',
+                    files: ['exe_effects/exe_effects.js', 'exe_effects/exe_effects.css'],
+                },
+            ];
+
+            const files = await provider.fetchLibraryFiles(
+                ['exe_effects/exe_effects.js', 'exe_effects/exe_effects.css'],
+                patterns,
+            );
+
+            // Should only include the requested files, not the whole directory
+            expect(files.size).toBe(2);
+            expect(files.has('exe_effects/exe_effects.js')).toBe(true);
+            expect(files.has('exe_effects/exe_effects.css')).toBe(true);
+            expect(files.has('exe_effects/extra.png')).toBe(false);
+        });
     });
 
     describe('fetchScormFiles', () => {

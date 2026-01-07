@@ -238,8 +238,8 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        // jQuery exists, jQuery UI doesn't
-                        if (filePath.includes('jquery-ui')) return false;
+                        // jQuery exists, but a non-existent bootstrap map doesn't
+                        if (filePath.includes('bootstrap.bundle.min.js.map')) return false;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: fs.readdirSync,
@@ -252,9 +252,28 @@ describe('Resources Routes', () => {
             const res = await app.handle(new Request('http://localhost/api/resources/libs/base'));
 
             const body = await res.json();
-            const jqueryUiFile = body.find((f: any) => f.path.includes('jquery-ui'));
+            const missingFile = body.find((f: any) => f.path.includes('bootstrap.bundle.min.js.map'));
 
-            expect(jqueryUiFile).toBeUndefined();
+            expect(missingFile).toBeUndefined();
+        });
+
+        it('should not include content-specific libraries (they are detected via LibraryDetector)', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/libs/base'));
+
+            const body = await res.json();
+
+            // These libraries should NOT be in base - they are conditionally detected
+            const exeLightbox = body.find((f: any) => f.path.includes('exe_lightbox'));
+            const exeTooltips = body.find((f: any) => f.path.includes('exe_tooltips'));
+            const exeEffects = body.find((f: any) => f.path.includes('exe_effects'));
+            const jqueryUi = body.find((f: any) => f.path.includes('jquery-ui'));
+            const fflate = body.find((f: any) => f.path.includes('fflate'));
+
+            expect(exeLightbox).toBeUndefined();
+            expect(exeTooltips).toBeUndefined();
+            expect(exeEffects).toBeUndefined();
+            expect(jqueryUi).toBeUndefined();
+            expect(fflate).toBeUndefined();
         });
     });
 

@@ -45,8 +45,9 @@ class MockDocument implements ExportDocument {
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('content.css', Buffer.from('/* theme css */'));
-        files.set('default.js', Buffer.from('// theme js'));
+        // Theme files keep their original names (style.css, style.js)
+        files.set('style.css', Buffer.from('/* theme css */'));
+        files.set('style.js', Buffer.from('// theme js'));
         return files;
     }
 
@@ -326,11 +327,12 @@ describe('ImsExporter', () => {
             expect(loadedZip['index.html']).toBeDefined();
         });
 
-        it('should include theme files', async () => {
+        it('should include theme files with original names', async () => {
             const result = await exporter.export();
 
             const loadedZip = unzipSync(new Uint8Array(result.data!));
-            expect(loadedZip['theme/content.css']).toBeDefined();
+            // Theme file names should be preserved as-is
+            expect(loadedZip['theme/style.css']).toBeDefined();
         });
     });
 

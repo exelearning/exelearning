@@ -45,8 +45,9 @@ class MockDocument implements ExportDocument {
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('content.css', Buffer.from('/* theme css */'));
-        files.set('default.js', Buffer.from('// theme js'));
+        // Theme files keep their original names (style.css, style.js)
+        files.set('style.css', Buffer.from('/* theme css */'));
+        files.set('style.js', Buffer.from('// theme js'));
         return files;
     }
 
@@ -252,11 +253,12 @@ describe('Html5Exporter', () => {
             expect(zip.files.has('content/css/base.css')).toBe(true);
         });
 
-        it('should include theme files', async () => {
+        it('should include theme files with original names (not renamed)', async () => {
             await exporter.export();
 
-            expect(zip.files.has('theme/content.css')).toBe(true);
-            expect(zip.files.has('theme/default.js')).toBe(true);
+            // Theme file names should be preserved as-is
+            expect(zip.files.has('theme/style.css')).toBe(true);
+            expect(zip.files.has('theme/style.js')).toBe(true);
         });
 
         it('should include library references in HTML', async () => {
@@ -409,9 +411,9 @@ describe('Html5Exporter', () => {
 
             const result = await exporter.export();
 
-            // Should still succeed with fallback (uses legacy names: content.css, default.js)
+            // Should still succeed with fallback (uses style.css, style.js)
             expect(result.success).toBe(true);
-            expect(zip.files.has('theme/content.css')).toBe(true);
+            expect(zip.files.has('theme/style.css')).toBe(true);
         });
 
         it('should handle library fetch failure gracefully', async () => {

@@ -161,10 +161,26 @@ export class ElpxExporter extends Html5Exporter {
             // SECTION 1: Generate HTML5 content (same as Html5Exporter)
             // =========================================================================
 
+            // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
+            const themeRootFiles: string[] = [];
+            let themeFilesMap: Map<string, Uint8Array> | null = null;
+            try {
+                themeFilesMap = await this.resources.fetchTheme(themeName);
+                for (const [filePath] of themeFilesMap) {
+                    // Track root-level CSS/JS files (no path separator = root level)
+                    if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
+                        themeRootFiles.push(filePath);
+                    }
+                }
+            } catch (e) {
+                console.warn(`[ElpxExporter] Failed to pre-fetch theme: ${themeName}`, e);
+                themeRootFiles.push('style.css', 'style.js');
+            }
+
             // 1.1 Generate HTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const html = this.generatePageHtml(page, pages, meta, i === 0, i);
+                const html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles);
                 // First page is index.html, others go in html/ directory
                 const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 this.zip.addFile(pageFilename, html);
@@ -194,24 +210,15 @@ export class ElpxExporter extends Html5Exporter {
                 // Logo not available - footer will still render but without background image
             }
 
-            // 1.5 Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
-            try {
-                const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [filePath, content] of themeFiles) {
-                    // Rename theme files to legacy export format
-                    let exportPath = filePath;
-                    if (filePath === 'style.css') {
-                        exportPath = 'content.css';
-                    } else if (filePath === 'style.js') {
-                        exportPath = 'default.js';
-                    }
-                    this.zip.addFile(`theme/${exportPath}`, content);
+            // 1.5 Add theme files (already pre-fetched in step 1.0)
+            if (themeFilesMap) {
+                for (const [filePath, content] of themeFilesMap) {
+                    this.zip.addFile(`theme/${filePath}`, content);
                 }
-            } catch (e) {
-                // Add fallback theme if fetch fails (use legacy names)
-                console.warn(`[ElpxExporter] Failed to fetch theme: ${themeName}`, e);
-                this.zip.addFile('theme/content.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/default.js', this.getFallbackThemeJs());
+            } else {
+                // Add fallback theme if pre-fetch failed
+                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
+                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
             }
 
             // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
