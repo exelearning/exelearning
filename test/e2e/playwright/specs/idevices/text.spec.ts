@@ -2294,4 +2294,143 @@ test.describe('Text iDevice', () => {
             }
         });
     });
+
+    /**
+     * Test that HTML iframe asset resolution code exists and functions
+     *
+     * This is a simplified test that verifies the asset resolution infrastructure is in place.
+     * It inserts an iframe with an asset:// URL pattern and verifies the preview handles it.
+     *
+     * The full E2E flow (upload ZIP, extract, insert HTML) is complex due to TinyMCE's media
+     * dialog creating video elements instead of iframes. The core implementation is tested
+     * via unit tests in AssetManager.test.js, modalFileManager.test.js, and previewPanel tests.
+     */
+    test.describe('HTML iframe asset resolution', () => {
+        test('should handle iframe with asset URL pattern in TinyMCE content', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            // 1. Create project and navigate to workarea
+            const projectUuid = await createProject(page, 'HTML Iframe Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            // Wait for Yjs to be ready
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 2. Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // Wait for iDevice to be visible
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ state: 'visible', timeout: 15000 });
+
+            // Enter edit mode if needed
+            const editorBody = block.locator('iframe.tox-edit-area__iframe').first();
+            const editorVisible = await editorBody.isVisible().catch(() => false);
+            if (!editorVisible) {
+                await block.click();
+                await page.waitForTimeout(1000);
+            }
+
+            // Wait for TinyMCE to load
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // 3. Insert iframe with asset:// URL pattern directly into TinyMCE
+            // This tests that the asset URL pattern is preserved in editor content
+            await page.evaluate(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    // Insert iframe with asset:// URL pattern - the UUID doesn't need to exist
+                    // since we're just testing that the pattern is preserved and handled
+                    editor.insertContent(
+                        `<iframe src="asset://00000000-0000-0000-0000-000000000000.html" data-mce-html="true" style="width:100%; height:400px; border:1px solid #ccc;"></iframe>`,
+                    );
+                }
+            });
+
+            await page.waitForTimeout(500);
+
+            // 4. Verify the iframe is in TinyMCE content
+            const editorContent = await page.evaluate(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                return editor?.getContent() || '';
+            });
+
+            // The iframe with asset:// URL should be preserved in editor content
+            expect(editorContent).toContain('iframe');
+            expect(editorContent).toContain('asset://');
+
+            // 5. Save the iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // 6. Open preview panel
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+
+            // Wait for preview to load
+            await page.waitForTimeout(3000);
+
+            // 7. Verify iframe handling in preview
+            const previewInfo = await page.evaluate(() => {
+                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                const doc = previewIframe?.contentDocument;
+                if (!doc) return { error: 'No preview iframe document' };
+
+                // Find all iframes in preview
+                const allIframes = doc.querySelectorAll('iframe');
+                const htmlIframe = Array.from(allIframes).find(
+                    f =>
+                        f.getAttribute('data-mce-html') === 'true' ||
+                        f.getAttribute('data-asset-src')?.includes('asset://') ||
+                        f.getAttribute('src')?.includes('asset://') ||
+                        f.getAttribute('src')?.startsWith('blob:') ||
+                        f.getAttribute('src') === 'about:blank',
+                );
+
+                if (!htmlIframe) {
+                    return {
+                        hasIframe: false,
+                        iframeCount: allIframes.length,
+                    };
+                }
+
+                const src = htmlIframe.getAttribute('src') || '';
+                const dataAssetSrc = htmlIframe.getAttribute('data-asset-src') || '';
+
+                return {
+                    hasIframe: true,
+                    // The iframe src should be about:blank (placeholder) since the asset doesn't exist
+                    // or blob:// if it was somehow resolved
+                    src: src.substring(0, 60),
+                    dataAssetSrc: dataAssetSrc.substring(0, 60),
+                    iframeCount: allIframes.length,
+                };
+            });
+
+            console.log('Preview info:', previewInfo);
+
+            // Verify the iframe was processed (found in preview)
+            expect(previewInfo.hasIframe).toBe(true);
+        });
+    });
 });

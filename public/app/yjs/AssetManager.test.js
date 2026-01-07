@@ -5140,3 +5140,500 @@ describe('AssetManager _extractFolderPathFromImport', () => {
     expect(result).toBe('images');
   });
 });
+
+describe('_normalizeRelativePath', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('project-123');
+  });
+
+  it('normalizes bare path with base folder', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite', 'libs/jquery.min.js');
+    expect(result).toBe('mywebsite/libs/jquery.min.js');
+  });
+
+  it('normalizes ./ path with base folder', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite', './libs/jquery.min.js');
+    expect(result).toBe('mywebsite/libs/jquery.min.js');
+  });
+
+  it('normalizes ../ path by going up one level', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite/html', '../libs/jquery.min.js');
+    expect(result).toBe('mywebsite/libs/jquery.min.js');
+  });
+
+  it('normalizes multiple ../ paths', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite/html/pages', '../../libs/jquery.min.js');
+    expect(result).toBe('mywebsite/libs/jquery.min.js');
+  });
+
+  it('handles empty base folder', () => {
+    const result = assetManager._normalizeRelativePath('', 'libs/jquery.min.js');
+    expect(result).toBe('libs/jquery.min.js');
+  });
+
+  it('handles ./ with empty base folder', () => {
+    const result = assetManager._normalizeRelativePath('', './libs/jquery.min.js');
+    expect(result).toBe('libs/jquery.min.js');
+  });
+
+  it('returns absolute URLs unchanged', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite', 'https://example.com/script.js');
+    expect(result).toBe('https://example.com/script.js');
+  });
+
+  it('returns data URLs unchanged', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite', 'data:text/html,<h1>Hello</h1>');
+    expect(result).toBe('data:text/html,<h1>Hello</h1>');
+  });
+
+  it('returns blob URLs unchanged', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite', 'blob:http://localhost:8080/abc123');
+    expect(result).toBe('blob:http://localhost:8080/abc123');
+  });
+
+  it('returns asset URLs unchanged', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite', 'asset://uuid-1234');
+    expect(result).toBe('asset://uuid-1234');
+  });
+
+  it('handles mixed ./ and ../ in path', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite/html', './../libs/jquery.min.js');
+    expect(result).toBe('mywebsite/libs/jquery.min.js');
+  });
+
+  it('prevents going above root with too many ../s', () => {
+    const result = assetManager._normalizeRelativePath('mywebsite', '../../../etc/passwd');
+    expect(result).toBe('etc/passwd');
+  });
+});
+
+describe('findAssetByRelativePath', () => {
+  let assetManager;
+  let mockYjsBridge;
+
+  beforeEach(() => {
+    // Mock Logger if not defined
+    if (typeof global.Logger === 'undefined') {
+      global.Logger = { log: () => {} };
+    }
+
+    // Create mock Yjs bridge
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      entries: () => assetsMap.entries(),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+
+    // Populate with test assets
+    mockYjsBridge._assetsMap.set('uuid-jquery', {
+      filename: 'jquery.min.js',
+      folderPath: 'mywebsite/libs/jquery',
+      mime: 'application/javascript'
+    });
+    mockYjsBridge._assetsMap.set('uuid-bootstrap', {
+      filename: 'bootstrap.min.css',
+      folderPath: 'mywebsite/libs/bootstrap',
+      mime: 'text/css'
+    });
+    mockYjsBridge._assetsMap.set('uuid-style', {
+      filename: 'style.css',
+      folderPath: 'mywebsite/theme',
+      mime: 'text/css'
+    });
+    mockYjsBridge._assetsMap.set('uuid-index', {
+      filename: 'index.html',
+      folderPath: 'mywebsite',
+      mime: 'text/html'
+    });
+    mockYjsBridge._assetsMap.set('uuid-root-file', {
+      filename: 'readme.txt',
+      folderPath: '',
+      mime: 'text/plain'
+    });
+  });
+
+  it('finds asset by relative path from base folder', () => {
+    const result = assetManager.findAssetByRelativePath('mywebsite', 'libs/jquery/jquery.min.js');
+    expect(result).not.toBeNull();
+    expect(result.id).toBe('uuid-jquery');
+    expect(result.filename).toBe('jquery.min.js');
+  });
+
+  it('finds asset with ./ prefix', () => {
+    const result = assetManager.findAssetByRelativePath('mywebsite', './libs/bootstrap/bootstrap.min.css');
+    expect(result).not.toBeNull();
+    expect(result.id).toBe('uuid-bootstrap');
+  });
+
+  it('finds asset with ../ prefix', () => {
+    const result = assetManager.findAssetByRelativePath('mywebsite/html', '../theme/style.css');
+    expect(result).not.toBeNull();
+    expect(result.id).toBe('uuid-style');
+  });
+
+  it('finds asset in same folder', () => {
+    const result = assetManager.findAssetByRelativePath('mywebsite', 'index.html');
+    expect(result).not.toBeNull();
+    expect(result.id).toBe('uuid-index');
+  });
+
+  it('returns null for non-existent asset', () => {
+    const result = assetManager.findAssetByRelativePath('mywebsite', 'nonexistent.js');
+    expect(result).toBeNull();
+  });
+
+  it('returns null for absolute URLs', () => {
+    const result = assetManager.findAssetByRelativePath('mywebsite', 'https://example.com/script.js');
+    expect(result).toBeNull();
+  });
+
+  it('returns null for data URLs', () => {
+    const result = assetManager.findAssetByRelativePath('mywebsite', 'data:image/png;base64,abc');
+    expect(result).toBeNull();
+  });
+
+  it('returns null for asset URLs', () => {
+    const result = assetManager.findAssetByRelativePath('mywebsite', 'asset://some-uuid');
+    expect(result).toBeNull();
+  });
+
+  it('finds asset at root level with empty base folder', () => {
+    const result = assetManager.findAssetByRelativePath('', 'readme.txt');
+    expect(result).not.toBeNull();
+    expect(result.id).toBe('uuid-root-file');
+  });
+
+  it('returns null when Yjs bridge is not set', () => {
+    const noYjsManager = new AssetManager('project-123');
+    const result = noYjsManager.findAssetByRelativePath('mywebsite', 'libs/jquery/jquery.min.js');
+    expect(result).toBeNull();
+  });
+});
+
+describe('_isHtmlAsset', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('project-123');
+  });
+
+  it('returns true for text/html MIME type', () => {
+    expect(assetManager._isHtmlAsset('text/html', 'file.txt')).toBe(true);
+  });
+
+  it('returns true for .html extension', () => {
+    expect(assetManager._isHtmlAsset('application/octet-stream', 'page.html')).toBe(true);
+  });
+
+  it('returns true for .htm extension', () => {
+    expect(assetManager._isHtmlAsset('application/octet-stream', 'page.htm')).toBe(true);
+  });
+
+  it('returns true for .HTML extension (case insensitive)', () => {
+    expect(assetManager._isHtmlAsset('', 'page.HTML')).toBe(true);
+  });
+
+  it('returns false for non-HTML files', () => {
+    expect(assetManager._isHtmlAsset('text/css', 'style.css')).toBe(false);
+  });
+
+  it('returns false for null inputs', () => {
+    expect(assetManager._isHtmlAsset(null, null)).toBe(false);
+  });
+});
+
+describe('resolveHtmlWithAssets', () => {
+  let assetManager;
+  let mockYjsBridge;
+  let mockDB;
+  let storedBlobs;
+
+  beforeEach(() => {
+    // Mock Logger if not defined
+    if (typeof global.Logger === 'undefined') {
+      global.Logger = { log: () => {} };
+    }
+
+    // Create mock Yjs bridge
+    const assetsMap = new Map();
+    const mockYMap = {
+      get: (id) => assetsMap.get(id),
+      set: (id, value) => assetsMap.set(id, value),
+      delete: (id) => assetsMap.delete(id),
+      forEach: (callback) => assetsMap.forEach((value, key) => callback(value, key)),
+      entries: () => assetsMap.entries(),
+      doc: { transact: (fn) => fn() }
+    };
+    mockYjsBridge = {
+      getAssetsMap: () => mockYMap,
+      _assetsMap: assetsMap
+    };
+
+    // Create mock IndexedDB
+    storedBlobs = new Map();
+    const mockStore = {
+      put: mock((blobRecord) => {
+        storedBlobs.set(blobRecord.id, blobRecord);
+        return { onsuccess: null, onerror: null };
+      }),
+      get: mock((id) => {
+        const result = storedBlobs.get(id) || null;
+        const req = { result, onsuccess: null, onerror: null };
+        setTimeout(() => req.onsuccess && req.onsuccess(), 0);
+        return req;
+      }),
+      delete: mock((id) => {
+        storedBlobs.delete(id);
+        return { onsuccess: null, onerror: null };
+      })
+    };
+    mockDB = {
+      transaction: mock(() => ({
+        objectStore: mock(() => mockStore),
+        oncomplete: null,
+        onerror: null
+      })),
+      close: mock(() => undefined)
+    };
+
+    // Create blob URL tracking
+    let urlCounter = 0;
+    const mockObjectURLs = new Map();
+    global.URL = {
+      createObjectURL: mock((blob) => {
+        const url = `blob:test-${urlCounter++}`;
+        mockObjectURLs.set(url, blob);
+        return url;
+      }),
+      revokeObjectURL: mock((url) => {
+        mockObjectURLs.delete(url);
+      })
+    };
+
+    assetManager = new AssetManager('project-123');
+    assetManager.setYjsBridge(mockYjsBridge);
+    assetManager.db = mockDB;
+
+    // Mock console to suppress logs
+    spyOn(console, 'log').mockImplementation(() => {});
+    spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    delete global.URL;
+    delete global.Logger;
+  });
+
+  it('returns null for non-existent asset', async () => {
+    const result = await assetManager.resolveHtmlWithAssets('nonexistent-uuid');
+    expect(result).toBeNull();
+  });
+
+  it('returns null when blob is not available', async () => {
+    // Add metadata but no blob
+    mockYjsBridge._assetsMap.set('uuid-html', {
+      filename: 'index.html',
+      folderPath: 'mywebsite',
+      mime: 'text/html'
+    });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-html');
+    expect(result).toBeNull();
+  });
+
+  it('resolves simple HTML with no relative URLs', async () => {
+    const htmlContent = '<!DOCTYPE html><html><head></head><body><h1>Hello</h1></body></html>';
+    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+
+    mockYjsBridge._assetsMap.set('uuid-simple', {
+      filename: 'simple.html',
+      folderPath: 'mywebsite',
+      mime: 'text/html'
+    });
+    storedBlobs.set('uuid-simple', { id: 'uuid-simple', projectId: 'project-123', blob: htmlBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-simple');
+    expect(result).not.toBeNull();
+    expect(result).toMatch(/^blob:test-\d+$/);
+  });
+
+  it('skips absolute URLs in HTML', async () => {
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://example.com/external.js"></script>
+  <link href="//cdn.example.com/styles.css" rel="stylesheet">
+</head>
+<body></body>
+</html>`;
+    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+
+    mockYjsBridge._assetsMap.set('uuid-external', {
+      filename: 'external.html',
+      folderPath: 'mywebsite',
+      mime: 'text/html'
+    });
+    storedBlobs.set('uuid-external', { id: 'uuid-external', projectId: 'project-123', blob: htmlBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-external');
+    expect(result).not.toBeNull();
+
+    // The blob URL should be created, absolute URLs should remain unchanged
+    const resolvedBlob = global.URL.createObjectURL.mock.calls.length;
+    expect(resolvedBlob).toBeGreaterThan(0);
+  });
+
+  it('skips javascript: and # URLs', async () => {
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head></head>
+<body>
+  <a href="javascript:void(0)">Click</a>
+  <a href="#section">Jump</a>
+</body>
+</html>`;
+    const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+
+    mockYjsBridge._assetsMap.set('uuid-special', {
+      filename: 'special.html',
+      folderPath: 'mywebsite',
+      mime: 'text/html'
+    });
+    storedBlobs.set('uuid-special', { id: 'uuid-special', projectId: 'project-123', blob: htmlBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-special');
+    expect(result).not.toBeNull();
+  });
+
+  it('injects link handler script into resolved HTML', async () => {
+    // HTML with internal links
+    const html = `<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+  <a href="./page2.html">Next</a>
+  <a href="#section1">Section 1</a>
+  <a href="https://example.com">External</a>
+</body>
+</html>`;
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+
+    // Capture the blob passed to createObjectURL
+    let capturedBlob = null;
+    global.URL.createObjectURL = mock((blob) => {
+      capturedBlob = blob;
+      return 'blob:test-link-handler';
+    });
+
+    mockYjsBridge._assetsMap.set('uuid-links', {
+      filename: 'index.html',
+      folderPath: 'mywebsite',
+      mime: 'text/html'
+    });
+    storedBlobs.set('uuid-links', { id: 'uuid-links', projectId: 'project-123', blob: htmlBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-links');
+    expect(result).not.toBeNull();
+
+    // Read the captured blob content
+    expect(capturedBlob).not.toBeNull();
+    const resolvedHtml = await capturedBlob.text();
+
+    // Should contain the link handler script
+    expect(resolvedHtml).toContain('exe-resolve-html-link');
+    expect(resolvedHtml).toContain('postMessage');
+    expect(resolvedHtml).toContain('uuid-links'); // Asset ID should be in the script
+    expect(resolvedHtml).toContain('mywebsite'); // Base folder should be in the script
+  });
+
+  it('link handler script handles anchor links', async () => {
+    const html = `<!DOCTYPE html>
+<html>
+<body><a href="#test">Link</a></body>
+</html>`;
+    const htmlBlob = new Blob([html], { type: 'text/html' });
+
+    // Capture the blob passed to createObjectURL
+    let capturedBlob = null;
+    global.URL.createObjectURL = mock((blob) => {
+      capturedBlob = blob;
+      return 'blob:test-anchor';
+    });
+
+    mockYjsBridge._assetsMap.set('uuid-anchor', {
+      filename: 'index.html',
+      folderPath: '',
+      mime: 'text/html'
+    });
+    storedBlobs.set('uuid-anchor', { id: 'uuid-anchor', projectId: 'project-123', blob: htmlBlob });
+
+    const result = await assetManager.resolveHtmlWithAssets('uuid-anchor');
+    expect(capturedBlob).not.toBeNull();
+    const resolvedHtml = await capturedBlob.text();
+
+    // Script should handle # links with scrollIntoView
+    expect(resolvedHtml).toContain('scrollIntoView');
+    expect(resolvedHtml).toContain("href.charAt(0) === '#'");
+  });
+});
+
+describe('_generateLinkHandlerScript', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('project-123');
+  });
+
+  it('generates script with correct assetId and baseFolder', () => {
+    const script = assetManager._generateLinkHandlerScript('asset-123', 'my/folder');
+
+    expect(script).toContain('<script>');
+    expect(script).toContain('</script>');
+    expect(script).toContain('asset-123');
+    expect(script).toContain('my/folder');
+    expect(script).toContain('exe-resolve-html-link');
+  });
+
+  it('escapes single quotes in assetId and baseFolder', () => {
+    const script = assetManager._generateLinkHandlerScript("asset'123", "folder's/path");
+
+    // Should escape single quotes to prevent script injection
+    expect(script).toContain("asset\\'123");
+    expect(script).toContain("folder\\'s/path");
+  });
+
+  it('handles empty baseFolder', () => {
+    const script = assetManager._generateLinkHandlerScript('asset-123', '');
+
+    expect(script).toContain('asset-123');
+    expect(script).toContain("baseFolder: ''");
+  });
+
+  it('includes all link type handlers', () => {
+    const script = assetManager._generateLinkHandlerScript('asset-123', 'folder');
+
+    // Should handle external links (skip them)
+    expect(script).toContain('https?:');
+    expect(script).toContain('mailto:');
+
+    // Should handle anchor links
+    expect(script).toContain('scrollIntoView');
+
+    // Should handle relative links via postMessage
+    expect(script).toContain('postMessage');
+    expect(script).toContain('exe-resolve-html-link');
+  });
+});

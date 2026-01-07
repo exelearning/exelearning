@@ -551,6 +551,10 @@ export default class PreviewPanelManager {
             }
         }
 
+        // Resolve HTML iframes with asset:// URLs
+        // (similar to PDF handling, but processes relative URLs in the HTML content)
+        html = await this.resolveHtmlIframeAssets(html);
+
         // Inject script to handle PDF asset:// URLs inside the preview
         // The script will:
         // 1. Find PDF iframes with asset:// URLs
@@ -560,6 +564,67 @@ export default class PreviewPanelManager {
         html = this.injectPdfBlobUrlConverter(html);
 
         return html;
+    }
+
+    /**
+     * Resolve HTML iframes with asset:// URLs by pre-processing the HTML content
+     * and resolving all relative URLs within the HTML file.
+     *
+     * This is needed because HTML files from extracted ZIPs have relative URLs
+     * (e.g., ./libs/jquery.min.js) that can't be resolved in the blob:// context.
+     *
+     * @param {string} html - Preview HTML content
+     * @returns {Promise<string>} HTML with resolved iframe URLs
+     */
+    async resolveHtmlIframeAssets(html) {
+        const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        if (!assetManager) {
+            Logger.warn('[PreviewPanel] AssetManager not available for HTML iframe resolution');
+            return html;
+        }
+
+        // Find all iframes with asset:// URLs that point to HTML files
+        const iframePattern = /<iframe([^>]*)src=["'](asset:\/\/[^"']+)["']([^>]*)>/gi;
+        const matches = [...html.matchAll(iframePattern)];
+
+        if (matches.length === 0) {
+            return html;
+        }
+
+        let result = html;
+
+        for (const match of matches) {
+            const [fullMatch, beforeSrc, assetUrl, afterSrc] = match;
+
+            // Extract asset ID from URL: asset://uuid or asset://uuid.ext
+            const assetIdMatch = assetUrl.match(/asset:\/\/([a-f0-9-]+)/i);
+            if (!assetIdMatch) continue;
+
+            const assetId = assetIdMatch[1];
+
+            // Check if this asset is an HTML file
+            const metadata = assetManager.getAssetMetadata(assetId);
+            if (!metadata) continue;
+
+            const isHtml = assetManager._isHtmlAsset(metadata.mime, metadata.filename);
+            if (!isHtml) continue;
+
+            // Resolve the HTML with all its relative URLs
+            try {
+                const resolvedBlobUrl = await assetManager.resolveHtmlWithAssets(assetId);
+                if (resolvedBlobUrl) {
+                    // Replace the iframe src with the resolved blob URL
+                    // Keep the original asset:// URL in data-asset-src for saving
+                    const newIframe = `<iframe${beforeSrc}src="${resolvedBlobUrl}" data-asset-src="${assetUrl}"${afterSrc}>`;
+                    result = result.replace(fullMatch, newIframe);
+                    Logger.log(`[PreviewPanel] Resolved HTML iframe: ${assetId} -> ${resolvedBlobUrl.substring(0, 30)}...`);
+                }
+            } catch (error) {
+                Logger.warn(`[PreviewPanel] Failed to resolve HTML iframe ${assetId}:`, error);
+            }
+        }
+
+        return result;
     }
 
     /**

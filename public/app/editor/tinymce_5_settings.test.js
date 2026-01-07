@@ -258,12 +258,17 @@ describe('TinyMCE 5 Settings', () => {
         on: vi.fn(),
         getBody: () => document.createElement('div'),
       };
+
+      // SetContent handler is now registered in setup callback (before content loads)
+      config.setup(mockEditor);
+      expect(mockEditor.on).toHaveBeenCalledWith('SetContent', expect.any(Function));
+
+      // init_instance_callback runs after content loads
+      mockEditor.on.mockClear();
       config.init_instance_callback(mockEditor);
 
       expect(initSpy).toHaveBeenCalledWith('editor', true);
       expect(hookSpy).toHaveBeenCalled();
-      // Verify SetContent handler was registered
-      expect(mockEditor.on).toHaveBeenCalledWith('SetContent', expect.any(Function));
       initSpy.mockRestore();
       delete globalThis.$exeTinyMCE.onEditorInit;
     });
@@ -849,9 +854,10 @@ describe('TinyMCE 5 Settings', () => {
         expect(iframe.getAttribute('height')).toBe('150');
       });
 
-      it('resolves mce-preview-object spans with iframe for PDFs but does NOT add data-asset-src', async () => {
+      it('resolves mce-preview-object spans with iframe for PDFs and adds data-asset-src', async () => {
         // Iframes in mce-preview-object spans are resolved for display.
-        // The span's data-mce-p-src preserves the original URL.
+        // The span's data-mce-p-src preserves the original URL, but data-asset-src
+        // is also added to the iframe as a backup.
         const body = document.createElement('div');
         const span = document.createElement('span');
         span.classList.add('mce-preview-object');
@@ -881,8 +887,8 @@ describe('TinyMCE 5 Settings', () => {
         // The inner iframe SHOULD be resolved for display
         expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://pdf-preview-uuid/file.pdf');
         expect(iframe.getAttribute('src')).toBe(mockBlobUrl);
-        // But data-asset-src should NOT be added
-        expect(iframe.getAttribute('data-asset-src')).toBeNull();
+        // data-asset-src is added as a backup for persistence
+        expect(iframe.getAttribute('data-asset-src')).toBe('asset://pdf-preview-uuid/file.pdf');
       });
     });
   });

@@ -2519,14 +2519,15 @@ export default class ModalFilemanager extends Modal {
     /**
      * Insert selected asset(s) into editor
      */
-    insertSelectedAsset() {
+    async insertSelectedAsset() {
         const assetsToInsert = this.multiSelect ? this.selectedAssets : (this.selectedAsset ? [this.selectedAsset] : []);
         if (assetsToInsert.length === 0) return;
 
         // If callback provided, use it
         if (this.onSelectCallback) {
             // Build array of asset info for callback
-            const assetInfos = assetsToInsert.map(asset => {
+            const assetInfos = [];
+            for (const asset of assetsToInsert) {
                 const assetUrl = this.assetManager.getAssetUrl(asset.id, asset.filename);
 
                 // Get blob URL for immediate display (using synced method to ensure reverseBlobCache consistency)
@@ -2540,12 +2541,25 @@ export default class ModalFilemanager extends Modal {
                     this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
                 }
 
-                return {
+                // For HTML files, resolve internal URLs for proper display in iframes
+                if (asset.mime === 'text/html' ||
+                    (asset.filename && /\.html?$/i.test(asset.filename))) {
+                    try {
+                        const resolvedUrl = await this.assetManager.resolveHtmlWithAssets(asset.id);
+                        if (resolvedUrl) {
+                            blobUrl = resolvedUrl;
+                        }
+                    } catch (err) {
+                        console.warn('[MediaLibrary] Failed to resolve HTML with assets:', err);
+                    }
+                }
+
+                assetInfos.push({
                     assetUrl: assetUrl,
                     blobUrl: blobUrl,
                     asset: asset
-                };
-            });
+                });
+            }
 
             // For backwards compatibility, if single select mode, pass single object
             // If multi-select, pass array
@@ -2587,6 +2601,12 @@ export default class ModalFilemanager extends Modal {
             } else if (this.selectedAsset.mime === 'application/pdf') {
                 // Insert PDF as iframe using asset:// URL (resolved to blob:// by asset system)
                 editor.insertContent(`<iframe src="${assetUrl}" data-mce-pdf="true" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>`);
+            } else if (this.selectedAsset.mime === 'text/html' ||
+                       (this.selectedAsset.filename && /\.html?$/i.test(this.selectedAsset.filename))) {
+                // Insert HTML as iframe using asset:// URL (resolved to blob:// by resolveAssetUrlsInEditor)
+                // This ensures the asset:// URL is preserved in data-mce-p-src for correct persistence
+                // The resolveAssetUrlsInEditor function will use resolveHtmlWithAssets() for display
+                editor.insertContent(`<iframe src="${assetUrl}" data-mce-html="true" style="width:100%; height:600px; border:1px solid #ccc;"></iframe>`);
             } else {
                 // Insert as link
                 editor.insertContent(`<a href="${blobUrl}" data-asset-url="${assetUrl}">${this.selectedAsset.filename || 'File'}</a>`);

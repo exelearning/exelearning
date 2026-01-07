@@ -962,6 +962,362 @@ class AssetManager {
   }
 
   // =========================================================================
+  // HTML Asset Resolution (for iframe preview with relative URLs)
+  // =========================================================================
+
+  /**
+   * Normalize a relative path against a base folder
+   * Handles: ./path, ../path, and bare paths
+   *
+   * @param {string} baseFolder - Base folder path (e.g., "mywebsite")
+   * @param {string} relativePath - Relative path (e.g., "./libs/jquery.min.js")
+   * @returns {string} Normalized full path
+   * @private
+   */
+  _normalizeRelativePath(baseFolder, relativePath) {
+    // Skip absolute URLs and data URLs
+    if (/^(https?:|data:|blob:|asset:|\/\/)/i.test(relativePath)) {
+      return relativePath;
+    }
+
+    // Remove leading ./ if present
+    let cleanPath = relativePath.replace(/^\.\//, '');
+
+    // Combine with base folder
+    let fullPath = baseFolder ? `${baseFolder}/${cleanPath}` : cleanPath;
+
+    // Handle ../ by resolving path segments
+    const segments = fullPath.split('/');
+    const resolved = [];
+
+    for (const segment of segments) {
+      if (segment === '..') {
+        // Go up one level (remove last segment)
+        if (resolved.length > 0) {
+          resolved.pop();
+        }
+      } else if (segment !== '.' && segment !== '') {
+        resolved.push(segment);
+      }
+    }
+
+    return resolved.join('/');
+  }
+
+  /**
+   * Find asset by relative path within folder structure
+   *
+   * @param {string} baseFolder - Base folder path (e.g., "mywebsite")
+   * @param {string} relativePath - Relative path (e.g., "./libs/jquery.min.js")
+   * @returns {Object|null} Asset metadata with id, or null if not found
+   */
+  findAssetByRelativePath(baseFolder, relativePath) {
+    // Skip absolute URLs and data URLs
+    if (/^(https?:|data:|blob:|asset:|\/\/)/i.test(relativePath)) {
+      return null;
+    }
+
+    const normalizedPath = this._normalizeRelativePath(baseFolder, relativePath);
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) return null;
+
+    for (const [id, meta] of assetsMap.entries()) {
+      // Build full path for comparison
+      const assetFullPath = meta.folderPath
+        ? `${meta.folderPath}/${meta.filename}`
+        : meta.filename;
+
+      if (assetFullPath === normalizedPath) {
+        return { id, ...meta };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if a MIME type or filename indicates HTML content
+   * @param {string} mimeType - MIME type
+   * @param {string} filename - Filename
+   * @returns {boolean} True if HTML
+   * @private
+   */
+  _isHtmlAsset(mimeType, filename) {
+    if (mimeType === 'text/html') return true;
+    if (filename) {
+      const ext = filename.toLowerCase().split('.').pop();
+      return ext === 'html' || ext === 'htm';
+    }
+    return false;
+  }
+
+  /**
+   * Resolve an HTML asset with all its internal relative URLs converted to blob URLs
+   *
+   * This method:
+   * 1. Fetches the HTML content from the asset
+   * 2. Parses it and finds all relative URLs (src, href)
+   * 3. Resolves each to a blob URL
+   * 4. Returns a new blob URL with the resolved HTML
+   *
+   * @param {string} assetId - HTML asset UUID
+   * @returns {Promise<string>} Blob URL of resolved HTML
+   */
+  async resolveHtmlWithAssets(assetId) {
+    // 1. Get HTML asset metadata
+    const metadata = this.getAssetMetadata(assetId);
+    if (!metadata) {
+      Logger.log(`[AssetManager] resolveHtmlWithAssets: Asset ${assetId} not found`);
+      return null;
+    }
+
+    // 2. Fetch HTML blob and read as text
+    const blob = await this.getBlob(assetId);
+    if (!blob) {
+      Logger.log(`[AssetManager] resolveHtmlWithAssets: No blob for ${assetId}`);
+      return null;
+    }
+
+    const htmlText = await blob.text();
+    const baseFolder = metadata.folderPath || '';
+
+    // 3. Parse HTML and collect all relative URLs
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, 'text/html');
+
+    // Elements and attributes to process
+    const urlAttributes = [
+      { selector: '[src]', attr: 'src' },
+      { selector: 'link[href]', attr: 'href' },
+      { selector: 'a[href]', attr: 'href' },
+    ];
+
+    // Collect all relative URLs and their elements
+    const urlsToResolve = [];
+
+    for (const { selector, attr } of urlAttributes) {
+      const elements = doc.querySelectorAll(selector);
+      for (const el of elements) {
+        const url = el.getAttribute(attr);
+        if (url && !url.match(/^(https?:|data:|blob:|asset:|javascript:|#|\/\/)/i)) {
+          urlsToResolve.push({ element: el, attr, url });
+        }
+      }
+    }
+
+    // Also handle inline style url() references
+    const styleElements = doc.querySelectorAll('style');
+    const inlineStyleElements = doc.querySelectorAll('[style]');
+
+    // 4. Batch resolve all URLs
+    const resolvedUrls = new Map();
+
+    await Promise.all(
+      urlsToResolve.map(async ({ url }) => {
+        if (resolvedUrls.has(url)) return;
+
+        const asset = this.findAssetByRelativePath(baseFolder, url);
+        if (asset) {
+          const blobUrl = await this.resolveAssetURL(`asset://${asset.id}`);
+          if (blobUrl) {
+            resolvedUrls.set(url, blobUrl);
+          }
+        }
+      })
+    );
+
+    // 4.5 Process external CSS files BEFORE replacing URLs
+    // This must happen BEFORE step 5 because once URLs are replaced with blob://,
+    // we can't resolve relative url() references inside the CSS files.
+    // External CSS files loaded via <link> can't resolve relative url() from blob:// URLs
+    // So we fetch them, resolve internal URLs, and convert to inline <style>
+    const processedCssLinks = new Set();
+    for (const { element, attr, url } of urlsToResolve) {
+      // Only process <link rel="stylesheet"> elements
+      if (element.tagName !== 'LINK' || attr !== 'href') continue;
+      if (element.getAttribute('rel') !== 'stylesheet') continue;
+      if (!url.match(/\.css$/i)) continue;
+
+      const cssAsset = this.findAssetByRelativePath(baseFolder, url);
+      if (!cssAsset) continue;
+
+      try {
+        // Get CSS content
+        const cssBlob = await this.getBlob(cssAsset.id);
+        if (!cssBlob) continue;
+
+        const cssText = await cssBlob.text();
+
+        // Calculate the CSS file's folder for resolving its internal relative URLs
+        const cssFolder = cssAsset.folderPath || '';
+
+        // Resolve url() references in the CSS content
+        const resolvedCss = await this._resolveUrlsInCss(cssText, cssFolder, new Map());
+
+        // Replace <link> with <style> containing resolved CSS
+        const styleEl = doc.createElement('style');
+        styleEl.textContent = resolvedCss;
+        // Copy media attribute if present
+        const media = element.getAttribute('media');
+        if (media) styleEl.setAttribute('media', media);
+        element.parentNode.replaceChild(styleEl, element);
+        processedCssLinks.add(element);
+      } catch (e) {
+        Logger.log(`[AssetManager] resolveHtmlWithAssets: Error processing CSS ${url}: ${e.message}`);
+        // Keep original link on error - will be resolved to blob URL in step 5
+      }
+    }
+
+    // 5. Replace URLs in the document (skip processed CSS links and HTML anchor links)
+    for (const { element, attr, url } of urlsToResolve) {
+      // Skip CSS links that were already converted to inline <style>
+      if (processedCssLinks.has(element)) continue;
+
+      // Skip <a href> links to HTML files - let the link handler manage navigation
+      // This allows the injected script to intercept clicks and use postMessage
+      if (element.tagName === 'A' && attr === 'href' && url.match(/\.html?$/i)) {
+        continue;
+      }
+
+      const blobUrl = resolvedUrls.get(url);
+      if (blobUrl) {
+        element.setAttribute(attr, blobUrl);
+      }
+    }
+
+    // 5.5 Add target="_blank" to external links
+    const externalLinks = doc.querySelectorAll('a[href^="http://"], a[href^="https://"]');
+    for (const link of externalLinks) {
+      if (!link.getAttribute('target')) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    }
+
+    // Process inline styles with url() references
+    for (const styleEl of styleElements) {
+      styleEl.textContent = await this._resolveUrlsInCss(styleEl.textContent, baseFolder, resolvedUrls);
+    }
+
+    for (const el of inlineStyleElements) {
+      const style = el.getAttribute('style');
+      if (style && style.includes('url(')) {
+        el.setAttribute('style', await this._resolveUrlsInCss(style, baseFolder, resolvedUrls));
+      }
+    }
+
+    // 6. Inject link handler script for internal navigation
+    const linkHandlerScript = this._generateLinkHandlerScript(assetId, baseFolder);
+    const bodyEl = doc.body;
+    if (bodyEl) {
+      // Insert script before </body>
+      const scriptContainer = doc.createElement('div');
+      scriptContainer.innerHTML = linkHandlerScript;
+      const scriptEl = scriptContainer.querySelector('script');
+      if (scriptEl) {
+        bodyEl.appendChild(scriptEl);
+      }
+    }
+
+    // 7. Create new blob with resolved HTML
+    const resolvedHtml = doc.documentElement.outerHTML;
+    const resolvedBlob = new Blob([resolvedHtml], { type: 'text/html' });
+    const resolvedBlobUrl = URL.createObjectURL(resolvedBlob);
+
+    Logger.log(`[AssetManager] resolveHtmlWithAssets: Resolved ${resolvedUrls.size} URLs for ${assetId}`);
+
+    return resolvedBlobUrl;
+  }
+
+  /**
+   * Generate a link handler script for HTML iframes to enable internal navigation
+   * @param {string} assetId - Current HTML asset ID
+   * @param {string} baseFolder - Base folder path for relative URL resolution
+   * @returns {string} Script tag to inject into HTML
+   * @private
+   */
+  _generateLinkHandlerScript(assetId, baseFolder) {
+    // Escape special characters for safe embedding in script
+    const escapedAssetId = assetId.replace(/'/g, "\\'");
+    const escapedBaseFolder = baseFolder.replace(/'/g, "\\'");
+
+    return `
+<script>
+(function() {
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    var href = link.getAttribute('href');
+    if (!href) return;
+
+    // Skip external links, asset://, blob:// and data:// URLs
+    if (/^(https?:|mailto:|javascript:|data:|asset:|blob:)/i.test(href)) return;
+
+    // Handle anchor links within same page (scroll to element)
+    if (href.charAt(0) === '#') {
+      var target = document.querySelector(href);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+
+    // Handle relative HTML links - request parent to resolve
+    e.preventDefault();
+    window.parent.postMessage({
+      type: 'exe-resolve-html-link',
+      href: href,
+      assetId: '${escapedAssetId}',
+      baseFolder: '${escapedBaseFolder}'
+    }, '*');
+  });
+})();
+</script>`;
+  }
+
+  /**
+   * Resolve url() references in CSS content
+   * @param {string} cssText - CSS text content
+   * @param {string} baseFolder - Base folder for resolution
+   * @param {Map} resolvedUrls - Map of already resolved URLs
+   * @returns {Promise<string>} CSS with resolved URLs
+   * @private
+   */
+  async _resolveUrlsInCss(cssText, baseFolder, resolvedUrls) {
+    const urlPattern = /url\(["']?([^"')]+)["']?\)/g;
+    let result = cssText;
+    let match;
+
+    while ((match = urlPattern.exec(cssText)) !== null) {
+      const url = match[1];
+
+      // Skip absolute URLs and data URLs
+      if (url.match(/^(https?:|data:|blob:|asset:|\/\/)/i)) {
+        continue;
+      }
+
+      let blobUrl = resolvedUrls.get(url);
+
+      if (!blobUrl) {
+        const asset = this.findAssetByRelativePath(baseFolder, url);
+        if (asset) {
+          blobUrl = await this.resolveAssetURL(`asset://${asset.id}`);
+          if (blobUrl) {
+            resolvedUrls.set(url, blobUrl);
+          }
+        }
+      }
+
+      if (blobUrl) {
+        result = result.replace(match[0], `url("${blobUrl}")`);
+      }
+    }
+
+    return result;
+  }
+
+  // =========================================================================
   // Hash and Deduplication
   // =========================================================================
 
@@ -1475,6 +1831,32 @@ class AssetManager {
       return fullMatch;
     });
 
+    // Phase 1.5: Handle iframe HTML assets specially
+    // HTML iframes need resolveHtmlWithAssets() to resolve internal CSS/JS/images.
+    // Since this is a sync method and resolveHtmlWithAssets() is async, we mark them
+    // with data-mce-html and keep the asset:// URL for MutationObserver to handle.
+    // Pattern: <iframe ... src="asset://uuid.html" ...>
+    const iframeHtmlRegex = /(<iframe[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.html?)(?:\/[^"'&]+)?)\2([^>]*>)/gi;
+
+    resolvedHTML = resolvedHTML.replace(iframeHtmlRegex, (fullMatch, beforeSrc, quote, assetUrl, assetId, afterSrc) => {
+      // Check if this is really an HTML asset
+      const metadata = this.getAssetMetadata(assetId);
+      const isHtml = metadata && this._isHtmlAsset(metadata.mime, metadata.filename);
+
+      if (isHtml) {
+        // Keep asset:// URL - MutationObserver in asset_url_resolver.js will handle it
+        // Add data-mce-html attribute to signal it's an HTML iframe
+        const hasHtmlAttr = beforeSrc.includes('data-mce-html') || afterSrc.includes('data-mce-html');
+        if (!hasHtmlAttr) {
+          return `${beforeSrc}src=${quote}${assetUrl}${quote} data-mce-html="true"${afterSrc}`;
+        }
+        return fullMatch; // Already marked, keep as-is
+      }
+
+      // Not HTML, let Phase 2 handle it
+      return fullMatch;
+    });
+
     // Phase 2: Handle any remaining asset:// URLs (video, audio, background-image, etc.)
     // These won't have img-specific tracking but will still be resolved
     // Also handles corrupted URLs like asset://asset//uuid/filename
@@ -1483,6 +1865,14 @@ class AssetManager {
     const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+)?(\/[^"'\\]+)?/gi;
 
     resolvedHTML = resolvedHTML.replace(assetRegex, (fullMatch, assetId) => {
+      // Skip if this URL was already handled in Phase 1.5 (HTML iframe)
+      // Check if it's part of a preserved iframe src attribute
+      const metadata = this.getAssetMetadata(assetId);
+      if (metadata && this._isHtmlAsset(metadata.mime, metadata.filename)) {
+        // This is an HTML asset - keep asset:// URL for MutationObserver
+        return fullMatch;
+      }
+
       const blobURL = this.blobURLCache.get(assetId);
       if (blobURL) {
         return blobURL;
