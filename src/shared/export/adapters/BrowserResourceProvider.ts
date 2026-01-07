@@ -185,6 +185,15 @@ export class BrowserResourceProvider implements ResourceProvider {
     }
 
     /**
+     * Fetch IMS Content Package schema XSD files
+     * @returns Map of path -> content
+     */
+    async fetchImsSchemas(): Promise<Map<string, Uint8Array>> {
+        const blobMap = await this.fetcher.fetchSchemas('ims');
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
+    }
+
+    /**
      * Normalize iDevice type name to directory name
      * @param ideviceType - Raw iDevice type name (e.g., 'FreeTextIdevice')
      * @returns Normalized directory name (e.g., 'text')

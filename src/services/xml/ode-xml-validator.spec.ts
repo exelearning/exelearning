@@ -73,7 +73,7 @@ describe('ODE XML Validator', () => {
             expect(result.errors.some(e => e.code === 'MISSING_NAV_STRUCTURES')).toBe(true);
         });
 
-        it('should return error for empty odeNavStructures', () => {
+        it('should accept empty odeNavStructures (odeNavStructure* cardinality)', () => {
             const parsed = {
                 ode: {
                     odeNavStructures: {},
@@ -81,8 +81,8 @@ describe('ODE XML Validator', () => {
             };
 
             const result = validateOdeXml(parsed);
-            expect(result.valid).toBe(false);
-            expect(result.errors.some(e => e.code === 'MISSING_NAV_STRUCTURE')).toBe(true);
+            expect(result.valid).toBe(true);
+            expect(result.errors).toHaveLength(0);
         });
 
         it('should return error for page without required elements', () => {
@@ -492,7 +492,7 @@ describe('ODE XML Validator', () => {
             expect(result.errors.some(e => e.code === 'INVALID_NAV_STRUCTURES')).toBe(true);
         });
 
-        it('should return error for empty odeNavStructure array', () => {
+        it('should accept empty odeNavStructure array (odeNavStructure* cardinality)', () => {
             const parsed = {
                 ode: {
                     odeNavStructures: {
@@ -502,8 +502,8 @@ describe('ODE XML Validator', () => {
             };
 
             const result = validateOdeXml(parsed);
-            expect(result.valid).toBe(false);
-            expect(result.errors.some(e => e.code === 'EMPTY_NAV_STRUCTURES')).toBe(true);
+            expect(result.valid).toBe(true);
+            expect(result.errors).toHaveLength(0);
         });
 
         it('should return error for invalid odeNavStructure type', () => {

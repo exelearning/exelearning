@@ -195,6 +195,12 @@ export interface ResourceProvider {
      * @returns Map of relative path -> content buffer
      */
     fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Fetch IMS Content Package schema XSD files for validation
+     * @returns Map of relative path -> content buffer
+     */
+    fetchImsSchemas(): Promise<Map<string, Uint8Array>>;
 }
 
 /**
@@ -273,6 +279,13 @@ export interface ZipArchive {
      * @returns True if file exists
      */
     hasFile(path: string): boolean;
+
+    /**
+     * Get all file paths in the archive
+     * Used for generating complete manifest listings
+     * @returns Array of file paths
+     */
+    getFilePaths(): string[];
 
     /**
      * Generate the ZIP archive

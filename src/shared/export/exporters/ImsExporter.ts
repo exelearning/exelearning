@@ -5,6 +5,9 @@
  *
  * IMS CP export creates:
  * - imsmanifest.xml (IMS CP manifest with LOM metadata)
+ * - content.xml (ODE format for re-editing)
+ * - content.dtd (DTD for XML validation)
+ * - *.xsd (IMS schema files for validation)
  * - index.html (first page)
  * - html/*.html (other pages)
  * - libs/ (JavaScript libraries)
@@ -17,6 +20,8 @@
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { ImsManifestGenerator } from '../generators/ImsManifest';
+import { generateOdeXml } from '../generators/OdeXmlGenerator';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 
 export class ImsExporter extends Html5Exporter {
     protected manifestGenerator: ImsManifestGenerator | null = null;
@@ -171,10 +176,30 @@ export class ImsExporter extends Html5Exporter {
             // 6. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
-            // 7. Generate imsmanifest.xml
+            // 6b. Fetch IMS schema XSD files
+            try {
+                const schemaFiles = await this.resources.fetchImsSchemas();
+                for (const [filePath, content] of schemaFiles) {
+                    this.zip.addFile(filePath, content);
+                    commonFiles.push(filePath);
+                }
+            } catch {
+                // Schema files are optional for package to work
+            }
+
+            // 6c. Add content.xml (ODE format) and content.dtd for re-editing
+            const contentXml = generateOdeXml(meta, pages);
+            this.zip.addFile('content.xml', contentXml);
+            this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+            commonFiles.push('content.xml', ODE_DTD_FILENAME);
+
+            // 7. Generate imsmanifest.xml with complete file list
+            // Get all files from the ZIP to ensure the manifest lists ALL resources
+            const allZipFiles = this.zip.getFilePaths();
             const manifestXml = this.manifestGenerator.generate({
                 commonFiles,
                 pageFiles,
+                allZipFiles,
             });
             this.zip.addFile('imsmanifest.xml', manifestXml);
 

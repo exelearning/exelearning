@@ -282,6 +282,16 @@ export class FileSystemResourceProvider implements ResourceProvider {
     }
 
     /**
+     * Fetch IMS Content Package schema XSD files
+     * @returns Map of file paths to content
+     */
+    async fetchImsSchemas(): Promise<Map<string, Buffer>> {
+        // Schema files are in app/schemas/ims/
+        const schemaPath = path.join(this.publicDir, 'app', 'schemas', 'ims');
+        return this.readDirectoryRecursive(schemaPath, '');
+    }
+
+    /**
      * Read all files from a directory recursively
      * @param dirPath - Directory path
      * @param prefix - Prefix for output paths (can be empty string)

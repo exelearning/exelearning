@@ -221,16 +221,19 @@ export class Scorm12Exporter extends Html5Exporter {
             // 7. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
-            // 8. Generate imsmanifest.xml
+            // 8. Generate imslrm.xml (LOM metadata) - must be before manifest
+            const lomXml = this.lomGenerator.generate();
+            this.zip.addFile('imslrm.xml', lomXml);
+
+            // 9. Generate imsmanifest.xml with complete file list
+            // Get all files from the ZIP to ensure the manifest lists ALL resources
+            const allZipFiles = this.zip.getFilePaths();
             const manifestXml = this.manifestGenerator.generate({
                 commonFiles,
                 pageFiles,
+                allZipFiles,
             });
             this.zip.addFile('imsmanifest.xml', manifestXml);
-
-            // 9. Generate imslrm.xml (LOM metadata)
-            const lomXml = this.lomGenerator.generate();
-            this.zip.addFile('imslrm.xml', lomXml);
 
             // 10. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();

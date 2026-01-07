@@ -329,13 +329,14 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     .get('/api/resources/schemas/:format', ({ params }) => {
         const { format } = params;
 
-        // Schema files are typically in public/files/perm/schemas/
-        const schemasPath = path.join('public/files/perm/schemas', format);
+        // Schema files are in public/app/schemas/ (scorm12, scorm2004, ims, epub3)
+        const schemasPath = path.join('public/app/schemas', format);
         if (!deps.fs.existsSync(schemasPath)) {
             return [];
         }
 
-        return buildFileList(schemasPath, `/files/perm/schemas/${format}`);
+        // Return files with root-level paths (XSD files go in package root)
+        return buildFileList(schemasPath, `/app/schemas/${format}`, '');
     })
 
     // GET /api/resources/content-css - Get content CSS files (base.css, etc.)

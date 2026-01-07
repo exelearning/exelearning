@@ -320,6 +320,41 @@ describe('FileSystemResourceProvider', () => {
         });
     });
 
+    describe('fetchImsSchemas', () => {
+        it('should return empty map when no IMS schemas exist', async () => {
+            // By default test dir doesn't have IMS schemas
+            const files = await provider.fetchImsSchemas();
+            expect(files.size).toBe(0);
+        });
+
+        it('should fetch IMS schema files when they exist', async () => {
+            // Create IMS schema directory and files
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'ims'));
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'imscp_v1p1.xsd'), '<?xml version="1.0"?>');
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'lom.xsd'), '<?xml version="1.0"?>');
+
+            const files = await provider.fetchImsSchemas();
+            expect(files.size).toBe(2);
+            expect(files.has('imscp_v1p1.xsd')).toBe(true);
+            expect(files.has('lom.xsd')).toBe(true);
+        });
+
+        it('should fetch IMS schema files from subdirectories', async () => {
+            // Create IMS schema directory with subdirectory
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'ims', 'common'));
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'imscp_v1p1.xsd'), '<?xml version="1.0"?>');
+            await fs.writeFile(
+                path.join(testDir, 'app', 'schemas', 'ims', 'common', 'dataTypes.xsd'),
+                '<?xml version="1.0"?>',
+            );
+
+            const files = await provider.fetchImsSchemas();
+            expect(files.size).toBe(2);
+            expect(files.has('imscp_v1p1.xsd')).toBe(true);
+            expect(files.has('common/dataTypes.xsd')).toBe(true);
+        });
+    });
+
     describe('fetchContentCss', () => {
         it('should fetch content CSS files', async () => {
             const files = await provider.fetchContentCss();
