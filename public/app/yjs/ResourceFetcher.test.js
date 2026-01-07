@@ -1124,6 +1124,50 @@ describe('ResourceFetcher', () => {
       delete window.fflate;
     });
 
+    it('uses hash-based cache version when manifest has libs hash', async () => {
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const fetcher = new ResourceFetcher();
+      fetcher.resourceCache = mockCache;
+      fetcher.bundleManifest = {
+        libs: { hash: 'abc123def456' },
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await fetcher.fetchBaseLibraries();
+
+      // Should use version + first 8 chars of hash
+      expect(mockCache.get).toHaveBeenCalledWith('libs', 'base', 'v3.1.0-abc123de');
+    });
+
+    it('uses version-only cache key when manifest has no libs hash', async () => {
+      const mockCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const fetcher = new ResourceFetcher();
+      fetcher.resourceCache = mockCache;
+      fetcher.bundleManifest = {}; // No libs.hash
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      await fetcher.fetchBaseLibraries();
+
+      // Should use version only (no hash suffix)
+      expect(mockCache.get).toHaveBeenCalledWith('libs', 'base', 'v3.1.0');
+    });
+
     it('falls back when bundle is empty', async () => {
       const fetcher = new ResourceFetcher();
       fetcher.bundlesAvailable = true;
