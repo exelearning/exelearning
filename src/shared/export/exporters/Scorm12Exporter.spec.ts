@@ -293,6 +293,23 @@ describe('Scorm12Exporter', () => {
             expect(manifest).toContain('<resources');
             expect(manifest).toContain('<resource');
         });
+
+        it('should list imslrm.xml in COMMON_FILES resource', async () => {
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            // imslrm.xml should be listed as a file in COMMON_FILES
+            // (referenced by adlcp:location in metadata)
+            expect(manifest).toContain('identifier="COMMON_FILES"');
+            expect(manifest).toContain('<file href="imslrm.xml"/>');
+        });
+
+        it('should reference imslrm.xml in metadata', async () => {
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).toContain('<adlcp:location>imslrm.xml</adlcp:location>');
+        });
     });
 
     describe('LOM Metadata', () => {

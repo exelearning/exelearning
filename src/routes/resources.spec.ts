@@ -445,14 +445,14 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/schemas/scorm12') return true;
+                        if (filePath === 'public/app/schemas/scorm12') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
                         if (typeof dirPath === 'string' && dirPath.includes('schemas/scorm12')) {
                             return [
-                                { name: 'imscp.xsd', isFile: () => true, isDirectory: () => false },
-                                { name: 'adlcp.xsd', isFile: () => true, isDirectory: () => false },
+                                { name: 'imscp_rootv1p1p2.xsd', isFile: () => true, isDirectory: () => false },
+                                { name: 'adlcp_rootv1p2.xsd', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
                         }
                         return fs.readdirSync(dirPath, options);
@@ -468,6 +468,110 @@ describe('Resources Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.length).toBe(2);
+            // Verify files have root-level paths (XSD files go in package root)
+            expect(body[0].path).toBe('imscp_rootv1p1p2.xsd');
+            expect(body[1].path).toBe('adlcp_rootv1p2.xsd');
+        });
+
+        it('should return SCORM 2004 schema files', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        if (filePath === 'public/app/schemas/scorm2004') return true;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        if (typeof dirPath === 'string' && dirPath.includes('schemas/scorm2004')) {
+                            return [
+                                { name: 'imscp_v1p1.xsd', isFile: () => true, isDirectory: () => false },
+                                { name: 'adlcp_v1p3.xsd', isFile: () => true, isDirectory: () => false },
+                                { name: 'imsss_v1p0.xsd', isFile: () => true, isDirectory: () => false },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/schemas/scorm2004'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.length).toBe(3);
+            expect(body[0].path).toBe('imscp_v1p1.xsd');
+            expect(body[1].path).toBe('adlcp_v1p3.xsd');
+            expect(body[2].path).toBe('imsss_v1p0.xsd');
+        });
+
+        it('should include schema files from subdirectories', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        if (filePath.includes('schemas/scorm12')) return true;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/app/schemas/scorm12') {
+                            return [
+                                { name: 'imscp_rootv1p1p2.xsd', isFile: () => true, isDirectory: () => false },
+                                { name: 'common', isFile: () => false, isDirectory: () => true },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('common')) {
+                            return [
+                                { name: 'dataTypes.xsd', isFile: () => true, isDirectory: () => false },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/schemas/scorm12'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.length).toBe(2);
+            // Root file
+            expect(body.some((f: { path: string }) => f.path === 'imscp_rootv1p1p2.xsd')).toBe(true);
+            // Subdirectory file preserves relative path
+            expect(body.some((f: { path: string }) => f.path === 'common/dataTypes.xsd')).toBe(true);
+        });
+
+        it('should generate correct URLs for schema files', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        if (filePath === 'public/app/schemas/scorm12') return true;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        if (typeof dirPath === 'string' && dirPath.includes('schemas/scorm12')) {
+                            return [
+                                { name: 'imscp_rootv1p1p2.xsd', isFile: () => true, isDirectory: () => false },
+                            ] as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/schemas/scorm12'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.length).toBe(1);
+            // URL should point to the actual file location
+            expect(body[0].url).toContain('/app/schemas/scorm12/imscp_rootv1p1p2.xsd');
         });
     });
 

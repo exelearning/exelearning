@@ -436,4 +436,68 @@ describe('Scorm12ManifestGenerator', () => {
             expect(matches?.length).toBe(1);
         });
     });
+
+    describe('XSD schema files handling', () => {
+        it('should include XSD files in COMMON_FILES when present', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'imscp_rootv1p1p2.xsd',
+                    'adlcp_rootv1p2.xsd',
+                    'imsmd_rootv1p2p1.xsd',
+                    'imslrm.xml',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            // XSD files should be in COMMON_FILES
+            expect(xml).toContain('<file href="imscp_rootv1p1p2.xsd"/>');
+            expect(xml).toContain('<file href="adlcp_rootv1p2.xsd"/>');
+            expect(xml).toContain('<file href="imsmd_rootv1p2p1.xsd"/>');
+            // imslrm.xml should also be included
+            expect(xml).toContain('<file href="imslrm.xml"/>');
+        });
+
+        it('should include XSD files from subdirectories', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'imscp_rootv1p1p2.xsd',
+                    'common/dataTypes.xsd',
+                    'common/elementTypes.xsd',
+                    'vocab/custom.xsd',
+                    'imslrm.xml',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            // All XSD files including subdirectory ones should be in COMMON_FILES
+            expect(xml).toContain('<file href="imscp_rootv1p1p2.xsd"/>');
+            expect(xml).toContain('<file href="common/dataTypes.xsd"/>');
+            expect(xml).toContain('<file href="common/elementTypes.xsd"/>');
+            expect(xml).toContain('<file href="vocab/custom.xsd"/>');
+        });
+
+        it('should work correctly when no XSD files are present', () => {
+            const xml = generator.generate({
+                allZipFiles: ['index.html', 'libs/jquery.js', 'imslrm.xml', 'imsmanifest.xml'],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            // Should still have valid COMMON_FILES with other files
+            expect(xml).toContain('identifier="COMMON_FILES"');
+            expect(xml).toContain('<file href="libs/jquery.js"/>');
+            expect(xml).toContain('<file href="imslrm.xml"/>');
+            // No XSD files
+            expect(xml).not.toContain('.xsd"/>');
+        });
+    });
 });
