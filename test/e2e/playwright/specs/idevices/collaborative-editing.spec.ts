@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test';
 /**
  * E2E Tests for Collaborative Editing iDevice
  *
- * Tests the ProseMirror-based collaborative text editor functionality including:
+ * Tests the Lexical-based collaborative text editor functionality including:
  * - Basic operations (add, edit, save)
  * - Text formatting
  * - Preview rendering
@@ -90,14 +90,14 @@ async function addCollaborativeEditingIdevice(page: Page): Promise<void> {
 }
 
 /**
- * Helper to wait for ProseMirror editor to be ready
+ * Helper to wait for Lexical editor to be ready
  */
-async function waitForProseMirrorEditor(page: Page): Promise<void> {
-    // Wait for ProseMirror editor to initialize
+async function waitForLexicalEditor(page: Page): Promise<void> {
+    // Wait for Lexical editor to initialize
     await page.waitForFunction(
         () => {
-            const editor = document.querySelector('.prosemirror-editor .ProseMirror');
-            return editor && editor.getAttribute('contenteditable') === 'true';
+            const editor = document.querySelector('.lexical-editor [contenteditable="true"]');
+            return editor !== null;
         },
         { timeout: 20000 },
     );
@@ -132,10 +132,10 @@ test.describe('Collaborative Editing iDevice', () => {
             await expect(collabIdevice).toBeVisible({ timeout: 10000 });
         });
 
-        test('should show ProseMirror editor when iDevice is added', async ({ authenticatedPage, createProject }) => {
+        test('should show Lexical editor when iDevice is added', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
 
-            const projectUuid = await createProject(page, 'ProseMirror Editor Test');
+            const projectUuid = await createProject(page, 'Lexical Editor Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
@@ -152,15 +152,15 @@ test.describe('Collaborative Editing iDevice', () => {
             // Add iDevice
             await addCollaborativeEditingIdevice(page);
 
-            // Wait for ProseMirror editor
-            await waitForProseMirrorEditor(page);
+            // Wait for Lexical editor
+            await waitForLexicalEditor(page);
 
-            // Verify ProseMirror editor exists
-            const prosemirrorEditor = page.locator('.prosemirror-editor .ProseMirror').first();
-            await expect(prosemirrorEditor).toBeVisible({ timeout: 10000 });
+            // Verify Lexical editor exists
+            const lexicalEditor = page.locator('.lexical-editor [contenteditable="true"]').first();
+            await expect(lexicalEditor).toBeVisible({ timeout: 10000 });
         });
 
-        test('should type content in ProseMirror editor', async ({ authenticatedPage, createProject }) => {
+        test('should type content in Lexical editor', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Type Content Test');
@@ -179,18 +179,15 @@ test.describe('Collaborative Editing iDevice', () => {
 
             // Add iDevice
             await addCollaborativeEditingIdevice(page);
-            await waitForProseMirrorEditor(page);
+            await waitForLexicalEditor(page);
 
-            // Get editor and type content via ProseMirror API
-            const editor = page.locator('.prosemirror-editor .ProseMirror').first();
+            // Get editor and type content via Lexical API
+            const editor = page.locator('.lexical-editor [contenteditable="true"]').first();
 
-            // Use $exeDevice.mainEditor to insert text (works cross-browser)
-            await page.evaluate(() => {
-                const exeDevice = (window as any).$exeDevice;
-                if (exeDevice?.mainEditor) {
-                    exeDevice.mainEditor.insertText('Hello collaborative world!');
-                }
-            });
+            // Click to focus and type using keyboard
+            await editor.click();
+            await page.waitForTimeout(500);
+            await page.keyboard.type('Hello collaborative world!');
 
             // Verify content was typed
             await expect(editor).toContainText('Hello collaborative world!', { timeout: 10000 });
@@ -215,23 +212,23 @@ test.describe('Collaborative Editing iDevice', () => {
 
             // Add iDevice
             await addCollaborativeEditingIdevice(page);
-            await waitForProseMirrorEditor(page);
+            await waitForLexicalEditor(page);
 
-            // Verify toolbar exists (TinyMCE-like toolbar with wrapper)
-            const toolbar = page.locator('.prosemirror-toolbar-wrapper').first();
+            // Verify toolbar exists (TinyMCE-like toolbar)
+            const toolbar = page.locator('.lexical-toolbar-wrapper').first();
             await expect(toolbar).toBeVisible({ timeout: 10000 });
 
-            // Verify menubar exists
-            const menubar = toolbar.locator('.prosemirror-menubar');
-            await expect(menubar).toBeVisible();
+            // Verify button rows container exists
+            const buttonRows = toolbar.locator('.lexical-button-rows');
+            await expect(buttonRows).toBeVisible();
 
-            // Verify button rows exist
-            const buttonRows = toolbar.locator('.prosemirror-toolbar-row');
-            await expect(buttonRows.first()).toBeVisible();
+            // Verify toolbar row exists
+            const toolbarRow = toolbar.locator('.lexical-toolbar-row');
+            await expect(toolbarRow.first()).toBeVisible();
 
             // Verify some toolbar buttons exist
-            const boldButton = toolbar.locator('.prosemirror-toolbar-btn[data-name="bold"]');
-            const italicButton = toolbar.locator('.prosemirror-toolbar-btn[data-name="italic"]');
+            const boldButton = toolbar.locator('.lexical-toolbar-btn[data-name="bold"]');
+            const italicButton = toolbar.locator('.lexical-toolbar-btn[data-name="italic"]');
 
             await expect(boldButton).toBeVisible();
             await expect(italicButton).toBeVisible();
@@ -256,25 +253,20 @@ test.describe('Collaborative Editing iDevice', () => {
 
             // Add iDevice
             await addCollaborativeEditingIdevice(page);
-            await waitForProseMirrorEditor(page);
+            await waitForLexicalEditor(page);
 
-            // Type some content
-            const editor = page.locator('.prosemirror-editor .ProseMirror').first();
+            // Type some content in the Lexical editor
+            const editor = page.locator('.lexical-editor [contenteditable="true"]').first();
 
-            // Use $exeDevice.mainEditor to insert text
-            await page.evaluate(() => {
-                const exeDevice = (window as any).$exeDevice;
-                if (exeDevice?.mainEditor) {
-                    exeDevice.mainEditor.insertText('Bold text');
-                }
-            });
+            // Click to focus and type
+            await editor.click();
+            await page.waitForTimeout(500);
+            await page.keyboard.type('Bold text');
 
             // Wait for text to appear
             await expect(editor).toContainText('Bold text', { timeout: 10000 });
 
             // Select all text using platform-aware shortcut
-            await editor.click();
-            await page.waitForTimeout(300);
             const isMac = process.platform === 'darwin';
             await page.keyboard.press(isMac ? 'Meta+a' : 'Control+a');
             await page.waitForTimeout(500);
@@ -283,8 +275,8 @@ test.describe('Collaborative Editing iDevice', () => {
             await page.keyboard.press(isMac ? 'Meta+b' : 'Control+b');
             await page.waitForTimeout(1000);
 
-            // Verify bold tag exists
-            const boldText = editor.locator('strong');
+            // Verify bold tag exists (Lexical uses <strong> or <b>)
+            const boldText = editor.locator('strong, b');
             await expect(boldText).toBeVisible({ timeout: 10000 });
         });
 
@@ -307,7 +299,7 @@ test.describe('Collaborative Editing iDevice', () => {
 
             // Add iDevice
             await addCollaborativeEditingIdevice(page);
-            await waitForProseMirrorEditor(page);
+            await waitForLexicalEditor(page);
 
             // Verify feedback fieldset exists
             const feedbackFieldset = page.locator('#collabFeedbackFieldset');
@@ -343,18 +335,15 @@ test.describe('Collaborative Editing iDevice', () => {
 
             // Add iDevice
             await addCollaborativeEditingIdevice(page);
-            await waitForProseMirrorEditor(page);
+            await waitForLexicalEditor(page);
 
-            // Type content
-            const editor = page.locator('.prosemirror-editor .ProseMirror').first();
+            // Type content in Lexical editor
+            const editor = page.locator('.lexical-editor [contenteditable="true"]').first();
 
-            // Use $exeDevice.mainEditor to insert text
-            await page.evaluate(() => {
-                const exeDevice = (window as any).$exeDevice;
-                if (exeDevice?.mainEditor) {
-                    exeDevice.mainEditor.insertText('Saved content test');
-                }
-            });
+            // Click to focus and type
+            await editor.click();
+            await page.waitForTimeout(500);
+            await page.keyboard.type('Saved content test');
 
             // Wait for content to be typed
             await expect(editor).toContainText('Saved content', { timeout: 10000 });

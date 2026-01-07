@@ -293,8 +293,8 @@
 					name: 'edit',
 					label: _('Edit'),
 					items: [
-						{ name: 'undo', label: _('Undo'), icon: 'bi-arrow-counterclockwise', shortcut: 'Ctrl+Z', command: () => undo },
-						{ name: 'redo', label: _('Redo'), icon: 'bi-arrow-clockwise', shortcut: 'Ctrl+Y', command: () => redo },
+						{ name: 'undo', label: _('Undo'), icon: 'undo', shortcut: 'Ctrl+Z', command: () => undo },
+						{ name: 'redo', label: _('Redo'), icon: 'redo', shortcut: 'Ctrl+Y', command: () => redo },
 						{ type: 'separator' },
 						{ name: 'selectall', label: _('Select all'), shortcut: 'Ctrl+A', action: 'selectAll' },
 						{ name: 'searchreplace', label: _('Find and replace'), shortcut: 'Ctrl+H', action: 'searchReplace' },
@@ -309,13 +309,13 @@
 					name: 'insert',
 					label: _('Insert'),
 					items: [
-						{ name: 'template', label: _('Template...'), icon: 'bi-grid-3x2', action: 'template' },
+						{ name: 'template', label: _('Template...'), icon: 'template', action: 'template' },
 						{ type: 'separator' },
-						{ name: 'hr', label: _('Horizontal line'), icon: 'bi-hr', action: 'hr' },
-						{ name: 'charmap', label: _('Special character...'), icon: 'bi-box', action: 'specialchar' },
-						{ name: 'anchor', label: _('Anchor...'), icon: 'bi-bookmark', action: 'anchor' },
+						{ name: 'hr', label: _('Horizontal line'), icon: 'hr', action: 'hr' },
+						{ name: 'charmap', label: _('Special character...'), icon: 'charmap', action: 'specialchar' },
+						{ name: 'anchor', label: _('Anchor...'), icon: 'anchor', action: 'anchor' },
 						{ type: 'separator' },
-						{ name: 'insertdatetime', label: _('Date/time'), icon: 'bi-calendar', action: 'insertDateTime' },
+						{ name: 'insertdatetime', label: _('Date/time'), icon: 'datetime', action: 'insertDateTime' },
 						{ name: 'abbr', label: _('Abbreviation...'), action: 'abbr' },
 					],
 				},
@@ -323,14 +323,14 @@
 					name: 'format',
 					label: _('Format'),
 					items: [
-						{ name: 'bold', label: _('Bold'), icon: 'bi-type-bold', shortcut: 'Ctrl+B', mark: 'strong' },
-						{ name: 'italic', label: _('Italic'), icon: 'bi-type-italic', shortcut: 'Ctrl+I', mark: 'em' },
-						{ name: 'underline', label: _('Underline'), icon: 'bi-type-underline', shortcut: 'Ctrl+U', mark: 'underline' },
-						{ name: 'strikethrough', label: _('Strikethrough'), icon: 'bi-type-strikethrough', mark: 'strike' },
+						{ name: 'bold', label: _('Bold'), icon: 'bold', shortcut: 'Ctrl+B', mark: 'strong' },
+						{ name: 'italic', label: _('Italic'), icon: 'italic', shortcut: 'Ctrl+I', mark: 'em' },
+						{ name: 'underline', label: _('Underline'), icon: 'underline', shortcut: 'Ctrl+U', mark: 'underline' },
+						{ name: 'strikethrough', label: _('Strikethrough'), icon: 'strikethrough', mark: 'strike' },
 						{ type: 'separator' },
 						{ name: 'superscript', label: _('Superscript'), mark: 'superscript' },
 						{ name: 'subscript', label: _('Subscript'), mark: 'subscript' },
-						{ name: 'code', label: _('Code'), icon: 'bi-code', mark: 'code' },
+						{ name: 'code', label: _('Code'), icon: 'code', mark: 'code' },
 						{ type: 'separator' },
 						{
 							name: 'blocks',
@@ -353,10 +353,10 @@
 							name: 'align',
 							label: _('Align'),
 							submenu: [
-								{ name: 'align-left', label: _('Left'), icon: 'bi-text-left', action: 'align', value: 'left' },
-								{ name: 'align-center', label: _('Center'), icon: 'bi-text-center', action: 'align', value: 'center' },
-								{ name: 'align-right', label: _('Right'), icon: 'bi-text-right', action: 'align', value: 'right' },
-								{ name: 'align-justify', label: _('Justify'), icon: 'bi-justify', action: 'align', value: 'justify' },
+								{ name: 'align-left', label: _('Left'), icon: 'alignleft', action: 'align', value: 'left' },
+								{ name: 'align-center', label: _('Center'), icon: 'aligncenter', action: 'align', value: 'center' },
+								{ name: 'align-right', label: _('Right'), icon: 'alignright', action: 'align', value: 'right' },
+								{ name: 'align-justify', label: _('Justify'), icon: 'alignjustify', action: 'align', value: 'justify' },
 							],
 						},
 						{ type: 'separator' },
@@ -403,11 +403,11 @@
 					name: 'tools',
 					label: _('Tools'),
 					items: [
-						{ name: 'sourcecode', label: _('Source code'), icon: 'bi-code-slash', action: 'sourceCode' },
+						{ name: 'sourcecode', label: _('Source code'), icon: 'sourcecode', action: 'sourceCode' },
 						{ name: 'visualchars', label: _('Show invisible characters'), action: 'visualChars' },
 						{ name: 'visualblocks', label: _('Show block elements'), action: 'visualBlocks' },
 						{ type: 'separator' },
-						{ name: 'fullscreen', label: _('Fullscreen'), icon: 'bi-fullscreen', action: 'fullscreen' },
+						{ name: 'fullscreen', label: _('Fullscreen'), icon: 'fullscreen', action: 'fullscreen' },
 					],
 				},
 			];
@@ -470,9 +470,10 @@
 
 					const menuItem = document.createElement('div');
 					menuItem.className = 'prosemirror-menu-item has-submenu';
+					const chevronSvg = window.ProseMirrorIcons?.getIcon('chevronright') || '▶';
 					menuItem.innerHTML = `
 						<span class="menu-item-text">${item.label}</span>
-						<span class="menu-item-arrow"><i class="bi bi-chevron-right"></i></span>
+						<span class="menu-item-arrow">${chevronSvg}</span>
 					`;
 
 					const submenu = this._createDropdown(item.submenu);
@@ -492,8 +493,9 @@
 				} else {
 					const menuItem = document.createElement('div');
 					menuItem.className = 'prosemirror-menu-item';
+					const iconSvg = item.icon ? window.ProseMirrorIcons?.getIcon(item.icon) : null;
 					menuItem.innerHTML = `
-						${item.icon ? `<span class="menu-item-icon"><i class="bi ${item.icon}"></i></span>` : '<span class="menu-item-icon"></span>'}
+						<span class="menu-item-icon">${iconSvg || ''}</span>
 						<span class="menu-item-text">${item.label}</span>
 						${item.shortcut ? `<span class="menu-item-shortcut">${item.shortcut}</span>` : ''}
 					`;
@@ -555,12 +557,12 @@
 			// Row 1: Main formatting - Bold, Italic, Format, Size, Font, Colors
 			const row1 = this._createButtonRow([
 				{ type: 'group', items: [
-					{ name: 'pastespecial', icon: 'bi-clipboard', title: _('Paste'), action: 'paste' },
+					{ name: 'pastespecial', icon: 'paste', title: _('Paste'), action: 'paste' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'bold', icon: 'bi-type-bold', title: _('Bold'), mark: 'strong' },
-					{ name: 'italic', icon: 'bi-type-italic', title: _('Italic'), mark: 'em' },
+					{ name: 'bold', icon: 'bold', title: _('Bold'), mark: 'strong' },
+					{ name: 'italic', icon: 'italic', title: _('Italic'), mark: 'em' },
 				]},
 				{ type: 'separator' },
 				{ type: 'select', name: 'formatselect', title: _('Format'), width: '110px', options: [
@@ -576,97 +578,97 @@
 				{ type: 'select', name: 'fontselect', title: _('Font family'), width: '130px', options: FONT_FAMILIES },
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'forecolor', icon: 'bi-palette', title: _('Text color'), action: 'textColor', hasDropdown: true },
-					{ name: 'backcolor', icon: 'bi-paint-bucket', title: _('Background color'), action: 'bgColor', hasDropdown: true },
+					{ name: 'forecolor', icon: 'forecolor', title: _('Text color'), action: 'textColor', hasDropdown: true },
+					{ name: 'backcolor', icon: 'backcolor', title: _('Background color'), action: 'bgColor', hasDropdown: true },
 				]},
 			]);
 
 			// Row 2: Alignment, Lists, Links, Indentation, Quotes, Direction
 			const row2 = this._createButtonRow([
 				{ type: 'group', items: [
-					{ name: 'alignleft', icon: 'bi-text-left', title: _('Align left'), action: 'align', value: 'left' },
-					{ name: 'aligncenter', icon: 'bi-text-center', title: _('Align center'), action: 'align', value: 'center' },
-					{ name: 'alignright', icon: 'bi-text-right', title: _('Align right'), action: 'align', value: 'right' },
-					{ name: 'alignjustify', icon: 'bi-justify', title: _('Justify'), action: 'align', value: 'justify' },
+					{ name: 'alignleft', icon: 'alignleft', title: _('Align left'), action: 'align', value: 'left' },
+					{ name: 'aligncenter', icon: 'aligncenter', title: _('Align center'), action: 'align', value: 'center' },
+					{ name: 'alignright', icon: 'alignright', title: _('Align right'), action: 'align', value: 'right' },
+					{ name: 'alignjustify', icon: 'alignjustify', title: _('Justify'), action: 'align', value: 'justify' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'anchor', icon: 'bi-bookmark', title: _('Anchor'), action: 'anchor' },
-					{ name: 'table', icon: 'bi-table', title: _('Table'), action: 'table' },
-					{ name: 'clearfloat', icon: 'bi-eraser', title: _('Clear formatting'), action: 'clearFormat' },
+					{ name: 'anchor', icon: 'anchor', title: _('Anchor'), action: 'anchor' },
+					{ name: 'table', icon: 'table', title: _('Table'), action: 'table' },
+					{ name: 'clearfloat', icon: 'removeformat', title: _('Clear formatting'), action: 'clearFormat' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'bullist', icon: 'bi-list-ul', title: _('Bullet list'), list: 'bullet_list' },
-					{ name: 'numlist', icon: 'bi-list-ol', title: _('Numbered list'), list: 'ordered_list' },
-					{ name: 'definitionlist', icon: 'bi-list-task', title: _('Definition list'), action: 'definitionList' },
+					{ name: 'bullist', icon: 'bullist', title: _('Bullet list'), list: 'bullet_list' },
+					{ name: 'numlist', icon: 'numlist', title: _('Numbered list'), list: 'ordered_list' },
+					{ name: 'definitionlist', icon: 'definitionlist', title: _('Definition list'), action: 'definitionList' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'link', icon: 'bi-link-45deg', title: _('Insert/edit link'), action: 'link' },
-					{ name: 'unlink', icon: 'bi-link', title: _('Remove link'), action: 'unlink' },
+					{ name: 'link', icon: 'link', title: _('Insert/edit link'), action: 'link' },
+					{ name: 'unlink', icon: 'unlink', title: _('Remove link'), action: 'unlink' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'outdent', icon: 'bi-text-indent-right', title: _('Decrease indent'), action: 'outdent' },
-					{ name: 'indent', icon: 'bi-text-indent-left', title: _('Increase indent'), action: 'indent' },
+					{ name: 'outdent', icon: 'outdent', title: _('Decrease indent'), action: 'outdent' },
+					{ name: 'indent', icon: 'indent', title: _('Increase indent'), action: 'indent' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'blockquote', icon: 'bi-quote', title: _('Blockquote'), wrap: 'blockquote' },
-					{ name: 'blockquoteandcite', icon: 'bi-chat-quote', title: _('Blockquote with cite'), action: 'blockquoteCite' },
+					{ name: 'blockquote', icon: 'blockquote', title: _('Blockquote'), wrap: 'blockquote' },
+					{ name: 'blockquoteandcite', icon: 'quote', title: _('Blockquote with cite'), action: 'blockquoteCite' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'ltr', icon: 'bi-text-paragraph', title: _('Left to right'), action: 'ltr' },
-					{ name: 'rtl', icon: 'bi-paragraph', title: _('Right to left'), action: 'rtl' },
+					{ name: 'ltr', icon: 'ltr', title: _('Left to right'), action: 'ltr' },
+					{ name: 'rtl', icon: 'rtl', title: _('Right to left'), action: 'rtl' },
 				]},
 			]);
 
 			// Row 3: History, Clipboard, Insert, Media, Code, etc.
 			const row3 = this._createButtonRow([
 				{ type: 'group', items: [
-					{ name: 'undo', icon: 'bi-arrow-counterclockwise', title: _('Undo'), command: () => undo },
-					{ name: 'redo', icon: 'bi-arrow-clockwise', title: _('Redo'), command: () => redo },
+					{ name: 'undo', icon: 'undo', title: _('Undo'), command: () => undo },
+					{ name: 'redo', icon: 'redo', title: _('Redo'), command: () => redo },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'cut', icon: 'bi-scissors', title: _('Cut'), action: 'cut' },
-					{ name: 'copy', icon: 'bi-clipboard', title: _('Copy'), action: 'copy' },
-					{ name: 'paste', icon: 'bi-clipboard-check', title: _('Paste'), action: 'paste' },
-					{ name: 'pastetext', icon: 'bi-file-text', title: _('Paste as text'), action: 'pasteText' },
+					{ name: 'cut', icon: 'cut', title: _('Cut'), action: 'cut' },
+					{ name: 'copy', icon: 'paste', title: _('Copy'), action: 'copy' },
+					{ name: 'paste', icon: 'copy', title: _('Paste'), action: 'paste' },
+					{ name: 'pastetext', icon: 'pastetext', title: _('Paste as text'), action: 'pasteText' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'sourcecode', icon: 'bi-code', title: _('Source code'), action: 'sourceCode' },
-					{ name: 'embed', icon: 'bi-code-slash', title: _('Embed'), action: 'embed' },
-					{ name: 'math', icon: 'bi-calculator', title: _('Math formula'), action: 'math' },
+					{ name: 'sourcecode', icon: 'sourcecode', title: _('Source code'), action: 'sourceCode' },
+					{ name: 'embed', icon: 'embed', title: _('Embed'), action: 'embed' },
+					{ name: 'math', icon: 'info', title: _('Math formula'), action: 'math' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'tooltip', icon: 'bi-chat-square-text', title: _('Tooltip'), action: 'tooltip' },
-					{ name: 'hr', icon: 'bi-hr', title: _('Horizontal line'), action: 'hr' },
-					{ name: 'charmap', icon: 'bi-grid-3x3', title: _('Special character'), action: 'specialchar' },
+					{ name: 'tooltip', icon: 'info', title: _('Tooltip'), action: 'tooltip' },
+					{ name: 'hr', icon: 'hr', title: _('Horizontal line'), action: 'hr' },
+					{ name: 'charmap', icon: 'charmap', title: _('Special character'), action: 'specialchar' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'image', icon: 'bi-image', title: _('Image'), action: 'image' },
-					{ name: 'media', icon: 'bi-play-btn', title: _('Media'), action: 'media' },
+					{ name: 'image', icon: 'image', title: _('Image'), action: 'image' },
+					{ name: 'media', icon: 'media', title: _('Media'), action: 'media' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'template', icon: 'bi-grid-3x2', title: _('Template'), action: 'template' },
-					{ name: 'anchormark', icon: 'bi-bookmark-check', title: _('Insert anchor'), action: 'anchor' },
+					{ name: 'template', icon: 'template', title: _('Template'), action: 'template' },
+					{ name: 'anchormark', icon: 'anchor', title: _('Insert anchor'), action: 'anchor' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'emoticons', icon: 'bi-emoji-smile', title: _('Emoticons'), action: 'emoticons' },
-					{ name: 'audio', icon: 'bi-music-note-beamed', title: _('Audio'), action: 'audio' },
+					{ name: 'emoticons', icon: 'emoticons', title: _('Emoticons'), action: 'emoticons' },
+					{ name: 'audio', icon: 'media', title: _('Audio'), action: 'audio' },
 				]},
 				{ type: 'separator' },
 				{ type: 'group', items: [
-					{ name: 'html', icon: 'bi-filetype-html', title: _('Edit HTML'), action: 'sourceCode' },
-					{ name: 'fullscreen', icon: 'bi-fullscreen', title: _('Fullscreen'), action: 'fullscreen' },
+					{ name: 'html', icon: 'html', title: _('Edit HTML'), action: 'sourceCode' },
+					{ name: 'fullscreen', icon: 'fullscreen', title: _('Fullscreen'), action: 'fullscreen' },
 				]},
 			]);
 
@@ -720,9 +722,17 @@
 			btn.dataset.name = config.name;
 
 			if (config.icon) {
-				btn.innerHTML = `<span class="tox-icon"><i class="bi ${config.icon}"></i></span>`;
+				// Use TinyMCE icons from ProseMirrorIcons.js
+				const iconSvg = window.ProseMirrorIcons?.getIcon(config.icon);
+				if (iconSvg) {
+					btn.innerHTML = `<span class="tox-icon">${iconSvg}</span>`;
+				} else {
+					// Fallback to text if icon not found
+					btn.innerHTML = `<span class="tox-icon">${config.name}</span>`;
+				}
 				if (config.hasDropdown) {
-					btn.innerHTML += '<span class="tox-tbtn__select-chevron"><i class="bi bi-chevron-down" style="font-size:8px"></i></span>';
+					const chevronSvg = window.ProseMirrorIcons?.getIcon('chevrondown') || '▼';
+					btn.innerHTML += `<span class="tox-tbtn__select-chevron" style="display:inline-flex;align-items:center;">${chevronSvg}</span>`;
 					btn.style.width = 'auto';
 					btn.style.paddingRight = '8px';
 				}
@@ -754,9 +764,10 @@
 			if (config.width) {
 				btn.style.minWidth = config.width;
 			}
+			const selectChevronSvg = window.ProseMirrorIcons?.getIcon('chevrondown') || '▼';
 			btn.innerHTML = `
 				<span class="tox-tbtn__select-label">${config.options[0].label}</span>
-				<span class="tox-tbtn__select-chevron"><i class="bi bi-chevron-down"></i></span>
+				<span class="tox-tbtn__select-chevron">${selectChevronSvg}</span>
 			`;
 
 			const dropdown = document.createElement('div');

@@ -260,6 +260,87 @@ window.YjsModules = {
 
     return binding;
   },
+
+  /**
+   * Bind a Lexical editor to Yjs for collaborative editing
+   * Uses @lexical/yjs API which requires (editor, provider, id, doc, docMap)
+   * @param {LexicalEditor} editor - LexicalEditor wrapper instance
+   * @param {string} pageId - Page ID (unused, kept for API compatibility)
+   * @param {string} blockId - Block ID (unused, kept for API compatibility)
+   * @param {string} componentId - Component ID
+   * @param {string} [fieldName='htmlContent'] - Field name to bind
+   * @returns {YjsLexicalBinding|null}
+   */
+  bindLexical(editor, pageId, blockId, componentId, fieldName = 'htmlContent') {
+    // Try YjsModules._bridge first, then fall back to project bridge
+    const bridge = this._bridge || window.eXeLearning?.app?.project?._yjsBridge;
+    if (!bridge) {
+      console.warn('[YjsModules] Bridge not initialized');
+      return null;
+    }
+
+    if (!window.YjsLexicalBinding) {
+      console.warn('[YjsModules] YjsLexicalBinding not loaded. Call YjsLoader.loadLexical() first.');
+      return null;
+    }
+
+    // YjsDocumentManager stores the doc as 'ydoc', not 'doc'
+    const ydoc = bridge.documentManager?.ydoc || bridge.documentManager?.getDoc?.();
+    if (!ydoc) {
+      console.warn('[YjsModules] Y.Doc not available');
+      return null;
+    }
+
+    // Create a unique binding ID for this editor instance
+    const bindingId = `${componentId}-${fieldName}`;
+
+    // Check for existing HTML content to migrate
+    const component = bridge.structureBinding?.getComponent(componentId);
+    if (component) {
+      let existingContent = '';
+      const currentValue = component[fieldName];
+      if (typeof currentValue === 'string' && currentValue) {
+        existingContent = currentValue;
+      } else {
+        // Try htmlView (from import)
+        const htmlView = component.htmlView;
+        if (typeof htmlView === 'string' && htmlView) {
+          existingContent = htmlView;
+        }
+      }
+
+      // If there's existing HTML, set it via the editor after binding
+      if (existingContent && editor) {
+        setTimeout(() => {
+          if (!editor.isDestroyed()) {
+            editor.setHTML(existingContent);
+          }
+        }, 100);
+      }
+    }
+
+    // Create binding using @lexical/yjs API
+    // Note: YjsDocumentManager uses 'wsProvider', not 'provider'
+    const wsProvider = bridge.documentManager?.wsProvider;
+    Logger.log('[YjsModules] bindLexical - Provider state:', {
+      hasProvider: !!wsProvider,
+      hasAwareness: !!wsProvider?.awareness,
+      wsconnected: wsProvider?.wsconnected,
+      ydocClientId: ydoc?.clientID,
+    });
+
+    const binding = new window.YjsLexicalBinding(editor, bindingId, {
+      ydoc: ydoc,
+      provider: wsProvider,
+      assetManager: bridge.assetManager,
+      userId: bridge.app?.user?.id || 'unknown',
+      userName: bridge.app?.user?.name || 'User',
+    });
+
+    Logger.log('[YjsModules] Lexical binding created for', componentId, fieldName);
+
+    return binding;
+  },
 };
 
 // Log availability

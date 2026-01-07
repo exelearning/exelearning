@@ -1,7 +1,7 @@
 /**
  * Collaborative Editing iDevice - Edition Mode
  *
- * Uses ProseMirror with y-prosemirror for real-time collaborative editing.
+ * Uses Lexical with @lexical/yjs for real-time collaborative editing.
  */
 /* global $exeDevice:true */
 var $exeDevice = {
@@ -35,7 +35,10 @@ var $exeDevice = {
 	// State
 	ideviceBody: null,
 	idevicePreviousData: null,
-	_prosemirrorLoaded: false,
+	_lexicalLoaded: false,
+	_clickOutsideHandler: null,
+	_autoSaveTimeout: null,
+	_ideviceNode: null,
 
 	/**
 	 * Initialize iDevice
@@ -57,9 +60,9 @@ var $exeDevice = {
 				<!-- Main Content Section -->
 				<div class="exe-field">
 					<label for="${this.mainEditorId}">${this.textareaTitle}</label>
-					<div class="prosemirror-editor-container">
-						<div id="${this.mainEditorId}-toolbar" class="prosemirror-toolbar-container"></div>
-						<div id="${this.mainEditorId}" class="prosemirror-editor"></div>
+					<div class="lexical-editor-container">
+						<div id="${this.mainEditorId}-toolbar" class="lexical-toolbar-container"></div>
+						<div id="${this.mainEditorId}" class="lexical-editor"></div>
 					</div>
 				</div>
 
@@ -76,9 +79,9 @@ var $exeDevice = {
 						</div>
 						<div class="exe-field">
 							<label>${this.feedbackTitle}</label>
-							<div class="prosemirror-editor-container">
-								<div id="${this.feedbackEditorId}-toolbar" class="prosemirror-toolbar-container"></div>
-								<div id="${this.feedbackEditorId}" class="prosemirror-editor"></div>
+							<div class="lexical-editor-container">
+								<div id="${this.feedbackEditorId}-toolbar" class="lexical-toolbar-container"></div>
+								<div id="${this.feedbackEditorId}" class="lexical-editor"></div>
 							</div>
 						</div>
 					</div>
@@ -88,11 +91,11 @@ var $exeDevice = {
 
 		this.ideviceBody.innerHTML = html;
 		this.setBehaviour();
-		this.initProseMirrorEditors();
+		this.initLexicalEditors();
 	},
 
 	/**
-	 * Set form behaviour (fieldset toggle, etc.)
+	 * Set form behaviour (fieldset toggle, auto-save on click outside)
 	 */
 	setBehaviour: function () {
 		const fieldset = document.getElementById(this.feedbackFieldsetId);
@@ -110,28 +113,117 @@ var $exeDevice = {
 				});
 			}
 		}
+
+		// Setup auto-save on click outside
+		this.setupAutoSave();
 	},
 
 	/**
-	 * Initialize ProseMirror editors
+	 * Setup auto-save behavior for collaborative editing
+	 * - Saves when clicking outside the iDevice
+	 * - Any user can trigger save
 	 */
-	initProseMirrorEditors: async function () {
+	setupAutoSave: function () {
+		// Find the idevice_node container
+		let ideviceContainer = this.ideviceBody;
+		while (ideviceContainer && !ideviceContainer.classList.contains('idevice_node')) {
+			ideviceContainer = ideviceContainer.parentElement;
+		}
+
+		if (!ideviceContainer) {
+			console.warn('[CollaborativeEditing] Could not find iDevice container for auto-save');
+			return;
+		}
+
+		// Store reference to iDevice node for save operation
+		this._ideviceNode = ideviceContainer;
+
+		// Create click-outside handler
+		this._clickOutsideHandler = (event) => {
+			// Check if click is outside the iDevice container
+			if (!ideviceContainer.contains(event.target)) {
+				// Don't auto-save if clicking on modals or dropdowns
+				if (event.target.closest('.modal, .dropdown-menu, .tox-dialog, .lexical-select-dropdown')) {
+					return;
+				}
+				this.triggerAutoSave();
+			}
+		};
+
+		// Add click listener to document (with small delay to avoid immediate trigger)
+		setTimeout(() => {
+			document.addEventListener('click', this._clickOutsideHandler, true);
+		}, 500);
+	},
+
+	/**
+	 * Trigger auto-save with debounce
+	 */
+	triggerAutoSave: function () {
+		// Clear any pending auto-save
+		if (this._autoSaveTimeout) {
+			clearTimeout(this._autoSaveTimeout);
+		}
+
+		// Debounce: save after 100ms of no clicks
+		this._autoSaveTimeout = setTimeout(() => {
+			this.performAutoSave();
+		}, 100);
+	},
+
+	/**
+	 * Perform the auto-save operation
+	 */
+	performAutoSave: function () {
+		// Get data to save
+		const data = this.save();
+		if (!data) {
+			return; // Validation failed
+		}
+
+		// Find the ideviceNode instance from the engine
+		const engine = window.eXeLearning?.app?.project?.idevices;
+		if (!engine) {
+			console.warn('[CollaborativeEditing] Could not find idevices engine');
+			return;
+		}
+
+		// Get the iDevice ID
+		const ids = this.extractYjsIds();
+		if (!ids) {
+			return;
+		}
+
+		// Find the ideviceNode by ID
+		const ideviceNode = engine.getIdeviceById?.(ids.componentId);
+		if (ideviceNode && typeof ideviceNode.save === 'function') {
+			// Trigger save on the ideviceNode
+			ideviceNode.save(false).catch((err) => {
+				console.error('[CollaborativeEditing] Auto-save failed:', err);
+			});
+		}
+	},
+
+	/**
+	 * Initialize Lexical editors
+	 */
+	initLexicalEditors: async function () {
 		try {
-			// Load ProseMirror if not already loaded
-			await this.ensureProseMirrorLoaded();
+			// Load Lexical if not already loaded
+			await this.ensureLexicalLoaded();
 
 			// Create main editor
 			const mainContainer = document.getElementById(this.mainEditorId);
 			const mainToolbarContainer = document.getElementById(this.mainEditorId + '-toolbar');
 
 			if (mainContainer) {
-				this.mainEditor = new window.ProseMirrorEditor({
+				this.mainEditor = new window.LexicalEditor({
 					container: mainContainer,
 					placeholder: this.placeholderText,
 					content: this.idevicePreviousData.htmlContent || '',
 				});
 
-				this.mainToolbar = new window.ProseMirrorToolbar({
+				this.mainToolbar = new window.LexicalToolbar({
 					editor: this.mainEditor,
 					container: mainToolbarContainer,
 					onMediaLibrary: this.handleMediaLibrary.bind(this, 'main'),
@@ -146,13 +238,13 @@ var $exeDevice = {
 			const feedbackToolbarContainer = document.getElementById(this.feedbackEditorId + '-toolbar');
 
 			if (feedbackContainer) {
-				this.feedbackEditor = new window.ProseMirrorEditor({
+				this.feedbackEditor = new window.LexicalEditor({
 					container: feedbackContainer,
 					placeholder: _('Enter feedback...'),
 					content: this.idevicePreviousData.feedbackContent || '',
 				});
 
-				this.feedbackToolbar = new window.ProseMirrorToolbar({
+				this.feedbackToolbar = new window.LexicalToolbar({
 					editor: this.feedbackEditor,
 					container: feedbackToolbarContainer,
 					onMediaLibrary: this.handleMediaLibrary.bind(this, 'feedback'),
@@ -165,22 +257,22 @@ var $exeDevice = {
 			// Load previous values
 			this.loadPreviousValues();
 		} catch (error) {
-			console.error('[CollaborativeEditing] Failed to initialize ProseMirror:', error);
+			console.error('[CollaborativeEditing] Failed to initialize Lexical:', error);
 			eXe.app.alert(_('Failed to initialize collaborative editor'));
 		}
 	},
 
 	/**
-	 * Ensure ProseMirror is loaded
+	 * Ensure Lexical is loaded
 	 */
-	ensureProseMirrorLoaded: async function () {
-		if (this._prosemirrorLoaded && window.ProseMirrorBundle) {
+	ensureLexicalLoaded: async function () {
+		if (this._lexicalLoaded && window.LexicalBundle) {
 			return;
 		}
 
 		if (window.YjsLoader) {
-			await window.YjsLoader.loadProseMirror();
-			this._prosemirrorLoaded = true;
+			await window.YjsLoader.loadLexical();
+			this._lexicalLoaded = true;
 		} else {
 			throw new Error('YjsLoader not available');
 		}
@@ -191,16 +283,33 @@ var $exeDevice = {
 	 */
 	bindMainEditorToYjs: function () {
 		const project = window.eXeLearning?.app?.project;
+		const Logger = window.Logger || console;
+
+		Logger.log('[CollaborativeEditing] bindMainEditorToYjs called', {
+			hasProject: !!project,
+			yjsEnabled: project?._yjsEnabled,
+			hasBridge: !!project?._yjsBridge,
+			hasYjsModules: !!window.YjsModules,
+			hasYjsLexicalBinding: !!window.YjsLexicalBinding,
+		});
+
 		if (!project?._yjsEnabled || !window.YjsModules) {
+			Logger.warn('[CollaborativeEditing] Yjs not enabled or YjsModules not available');
 			return;
 		}
 
 		const ids = this.extractYjsIds();
+		Logger.log('[CollaborativeEditing] Extracted IDs:', ids);
 		if (!ids) {
+			Logger.warn('[CollaborativeEditing] Could not extract Yjs IDs');
 			return;
 		}
 
-		this.mainBinding = window.YjsModules.bindProseMirror(this.mainEditor, ids.pageId, ids.blockId, ids.componentId, 'htmlContent');
+		this.mainBinding = window.YjsModules.bindLexical(this.mainEditor, ids.pageId, ids.blockId, ids.componentId, 'htmlContent');
+		Logger.log('[CollaborativeEditing] Main binding created:', {
+			hasBinding: !!this.mainBinding,
+			bindingId: ids.componentId + '-htmlContent',
+		});
 	},
 
 	/**
@@ -217,7 +326,7 @@ var $exeDevice = {
 			return;
 		}
 
-		this.feedbackBinding = window.YjsModules.bindProseMirror(this.feedbackEditor, ids.pageId, ids.blockId, ids.componentId, 'feedbackContent');
+		this.feedbackBinding = window.YjsModules.bindLexical(this.feedbackEditor, ids.pageId, ids.blockId, ids.componentId, 'feedbackContent');
 	},
 
 	/**
@@ -225,9 +334,9 @@ var $exeDevice = {
 	 * @returns {Object|null} - { pageId, blockId, componentId }
 	 */
 	extractYjsIds: function () {
-		// Walk up the DOM to find the component container
+		// Walk up the DOM to find the component container (idevice_node element)
 		let element = this.ideviceBody;
-		while (element && !element.getAttribute('idevice-id')) {
+		while (element && !element.classList?.contains('idevice_node')) {
 			element = element.parentElement;
 		}
 
@@ -236,26 +345,27 @@ var $exeDevice = {
 			return null;
 		}
 
-		const componentId = element.getAttribute('idevice-id');
+		// The componentId is in the 'id' attribute (e.g., "idevice-1234567890-abc123")
+		const componentId = element.id || element.getAttribute('idevice-id');
 
-		// Find block
+		if (!componentId) {
+			console.warn('[CollaborativeEditing] Missing componentId');
+			return null;
+		}
+
+		// pageId and blockId are optional - bindLexical can find the component by ID alone
+		// Try to find them anyway for completeness
 		let blockElement = element;
-		while (blockElement && !blockElement.getAttribute('block-id')) {
+		while (blockElement && !blockElement.classList?.contains('block-content')) {
 			blockElement = blockElement.parentElement;
 		}
-		const blockId = blockElement?.getAttribute('block-id');
+		const blockId = blockElement?.id || blockElement?.getAttribute('block-id') || null;
 
-		// Find page
 		let pageElement = blockElement;
 		while (pageElement && !pageElement.getAttribute('nav-id')) {
 			pageElement = pageElement.parentElement;
 		}
-		const pageId = pageElement?.getAttribute('nav-id');
-
-		if (!pageId || !blockId || !componentId) {
-			console.warn('[CollaborativeEditing] Missing IDs:', { pageId, blockId, componentId });
-			return null;
-		}
+		const pageId = pageElement?.getAttribute('nav-id') || null;
 
 		return { pageId, blockId, componentId };
 	},
@@ -271,7 +381,7 @@ var $exeDevice = {
 
 		if (!editor || !toolbar) return;
 
-		// Open Media Library modal (same API as TinyMCE)
+		// Open Media Library modal
 		const filemanager = window.eXeLearning?.app?.modals?.filemanager;
 		if (filemanager) {
 			filemanager.show({
@@ -290,11 +400,11 @@ var $exeDevice = {
 					}
 
 					if (mediaType === 'image') {
-						toolbar.insertImage({
+						editor.insertImage({
 							src: result.blobUrl,
-							alt: result.asset.filename || '',
-							'data-asset-id': result.asset.id,
-							'data-asset-src': result.assetUrl,
+							altText: result.asset.filename || '',
+							dataAssetId: result.asset.id,
+							dataAssetSrc: result.assetUrl,
 						});
 					} else if (mediaType === 'media' || mediaType === 'audio') {
 						// For video/audio, insert the appropriate node
@@ -306,7 +416,7 @@ var $exeDevice = {
 						} else if (isVideo) {
 							this._insertVideo(editor, result.blobUrl, result.asset);
 						} else {
-							// Generic media - try to insert as iframe or link
+							// Generic media - try to insert as iframe
 							this._insertMedia(editor, result.blobUrl, result.asset);
 						}
 					}
@@ -322,16 +432,20 @@ var $exeDevice = {
 	 * @private
 	 */
 	_insertAudio: function (editor, blobUrl, asset) {
-		const { state, dispatch } = editor.view;
-		const nodeType = editor.schema.nodes.audio;
-		if (nodeType) {
-			const node = nodeType.create({
-				src: blobUrl,
-				'data-asset-id': asset.id,
-				'data-asset-src': `asset://${asset.id}/${asset.filename}`,
-			});
-			dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+		if (!window.LexicalNodes?.$createAudioNode) {
+			console.warn('[CollaborativeEditing] AudioNode not available');
+			return;
 		}
+
+		editor.update(() => {
+			const audioNode = window.LexicalNodes.$createAudioNode({
+				src: blobUrl,
+				dataAssetId: asset.id,
+				dataAssetSrc: `asset://${asset.id}/${asset.filename}`,
+				controls: true,
+			});
+			window.LexicalBundle.$insertNodes([audioNode]);
+		});
 	},
 
 	/**
@@ -339,33 +453,39 @@ var $exeDevice = {
 	 * @private
 	 */
 	_insertVideo: function (editor, blobUrl, asset) {
-		const { state, dispatch } = editor.view;
-		const nodeType = editor.schema.nodes.video;
-		if (nodeType) {
-			const node = nodeType.create({
-				src: blobUrl,
-				'data-asset-id': asset.id,
-				'data-asset-src': `asset://${asset.id}/${asset.filename}`,
-			});
-			dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+		if (!window.LexicalNodes?.$createVideoNode) {
+			console.warn('[CollaborativeEditing] VideoNode not available');
+			return;
 		}
+
+		editor.update(() => {
+			const videoNode = window.LexicalNodes.$createVideoNode({
+				src: blobUrl,
+				dataAssetId: asset.id,
+				dataAssetSrc: `asset://${asset.id}/${asset.filename}`,
+				controls: true,
+			});
+			window.LexicalBundle.$insertNodes([videoNode]);
+		});
 	},
 
 	/**
-	 * Insert generic media (iframe or link)
+	 * Insert generic media (iframe)
 	 * @private
 	 */
 	_insertMedia: function (editor, blobUrl, asset) {
-		const { state, dispatch } = editor.view;
-		// Try iframe first
-		const iframeType = editor.schema.nodes.iframe;
-		if (iframeType) {
-			const node = iframeType.create({
-				src: blobUrl,
-				'data-asset-id': asset.id,
-			});
-			dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+		if (!window.LexicalNodes?.$createIframeNode) {
+			console.warn('[CollaborativeEditing] IframeNode not available');
+			return;
 		}
+
+		editor.update(() => {
+			const iframeNode = window.LexicalNodes.$createIframeNode({
+				src: blobUrl,
+				dataAssetId: asset.id,
+			});
+			window.LexicalBundle.$insertNodes([iframeNode]);
+		});
 	},
 
 	/**
@@ -460,6 +580,18 @@ var $exeDevice = {
 	 * Clean up when iDevice is closed
 	 */
 	destroy: function () {
+		// Clear auto-save timeout
+		if (this._autoSaveTimeout) {
+			clearTimeout(this._autoSaveTimeout);
+			this._autoSaveTimeout = null;
+		}
+
+		// Remove click-outside handler
+		if (this._clickOutsideHandler) {
+			document.removeEventListener('click', this._clickOutsideHandler, true);
+			this._clickOutsideHandler = null;
+		}
+
 		// Destroy bindings
 		if (this.mainBinding) {
 			this.mainBinding.destroy();
@@ -489,5 +621,8 @@ var $exeDevice = {
 			this.feedbackEditor.destroy();
 			this.feedbackEditor = null;
 		}
+
+		// Clear references
+		this._ideviceNode = null;
 	},
 };

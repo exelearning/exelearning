@@ -431,12 +431,35 @@ export default class IdeviceNode {
     }
 
     /**
+     * Check if this iDevice is collaborative (allows multi-user editing)
+     * @returns {boolean}
+     */
+    isCollaborativeIdevice() {
+        // Check the isCollaborative flag from iDevice config
+        if (this.idevice?.isCollaborative === true || this.idevice?.isCollaborative === '1') {
+            return true;
+        }
+        // Fallback: check iDevice type name (collaborative-editing is always collaborative)
+        if (this.odeIdeviceTypeName === 'collaborative-editing') {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Check if this iDevice is locked by another user via Yjs
      * @returns {boolean}
      */
     isLockedByOtherUser() {
+        // Collaborative iDevices skip lock checks - multiple users can edit
+        if (this.isCollaborativeIdevice()) {
+            Logger.log('[IdeviceNode] isLockedByOtherUser: returning false (collaborative)');
+            return false;
+        }
+
         // Check if marked as locked by remote (set during remote rendering)
         if (this.lockedByRemote) {
+            Logger.log('[IdeviceNode] isLockedByOtherUser: returning true (lockedByRemote)');
             return true;
         }
 
@@ -2842,7 +2865,8 @@ export default class IdeviceNode {
         );
 
         // Release the lock and clear editing state in Yjs
-        if (this.isYjsEnabled()) {
+        // Skip for collaborative iDevices - they don't use locks
+        if (this.isYjsEnabled() && !this.isCollaborativeIdevice()) {
             const componentId = this.yjsComponentId || this.odeIdeviceId;
             const bridge = this.engine?.project?._yjsBridge;
 

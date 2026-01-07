@@ -1449,6 +1449,61 @@ describe('common.js $exeDevices', () => {
       media.stopVideo(game);
       expect(mockPlayer.pauseVideo).toHaveBeenCalled();
     });
+
+    it('YouTubeAPILoader.load resolves when YT is already available', async () => {
+      const media = getMedia();
+      // Mock YT already loaded
+      global.YT = { Player: vi.fn() };
+      const result = await media.YouTubeAPILoader.load();
+      expect(result).toBe(global.YT);
+      delete global.YT;
+    });
+
+    it('YouTubeAPILoader.load rejects on script error', async () => {
+      const media = getMedia();
+      // Clear any cached promise by accessing fresh instance
+      delete global.YT;
+
+      // Mock createElement to trigger onerror
+      const originalCreateElement = document.createElement.bind(document);
+      let scriptTag;
+      document.createElement = (tagName) => {
+        const el = originalCreateElement(tagName);
+        if (tagName === 'script') {
+          scriptTag = el;
+          // Trigger onerror after a microtask
+          setTimeout(() => {
+            if (scriptTag.onerror) scriptTag.onerror();
+          }, 0);
+        }
+        return el;
+      };
+
+      // Create a new loader instance to avoid cached promise
+      const loader = (function () {
+        let apiReadyPromise;
+        function load() {
+          if (!apiReadyPromise) {
+            apiReadyPromise = new Promise((resolve, reject) => {
+              if (global.YT && global.YT.Player) {
+                return resolve(global.YT);
+              }
+              global.onYouTubeIframeAPIReady = () => resolve(global.YT);
+              const tag = document.createElement('script');
+              tag.src = 'https://www.youtube.com/iframe_api';
+              tag.onerror = () => reject(new Error(global._('Could not load YouTube API')));
+              document.head.appendChild(tag);
+            });
+          }
+          return apiReadyPromise;
+        }
+        return { load };
+      })();
+
+      await expect(loader.load()).rejects.toThrow('Could not load YouTube API');
+
+      document.createElement = originalCreateElement;
+    });
   });
 
   describe('gamification.colors', () => {

@@ -1487,6 +1487,42 @@ class YjsStructureBinding {
   }
 
   /**
+   * Get a component Y.Map by IDs (for Yjs bindings)
+   * Returns the actual Y.Map instead of a plain object
+   * @param {string} pageId - Page ID
+   * @param {string} blockId - Block ID
+   * @param {string} componentId - Component ID
+   * @returns {Y.Map|null}
+   */
+  getComponentMap(pageId, blockId, componentId) {
+    const navigation = this.manager.getNavigation();
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      if (pageMap.get('id') !== pageId && pageMap.get('pageId') !== pageId) continue;
+
+      const blocks = pageMap.get('blocks');
+      if (!blocks) continue;
+
+      for (let j = 0; j < blocks.length; j++) {
+        const blockMap = blocks.get(j);
+        if (blockMap.get('id') !== blockId && blockMap.get('blockId') !== blockId) continue;
+
+        const components = blockMap.get('components');
+        if (!components) continue;
+
+        for (let k = 0; k < components.length; k++) {
+          const compMap = components.get(k);
+          if (compMap.get('id') === componentId || compMap.get('ideviceId') === componentId) {
+            return compMap; // Return the Y.Map directly
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Create a new component (iDevice) in a block
    * @param {string} pageId
    * @param {string} blockId

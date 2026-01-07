@@ -48,6 +48,7 @@ interface IdeviceConfig {
     version: string;
     apiVersion: string;
     componentType: string;
+    isCollaborative: boolean; // If true, allows multi-user editing without locks
     author: string;
     authorUrl: string;
     license: string;
@@ -191,6 +192,7 @@ function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePath: str
             version: getValue('version') || '1.0',
             apiVersion: getValue('api-version') || '3.0',
             componentType: getValue('component-type') || 'html',
+            isCollaborative: getValue('is-collaborative') === '1',
             author: getValue('author') || '',
             authorUrl: getValue('author-url') || '',
             license: getValue('license') || '',

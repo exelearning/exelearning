@@ -37,6 +37,7 @@ export default class Idevice {
         'exportCss',
         'exportJs',
         'icon',
+        'isCollaborative',
         'license',
         'licenseUrl',
         'location',
@@ -67,6 +68,7 @@ export default class Idevice {
         exportCss: [`${this.id}.css`],
         exportJs: [`${this.id}.js`],
         icon: {},
+        isCollaborative: false,
         license: '',
         licenseUrl: '',
         location: '',
@@ -92,8 +94,10 @@ export default class Idevice {
      */
     setConfigValues(data) {
         for (let [key, value] of Object.entries(data)) {
-            let defaultValue = this.default[key] ? this.default[key] : null;
-            let v = value ? value : defaultValue;
+            // Use default value only if value is explicitly undefined or null
+            // (not just falsy, since false/0/'' are valid values)
+            let defaultValue = key in this.default ? this.default[key] : null;
+            let v = value !== undefined && value !== null ? value : defaultValue;
             if (this.isTranslatable(key)) {
                 v = _(v, this.id);
             }

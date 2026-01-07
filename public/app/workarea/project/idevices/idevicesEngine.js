@@ -1309,8 +1309,18 @@ export default class IdevicesEngine {
         ideviceNode.mode = 'export'; // Force view mode for remote iDevices
         ideviceNode.yjsComponentId = componentData.id;
 
-        // Mark as locked by remote user
-        if (componentData.lockedBy || componentData.lockUserName) {
+        // Debug: log collaborative check
+        Logger.log('[IdevicesEngine] renderRemoteIdevice collaborative check:', {
+            ideviceTypeName,
+            hasIdevice: !!ideviceNode.idevice,
+            ideviceId: ideviceNode.idevice?.id,
+            isCollaborative: ideviceNode.idevice?.isCollaborative,
+            isCollaborativeIdevice: ideviceNode.isCollaborativeIdevice(),
+            lockUserName: componentData.lockUserName,
+        });
+
+        // Mark as locked by remote user (skip for collaborative iDevices that allow multi-user editing)
+        if ((componentData.lockedBy || componentData.lockUserName) && !ideviceNode.isCollaborativeIdevice()) {
             ideviceNode.lockedByRemote = true;
             ideviceNode.lockUserName = componentData.lockUserName || 'Another user';
             ideviceNode.lockUserColor = componentData.lockUserColor || '#999';
@@ -2671,6 +2681,11 @@ export default class IdevicesEngine {
                 i => i.odeIdeviceId === componentId || i.yjsComponentId === componentId
             );
             if (ideviceNode) {
+                // Skip lock handling for collaborative iDevices (allow multi-user editing)
+                if (ideviceNode.isCollaborativeIdevice()) {
+                    return;
+                }
+
                 const wasLocked = ideviceNode.lockedByRemote;
                 const isNowLocked = editingUsers.length > 0;
 

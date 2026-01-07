@@ -105,13 +105,13 @@ async function addCollaborativeEditingIdevice(page: Page): Promise<void> {
 }
 
 /**
- * Helper to wait for ProseMirror editor to be ready
+ * Helper to wait for Lexical editor to be ready
  */
-async function waitForProseMirrorEditor(page: Page): Promise<void> {
+async function waitForLexicalEditor(page: Page): Promise<void> {
     await page.waitForFunction(
         () => {
-            const editor = document.querySelector('.prosemirror-editor .ProseMirror');
-            return editor && editor.getAttribute('contenteditable') === 'true';
+            const editor = document.querySelector('.lexical-editor [contenteditable="true"]');
+            return editor !== null;
         },
         { timeout: 20000 },
     );
@@ -119,7 +119,7 @@ async function waitForProseMirrorEditor(page: Page): Promise<void> {
 
 // Skip multi-client tests for now - they require the share modal infrastructure to work correctly.
 // The basic collaborative-editing iDevice tests in specs/idevices/collaborative-editing.spec.ts
-// verify the ProseMirror editor and iDevice functionality works correctly.
+// verify the Lexical editor and iDevice functionality works correctly.
 // TODO: Enable these tests once share modal infrastructure is stable.
 test.describe
     .skip('Collaborative Editing - Multi-client Sync', () => {
@@ -142,10 +142,10 @@ test.describe
 
                 // Add iDevice on first client
                 await addCollaborativeEditingIdevice(page1);
-                await waitForProseMirrorEditor(page1);
+                await waitForLexicalEditor(page1);
 
                 // Type initial content on client 1
-                const editor1 = page1.locator('.prosemirror-editor .ProseMirror').first();
+                const editor1 = page1.locator('.lexical-editor [contenteditable="true"]').first();
                 await editor1.click();
                 await page1.keyboard.type('Hello from client 1');
 
@@ -188,10 +188,10 @@ test.describe
                 await waitForAppInit(page1);
 
                 await addCollaborativeEditingIdevice(page1);
-                await waitForProseMirrorEditor(page1);
+                await waitForLexicalEditor(page1);
 
                 // Type some initial content
-                const editor1 = page1.locator('.prosemirror-editor .ProseMirror').first();
+                const editor1 = page1.locator('.lexical-editor [contenteditable="true"]').first();
                 await editor1.click();
                 await page1.keyboard.type('Initial content');
 
@@ -209,7 +209,7 @@ test.describe
                 await page2.waitForTimeout(1000);
 
                 // Try to type in the editor on client 2
-                const editor2 = page2.locator('.prosemirror-editor .ProseMirror').first();
+                const editor2 = page2.locator('.lexical-editor [contenteditable="true"]').first();
                 if ((await editor2.count()) > 0 && (await editor2.isVisible())) {
                     await editor2.click();
                     await page2.keyboard.press('End');
@@ -241,9 +241,9 @@ test.describe
 
                 // Add iDevice with content
                 await addCollaborativeEditingIdevice(page1);
-                await waitForProseMirrorEditor(page1);
+                await waitForLexicalEditor(page1);
 
-                const editor1 = page1.locator('.prosemirror-editor .ProseMirror').first();
+                const editor1 = page1.locator('.lexical-editor [contenteditable="true"]').first();
                 await editor1.click();
                 await page1.keyboard.type('Shared collaborative content');
 
@@ -290,10 +290,10 @@ test.describe
 
                 // Add iDevice
                 await addCollaborativeEditingIdevice(page1);
-                await waitForProseMirrorEditor(page1);
+                await waitForLexicalEditor(page1);
 
                 // Type and format text
-                const editor1 = page1.locator('.prosemirror-editor .ProseMirror').first();
+                const editor1 = page1.locator('.lexical-editor [contenteditable="true"]').first();
                 await editor1.click();
                 await page1.keyboard.type('Bold text here');
 

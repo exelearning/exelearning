@@ -8,6 +8,7 @@
     <version>1.0</version>
     <api-version>3.0</api-version>
     <component-type>json</component-type>
+    <is-collaborative>1</is-collaborative>
     <edition-js>
         <filename>collaborative-editing.js</filename>
     </edition-js>
@@ -23,6 +24,6 @@
     <export-template-filename>collaborative-editing.html</export-template-filename>
     <author>eXeLearning</author>
     <license>AGPL-3.0</license>
-    <description>Collaborative rich text editor with real-time sync using ProseMirror</description>
+    <description>Collaborative rich text editor with real-time sync using Lexical</description>
     <downloadable>0</downloadable>
 </idevice>

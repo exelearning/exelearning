@@ -1811,7 +1811,7 @@ var $exeDevices = {
                                 window.onYouTubeIframeAPIReady = () => resolve(window.YT);
                                 const tag = document.createElement('script');
                                 tag.src = 'https://www.youtube.com/iframe_api';
-                                tag.onerror = () => reject(new Error('No se pudo cargar la API de YouTube'));
+                                tag.onerror = () => reject(new Error(_('Could not load YouTube API')));
                                 document.head.appendChild(tag);
                             });
                         }

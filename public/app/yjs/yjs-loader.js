@@ -52,6 +52,9 @@
   // ProseMirror bundle path (lazy loaded when needed)
   const getProseMirrorBundlePath = () => assetPath('/libs/prosemirror/prosemirror.bundle.js');
 
+  // Lexical bundle path (lazy loaded when needed)
+  const getLexicalBundlePath = () => assetPath('/libs/lexical/lexical.bundle.js');
+
   // Local modules organized in parallel-loadable groups
   // Each group is loaded in parallel, groups are loaded sequentially
   const LOCAL_MODULE_GROUPS = [
@@ -325,6 +328,7 @@
         yjsAvailable: isYjsLoaded(),
         modulesAvailable: areModulesLoaded(),
         prosemirrorAvailable: isProseMirrorLoaded(),
+        lexicalAvailable: isLexicalLoaded(),
       };
     },
 
@@ -347,21 +351,72 @@
 
       // Load ProseMirror integration modules
       const prosemirrorBasePath = assetPath('/app/prosemirror');
-      const prosemirrorModules = [
+      // ProseMirrorIcons must load first (provides SVG icons for toolbar)
+      const prosemirrorModulesSequential = [
+        'ProseMirrorIcons.js',     // TinyMCE SVG icons (must load first)
+      ];
+      const prosemirrorModulesParallel = [
         'ProseMirrorSchema.js',
         'ProseMirrorEditor.js',
         'ProseMirrorToolbar.js',
         'YjsProseMirrorBinding.js',
       ];
 
-      // Load CSS (including Bootstrap Icons for toolbar) and JS in parallel
+      // Load CSS and icons first
       await Promise.all([
-        loadCSS('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css'),
         loadCSS(`${prosemirrorBasePath}/prosemirror.css`),
-        loadScriptsParallel(prosemirrorModules.map(m => `${prosemirrorBasePath}/${m}`)),
+        loadScriptsSequentially(prosemirrorModulesSequential.map(m => `${prosemirrorBasePath}/${m}`)),
       ]);
 
+      // Then load remaining modules in parallel
+      await loadScriptsParallel(prosemirrorModulesParallel.map(m => `${prosemirrorBasePath}/${m}`));
+
       Logger.log('[YjsLoader] ProseMirror loaded successfully');
+    },
+
+    /**
+     * Load Lexical bundle (lazy loading)
+     * @returns {Promise<void>}
+     */
+    async loadLexical() {
+      if (isLexicalLoaded()) {
+        Logger.log('[YjsLoader] Lexical already loaded');
+        return;
+      }
+
+      Logger.log('[YjsLoader] Loading Lexical bundle...');
+      await loadScript(getLexicalBundlePath());
+
+      if (!isLexicalLoaded()) {
+        throw new Error('Lexical bundle failed to load');
+      }
+
+      // Load Lexical integration modules
+      const lexicalBasePath = assetPath('/app/lexical');
+      // EditorIcons must load first (provides SVG icons for toolbar)
+      // LexicalNodes, ImageResizer, TableResizer must load before LexicalEditor (dependencies)
+      const lexicalModulesSequential = [
+        'EditorIcons.js',      // TinyMCE SVG icons (must load first)
+        'LexicalNodes.js',     // Custom nodes (before LexicalEditor)
+        'ImageResizer.js',     // Image resize (before LexicalEditor)
+        'TableResizer.js',     // Table resize (before LexicalEditor)
+      ];
+      const lexicalModulesParallel = [
+        'LexicalEditor.js',
+        'LexicalToolbar.js',
+        'YjsLexicalBinding.js',
+      ];
+
+      // Load CSS and icons first
+      await Promise.all([
+        loadCSS(`${lexicalBasePath}/lexical.css`),
+        loadScriptsSequentially(lexicalModulesSequential.map(m => `${lexicalBasePath}/${m}`)),
+      ]);
+
+      // Then load remaining modules in parallel
+      await loadScriptsParallel(lexicalModulesParallel.map(m => `${lexicalBasePath}/${m}`));
+
+      Logger.log('[YjsLoader] Lexical loaded successfully');
     },
   };
 
@@ -371,6 +426,14 @@
    */
   function isProseMirrorLoaded() {
     return typeof window.ProseMirrorBundle !== 'undefined';
+  }
+
+  /**
+   * Check if Lexical is loaded
+   * @returns {boolean}
+   */
+  function isLexicalLoaded() {
+    return typeof window.LexicalBundle !== 'undefined';
   }
 
   // Auto-load if data attribute is present

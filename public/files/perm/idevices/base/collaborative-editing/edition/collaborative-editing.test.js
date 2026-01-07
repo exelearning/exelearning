@@ -36,39 +36,45 @@ describe('collaborative-editing iDevice - Edition', () => {
 
 		// Mock YjsLoader
 		global.window.YjsLoader = {
-			loadProseMirror: vi.fn().mockResolvedValue(undefined),
+			loadLexical: vi.fn().mockResolvedValue(undefined),
 		};
 
-		// Mock ProseMirrorBundle
-		global.window.ProseMirrorBundle = {
-			Schema: vi.fn(),
-			EditorState: { create: vi.fn() },
-			EditorView: vi.fn(),
+		// Mock LexicalBundle
+		global.window.LexicalBundle = {
+			createEditor: vi.fn(),
+			$getRoot: vi.fn(),
+			$getSelection: vi.fn(),
+			$insertNodes: vi.fn(),
 		};
 
-		// Mock ProseMirrorEditor
-		global.window.ProseMirrorEditor = vi.fn().mockImplementation(() => ({
-			getHTML: vi.fn().mockReturnValue('<p>Test content</p>'),
-			setHTML: vi.fn(),
-			isEmpty: vi.fn().mockReturnValue(false),
-			isDestroyed: vi.fn().mockReturnValue(false),
-			destroy: vi.fn(),
-			focus: vi.fn(),
-			schema: {},
-			view: { state: {}, dispatch: vi.fn() },
-		}));
+		// Mock LexicalEditor - use class for proper constructor behavior
+		global.window.LexicalEditor = class MockLexicalEditor {
+			constructor() {
+				this.getHTML = vi.fn().mockReturnValue('<p>Test content</p>');
+				this.setHTML = vi.fn();
+				this.isEmpty = vi.fn().mockReturnValue(false);
+				this.isDestroyed = vi.fn().mockReturnValue(false);
+				this.destroy = vi.fn();
+				this.focus = vi.fn();
+				this.getEditor = vi.fn().mockReturnValue({});
+				this.update = vi.fn();
+				this.insertImage = vi.fn();
+			}
+		};
 
-		// Mock ProseMirrorToolbar
-		global.window.ProseMirrorToolbar = vi.fn().mockImplementation(() => ({
-			insertImage: vi.fn(),
-			destroy: vi.fn(),
-		}));
+		// Mock LexicalToolbar - use class for proper constructor behavior
+		global.window.LexicalToolbar = class MockLexicalToolbar {
+			constructor() {
+				this.destroy = vi.fn();
+			}
+		};
 
-		// Mock ProseMirrorSchema
-		global.window.ProseMirrorSchema = {
-			getSchema: vi.fn().mockReturnValue({}),
-			parseHTML: vi.fn(),
-			serializeHTML: vi.fn(),
+		// Mock LexicalNodes
+		global.window.LexicalNodes = {
+			$createImageNode: vi.fn(),
+			$createVideoNode: vi.fn(),
+			$createAudioNode: vi.fn(),
+			$createIframeNode: vi.fn(),
 		};
 
 		// Read and execute the iDevice file
@@ -280,20 +286,27 @@ describe('collaborative-editing iDevice - Edition', () => {
 	describe('extractYjsIds', () => {
 		it('extracts component ID from DOM', () => {
 			// Create DOM structure with IDs
+			// The new extractYjsIds looks for idevice_node class and id attribute
 			const pageEl = document.createElement('div');
 			pageEl.setAttribute('nav-id', 'page-123');
 
 			const blockEl = document.createElement('div');
-			blockEl.setAttribute('block-id', 'block-456');
+			blockEl.classList.add('block-content');
+			blockEl.id = 'block-456';
 
 			const ideviceEl = document.createElement('div');
-			ideviceEl.setAttribute('idevice-id', 'idevice-789');
+			ideviceEl.classList.add('idevice_node');
+			ideviceEl.id = 'idevice-789';
+
+			// Create inner element (ideviceBody is usually inside the idevice_node)
+			const innerEl = document.createElement('div');
+			ideviceEl.appendChild(innerEl);
 
 			pageEl.appendChild(blockEl);
 			blockEl.appendChild(ideviceEl);
 			document.body.appendChild(pageEl);
 
-			$exeDevice.ideviceBody = ideviceEl;
+			$exeDevice.ideviceBody = innerEl;
 
 			const ids = $exeDevice.extractYjsIds();
 
@@ -341,6 +354,49 @@ describe('collaborative-editing iDevice - Edition', () => {
 			$exeDevice.init(mockElement, {});
 			// editors are null by default
 			expect(() => $exeDevice.destroy()).not.toThrow();
+		});
+
+		it('cleans up click-outside handler on destroy', () => {
+			$exeDevice.init(mockElement, {});
+
+			// Simulate having a click handler
+			const mockHandler = vi.fn();
+			$exeDevice._clickOutsideHandler = mockHandler;
+
+			// Spy on removeEventListener
+			const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+			$exeDevice.destroy();
+
+			expect(removeSpy).toHaveBeenCalledWith('click', mockHandler, true);
+			expect($exeDevice._clickOutsideHandler).toBeNull();
+
+			removeSpy.mockRestore();
+		});
+
+		it('clears auto-save timeout on destroy', () => {
+			$exeDevice.init(mockElement, {});
+
+			// Simulate having a timeout
+			$exeDevice._autoSaveTimeout = setTimeout(() => {}, 1000);
+
+			$exeDevice.destroy();
+
+			expect($exeDevice._autoSaveTimeout).toBeNull();
+		});
+	});
+
+	describe('auto-save', () => {
+		it('has setupAutoSave method', () => {
+			expect(typeof $exeDevice.setupAutoSave).toBe('function');
+		});
+
+		it('has triggerAutoSave method', () => {
+			expect(typeof $exeDevice.triggerAutoSave).toBe('function');
+		});
+
+		it('has performAutoSave method', () => {
+			expect(typeof $exeDevice.performAutoSave).toBe('function');
 		});
 	});
 });

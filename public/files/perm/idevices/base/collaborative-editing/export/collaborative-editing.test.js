@@ -14,12 +14,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Helper to load iDevice file and expose $collaborativeEditing globally.
+ * Helper to load iDevice file and expose $collaborativeediting globally.
+ * Note: The export iDevice uses lowercase 'e' in 'editing' ($collaborativeediting)
  */
 function loadIdevice(code) {
-	const modifiedCode = code.replace(/var\s+\$collaborativeEditing\s*=/, 'global.$collaborativeEditing =');
+	const modifiedCode = code.replace(/var\s+\$collaborativeediting\s*=/, 'global.$collaborativeediting =');
 	(0, eval)(modifiedCode);
-	return global.$collaborativeEditing;
+	return global.$collaborativeediting;
 }
 
 describe('collaborative-editing iDevice - Export', () => {
@@ -27,7 +28,7 @@ describe('collaborative-editing iDevice - Export', () => {
 
 	beforeEach(() => {
 		// Reset before loading
-		global.$collaborativeEditing = undefined;
+		global.$collaborativeediting = undefined;
 
 		// Mock translation function
 		global._ = (s) => s;
