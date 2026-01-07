@@ -294,12 +294,14 @@ export class WebsitePreviewExporter {
             ? `<p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${firstPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalVisiblePages}</strong></span></p>`
             : '';
 
-        // Build static headers (separate header elements for exe_export.js teacherMode to find)
-        // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
+        // Wrap headers in main-header so theme JS (e.g., flux movePageTitle) can find them
+        // Theme JS looks for '.main-header .page-header' to move title into .page-content
         // NOTE: Page header is now inside each article (see renderPageArticle) to preserve pre-rendered LaTeX
         // The shared #page-title element is hidden but kept for backwards compatibility with scripts
-        const staticHeaderHtml = `${initialPageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
-<header class="page-header" style="display:none"><h2 id="page-title" class="page-title"></h2></header>`;
+        const staticHeaderHtml = `${initialPageCounterHtml}<header class="main-header">
+<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="page-header" style="display:none"><h2 id="page-title" class="page-title"></h2></div>
+</header>`;
 
         // Build the body content that will be pre-rendered
         // Note: head and scripts are added AFTER pre-rendering to avoid corrupting them
@@ -662,7 +664,9 @@ button.toggler span,
 }
 @media print {
     #made-with-eXe { display: none; }
-}`;
+}
+
+`;
     }
 
     /**
@@ -824,13 +828,13 @@ button.toggler span,
         const hideTitle = this.shouldHidePageTitle(page);
         const headerStyle = hideTitle ? ' style="display:none"' : '';
 
-        // Include page header INSIDE each article so LatexPreRenderer processes each title
-        // This allows each page to have its own pre-rendered LaTeX in the title
+        // Include page header INSIDE page-content so it inherits the same padding as content
+        // This ensures title alignment matches content regardless of theme (default=20px, flux=60px)
         const pageHeaderHtml = `<header class="page-header page-header-spa"${headerStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></header>`;
 
         return `<article id="page-${pageId}" class="spa-page${isFirst ? ' active' : ''}"${displayStyle} data-page-index="${pageIndex}" data-page-title="${this.escapeAttr(effectiveTitle)}" data-page-hide-title="${hideTitle}">
-${pageHeaderHtml}
 <div id="page-content-${pageId}" class="page-content">
+${pageHeaderHtml}
 ${blockHtml}
 </div>
 </article>
