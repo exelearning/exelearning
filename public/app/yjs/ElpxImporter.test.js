@@ -2005,6 +2005,28 @@ describe('ElpxImporter', () => {
       expect(stats).toHaveProperty('pages');
     });
 
+    it('detects and imports EPUB format with EPUB/content.xml', async () => {
+      // Mock fflate with EPUB format structure
+      global.window.fflate = {
+        unzipSync: () => ({
+          'mimetype': new TextEncoder().encode('application/epub+zip'),
+          'META-INF/container.xml': new TextEncoder().encode('<container/>'),
+          'EPUB/content.xml': new TextEncoder().encode(SAMPLE_CONTENT_XML),
+          'EPUB/package.opf': new TextEncoder().encode('<package/>'),
+          'EPUB/nav.xhtml': new TextEncoder().encode('<nav/>'),
+        }),
+        strToU8: (str) => new TextEncoder().encode(str),
+        strFromU8: (data) => new TextDecoder().decode(data),
+      };
+
+      const mockFile = createMockFile();
+
+      // Should detect EPUB format and import normally
+      const stats = await importer.importFromFile(mockFile);
+
+      expect(stats).toHaveProperty('pages');
+    });
+
     it('throws error on XML parsing errors', async () => {
       global.window.fflate = {
         unzipSync: () => ({

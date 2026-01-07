@@ -19,6 +19,7 @@ import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '..
 import { Html5Exporter } from './Html5Exporter';
 import { Scorm2004ManifestGenerator } from '../generators/Scorm2004Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 
 export class Scorm2004Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm2004ManifestGenerator | null = null;
@@ -190,12 +191,14 @@ export class Scorm2004Exporter extends Html5Exporter {
                 // Schema files are optional for package to work
             }
 
-            // 5c. Copy content.xml (always include for re-editing capability)
+            // 5c. Copy content.xml and DTD (always include for re-editing capability)
             try {
                 const contentXml = await this.getContentXml();
                 if (contentXml) {
                     this.zip.addFile('content.xml', contentXml);
                     commonFiles.push('content.xml');
+                    this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                    commonFiles.push(ODE_DTD_FILENAME);
                 }
             } catch {
                 // content.xml is optional
