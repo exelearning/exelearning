@@ -469,19 +469,13 @@ describe('YjsStructureTreeAdapter', () => {
   });
 
   describe('addStyles', () => {
-    it('adds style element to document head', () => {
+    it('is a no-op (styles moved to SCSS)', () => {
+      // addStyles() is now deprecated - styles are in _collaborative.scss
       adapter.addStyles();
 
+      // Should not create any style elements
       const styleEl = document.getElementById('yjs-tree-styles');
-      expect(styleEl).toBeDefined();
-    });
-
-    it('does not add duplicate styles', () => {
-      adapter.addStyles();
-      adapter.addStyles();
-
-      const styleEls = document.querySelectorAll('#yjs-tree-styles');
-      expect(styleEls.length).toBe(1);
+      expect(styleEl).toBeNull();
     });
   });
 
