@@ -214,17 +214,19 @@ describe('BrowserAssetProvider', () => {
             expect(result[0].id).toBe('only-manager');
         });
 
-        it('should fallback to assetCache when assetManager returns empty', async () => {
+        it('should NOT fallback to assetCache when assetManager returns empty (trust assetManager)', async () => {
             // Add asset only to assetCache
             mockCache.addAsset('cache-asset', 'from cache', { filename: 'cache.png', mimeType: 'image/png' });
 
-            // Use empty assetManager
+            // Use empty assetManager - when assetManager is available, we trust it completely
+            // Legacy assetCache fallback is ONLY used when assetManager is NOT available
+            // This prevents blocked database errors in multi-tab scenarios
             const emptyManager = new MockAssetManager();
             const providerWithBoth = new BrowserAssetProvider(mockCache, emptyManager);
             const result = await providerWithBoth.getAllAssets();
 
-            expect(result.length).toBe(1);
-            expect(result[0].originalPath).toBe('cache-asset');
+            // Should return empty because assetManager is available and returned empty
+            expect(result.length).toBe(0);
         });
 
         it('should use assetManager for listAssets when available', async () => {

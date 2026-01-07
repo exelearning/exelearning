@@ -434,6 +434,12 @@ The application MUST support importing legacy .elp files from pre-v3.0 eXeLearni
 - Server forwards messages between clients
 - Asset coordination via JSON protocol
 
+### Frontend Styles
+- **NEVER use inline/online styles** via `document.createElement('style')` or `element.style.property = value` for UI components
+- All UI styles MUST go in the SCSS files under `assets/styles/`
+- Use `assets/styles/components/_collaborative.scss` for Yjs/collaboration-related styles
+- The only exception is dynamically loading external CSS files (themes, iDevices) at runtime via `loadStyleByInsertingIt()`
+
 ## E2E Testing with Playwright
 
 ### Test Credentials
