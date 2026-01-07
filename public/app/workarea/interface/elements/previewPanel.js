@@ -174,6 +174,51 @@ export default class PreviewPanelManager {
                     Logger.error('[PreviewPanel] Failed to open PDF popup:', err);
                 }
             }
+
+            // Handle HTML link resolution requests forwarded from preview iframe
+            // The preview iframe receives messages from embedded HTML iframes and forwards them here
+            if (event.data?.type === 'exe-resolve-html-link-forward') {
+                const { requestId, href, baseFolder } = event.data;
+                Logger.log(`[PreviewPanel] Received HTML link resolution request: ${href}`);
+
+                try {
+                    const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (!assetManager) {
+                        throw new Error('AssetManager not available');
+                    }
+
+                    // Find the linked HTML asset by relative path
+                    const linkedAsset = assetManager.findAssetByRelativePath(baseFolder, href);
+                    if (!linkedAsset) {
+                        throw new Error(`Asset not found: ${href} from ${baseFolder}`);
+                    }
+
+                    // Resolve the linked HTML with all its internal assets
+                    const resolvedUrl = await assetManager.resolveHtmlWithAssets(linkedAsset.id);
+                    if (!resolvedUrl) {
+                        throw new Error(`Failed to resolve HTML asset: ${linkedAsset.id}`);
+                    }
+
+                    // Send resolved URL back to the preview iframe
+                    event.source.postMessage({
+                        type: 'exe-html-link-resolved',
+                        requestId: requestId,
+                        resolvedUrl: resolvedUrl
+                    }, '*');
+
+                    Logger.log(`[PreviewPanel] Resolved HTML link: ${href} -> blob URL`);
+                } catch (err) {
+                    Logger.error('[PreviewPanel] Failed to resolve HTML link:', err);
+                    // Send failure response
+                    event.source.postMessage({
+                        type: 'exe-html-link-resolved',
+                        requestId: requestId,
+                        resolvedUrl: null,
+                        error: err.message
+                    }, '*');
+                }
+                return;
+            }
         });
     }
 
@@ -562,6 +607,12 @@ export default class PreviewPanelManager {
         // 3. On click, fetch asset data from parent window's AssetManager (IndexedDB)
         // 4. Create blob URL in preview's context and open in popup
         html = this.injectPdfBlobUrlConverter(html);
+
+        // Inject script to handle HTML link navigation inside embedded iframes
+        // When a user clicks a relative link inside an HTML iframe, the iframe's
+        // injected script sends postMessage to window.parent (the preview iframe).
+        // This handler receives the message and forwards to main window for resolution.
+        html = this.injectHtmlLinkHandler(html);
 
         return html;
     }
@@ -1171,6 +1222,103 @@ export default class PreviewPanelManager {
             return html.replace('</body>', converterScript + '</body>');
         }
         return html + converterScript;
+    }
+
+    /**
+     * Inject a script that handles HTML link navigation in embedded iframes.
+     *
+     * ## Why this is needed
+     *
+     * When an HTML file is embedded in an iframe (from extracted ZIP), it may contain
+     * navigation links to other HTML pages in the same package. The injected link handler
+     * script (in AssetManager._generateLinkHandlerScript) intercepts these clicks and
+     * sends a postMessage to request navigation.
+     *
+     * However, in preview mode:
+     * - The preview panel loads content as a blob URL for isolation
+     * - The embedded HTML iframe's window.parent is the preview iframe (blob URL), not main window
+     * - The listener in asset_url_resolver.js is in main window, not preview iframe
+     *
+     * Solution: Inject a handler in the preview that:
+     * 1. Receives 'exe-resolve-html-link' from embedded iframes
+     * 2. Forwards to main window which has access to AssetManager
+     * 3. Receives resolved blob URL and updates the embedded iframe
+     *
+     * @param {string} html - HTML content
+     * @returns {string} HTML with injected handler
+     */
+    injectHtmlLinkHandler(html) {
+        const handlerScript = `
+<script>
+(function() {
+    // Map to track pending resolve requests
+    var pendingResolves = {};
+    var resolveIdCounter = 0;
+
+    // Listen for messages from embedded HTML iframes
+    window.addEventListener('message', function(event) {
+        // Handle link resolution requests from embedded iframes
+        if (event.data?.type === 'exe-resolve-html-link') {
+            var reqId = 'htmlResolve_' + (++resolveIdCounter);
+
+            // Store the source iframe so we can update it later
+            pendingResolves[reqId] = {
+                source: event.source,
+                href: event.data.href,
+                baseFolder: event.data.baseFolder
+            };
+
+            // Forward to main window with our request ID
+            window.parent.postMessage({
+                type: 'exe-resolve-html-link-forward',
+                requestId: reqId,
+                href: event.data.href,
+                assetId: event.data.assetId,
+                baseFolder: event.data.baseFolder
+            }, '*');
+
+            console.log('[PreviewPanel] Forwarded HTML link request:', event.data.href);
+            return;
+        }
+
+        // Handle response from main window with resolved URL
+        if (event.data?.type === 'exe-html-link-resolved') {
+            var reqId = event.data.requestId;
+            var pending = pendingResolves[reqId];
+            if (!pending) return;
+
+            delete pendingResolves[reqId];
+
+            var resolvedUrl = event.data.resolvedUrl;
+            if (!resolvedUrl) {
+                console.warn('[PreviewPanel] Failed to resolve HTML link:', pending.href);
+                return;
+            }
+
+            // Find the iframe that sent the original request and update its src
+            // The source is the contentWindow of the embedded iframe
+            var iframes = document.querySelectorAll('iframe[data-asset-src], iframe[data-mce-html]');
+            for (var i = 0; i < iframes.length; i++) {
+                var iframe = iframes[i];
+                if (iframe.contentWindow === pending.source) {
+                    iframe.src = resolvedUrl;
+                    console.log('[PreviewPanel] Updated iframe src for navigation');
+                    break;
+                }
+            }
+            return;
+        }
+    });
+
+    console.log('[PreviewPanel] HTML link handler initialized');
+})();
+</script>`;
+
+        // Inject before </body> or at the end
+        if (html.includes('</body>')) {
+            return html.replace('</body>', handlerScript + '</body>');
+        }
+        return html + handlerScript;
     }
 
     /**
