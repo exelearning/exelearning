@@ -95,6 +95,8 @@ export class PageRenderer {
             extraHeadScripts = '',
             onLoadScript = '',
             onUnloadScript = '',
+            // Theme files (CSS/JS from theme root directory)
+            themeFiles = [],
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
@@ -115,6 +117,7 @@ export class PageRenderer {
         // Build page header (with optional page counter)
         const pageHeaderHtml = this.renderPageHeader(page, {
             projectTitle,
+            projectSubtitle: options.projectSubtitle,
             currentPageIndex: currentIdx,
             totalPages: total,
             addPagination,
@@ -133,7 +136,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -169,6 +172,7 @@ ${madeWithExeHtml}
         extraHeadContent?: string;
         addSearchBox?: boolean;
         detectedLibraries?: string[];
+        themeFiles?: string[];
     }): string {
         const {
             pageTitle,
@@ -184,6 +188,7 @@ ${madeWithExeHtml}
             extraHeadContent = '',
             addSearchBox = false,
             detectedLibraries = [],
+            themeFiles = [],
         } = options;
 
         // Meta tags
@@ -214,11 +219,9 @@ ${madeWithExeHtml}
         }
 
         head += `<script src="${basePath}libs/bootstrap/bootstrap.bundle.min.js"> </script>`;
-        head += `<script src="${basePath}libs/exe_lightbox/exe_lightbox.js"> </script>`;
 
         // CSS AFTER scripts (legacy order)
         head += `<link rel="stylesheet" href="${basePath}libs/bootstrap/bootstrap.min.css">`;
-        head += `\n<link rel="stylesheet" href="${basePath}libs/exe_lightbox/exe_lightbox.css">`;
 
         // iDevice-specific scripts and CSS (script before CSS for each)
         const jsScripts = this.ideviceRenderer.getJsScripts(usedIdevices, basePath);
@@ -230,12 +233,8 @@ ${madeWithExeHtml}
             }
         }
 
-        // Content-detected libraries (e.g., exe_highlighter for highlighted-code class)
-        // Skip libraries already included above (exe_lightbox is hardcoded)
-        const alreadyIncluded = new Set(['exe_lightbox', 'exe_lightbox_gallery']);
+        // Content-detected libraries (e.g., exe_lightbox, exe_highlighter, etc.)
         for (const libName of detectedLibraries) {
-            if (alreadyIncluded.has(libName)) continue;
-
             const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
             if (!libPattern) continue;
 
@@ -253,8 +252,28 @@ ${madeWithExeHtml}
 
         // Base CSS and theme
         head += `\n<link rel="stylesheet" href="${basePath}content/css/base.css">`;
-        head += `<script src="${basePath}theme/default.js"> </script>`;
-        head += `<link rel="stylesheet" href="${basePath}theme/content.css">`;
+
+        // Theme files: include all JS first, then all CSS, in alphabetical order
+        // If themeFiles is empty, fall back to legacy names for backwards compatibility
+        if (themeFiles.length > 0) {
+            // Sort files alphabetically and separate JS from CSS
+            const sortedFiles = [...themeFiles].sort();
+            const jsFiles = sortedFiles.filter(f => f.endsWith('.js'));
+            const cssFiles = sortedFiles.filter(f => f.endsWith('.css'));
+
+            // JS first (legacy order: scripts before CSS)
+            for (const jsFile of jsFiles) {
+                head += `<script src="${basePath}theme/${jsFile}"> </script>`;
+            }
+            // Then CSS
+            for (const cssFile of cssFiles) {
+                head += `<link rel="stylesheet" href="${basePath}theme/${cssFile}">`;
+            }
+        } else {
+            // Legacy fallback for backwards compatibility
+            head += `<script src="${basePath}theme/default.js"> </script>`;
+            head += `<link rel="stylesheet" href="${basePath}theme/content.css">`;
+        }
 
         // Custom styles
         if (customStyles) {
@@ -478,7 +497,7 @@ ${madeWithExeHtml}
     }
 
     /**
-     * Render page header with page counter, package title (h1), and page title (h2)
+     * Render page header with page counter, package title (h1), subtitle, and page title (h2)
      * @param page - Page
      * @param options - Header options including counter info
      * @returns Header HTML
@@ -487,12 +506,13 @@ ${madeWithExeHtml}
         page: ExportPage,
         options: {
             projectTitle: string;
+            projectSubtitle?: string;
             currentPageIndex: number;
             totalPages: number;
             addPagination?: boolean;
         },
     ): string {
-        const { projectTitle, currentPageIndex, totalPages, addPagination } = options;
+        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination } = options;
 
         // Page counter is only shown if addPagination is true
         const pageCounterHtml = addPagination
@@ -504,10 +524,15 @@ ${madeWithExeHtml}
         const effectiveTitle = this.getEffectivePageTitle(page);
         const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
 
+        // Render subtitle if present
+        const subtitleHtml = projectSubtitle
+            ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>`
+            : '';
+
         // Wrap headers in main-header so theme JS (e.g., flux movePageTitle) can find them
         // Theme JS looks for '.main-header .page-header' to move title into .page-content
         return `${pageCounterHtml}<header class="main-header">
-<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
 <div class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></div>
 </header>`;
     }
@@ -701,6 +726,7 @@ ${userFooterHtml}</div></footer>`;
         allPages: ExportPage[],
         options: {
             projectTitle?: string;
+            projectSubtitle?: string;
             language?: string;
             customStyles?: string;
             usedIdevices?: string[];
@@ -710,6 +736,7 @@ ${userFooterHtml}</div></footer>`;
     ): string {
         const {
             projectTitle = 'eXeLearning',
+            projectSubtitle = '',
             language = 'en',
             customStyles = '',
             usedIdevices = [],
@@ -759,9 +786,7 @@ ${this.renderPageContent(page, '')}
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
-<script src="libs/exe_lightbox/exe_lightbox.js"> </script>
-<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">
-<link rel="stylesheet" href="libs/exe_lightbox/exe_lightbox.css">${ideviceIncludes}
+<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
@@ -771,7 +796,7 @@ ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
 <main class="single-page-content">
-<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
+<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
 ${this.renderLicense({ author, license })}

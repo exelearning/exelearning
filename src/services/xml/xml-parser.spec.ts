@@ -177,6 +177,10 @@ describe('xml-parser', () => {
                             <value>My Title</value>
                         </odeProperty>
                         <odeProperty>
+                            <key>pp_subtitle</key>
+                            <value>My Subtitle</value>
+                        </odeProperty>
+                        <odeProperty>
                             <key>pp_author</key>
                             <value>John Doe</value>
                         </odeProperty>
@@ -202,6 +206,7 @@ describe('xml-parser', () => {
 
             const result = parseFromString(xml, undefined, { skipValidation: true });
             expect(result.meta.title).toBe('My Title');
+            expect(result.meta.subtitle).toBe('My Subtitle');
             expect(result.meta.author).toBe('John Doe');
             expect(result.meta.description).toBe('A description');
             expect(result.meta.license).toBe('MIT');

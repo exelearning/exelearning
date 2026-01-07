@@ -144,25 +144,30 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('libs/bootstrap/bootstrap.bundle.min.js');
         });
 
-        it('should include exe_lightbox scripts', async () => {
+        it('should NOT include exe_lightbox when content does not use lightbox', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('libs/exe_lightbox/exe_lightbox.js');
-            expect(exportedIndexHtml).toContain('libs/exe_lightbox/exe_lightbox.css');
+            // exe_lightbox is now conditionally included only when content uses lightbox
+            // (rel="lightbox" attribute or imageGallery class)
+            // This fixture doesn't use lightbox, so it should not be included
+            expect(exportedIndexHtml).not.toContain('libs/exe_lightbox/exe_lightbox.js');
+            expect(exportedIndexHtml).not.toContain('libs/exe_lightbox/exe_lightbox.css');
         });
 
-        it('should use theme/content.css (not style.css)', async () => {
+        it('should preserve original theme/style.css filename (not rename to content.css)', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('theme/content.css');
-            expect(exportedIndexHtml).not.toContain('theme/style.css');
+            // Theme file names should be preserved as-is from the source
+            expect(exportedIndexHtml).toContain('theme/style.css');
+            expect(exportedIndexHtml).not.toContain('theme/content.css');
         });
 
-        it('should use theme/default.js (not style.js)', async () => {
+        it('should preserve original theme/style.js filename (not rename to default.js)', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toContain('theme/default.js');
-            expect(exportedIndexHtml).not.toContain('theme/style.js');
+            // Theme file names should be preserved as-is from the source
+            expect(exportedIndexHtml).toContain('theme/style.js');
+            expect(exportedIndexHtml).not.toContain('theme/default.js');
         });
 
         it('should have idevice CSS/JS in correct order', async () => {
@@ -355,10 +360,11 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(themeFiles.length).toBeGreaterThan(0);
         });
 
-        it('should contain theme/content.css (renamed from style.css)', async () => {
+        it('should contain theme/style.css (preserving original filename)', async () => {
             if (!exportedZip) return;
 
-            expect(exportedZip['theme/content.css']).toBeDefined();
+            // Issue #905: Theme files should preserve their original names
+            expect(exportedZip['theme/style.css']).toBeDefined();
         });
 
         it('should contain libs/ directory', async () => {

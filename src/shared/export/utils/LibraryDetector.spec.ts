@@ -190,6 +190,39 @@ describe('LibraryDetector', () => {
             expect(result.libraries.find(l => l.name === 'exe_atools')).toBeDefined();
             expect(result.files).toContain('exe_atools/exe_atools.js');
         });
+
+        it('should mark exe_lightbox with isDirectory=true for full directory export', () => {
+            const html = '<a href="image.jpg" rel="lightbox">Image</a>';
+            const result = detector.detectLibraries(html);
+
+            const lightboxPattern = result.patterns.find(p => p.name === 'exe_lightbox');
+            expect(lightboxPattern).toBeDefined();
+            expect(lightboxPattern?.isDirectory).toBe(true);
+            // Should still have the main files for HTML references
+            expect(result.files).toContain('exe_lightbox/exe_lightbox.js');
+            expect(result.files).toContain('exe_lightbox/exe_lightbox.css');
+        });
+
+        it('should mark exe_lightbox_gallery with isDirectory=true for full directory export', () => {
+            const html = '<div class="imageGallery">Gallery</div>';
+            const result = detector.detectLibraries(html);
+
+            const galleryPattern = result.patterns.find(p => p.name === 'exe_lightbox_gallery');
+            expect(galleryPattern).toBeDefined();
+            expect(galleryPattern?.isDirectory).toBe(true);
+        });
+
+        it('should mark exe_atools with isDirectory=true for full directory export', () => {
+            const html = '<p>Normal content</p>';
+            const result = detector.detectLibraries(html, { includeAccessibilityToolbar: true });
+
+            const atoolsPattern = result.patterns.find(p => p.name === 'exe_atools');
+            expect(atoolsPattern).toBeDefined();
+            expect(atoolsPattern?.isDirectory).toBe(true);
+            // Should still have the main files for HTML references
+            expect(result.files).toContain('exe_atools/exe_atools.js');
+            expect(result.files).toContain('exe_atools/exe_atools.css');
+        });
     });
 
     describe('getBaseLibraries', () => {

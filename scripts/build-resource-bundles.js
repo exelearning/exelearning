@@ -41,9 +41,10 @@ const COMMON_PATH = path.join(projectRoot, 'public/app/common');
 const OUTPUT_PATH = path.join(projectRoot, 'public/bundles');
 
 // Base libraries to include (matching resources.ts)
+// Content-specific libraries (exe_lightbox, exe_tooltips, exe_effects, jquery-ui, etc.)
+// are detected and fetched on-demand via LibraryDetector, NOT included in base bundle
 const BASE_LIBS = [
   { src: 'libs/jquery/jquery.min.js', dest: 'jquery/jquery.min.js' },
-  { src: 'libs/jquery-ui/jquery-ui.min.js', dest: 'jquery-ui/jquery-ui.min.js' },
   { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js' },
   { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css' },
   { src: 'libs/bootstrap/bootstrap.bundle.min.js.map', dest: 'bootstrap/bootstrap.bundle.min.js.map' },
@@ -51,15 +52,6 @@ const BASE_LIBS = [
   { src: 'app/common/common.js', dest: 'common.js' },
   { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
   { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
-  { src: 'app/common/exe_lightbox/exe_lightbox.js', dest: 'exe_lightbox/exe_lightbox.js' },
-  { src: 'app/common/exe_lightbox/exe_lightbox.css', dest: 'exe_lightbox/exe_lightbox.css' },
-  { src: 'libs/fflate/fflate.min.js', dest: 'fflate/fflate.min.js' },
-  { src: 'app/common/exe_elpx_download/exe_elpx_download.js', dest: 'exe_elpx_download/exe_elpx_download.js' },
-  { src: 'app/common/exe_tooltips/exe_tooltips.js', dest: 'exe_tooltips/exe_tooltips.js' },
-  { src: 'app/common/exe_tooltips/exe_tooltips.css', dest: 'exe_tooltips/exe_tooltips.css' },
-  { src: 'app/common/exe_tooltips/exe_tooltips_icons.woff2', dest: 'exe_tooltips/exe_tooltips_icons.woff2' },
-  { src: 'app/common/exe_effects/exe_effects.js', dest: 'exe_effects/exe_effects.js' },
-  { src: 'app/common/exe_effects/exe_effects.css', dest: 'exe_effects/exe_effects.css' },
 ];
 
 /**

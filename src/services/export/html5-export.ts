@@ -155,16 +155,16 @@ export function createHtml5ExportService(deps: Html5ExportDeps = {}): Html5Expor
         await fs.ensureDir(themeDestDir);
 
         if (await fs.pathExists(themeSourceDir)) {
-            // Copy style.css as content.css (matches export format naming)
+            // Copy style.css preserving original name (issue #905)
             const cssSource = path.join(themeSourceDir, 'style.css');
             if (await fs.pathExists(cssSource)) {
-                await fs.copy(cssSource, path.join(themeDestDir, 'content.css'));
+                await fs.copy(cssSource, path.join(themeDestDir, 'style.css'));
             }
 
-            // Copy style.js as default.js (matches export format naming)
+            // Copy style.js preserving original name (issue #905)
             const jsSource = path.join(themeSourceDir, 'style.js');
             if (await fs.pathExists(jsSource)) {
-                await fs.copy(jsSource, path.join(themeDestDir, 'default.js'));
+                await fs.copy(jsSource, path.join(themeDestDir, 'style.js'));
             }
 
             // Copy other theme files (config.xml, icons/, img/)
@@ -186,8 +186,8 @@ export function createHtml5ExportService(deps: Html5ExportDeps = {}): Html5Expor
      * Create basic assets referenced by the HTML generator
      */
     async function createBasicAssets(exportDir: string): Promise<void> {
-        // Base CSS - minimal fallback, main styles come from theme/content.css
-        const baseCss = `/* Base CSS fallback - See theme/content.css for main styles */
+        // Base CSS - minimal fallback, main styles come from theme/style.css
+        const baseCss = `/* Base CSS fallback - See theme/style.css for main styles */
 body { font-family: sans-serif; margin: 0; padding: 0; }
 `;
         await fs.writeFile(path.join(exportDir, 'base.css'), baseCss);
