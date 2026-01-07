@@ -526,6 +526,29 @@ describe('exe_export.js', () => {
       document.body.classList.remove('exe-single-page');
     });
 
+    it('creates toggler for single-page mode with div.package-header (new structure)', () => {
+      document.body.classList.add('exe-single-page');
+      const box = document.createElement('div');
+      box.className = 'box teacher-only';
+      document.body.appendChild(box);
+
+      // New HTML structure: <header class="main-header"><div class="package-header">...</div></header>
+      const mainHeader = document.createElement('header');
+      mainHeader.className = 'main-header';
+      const packageHeader = document.createElement('div');
+      packageHeader.className = 'package-header';
+      mainHeader.appendChild(packageHeader);
+      document.body.appendChild(mainHeader);
+
+      window.$exeExport.teacherMode.init();
+
+      expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
+      // Verify toggler was inserted before .package-header (not requiring <header> element)
+      const toggler = document.getElementById('teacher-mode-toggler-wrapper');
+      expect(toggler).not.toBeNull();
+      document.body.classList.remove('exe-single-page');
+    });
+
     it('creates toggler for multi-page mode', () => {
       const idevice = document.createElement('div');
       idevice.className = 'idevice_node teacher-only';
@@ -538,6 +561,27 @@ describe('exe_export.js', () => {
       window.$exeExport.teacherMode.init();
 
       expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
+    });
+
+    it('creates toggler for multi-page mode with div.page-header (new structure)', () => {
+      const idevice = document.createElement('div');
+      idevice.className = 'idevice_node teacher-only';
+      document.body.appendChild(idevice);
+
+      // New HTML structure: <header class="main-header"><div class="page-header">...</div></header>
+      const mainHeader = document.createElement('header');
+      mainHeader.className = 'main-header';
+      const pageHeader = document.createElement('div');
+      pageHeader.className = 'page-header';
+      mainHeader.appendChild(pageHeader);
+      document.body.appendChild(mainHeader);
+
+      window.$exeExport.teacherMode.init();
+
+      expect(document.body.classList.contains('exe-teacher-mode-toggler')).toBe(true);
+      // Verify toggler was prepended to .page-header (not requiring <header> element)
+      const toggler = document.getElementById('teacher-mode-toggler-wrapper');
+      expect(toggler).not.toBeNull();
     });
 
     it('enables teacher mode if previously enabled', () => {
