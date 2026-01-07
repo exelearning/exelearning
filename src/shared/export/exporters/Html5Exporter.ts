@@ -156,11 +156,10 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 3. Add content.xml and DTD (ODE format for re-import) - only if exportSource is enabled
+            // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
             if (meta.exportSource !== false) {
                 const contentXml = this.generateContentXml();
                 addFile('content.xml', contentXml);
-                addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
             }
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS

@@ -215,18 +215,17 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
                 return { valid: false, error: 'Security error: invalid file paths detected' };
             }
 
-            // Check for content.xml, contentv3.xml, or EPUB/content.xml (EPUB format)
+            // Check for content.xml or contentv3.xml
             const hasContentXml = 'content.xml' in unzipped;
             const hasContentV3Xml = 'contentv3.xml' in unzipped;
-            const hasEpubContentXml = 'EPUB/content.xml' in unzipped;
 
-            if (!hasContentXml && !hasContentV3Xml && !hasEpubContentXml) {
+            if (!hasContentXml && !hasContentV3Xml) {
                 return { valid: false, error: 'Invalid template: missing content.xml or contentv3.xml' };
             }
 
             return {
                 valid: true,
-                isLegacy: !hasContentXml && !hasEpubContentXml && hasContentV3Xml,
+                isLegacy: !hasContentXml && hasContentV3Xml,
             };
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error';
