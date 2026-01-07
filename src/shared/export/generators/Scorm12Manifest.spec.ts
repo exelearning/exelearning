@@ -271,9 +271,11 @@ describe('Scorm12ManifestGenerator', () => {
             const commonFilesSection = xml.substring(commonFilesStart);
             expect(commonFilesSection).not.toContain('href="index.html"');
 
-            // imsmanifest.xml and imslrm.xml should be excluded
+            // imsmanifest.xml should be excluded (it's the manifest itself)
             expect(xml).not.toContain('<file href="imsmanifest.xml"/>');
-            expect(xml).not.toContain('<file href="imslrm.xml"/>');
+
+            // imslrm.xml SHOULD be included (it's referenced by adlcp:location in metadata)
+            expect(xml).toContain('<file href="imslrm.xml"/>');
         });
 
         it('should include asset files added after initial file tracking', () => {
@@ -378,6 +380,75 @@ describe('Scorm12ManifestGenerator', () => {
             expect(xml).toContain('<file href="idevices/text/text.css"/>');
             expect(xml).toContain('<file href="idevices/text/text.js"/>');
             expect(xml).toContain('<file href="idevices/quiz/quiz.css"/>');
+        });
+    });
+
+    describe('imslrm.xml handling', () => {
+        it('should include imslrm.xml in COMMON_FILES when present', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'libs/jquery.js',
+                    'imslrm.xml',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            // imslrm.xml should be included (referenced by adlcp:location in metadata)
+            expect(xml).toContain('<file href="imslrm.xml"/>');
+            // imsmanifest.xml should NOT be included (it's the manifest itself)
+            expect(xml).not.toContain('<file href="imsmanifest.xml"/>');
+        });
+
+        it('should reference imslrm.xml in metadata section', () => {
+            const xml = generator.generate();
+
+            // Metadata should reference imslrm.xml via adlcp:location
+            expect(xml).toContain('<adlcp:location>imslrm.xml</adlcp:location>');
+        });
+
+        it('should include imslrm.xml alongside other common files', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'libs/jquery.js',
+                    'theme/style.css',
+                    'imslrm.xml',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            // All common files should be in COMMON_FILES resource
+            const commonFilesStart = xml.indexOf('identifier="COMMON_FILES"');
+            const commonFilesEnd = xml.indexOf('</resource>', commonFilesStart);
+            const commonFilesSection = xml.substring(commonFilesStart, commonFilesEnd);
+
+            expect(commonFilesSection).toContain('href="imslrm.xml"');
+            expect(commonFilesSection).toContain('href="libs/jquery.js"');
+            expect(commonFilesSection).toContain('href="theme/style.css"');
+        });
+
+        it('should not duplicate imslrm.xml in page resources', () => {
+            const xml = generator.generate({
+                allZipFiles: [
+                    'index.html',
+                    'imslrm.xml',
+                    'imsmanifest.xml',
+                ],
+                pageFiles: {
+                    'page-1': { fileUrl: 'index.html' },
+                },
+            });
+
+            // imslrm.xml should only appear once (in COMMON_FILES)
+            const matches = xml.match(/<file href="imslrm\.xml"\/>/g);
+            expect(matches?.length).toBe(1);
         });
     });
 });

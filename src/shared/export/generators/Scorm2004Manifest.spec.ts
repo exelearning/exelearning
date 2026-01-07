@@ -176,9 +176,11 @@ describe('Scorm2004ManifestGenerator', () => {
             expect(xml).toContain('<file href="theme/style.css"/>');
             expect(xml).toContain('<file href="content/resources/image1.png"/>');
 
-            // imsmanifest.xml and imslrm.xml should be excluded
+            // imsmanifest.xml should be excluded (it's the manifest itself)
             expect(xml).not.toContain('<file href="imsmanifest.xml"/>');
-            expect(xml).not.toContain('<file href="imslrm.xml"/>');
+
+            // imslrm.xml SHOULD be included (it's referenced by adlcp:location in metadata)
+            expect(xml).toContain('<file href="imslrm.xml"/>');
         });
 
         it('should include asset files added after initial file tracking', () => {

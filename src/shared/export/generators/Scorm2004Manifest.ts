@@ -122,8 +122,9 @@ export class Scorm2004ManifestGenerator {
         // Files that should be excluded from COMMON_FILES:
         // - Page HTML files (they go in their own resource)
         // - imsmanifest.xml (it's the manifest itself)
-        // - imslrm.xml (referenced separately in SCORM metadata)
-        const excludedFiles = new Set([...pageHtmlFiles, 'imsmanifest.xml', 'imslrm.xml']);
+        // Note: imslrm.xml IS included in COMMON_FILES (it's a valid resource file
+        // referenced by adlcp:location in metadata)
+        const excludedFiles = new Set([...pageHtmlFiles, 'imsmanifest.xml']);
 
         // All other files go to COMMON_FILES
         return allFiles.filter(file => !excludedFiles.has(file)).sort();
