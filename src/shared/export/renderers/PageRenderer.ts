@@ -219,11 +219,9 @@ ${madeWithExeHtml}
         }
 
         head += `<script src="${basePath}libs/bootstrap/bootstrap.bundle.min.js"> </script>`;
-        head += `<script src="${basePath}libs/exe_lightbox/exe_lightbox.js"> </script>`;
 
         // CSS AFTER scripts (legacy order)
         head += `<link rel="stylesheet" href="${basePath}libs/bootstrap/bootstrap.min.css">`;
-        head += `\n<link rel="stylesheet" href="${basePath}libs/exe_lightbox/exe_lightbox.css">`;
 
         // iDevice-specific scripts and CSS (script before CSS for each)
         const jsScripts = this.ideviceRenderer.getJsScripts(usedIdevices, basePath);
@@ -235,12 +233,8 @@ ${madeWithExeHtml}
             }
         }
 
-        // Content-detected libraries (e.g., exe_highlighter for highlighted-code class)
-        // Skip libraries already included above (exe_lightbox is hardcoded)
-        const alreadyIncluded = new Set(['exe_lightbox', 'exe_lightbox_gallery']);
+        // Content-detected libraries (e.g., exe_lightbox, exe_highlighter, etc.)
         for (const libName of detectedLibraries) {
-            if (alreadyIncluded.has(libName)) continue;
-
             const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
             if (!libPattern) continue;
 
@@ -792,9 +786,7 @@ ${this.renderPageContent(page, '')}
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
-<script src="libs/exe_lightbox/exe_lightbox.js"> </script>
-<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">
-<link rel="stylesheet" href="libs/exe_lightbox/exe_lightbox.css">${ideviceIncludes}
+<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
