@@ -74,6 +74,7 @@ export class YjsDocumentAdapter implements ExportDocument {
 
         return {
             title: (meta.get('title') as string) || 'eXeLearning',
+            subtitle: (meta.get('subtitle') as string) || '',
             author: (meta.get('author') as string) || '',
             description: (meta.get('description') as string) || '',
             language: (meta.get('language') as string) || 'en',
@@ -376,6 +377,7 @@ export class YjsDocumentAdapter implements ExportDocument {
         // Convert ExportMetadata → OdeXmlMeta
         const meta: OdeXmlMeta = {
             title: metadata.title,
+            subtitle: metadata.subtitle || '',
             author: metadata.author,
             description: metadata.description || '',
             language: metadata.language,

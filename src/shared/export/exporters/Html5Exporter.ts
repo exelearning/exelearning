@@ -58,6 +58,25 @@ export class Html5Exporter extends BaseExporter {
                 if (fileList) fileList.push(path);
             };
 
+            // 0. Pre-fetch theme files to get the list of CSS/JS for HTML includes
+            // We need this before generating pages so they can include correct theme references
+            const themeRootFiles: string[] = [];
+            let themeFilesMap: Map<string, Uint8Array> | null = null;
+            try {
+                themeFilesMap = await this.resources.fetchTheme(themeName);
+                console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFilesMap.size}`);
+                for (const [filePath] of themeFilesMap) {
+                    // Track root-level CSS/JS files (no path separator = root level)
+                    if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
+                        themeRootFiles.push(filePath);
+                    }
+                }
+            } catch (e) {
+                // Will use fallback theme later
+                console.warn(`[Html5Exporter] Failed to pre-fetch theme: ${themeName}`, e);
+                themeRootFiles.push('style.css', 'style.js');
+            }
+
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -65,7 +84,7 @@ export class Html5Exporter extends BaseExporter {
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                let html = this.generatePageHtml(page, pages, meta, i === 0, i);
+                let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles);
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
@@ -173,26 +192,16 @@ export class Html5Exporter extends BaseExporter {
                 // Logo not available - footer will still render but without background image
             }
 
-            // 6. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
-            try {
-                const themeFiles = await this.resources.fetchTheme(themeName);
-                console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFiles.size}`);
-                for (const [filePath, content] of themeFiles) {
-                    // Rename theme files to legacy export format
-                    let exportPath = filePath;
-                    if (filePath === 'style.css') {
-                        exportPath = 'content.css';
-                    } else if (filePath === 'style.js') {
-                        exportPath = 'default.js';
-                    }
-                    console.log(`[Html5Exporter] Adding theme file: theme/${exportPath}`);
-                    addFile(`theme/${exportPath}`, content);
+            // 6. Add theme files (already pre-fetched in step 0)
+            if (themeFilesMap) {
+                for (const [filePath, content] of themeFilesMap) {
+                    console.log(`[Html5Exporter] Adding theme file: theme/${filePath}`);
+                    addFile(`theme/${filePath}`, content);
                 }
-            } catch (e) {
-                // Add fallback theme if fetch fails (use legacy names)
-                console.warn(`[Html5Exporter] Failed to fetch theme: ${themeName}`, e);
-                addFile('theme/content.css', this.getFallbackThemeCss());
-                addFile('theme/default.js', this.getFallbackThemeJs());
+            } else {
+                // Add fallback theme if pre-fetch failed
+                addFile('theme/style.css', this.getFallbackThemeCss());
+                addFile('theme/style.js', this.getFallbackThemeJs());
             }
 
             // 7. Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
@@ -304,6 +313,12 @@ export class Html5Exporter extends BaseExporter {
 
     /**
      * Generate complete HTML for a page
+     * @param page - Page data
+     * @param allPages - All pages in the project
+     * @param meta - Project metadata
+     * @param isIndex - Whether this is the index page
+     * @param pageIndex - Page index for page counter
+     * @param themeFiles - List of root-level theme CSS/JS files
      */
     generatePageHtml(
         page: ExportPage,
@@ -311,6 +326,7 @@ export class Html5Exporter extends BaseExporter {
         meta: ExportMetadata,
         isIndex: boolean,
         pageIndex?: number,
+        themeFiles?: string[],
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -318,6 +334,7 @@ export class Html5Exporter extends BaseExporter {
 
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
+            projectSubtitle: meta.subtitle || '',
             language: meta.language || 'en',
             theme: meta.theme || 'base',
             customStyles: meta.customStyles || '',
@@ -340,6 +357,8 @@ export class Html5Exporter extends BaseExporter {
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
+            // Theme files for HTML head includes
+            themeFiles: themeFiles || [],
         });
     }
 

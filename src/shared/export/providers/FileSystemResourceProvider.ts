@@ -89,6 +89,8 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch base libraries (jQuery, Bootstrap, common.js, etc.)
+     * Only truly essential libraries - content-specific libraries (exe_lightbox, exe_tooltips,
+     * exe_effects, jquery-ui, etc.) are detected and included via LibraryDetector
      * @returns Map of file paths to content
      */
     async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
@@ -109,9 +111,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
             { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
-            // exe_lightbox (always included - hardcoded in PageRenderer)
-            { src: 'app/common/exe_lightbox/exe_lightbox.js', dest: 'exe_lightbox/exe_lightbox.js' },
-            { src: 'app/common/exe_lightbox/exe_lightbox.css', dest: 'exe_lightbox/exe_lightbox.css' },
         ];
 
         for (const { src, dest } of libsMapping) {
@@ -160,32 +159,49 @@ export class FileSystemResourceProvider implements ResourceProvider {
         ]);
 
         // Build lookup for directory patterns
-        const directoryPatterns = new Set<string>();
+        // When isDirectory is true, we extract the directory name from file paths
+        // e.g., 'exe_atools/exe_atools.js' -> 'exe_atools' should include the entire directory
+        const directoriesToInclude = new Set<string>();
         if (patterns) {
             for (const lib of patterns) {
                 if (lib.isDirectory) {
                     for (const file of lib.files) {
-                        directoryPatterns.add(file);
+                        // Extract directory name (first path component)
+                        const dirName = file.split('/')[0];
+                        directoriesToInclude.add(dirName);
                     }
                 }
             }
         }
 
+        // Track which directories we've already processed to avoid duplicates
+        const processedDirectories = new Set<string>();
+
         for (const filePath of filePaths) {
-            // Check if this is a directory pattern (entire directory should be included)
-            if (directoryPatterns.has(filePath)) {
-                // Recursively read all files from directory
-                const firstPart = filePath.split('/')[0];
+            const dirName = filePath.split('/')[0];
+
+            // Check if this file's directory should be fully included
+            if (directoriesToInclude.has(dirName) && !processedDirectories.has(dirName)) {
+                // Recursively read all files from the directory
                 let dirPath: string;
-                if (appCommonLibraries.has(firstPart)) {
-                    dirPath = path.join(this.publicDir, 'app/common', filePath);
+                if (appCommonLibraries.has(dirName)) {
+                    dirPath = path.join(this.publicDir, 'app/common', dirName);
                 } else {
-                    dirPath = path.join(this.publicDir, 'libs', filePath);
+                    dirPath = path.join(this.publicDir, 'libs', dirName);
                 }
-                const dirFiles = await this.readDirectoryRecursive(dirPath, filePath);
+                const dirFiles = await this.readDirectoryRecursive(dirPath, dirName);
                 for (const [subPath, content] of dirFiles) {
-                    files.set(subPath, content);
+                    // Filter out test files
+                    if (!subPath.endsWith('.test.js') && !subPath.endsWith('.spec.js')) {
+                        files.set(subPath, content);
+                    }
                 }
+                processedDirectories.add(dirName);
+                continue;
+            }
+
+            // Skip if this file is from a directory we already processed
+            if (processedDirectories.has(dirName)) {
                 continue;
             }
 
@@ -196,8 +212,7 @@ export class FileSystemResourceProvider implements ResourceProvider {
                 sourcePath = path.join(this.publicDir, commonFilesMapping[filePath]);
             } else {
                 // Check if this is an app/common library (exe_* libraries)
-                const firstPart = filePath.split('/')[0];
-                if (appCommonLibraries.has(firstPart)) {
+                if (appCommonLibraries.has(dirName)) {
                     sourcePath = path.join(this.publicDir, 'app/common', filePath);
                 } else {
                     // Default: libs/ folder

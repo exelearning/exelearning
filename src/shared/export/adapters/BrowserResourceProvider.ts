@@ -112,23 +112,28 @@ export class BrowserResourceProvider implements ResourceProvider {
      */
     async fetchLibraryFiles(files: string[], patterns?: LibraryPattern[]): Promise<Map<string, Uint8Array>> {
         // Build lookup for directory patterns
-        const directoryPatterns = new Set<string>();
+        // When isDirectory is true, we extract the directory name from file paths
+        // e.g., 'exe_atools/exe_atools.js' -> 'exe_atools' should include the entire directory
+        const directoriesToInclude = new Set<string>();
         if (patterns) {
             for (const lib of patterns) {
                 if (lib.isDirectory) {
                     for (const file of lib.files) {
-                        directoryPatterns.add(file);
+                        // Extract directory name (first path component)
+                        const dirName = file.split('/')[0];
+                        directoriesToInclude.add(dirName);
                     }
                 }
             }
         }
 
-        // Separate directory patterns from regular files
+        // Separate files by whether their directory should be fully included
         const regularFiles: string[] = [];
-        const directoryFiles: string[] = [];
+        const directoriesToFetch = new Set<string>();
         for (const file of files) {
-            if (directoryPatterns.has(file)) {
-                directoryFiles.push(file);
+            const dirName = file.split('/')[0];
+            if (directoriesToInclude.has(dirName)) {
+                directoriesToFetch.add(dirName);
             } else {
                 regularFiles.push(file);
             }
@@ -139,17 +144,20 @@ export class BrowserResourceProvider implements ResourceProvider {
         if (regularFiles.length > 0) {
             const blobMap = await this.fetcher.fetchLibraryFiles(regularFiles);
             const converted = await this.convertBlobMapToUint8ArrayMap(blobMap);
-            for (const [path, content] of converted) {
-                result.set(path, content);
+            for (const [filePath, content] of converted) {
+                result.set(filePath, content);
             }
         }
 
-        // Fetch directory patterns using fetchLibraryDirectory
-        for (const dir of directoryFiles) {
+        // Fetch entire directories for directory patterns
+        for (const dir of directoriesToFetch) {
             const blobMap = await this.fetcher.fetchLibraryDirectory(dir);
             const converted = await this.convertBlobMapToUint8ArrayMap(blobMap);
-            for (const [path, content] of converted) {
-                result.set(path, content);
+            for (const [filePath, content] of converted) {
+                // Filter out test files
+                if (!filePath.endsWith('.test.js') && !filePath.endsWith('.spec.js')) {
+                    result.set(filePath, content);
+                }
             }
         }
 

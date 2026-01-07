@@ -298,8 +298,12 @@ export class WebsitePreviewExporter {
         // Theme JS looks for '.main-header .page-header' to move title into .page-content
         // NOTE: Page header is now inside each article (see renderPageArticle) to preserve pre-rendered LaTeX
         // The shared #page-title element is hidden but kept for backwards compatibility with scripts
+        const projectSubtitle = meta.subtitle || '';
+        const subtitleHtml = projectSubtitle
+            ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>`
+            : '';
         const staticHeaderHtml = `${initialPageCounterHtml}<header class="main-header">
-<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
 <div class="page-header" style="display:none"><h2 id="page-title" class="page-title"></h2></div>
 </header>`;
 

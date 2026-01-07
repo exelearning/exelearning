@@ -19,6 +19,7 @@ export interface OdeXmlDocument {
 export interface OdeXmlMeta {
     author?: string;
     title?: string;
+    subtitle?: string;
     description?: string;
     language?: string;
     license?: string;

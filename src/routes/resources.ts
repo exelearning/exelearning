@@ -225,24 +225,20 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     })
 
     // GET /api/resources/libs/base - Get base JavaScript libraries (jQuery, common, etc.)
-    // These match what PageRenderer.ts hardcodes in HTML head
+    // Only truly essential libraries - others are conditionally included via LibraryDetector
     .get('/api/resources/libs/base', () => {
         const version = getAppVersion();
         const basePath = getBasePath();
 
-        // Return essential libraries for exports (matching FileSystemResourceProvider.fetchBaseLibraries)
-        // Two types of source paths: libs/ and app/common/
+        // Return only essential libraries for exports
+        // Content-specific libraries (exe_lightbox, exe_tooltips, exe_effects, jquery-ui, etc.)
+        // are detected and included via LibraryDetector based on actual content usage
         const baseLibs: Array<ResourceFile & { srcPath: string }> = [
             // jQuery (libs/)
             {
                 path: 'jquery/jquery.min.js',
                 srcPath: path.join(LIBS_PATH, 'jquery/jquery.min.js'),
                 url: `${basePath}/${version}/libs/jquery/jquery.min.js`,
-            },
-            {
-                path: 'jquery-ui/jquery-ui.min.js',
-                srcPath: path.join(LIBS_PATH, 'jquery-ui/jquery-ui.min.js'),
-                url: `${basePath}/${version}/libs/jquery-ui/jquery-ui.min.js`,
             },
             // Bootstrap (libs/)
             {
@@ -280,56 +276,6 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
                 path: 'exe_export.js',
                 srcPath: path.join(COMMON_PATH, 'exe_export.js'),
                 url: `${basePath}/${version}/app/common/exe_export.js`,
-            },
-            // exe_lightbox (always included - hardcoded in PageRenderer)
-            {
-                path: 'exe_lightbox/exe_lightbox.js',
-                srcPath: path.join(COMMON_PATH, 'exe_lightbox/exe_lightbox.js'),
-                url: `${basePath}/${version}/app/common/exe_lightbox/exe_lightbox.js`,
-            },
-            {
-                path: 'exe_lightbox/exe_lightbox.css',
-                srcPath: path.join(COMMON_PATH, 'exe_lightbox/exe_lightbox.css'),
-                url: `${basePath}/${version}/app/common/exe_lightbox/exe_lightbox.css`,
-            },
-            // fflate (for ELPX re-download functionality)
-            {
-                path: 'fflate/fflate.min.js',
-                srcPath: path.join(LIBS_PATH, 'fflate/fflate.min.js'),
-                url: `${basePath}/${version}/libs/fflate/fflate.min.js`,
-            },
-            // exe_elpx_download (for ELPX re-download functionality)
-            {
-                path: 'exe_elpx_download/exe_elpx_download.js',
-                srcPath: path.join(COMMON_PATH, 'exe_elpx_download/exe_elpx_download.js'),
-                url: `${basePath}/${version}/app/common/exe_elpx_download/exe_elpx_download.js`,
-            },
-            // exe_tooltips (commonly used)
-            {
-                path: 'exe_tooltips/exe_tooltips.js',
-                srcPath: path.join(COMMON_PATH, 'exe_tooltips/exe_tooltips.js'),
-                url: `${basePath}/${version}/app/common/exe_tooltips/exe_tooltips.js`,
-            },
-            {
-                path: 'exe_tooltips/exe_tooltips.css',
-                srcPath: path.join(COMMON_PATH, 'exe_tooltips/exe_tooltips.css'),
-                url: `${basePath}/${version}/app/common/exe_tooltips/exe_tooltips.css`,
-            },
-            {
-                path: 'exe_tooltips/exe_tooltips_icons.woff2',
-                srcPath: path.join(COMMON_PATH, 'exe_tooltips/exe_tooltips_icons.woff2'),
-                url: `${basePath}/${version}/app/common/exe_tooltips/exe_tooltips_icons.woff2`,
-            },
-            // exe_effects (commonly used for flip, reveal, etc.)
-            {
-                path: 'exe_effects/exe_effects.js',
-                srcPath: path.join(COMMON_PATH, 'exe_effects/exe_effects.js'),
-                url: `${basePath}/${version}/app/common/exe_effects/exe_effects.js`,
-            },
-            {
-                path: 'exe_effects/exe_effects.css',
-                srcPath: path.join(COMMON_PATH, 'exe_effects/exe_effects.css'),
-                url: `${basePath}/${version}/app/common/exe_effects/exe_effects.css`,
             },
         ];
 

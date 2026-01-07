@@ -264,6 +264,7 @@ class ElpxImporter {
     const metadataValues = {
       // Basic metadata
       title: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_title') || 'Imported Project') : 'Imported Project',
+      subtitle: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_subtitle') || '') : '',
       author: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_author') || '') : '',
       language: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_lang') || 'en') : 'en',
       description: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_description') || '') : '',
@@ -320,6 +321,9 @@ class ElpxImporter {
           Logger.log('[ElpxImporter] Setting metadata...');
           // Basic metadata
           metadata.set('title', metadataValues.title);
+          if (metadataValues.subtitle) {
+            metadata.set('subtitle', metadataValues.subtitle);
+          }
           metadata.set('author', metadataValues.author);
           metadata.set('language', metadataValues.language);
           metadata.set('description', metadataValues.description);
