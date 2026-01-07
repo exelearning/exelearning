@@ -141,7 +141,7 @@
         <aside id="stylessidenav" class="sidenav" role="complementary">
             <div class="content-styles-header">
                 <h1 class="styles-title">
-                    Styles
+                    {{ 'Styles' | trans }}
                 </h1>
                 <div id="stylessidenavclose" class="navbar-close">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -153,12 +153,12 @@
                 <ul class="nav nav-tabs{% if config.userStyles == false %} d-none{% endif %}" id="styleslist" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab" data-bs-target="#exestylescontent" type="button" role="tab" aria-controls="exestylescontent" aria-selected="true">
-                            System
+                            {{ 'System' | trans }}
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="importedstylescontent-tab" data-bs-toggle="tab" data-bs-target="#importedstylescontent" type="button" role="tab" aria-controls="importedstylescontent" aria-selected="false">
-                            Imported
+                            {{ 'Imported' | trans }}
                         </button>
                     </li>
                 </ul>

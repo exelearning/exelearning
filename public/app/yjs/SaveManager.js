@@ -233,9 +233,7 @@ class SaveManager {
 
     return {
       allowed: false,
-      message:
-        'No se puede guardar el proyecto en el servidor porque se ha excedido la cuota. ' +
-        'Puedes descargar el proyecto en local.',
+      message: _('Cannot save project to server because your storage quota has been exceeded. You can download the project locally.'),
     };
   }
 
@@ -260,7 +258,7 @@ class SaveManager {
     const projectId = this.bridge.projectId;
     const documentManager = this.bridge.documentManager;
     const metadata = documentManager?.getMetadata();
-    const projectTitle = metadata?.get('title') || 'Untitled';
+    const projectTitle = metadata?.get('title') || _('Untitled');
 
     // Create progress toast instead of modal
     const toast = showProgress ? this.createProgressToast(projectTitle) : null;
@@ -287,7 +285,7 @@ class SaveManager {
         if (!quotaCheck.allowed) {
           if (eXeLearning?.app?.modals?.alert) {
             eXeLearning.app.modals.alert.show({
-              title: 'Cuota excedida',
+              title: _('Quota exceeded'),
               body: quotaCheck.message,
             });
           }
@@ -366,7 +364,7 @@ class SaveManager {
         this.bridge.isNewProject = false;
       }
 
-      return { success: true, message: 'Project saved successfully' };
+      return { success: true, message: _('Project saved successfully') };
     } catch (error) {
       console.error('[SaveManager] Save failed:', error);
 

@@ -407,6 +407,57 @@ export const myFeatureRoutes = new Elysia({ prefix: '/api/my-feature' })
 app.use(myFeatureRoutes);
 ```
 
+### Internationalization (i18n)
+
+All user-facing strings **MUST** be translated. Never hardcode English strings in UI elements.
+
+#### JavaScript (`public/app/`)
+
+Use the `_()` translation function (defined in `public/app/locate/locale.js`):
+- `_()` - GUI translations (buttons, labels, tooltips, messages)
+- `c_()` - Content translations (with special replacements)
+
+```javascript
+// BAD - Hardcoded English strings
+button.title = 'Undo (Ctrl+Z)';
+element.textContent = 'Loading...';
+
+// GOOD - Using translation function
+button.title = `${_('Undo')} (Ctrl+Z)`;
+element.textContent = _('Loading...');
+```
+
+#### Nunjucks Templates (`views/`)
+
+Use the `| trans` filter for all user-facing strings:
+
+```nunjucks
+{# BAD - Hardcoded English strings #}
+<h5 class="modal-title">Properties</h5>
+<button>Save</button>
+<span title="Close">×</span>
+
+{# GOOD - Using trans filter #}
+<h5 class="modal-title">{{ 'Properties' | trans }}</h5>
+<button>{{ 'Save' | trans }}</button>
+<span title="{{ 'Close' | trans }}">×</span>
+```
+
+**Translation files:** `translations/messages.{locale}.xlf` (ca, en, eo, es, eu, gl, pt, ro, va)
+
+#### What to translate
+- Button labels and tooltips (`title` attribute)
+- Modal titles and headings
+- Status messages, error messages, alerts
+- Placeholder text, form labels
+- Menu items and navigation labels
+
+#### What NOT to translate
+- Keyboard shortcuts (Ctrl+Z, Cmd+S)
+- Technical identifiers (CSS classes, IDs)
+- Console/debug messages
+- Brand names (eXeLearning, SCORM, etc.)
+
 ## Legacy File Support
 
 The application MUST support importing legacy .elp files from pre-v3.0 eXeLearning. These files use a Python pickle XML format with `contentv3.xml`. This is handled client-side by `ElpxImporter.importLegacyFormat()` using `LegacyXmlParser.js`.

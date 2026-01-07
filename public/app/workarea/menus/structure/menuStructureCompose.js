@@ -203,7 +203,7 @@ export default class MenuStructureCompose {
             const avatar = document.createElement('div');
             avatar.classList.add('node-user-avatar');
             // Tooltip with email (fallback to name)
-            avatar.title = user.email || user.name || 'User';
+            avatar.title = user.email || user.name || _('User');
             avatar.style.zIndex = maxShow - index;
 
             if (user.color) {

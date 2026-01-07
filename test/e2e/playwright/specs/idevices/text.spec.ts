@@ -1640,6 +1640,17 @@ test.describe('Text iDevice', () => {
                 { timeout: 15000 },
             );
 
+            // Wait for iframe to appear in the iDevice content (PDF was inserted)
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    if (!idevice) return false;
+                    const iframe = idevice.querySelector('iframe');
+                    return !!iframe;
+                },
+                { timeout: 10000 },
+            );
+
             // Save project
             await workarea.save();
             await page.waitForTimeout(1000);
@@ -1649,15 +1660,35 @@ test.describe('Text iDevice', () => {
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            // Wait for PDF.js to render (needs time to load library and fetch blob)
-            await page.waitForTimeout(5000);
+            // Wait for PDF.js to render - use polling instead of fixed timeout
+            // PDF.js needs time to: 1) load library, 2) fetch blob, 3) render canvas
+            await page
+                .waitForFunction(
+                    () => {
+                        const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                        if (!previewIframe?.contentDocument) return false;
+
+                        const doc = previewIframe.contentDocument;
+                        // Either PDF.js viewer or fallback card should be present
+                        const viewer = doc.querySelector('.exe-pdf-viewer');
+                        const card = doc.querySelector('.exe-pdf-preview-card');
+                        return !!viewer || !!card;
+                    },
+                    { timeout: 20000, polling: 500 },
+                )
+                .catch(() => {
+                    // If timeout, continue to get diagnostic info
+                });
+
+            // Additional wait for canvas rendering
+            await page.waitForTimeout(1000);
 
             // Check for PDF.js viewer in preview iframe
             // PDF.js renders PDFs to canvas because Chrome blocks native PDF viewer
             // in nested blob URL contexts (see previewPanel.js for detailed explanation)
             const viewerInfo = await page.evaluate(() => {
                 const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                if (!previewIframe?.contentDocument) return { error: 'No preview iframe' };
+                if (!previewIframe?.contentDocument) return { hasPdfJsViewer: false, hasFallbackCard: false };
 
                 const doc = previewIframe.contentDocument;
 
@@ -1682,6 +1713,7 @@ test.describe('Text iDevice', () => {
             // Verify PDF.js viewer rendered successfully
             // Either PDF.js viewer with canvas OR fallback card should be present
             const pdfRendered = viewerInfo.hasPdfJsViewer || viewerInfo.hasFallbackCard;
+
             expect(pdfRendered).toBe(true);
 
             // If PDF.js loaded, verify canvas has content
