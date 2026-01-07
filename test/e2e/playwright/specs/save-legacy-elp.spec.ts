@@ -70,7 +70,7 @@ async function importElpFixture(page: Page): Promise<void> {
                 for (let i = 0; i < pages.length; i++) {
                     count++;
                     const page = pages.get(i);
-                    const subpages = page?.get('pages');
+                    const subpages = page?.get('children');
                     if (subpages) count += countPages(subpages);
                 }
                 return count;
@@ -295,7 +295,7 @@ test.describe('Save Legacy ELP - Database Compatibility', () => {
                 for (let i = 0; i < pages.length; i++) {
                     totalPages++;
                     const page = pages.get(i);
-                    const subpages = page?.get('pages');
+                    const subpages = page?.get('children');
                     if (subpages) countPages(subpages);
                 }
             };
@@ -340,7 +340,7 @@ test.describe('Save Legacy ELP - Database Compatibility', () => {
                 for (let i = 0; i < pages.length; i++) {
                     totalPages++;
                     const page = pages.get(i);
-                    const subpages = page?.get('pages');
+                    const subpages = page?.get('children');
                     if (subpages) countPages(subpages);
                 }
             };

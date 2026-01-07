@@ -1423,23 +1423,23 @@
                             <span id="settingsSaveStatus" class="admin-settings-status"></span>
                         </div>
                         <div class="admin-settings-group">
-                            <h6>Plataforma y colaboracion</h6>
+                            <h6>{{ t.platform_and_collaboration or 'Platform and collaboration' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>ONLINE_THEMES_INSTALL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="ONLINE_THEMES_INSTALL" data-setting-type="boolean" {% if adminSettings.general.online_themes_install %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Permite instalar temas en linea.</small>
+                                    <small>{{ t.allows_install_themes_online or 'Allows installing themes online.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>ONLINE_IDEVICES_INSTALL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="ONLINE_IDEVICES_INSTALL" data-setting-type="boolean" {% if adminSettings.general.online_idevices_install %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Permite instalar iDevices en linea.</small>
+                                    <small>{{ t.allows_install_idevices_online or 'Allows installing iDevices online.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>APP_AUTH_METHODS</label>
@@ -1459,13 +1459,13 @@
                                         <input type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="guest" {% if 'guest' in adminSettings.general.app_auth_methods %}checked{% endif %}>
                                         <span>guest</span>
                                     </div>
-                                    <small>Metodos de autenticacion habilitados.</small>
+                                    <small>{{ t.enabled_auth_methods or 'Enabled authentication methods.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>VERSION_CONTROL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="VERSION_CONTROL" data-setting-type="boolean" {% if adminSettings.general.version_control %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                 </div>
                                 <div class="admin-field">
@@ -1487,41 +1487,41 @@
                         </div>
 
                         <div class="admin-settings-group">
-                            <h6>Almacenamiento y cuotas</h6>
+                            <h6>{{ t.storage_and_quotas or 'Storage and quotas' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>USER_STORAGE_MAX_DISK_SPACE</label>
                                     <input type="number" class="admin-input" data-setting-key="USER_STORAGE_MAX_DISK_SPACE" data-setting-type="number" value="{{ adminSettings.storage.user_storage_max_disk_space }}">
-                                    <small>Maximo de almacenamiento por usuario (MB).</small>
+                                    <small>{{ t.max_storage_per_user or 'Maximum storage per user (MB).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>DEFAULT_QUOTA</label>
                                     <input type="number" class="admin-input" data-setting-key="DEFAULT_QUOTA" data-setting-type="number" value="{{ adminSettings.storage.default_quota }}">
-                                    <small>Cuota por defecto (MB).</small>
+                                    <small>{{ t.default_quota_mb or 'Default quota (MB).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>COUNT_USER_AUTOSAVE_SPACE_ODE_FILES</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="COUNT_USER_AUTOSAVE_SPACE_ODE_FILES" data-setting-type="boolean" {% if adminSettings.storage.count_user_autosave_space_ode_files %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Cuenta el autosave en la cuota.</small>
+                                    <small>{{ t.count_autosave_in_quota or 'Counts autosave in quota.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>FILE_UPLOAD_MAX_SIZE</label>
                                     <input type="number" class="admin-input" data-setting-key="FILE_UPLOAD_MAX_SIZE" data-setting-type="number" value="{{ adminSettings.storage.file_upload_max_size }}">
-                                    <small>Tamano maximo de subida (MB).</small>
+                                    <small>{{ t.max_upload_size or 'Maximum upload size (MB).' }}</small>
                                 </div>
                             </div>
                         </div>
 
                         <div class="admin-settings-group">
-                            <h6>Autosave</h6>
+                            <h6>{{ t.autosave or 'Autosave' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL</label>
                                     <input type="number" class="admin-input" data-setting-key="PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL" data-setting-type="number" value="{{ adminSettings.autosave.permanent_save_autosave_time_interval }}">
-                                    <small>Intervalo de autosave (segundos).</small>
+                                    <small>{{ t.autosave_interval or 'Autosave interval (seconds).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES</label>
@@ -1531,7 +1531,7 @@
                                     <label>AUTOSAVE_ODE_FILES_FUNCTION</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="AUTOSAVE_ODE_FILES_FUNCTION" data-setting-type="boolean" {% if adminSettings.autosave.autosave_ode_files_function %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1771,7 +1771,10 @@
             deactivate: '{{ t.deactivate or "Deactivate" }}',
             archiving: '{{ t.archiving or "Archiving..." }}',
             updating: '{{ t.updating or "Updating..." }}',
-            archive: '{{ t.archive or "Archive" }}'
+            archive: '{{ t.archive or "Archive" }}',
+            unlimited: '{{ t.unlimited or "Unlimited" }}',
+            base: '{{ t.base or "Base" }}',
+            site: '{{ t.site or "Site" }}'
         };
 
         // State
@@ -2095,7 +2098,7 @@
                     // Build quota display with progress bar
                     let quotaHTML = '';
                     if (user.quota_mb == null) {
-                        quotaHTML = '<span class="quota-unlimited">Unlimited</span>';
+                        quotaHTML = '<span class="quota-unlimited">' + T.unlimited + '</span>';
                     } else {
                         const usedMB = user.storage_used_mb || 0;
                         const quotaMB = user.quota_mb;
@@ -2139,7 +2142,7 @@
                         <td>${quotaHTML}</td>
                         <td><span class="badge-role ${statusCls}">${statusText}</span></td>
                         <td>
-                            <button class="btn-admin-outline" onclick="editUser(${user.id})" title="Edit">
+                            <button class="btn-admin-outline" onclick="editUser(${user.id})" title="{{ t.edit or 'Edit' }}">
                                 <span class="mi mi-sm">edit</span>
                             </button>
                         </td>
@@ -2409,7 +2412,7 @@
                                 <span class="mi mi-sm">${toggleIcon}</span>
                             </button>
                             ${canArchive ? `
-                            <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, 'archived')" title="Archive">
+                            <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, 'archived')" title="{{ t.archive or 'Archive' }}">
                                 <span class="mi mi-sm">archive</span>
                             </button>
                             ` : ''}
@@ -2911,8 +2914,8 @@
 
                     // Source badge - different colors for base vs site themes
                     const sourceBadge = theme.source === 'base'
-                        ? '<span class="badge badge-primary">Base</span>'
-                        : '<span class="badge badge-secondary">Site</span>';
+                        ? '<span class="badge badge-primary">' + T.base + '</span>'
+                        : '<span class="badge badge-secondary">' + T.site + '</span>';
 
                     // Toggle for base vs site themes (both can be toggled now)
                     const toggleHtml = theme.source === 'base'

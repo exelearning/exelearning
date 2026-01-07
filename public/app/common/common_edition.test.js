@@ -827,6 +827,79 @@ describe('common_edition.js', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.exportGame(null, 'test', 'name');
       expect(result).toBe(false);
     });
+
+    describe('addEvents', () => {
+      let originalAlert;
+
+      beforeEach(() => {
+        originalAlert = global.alert;
+        global.alert = vi.fn();
+        document.body.innerHTML = `
+          <textarea id="eXeEQuestionsArea"></textarea>
+          <textarea id="eXeEPromptArea"></textarea>
+          <textarea id="eXeEQuestionsIA"></textarea>
+          <div id="eXeEIADiv"></div>
+          <div id="eXeEAddArea" style="display:none"></div>
+          <button id="eXeESaveButton"></button>
+          <button id="eXeEIAButton"></button>
+          <button id="eXeECopyButton"></button>
+          <button id="eXeEOpenChatGPTButton"></button>
+          <button id="eXeGameAddQuestion"></button>
+          <a id="eXeETabQuestions" class="active"></a>
+          <a id="eXeETabPrompt"></a>
+          <a id="eXeETabIA"></a>
+        `;
+      });
+
+      afterEach(() => {
+        global.alert = originalAlert;
+      });
+
+      it('saveButton click shows success alert when all lines are valid', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+
+        expect(global.alert).toHaveBeenCalledWith('The questions have been added successfully');
+        expect(saveQuestionsMock).toHaveBeenCalled();
+      });
+
+      it('saveButton click shows invalid lines alert when some lines are invalid', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsArea').val('Word1#Definition1\nInvalidLine\nWord2#Definition2');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+
+        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
+        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('InvalidLine'));
+      });
+
+      it('iaButton click shows success alert when all lines are valid', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsIA').val('Word1#Definition1');
+        $('#eXeEQuestionsArea').val('Word1#Definition1\nWord2#Definition2');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEIAButton').trigger('click');
+
+        expect(global.alert).toHaveBeenCalledWith('The questions have been added successfully');
+      });
+
+      it('iaButton click shows invalid lines alert when some lines are invalid', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsIA').val('SomeContent');
+        $('#eXeEQuestionsArea').val('BadFormat\nWord1#Definition1');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEIAButton').trigger('click');
+
+        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
+        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
+      });
+    });
   });
 
   describe('filePicker', () => {
