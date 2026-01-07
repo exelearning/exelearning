@@ -6,7 +6,7 @@
  *
  * ELPX files contain everything HTML5 exports have, plus:
  * - content.xml (ODE format with full project structure for re-import)
- * - ode-content.dtd (DTD for XML validation)
+ * - content.dtd (DTD for XML validation)
  * - custom/ directory
  *
  * Structure:
@@ -18,7 +18,7 @@
  * - theme/ (theme CSS/JS)
  * - idevices/ (iDevice-specific CSS/JS)
  * - content.xml (ODE format)
- * - ode-content.dtd
+ * - content.dtd
  * - custom/
  *
  * The ODE XML format is a hierarchical structure:
@@ -40,87 +40,12 @@ import type {
 } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 
 /**
  * ODE XML version identifier
  */
 const ODE_VERSION = '4.0';
-
-/**
- * ODE DTD filename (included in ELPX exports)
- */
-const ODE_DTD_FILENAME = 'ode-content.dtd';
-
-/**
- * ODE Content DTD
- * Embedded DTD for ELPX exports - validates content.xml structure
- */
-const ODE_DTD_CONTENT = `<!--
-    ODE Content DTD
-    Document Type Definition for eXeLearning ODE XML format (content.xml)
-    Version: 2.0
-    Namespace: http://www.intef.es/xsd/ode
-    Copyright (C) 2025 eXeLearning - License: AGPL-3.0
--->
-
-<!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
-<!ATTLIST ode
-    xmlns CDATA #FIXED "http://www.intef.es/xsd/ode"
-    version CDATA #IMPLIED>
-
-<!-- User Preferences -->
-<!ELEMENT userPreferences (userPreference*)>
-<!ELEMENT userPreference (key, value)>
-
-<!-- ODE Resources -->
-<!ELEMENT odeResources (odeResource*)>
-<!ELEMENT odeResource (key, value)>
-
-<!-- ODE Properties -->
-<!ELEMENT odeProperties (odeProperty*)>
-<!ELEMENT odeProperty (key, value)>
-
-<!-- Shared Key-Value Elements -->
-<!ELEMENT key (#PCDATA)>
-<!ELEMENT value (#PCDATA)>
-
-<!-- Navigation Structures (Pages) -->
-<!ELEMENT odeNavStructures (odeNavStructure+)>
-<!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
-
-<!ELEMENT odePageId (#PCDATA)>
-<!ELEMENT odeParentPageId (#PCDATA)>
-<!ELEMENT pageName (#PCDATA)>
-<!ELEMENT odeNavStructureOrder (#PCDATA)>
-
-<!ELEMENT odeNavStructureProperties (odeNavStructureProperty*)>
-<!ELEMENT odeNavStructureProperty (key, value)>
-
-<!-- Block Structures -->
-<!ELEMENT odePagStructures (odePagStructure*)>
-<!ELEMENT odePagStructure (odePageId, odeBlockId, blockName, iconName?, odePagStructureOrder, odePagStructureProperties?, odeComponents?)>
-
-<!ELEMENT odeBlockId (#PCDATA)>
-<!ELEMENT blockName (#PCDATA)>
-<!ELEMENT iconName (#PCDATA)>
-<!ELEMENT odePagStructureOrder (#PCDATA)>
-
-<!ELEMENT odePagStructureProperties (odePagStructureProperty*)>
-<!ELEMENT odePagStructureProperty (key, value)>
-
-<!-- Components (iDevices) -->
-<!ELEMENT odeComponents (odeComponent*)>
-<!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
-
-<!ELEMENT odeIdeviceId (#PCDATA)>
-<!ELEMENT odeIdeviceTypeName (#PCDATA)>
-<!ELEMENT htmlView (#PCDATA)>
-<!ELEMENT jsonProperties (#PCDATA)>
-<!ELEMENT odeComponentsOrder (#PCDATA)>
-
-<!ELEMENT odeComponentsProperties (odeComponentsProperty*)>
-<!ELEMENT odeComponentsProperty (key, value)>
-`;
 
 export class ElpxExporter extends Html5Exporter {
     /**

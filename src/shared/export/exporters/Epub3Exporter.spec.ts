@@ -526,6 +526,58 @@ describe('Epub3Exporter', () => {
         });
     });
 
+    describe('Content.xml for Re-import', () => {
+        it('should include content.xml by default for re-editing', async () => {
+            await exporter.export();
+
+            // Content.xml should be included in EPUB folder
+            expect(zip.files.has('EPUB/content.xml')).toBe(true);
+            const contentXml = zip.files.get('EPUB/content.xml') as string;
+            expect(contentXml).toContain('<?xml');
+            expect(contentXml).toContain('<ode');
+            expect(contentXml).toContain('odeNavStructure');
+        });
+
+        it('should include content.xml in manifest', async () => {
+            await exporter.export();
+
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            expect(packageOpf).toContain('id="content-xml"');
+            expect(packageOpf).toContain('href="content.xml"');
+            expect(packageOpf).toContain('media-type="application/xml"');
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Content.xml should NOT be included
+            expect(zip.files.has('EPUB/content.xml')).toBe(false);
+        });
+
+        it('should include content.dtd alongside content.xml', async () => {
+            await exporter.export();
+
+            // DTD file should be included in EPUB folder
+            expect(zip.files.has('EPUB/content.dtd')).toBe(true);
+            const dtdContent = zip.files.get('EPUB/content.dtd') as string;
+            expect(dtdContent).toContain('<!ELEMENT ode');
+            expect(dtdContent).toContain('ODE Content DTD');
+        });
+
+        it('should NOT include content.dtd when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // DTD should NOT be included
+            expect(zip.files.has('EPUB/content.dtd')).toBe(false);
+        });
+    });
+
     describe('Metadata Handling', () => {
         it('should handle metadata with special characters', async () => {
             document = new MockDocument(
