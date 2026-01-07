@@ -1429,7 +1429,7 @@
                                     <label>ONLINE_THEMES_INSTALL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="ONLINE_THEMES_INSTALL" data-setting-type="boolean" {% if adminSettings.general.online_themes_install %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                     <small>Permite instalar temas en linea.</small>
                                 </div>
@@ -1437,7 +1437,7 @@
                                     <label>ONLINE_IDEVICES_INSTALL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="ONLINE_IDEVICES_INSTALL" data-setting-type="boolean" {% if adminSettings.general.online_idevices_install %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                     <small>Permite instalar iDevices en linea.</small>
                                 </div>
@@ -1465,7 +1465,7 @@
                                     <label>VERSION_CONTROL</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="VERSION_CONTROL" data-setting-type="boolean" {% if adminSettings.general.version_control %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                 </div>
                                 <div class="admin-field">
@@ -1503,7 +1503,7 @@
                                     <label>COUNT_USER_AUTOSAVE_SPACE_ODE_FILES</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="COUNT_USER_AUTOSAVE_SPACE_ODE_FILES" data-setting-type="boolean" {% if adminSettings.storage.count_user_autosave_space_ode_files %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                     <small>Cuenta el autosave en la cuota.</small>
                                 </div>
@@ -1531,7 +1531,7 @@
                                     <label>AUTOSAVE_ODE_FILES_FUNCTION</label>
                                     <div class="form-check-custom">
                                         <input type="checkbox" data-setting-key="AUTOSAVE_ODE_FILES_FUNCTION" data-setting-type="boolean" {% if adminSettings.autosave.autosave_ode_files_function %}checked{% endif %}>
-                                        <span>Activo</span>
+                                        <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1771,7 +1771,10 @@
             deactivate: '{{ t.deactivate or "Deactivate" }}',
             archiving: '{{ t.archiving or "Archiving..." }}',
             updating: '{{ t.updating or "Updating..." }}',
-            archive: '{{ t.archive or "Archive" }}'
+            archive: '{{ t.archive or "Archive" }}',
+            unlimited: '{{ t.unlimited or "Unlimited" }}',
+            base: '{{ t.base or "Base" }}',
+            site: '{{ t.site or "Site" }}'
         };
 
         // State
@@ -2095,7 +2098,7 @@
                     // Build quota display with progress bar
                     let quotaHTML = '';
                     if (user.quota_mb == null) {
-                        quotaHTML = '<span class="quota-unlimited">Unlimited</span>';
+                        quotaHTML = '<span class="quota-unlimited">' + T.unlimited + '</span>';
                     } else {
                         const usedMB = user.storage_used_mb || 0;
                         const quotaMB = user.quota_mb;
@@ -2911,8 +2914,8 @@
 
                     // Source badge - different colors for base vs site themes
                     const sourceBadge = theme.source === 'base'
-                        ? '<span class="badge badge-primary">Base</span>'
-                        : '<span class="badge badge-secondary">Site</span>';
+                        ? '<span class="badge badge-primary">' + T.base + '</span>'
+                        : '<span class="badge badge-secondary">' + T.site + '</span>';
 
                     // Toggle for base vs site themes (both can be toggled now)
                     const toggleHtml = theme.source === 'base'
