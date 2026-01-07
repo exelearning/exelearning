@@ -726,6 +726,7 @@ window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
         let xml = '<odeProperties>\n';
         const props: Record<string, string> = {
             pp_title: metadata.title || 'Untitled',
+            pp_subtitle: metadata.subtitle || '',
             pp_author: metadata.author || '',
             pp_lang: metadata.language || 'en',
             pp_description: metadata.description || '',

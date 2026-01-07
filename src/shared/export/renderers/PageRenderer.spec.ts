@@ -369,6 +369,45 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('Página');
         });
+
+        it('should render package-subtitle when projectSubtitle is provided', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                projectSubtitle: 'My Subtitle',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).toContain('class="package-subtitle"');
+            expect(html).toContain('My Subtitle');
+        });
+
+        it('should NOT render package-subtitle when projectSubtitle is empty', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                projectSubtitle: '',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).not.toContain('class="package-subtitle"');
+        });
+
+        it('should NOT render package-subtitle when projectSubtitle is not provided', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).not.toContain('class="package-subtitle"');
+        });
     });
 
     describe('renderFooterSection', () => {

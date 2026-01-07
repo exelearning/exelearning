@@ -135,11 +135,11 @@ export default class PreviewPanelManager {
                         await project.exportToElpxViaYjs({ saveAs: true });
                     } else {
                         Logger.error('[PreviewPanel] exportToElpxViaYjs not available');
-                        alert('ELPX export not available. Please save your project first.');
+                        alert(_('ELPX export not available. Please save your project first.'));
                     }
                 } catch (err) {
                     Logger.error('[PreviewPanel] ELPX export failed:', err);
-                    alert('Error generating ELPX file: ' + err.message);
+                    alert(_('Error generating ELPX file:') + ' ' + err.message);
                 }
                 return;
             }
@@ -1031,9 +1031,15 @@ export default class PreviewPanelManager {
                 // if we converted to blob URL, Chrome's native PDF viewer doesn't work in
                 // nested blob URL contexts. Solution: use PDF.js to render to canvas.
                 if (src.startsWith('asset://')) {
-                    var match = src.match(/^asset:\\/\\/([^\\/]+)/);
-                    if (!match) continue;
-                    var assetId = match[1];
+                    // Extract asset ID from asset:// URL
+                    // Handles multiple formats:
+                    // - New format: asset://uuid.ext (e.g., asset://abc123.pdf)
+                    // - Legacy format: asset://uuid/filename (e.g., asset://abc123/doc.pdf)
+                    var path = src.replace('asset://', '');
+                    var uuidMatch = path.match(/^([a-f0-9-]{36})(?:\\.[a-z0-9]+)?$/i);
+                    var legacyMatch = path.match(/^([a-f0-9-]+)\\//);
+                    var assetId = uuidMatch ? uuidMatch[1] : (legacyMatch ? legacyMatch[1] : null);
+                    if (!assetId) continue;
 
                     // If PDF.js loaded successfully, render inline with full viewer controls
                     if (pdfjsLib) {

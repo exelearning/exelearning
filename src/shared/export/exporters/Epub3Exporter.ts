@@ -482,6 +482,7 @@ export class Epub3Exporter extends BaseExporter {
         // Generate page content HTML then convert to XHTML
         const pageHtml = this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
+            projectSubtitle: meta.subtitle || '',
             language: lang,
             theme: meta.theme || 'base',
             customStyles: meta.customStyles || '',

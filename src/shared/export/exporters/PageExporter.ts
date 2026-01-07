@@ -119,8 +119,8 @@ export class PageExporter extends Html5Exporter {
     generateSinglePageHtml(pages: ExportPage[], meta: ExportMetadata, usedIdevices: string[]): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
+            projectSubtitle: meta.subtitle || '',
             language: meta.language || 'en',
-            theme: meta.theme || 'base',
             customStyles: meta.customStyles || '',
             usedIdevices,
             author: meta.author || '',

@@ -115,6 +115,7 @@ export class PageRenderer {
         // Build page header (with optional page counter)
         const pageHeaderHtml = this.renderPageHeader(page, {
             projectTitle,
+            projectSubtitle: options.projectSubtitle,
             currentPageIndex: currentIdx,
             totalPages: total,
             addPagination,
@@ -472,7 +473,7 @@ ${madeWithExeHtml}
     }
 
     /**
-     * Render page header with page counter, package title (h1), and page title (h2)
+     * Render page header with page counter, package title (h1), subtitle, and page title (h2)
      * @param page - Page
      * @param options - Header options including counter info
      * @returns Header HTML
@@ -481,12 +482,13 @@ ${madeWithExeHtml}
         page: ExportPage,
         options: {
             projectTitle: string;
+            projectSubtitle?: string;
             currentPageIndex: number;
             totalPages: number;
             addPagination?: boolean;
         },
     ): string {
-        const { projectTitle, currentPageIndex, totalPages, addPagination } = options;
+        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination } = options;
 
         // Page counter is only shown if addPagination is true
         const pageCounterHtml = addPagination
@@ -498,10 +500,15 @@ ${madeWithExeHtml}
         const effectiveTitle = this.getEffectivePageTitle(page);
         const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
 
+        // Render subtitle if present
+        const subtitleHtml = projectSubtitle
+            ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>`
+            : '';
+
         // Wrap headers in main-header so theme JS (e.g., flux movePageTitle) can find them
         // Theme JS looks for '.main-header .page-header' to move title into .page-content
         return `${pageCounterHtml}<header class="main-header">
-<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
 <div class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></div>
 </header>`;
     }
@@ -695,6 +702,7 @@ ${userFooterHtml}</div></footer>`;
         allPages: ExportPage[],
         options: {
             projectTitle?: string;
+            projectSubtitle?: string;
             language?: string;
             customStyles?: string;
             usedIdevices?: string[];
@@ -704,6 +712,7 @@ ${userFooterHtml}</div></footer>`;
     ): string {
         const {
             projectTitle = 'eXeLearning',
+            projectSubtitle = '',
             language = 'en',
             customStyles = '',
             usedIdevices = [],
@@ -763,7 +772,7 @@ ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
 <main class="single-page-content">
-<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
+<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
 ${this.renderLicense({ author, license })}

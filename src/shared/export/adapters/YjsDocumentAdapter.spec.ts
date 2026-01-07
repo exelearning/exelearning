@@ -156,6 +156,7 @@ describe('YjsDocumentAdapter', () => {
         it('should return metadata from manager', () => {
             manager = new MockYjsDocumentManager({
                 title: 'Test Project',
+                subtitle: 'Test Subtitle',
                 author: 'Test Author',
                 language: 'es',
                 description: 'Test description',
@@ -169,6 +170,7 @@ describe('YjsDocumentAdapter', () => {
             const metadata = adapter.getMetadata();
 
             expect(metadata.title).toBe('Test Project');
+            expect(metadata.subtitle).toBe('Test Subtitle');
             expect(metadata.author).toBe('Test Author');
             expect(metadata.language).toBe('es');
             expect(metadata.description).toBe('Test description');
@@ -185,6 +187,7 @@ describe('YjsDocumentAdapter', () => {
             const metadata = adapter.getMetadata();
 
             expect(metadata.title).toBe('eXeLearning');
+            expect(metadata.subtitle).toBe('');
             expect(metadata.author).toBe('');
             expect(metadata.language).toBe('en');
             expect(metadata.theme).toBe('base');

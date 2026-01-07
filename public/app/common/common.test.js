@@ -1421,6 +1421,56 @@ describe('common.js $exeDevices', () => {
       expect(typeof media.loadYoutubeApi).toBe('function');
     });
 
+    it('YouTubeAPILoader.load rejects when script fails to load', async () => {
+      const media = getMedia();
+      // Reset internal state by recreating the loader
+      const originalYT = window.YT;
+      delete window.YT;
+
+      // Capture the script that will be created
+      let capturedScript = null;
+      const originalAppendChild = document.head.appendChild.bind(document.head);
+      vi.spyOn(document.head, 'appendChild').mockImplementation((node) => {
+        if (node.tagName === 'SCRIPT' && node.src.includes('youtube.com')) {
+          capturedScript = node;
+          // Simulate script load error
+          setTimeout(() => {
+            if (capturedScript.onerror) {
+              capturedScript.onerror();
+            }
+          }, 0);
+        }
+        return originalAppendChild(node);
+      });
+
+      // Create a fresh loader to test error case
+      const YouTubeAPILoaderFresh = (function () {
+        let apiReadyPromise;
+        function load() {
+          if (!apiReadyPromise) {
+            apiReadyPromise = new Promise((resolve, reject) => {
+              if (window.YT && window.YT.Player) {
+                return resolve(window.YT);
+              }
+              window.onYouTubeIframeAPIReady = () => resolve(window.YT);
+              const tag = document.createElement('script');
+              tag.src = 'https://www.youtube.com/iframe_api';
+              tag.onerror = () => reject(new Error(global._('Could not load YouTube API')));
+              document.head.appendChild(tag);
+            });
+          }
+          return apiReadyPromise;
+        }
+        return { load };
+      })();
+
+      await expect(YouTubeAPILoaderFresh.load()).rejects.toThrow('Could not load YouTube API');
+
+      // Restore
+      window.YT = originalYT;
+      vi.restoreAllMocks();
+    });
+
     it('playSound does not throw for null game', () => {
       const media = getMedia();
       expect(() => media.playSound('test.mp3', null)).not.toThrow();

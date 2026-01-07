@@ -85,7 +85,7 @@ class YjsStructureTreeAdapter {
     for (const page of pages) {
       map.set(page.id, {
         id: page.id,
-        text: page.pageName || 'Untitled',
+        text: page.pageName || _('Untitled'),
         parentId: page.parentId,
         order: page.order ?? 0,
         children: [],
@@ -201,9 +201,9 @@ class YjsStructureTreeAdapter {
               </span>
               <span class="yjs-tree-text">${this.escapeHtml(node.text)}</span>
               <span class="yjs-tree-actions">
-                <button class="yjs-tree-btn yjs-add-child" title="Add child page">+</button>
-                <button class="yjs-tree-btn yjs-rename" title="Rename">✏️</button>
-                <button class="yjs-tree-btn yjs-delete" title="Delete">×</button>
+                <button class="yjs-tree-btn yjs-add-child" title="${_('Add child page')}">+</button>
+                <button class="yjs-tree-btn yjs-rename" title="${_('Rename')}">✏️</button>
+                <button class="yjs-tree-btn yjs-delete" title="${_('Delete')}">×</button>
               </span>
             </div>
             ${childrenHtml}
@@ -313,7 +313,7 @@ class YjsStructureTreeAdapter {
    * @param {string} pageName - Page name
    * @returns {Object} Created page
    */
-  addPage(parentId = null, pageName = 'New Page') {
+  addPage(parentId = null, pageName = _('New Page')) {
     this._isUpdating = true;
     try {
       const page = this.structureBinding.addPage(pageName, parentId);
