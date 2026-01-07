@@ -1423,7 +1423,7 @@
                             <span id="settingsSaveStatus" class="admin-settings-status"></span>
                         </div>
                         <div class="admin-settings-group">
-                            <h6>Plataforma y colaboracion</h6>
+                            <h6>{{ t.platform_and_collaboration or 'Platform and collaboration' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>ONLINE_THEMES_INSTALL</label>
@@ -1431,7 +1431,7 @@
                                         <input type="checkbox" data-setting-key="ONLINE_THEMES_INSTALL" data-setting-type="boolean" {% if adminSettings.general.online_themes_install %}checked{% endif %}>
                                         <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Permite instalar temas en linea.</small>
+                                    <small>{{ t.allows_install_themes_online or 'Allows installing themes online.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>ONLINE_IDEVICES_INSTALL</label>
@@ -1439,7 +1439,7 @@
                                         <input type="checkbox" data-setting-key="ONLINE_IDEVICES_INSTALL" data-setting-type="boolean" {% if adminSettings.general.online_idevices_install %}checked{% endif %}>
                                         <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Permite instalar iDevices en linea.</small>
+                                    <small>{{ t.allows_install_idevices_online or 'Allows installing iDevices online.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>APP_AUTH_METHODS</label>
@@ -1459,7 +1459,7 @@
                                         <input type="checkbox" data-setting-key="APP_AUTH_METHODS" data-setting-type="csv" data-setting-option="guest" {% if 'guest' in adminSettings.general.app_auth_methods %}checked{% endif %}>
                                         <span>guest</span>
                                     </div>
-                                    <small>Metodos de autenticacion habilitados.</small>
+                                    <small>{{ t.enabled_auth_methods or 'Enabled authentication methods.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>VERSION_CONTROL</label>
@@ -1487,17 +1487,17 @@
                         </div>
 
                         <div class="admin-settings-group">
-                            <h6>Almacenamiento y cuotas</h6>
+                            <h6>{{ t.storage_and_quotas or 'Storage and quotas' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
                                     <label>USER_STORAGE_MAX_DISK_SPACE</label>
                                     <input type="number" class="admin-input" data-setting-key="USER_STORAGE_MAX_DISK_SPACE" data-setting-type="number" value="{{ adminSettings.storage.user_storage_max_disk_space }}">
-                                    <small>Maximo de almacenamiento por usuario (MB).</small>
+                                    <small>{{ t.max_storage_per_user or 'Maximum storage per user (MB).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>DEFAULT_QUOTA</label>
                                     <input type="number" class="admin-input" data-setting-key="DEFAULT_QUOTA" data-setting-type="number" value="{{ adminSettings.storage.default_quota }}">
-                                    <small>Cuota por defecto (MB).</small>
+                                    <small>{{ t.default_quota_mb or 'Default quota (MB).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>COUNT_USER_AUTOSAVE_SPACE_ODE_FILES</label>
@@ -1505,12 +1505,12 @@
                                         <input type="checkbox" data-setting-key="COUNT_USER_AUTOSAVE_SPACE_ODE_FILES" data-setting-type="boolean" {% if adminSettings.storage.count_user_autosave_space_ode_files %}checked{% endif %}>
                                         <span>{{ t.active or 'Active' }}</span>
                                     </div>
-                                    <small>Cuenta el autosave en la cuota.</small>
+                                    <small>{{ t.count_autosave_in_quota or 'Counts autosave in quota.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>FILE_UPLOAD_MAX_SIZE</label>
                                     <input type="number" class="admin-input" data-setting-key="FILE_UPLOAD_MAX_SIZE" data-setting-type="number" value="{{ adminSettings.storage.file_upload_max_size }}">
-                                    <small>Tamano maximo de subida (MB).</small>
+                                    <small>{{ t.max_upload_size or 'Maximum upload size (MB).' }}</small>
                                 </div>
                             </div>
                         </div>
@@ -1521,7 +1521,7 @@
                                 <div class="admin-field">
                                     <label>PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL</label>
                                     <input type="number" class="admin-input" data-setting-key="PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL" data-setting-type="number" value="{{ adminSettings.autosave.permanent_save_autosave_time_interval }}">
-                                    <small>Intervalo de autosave (segundos).</small>
+                                    <small>{{ t.autosave_interval or 'Autosave interval (seconds).' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label>PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES</label>
