@@ -19,9 +19,9 @@
 // Logger is defined globally by yjs-loader.js before this file loads
 
 class AssetManager {
-  static DB_NAME = 'exelearning-assets-v2';
-  static DB_VERSION = 2; // Incremented to add projectId_uploaded index
-  static STORE_NAME = 'assets';
+  static DB_NAME = 'exelearning-assets'; // Yjs-based metadata, IndexedDB for blobs only
+  static DB_VERSION = 1; // Fresh start - blobs only schema
+  static STORE_NAME = 'blobs'; // Renamed from 'assets' to clarify purpose
 
   /**
    * @param {string} projectId - Project UUID
@@ -41,6 +41,9 @@ class AssetManager {
 
     // WebSocket handler reference (set externally)
     this.wsHandler = null;
+
+    // Yjs bridge reference (set externally) - source of truth for metadata
+    this.yjsBridge = null;
   }
 
   /**
@@ -62,8 +65,118 @@ class AssetManager {
   }
 
   /**
+   * Set the Yjs bridge reference for metadata storage
+   * @param {YjsProjectBridge} bridge
+   */
+  setYjsBridge(bridge) {
+    this.yjsBridge = bridge;
+    Logger.log('[AssetManager] Yjs bridge attached');
+  }
+
+  /**
+   * Get the Yjs assets Y.Map (metadata storage)
+   * @returns {Y.Map|null}
+   */
+  getAssetsYMap() {
+    if (!this.yjsBridge) {
+      return null;
+    }
+    try {
+      return this.yjsBridge.getAssetsMap();
+    } catch (e) {
+      console.warn('[AssetManager] Failed to get assets Y.Map:', e.message);
+      return null;
+    }
+  }
+
+  /**
+   * Get asset metadata from Yjs
+   * @param {string} assetId
+   * @returns {Object|null} Asset metadata {filename, folderPath, mime, size, hash, uploaded, createdAt}
+   */
+  getAssetMetadata(assetId) {
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) return null;
+    const meta = assetsMap.get(assetId);
+    return meta ? { ...meta, id: assetId } : null;
+  }
+
+  /**
+   * Set asset metadata in Yjs
+   * @param {string} assetId
+   * @param {Object} metadata - {filename, folderPath, mime, size, hash, uploaded, createdAt}
+   */
+  setAssetMetadata(assetId, metadata) {
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) {
+      return;
+    }
+    // Store as plain object (Yjs will serialize it)
+    assetsMap.set(assetId, {
+      filename: metadata.filename,
+      folderPath: metadata.folderPath || '',
+      mime: metadata.mime,
+      size: metadata.size,
+      hash: metadata.hash,
+      uploaded: metadata.uploaded || false,
+      createdAt: metadata.createdAt || new Date().toISOString()
+    });
+    Logger.log(`[AssetManager] Set metadata for ${assetId.substring(0, 8)}... in Yjs`);
+  }
+
+  /**
+   * Delete asset metadata from Yjs
+   * @param {string} assetId
+   */
+  deleteAssetMetadata(assetId) {
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) return;
+    assetsMap.delete(assetId);
+    Logger.log(`[AssetManager] Deleted metadata for ${assetId.substring(0, 8)}... from Yjs`);
+  }
+
+  /**
+   * Get all assets metadata from Yjs for this project
+   * @returns {Array<Object>} Array of asset metadata objects with id
+   */
+  getAllAssetsMetadata() {
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) return [];
+    const assets = [];
+    assetsMap.forEach((meta, id) => {
+      assets.push({ ...meta, id });
+    });
+    return assets;
+  }
+
+  /**
+   * Generate asset URL in simplified format: asset://uuid.ext
+   *
+   * This format stores only the UUID and extension, making URLs:
+   * - Shorter and cleaner
+   * - Rename-friendly (filename not in URL)
+   * - Move-friendly (folderPath not in URL)
+   * - Free of path separator issues
+   *
+   * The full path (folderPath/filename) is resolved at export time.
+   *
+   * @param {string} assetId - UUID of the asset
+   * @param {string} filename - Original filename (for extension extraction)
+   * @returns {string} asset://uuid.ext format (e.g., "asset://abc123-uuid.jpg")
+   */
+  getAssetUrl(assetId, filename) {
+    const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+    return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+  }
+
+  /**
    * Initialize database connection
    * Must be called before any other operations.
+   *
+   * New architecture (v4):
+   * - IndexedDB stores ONLY blobs: {id, projectId, blob}
+   * - Metadata stored in Yjs Y.Map for instant sync
+   *
    * @returns {Promise<void>}
    */
   async init() {
@@ -79,35 +192,24 @@ class AssetManager {
 
       request.onsuccess = () => {
         this.db = request.result;
-        Logger.log(`[AssetManager] Initialized for project ${this.projectId}`);
+        Logger.log(`[AssetManager] Initialized blobs store for project ${this.projectId}`);
         resolve();
       };
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        const oldVersion = event.oldVersion;
 
         if (!db.objectStoreNames.contains(AssetManager.STORE_NAME)) {
-          // Fresh install - create store with all indexes
+          // Create blobs store - minimal schema
+          // Only stores: {id (uuid), projectId, blob}
           const store = db.createObjectStore(AssetManager.STORE_NAME, {
             keyPath: 'id'
           });
 
+          // Index for querying blobs by project
           store.createIndex('projectId', 'projectId', { unique: false });
-          store.createIndex('hash', 'hash', { unique: false });
-          store.createIndex('uploaded', 'uploaded', { unique: false });
-          store.createIndex('projectId_uploaded', ['projectId', 'uploaded'], { unique: false });
 
-          Logger.log('[AssetManager] Created assets object store with all indexes');
-        } else if (oldVersion < 2) {
-          // Migration from v1 to v2: add projectId_uploaded index
-          const transaction = event.target.transaction;
-          const store = transaction.objectStore(AssetManager.STORE_NAME);
-
-          if (!store.indexNames.contains('projectId_uploaded')) {
-            store.createIndex('projectId_uploaded', ['projectId', 'uploaded'], { unique: false });
-            Logger.log('[AssetManager] Added projectId_uploaded index (migration v1->v2)');
-          }
+          Logger.log('[AssetManager] Created blobs object store (v4 - Yjs metadata)');
         }
       };
     });
@@ -190,31 +292,70 @@ class AssetManager {
   }
 
   /**
-   * Store asset in IndexedDB
-   * @param {Object} asset
+   * Store asset - metadata to Yjs, blob to IndexedDB
+   * @param {Object} asset - Full asset object with blob and metadata
    * @returns {Promise<void>}
    */
   async putAsset(asset) {
     if (!this.db) throw new Error('Database not initialized');
 
+    // 1. Store metadata in Yjs (instant sync to other clients)
+    this.setAssetMetadata(asset.id, {
+      filename: asset.filename,
+      folderPath: asset.folderPath || '',
+      mime: asset.mime,
+      size: asset.size,
+      hash: asset.hash,
+      uploaded: asset.uploaded || false,
+      createdAt: asset.createdAt || new Date().toISOString()
+    });
+
+    // 2. Store blob in IndexedDB (local cache)
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction([AssetManager.STORE_NAME], 'readwrite');
       const store = tx.objectStore(AssetManager.STORE_NAME);
-      store.put(asset);
+      // Store only blob data - metadata is in Yjs
+      store.put({
+        id: asset.id,
+        projectId: asset.projectId || this.projectId,
+        blob: asset.blob
+      });
 
-      // Wait for transaction to fully commit, not just put success
-      // This ensures data is available for subsequent reads
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
   }
 
   /**
-   * Get asset by ID
+   * Store only blob in IndexedDB (without updating Yjs metadata)
+   * Used when receiving blob from peer/server
    * @param {string} id - Asset UUID
-   * @returns {Promise<Object|null>}
+   * @param {Blob} blob - Asset blob
+   * @returns {Promise<void>}
    */
-  async getAsset(id) {
+  async putBlob(id, blob) {
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readwrite');
+      const store = tx.objectStore(AssetManager.STORE_NAME);
+      store.put({
+        id,
+        projectId: this.projectId,
+        blob
+      });
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  /**
+   * Get blob from IndexedDB
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Blob|null>}
+   */
+  async getBlob(id) {
     if (!this.db) throw new Error('Database not initialized');
 
     return new Promise((resolve, reject) => {
@@ -222,16 +363,98 @@ class AssetManager {
       const store = tx.objectStore(AssetManager.STORE_NAME);
       const request = store.get(id);
 
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result?.blob || null);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get raw blob record from IndexedDB (includes projectId)
+   * Unlike getBlob() which returns just the blob, this returns the full record
+   * with id, projectId, and blob - useful for checking which project owns the blob.
+   * @param {string} id - Asset UUID
+   * @returns {Promise<{id: string, projectId: string, blob: Blob}|null>}
+   */
+  async getBlobRecord(id) {
+    if (!this.db) return null;
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
+      const store = tx.objectStore(AssetManager.STORE_NAME);
+      const request = store.get(id);
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => reject(request.error);
     });
   }
 
   /**
-   * Get all assets for the project
+   * Get asset by ID - combines Yjs metadata + IndexedDB blob
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Object|null>}
+   */
+  async getAsset(id) {
+    if (!this.db) throw new Error('Database not initialized');
+
+    // Get metadata from Yjs
+    const metadata = this.getAssetMetadata(id);
+
+    // Get blob record from IndexedDB (includes projectId)
+    const blobRecord = await this.getBlobRecord(id);
+
+    // If we have metadata, return combined object
+    if (metadata) {
+      return {
+        ...metadata,
+        id,
+        projectId: this.projectId,
+        blob: blobRecord?.blob || null // may be null if blob not cached locally
+      };
+    }
+
+    // Fallback: if no Yjs metadata but blob exists (cross-project asset reuse)
+    // IMPORTANT: Use the ACTUAL projectId from IndexedDB, not this.projectId
+    // This allows extractAssetsFromZip to detect when an asset belongs to another project
+    // and properly create metadata for the current project
+    if (blobRecord?.blob) {
+      return {
+        id,
+        projectId: blobRecord.projectId, // Use actual stored projectId, not this.projectId
+        blob: blobRecord.blob,
+        // Minimal metadata from blob alone
+        filename: 'unknown',
+        folderPath: '',
+        mime: blobRecord.blob.type || 'application/octet-stream',
+        size: blobRecord.blob.size,
+        uploaded: false
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Get all assets for the project - reads from Yjs, optionally with blobs
+   * @param {Object} options
+   * @param {boolean} options.includeBlobs - Include blobs from IndexedDB (default: true)
    * @returns {Promise<Array>}
    */
-  async getProjectAssets() {
+  async getProjectAssets(options = {}) {
+    const { includeBlobs = true } = options;
+
+    // Get metadata from Yjs (instant, synced)
+    const metadataList = this.getAllAssetsMetadata();
+
+    if (!includeBlobs) {
+      // Return metadata only (fast path for File Manager UI)
+      return metadataList.map(meta => ({
+        ...meta,
+        projectId: this.projectId,
+        blob: null
+      }));
+    }
+
     if (!this.db) throw new Error('Database not initialized');
 
     // Validate projectId is a valid IndexedDB key (string)
@@ -240,8 +463,9 @@ class AssetManager {
       return [];
     }
 
-    Logger.log(`[AssetManager] getProjectAssets: Querying for projectId: ${this.projectId}`);
+    Logger.log(`[AssetManager] getProjectAssets: ${metadataList.length} assets from Yjs`);
 
+    // Get blobs from IndexedDB and join with metadata
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
       const store = tx.objectStore(AssetManager.STORE_NAME);
@@ -249,17 +473,22 @@ class AssetManager {
       const request = index.getAll(this.projectId);
 
       request.onsuccess = () => {
-        const assets = request.result || [];
-        Logger.log(`[AssetManager] getProjectAssets: Found ${assets.length} assets for projectId: ${this.projectId}`);
-        if (assets.length === 0) {
-          // Debug: Log all assets in DB to see what projectIds exist
-          const allRequest = store.getAll();
-          allRequest.onsuccess = () => {
-            const allAssets = allRequest.result || [];
-            const projectIds = [...new Set(allAssets.map(a => a.projectId))];
-            console.warn(`[AssetManager] getProjectAssets: 0 assets found. Total assets in DB: ${allAssets.length}. Unique projectIds: ${projectIds.join(', ')}`);
-          };
+        const blobRecords = request.result || [];
+
+        // Create blob lookup map
+        const blobMap = new Map();
+        for (const record of blobRecords) {
+          blobMap.set(record.id, record.blob);
         }
+
+        // Join metadata with blobs
+        const assets = metadataList.map(meta => ({
+          ...meta,
+          projectId: this.projectId,
+          blob: blobMap.get(meta.id) || null
+        }));
+
+        Logger.log(`[AssetManager] getProjectAssets: ${assets.length} assets (${blobRecords.length} blobs cached)`);
         resolve(assets);
       };
       request.onerror = () => reject(request.error);
@@ -267,11 +496,11 @@ class AssetManager {
   }
 
   /**
-   * Get ALL assets from IndexedDB without filtering by projectId.
-   * Used as a fallback when getProjectAssets returns 0 assets (for debugging).
+   * Get ALL blobs from IndexedDB without filtering by projectId.
+   * Used for debugging.
    * @returns {Promise<Array>}
    */
-  async getAllAssetsRaw() {
+  async getAllBlobsRaw() {
     if (!this.db) throw new Error('Database not initialized');
 
     return new Promise((resolve, reject) => {
@@ -280,36 +509,478 @@ class AssetManager {
       const request = store.getAll();
 
       request.onsuccess = () => {
-        const assets = request.result || [];
-        Logger.log(`[AssetManager] getAllAssetsRaw: Found ${assets.length} total assets in DB`);
-        resolve(assets);
+        const blobs = request.result || [];
+        Logger.log(`[AssetManager] getAllBlobsRaw: Found ${blobs.length} total blobs in DB`);
+        resolve(blobs);
       };
       request.onerror = () => reject(request.error);
     });
   }
 
   /**
+   * @deprecated Use getAllBlobsRaw() instead
+   */
+  async getAllAssetsRaw() {
+    return this.getAllBlobsRaw();
+  }
+
+  // =========================================================================
+  // Folder Operations (for File Manager)
+  // Now use Yjs metadata for instant sync - no blobs needed for folder ops
+  // =========================================================================
+
+  /**
+   * Get assets in a specific folder (non-recursive)
+   * @param {string} folderPath - Folder path ('' for root)
+   * @returns {Promise<Array>}
+   */
+  async getAssetsInFolder(folderPath = '') {
+    // Use metadata-only for fast folder browsing
+    const assets = await this.getProjectAssets({ includeBlobs: false });
+    return assets.filter(a => (a.folderPath || '') === folderPath);
+  }
+
+  /**
+   * Get unique subfolders at a given path
+   * @param {string} parentPath - Parent folder path ('' for root)
+   * @returns {Promise<string[]>} Array of subfolder names (not full paths)
+   */
+  async getSubfolders(parentPath = '') {
+    // Use metadata-only for fast folder browsing
+    const assets = await this.getProjectAssets({ includeBlobs: false });
+    const subfolders = new Set();
+    const prefix = parentPath ? parentPath + '/' : '';
+
+    for (const asset of assets) {
+      const assetPath = asset.folderPath || '';
+      if (!assetPath.startsWith(prefix)) continue;
+
+      const remainingPath = assetPath.slice(prefix.length);
+      if (!remainingPath) continue;
+
+      const firstSegment = remainingPath.split('/')[0];
+      if (firstSegment) {
+        subfolders.add(firstSegment);
+      }
+    }
+
+    return Array.from(subfolders).sort();
+  }
+
+  /**
+   * Update an asset's folder path (move to different folder)
+   * Updates Yjs metadata directly for instant sync
+   * @param {string} assetId - Asset UUID
+   * @param {string} newFolderPath - New folder path
+   * @returns {Promise<boolean>} True if updated
+   */
+  async updateAssetFolderPath(assetId, newFolderPath) {
+    const metadata = this.getAssetMetadata(assetId);
+    if (!metadata) {
+      return false;
+    }
+
+    // Update metadata in Yjs (instant sync to other clients)
+    this.setAssetMetadata(assetId, {
+      ...metadata,
+      folderPath: newFolderPath,
+      uploaded: false // Mark as needing re-upload
+    });
+
+    Logger.log(`[AssetManager] Moved asset ${assetId} to folder: ${newFolderPath}`);
+    return true;
+  }
+
+  /**
+   * Rename a folder (update all assets with that folder prefix)
+   * Updates Yjs metadata directly for instant sync
+   * @param {string} oldPath - Old folder path
+   * @param {string} newPath - New folder path
+   * @returns {Promise<number>} Number of assets updated
+   */
+  async renameFolder(oldPath, newPath) {
+    if (!oldPath) throw new Error('Cannot rename root folder');
+
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) {
+      throw new Error('Yjs bridge not available');
+    }
+
+    let count = 0;
+
+    // Update in a Yjs transaction for batching
+    assetsMap.doc?.transact(() => {
+      assetsMap.forEach((meta, assetId) => {
+        const assetPath = meta.folderPath || '';
+        if (assetPath === oldPath || assetPath.startsWith(oldPath + '/')) {
+          // Replace the old prefix with new prefix
+          const newFolderPath = assetPath === oldPath
+            ? newPath
+            : newPath + assetPath.slice(oldPath.length);
+
+          assetsMap.set(assetId, {
+            ...meta,
+            folderPath: newFolderPath,
+            uploaded: false // Mark as needing re-upload
+          });
+          count++;
+        }
+      });
+    });
+
+    Logger.log(`[AssetManager] Renamed folder ${oldPath} → ${newPath}, updated ${count} assets via Yjs`);
+
+    // No need to broadcast via WebSocket - Yjs handles sync automatically!
+    return count;
+  }
+
+  /**
+   * Delete all assets in a folder recursively
+   * @param {string} folderPath - Folder path to delete
+   * @returns {Promise<number>} Number of assets deleted
+   */
+  async deleteFolderContents(folderPath) {
+    if (!folderPath) throw new Error('Cannot delete root folder contents');
+
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) {
+      throw new Error('Yjs bridge not available');
+    }
+
+    const toDelete = [];
+
+    // Find assets to delete
+    assetsMap.forEach((meta, assetId) => {
+      const assetPath = meta.folderPath || '';
+      if (assetPath === folderPath || assetPath.startsWith(folderPath + '/')) {
+        toDelete.push(assetId);
+      }
+    });
+
+    // Delete assets locally (skip individual server deletes - we'll do bulk)
+    for (const assetId of toDelete) {
+      await this.deleteAsset(assetId, { skipServerDelete: true });
+    }
+
+    // Bulk delete from server (single HTTP request for efficiency)
+    if (toDelete.length > 0) {
+      this._deleteMultipleFromServer(toDelete).catch(() => {}); // Fire-and-forget
+    }
+
+    Logger.log(`[AssetManager] Deleted folder ${folderPath}, removed ${toDelete.length} assets`);
+    return toDelete.length;
+  }
+
+  /**
+   * Move a folder to a new location
+   * Updates Yjs metadata directly for instant sync
+   * @param {string} folderPath - Current folder path
+   * @param {string} destination - Destination parent path (empty for root)
+   * @returns {Promise<number>} Number of assets updated
+   */
+  async moveFolder(folderPath, destination) {
+    if (!folderPath) throw new Error('Cannot move root folder');
+
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) {
+      throw new Error('Yjs bridge not available');
+    }
+
+    // Get folder name
+    const folderName = folderPath.split('/').pop();
+
+    // Build new path
+    const newPath = destination ? `${destination}/${folderName}` : folderName;
+
+    // If moving to same location, nothing to do
+    if (folderPath === newPath) {
+      return 0;
+    }
+
+    // Prevent moving into itself or a subfolder of itself
+    if (newPath.startsWith(folderPath + '/')) {
+      throw new Error('Cannot move folder into itself');
+    }
+
+    let count = 0;
+
+    // Update in a Yjs transaction for batching
+    assetsMap.doc?.transact(() => {
+      assetsMap.forEach((meta, assetId) => {
+        const assetPath = meta.folderPath || '';
+        if (assetPath === folderPath || assetPath.startsWith(folderPath + '/')) {
+          // Replace old prefix with new prefix
+          const newFolderPath = assetPath === folderPath
+            ? newPath
+            : newPath + assetPath.slice(folderPath.length);
+
+          assetsMap.set(assetId, {
+            ...meta,
+            folderPath: newFolderPath,
+            uploaded: false // Mark as needing re-upload
+          });
+          count++;
+        }
+      });
+    });
+
+    Logger.log(`[AssetManager] Moved folder ${folderPath} → ${newPath}, updated ${count} assets via Yjs`);
+    return count;
+  }
+
+  /**
+   * @deprecated Kept for backward compatibility - moveFolder now uses Yjs
+   */
+  async _moveFolderLegacy(folderPath, destination) {
+    // This was the old implementation using getProjectAssets
+    const assets = await this.getProjectAssets();
+    let count = 0;
+
+    for (const asset of assets) {
+      const assetPath = asset.folderPath || '';
+      if (assetPath === folderPath || assetPath.startsWith(folderPath + '/')) {
+        // Replace old prefix with new prefix
+        asset.folderPath = assetPath === folderPath
+          ? newPath
+          : newPath + assetPath.slice(folderPath.length);
+        asset.uploaded = false; // Mark as needing re-upload
+        await this.putAsset(asset);
+        count++;
+      }
+    }
+
+    Logger.log(`[AssetManager] Moved folder ${folderPath} → ${newPath}, updated ${count} assets`);
+    return count;
+  }
+
+  /**
+   * Extract folderPath from an imported asset path
+   * Handles various path formats:
+   * - "mywebsite/css/style.css" → "mywebsite/css" (folder structure)
+   * - "content/resources/mywebsite/css/style.css" → "mywebsite/css" (with prefix)
+   * - "uuid/image.jpg" or "content/resources/uuid/image.jpg" → "" (legacy format, UUID folder)
+   *
+   * @param {string} path - Asset path from ZIP
+   * @param {string} assetId - The asset's UUID
+   * @returns {string} Folder path, or empty string if asset should be in root
+   * @private
+   */
+  _extractFolderPathFromImport(path, assetId) {
+    // Remove common prefixes
+    let cleanPath = path;
+    if (cleanPath.startsWith('content/resources/')) {
+      cleanPath = cleanPath.slice('content/resources/'.length);
+    } else if (cleanPath.startsWith('resources/')) {
+      cleanPath = cleanPath.slice('resources/'.length);
+    }
+
+    // Split into parts
+    const parts = cleanPath.split('/');
+
+    // Remove the filename (last part)
+    parts.pop();
+
+    // If no parts left, it's at root
+    if (parts.length === 0) {
+      return '';
+    }
+
+    // Check if the first part is a UUID (legacy format: uuid/filename)
+    // A UUID looks like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx or shorter 8+ char hex
+    const firstPart = parts[0];
+    const isUuidLike = /^[a-f0-9-]{8,}$/i.test(firstPart);
+
+    // If first part is UUID-like AND it's the only part, it's legacy format (uuid/file.jpg)
+    if (isUuidLike && parts.length === 1) {
+      // Check if it matches the asset's UUID (meaning it's just uuid/filename)
+      if (firstPart === assetId || firstPart.startsWith(assetId.split('-')[0])) {
+        return ''; // Legacy format - treat as root
+      }
+    }
+
+    // If first part is UUID-like but there are more parts (uuid/folder/file.jpg)
+    // This is a legacy format where the UUID was the top folder
+    if (isUuidLike && parts.length > 1) {
+      // Skip the UUID, use rest as folder path
+      return parts.slice(1).join('/');
+    }
+
+    // Normal folder structure (folder/subfolder/file.jpg)
+    return parts.join('/');
+  }
+
+  /**
+   * Rename an asset's filename
+   * @param {string} assetId - Asset UUID
+   * @param {string} newFilename - New filename
+   * @returns {Promise<boolean>} True if updated
+   */
+  async renameAsset(assetId, newFilename) {
+    const metadata = this.getAssetMetadata(assetId);
+    if (!metadata) {
+      return false;
+    }
+
+    const oldFilename = metadata.filename;
+
+    // Update metadata in Yjs (instant sync to other clients)
+    this.setAssetMetadata(assetId, {
+      ...metadata,
+      filename: newFilename,
+      uploaded: false // Mark as needing re-upload
+    });
+
+    Logger.log(`[AssetManager] Renamed asset ${assetId} to: ${newFilename} via Yjs`);
+
+    // No need for WebSocket broadcast - Yjs handles sync automatically!
+
+    // Update asset:// references in Y.Doc (will sync via Yjs to other clients)
+    // Note: With new asset://uuid.ext format, references don't include filename
+    // So this is now mostly for legacy format compatibility
+    this.updateAssetReferencesInYjs(assetId, oldFilename, newFilename);
+
+    return true;
+  }
+
+  /**
+   * Update asset:// references in Y.Doc when an asset is renamed
+   * This updates all htmlContent fields that contain references to this asset
+   * @param {string} assetId - Asset UUID
+   * @param {string} oldFilename - Previous filename
+   * @param {string} newFilename - New filename
+   * @returns {number} Number of components updated
+   */
+  updateAssetReferencesInYjs(assetId, oldFilename, newFilename) {
+    const bridge = window.eXeLearning?.app?.project?._yjsBridge;
+    if (!bridge?.documentManager) {
+      Logger.log('[AssetManager] Cannot update Y.Doc references: no document manager');
+      return 0;
+    }
+
+    const Y = window.Y;
+    if (!Y) {
+      Logger.log('[AssetManager] Cannot update Y.Doc references: Yjs not loaded');
+      return 0;
+    }
+    const navigation = bridge.documentManager.getNavigation();
+    if (!navigation) {
+      Logger.log('[AssetManager] Cannot update Y.Doc references: no navigation');
+      return 0;
+    }
+
+    // Build the old and new reference patterns
+    // Handle URL-encoded filenames as well
+    const oldRef = `asset://${assetId}/${oldFilename}`;
+    const newRef = `asset://${assetId}/${newFilename}`;
+    const oldRefEncoded = `asset://${assetId}/${encodeURIComponent(oldFilename)}`;
+    const newRefEncoded = `asset://${assetId}/${encodeURIComponent(newFilename)}`;
+
+    let updatedCount = 0;
+
+    // Use a transaction to batch all updates
+    bridge.documentManager.getDoc().transact(() => {
+      // Helper function to process a component's htmlContent
+      const processComponent = (compMap) => {
+        if (!compMap || !(compMap instanceof Y.Map)) return;
+
+        const htmlContent = compMap.get('htmlContent');
+        if (!htmlContent) return;
+
+        // Get current content as string
+        let content = '';
+        if (htmlContent instanceof Y.Text) {
+          content = htmlContent.toString();
+        } else if (typeof htmlContent === 'string') {
+          content = htmlContent;
+        }
+
+        if (!content) return;
+
+        // Check if this content contains the old reference
+        if (!content.includes(oldRef) && !content.includes(oldRefEncoded)) {
+          return;
+        }
+
+        // Replace all occurrences
+        let newContent = content;
+        newContent = newContent.split(oldRef).join(newRef);
+        newContent = newContent.split(oldRefEncoded).join(newRefEncoded);
+
+        // Update the Y.Text
+        if (htmlContent instanceof Y.Text) {
+          htmlContent.delete(0, htmlContent.length);
+          htmlContent.insert(0, newContent);
+          updatedCount++;
+          Logger.log(`[AssetManager] Updated asset reference in component`);
+        }
+      };
+
+      // Helper to recursively process pages (including subpages)
+      const processPage = (pageMap) => {
+        if (!pageMap || !(pageMap instanceof Y.Map)) return;
+
+        const blocks = pageMap.get('blocks');
+        if (blocks instanceof Y.Array) {
+          blocks.forEach((blockMap) => {
+            if (!(blockMap instanceof Y.Map)) return;
+
+            const components = blockMap.get('components');
+            if (components instanceof Y.Array) {
+              components.forEach((compMap) => {
+                processComponent(compMap);
+              });
+            }
+          });
+        }
+
+        // Process subpages if any
+        const subpages = pageMap.get('subpages');
+        if (subpages instanceof Y.Array) {
+          subpages.forEach((subpageMap) => {
+            processPage(subpageMap);
+          });
+        }
+      };
+
+      // Iterate over all pages in navigation
+      navigation.forEach((pageMap) => {
+        processPage(pageMap);
+      });
+    });
+
+    if (updatedCount > 0) {
+      Logger.log(`[AssetManager] Updated ${updatedCount} asset references in Y.Doc`);
+    }
+
+    return updatedCount;
+  }
+
+  // =========================================================================
+  // Hash and Deduplication
+  // =========================================================================
+
+  /**
    * Find asset by hash (for deduplication)
+   * Uses Yjs metadata for fast lookup
    * @param {string} hash - SHA-256 hash
    * @returns {Promise<Object|null>}
    */
   async findByHash(hash) {
-    if (!this.db) throw new Error('Database not initialized');
+    // Search in Yjs metadata
+    const assets = this.getAllAssetsMetadata();
+    const match = assets.find(a => a.hash === hash);
 
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      const index = store.index('hash');
-      const request = index.getAll(hash);
-
-      request.onsuccess = () => {
-        const assets = request.result;
-        // Find one in the same project
-        const match = assets.find(a => a.projectId === this.projectId);
-        resolve(match || null);
+    if (match) {
+      // Get blob from IndexedDB if needed
+      const blob = await this.getBlob(match.id);
+      return {
+        ...match,
+        projectId: this.projectId,
+        blob
       };
-      request.onerror = () => reject(request.error);
-    });
+    }
+
+    return null;
   }
 
   /**
@@ -317,44 +988,53 @@ class AssetManager {
    * @returns {Promise<Array>}
    */
   async getPendingAssets() {
-    if (!this.db) throw new Error('Database not initialized');
+    // Get metadata from Yjs and filter by uploaded=false
+    const allMetadata = this.getAllAssetsMetadata();
+    const pendingMetadata = allMetadata.filter(a => a.uploaded === false);
 
-    // Validate projectId is a valid IndexedDB key (string)
-    if (!this.projectId || typeof this.projectId !== 'string') {
-      console.warn('[AssetManager] getPendingAssets: Invalid projectId:', this.projectId, 'type:', typeof this.projectId);
+    if (pendingMetadata.length === 0) {
       return [];
     }
 
-    // Note: We use manual filtering because IndexedDB compound index with boolean
-    // doesn't work reliably (boolean is not a valid key type in IndexedDB spec)
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      const index = store.index('projectId');
-      const request = index.getAll(this.projectId);
+    // Get blobs for pending assets (needed for upload)
+    const pendingAssets = [];
+    for (const meta of pendingMetadata) {
+      const blob = await this.getBlob(meta.id);
+      if (blob) {
+        pendingAssets.push({
+          ...meta,
+          projectId: this.projectId,
+          blob
+        });
+      } else {
+        // Asset metadata exists but blob not cached locally
+        // This can happen when another client added the asset
+        Logger.log(`[AssetManager] Pending asset ${meta.id.substring(0, 8)}... has no local blob`);
+      }
+    }
 
-      request.onsuccess = () => {
-        const assets = request.result || [];
-        const pending = assets.filter(a => a.uploaded === false);
-        resolve(pending);
-      };
-      request.onerror = () => reject(request.error);
-    });
+    return pendingAssets;
   }
 
   /**
-   * Mark asset as uploaded
+   * Mark asset as uploaded in Yjs metadata
    * @param {string} id - Asset UUID
    * @returns {Promise<void>}
    */
   async markAssetUploaded(id) {
-    const asset = await this.getAsset(id);
-    if (!asset) {
-      console.warn(`[AssetManager] Cannot mark asset ${id} as uploaded: not found`);
+    const metadata = this.getAssetMetadata(id);
+    if (!metadata) {
+      console.warn(`[AssetManager] Cannot mark asset ${id} as uploaded: not found in Yjs`);
       return;
     }
-    asset.uploaded = true;
-    await this.putAsset(asset);
+
+    // Update metadata in Yjs
+    this.setAssetMetadata(id, {
+      ...metadata,
+      uploaded: true
+    });
+
+    Logger.log(`[AssetManager] Marked ${id.substring(0, 8)}... as uploaded via Yjs`);
   }
 
   /**
@@ -369,10 +1049,15 @@ class AssetManager {
    * 6. Return asset:// URL
    *
    * @param {File} file - Image file
+   * @param {Object} [options] - Optional settings
+   * @param {string} [options.folderPath=''] - Folder path for organizing assets
+   * @param {boolean} [options.forceNewId=false] - Force a new random ID (for duplicates)
    * @returns {Promise<string>} asset:// URL
    */
-  async insertImage(file) {
-    Logger.log(`[AssetManager] Inserting image: ${file.name} (${file.size} bytes, ${file.type})`);
+  async insertImage(file, options = {}) {
+    const folderPath = options.folderPath || '';
+    const forceNewId = options.forceNewId || false;
+    Logger.log(`[AssetManager] Inserting image: ${file.name} (${file.size} bytes, ${file.type})${folderPath ? ` in folder: ${folderPath}` : ''}${forceNewId ? ' (forceNewId)' : ''}`);
     Logger.log(`[AssetManager] Current projectId: ${this.projectId}`);
 
     // 1. Create blob
@@ -382,42 +1067,69 @@ class AssetManager {
     const hash = await this.calculateHash(blob);
     Logger.log(`[AssetManager] Hash: ${hash.substring(0, 16)}...`);
 
-    // 3. Generate deterministic ID from hash (content-addressable)
-    const assetId = this.hashToUUID(hash);
-    Logger.log(`[AssetManager] Content-addressable ID: ${assetId}`);
+    // 3. Generate ID - random for duplicates, content-addressable otherwise
+    const assetId = forceNewId ? crypto.randomUUID() : this.hashToUUID(hash);
+    Logger.log(`[AssetManager] ${forceNewId ? 'Random' : 'Content-addressable'} ID: ${assetId}`);
 
-    // 4. Check if already exists (same content = same ID)
-    const existing = await this.getAsset(assetId);
+    // 4. Check if already exists (same content = same ID) - skip for forceNewId
+    const existing = forceNewId ? null : await this.getAsset(assetId);
     if (existing) {
-      // Ensure blob URL is in cache for immediate availability
-      if (!this.blobURLCache.has(assetId) && existing.blob) {
-        const blobUrl = URL.createObjectURL(existing.blob);
-        this.blobURLCache.set(assetId, blobUrl);
-        this.reverseBlobCache.set(blobUrl, assetId);
-        Logger.log(`[AssetManager] Cached existing blob URL for ${assetId}`);
+      // Check if blob ACTUALLY belongs to current project (not just metadata)
+      // getAsset() always returns projectId: this.projectId, so we need to check the raw record
+      const blobRecord = await this.getBlobRecord(assetId);
+      const blobIsForCurrentProject = blobRecord && blobRecord.projectId === this.projectId;
+
+      if (blobIsForCurrentProject && existing.blob) {
+        // Asset with blob exists for THIS project - safe to skip
+        // Ensure blob URL is in cache for immediate availability
+        if (!this.blobURLCache.has(assetId)) {
+          const blobUrl = URL.createObjectURL(existing.blob);
+          this.blobURLCache.set(assetId, blobUrl);
+          this.reverseBlobCache.set(blobUrl, assetId);
+          Logger.log(`[AssetManager] Cached existing blob URL for ${assetId}`);
+        }
+        // Update folder path if needed
+        if (folderPath && existing.folderPath !== folderPath) {
+          existing.folderPath = folderPath;
+          await this.putAsset(existing);
+          Logger.log(`[AssetManager] Updated folderPath for existing asset: ${assetId}`);
+        }
+        Logger.log(`[AssetManager] Asset already exists for this project: ${assetId}`);
+        return `asset://${assetId}/${existing.filename || file.name}`;
       }
 
-      // Check if asset belongs to current project
-      if (existing.projectId === this.projectId) {
-        Logger.log(`[AssetManager] Asset already exists for this project: ${assetId}`);
-        const existingFilename = existing.filename || file.name;
-        return `asset://${assetId}/${existingFilename}`;
-      }
-      // Asset exists but for different project - create entry for this project reusing blob
-      Logger.log(`[AssetManager] Asset exists in other project, creating for ${this.projectId.substring(0, 8)}...`);
-      const reusedAsset = {
+      // Asset exists but blob is NOT for current project (or no blob at all)
+      // Store blob for current project (putAsset will overwrite with new projectId)
+      Logger.log(`[AssetManager] Storing blob for current project: ${assetId.substring(0, 8)}... (was: ${blobRecord?.projectId?.substring(0, 8) || 'none'})`);
+      const newAsset = {
         id: assetId,
         projectId: this.projectId,
-        blob: existing.blob,
+        blob: existing.blob || blob, // Use existing blob if available, else new blob
         mime: file.type || this.getMimeType(file.name),
         hash: hash,
-        size: existing.size,
+        size: blob.size,
         uploaded: false,
         createdAt: new Date().toISOString(),
-        filename: file.name
+        filename: file.name,
+        folderPath: folderPath || ''
       };
-      await this.putAsset(reusedAsset);
-      return `asset://${assetId}/${file.name}`;
+      await this.putAsset(newAsset);
+
+      // Cache blob URL
+      const blobUrl = URL.createObjectURL(newAsset.blob);
+      this.blobURLCache.set(assetId, blobUrl);
+      this.reverseBlobCache.set(blobUrl, assetId);
+
+      // Announce to peers
+      if (this.wsHandler?.connected) {
+        setTimeout(() => {
+          this.wsHandler.announceAssetAvailability().catch(err => {
+            console.warn('[AssetManager] Failed to announce new asset:', err);
+          });
+        }, 100);
+      }
+
+      return this.getAssetUrl(assetId, file.name);
     }
 
     // 5. Create new asset
@@ -430,7 +1142,8 @@ class AssetManager {
       size: blob.size,
       uploaded: false,
       createdAt: new Date().toISOString(),
-      filename: file.name
+      filename: file.name,
+      folderPath: folderPath
     };
 
     await this.putAsset(asset);
@@ -442,13 +1155,27 @@ class AssetManager {
     this.reverseBlobCache.set(blobUrl, assetId);
     Logger.log(`[AssetManager] Cached blob URL for ${assetId}`);
 
-    // 7. Return asset:// URL with filename (e.g., asset://uuid/image.jpg)
-    return `asset://${assetId}/${file.name}`;
+    // 7. Announce new asset to server so peers can request it
+    if (this.wsHandler?.connected) {
+      // Use setTimeout to not block the upload flow
+      setTimeout(() => {
+        this.wsHandler.announceAssetAvailability().catch(err => {
+          console.warn('[AssetManager] Failed to announce new asset:', err);
+        });
+      }, 100);
+    }
+
+    // 8. Return asset:// URL with extension only (e.g., asset://uuid.jpg)
+    return this.getAssetUrl(assetId, file.name);
   }
 
   /**
    * Extract asset ID from asset:// URL
-   * Handles both old format (asset://uuid) and new format (asset://uuid/filename)
+   * Handles multiple formats:
+   * - New format: asset://uuid.ext (e.g., asset://abc123.jpg)
+   * - Legacy format: asset://uuid/path (e.g., asset://abc123/images/photo.jpg)
+   * - Simple format: asset://uuid
+   *
    * @param {string} assetUrl
    * @returns {string} Asset UUID
    */
@@ -466,9 +1193,22 @@ class AssetManager {
       }
     }
 
-    // If path contains /, take only the first part (UUID)
+    // Check for new format: uuid.ext (dot before slash means extension, not path)
+    // UUID pattern: 36 chars with hyphens (e.g., abc12345-1234-1234-1234-123456789012)
+    const uuidMatch = path.match(/^([a-f0-9-]{36})(?:\.[a-z0-9]+)?$/i);
+    if (uuidMatch) {
+      return uuidMatch[1];
+    }
+
+    // Legacy format: uuid/path - take first part before slash
     const slashIndex = path.indexOf('/');
-    return slashIndex > 0 ? path.substring(0, slashIndex) : path;
+    if (slashIndex > 0) {
+      return path.substring(0, slashIndex);
+    }
+
+    // Simple format: just uuid (may include extension like uuid.jpg)
+    const dotIndex = path.indexOf('.');
+    return dotIndex > 0 ? path.substring(0, dotIndex) : path;
   }
 
   /**
@@ -486,12 +1226,13 @@ class AssetManager {
 
     // Check for corrupted URLs with double protocol (asset://asset//...)
     if (path.startsWith('asset//') || path.startsWith('asset/')) {
-      // Extract UUID from corrupted path
+      // Extract UUID and filename from corrupted path
       const match = path.match(/asset\/+([a-f0-9-]{36})(?:\/(.+))?/i);
       if (match) {
         const uuid = match[1];
         const filename = match[2] || '';
-        const sanitized = filename ? `asset://${uuid}/${filename}` : `asset://${uuid}`;
+        // Use new simplified format: asset://uuid.ext
+        const sanitized = this.getAssetUrl(uuid, filename);
         console.warn(`[AssetManager] Sanitized corrupted URL: ${assetUrl} -> ${sanitized}`);
         return sanitized;
       }
@@ -572,13 +1313,17 @@ class AssetManager {
 
     const { wsHandler = null, addTrackingAttrs = false } = options;
 
-    // Find all asset:// references (supports both asset://uuid and asset://uuid/filename)
-    // Also matches corrupted URLs like asset://asset//uuid/filename
+    // Find all asset:// references
+    // Supports formats:
+    //   - asset://uuid (plain UUID)
+    //   - asset://uuid.ext (new simplified format)
+    //   - asset://uuid/path/file.ext (legacy format with path)
+    //   - asset://asset//uuid/file (corrupted URLs from buggy imports)
     // NOTE: Filename part can contain spaces, so we match until quote character
     // Note: [^"'\\&] excludes quotes, backslash, AND ampersand to avoid matching:
     //   - JSON escape sequences (backslash)
     //   - HTML entities like &quot; in data-idevice-json-data attributes (ampersand)
-    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(\/[^"'\\&]+)?/gi;
+    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+|\/[^"'\\&]+)?/gi;
     const matches = [...html.matchAll(assetRegex)];
 
     if (matches.length === 0) return html;
@@ -693,8 +1438,9 @@ class AssetManager {
     // Phase 1: Handle <img> tags with asset:// src specially (to add correct tracking per asset)
     // This regex captures: beforeSrc, quote, full assetUrl, assetId, afterSrc
     // Also handles corrupted URLs like asset://asset//uuid/filename
+    // Supports both formats: asset://uuid.ext (new) and asset://uuid/path (legacy)
     // Note: [^"'&] excludes ampersand for HTML entities in JSON data attributes
-    const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\/[^"'&]+)?)\2([^>]*>)/gi;
+    const imgAssetRegex = /(<img[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+)?(?:\/[^"'&]+)?)\2([^>]*>)/gi;
 
     resolvedHTML = resolvedHTML.replace(imgAssetRegex, (fullMatch, beforeSrc, quote, assetUrl, assetId, afterSrc) => {
       const blobURL = this.blobURLCache.get(assetId);
@@ -726,8 +1472,9 @@ class AssetManager {
     // Phase 2: Handle any remaining asset:// URLs (video, audio, background-image, etc.)
     // These won't have img-specific tracking but will still be resolved
     // Also handles corrupted URLs like asset://asset//uuid/filename
+    // Supports both formats: asset://uuid.ext (new) and asset://uuid/path (legacy)
     // Note: [^"'\\] excludes quotes AND backslash to avoid matching JSON escape sequences
-    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(\/[^"'\\]+)?/gi;
+    const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+)?(\/[^"'\\]+)?/gi;
 
     resolvedHTML = resolvedHTML.replace(assetRegex, (fullMatch, assetId) => {
       const blobURL = this.blobURLCache.get(assetId);
@@ -855,10 +1602,11 @@ class AssetManager {
   }
 
   /**
-   * Extract assets from ZIP file (for .elpx import)
+   * Extract assets from ZIP file (for .elp/.elpx import)
    *
-   * Finds all images, stores in IndexedDB, returns mapping.
-   * Also handles {{context_path}} replacement.
+   * Supports two formats:
+   * - Legacy .elp (contentv3.xml): Assets at root level (e.g., image.jpg)
+   * - New .elpx (content.xml): Assets in content/resources/ folders
    *
    * @param {Object} zip - fflate extracted ZIP object {path: Uint8Array}
    * @returns {Promise<Map<string, string>>} Map of originalPath -> assetId
@@ -871,22 +1619,54 @@ class AssetManager {
     const assetMap = new Map();
     const assetFiles = [];
 
+    // Detect format: legacy .elp has contentv3.xml, new .elpx has content.xml
+    const isLegacyFormat = Object.keys(zip).some(path => path === 'contentv3.xml' || path.endsWith('/contentv3.xml'));
+    Logger.log(`[AssetManager] Detected format: ${isLegacyFormat ? 'legacy .elp (contentv3.xml)' : 'new .elpx (content.xml)'}`);
+
     // Find all asset files (zip is an object with path -> Uint8Array)
     for (const [relativePath, fileData] of Object.entries(zip)) {
       // Skip directories (they end with /)
       if (relativePath.endsWith('/')) continue;
       if (relativePath.startsWith('__MACOSX')) continue;
       if (relativePath.endsWith('.xml')) continue;
+      if (relativePath.endsWith('.xsd')) continue;
+      if (relativePath.endsWith('.data')) continue;
 
-      // Include files from resources/ folder (attached files from FileAttachIdevice, etc.)
-      // These can be ANY file type (.elp, .txt, custom extensions, etc.)
-      const isResourceFile = relativePath.startsWith('resources/') ||
-                            relativePath.includes('/resources/');
+      // Skip system folders - these are bundled with the export, not user assets
+      const isSystemFile = relativePath.startsWith('idevices/') ||
+                          relativePath.startsWith('libs/') ||
+                          relativePath.startsWith('theme/') ||
+                          relativePath.startsWith('content/css/') ||
+                          relativePath.startsWith('content/img/') ||
+                          relativePath.startsWith('html/') ||
+                          relativePath === 'index.html' ||
+                          relativePath === 'base.css' ||
+                          relativePath === 'common_i18n.js' ||
+                          relativePath === 'common.js';
 
-      // Include images, video, audio, documents, 3D models and common media
-      const isMediaFile = /\.(png|jpg|jpeg|gif|svg|webp|bmp|ico|tiff?|mp4|m4v|webm|mov|avi|mkv|mp3|m4a|ogg|wav|aac|flac|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|gltf|glb|stl|elp|elpx|txt|html?|css|js|json|csv|tsv|rtf|odt|ods|odp|epub|mobi)$/i.test(relativePath);
+      if (isSystemFile) continue;
 
-      if (isResourceFile || isMediaFile) {
+      let shouldInclude = false;
+
+      if (isLegacyFormat) {
+        // Legacy format: Assets are at root level (e.g., "image.jpg", "document.pdf")
+        // Include files that are NOT in any subfolder (no "/" in path)
+        const isRootFile = !relativePath.includes('/');
+        if (isRootFile) {
+          shouldInclude = true;
+        }
+      } else {
+        // New format: Assets are in resources/ folders
+        // Patterns: "resources/file.jpg", "content/resources/uuid/file.jpg"
+        const isResourceFile = relativePath.startsWith('resources/') ||
+                              relativePath.startsWith('content/resources/') ||
+                              relativePath.includes('/resources/');
+        if (isResourceFile) {
+          shouldInclude = true;
+        }
+      }
+
+      if (shouldInclude) {
         assetFiles.push({ path: relativePath, fileData });
       }
     }
@@ -905,6 +1685,11 @@ class AssetManager {
 
         // Generate deterministic ID from hash (content-addressable)
         const assetId = this.hashToUUID(hash);
+
+        // Extract filename and folderPath from the path
+        // Path can be: "mywebsite/css/style.css", "content/resources/uuid/file.jpg", "uuid/file.jpg"
+        const filename = path.split('/').pop();
+        const folderPath = this._extractFolderPathFromImport(path, assetId);
 
         // Check if already exists (same content = same ID)
         const existing = await this.getAsset(assetId);
@@ -926,8 +1711,9 @@ class AssetManager {
             size: existing.size,
             uploaded: false,
             createdAt: new Date().toISOString(),
-            filename: path.split('/').pop(),
-            originalPath: path
+            filename,
+            originalPath: path,
+            folderPath
           };
           await this.putAsset(reusedAsset);
           assetMap.set(path, assetId);
@@ -944,14 +1730,15 @@ class AssetManager {
           size: blob.size,
           uploaded: false,
           createdAt: new Date().toISOString(),
-          filename: path.split('/').pop(),
-          originalPath: path  // Store original path for {{context_path}} mapping
+          filename,
+          originalPath: path,  // Store original path for {{context_path}} mapping
+          folderPath
         };
 
         await this.putAsset(asset);
         assetMap.set(path, assetId);
 
-        Logger.log(`[AssetManager] Extracted ${path} → ${assetId.substring(0, 8)}...`);
+        Logger.log(`[AssetManager] Extracted ${path} → ${assetId.substring(0, 8)}... (folder: ${folderPath || 'root'})`);
       } catch (e) {
         console.error(`[AssetManager] Failed to extract ${path}:`, e);
       }
@@ -981,7 +1768,7 @@ class AssetManager {
       // Try to find asset by exact path
       if (assetMap.has(cleanPath)) {
         const assetId = assetMap.get(cleanPath);
-        return `asset://${assetId}`;
+        return this.getAssetUrl(assetId, cleanPath.split('/').pop());
       }
 
       // Try with common prefixes (ZIP structure varies)
@@ -989,7 +1776,7 @@ class AssetManager {
       for (const prefix of prefixes) {
         const fullPath = prefix + cleanPath;
         if (assetMap.has(fullPath)) {
-          return `asset://${assetMap.get(fullPath)}`;
+          return this.getAssetUrl(assetMap.get(fullPath), cleanPath.split('/').pop());
         }
       }
 
@@ -997,7 +1784,7 @@ class AssetManager {
       const filename = cleanPath.split('/').pop();
       for (const [path, assetId] of assetMap.entries()) {
         if (path.endsWith('/' + filename) || path === filename) {
-          return `asset://${assetId}`;
+          return this.getAssetUrl(assetId, filename);
         }
       }
 
@@ -1007,7 +1794,7 @@ class AssetManager {
         const shortPath = pathParts.slice(-2).join('/');
         for (const [path, assetId] of assetMap.entries()) {
           if (path.endsWith(shortPath)) {
-            return `asset://${assetId}`;
+            return this.getAssetUrl(assetId, pathParts[pathParts.length - 1]);
           }
         }
       }
@@ -1027,9 +1814,16 @@ class AssetManager {
   async preloadAllAssets() {
     const assets = await this.getProjectAssets();
     let count = 0;
+    let skipped = 0;
 
     for (const asset of assets) {
       if (!this.blobURLCache.has(asset.id)) {
+        // Check if asset has a valid blob
+        if (!asset.blob || !(asset.blob instanceof Blob)) {
+          Logger.warn(`[AssetManager] Asset ${asset.id} (${asset.filename}) has no valid blob, skipping`);
+          skipped++;
+          continue;
+        }
         // Use createBlobURL with fallback for blocked extensions
         const blobURL = await this.createBlobURL(asset.blob);
         this.blobURLCache.set(asset.id, blobURL);
@@ -1038,7 +1832,7 @@ class AssetManager {
       }
     }
 
-    Logger.log(`[AssetManager] Preloaded ${count} assets`);
+    Logger.log(`[AssetManager] Preloaded ${count} assets${skipped > 0 ? `, skipped ${skipped} without blob` : ''}`);
     return count;
   }
 
@@ -1164,7 +1958,8 @@ class AssetManager {
             size: size,
             uploaded: true,
             createdAt: new Date().toISOString(),
-            filename: filename
+            filename: filename,
+            folderPath: '' // Downloaded assets go to root by default
           };
 
           await this.putAsset(asset);
@@ -1558,14 +2353,15 @@ class AssetManager {
   }
 
   /**
-   * Get statistics
+   * Get statistics - uses Yjs metadata for instant results
    * @returns {Promise<{total: number, pending: number, uploaded: number, totalSize: number}>}
    */
   async getStats() {
-    const all = await this.getProjectAssets();
+    // Use metadata-only for fast stats (no blob access needed)
+    const all = this.getAllAssetsMetadata();
     const pending = all.filter(a => !a.uploaded);
     const uploaded = all.filter(a => a.uploaded);
-    const totalSize = all.reduce((sum, a) => sum + a.size, 0);
+    const totalSize = all.reduce((sum, a) => sum + (a.size || 0), 0);
 
     return {
       total: all.length,
@@ -1576,20 +2372,25 @@ class AssetManager {
   }
 
   /**
-   * Update asset filename
+   * Update asset filename in Yjs metadata
    * @param {string} id - Asset UUID
    * @param {string} newFilename - New filename
    * @returns {Promise<void>}
    */
   async updateAssetFilename(id, newFilename) {
-    const asset = await this.getAsset(id);
-    if (!asset) {
-      console.warn(`[AssetManager] Cannot update filename for ${id}: not found`);
+    const metadata = this.getAssetMetadata(id);
+    if (!metadata) {
+      console.warn(`[AssetManager] Cannot update filename for ${id}: not found in Yjs`);
       return;
     }
-    asset.filename = newFilename;
-    await this.putAsset(asset);
-    Logger.log(`[AssetManager] Updated filename for ${id} to ${newFilename}`);
+
+    // Update metadata in Yjs
+    this.setAssetMetadata(id, {
+      ...metadata,
+      filename: newFilename
+    });
+
+    Logger.log(`[AssetManager] Updated filename for ${id} to ${newFilename} via Yjs`);
   }
 
   /**
@@ -1674,14 +2475,17 @@ class AssetManager {
   }
 
   /**
-   * Delete asset
+   * Delete asset - removes metadata from Yjs, blob from IndexedDB, and file from server
    * @param {string} id
+   * @param {Object} options - Optional configuration
+   * @param {boolean} options.skipServerDelete - If true, skip server deletion (used by bulk operations)
    * @returns {Promise<void>}
    */
-  async deleteAsset(id) {
-    if (!this.db) throw new Error('Database not initialized');
+  async deleteAsset(id, options = {}) {
+    // 1. Delete metadata from Yjs (instant sync to other clients)
+    this.deleteAssetMetadata(id);
 
-    // Revoke blob URL if exists
+    // 2. Revoke blob URL if exists
     const blobURL = this.blobURLCache.get(id);
     if (blobURL) {
       URL.revokeObjectURL(blobURL);
@@ -1689,14 +2493,121 @@ class AssetManager {
       this.reverseBlobCache.delete(blobURL);
     }
 
+    // 3. Delete blob from IndexedDB
+    if (!this.db) {
+      Logger.log(`[AssetManager] DB not initialized, skipping blob deletion for ${id}`);
+      // Still try to delete from server
+      if (!options.skipServerDelete) {
+        this._deleteFromServer(id).catch(() => {}); // Fire-and-forget
+      }
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction([AssetManager.STORE_NAME], 'readwrite');
       const store = tx.objectStore(AssetManager.STORE_NAME);
       const request = store.delete(id);
 
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        Logger.log(`[AssetManager] Deleted asset ${id.substring(0, 8)}... from Yjs and IndexedDB`);
+        // 4. Delete from server (fire-and-forget, don't block local deletion)
+        if (!options.skipServerDelete) {
+          this._deleteFromServer(id).catch(() => {}); // Errors are logged inside _deleteFromServer
+        }
+        resolve();
+      };
       request.onerror = () => reject(request.error);
     });
+  }
+
+  /**
+   * Delete asset from server by clientId (UUID)
+   * Non-blocking fire-and-forget operation - failure is logged but doesn't affect local deletion
+   * @param {string} assetId - Client-side asset ID (UUID)
+   * @private
+   */
+  async _deleteFromServer(assetId) {
+    // Get API config
+    const config = window.eXeLearning?.config || {};
+    const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
+    const token = config.token || '';
+    const projectUuid = this.projectId;
+
+    if (!projectUuid || !token) {
+      // Not in collaborative session, nothing to delete from server
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/projects/${projectUuid}/assets/by-client-id/${assetId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        Logger.log(`[AssetManager] Deleted asset ${assetId.substring(0, 8)}... from server`);
+      } else {
+        const result = await response.json().catch(() => ({}));
+        console.warn(`[AssetManager] Server delete failed for ${assetId.substring(0, 8)}...:`, result.error || response.status);
+      }
+    } catch (error) {
+      // Non-critical - log but don't fail the local deletion
+      console.warn(`[AssetManager] Failed to delete ${assetId.substring(0, 8)}... from server:`, error.message);
+    }
+  }
+
+  /**
+   * Delete multiple assets from server by clientIds (UUIDs)
+   * Used for efficient folder deletion - single HTTP request instead of N
+   * Non-blocking fire-and-forget operation
+   * @param {string[]} assetIds - Array of client-side asset IDs (UUIDs)
+   * @private
+   */
+  async _deleteMultipleFromServer(assetIds) {
+    if (!assetIds || assetIds.length === 0) {
+      return;
+    }
+
+    // Get API config
+    const config = window.eXeLearning?.config || {};
+    const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
+    const token = config.token || '';
+    const projectUuid = this.projectId;
+
+    if (!projectUuid || !token) {
+      // Not in collaborative session, nothing to delete from server
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/projects/${projectUuid}/assets/bulk`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ clientIds: assetIds }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        Logger.log(`[AssetManager] Bulk deleted ${result.deleted} assets from server`);
+      } else {
+        const result = await response.json().catch(() => ({}));
+        console.warn(`[AssetManager] Server bulk delete failed:`, result.error || response.status);
+      }
+    } catch (error) {
+      // Non-critical - log but don't fail the local deletion
+      console.warn(`[AssetManager] Failed to bulk delete from server:`, error.message);
+    }
   }
 
   /**
@@ -1802,7 +2713,7 @@ class AssetManager {
 
       // Skip if already in IndexedDB (just not loaded to cache yet)
       const existingAsset = await this.getAsset(assetId);
-      if (existingAsset) {
+      if (existingAsset?.blob) {
         // Load it to cache (use createBlobURL with fallback)
         const blobURL = await this.createBlobURL(existingAsset.blob);
         this.blobURLCache.set(assetId, blobURL);
@@ -1877,6 +2788,7 @@ class AssetManager {
           uploaded: true, // Already on server
           createdAt: new Date().toISOString(),
           filename: filename,
+          folderPath: '' // Downloaded assets go to root by default
         };
 
         await this.putAsset(asset);
@@ -1942,8 +2854,9 @@ class AssetManager {
   // ===== Peer Coordination Methods =====
 
   /**
-   * Get all asset IDs for this project
-   * Used to announce asset availability to peers
+   * Get all asset IDs for this project (from Yjs metadata)
+   * Note: Returns all assets regardless of local blob availability
+   * For announcing to peers, use getAllLocalBlobIds() instead
    * @returns {Promise<string[]>} Array of asset UUIDs
    */
   async getAllAssetIds() {
@@ -1952,13 +2865,52 @@ class AssetManager {
   }
 
   /**
-   * Check if an asset exists locally
+   * Get asset IDs that have local blobs in IndexedDB
+   * Used to announce asset availability to peers - only announces assets we can actually serve
+   * @returns {Promise<string[]>} Array of asset UUIDs with local blobs
+   */
+  async getAllLocalBlobIds() {
+    const allAssets = await this.getProjectAssets();
+    const localBlobIds = [];
+
+    for (const asset of allAssets) {
+      // Check if we have the blob locally (in cache or IndexedDB)
+      if (asset.blob) {
+        localBlobIds.push(asset.id);
+      } else {
+        // Double-check IndexedDB directly
+        const hasBlob = await this.hasLocalBlob(asset.id);
+        if (hasBlob) {
+          localBlobIds.push(asset.id);
+        }
+      }
+    }
+
+    return localBlobIds;
+  }
+
+  /**
+   * Check if an asset exists locally (metadata or blob)
+   * Note: Returns true if Yjs metadata exists, even without local blob
+   * Use hasLocalBlob() to check for actual blob availability
    * @param {string} assetId - Asset UUID
    * @returns {Promise<boolean>}
    */
   async hasAsset(assetId) {
     const asset = await this.getAsset(assetId);
     return asset !== null;
+  }
+
+  /**
+   * Check if asset blob exists in IndexedDB (not just metadata)
+   * Unlike hasAsset(), this returns true only if the actual binary blob is available locally.
+   * Used to determine if we need to fetch the blob from peers or server.
+   * @param {string} assetId - Asset UUID
+   * @returns {Promise<boolean>}
+   */
+  async hasLocalBlob(assetId) {
+    const blob = await this.getBlob(assetId);
+    return blob !== null && blob !== undefined;
   }
 
   /**
@@ -1990,9 +2942,36 @@ class AssetManager {
     // Check if we already have it
     const existing = await this.getAsset(assetId);
     if (existing) {
-      // Check if asset belongs to current project
-      if (existing.projectId === this.projectId) {
-        Logger.log(`[AssetManager] Asset ${assetId.substring(0, 8)}... already exists for this project`);
+      // Check if asset belongs to current project AND has blob
+      if (existing.projectId === this.projectId && existing.blob) {
+        Logger.log(`[AssetManager] Asset ${assetId.substring(0, 8)}... already exists with blob for this project`);
+        return;
+      }
+      // Asset exists in current project but without blob - update with downloaded blob
+      if (existing.projectId === this.projectId && !existing.blob) {
+        Logger.log(`[AssetManager] Asset ${assetId.substring(0, 8)}... exists without blob, storing blob`);
+        const updatedAsset = {
+          ...existing,
+          blob: blob,
+          mime: metadata.mime || existing.mime || 'application/octet-stream',
+          hash: metadata.hash || existing.hash,
+          size: metadata.size || existing.size || blob.size,
+          filename: metadata.filename || existing.filename,
+          folderPath: metadata.folderPath !== undefined ? metadata.folderPath : (existing.folderPath || ''),
+          uploaded: true
+        };
+        await this.putAsset(updatedAsset);
+
+        // Create blob URL and cache it
+        try {
+          const blobUrl = URL.createObjectURL(blob);
+          this.blobURLCache.set(assetId, blobUrl);
+          this.reverseBlobCache.set(blobUrl, assetId);
+        } catch (e) {
+          Logger.log(`[AssetManager] createObjectURL blocked, using data URL fallback`);
+        }
+
+        Logger.log(`[AssetManager] Stored blob for existing asset: ${assetId.substring(0, 8)}...`);
         return;
       }
       // Asset exists but for different project - create entry for this project reusing blob
@@ -2003,10 +2982,11 @@ class AssetManager {
         blob: existing.blob,
         mime: metadata.mime || existing.mime,
         hash: metadata.hash || existing.hash,
-        size: existing.size,
+        size: metadata.size || existing.size,
         uploaded: true,
         createdAt: new Date().toISOString(),
         filename: metadata.filename || existing.filename,
+        folderPath: metadata.folderPath !== undefined ? metadata.folderPath : (existing.folderPath || '')
       };
       await this.putAsset(reusedAsset);
       Logger.log(`[AssetManager] Stored asset from server (reused): ${assetId.substring(0, 8)}...`);
@@ -2021,10 +3001,11 @@ class AssetManager {
       blob: blob,
       mime: metadata.mime || 'application/octet-stream',
       hash: hash,
-      size: blob.size,
+      size: metadata.size || blob.size,
       uploaded: true, // Already on server
       createdAt: new Date().toISOString(),
       filename: metadata.filename,
+      folderPath: metadata.folderPath || '' // Use folderPath from server, default to root
     };
 
     await this.putAsset(asset);
@@ -2084,12 +3065,13 @@ class AssetManager {
         continue;
       }
 
-      // Skip if already in IndexedDB
-      const exists = await this.hasAsset(assetId);
-      if (exists) {
+      // Skip if blob already exists in IndexedDB
+      // Note: Use hasLocalBlob() not hasAsset() - the latter returns true for Yjs-only metadata
+      const hasBlob = await this.hasLocalBlob(assetId);
+      if (hasBlob) {
         // Load to cache
         const asset = await this.getAsset(assetId);
-        if (asset) {
+        if (asset && asset.blob) {
           const blobURL = await this.createBlobURL(asset.blob);
           this.blobURLCache.set(assetId, blobURL);
           this.reverseBlobCache.set(blobURL, assetId);
@@ -2126,7 +3108,7 @@ class AssetManager {
           if (success) {
             // Asset should now be in IndexedDB - load to cache
             const asset = await this.getAsset(assetId);
-            if (asset) {
+            if (asset && asset.blob) {
               const blobURL = await this.createBlobURL(asset.blob);
               this.blobURLCache.set(assetId, blobURL);
               this.reverseBlobCache.set(blobURL, assetId);

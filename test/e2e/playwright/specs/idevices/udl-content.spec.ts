@@ -533,24 +533,17 @@ test.describe('UDL Content iDevice', () => {
             // Wait for TinyMCE to be ready
             await page.waitForTimeout(1000);
 
-            // Get the TinyMCE iframe and insert audio directly
-            const idevice = page.locator('#node-content article .idevice_node.udl-content').first();
-            const tinyMceFrame = idevice.locator('iframe.tox-edit-area__iframe').first();
+            // Insert audio element via TinyMCE API (not directly into iframe body)
+            // This ensures the content is properly tracked and saved
+            const audioHtml =
+                '<p>Audio content test</p><audio controls type="audio/wav" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAB/"></audio>';
 
-            const frameEl = await tinyMceFrame.elementHandle();
-            const frame = await frameEl?.contentFrame();
-
-            if (frame) {
-                // Insert audio element with proper type attribute directly into TinyMCE
-                // This simulates what FileManager does when inserting audio
-                await frame.evaluate(() => {
-                    const body = document.body;
-                    // Create audio with type attribute (critical for MediaElement.js)
-                    const audioHtml =
-                        '<p>Audio content test</p><audio controls type="audio/wav" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAB/"></audio>';
-                    body.innerHTML = audioHtml;
-                });
-            }
+            await page.evaluate(html => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(html);
+                }
+            }, audioHtml);
 
             // Set button text
             await setButtonText(page, 'Listen Here');
@@ -639,22 +632,17 @@ test.describe('UDL Content iDevice', () => {
             // Wait for TinyMCE to be ready
             await page.waitForTimeout(1000);
 
-            // Get the TinyMCE iframe and insert audio
-            const idevice = page.locator('#node-content article .idevice_node.udl-content').first();
-            const tinyMceFrame = idevice.locator('iframe.tox-edit-area__iframe').first();
+            // Insert audio element via TinyMCE API (not directly into iframe body)
+            // This ensures the content is properly tracked and saved
+            const audioHtml =
+                '<p>Audio test for MEJS</p><audio class="mediaelement" controls type="audio/mpeg" src="data:audio/mpeg;base64,//uQxAAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"></audio>';
 
-            const frameEl = await tinyMceFrame.elementHandle();
-            const frame = await frameEl?.contentFrame();
-
-            if (frame) {
-                // Insert audio element with mediaelement class (like real content)
-                await frame.evaluate(() => {
-                    const body = document.body;
-                    const audioHtml =
-                        '<p>Audio test for MEJS</p><audio class="mediaelement" controls type="audio/mpeg" src="data:audio/mpeg;base64,//uQxAAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"></audio>';
-                    body.innerHTML = audioHtml;
-                });
-            }
+            await page.evaluate(html => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(html);
+                }
+            }, audioHtml);
 
             // Set button text
             await setButtonText(page, 'Play Audio');

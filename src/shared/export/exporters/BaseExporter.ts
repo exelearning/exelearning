@@ -43,6 +43,8 @@ export abstract class BaseExporter {
 
     // Cache for asset filename lookups
     protected assetFilenameMap: Map<string, string> | null = null;
+    // Cache for asset export path lookups (folderPath-based)
+    protected assetExportPathMap: Map<string, string> | null = null;
 
     constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         this.document = document;
@@ -272,6 +274,7 @@ export abstract class BaseExporter {
 
     /**
      * Add assets to ZIP with content/resources/ prefix
+     * Uses folderPath-based structure for cleaner exports
      * @param trackingList - Optional array to track added file paths (for ELPX manifest)
      */
     async addAssetsToZipWithResourcePath(trackingList?: string[] | null): Promise<number> {
@@ -279,25 +282,20 @@ export abstract class BaseExporter {
 
         try {
             const assets = await this.assets.getAllAssets();
+            const exportPathMap = await this.buildAssetExportPathMap();
             console.log(`[BaseExporter] addAssetsToZipWithResourcePath: Found ${assets.length} assets to add`);
 
             for (const asset of assets) {
-                console.log(`[BaseExporter] Adding asset: ${asset.id}/${asset.filename} (${asset.mime})`);
-
-                // Use originalPath if available
-                // Strip content/resources/ prefix if present (ELP files include it)
-                let assetPath = asset.originalPath || `${asset.id}/${asset.filename || `asset-${asset.id}`}`;
-
-                // Normalize: remove content/resources/ prefix if already present
-                if (assetPath.startsWith('content/resources/')) {
-                    assetPath = assetPath.substring('content/resources/'.length);
-                }
-                if (assetPath.startsWith('content/')) {
-                    assetPath = assetPath.substring('content/'.length);
+                const exportPath = exportPathMap.get(asset.id);
+                if (!exportPath) {
+                    console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
+                    continue;
                 }
 
-                // Store in content/resources/{path}
-                const zipPath = `content/resources/${assetPath}`;
+                console.log(`[BaseExporter] Adding asset: ${asset.id} -> content/resources/${exportPath}`);
+
+                // Store in content/resources/{exportPath}
+                const zipPath = `content/resources/${exportPath}`;
 
                 this.zip.addFile(zipPath, asset.data);
                 if (trackingList) trackingList.push(zipPath);
@@ -420,22 +418,77 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Add filenames to asset:// URLs without changing the protocol
-     * Transforms asset://uuid to asset://uuid/filename.ext
+     * Build asset export path map for URL transformation
+     * Uses folderPath instead of UUID for cleaner export structure
+     * Handles filename collisions by appending counter
+     *
+     * @returns Map of asset UUID to export path (e.g., "images/photo.jpg" or "photo.jpg" for root)
+     */
+    async buildAssetExportPathMap(): Promise<Map<string, string>> {
+        if (this.assetExportPathMap) {
+            return this.assetExportPathMap;
+        }
+
+        this.assetExportPathMap = new Map<string, string>();
+        const usedPaths = new Set<string>();
+
+        try {
+            const assets = await this.assets.getAllAssets();
+
+            for (const asset of assets) {
+                const folderPath = asset.folderPath || '';
+                const filename = asset.filename || `asset-${asset.id.substring(0, 8)}`;
+                const basePath = folderPath ? `${folderPath}/${filename}` : filename;
+
+                // Handle filename collisions (case-insensitive for Windows compatibility)
+                let finalPath = basePath;
+                let counter = 1;
+                while (usedPaths.has(finalPath.toLowerCase())) {
+                    const ext = filename.includes('.') ? '.' + filename.split('.').pop() : '';
+                    const nameWithoutExt = ext ? filename.slice(0, -ext.length) : filename;
+                    finalPath = folderPath
+                        ? `${folderPath}/${nameWithoutExt}_${counter}${ext}`
+                        : `${nameWithoutExt}_${counter}${ext}`;
+                    counter++;
+                }
+
+                usedPaths.add(finalPath.toLowerCase());
+                this.assetExportPathMap.set(asset.id, finalPath);
+            }
+        } catch (e) {
+            console.warn('[BaseExporter] Failed to build asset export path map:', e);
+        }
+
+        return this.assetExportPathMap;
+    }
+
+    /**
+     * Add export paths to asset:// URLs without changing the protocol
+     * Transforms asset://uuid or asset://uuid.ext to asset://uuid/exportPath
+     * Uses folderPath-based export paths for cleaner structure
+     *
+     * Supported input formats:
+     * - asset://uuid (simple UUID)
+     * - asset://uuid.ext (new format with extension)
+     * - asset://uuid/oldPath (legacy format with old path, which gets replaced)
      */
     async addFilenamesToAssetUrls(content: string): Promise<string> {
         if (!content) return '';
 
-        const assetMap = await this.buildAssetFilenameMap();
+        const assetMap = await this.buildAssetExportPathMap();
         if (assetMap.size === 0) {
             return content;
         }
 
-        // Transform asset://uuid to asset://uuid/filename (keeping asset:// protocol)
-        return content.replace(/asset:\/\/([a-f0-9-]+)(?![/a-zA-Z0-9._-])/gi, (match, uuid) => {
-            const filename = assetMap.get(uuid);
-            if (filename) {
-                return `asset://${uuid}/${filename}`;
+        // Transform asset://uuid or asset://uuid.ext to asset://uuid/exportPath
+        // The pattern matches:
+        // - asset://uuid (36-char UUID)
+        // - asset://uuid.ext (UUID with extension)
+        // - asset://uuid/path (UUID with old path, to be replaced)
+        return content.replace(/asset:\/\/([a-f0-9-]+)(?:\.[a-z0-9]+|\/[^"'\s)]+)?/gi, (match, uuid) => {
+            const exportPath = assetMap.get(uuid);
+            if (exportPath) {
+                return `asset://${uuid}/${exportPath}`;
             }
             return match;
         });

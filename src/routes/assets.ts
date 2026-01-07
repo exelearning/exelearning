@@ -220,7 +220,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             // =====================================================
 
             // POST /api/projects/:projectId/assets - Upload asset
-            .post('/', async ({ params, body, set }) => {
+            .post('/', async ({ params, body, query, set }) => {
                 try {
                     const { projectId } = params;
                     const data = body as AssetUploadRequest;
@@ -239,7 +239,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                     const file = data.file;
                     const componentId = data.componentId;
-                    const clientId = data.clientId || uuidv4();
+                    // Support clientId from form body OR query parameter (bulk upload uses query param)
+                    const clientId = data.clientId || (query as { clientId?: string }).clientId || uuidv4();
+                    const folderPath = sanitizeFolderPath(data.folderPath);
 
                     // Get file data
                     let fileBuffer: Buffer;
@@ -260,14 +262,15 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         mimetype = data.mimetype || 'application/octet-stream';
                     }
 
-                    // Generate storage path using project UUID (always use permanent project-scoped storage)
-                    const storagePath = getProjectAssetsDir(projectId);
+                    // Flat UUID-based storage: assets/{projectUuid}/{clientId}.{ext}
+                    // No folder hierarchy on disk - folderPath is only stored in database for UI/export
+                    const baseStoragePath = getProjectAssetsDir(projectId);
+                    await fs.ensureDir(baseStoragePath);
 
-                    await fs.ensureDir(storagePath);
-
-                    // Generate unique filename
-                    const uniqueFilename = generateUniqueFilename(filename);
-                    const filePath = path.join(storagePath, uniqueFilename);
+                    // Use clientId as filename with original extension
+                    const ext = path.extname(filename).toLowerCase();
+                    const flatFilename = `${clientId}${ext}`;
+                    const filePath = path.join(baseStoragePath, flatFilename);
 
                     // Write file using Bun.write for optimal performance
                     if (typeof Bun !== 'undefined' && Bun.write) {
@@ -276,7 +279,27 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         await writeFile(filePath, fileBuffer);
                     }
 
-                    // Create asset record
+                    // Check for existing asset with same clientId + projectId (idempotent upload)
+                    // This can happen during bulk upload when 2nd client joins collaborative session
+                    const existingAsset = await queries.findAssetByClientId(database, clientId, projectIdNum);
+
+                    if (existingAsset) {
+                        // Asset already exists - update it (idempotent)
+                        const updatedAsset = await queries.updateAsset(database, existingAsset.id, {
+                            filename: filename,
+                            storage_path: filePath,
+                            mime_type: mimetype,
+                            file_size: String(fileBuffer.length),
+                            folder_path: folderPath,
+                        });
+
+                        return {
+                            success: true,
+                            data: serializeAsset(updatedAsset!),
+                        };
+                    }
+
+                    // Create new asset record
                     const asset = await queries.createAsset(database, {
                         project_id: projectIdNum,
                         filename: filename,
@@ -285,6 +308,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         file_size: String(fileBuffer.length),
                         component_id: componentId || null,
                         client_id: clientId,
+                        folder_path: folderPath,
                     });
 
                     return {
@@ -440,13 +464,14 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         return { success: false, error: 'Project not found' };
                     }
 
-                    // Get storage path using project UUID (always use permanent project-scoped storage)
+                    // Flat UUID-based storage: assets/{projectUuid}/{clientId}.{ext}
                     const storagePath = getProjectAssetsDir(projectId);
-
                     await fs.ensureDir(storagePath);
 
-                    const uniqueFilename = generateUniqueFilename(upload.filename);
-                    const finalPath = path.join(storagePath, uniqueFilename);
+                    // Use clientId as filename with original extension
+                    const ext = path.extname(upload.filename).toLowerCase();
+                    const flatFilename = `${clientId}${ext}`;
+                    const finalPath = path.join(storagePath, flatFilename);
 
                     // Write combined file with parallel chunk reads
                     const writeStream = fs.createWriteStream(finalPath);
@@ -592,10 +617,15 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     return { success: false, error: 'Asset file not found on disk' };
                 }
 
-                // Return file blob (same as /:assetId endpoint)
+                // Return file blob with metadata headers for collaborative sync
                 const fileBuffer = await readFile(asset.storage_path);
                 set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
                 set.headers['content-disposition'] = `attachment; filename="${asset.filename}"`;
+                // Add metadata headers for AssetWebSocketHandler prefetch
+                set.headers['x-original-mime'] = asset.mime_type || 'application/octet-stream';
+                set.headers['x-filename'] = asset.filename;
+                set.headers['x-folder-path'] = asset.folder_path || '';
+                set.headers['x-file-size'] = asset.file_size || '0';
                 return fileBuffer;
             })
 
@@ -648,7 +678,61 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                 };
             })
 
-            // DELETE /:assetId - Delete asset
+            // DELETE /by-client-id/:clientId - Delete asset by client ID (UUID)
+            // Used by client-side AssetManager when deleting assets
+            .delete('/by-client-id/:clientId', async ({ params, set }) => {
+                const { projectId, clientId } = params;
+
+                const projectIdNum = await getNumericProjectId(projectId);
+                if (projectIdNum === null) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+
+                const asset = await queries.findAssetByClientId(database, clientId, projectIdNum);
+                if (!asset) {
+                    // Asset not on server - that's OK, just return success
+                    // (asset may have been deleted locally but never uploaded)
+                    return { success: true, message: 'Asset not found on server' };
+                }
+
+                // Delete file from disk
+                await remove(asset.storage_path).catch(() => {});
+
+                // Delete database record
+                await queries.deleteAsset(database, asset.id);
+
+                return { success: true, message: 'Asset deleted' };
+            })
+
+            // DELETE /bulk - Delete multiple assets by client IDs
+            // Used for efficient folder deletion (single HTTP request instead of N)
+            .delete('/bulk', async ({ params, body, set }) => {
+                const { projectId } = params;
+                const { clientIds } = (body || {}) as { clientIds?: string[] };
+
+                if (!clientIds || clientIds.length === 0) {
+                    return { success: true, deleted: 0 };
+                }
+
+                const projectIdNum = await getNumericProjectId(projectId);
+                if (projectIdNum === null) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+
+                const assets = await queries.findAssetsByClientIds(database, clientIds, projectIdNum);
+
+                // Delete files and database records
+                for (const asset of assets) {
+                    await remove(asset.storage_path).catch(() => {});
+                    await queries.deleteAsset(database, asset.id);
+                }
+
+                return { success: true, deleted: assets.length };
+            })
+
+            // DELETE /:assetId - Delete asset by numeric ID (legacy)
             .delete('/:assetId', async ({ params, set }) => {
                 const assetId = parseInt(params.assetId, 10);
 
@@ -721,6 +805,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         filename: string;
                         mimeType: string;
                         contentHash?: string;
+                        folderPath?: string;
                     }> = [];
 
                     if (typeof data.metadata === 'string') {
@@ -740,10 +825,10 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         files = Array.isArray(data.files) ? data.files : [data.files];
                     }
 
-                    // Get storage path using project UUID (always use permanent project-scoped storage)
-                    const storagePath = getProjectAssetsDir(projectId);
+                    // Get base storage path using project UUID
+                    const baseStoragePath = getProjectAssetsDir(projectId);
 
-                    await fs.ensureDir(storagePath);
+                    await fs.ensureDir(baseStoragePath);
 
                     // =====================================================
                     // PHASE 1: Convert all files to buffers in parallel
@@ -753,6 +838,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         let fileBuffer: Buffer;
                         let filename = fileMeta.filename || 'uploaded_file';
                         let mimeType = fileMeta.mimeType || 'application/octet-stream';
+                        const folderPath = sanitizeFolderPath(fileMeta.folderPath);
 
                         if (file instanceof Blob) {
                             fileBuffer = Buffer.from(await file.arrayBuffer());
@@ -764,16 +850,22 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                             fileBuffer = Buffer.from(file);
                         }
 
-                        const uniqueFilename = generateUniqueFilename(filename);
-                        const filePath = path.join(storagePath, uniqueFilename);
+                        // Flat UUID-based storage: assets/{projectUuid}/{clientId}.{ext}
+                        // folderPath is only stored in database for UI/export, not on disk
+
+                        // Use clientId as filename with original extension
+                        const ext = path.extname(filename).toLowerCase();
+                        const flatFilename = `${fileMeta.clientId}${ext}`;
+                        const filePath = path.join(baseStoragePath, flatFilename);
 
                         return {
                             clientId: fileMeta.clientId,
                             filename,
                             mimeType,
+                            folderPath,
                             fileBuffer,
                             filePath,
-                            uniqueFilename,
+                            flatFilename,
                         };
                     });
 
@@ -817,8 +909,12 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         file_size: string;
                         component_id: null;
                         client_id: string;
+                        folder_path: string;
                     }> = [];
-                    const toUpdate: Array<{ id: number; data: { storage_path: string; file_size: string } }> = [];
+                    const toUpdate: Array<{
+                        id: number;
+                        data: { storage_path: string; file_size: string; folder_path: string };
+                    }> = [];
                     const results: Array<{
                         clientId: string;
                         success: boolean;
@@ -847,6 +943,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                                 data: {
                                     storage_path: data.filePath,
                                     file_size: String(data.fileBuffer.length),
+                                    folder_path: data.folderPath,
                                 },
                             });
                             results.push({
@@ -863,6 +960,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                                 file_size: String(data.fileBuffer.length),
                                 component_id: null,
                                 client_id: data.clientId,
+                                folder_path: data.folderPath,
                             });
                         }
                     }
@@ -931,6 +1029,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     const filename = request.headers.get('x-filename') || 'uploaded_file';
                     const priority = parseInt(request.headers.get('x-priority') || '0', 10);
                     const contentType = request.headers.get('content-type') || 'application/octet-stream';
+                    const folderPath = sanitizeFolderPath(request.headers.get('x-folder-path'));
 
                     // Check if should be preempted (for priority queue integration)
                     if (priority > 0) {
@@ -947,13 +1046,14 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         }
                     }
 
-                    // Get storage path using project UUID (always use permanent project-scoped storage)
-                    const storagePath = getProjectAssetsDir(projectId);
+                    // Flat UUID-based storage: assets/{projectUuid}/{clientId}.{ext}
+                    const baseStoragePath = getProjectAssetsDir(projectId);
+                    await fs.ensureDir(baseStoragePath);
 
-                    await fs.ensureDir(storagePath);
-
-                    const uniqueFilename = generateUniqueFilename(filename);
-                    const filePath = path.join(storagePath, uniqueFilename);
+                    // Use clientId as filename with original extension
+                    const ext = path.extname(filename).toLowerCase();
+                    const flatFilename = `${clientId}${ext}`;
+                    const filePath = path.join(baseStoragePath, flatFilename);
 
                     // Stream body directly to disk
                     const body = request.body;
@@ -987,7 +1087,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         fileSize = stats?.size || 0;
                     }
 
-                    // Create asset record
+                    // Create asset record with folder_path
                     const asset = await queries.createAsset(database, {
                         project_id: projectIdNum,
                         filename,
@@ -996,6 +1096,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                         file_size: String(fileSize),
                         component_id: null,
                         client_id: clientId,
+                        folder_path: folderPath,
                     });
 
                     return {
@@ -1040,6 +1141,7 @@ interface SerializedAsset {
     size: number;
     componentId: string | null;
     clientId: string | null;
+    folderPath: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -1055,7 +1157,27 @@ function serializeAsset(asset: Asset): SerializedAsset {
         size: parseInt(asset.file_size || '0', 10),
         componentId: asset.component_id,
         clientId: asset.client_id,
+        folderPath: asset.folder_path || '',
         createdAt: asset.created_at,
         updatedAt: asset.updated_at,
     };
+}
+
+/**
+ * Helper: Sanitize folder path to prevent path traversal
+ * Returns empty string for root, or sanitized path like "images/icons"
+ */
+function sanitizeFolderPath(folderPath: string | undefined | null): string {
+    if (!folderPath) return '';
+
+    // Remove leading/trailing slashes and normalize
+    let sanitized = folderPath.trim().replace(/^\/+|\/+$/g, '');
+
+    // Remove any path traversal attempts
+    sanitized = sanitized.replace(/\.\./g, '').replace(/\/+/g, '/');
+
+    // Remove any invalid characters (keep alphanumeric, dash, underscore, dot, slash)
+    sanitized = sanitized.replace(/[^a-zA-Z0-9\-_./]/g, '_');
+
+    return sanitized;
 }

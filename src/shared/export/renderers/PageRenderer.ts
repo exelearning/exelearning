@@ -504,10 +504,12 @@ ${madeWithExeHtml}
         const effectiveTitle = this.getEffectivePageTitle(page);
         const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
 
-        // Use separate header elements so exe_export.js teacherMode can find them
-        // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
-        return `${pageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
-<header class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></header>`;
+        // Wrap headers in main-header so theme JS (e.g., flux movePageTitle) can find them
+        // Theme JS looks for '.main-header .page-header' to move title into .page-content
+        return `${pageCounterHtml}<header class="main-header">
+<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></div>
+<div class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></div>
+</header>`;
     }
 
     /**

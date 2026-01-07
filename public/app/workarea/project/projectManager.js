@@ -233,7 +233,9 @@ export default class projectManager {
         Logger.log('[ProjectManager] Yjs reinitialized for project:', projectUuid);
 
         // Reset project state AFTER Yjs is initialized (structure loading needs Yjs)
+        Logger.log('[ProjectManager] About to call resetProject...');
         this.resetProject();
+        Logger.log('[ProjectManager] resetProject completed, reinitializeWithProject returning');
     }
 
     /**
@@ -464,9 +466,11 @@ export default class projectManager {
         }
 
         // Reset project state (dirty flag, session IDs)
+        Logger.log('[ProjectManager] Resetting projectState...');
         if (window.eXeLearning?.app?.projectState) {
             window.eXeLearning.app.projectState.reset();
         }
+        Logger.log('[ProjectManager] ProjectState reset done');
 
         // CRITICAL: Clear navigation tree DOM first
         // This ensures old nodes are removed even if the structure engine fails

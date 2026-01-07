@@ -90,13 +90,14 @@ export function resetDependencies(): void {
 
 /**
  * Encode access-revoked message as binary with 0xFF prefix
+ * Returns Buffer for proper binary handling in Bun WebSocket
  */
-function encodeMessage(message: AccessRevokedMessage): Uint8Array {
+function encodeMessage(message: AccessRevokedMessage): Buffer {
     const jsonStr = JSON.stringify(message);
-    const jsonBytes = new TextEncoder().encode(jsonStr);
-    const result = new Uint8Array(1 + jsonBytes.length);
+    const jsonBytes = Buffer.from(jsonStr, 'utf-8');
+    const result = Buffer.alloc(1 + jsonBytes.length);
     result[0] = ASSET_MESSAGE_PREFIX;
-    result.set(jsonBytes, 1);
+    jsonBytes.copy(result, 1);
     return result;
 }
 
