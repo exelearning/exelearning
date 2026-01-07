@@ -56,7 +56,13 @@ async function importElpFixture(page: Page, fixtureName: string): Promise<void> 
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixturePath);
 
-    // Wait for import to complete
+    // Wait for loading screen to hide (import progress shows and then hides)
+    await page.waitForFunction(
+        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+        { timeout: 120000 },
+    );
+
+    // Wait for navigation to be populated
     await page.waitForFunction(
         () => {
             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
@@ -66,16 +72,50 @@ async function importElpFixture(page: Page, fixtureName: string): Promise<void> 
             const navigation = yDoc.getArray('navigation');
             return navigation && navigation.length >= 1;
         },
-        { timeout: 90000 },
-    );
-
-    // Wait for loading screen to hide
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
         { timeout: 30000 },
     );
 
-    await page.waitForTimeout(2000);
+    // Wait for page count to stabilize (ensures import is fully complete)
+    // This is critical for large ELPs that take time to import
+    let lastPageCount = 0;
+    let stableCount = 0;
+    const requiredStable = 3;
+
+    for (let i = 0; i < 30; i++) {
+        await page.waitForTimeout(500);
+
+        const currentPageCount = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            const yDoc = bridge?.getDocumentManager()?.getDoc();
+            const navigation = yDoc?.getArray('navigation');
+
+            // Count all pages recursively
+            let total = 0;
+            const countPages = (navArray: any) => {
+                if (!navArray) return;
+                for (let j = 0; j < navArray.length; j++) {
+                    total++;
+                    const pageMap = navArray.get(j);
+                    const children = pageMap?.get('children');
+                    if (children) countPages(children);
+                }
+            };
+            countPages(navigation);
+            return total;
+        });
+
+        if (currentPageCount === lastPageCount && currentPageCount > 0) {
+            stableCount++;
+            if (stableCount >= requiredStable) {
+                break;
+            }
+        } else {
+            stableCount = 0;
+            lastPageCount = currentPageCount;
+        }
+    }
+
+    await page.waitForTimeout(1000);
 }
 
 /**

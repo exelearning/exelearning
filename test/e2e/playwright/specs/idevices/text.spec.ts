@@ -1649,8 +1649,26 @@ test.describe('Text iDevice', () => {
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            // Wait for PDF.js to render (needs time to load library and fetch blob)
-            await page.waitForTimeout(5000);
+            // Wait for PDF.js to render - use polling instead of fixed timeout
+            // PDF.js needs time to: 1) load library, 2) fetch blob, 3) render canvas
+            await page.waitForFunction(
+                () => {
+                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                    if (!previewIframe?.contentDocument) return false;
+
+                    const doc = previewIframe.contentDocument;
+                    // Either PDF.js viewer or fallback card should be present
+                    const viewer = doc.querySelector('.exe-pdf-viewer');
+                    const card = doc.querySelector('.exe-pdf-preview-card');
+                    return !!viewer || !!card;
+                },
+                { timeout: 30000, polling: 500 },
+            ).catch(() => {
+                // If timeout, continue to get diagnostic info
+            });
+
+            // Additional wait for canvas rendering
+            await page.waitForTimeout(2000);
 
             // Check for PDF.js viewer in preview iframe
             // PDF.js renders PDFs to canvas because Chrome blocks native PDF viewer
@@ -1669,6 +1687,12 @@ test.describe('Text iDevice', () => {
                 // Fallback card (used if PDF.js fails)
                 const card = doc.querySelector('.exe-pdf-preview-card');
 
+                // Get diagnostic info about what's in the preview
+                const iframes = doc.querySelectorAll('iframe');
+                const objects = doc.querySelectorAll('object[type*="pdf"]');
+                const embeds = doc.querySelectorAll('embed[type*="pdf"]');
+                const allContent = doc.body?.innerHTML?.substring(0, 500) || '';
+
                 return {
                     hasPdfJsViewer: !!viewer,
                     hasToolbar: !!toolbar,
@@ -1676,12 +1700,23 @@ test.describe('Text iDevice', () => {
                     hasFallbackCard: !!card,
                     canvasWidth: (canvas as HTMLCanvasElement)?.width || 0,
                     canvasHeight: (canvas as HTMLCanvasElement)?.height || 0,
+                    // Diagnostic info
+                    iframeCount: iframes.length,
+                    objectCount: objects.length,
+                    embedCount: embeds.length,
+                    contentPreview: allContent,
                 };
             });
 
             // Verify PDF.js viewer rendered successfully
             // Either PDF.js viewer with canvas OR fallback card should be present
             const pdfRendered = viewerInfo.hasPdfJsViewer || viewerInfo.hasFallbackCard;
+
+            // If test fails, provide diagnostic info
+            if (!pdfRendered) {
+                console.log('PDF Preview Debug Info:', JSON.stringify(viewerInfo, null, 2));
+            }
+
             expect(pdfRendered).toBe(true);
 
             // If PDF.js loaded, verify canvas has content
