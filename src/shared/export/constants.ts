@@ -607,72 +607,73 @@ export function normalizeIdeviceType(typeName: string): string {
 export const ODE_DTD_FILENAME = 'content.dtd';
 
 /**
- * eXeLearning Document DTD
+ * eXeLearning ODE Document DTD
  * Embedded DTD for exports that include content.xml - validates content.xml structure
- * Defines the exe_document format used by xml-builder.ts
+ * Defines the ODE format with userPreferences, odeResources, odeProperties, odeNavStructures
  */
 export const ODE_DTD_CONTENT = `<!--
-    eXeLearning Document DTD
+    eXeLearning ODE Document DTD
     Document Type Definition for eXeLearning content.xml format
-    Version: 3.0
+    Version: 2.0
     Copyright (C) 2025 eXeLearning - License: AGPL-3.0
 -->
 
 <!-- Root element -->
-<!ELEMENT exe_document (meta, navigation)>
+<!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
 
-<!-- ==================== Metadata Section ==================== -->
-<!ELEMENT meta (author?, title?, subtitle?, description?, language?, license?, keywords?, taxonomy?, aggregationLevel?, structure?, semanticDensity?, difficulty?, typicalLearningTime?, context?, endUser?, interactivityType?, interactivityLevel?, cognitiveProcess?, intendedEducationalUse?, version?, exelearning_version?, created?, modified?, theme?, addExeLink?, addPagination?, addSearchBox?, addAccessibilityToolbar?, addMathJax?, exportSource?, extraHeadContent?, footer?)>
+<!-- ==================== User Preferences ==================== -->
+<!ELEMENT userPreferences (userPreference*)>
+<!ELEMENT userPreference (key, value)>
 
-<!ELEMENT author (#PCDATA)>
-<!ELEMENT title (#PCDATA)>
-<!ELEMENT subtitle (#PCDATA)>
-<!ELEMENT description (#PCDATA)>
-<!ELEMENT language (#PCDATA)>
-<!ELEMENT license (#PCDATA)>
-<!ELEMENT keywords (#PCDATA)>
-<!ELEMENT taxonomy (#PCDATA)>
-<!ELEMENT aggregationLevel (#PCDATA)>
-<!ELEMENT structure (#PCDATA)>
-<!ELEMENT semanticDensity (#PCDATA)>
-<!ELEMENT difficulty (#PCDATA)>
-<!ELEMENT typicalLearningTime (#PCDATA)>
-<!ELEMENT context (#PCDATA)>
-<!ELEMENT endUser (#PCDATA)>
-<!ELEMENT interactivityType (#PCDATA)>
-<!ELEMENT interactivityLevel (#PCDATA)>
-<!ELEMENT cognitiveProcess (#PCDATA)>
-<!ELEMENT intendedEducationalUse (#PCDATA)>
-<!ELEMENT version (#PCDATA)>
-<!ELEMENT exelearning_version (#PCDATA)>
-<!ELEMENT created (#PCDATA)>
-<!ELEMENT modified (#PCDATA)>
-<!ELEMENT theme (#PCDATA)>
-<!ELEMENT addExeLink (#PCDATA)>
-<!ELEMENT addPagination (#PCDATA)>
-<!ELEMENT addSearchBox (#PCDATA)>
-<!ELEMENT addAccessibilityToolbar (#PCDATA)>
-<!ELEMENT addMathJax (#PCDATA)>
-<!ELEMENT exportSource (#PCDATA)>
-<!ELEMENT extraHeadContent (#PCDATA)>
-<!ELEMENT footer (#PCDATA)>
+<!-- ==================== ODE Resources ==================== -->
+<!ELEMENT odeResources (odeResource*)>
+<!ELEMENT odeResource (key, value)>
 
-<!-- ==================== Navigation Section ==================== -->
-<!ELEMENT navigation (page+)>
+<!-- ==================== ODE Properties ==================== -->
+<!ELEMENT odeProperties (odeProperty*)>
+<!ELEMENT odeProperty (key, value)>
 
-<!ELEMENT page (component*, page*)>
-<!ATTLIST page
-    id CDATA #REQUIRED
-    title CDATA #REQUIRED>
+<!-- ==================== Navigation Structures ==================== -->
+<!ELEMENT odeNavStructures (odeNavStructure*)>
+<!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
+
+<!ELEMENT odePageId (#PCDATA)>
+<!ELEMENT odeParentPageId (#PCDATA)>
+<!ELEMENT pageName (#PCDATA)>
+<!ELEMENT odeNavStructureOrder (#PCDATA)>
+
+<!-- Nav Structure Properties -->
+<!ELEMENT odeNavStructureProperties (odeNavStructureProperty*)>
+<!ELEMENT odeNavStructureProperty (key, value)>
+
+<!-- ==================== Page Structures (Blocks) ==================== -->
+<!ELEMENT odePagStructures (odePagStructure*)>
+<!ELEMENT odePagStructure (odePageId, odeBlockId, blockName, iconName?, odePagStructureOrder, odePagStructureProperties?, odeComponents?)>
+
+<!ELEMENT odeBlockId (#PCDATA)>
+<!ELEMENT blockName (#PCDATA)>
+<!ELEMENT iconName (#PCDATA)>
+<!ELEMENT odePagStructureOrder (#PCDATA)>
+
+<!-- Block Properties -->
+<!ELEMENT odePagStructureProperties (odePagStructureProperty*)>
+<!ELEMENT odePagStructureProperty (key, value)>
 
 <!-- ==================== Components (iDevices) ==================== -->
-<!ELEMENT component (content?, properties?, data?)>
-<!ATTLIST component
-    type CDATA #REQUIRED
-    id CDATA #REQUIRED
-    position CDATA #IMPLIED>
+<!ELEMENT odeComponents (odeComponent*)>
+<!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
 
-<!ELEMENT content (#PCDATA)>
-<!ELEMENT properties ANY>
-<!ELEMENT data ANY>
+<!ELEMENT odeIdeviceId (#PCDATA)>
+<!ELEMENT odeIdeviceTypeName (#PCDATA)>
+<!ELEMENT htmlView (#PCDATA)>
+<!ELEMENT jsonProperties (#PCDATA)>
+<!ELEMENT odeComponentsOrder (#PCDATA)>
+
+<!-- Component Properties -->
+<!ELEMENT odeComponentsProperties (odeComponentsProperty*)>
+<!ELEMENT odeComponentsProperty (key, value)>
+
+<!-- ==================== Common Elements ==================== -->
+<!ELEMENT key (#PCDATA)>
+<!ELEMENT value (#PCDATA)>
 `;

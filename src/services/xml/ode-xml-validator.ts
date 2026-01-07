@@ -3,17 +3,12 @@
  *
  * Validates ODE XML content against the DTD structure.
  * Since fast-xml-parser doesn't support DTD validation natively,
- * this module implements structural validation based on the DTD rules.
+ * this module implements structural validation based on the ODE DTD rules.
  *
- * Supports two formats:
- * 1. exe_document format (v3.0):
- *    <!ELEMENT exe_document (meta, navigation)>
- *    <!ELEMENT navigation (page+)>
- *    <!ELEMENT page (component*, page*)>
- *
- * 2. Legacy ode format (v2.0):
- *    <!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
- *    <!ELEMENT odeNavStructures (odeNavStructure+)>
+ * DTD Structure:
+ * <!ELEMENT ode (userPreferences?, odeResources?, odeProperties?, odeNavStructures)>
+ * <!ELEMENT odeNavStructures (odeNavStructure+)>
+ * <!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, ...)>
  */
 
 export interface ValidationError {
@@ -51,284 +46,43 @@ export function validateOdeXml(parsed: unknown): ValidationResult {
 
     const doc = parsed as Record<string, unknown>;
 
-    // Check for exe_document format (v3.0)
-    if (doc.exe_document) {
-        return validateExeDocumentXml(doc.exe_document, errors, warnings);
-    }
+    // Check for root element
+    if (!doc.ode) {
+        // Check for legacy formats (not errors, just different formats)
+        if (doc.exe_document || doc.instance) {
+            // Legacy formats are valid but don't need ODE validation
+            return { valid: true, errors: [], warnings: [] };
+        }
 
-    // Check for legacy ode format (v2.0)
-    if (doc.ode) {
-        return validateLegacyOdeXml(doc.ode, errors, warnings);
-    }
-
-    // Check for legacy instance format
-    if (doc.instance) {
-        // Legacy instance format is valid but doesn't need validation
-        return { valid: true, errors: [], warnings: [] };
-    }
-
-    errors.push({
-        code: 'MISSING_ROOT',
-        message: 'Missing <exe_document> or <ode> root element',
-        path: '/',
-        severity: 'error',
-    });
-    return { valid: false, errors, warnings };
-}
-
-/**
- * Validate exe_document format (v3.0)
- */
-function validateExeDocumentXml(
-    exeDocument: unknown,
-    errors: ValidationError[],
-    warnings: ValidationError[],
-): ValidationResult {
-    if (!exeDocument || typeof exeDocument !== 'object') {
         errors.push({
-            code: 'INVALID_EXE_DOCUMENT',
-            message: 'exe_document is not a valid object',
-            path: '/exe_document',
+            code: 'MISSING_ROOT',
+            message: 'Missing <ode> root element',
+            path: '/',
             severity: 'error',
         });
         return { valid: false, errors, warnings };
     }
 
-    const doc = exeDocument as Record<string, unknown>;
-
-    // Validate required meta section
-    if (!doc.meta) {
-        errors.push({
-            code: 'MISSING_META',
-            message: 'Missing required <meta> element',
-            path: '/exe_document',
-            severity: 'error',
-        });
-    } else {
-        validateExeDocumentMeta(doc.meta, errors, warnings);
-    }
-
-    // Validate required navigation section
-    if (!doc.navigation) {
-        errors.push({
-            code: 'MISSING_NAVIGATION',
-            message: 'Missing required <navigation> element',
-            path: '/exe_document',
-            severity: 'error',
-        });
-    } else {
-        validateExeDocumentNavigation(doc.navigation, '/exe_document/navigation', errors, warnings);
-    }
-
-    return {
-        valid: errors.length === 0,
-        errors,
-        warnings,
-    };
-}
-
-/**
- * Validate exe_document meta section
- */
-function validateExeDocumentMeta(meta: unknown, _errors: ValidationError[], warnings: ValidationError[]): void {
-    if (!meta || typeof meta !== 'object') return;
-
-    const m = meta as Record<string, unknown>;
-
-    // Title is recommended
-    if (!m.title) {
-        warnings.push({
-            code: 'MISSING_TITLE',
-            message: 'Document has no <title> in meta section',
-            path: '/exe_document/meta',
-            severity: 'warning',
-        });
-    }
-}
-
-/**
- * Validate exe_document navigation section
- */
-function validateExeDocumentNavigation(
-    navigation: unknown,
-    path: string,
-    errors: ValidationError[],
-    warnings: ValidationError[],
-): void {
-    if (!navigation || typeof navigation !== 'object') {
-        errors.push({
-            code: 'INVALID_NAVIGATION',
-            message: 'navigation is not a valid object',
-            path,
-            severity: 'error',
-        });
-        return;
-    }
-
-    const nav = navigation as Record<string, unknown>;
-    const page = nav.page;
-
-    // DTD: page+ (at least one required)
-    if (!page) {
-        errors.push({
-            code: 'MISSING_PAGE',
-            message: 'navigation must contain at least one <page> element',
-            path,
-            severity: 'error',
-        });
-        return;
-    }
-
-    const pageArray = Array.isArray(page) ? page : [page];
-
-    if (pageArray.length === 0) {
-        errors.push({
-            code: 'EMPTY_NAVIGATION',
-            message: 'navigation must contain at least one page',
-            path,
-            severity: 'error',
-        });
-        return;
-    }
-
-    // Validate each page
-    for (let i = 0; i < pageArray.length; i++) {
-        validateExeDocumentPage(pageArray[i], `${path}/page[${i}]`, errors, warnings);
-    }
-}
-
-/**
- * Validate exe_document page element
- */
-function validateExeDocumentPage(
-    page: unknown,
-    path: string,
-    errors: ValidationError[],
-    warnings: ValidationError[],
-): void {
-    if (!page || typeof page !== 'object') {
-        errors.push({
-            code: 'INVALID_PAGE',
-            message: 'page is not a valid object',
-            path,
-            severity: 'error',
-        });
-        return;
-    }
-
-    const p = page as Record<string, unknown>;
-
-    // Required attributes
-    if (!p['@_id']) {
-        errors.push({
-            code: 'MISSING_PAGE_ID',
-            message: 'page is missing required id attribute',
-            path,
-            severity: 'error',
-        });
-    }
-
-    if (!p['@_title']) {
-        errors.push({
-            code: 'MISSING_PAGE_TITLE',
-            message: 'page is missing required title attribute',
-            path,
-            severity: 'error',
-        });
-    }
-
-    // Validate optional components
-    if (p.component !== undefined) {
-        const compArray = Array.isArray(p.component) ? p.component : [p.component];
-        for (let i = 0; i < compArray.length; i++) {
-            validateExeDocumentComponent(compArray[i], `${path}/component[${i}]`, errors, warnings);
-        }
-    }
-
-    // Validate nested pages
-    if (p.page !== undefined) {
-        const pageArray = Array.isArray(p.page) ? p.page : [p.page];
-        for (let i = 0; i < pageArray.length; i++) {
-            validateExeDocumentPage(pageArray[i], `${path}/page[${i}]`, errors, warnings);
-        }
-    }
-}
-
-/**
- * Validate exe_document component element
- */
-function validateExeDocumentComponent(
-    component: unknown,
-    path: string,
-    errors: ValidationError[],
-    _warnings: ValidationError[],
-): void {
-    if (!component || typeof component !== 'object') {
-        errors.push({
-            code: 'INVALID_COMPONENT',
-            message: 'component is not a valid object',
-            path,
-            severity: 'error',
-        });
-        return;
-    }
-
-    const c = component as Record<string, unknown>;
-
-    // Required attributes
-    if (!c['@_type']) {
-        errors.push({
-            code: 'MISSING_COMPONENT_TYPE',
-            message: 'component is missing required type attribute',
-            path,
-            severity: 'error',
-        });
-    }
-
-    if (!c['@_id']) {
-        errors.push({
-            code: 'MISSING_COMPONENT_ID',
-            message: 'component is missing required id attribute',
-            path,
-            severity: 'error',
-        });
-    }
-}
-
-/**
- * Validate legacy ode format (v2.0)
- */
-function validateLegacyOdeXml(ode: unknown, errors: ValidationError[], warnings: ValidationError[]): ValidationResult {
-    if (!ode || typeof ode !== 'object') {
-        errors.push({
-            code: 'INVALID_ODE',
-            message: 'ode is not a valid object',
-            path: '/ode',
-            severity: 'error',
-        });
-        return { valid: false, errors, warnings };
-    }
-
-    const o = ode as Record<string, unknown>;
+    const ode = doc.ode as Record<string, unknown>;
 
     // Validate ode attributes
-    validateOdeAttributes(o, errors, warnings);
+    validateOdeAttributes(ode, errors, warnings);
 
     // Validate optional sections
-    if (o.userPreferences !== undefined) {
-        validateUserPreferences(o.userPreferences, errors, warnings);
+    if (ode.userPreferences !== undefined) {
+        validateUserPreferences(ode.userPreferences, errors, warnings);
     }
 
-    if (o.odeResources !== undefined) {
-        validateOdeResources(o.odeResources, errors, warnings);
+    if (ode.odeResources !== undefined) {
+        validateOdeResources(ode.odeResources, errors, warnings);
     }
 
-    if (o.odeProperties !== undefined) {
-        validateOdeProperties(o.odeProperties, errors, warnings);
+    if (ode.odeProperties !== undefined) {
+        validateOdeProperties(ode.odeProperties, errors, warnings);
     }
 
     // Validate required odeNavStructures
-    if (!o.odeNavStructures) {
+    if (!ode.odeNavStructures) {
         errors.push({
             code: 'MISSING_NAV_STRUCTURES',
             message: 'Missing required <odeNavStructures> element',
@@ -336,7 +90,7 @@ function validateLegacyOdeXml(ode: unknown, errors: ValidationError[], warnings:
             severity: 'error',
         });
     } else {
-        validateOdeNavStructures(o.odeNavStructures, errors, warnings);
+        validateOdeNavStructures(ode.odeNavStructures, errors, warnings);
     }
 
     return {

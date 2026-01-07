@@ -1,11 +1,5 @@
 /**
  * ElpxExporter tests
- *
- * Tests for the ELPX exporter which generates exe_document format (v3.0).
- * The exe_document format uses:
- * - <exe_document> as root element
- * - <meta> for metadata (title, author, etc.)
- * - <navigation> containing nested <page> elements with components
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
@@ -250,14 +244,13 @@ describe('ElpxExporter', () => {
             expect(result.data).toBeInstanceOf(Uint8Array);
         });
 
-        it('should generate content.xml with exe_document format', async () => {
+        it('should generate content.xml', async () => {
             await exporter.export();
 
             expect(zip.files.has('content.xml')).toBe(true);
             const contentXml = zip.files.get('content.xml') as string;
             expect(contentXml).toContain('<?xml');
-            expect(contentXml).toContain('<!DOCTYPE exe_document');
-            expect(contentXml).toContain('<exe_document>');
+            expect(contentXml).toContain('<ode');
         });
 
         it('should use custom filename when provided', async () => {
@@ -275,69 +268,87 @@ describe('ElpxExporter', () => {
         });
     });
 
-    describe('exe_document XML Structure', () => {
-        it('should include exe_document root element', async () => {
+    describe('ODE XML Structure', () => {
+        it('should include ode root element with version', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<exe_document>');
-            expect(contentXml).toContain('</exe_document>');
+            expect(contentXml).toContain('<ode');
+            expect(contentXml).toContain('xmlns="http://www.intef.es/xsd/ode"');
+            expect(contentXml).toContain('version="2.0"');
         });
 
-        it('should include meta section', async () => {
+        it('should include userPreferences section', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<meta>');
-            expect(contentXml).toContain('</meta>');
+            expect(contentXml).toContain('<userPreferences>');
+            expect(contentXml).toContain('<key>theme</key>');
+            expect(contentXml).toContain('<value>base</value>');
         });
 
-        it('should include navigation section', async () => {
+        it('should include odeResources section', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<navigation>');
-            expect(contentXml).toContain('</navigation>');
+            expect(contentXml).toContain('<odeResources>');
+            expect(contentXml).toContain('<key>odeId</key>');
+            expect(contentXml).toContain('<key>odeVersionId</key>');
+            expect(contentXml).toContain('<key>exe_version</key>');
         });
 
-        it('should include DOCTYPE declaration referencing DTD', async () => {
+        it('should include odeProperties section', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<!DOCTYPE exe_document SYSTEM "content.dtd">');
+            expect(contentXml).toContain('<odeProperties>');
+            expect(contentXml).toContain('<key>pp_title</key>');
+            expect(contentXml).toContain('<value>Test ELPX Project</value>');
+        });
+
+        it('should include odeNavStructures section', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odeNavStructures>');
+            expect(contentXml).toContain('<odeNavStructure>');
         });
     });
 
-    describe('Meta Section', () => {
-        it('should include title element', async () => {
+    describe('ODE Properties', () => {
+        it('should include title property', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<title>Test ELPX Project</title>');
+            expect(contentXml).toContain('<key>pp_title</key>');
+            expect(contentXml).toContain('<value>Test ELPX Project</value>');
         });
 
-        it('should include author element', async () => {
+        it('should include author property', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<author>Test Author</author>');
+            expect(contentXml).toContain('<key>pp_author</key>');
+            expect(contentXml).toContain('<value>Test Author</value>');
         });
 
-        it('should include language element', async () => {
+        it('should include language property', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<language>en</language>');
+            expect(contentXml).toContain('<key>pp_lang</key>');
+            expect(contentXml).toContain('<value>en</value>');
         });
 
-        it('should include theme element', async () => {
+        it('should include theme property', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<theme>base</theme>');
+            expect(contentXml).toContain('<key>pp_theme</key>');
+            expect(contentXml).toContain('<value>base</value>');
         });
 
-        it('should handle special characters in metadata', async () => {
+        it('should handle special characters in properties', async () => {
             document = new MockDocument(
                 {
                     title: 'Test & Project <Special>',
@@ -350,85 +361,138 @@ describe('ElpxExporter', () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            // XML builder should escape special characters
             expect(contentXml).toContain('Test &amp; Project');
             expect(contentXml).toContain('&lt;Special&gt;');
         });
     });
 
-    describe('Navigation Structure', () => {
-        it('should include page with id attribute', async () => {
+    describe('Navigation Structures', () => {
+        it('should include page ID', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('id="page-1"');
+            expect(contentXml).toContain('<odePageId>page-1</odePageId>');
         });
 
-        it('should include page with title attribute', async () => {
+        it('should include page name', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('title="Introduction"');
+            expect(contentXml).toContain('<pageName>Introduction</pageName>');
         });
 
-        it('should include nested pages for hierarchical structure', async () => {
+        it('should include parent page ID for nested pages', async () => {
             document = new MockDocument({}, hierarchicalPages);
             exporter = new ElpxExporter(document, resources, assets, zip);
 
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            // Parent page should contain nested child pages
-            expect(contentXml).toContain('id="page-1"');
-            expect(contentXml).toContain('title="Part 1"');
-            expect(contentXml).toContain('id="page-2"');
-            expect(contentXml).toContain('title="Chapter 1.1"');
+            expect(contentXml).toContain('<odeParentPageId>page-1</odeParentPageId>');
         });
 
-        it('should include multiple pages', async () => {
+        it('should include page order', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('id="page-1"');
-            expect(contentXml).toContain('id="page-2"');
+            expect(contentXml).toContain('<odeNavStructureOrder>0</odeNavStructureOrder>');
+            expect(contentXml).toContain('<odeNavStructureOrder>1</odeNavStructureOrder>');
+        });
+
+        it('should include page properties', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odeNavStructureProperties>');
+            expect(contentXml).toContain('<key>titlePage</key>');
+        });
+    });
+
+    describe('Page Structures (Blocks)', () => {
+        it('should include odePagStructures section', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odePagStructures>');
+            expect(contentXml).toContain('<odePagStructure>');
+        });
+
+        it('should include block ID', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odeBlockId>block-1</odeBlockId>');
+        });
+
+        it('should include block name', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<blockName>Content Block</blockName>');
+        });
+
+        it('should include block order', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odePagStructureOrder>0</odePagStructureOrder>');
+        });
+
+        it('should include block properties', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odePagStructureProperties>');
+            expect(contentXml).toContain('<key>visibility</key>');
         });
     });
 
     describe('Components (iDevices)', () => {
-        it('should include component elements', async () => {
+        it('should include odeComponents section', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<component');
+            expect(contentXml).toContain('<odeComponents>');
+            expect(contentXml).toContain('<odeComponent>');
         });
 
-        it('should include component type attribute', async () => {
+        it('should include iDevice ID', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('type="FreeTextIdevice"');
+            expect(contentXml).toContain('<odeIdeviceId>comp-1</odeIdeviceId>');
         });
 
-        it('should include component id attribute', async () => {
+        it('should include iDevice type', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('id="comp-1"');
+            expect(contentXml).toContain('<odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>');
         });
 
-        it('should include content element with HTML', async () => {
+        it('should include HTML content in CDATA', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<content>');
+            expect(contentXml).toContain('<htmlView><![CDATA[');
             expect(contentXml).toContain('Welcome to the course');
+            expect(contentXml).toContain(']]></htmlView>');
         });
 
-        it('should include position attribute', async () => {
+        it('should include JSON properties in CDATA', async () => {
             await exporter.export();
 
             const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('position="0"');
+            expect(contentXml).toContain('<jsonProperties><![CDATA[');
+            expect(contentXml).toContain('showTitle');
+            expect(contentXml).toContain(']]></jsonProperties>');
+        });
+
+        it('should include component order', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odeComponentsOrder>0</odeComponentsOrder>');
         });
     });
 
@@ -450,16 +514,7 @@ describe('ElpxExporter', () => {
 
             expect(loadedZip['content.xml']).toBeDefined();
             const contentXml = new TextDecoder().decode(loadedZip['content.xml']);
-            expect(contentXml).toContain('<exe_document>');
-        });
-
-        it('should include content.dtd in ZIP', async () => {
-            const result = await exporter.export();
-            const loadedZip = unzipSync(new Uint8Array(result.data!));
-
-            expect(loadedZip['content.dtd']).toBeDefined();
-            const dtd = new TextDecoder().decode(loadedZip['content.dtd']);
-            expect(dtd).toContain('<!ELEMENT exe_document');
+            expect(contentXml).toContain('<ode');
         });
 
         it('should include theme files in ZIP with original names', async () => {
@@ -480,14 +535,14 @@ describe('ElpxExporter', () => {
     });
 
     describe('Error Handling', () => {
-        it('should fail for empty pages array (invalid structure - requires at least one page)', async () => {
+        it('should fail for empty pages array (invalid ODE - requires at least one page)', async () => {
             document = new MockDocument({}, []);
             exporter = new ElpxExporter(document, resources, assets, zip);
 
             const result = await exporter.export();
-            // Empty pages array produces invalid exe_document XML (DTD requires at least one page)
+            // Empty pages array produces invalid ODE XML (DTD requires at least one odeNavStructure)
             expect(result.success).toBe(false);
-            expect(result.error).toBeDefined();
+            expect(result.error).toContain('MISSING_NAV_STRUCTURES');
         });
 
         it('should handle export with no title', async () => {
@@ -537,6 +592,26 @@ describe('ElpxExporter', () => {
 
             // Should still succeed
             expect(result.success).toBe(true);
+        });
+    });
+
+    describe('ODE ID Generation', () => {
+        it('should generate valid ODE ID format', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            // ODE ID format: YYYYMMDDHHmmss + 6 alphanumeric
+            const odeIdMatch = contentXml.match(/<key>odeId<\/key>\s*<value>(\d{14}[A-Z0-9]{6})<\/value>/);
+            expect(odeIdMatch).toBeTruthy();
+        });
+
+        it('should generate valid version ID format', async () => {
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            // Version ID format: YYYYMMDDHHmmss + 6 alphanumeric
+            const versionIdMatch = contentXml.match(/<key>odeVersionId<\/key>\s*<value>(\d{14}[A-Z0-9]{6})<\/value>/);
+            expect(versionIdMatch).toBeTruthy();
         });
     });
 
@@ -608,6 +683,175 @@ describe('ElpxExporter', () => {
         });
     });
 
+    describe('Page Properties', () => {
+        it('should export page properties when defined', async () => {
+            const pagesWithProperties: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page with Properties',
+                    parentId: null,
+                    order: 0,
+                    properties: {
+                        customClass: 'special-page',
+                        icon: 'star',
+                        hidden: false,
+                    },
+                    blocks: [],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithProperties);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<key>customClass</key>');
+            expect(contentXml).toContain('<value>special-page</value>');
+            expect(contentXml).toContain('<key>icon</key>');
+            expect(contentXml).toContain('<value>star</value>');
+        });
+    });
+
+    describe('Block Properties', () => {
+        it('should export all block properties', async () => {
+            const pagesWithAllBlockProps: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Full Properties Block',
+                            order: 0,
+                            properties: {
+                                visibility: true,
+                                teacherOnly: true,
+                                allowToggle: true,
+                                minimized: false,
+                                identifier: 'custom-id',
+                                cssClass: 'custom-class',
+                            },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithAllBlockProps);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<key>teacherOnly</key>');
+            expect(contentXml).toContain('<key>allowToggle</key>');
+            expect(contentXml).toContain('<key>minimized</key>');
+            expect(contentXml).toContain('<key>identifier</key>');
+            expect(contentXml).toContain('<value>custom-id</value>');
+            expect(contentXml).toContain('<key>cssClass</key>');
+            expect(contentXml).toContain('<value>custom-class</value>');
+        });
+    });
+
+    describe('Component Structure Properties', () => {
+        it('should export component structureProperties when defined', async () => {
+            const pagesWithComponentProps: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Test</p>',
+                                    structureProperties: {
+                                        visibility: true,
+                                        teacherOnly: false,
+                                        identifier: 'comp-custom-id',
+                                        cssClass: 'comp-custom-class',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithComponentProps);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<odeComponentsProperties>');
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<key>teacherOnly</key>');
+            expect(contentXml).toContain('<key>identifier</key>');
+            expect(contentXml).toContain('<value>comp-custom-id</value>');
+            expect(contentXml).toContain('<key>cssClass</key>');
+            expect(contentXml).toContain('<value>comp-custom-class</value>');
+        });
+
+        it('should use default visibility when no structureProperties defined', async () => {
+            // The existing samplePages don't have structureProperties
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            // Should have default visibility property
+            expect(contentXml).toContain('<odeComponentsProperties>');
+            expect(contentXml).toContain('<key>visibility</key>');
+            expect(contentXml).toContain('<value>true</value>');
+        });
+    });
+
+    describe('Additional Metadata Properties', () => {
+        it('should export all metadata properties when defined', async () => {
+            document = new MockDocument(
+                {
+                    title: 'Full Metadata Project',
+                    author: 'Test Author',
+                    language: 'es',
+                    description: 'A complete project',
+                    license: 'CC-BY-NC',
+                    theme: 'modern',
+                    keywords: 'test, project, metadata',
+                    category: 'Education',
+                    addAccessibilityToolbar: true,
+                    addMathJax: true,
+                    customStyles: '.custom { color: red; }',
+                    exelearningVersion: '3.1.0',
+                },
+                samplePages,
+            );
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<key>pp_keywords</key>');
+            expect(contentXml).toContain('<value>test, project, metadata</value>');
+            expect(contentXml).toContain('<key>pp_category</key>');
+            expect(contentXml).toContain('<value>Education</value>');
+            expect(contentXml).toContain('<key>pp_addAccessibilityToolbar</key>');
+            expect(contentXml).toContain('<value>true</value>');
+            expect(contentXml).toContain('<key>pp_addMathJax</key>');
+            expect(contentXml).toContain('<key>pp_customStyles</key>');
+            expect(contentXml).toContain('<key>pp_exelearning_version</key>');
+        });
+    });
+
     describe('Logo Handling', () => {
         it('should include logo when fetchExeLogo returns data', async () => {
             const result = await exporter.export();
@@ -669,46 +913,6 @@ describe('ElpxExporter', () => {
             // Old renamed names should NOT exist
             expect(zip.files.has('theme/content.css')).toBe(false);
             expect(zip.files.has('theme/default.js')).toBe(false);
-        });
-    });
-
-    describe('Version Information', () => {
-        it('should include version in meta section', async () => {
-            await exporter.export();
-
-            const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<version>');
-        });
-
-        it('should include exelearning_version in meta section', async () => {
-            await exporter.export();
-
-            const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<exelearning_version>');
-        });
-    });
-
-    describe('Date Fields', () => {
-        it('should include created date in meta section', async () => {
-            await exporter.export();
-
-            const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<created>');
-        });
-
-        it('should include modified date in meta section', async () => {
-            await exporter.export();
-
-            const contentXml = zip.files.get('content.xml') as string;
-            expect(contentXml).toContain('<modified>');
-        });
-    });
-
-    describe('Custom Directory', () => {
-        it('should include custom directory marker', async () => {
-            await exporter.export();
-
-            expect(zip.files.has('custom/.gitkeep')).toBe(true);
         });
     });
 });

@@ -48,8 +48,8 @@ export function buildFromStructure(structure: ParsedOdeStructure): string {
     // Generate XML
     const xml = builder.build(document);
 
-    // Add XML declaration and DOCTYPE
-    const xmlWithDeclaration = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE exe_document SYSTEM "content.dtd">\n${xml}`;
+    // Add XML declaration
+    const xmlWithDeclaration = `<?xml version="1.0" encoding="UTF-8"?>\n${xml}`;
 
     console.log('[XmlBuilder] Successfully built XML document');
     return xmlWithDeclaration;
