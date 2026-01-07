@@ -1651,21 +1651,23 @@ test.describe('Text iDevice', () => {
 
             // Wait for PDF.js to render - use polling instead of fixed timeout
             // PDF.js needs time to: 1) load library, 2) fetch blob, 3) render canvas
-            await page.waitForFunction(
-                () => {
-                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                    if (!previewIframe?.contentDocument) return false;
+            await page
+                .waitForFunction(
+                    () => {
+                        const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                        if (!previewIframe?.contentDocument) return false;
 
-                    const doc = previewIframe.contentDocument;
-                    // Either PDF.js viewer or fallback card should be present
-                    const viewer = doc.querySelector('.exe-pdf-viewer');
-                    const card = doc.querySelector('.exe-pdf-preview-card');
-                    return !!viewer || !!card;
-                },
-                { timeout: 30000, polling: 500 },
-            ).catch(() => {
-                // If timeout, continue to get diagnostic info
-            });
+                        const doc = previewIframe.contentDocument;
+                        // Either PDF.js viewer or fallback card should be present
+                        const viewer = doc.querySelector('.exe-pdf-viewer');
+                        const card = doc.querySelector('.exe-pdf-preview-card');
+                        return !!viewer || !!card;
+                    },
+                    { timeout: 30000, polling: 500 },
+                )
+                .catch(() => {
+                    // If timeout, continue to get diagnostic info
+                });
 
             // Additional wait for canvas rendering
             await page.waitForTimeout(2000);
