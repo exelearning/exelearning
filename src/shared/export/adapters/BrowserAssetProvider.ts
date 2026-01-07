@@ -334,29 +334,38 @@ export class BrowserAssetProvider implements AssetProvider {
                 }
             } else {
                 console.log(`[BrowserAssetProvider] AssetManager not available`);
-            }
 
-            // Fall back to legacy AssetCacheManager if AssetManager returned nothing
-            // AssetCacheManager uses IndexedDB 'exelearning-assets' database
-            if (this.assetCache) {
-                console.log(`[BrowserAssetProvider] Trying legacy AssetCacheManager...`);
-                const assets = await this.assetCache.getAllAssets();
-                console.log(`[BrowserAssetProvider] Found ${assets.length} assets from AssetCacheManager (legacy)`);
+                // Fall back to legacy AssetCacheManager ONLY when AssetManager is not available
+                // AssetCacheManager uses IndexedDB 'exelearning-assets' database
+                // NOTE: If AssetManager is available, we trust it completely (even if it returns 0 assets)
+                // This prevents unnecessary database open attempts that can fail in multi-tab scenarios
+                if (this.assetCache) {
+                    console.log(`[BrowserAssetProvider] Trying legacy AssetCacheManager...`);
+                    try {
+                        const assets = await this.assetCache.getAllAssets();
+                        console.log(
+                            `[BrowserAssetProvider] Found ${assets.length} assets from AssetCacheManager (legacy)`,
+                        );
 
-                for (const asset of assets) {
-                    if (asset.blob) {
-                        const arrayBuffer = await asset.blob.arrayBuffer();
-                        const assetId = String(asset.assetId);
-                        const filename = asset.metadata?.filename || `asset-${assetId}`;
-                        const originalPath = asset.metadata?.originalPath || `${assetId}/${filename}`;
+                        for (const asset of assets) {
+                            if (asset.blob) {
+                                const arrayBuffer = await asset.blob.arrayBuffer();
+                                const assetId = String(asset.assetId);
+                                const filename = asset.metadata?.filename || `asset-${assetId}`;
+                                const originalPath = asset.metadata?.originalPath || `${assetId}/${filename}`;
 
-                        result.push({
-                            id: assetId,
-                            filename,
-                            originalPath,
-                            mime: asset.metadata?.mimeType || 'application/octet-stream',
-                            data: new Uint8Array(arrayBuffer),
-                        });
+                                result.push({
+                                    id: assetId,
+                                    filename,
+                                    originalPath,
+                                    mime: asset.metadata?.mimeType || 'application/octet-stream',
+                                    data: new Uint8Array(arrayBuffer),
+                                });
+                            }
+                        }
+                    } catch (legacyError) {
+                        // Log warning but continue - legacy database may not be accessible
+                        console.warn('[BrowserAssetProvider] Legacy AssetCacheManager failed:', legacyError);
                     }
                 }
             }
