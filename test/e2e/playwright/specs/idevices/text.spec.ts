@@ -2532,10 +2532,16 @@ test.describe('Text iDevice', () => {
             // Wait for dropdown menu to be visible
             await page.waitForSelector('#modalFileManager .dropdown-menu.show', { timeout: 5000 });
 
-            // Handle the folder name prompt by setting up dialog listener BEFORE clicking extract
+            // Handle dialogs: prompt for folder name and alert for success
+            // Note: dialog.accept() with explicit value ensures consistent behavior across browsers
             page.on('dialog', async dialog => {
-                // Accept the default folder name
-                await dialog.accept();
+                if (dialog.type() === 'prompt') {
+                    // Accept prompt with the suggested folder name (ZIP filename without extension)
+                    await dialog.accept('aaa_web');
+                } else {
+                    // Accept alert dialogs (extraction success message)
+                    await dialog.accept();
+                }
             });
 
             // Click extract button (it should be visible now since a ZIP is selected)
@@ -2543,17 +2549,50 @@ test.describe('Text iDevice', () => {
             await expect(extractBtn).toBeVisible({ timeout: 5000 });
             await extractBtn.click();
 
-            // Wait for extraction to complete (files appear in the list)
-            // The extraction creates a folder and extracts files - wait for index.html to appear
+            // Wait for extraction to complete - the folder "aaa_web" should appear
+            // (the prompt dialog for folder name is auto-accepted by the dialog handler)
+            // After extraction, an alert "Extracted X files successfully" appears (also auto-accepted)
             await page.waitForFunction(
                 () => {
                     const items = document.querySelectorAll('#modalFileManager .media-library-item');
-                    return Array.from(items).some(item => item.textContent?.toLowerCase().includes('index.html'));
+                    // Look for the extracted folder (aaa_web) - files are inside the folder
+                    return Array.from(items).some(
+                        item =>
+                            item.textContent?.toLowerCase().includes('aaa_web') &&
+                            !item.textContent?.toLowerCase().includes('.zip'),
+                    );
+                },
+                { timeout: 20000 },
+            );
+
+            // Close any dropdown menu that may still be open (Firefox leaves it open after extract)
+            // Click on the modal header to close any dropdown and deselect items
+            await page.click('#modalFileManager .modal-header', { force: true });
+            await page.waitForTimeout(500);
+
+            // 6. Navigate into the extracted folder to find index.html
+            // Folder items have class "media-library-folder" and data-folder-name attribute
+            const extractedFolder = page.locator(
+                '#modalFileManager .media-library-folder[data-folder-name="aaa_web"]',
+            );
+
+            // Double-click to navigate into the folder
+            await expect(extractedFolder).toBeVisible({ timeout: 5000 });
+            await extractedFolder.dblclick();
+            await page.waitForTimeout(1500);
+
+            // Wait for index.html to be visible inside the folder
+            await page.waitForFunction(
+                () => {
+                    const items = document.querySelectorAll('#modalFileManager .media-library-item');
+                    return Array.from(items).some(item =>
+                        item.textContent?.toLowerCase().includes('index.html'),
+                    );
                 },
                 { timeout: 15000 },
             );
 
-            // 6. Find and select index.html
+            // Find and select index.html
             const htmlFile = page
                 .locator('#modalFileManager .media-library-item')
                 .filter({ hasText: /index\.html/i })
