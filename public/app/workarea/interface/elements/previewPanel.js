@@ -13,6 +13,7 @@ export default class PreviewPanelManager {
         this.panel = document.getElementById('previewsidenav');
         this.overlay = document.getElementById('preview-sidenav-overlay');
         this.closeButton = document.getElementById('previewsidenavclose');
+        this.extractButton = document.getElementById('preview-extract-button');
         this.pinButton = document.getElementById('preview-pin-button');
         this.refreshButton = document.getElementById('preview-refresh-button');
         this.iframe = document.getElementById('preview-iframe');
@@ -20,6 +21,7 @@ export default class PreviewPanelManager {
         // DOM Elements - Pinned mode
         this.pinnedContainer = document.getElementById('preview-pinned-container');
         this.pinnedIframe = document.getElementById('preview-pinned-iframe');
+        this.pinnedExtractButton = document.getElementById('preview-pinned-extract-button');
         this.unpinButton = document.getElementById('preview-unpin-button');
         this.pinnedRefreshButton = document.getElementById('preview-pinned-refresh-button');
 
@@ -53,6 +55,7 @@ export default class PreviewPanelManager {
         // Slide-out panel events
         this.closeButton?.addEventListener('click', () => this.close());
         this.overlay?.addEventListener('click', () => this.close());
+        this.extractButton?.addEventListener('click', () => this.extractToNewTab());
         this.pinButton?.addEventListener('click', () => this.pin());
         this.refreshButton?.addEventListener('click', () => this.refresh());
 
@@ -65,6 +68,7 @@ export default class PreviewPanelManager {
         });
 
         // Pinned mode events
+        this.pinnedExtractButton?.addEventListener('click', () => this.extractToNewTab());
         this.unpinButton?.addEventListener('click', () => this.unpin());
         this.pinnedRefreshButton?.addEventListener('click', () => this.refresh());
 
@@ -349,6 +353,124 @@ export default class PreviewPanelManager {
             this.isLoading = false;
             this.hideLoadingState();
         }
+    }
+
+    /**
+     * Extract preview to a new browser tab
+     * Generates a standalone HTML preview and opens it in a new tab
+     */
+    async extractToNewTab() {
+        try {
+            Logger.log('[PreviewPanel] Extracting preview to new tab...');
+
+            // Generate HTML using the standalone exporter (different from inline preview)
+            const html = await this.generateStandalonePreviewHtml();
+            if (!html) {
+                Logger.error('[PreviewPanel] Failed to generate standalone preview HTML');
+                return;
+            }
+
+            // Create a blob URL for the HTML
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+
+            // Open in new tab
+            const newTab = window.open(blobUrl, '_blank');
+
+            if (newTab) {
+                Logger.log('[PreviewPanel] Preview opened in new tab');
+                // Revoke blob URL after a delay to allow the new tab to load
+                setTimeout(() => {
+                    URL.revokeObjectURL(blobUrl);
+                }, 5000);
+            } else {
+                Logger.warn('[PreviewPanel] Popup blocked - trying fallback');
+                // Fallback: create a download link
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.target = '_blank';
+                a.click();
+                setTimeout(() => {
+                    URL.revokeObjectURL(blobUrl);
+                }, 5000);
+            }
+        } catch (error) {
+            Logger.error('[PreviewPanel] Error extracting to new tab:', error);
+        }
+    }
+
+    /**
+     * Generate standalone preview HTML (for new tab extraction)
+     * Unlike inline preview, this version converts all assets to data URLs
+     * so the page works independently without the parent window
+     * @returns {Promise<string|null>} HTML string or null on error
+     */
+    async generateStandalonePreviewHtml() {
+        const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+        if (!yjsBridge?.documentManager) {
+            Logger.warn('[PreviewPanel] Yjs document manager not available');
+            return null;
+        }
+
+        const SharedExporters = window.SharedExporters;
+        if (!SharedExporters?.generatePreview) {
+            Logger.error('[PreviewPanel] SharedExporters not loaded');
+            return null;
+        }
+
+        const documentManager = yjsBridge.documentManager;
+        const resourceFetcher = yjsBridge.resourceFetcher || null;
+
+        // Get theme URL
+        const selectedTheme = eXeLearning.app?.themes?.selected;
+        let themeUrl = selectedTheme?.path || null;
+        if (themeUrl && !themeUrl.startsWith('http')) {
+            themeUrl = window.location.origin + themeUrl;
+        }
+
+        const previewOptions = {
+            baseUrl: window.location.origin,
+            basePath: eXeLearning.app.config?.basePath || '',
+            version: eXeLearning.app.config?.version || 'v1',
+            themeUrl: themeUrl,
+        };
+
+        // Generate preview
+        const result = await SharedExporters.generatePreview(
+            documentManager,
+            resourceFetcher,
+            previewOptions
+        );
+
+        if (!result.success || !result.html) {
+            throw new Error(result.error || 'Failed to generate preview');
+        }
+
+        // Add MIME types to media elements
+        let html = typeof window.addMediaTypes === 'function'
+            ? window.addMediaTypes(result.html)
+            : result.html;
+
+        // Simplify MediaElement.js structures
+        if (typeof window.simplifyMediaElements === 'function') {
+            html = window.simplifyMediaElements(html);
+        }
+
+        // For standalone preview, convert ALL assets to data URLs (including PDFs)
+        // so the page works independently without needing the parent window
+        if (typeof window.resolveAssetUrlsAsync === 'function') {
+            try {
+                html = await window.resolveAssetUrlsAsync(html, {
+                    convertBlobUrls: true,      // Convert to data URLs for portability
+                    convertIframeBlobUrls: true, // Include iframe PDFs
+                    skipIframeSrc: false         // Don't skip iframes - convert them too
+                });
+            } catch (error) {
+                Logger.warn('[PreviewPanel] Failed to resolve asset URLs for standalone:', error);
+            }
+        }
+
+        return html;
     }
 
     /**

@@ -231,6 +231,11 @@ $preview-transition: 0.3s ease;
 }
 
 // Iconos personalizados para el panel
+.external-link-icon::before {
+    content: "open_in_new";
+    font-family: var(--icons-ff);
+}
+
 .pin-icon::before {
     content: "push_pin";
     font-family: var(--icons-ff);
