@@ -131,25 +131,26 @@ describe('BrowserResourceProvider', () => {
     describe('fetchTheme', () => {
         it('should return theme files as Uint8Array map', async () => {
             const themeFiles = new Map<string, Blob>();
-            themeFiles.set('content.css', createMockBlob('/* theme css */'));
-            themeFiles.set('default.js', createMockBlob('// theme js'));
+            // Theme files use original names (style.css, style.js) - never renamed
+            themeFiles.set('style.css', createMockBlob('/* theme css */'));
+            themeFiles.set('style.js', createMockBlob('// theme js'));
             mockFetcher.setTheme('base', themeFiles);
 
             const result = await provider.fetchTheme('base');
 
             expect(result).toBeInstanceOf(Map);
-            expect(result.has('content.css')).toBe(true);
-            expect(result.has('default.js')).toBe(true);
+            expect(result.has('style.css')).toBe(true);
+            expect(result.has('style.js')).toBe(true);
         });
 
         it('should convert Blob to Uint8Array', async () => {
             const cssContent = '/* CSS content */';
             const themeFiles = new Map<string, Blob>();
-            themeFiles.set('content.css', createMockBlob(cssContent));
+            themeFiles.set('style.css', createMockBlob(cssContent));
             mockFetcher.setTheme('blue', themeFiles);
 
             const result = await provider.fetchTheme('blue');
-            const buffer = result.get('content.css');
+            const buffer = result.get('style.css');
 
             expect(buffer).toBeInstanceOf(Uint8Array);
             expect(new TextDecoder().decode(buffer!)).toBe(cssContent);

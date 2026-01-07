@@ -133,6 +133,22 @@ export class Epub3Exporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes
+            const themeRootFiles: string[] = [];
+            let themeFilesMap: Map<string, Uint8Array> | null = null;
+            try {
+                themeFilesMap = await this.resources.fetchTheme(themeName);
+                for (const [filePath] of themeFilesMap) {
+                    // Track root-level CSS/JS files (no path separator = root level)
+                    if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
+                        themeRootFiles.push(filePath);
+                    }
+                }
+            } catch {
+                // Will use fallback theme later
+                themeRootFiles.push('style.css', 'style.js');
+            }
+
             // 1. Add mimetype file (MUST be first, uncompressed)
             // Note: The ZIP provider should handle this specially
             this.zip.addFile('mimetype', EPUB3_MIMETYPE);
@@ -148,7 +164,7 @@ export class Epub3Exporter extends BaseExporter {
             // 4. Generate XHTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const xhtml = this.generatePageXhtml(page, pages, meta, i === 0);
+                const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, themeRootFiles);
                 const filename = i === 0 ? 'index.xhtml' : `html/${this.sanitizePageFilename(page.title)}.xhtml`;
                 this.zip.addFile(`EPUB/${filename}`, xhtml);
 
@@ -180,26 +196,18 @@ export class Epub3Exporter extends BaseExporter {
                 // Logo not available
             }
 
-            // 6. Fetch and add theme (renaming style.css -> content.css, style.js -> default.js)
-            try {
-                const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [filePath, content] of themeFiles) {
-                    // Rename theme files to legacy export format
-                    let exportPath = filePath;
-                    if (filePath === 'style.css') {
-                        exportPath = 'content.css';
-                    } else if (filePath === 'style.js') {
-                        exportPath = 'default.js';
-                    }
-                    this.zip.addFile(`EPUB/theme/${exportPath}`, content);
-                    const ext = this.getFileExtensionFromPath(exportPath);
+            // 6. Add theme files (already pre-fetched in step 0)
+            if (themeFilesMap) {
+                for (const [filePath, content] of themeFilesMap) {
+                    this.zip.addFile(`EPUB/theme/${filePath}`, content);
+                    const ext = this.getFileExtensionFromPath(filePath);
                     const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
-                    this.addManifestItem(this.generateUniqueId(`theme-${exportPath}`), `theme/${exportPath}`, mimeType);
+                    this.addManifestItem(this.generateUniqueId(`theme-${filePath}`), `theme/${filePath}`, mimeType);
                 }
-            } catch {
+            } else {
                 // Add fallback theme
-                this.zip.addFile('EPUB/theme/content.css', this.getFallbackThemeCss());
-                this.addManifestItem('theme-css', 'theme/content.css', 'text/css');
+                this.zip.addFile('EPUB/theme/style.css', this.getFallbackThemeCss());
+                this.addManifestItem('theme-css', 'theme/style.css', 'text/css');
             }
 
             // 7. Detect and fetch required libraries
@@ -468,12 +476,18 @@ export class Epub3Exporter extends BaseExporter {
 
     /**
      * Generate XHTML page
+     * @param page - Page data
+     * @param allPages - All pages in the project
+     * @param meta - Project metadata
+     * @param isIndex - Whether this is the index page
+     * @param themeFiles - List of root-level theme CSS/JS files
      */
     private generatePageXhtml(
         page: ExportPage,
         allPages: ExportPage[],
         meta: ExportMetadata,
         isIndex: boolean,
+        themeFiles?: string[],
     ): string {
         const lang = meta.language || 'en';
         const basePath = isIndex ? '' : '../';
@@ -494,6 +508,8 @@ export class Epub3Exporter extends BaseExporter {
             description: meta.description || '',
             licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
             bodyClass: 'exe-export exe-epub',
+            // Theme files for HTML head includes
+            themeFiles: themeFiles || [],
         });
 
         // Convert HTML to XHTML
