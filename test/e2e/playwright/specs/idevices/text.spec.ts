@@ -2432,5 +2432,366 @@ test.describe('Text iDevice', () => {
             // Verify the iframe was processed (found in preview)
             expect(previewInfo.hasIframe).toBe(true);
         });
+
+        /**
+         * Full E2E test: Upload ZIP, extract, insert HTML, verify CSS in all contexts.
+         *
+         * Tests the complete flow of embedding an HTML website from a ZIP file:
+         * 1. Upload aaa_web.zip via Media Library
+         * 2. Extract the ZIP
+         * 3. Insert index.html into TinyMCE
+         * 4. Verify CSS styling in TinyMCE editor (edition mode)
+         * 5. Verify CSS styling in preview panel
+         * 6. Verify CSS styling in standalone preview (new tab)
+         * 7. Verify internal navigation preserves CSS in standalone preview
+         */
+        test('should display embedded HTML from ZIP with CSS in editor, preview, and standalone', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            // 1. Create project and navigate to workarea
+            const projectUuid = await createProject(page, 'ZIP HTML Embed Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            // Wait for Yjs to be ready
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 2. Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // Wait for iDevice to be visible
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ state: 'visible', timeout: 15000 });
+
+            // Enter edit mode if needed
+            const editorBody = block.locator('iframe.tox-edit-area__iframe').first();
+            const editorVisible = await editorBody.isVisible().catch(() => false);
+            if (!editorVisible) {
+                await block.click();
+                await page.waitForTimeout(1000);
+            }
+
+            // Wait for TinyMCE to load
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // 3. Click multimedia button to open media dialog
+            const multimediaBtn = page
+                .locator(
+                    '.tox-tbtn[aria-label*="media" i], .tox-tbtn[aria-label*="multimedia" i], .tox-tbtn[title*="media" i]',
+                )
+                .first();
+            await expect(multimediaBtn).toBeVisible({ timeout: 10000 });
+            await multimediaBtn.click();
+
+            // Wait for TinyMCE media dialog
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+
+            // Click Browse button to open Media Library
+            const browseBtn = page.locator('.tox-dialog .tox-browse-url').first();
+            await expect(browseBtn).toBeVisible({ timeout: 5000 });
+            await browseBtn.click();
+
+            // Wait for Media Library modal
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            // 4. Upload ZIP file
+            const fileInput = page.locator('#modalFileManager .media-library-upload-input');
+            await fileInput.setInputFiles('test/fixtures/aaa_web.zip');
+
+            // Wait for upload to complete and ZIP item to appear
+            await page.waitForTimeout(2000);
+            const zipItem = page
+                .locator('#modalFileManager .media-library-item')
+                .filter({ hasText: /aaa_web\.zip/i })
+                .first();
+            await expect(zipItem).toBeVisible({ timeout: 10000 });
+
+            // 5. Select ZIP and extract it
+            await zipItem.click();
+            await page.waitForTimeout(500);
+
+            // Wait for dropdown toggle to be enabled (happens when file is selected)
+            const moreBtn = page.locator('#modalFileManager .media-library-more-btn.dropdown-toggle');
+            await expect(moreBtn).toBeEnabled({ timeout: 5000 });
+
+            // Click dropdown to show extract option
+            await moreBtn.click();
+            await page.waitForTimeout(300);
+
+            // Wait for dropdown menu to be visible
+            await page.waitForSelector('#modalFileManager .dropdown-menu.show', { timeout: 5000 });
+
+            // Handle the folder name prompt by setting up dialog listener BEFORE clicking extract
+            page.on('dialog', async dialog => {
+                // Accept the default folder name
+                await dialog.accept();
+            });
+
+            // Click extract button (it should be visible now since a ZIP is selected)
+            const extractBtn = page.locator('#modalFileManager .dropdown-item.media-library-extract-btn');
+            await expect(extractBtn).toBeVisible({ timeout: 5000 });
+            await extractBtn.click();
+
+            // Wait for extraction to complete (files appear in the list)
+            // The extraction creates a folder and extracts files - wait for index.html to appear
+            await page.waitForFunction(
+                () => {
+                    const items = document.querySelectorAll('#modalFileManager .media-library-item');
+                    return Array.from(items).some(item => item.textContent?.toLowerCase().includes('index.html'));
+                },
+                { timeout: 15000 },
+            );
+
+            // 6. Find and select index.html
+            const htmlFile = page
+                .locator('#modalFileManager .media-library-item')
+                .filter({ hasText: /index\.html/i })
+                .first();
+            await expect(htmlFile).toBeVisible({ timeout: 5000 });
+            await htmlFile.click();
+            await page.waitForTimeout(500);
+
+            // 7. Insert HTML file
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn').first();
+            await insertBtn.click();
+            await page.waitForTimeout(2000);
+
+            // Close TinyMCE dialog if still open
+            if ((await page.locator('.tox-dialog').count()) > 0) {
+                await page.keyboard.press('Escape');
+                await page.waitForTimeout(500);
+            }
+
+            // 8. Verify iframe is in TinyMCE content
+            const editorIframeInfo = await page.evaluate(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                const content = editor?.getContent() || '';
+                const doc = editor?.getDoc?.() as Document | undefined;
+
+                // Look for iframe in editor content
+                const hasIframe = content.includes('<iframe') || content.includes('data-mce-html');
+                let styleCount = 0;
+
+                // Try to access the iframe in the editor body to check if styles loaded
+                if (doc) {
+                    const iframes = doc.querySelectorAll('iframe');
+                    for (const iframe of iframes) {
+                        try {
+                            const iframeDoc = iframe.contentDocument;
+                            if (iframeDoc) {
+                                styleCount = iframeDoc.querySelectorAll('style').length;
+                            }
+                        } catch {
+                            // Cross-origin, count from src attribute check
+                        }
+                    }
+                }
+
+                return {
+                    hasIframe,
+                    styleCount,
+                    contentLength: content.length,
+                };
+            });
+
+            console.log('Editor iframe info:', editorIframeInfo);
+            expect(editorIframeInfo.hasIframe).toBe(true);
+
+            // 9. Save the iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // 10. Verify iframe in saved iDevice content
+            const savedIdeviceInfo = await page.evaluate(() => {
+                const idevice = document.querySelector('#node-content article .idevice_node.text');
+                if (!idevice) return { error: 'No idevice found' };
+
+                const iframe = idevice.querySelector('iframe');
+                if (!iframe) return { hasIframe: false };
+
+                let styleCount = 0;
+                try {
+                    const doc = iframe.contentDocument;
+                    if (doc) {
+                        styleCount = doc.querySelectorAll('style').length;
+                    }
+                } catch {
+                    // Cross-origin
+                }
+
+                return {
+                    hasIframe: true,
+                    src: iframe.getAttribute('src')?.substring(0, 50) || '',
+                    dataSrc: iframe.getAttribute('data-asset-src')?.substring(0, 50) || '',
+                    styleCount,
+                };
+            });
+
+            console.log('Saved iDevice iframe info:', savedIdeviceInfo);
+            expect(savedIdeviceInfo.hasIframe).toBe(true);
+
+            // 11. Open preview panel and verify CSS
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+            await page.waitForTimeout(3000);
+
+            // Check preview iframe for styles
+            const previewInfo = await page.evaluate(() => {
+                const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                const doc = previewIframe?.contentDocument;
+                if (!doc) return { error: 'No preview iframe document' };
+
+                // Find HTML iframe in preview
+                const htmlIframe = doc.querySelector(
+                    'iframe[data-asset-src], iframe[src^="blob:"]',
+                ) as HTMLIFrameElement;
+                if (!htmlIframe) {
+                    return { hasIframe: false, iframeCount: doc.querySelectorAll('iframe').length };
+                }
+
+                let styleCount = 0;
+                let hasNav = false;
+                let title = '';
+                try {
+                    const innerDoc = htmlIframe.contentDocument;
+                    if (innerDoc) {
+                        styleCount = innerDoc.querySelectorAll('style').length;
+                        hasNav = !!innerDoc.querySelector('nav, #siteNav, .sidenav');
+                        title = innerDoc.title || '';
+                    }
+                } catch {
+                    // Cross-origin
+                }
+
+                return {
+                    hasIframe: true,
+                    styleCount,
+                    hasNav,
+                    title,
+                    src: htmlIframe.getAttribute('src')?.substring(0, 50) || '',
+                };
+            });
+
+            console.log('Preview panel info:', previewInfo);
+            expect(previewInfo.hasIframe).toBe(true);
+            // CSS should have loaded (style tags from resolved HTML)
+            expect(previewInfo.styleCount).toBeGreaterThan(0);
+
+            // 12. Open standalone preview (new tab) and verify CSS
+            // Call extractToNewTab() directly via previewPanel object
+            const popupPromise = page.context().waitForEvent('page', { timeout: 30000 });
+            await page.evaluate(async () => {
+                const previewPanel = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
+                if (previewPanel) {
+                    await previewPanel.extractToNewTab();
+                } else {
+                    throw new Error('PreviewPanel not found');
+                }
+            });
+            const popup = await popupPromise;
+            await popup.waitForLoadState('domcontentloaded');
+            await popup.waitForTimeout(3000);
+
+            // Check standalone preview for CSS
+            const standaloneBeforeNav = await popup.evaluate(() => {
+                const outerIframe = document.querySelector('iframe') as HTMLIFrameElement;
+                if (!outerIframe) return { error: 'No outer iframe' };
+
+                try {
+                    const doc = outerIframe.contentDocument;
+                    if (!doc) return { error: 'No iframe document' };
+
+                    return {
+                        styleCount: doc.querySelectorAll('style').length,
+                        title: doc.title || '',
+                        hasNav: !!doc.querySelector('nav, #siteNav, .sidenav'),
+                        hasNavLinks: doc.querySelectorAll('a[data-exe-nav], a[href^="#exe-nav"]').length > 0,
+                    };
+                } catch (e) {
+                    return { error: (e as Error).message };
+                }
+            });
+
+            console.log('Standalone before navigation:', standaloneBeforeNav);
+            expect(standaloneBeforeNav.styleCount).toBeGreaterThan(0);
+            expect(standaloneBeforeNav.hasNav).toBe(true);
+
+            // 13. Test internal navigation preserves CSS
+            // Try to click on a navigation link (like "yyy")
+            const iframe = popup.frameLocator('iframe').first();
+
+            let navigationWorked = false;
+            try {
+                // Try clicking a navigation link
+                const navLink = iframe.locator('a[data-exe-nav]').first();
+                if ((await navLink.count()) > 0) {
+                    await navLink.click({ timeout: 5000 });
+                    navigationWorked = true;
+                } else {
+                    // Try any internal link
+                    const yyyLink = iframe.locator('a:has-text("yyy")').first();
+                    if ((await yyyLink.count()) > 0) {
+                        await yyyLink.click({ timeout: 5000 });
+                        navigationWorked = true;
+                    }
+                }
+            } catch {
+                console.log('Navigation link click failed, skipping navigation test');
+            }
+
+            if (navigationWorked) {
+                await popup.waitForTimeout(3000);
+
+                // Check that CSS is preserved after navigation
+                const standaloneAfterNav = await popup.evaluate(() => {
+                    const outerIframe = document.querySelector('iframe') as HTMLIFrameElement;
+                    if (!outerIframe) return { error: 'No outer iframe' };
+
+                    try {
+                        const doc = outerIframe.contentDocument;
+                        if (!doc) return { error: 'No iframe document' };
+
+                        return {
+                            styleCount: doc.querySelectorAll('style').length,
+                            title: doc.title || '',
+                            hasNav: !!doc.querySelector('nav, #siteNav, .sidenav'),
+                            bodyText: doc.body?.innerText?.substring(0, 100) || '',
+                        };
+                    } catch (e) {
+                        return { error: (e as Error).message };
+                    }
+                });
+
+                console.log('Standalone after navigation:', standaloneAfterNav);
+
+                // CSS should still be present after navigation (key fix verification)
+                expect(standaloneAfterNav.styleCount).toBeGreaterThan(0);
+                expect(standaloneAfterNav.hasNav).toBe(true);
+            }
+
+            // Cleanup
+            await popup.close();
+        });
     });
 });

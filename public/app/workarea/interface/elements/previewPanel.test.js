@@ -290,6 +290,129 @@ describe('PreviewPanelManager', () => {
     });
   });
 
+  describe('resolveHtmlIframeAssets', () => {
+    it('should return html unchanged if AssetManager is not available', async () => {
+      window.eXeLearning.app.project._yjsBridge = null;
+      const html = '<html><body><iframe src="asset://abc123.html"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssets(html);
+      expect(result).toBe(html);
+    });
+
+    it('should return html unchanged if no iframe matches asset:// pattern', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn(),
+        _isHtmlAsset: vi.fn(),
+        resolveHtmlWithAssets: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="https://example.com"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssets(html);
+      expect(result).toBe(html);
+      expect(mockAssetManager.getAssetMetadata).not.toHaveBeenCalled();
+    });
+
+    it('should resolve HTML iframes with asset:// URLs', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'text/html', filename: 'index.html' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(true),
+        resolveHtmlWithAssets: vi.fn().mockResolvedValue('blob:resolved-url'),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://abc123-def4-5678-9012.html" width="100%"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssets(html);
+
+      expect(mockAssetManager.getAssetMetadata).toHaveBeenCalledWith('abc123-def4-5678-9012');
+      expect(mockAssetManager._isHtmlAsset).toHaveBeenCalledWith('text/html', 'index.html');
+      expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledWith('abc123-def4-5678-9012');
+      expect(result).toContain('src="blob:resolved-url"');
+      expect(result).toContain('data-asset-src="asset://abc123-def4-5678-9012.html"');
+    });
+
+    it('should skip iframes with non-HTML assets', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'application/pdf', filename: 'doc.pdf' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(false),
+        resolveHtmlWithAssets: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://abc123.pdf"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssets(html);
+
+      expect(mockAssetManager._isHtmlAsset).toHaveBeenCalled();
+      expect(mockAssetManager.resolveHtmlWithAssets).not.toHaveBeenCalled();
+      expect(result).toBe(html);
+    });
+
+    it('should skip iframes when metadata is not found', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue(null),
+        _isHtmlAsset: vi.fn(),
+        resolveHtmlWithAssets: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://nonexistent.html"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssets(html);
+
+      expect(mockAssetManager._isHtmlAsset).not.toHaveBeenCalled();
+      expect(result).toBe(html);
+    });
+
+    it('should handle resolution errors gracefully', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'text/html', filename: 'index.html' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(true),
+        resolveHtmlWithAssets: vi.fn().mockRejectedValue(new Error('Resolution failed')),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://abc123.html"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssets(html);
+
+      // Should return original html on error
+      expect(result).toBe(html);
+    });
+
+    it('should handle null resolved URL', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'text/html', filename: 'index.html' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(true),
+        resolveHtmlWithAssets: vi.fn().mockResolvedValue(null),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = '<html><body><iframe src="asset://abc123.html"></iframe></body></html>';
+      const result = await manager.resolveHtmlIframeAssets(html);
+
+      // Should return original html when resolution returns null
+      expect(result).toBe(html);
+    });
+
+    it('should resolve multiple HTML iframes', async () => {
+      const mockAssetManager = {
+        getAssetMetadata: vi.fn().mockReturnValue({ mime: 'text/html', filename: 'page.html' }),
+        _isHtmlAsset: vi.fn().mockReturnValue(true),
+        resolveHtmlWithAssets: vi.fn()
+          .mockResolvedValueOnce('blob:url-1')
+          .mockResolvedValueOnce('blob:url-2'),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const html = `<html><body>
+        <iframe src="asset://abc123-1111-2222-3333.html"></iframe>
+        <iframe src="asset://def456-4444-5555-6666.html"></iframe>
+      </body></html>`;
+      const result = await manager.resolveHtmlIframeAssets(html);
+
+      expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledTimes(2);
+      expect(result).toContain('blob:url-1');
+      expect(result).toContain('blob:url-2');
+    });
+  });
+
   describe('injectPdfBlobUrlConverter', () => {
     it('should inject converter script before </body>', () => {
       const html = '<html><body><p>Content</p></body></html>';
@@ -525,6 +648,221 @@ describe('PreviewPanelManager', () => {
 
       // Cleanup
       delete window.eXeLearning;
+    });
+  });
+
+  describe('injectHtmlLinkHandler', () => {
+    it('should inject HTML link handler script before </body>', () => {
+      const html = '<html><body><p>Content</p></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain('exe-resolve-html-link');
+      expect(result).toContain('exe-resolve-html-link-forward');
+      expect(result).toContain('exe-html-link-resolved');
+      expect(result).toContain('</script></body></html>');
+    });
+
+    it('should append script if no </body> tag', () => {
+      const html = '<p>Content</p>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain('exe-resolve-html-link');
+      expect(result).toContain('<p>Content</p>');
+    });
+
+    it('should include message listener for embedded iframe links', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain("window.addEventListener('message'");
+      expect(result).toContain('pendingResolves');
+      expect(result).toContain("event.data?.type === 'exe-resolve-html-link'");
+    });
+
+    it('should forward link resolution requests to parent window', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain('window.parent.postMessage');
+      expect(result).toContain("type: 'exe-resolve-html-link-forward'");
+      expect(result).toContain('requestId:');
+      expect(result).toContain('href:');
+      expect(result).toContain('baseFolder:');
+    });
+
+    it('should handle resolved URL responses and update iframe src', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain("event.data?.type === 'exe-html-link-resolved'");
+      expect(result).toContain('iframe.src = resolvedUrl');
+      expect(result).toContain('[PreviewPanel] Updated iframe src for navigation');
+    });
+
+    it('should track pending resolves by request ID', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain('var pendingResolves = {}');
+      expect(result).toContain('var resolveIdCounter = 0');
+      expect(result).toContain("var reqId = 'htmlResolve_' + (++resolveIdCounter)");
+      expect(result).toContain('pendingResolves[reqId]');
+      expect(result).toContain('delete pendingResolves[reqId]');
+    });
+
+    it('should log initialization message', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain("[PreviewPanel] HTML link handler initialized");
+    });
+  });
+
+  describe('postMessage handling for HTML link resolution', () => {
+    it('should handle exe-resolve-html-link-forward messages and resolve HTML', async () => {
+      const mockBlob = new Blob(['<html><body>yyy page</body></html>'], { type: 'text/html' });
+      const mockAssetManager = {
+        findAssetByRelativePath: vi.fn().mockReturnValue({ id: 'linked-asset-id' }),
+        resolveHtmlWithAssets: vi.fn().mockResolvedValue('blob:resolved-html-url'),
+        getAsset: vi.fn().mockResolvedValue({ blob: mockBlob }),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      // Mock postMessage on source
+      const mockSource = { postMessage: vi.fn() };
+
+      // Simulate the postMessage event
+      manager.bindEvents();
+      const messageEvent = new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link-forward',
+          requestId: 'htmlResolve_1',
+          href: 'html/yyy.html',
+          assetId: 'original-asset-id',
+          baseFolder: '',
+        },
+        source: mockSource,
+      });
+      window.dispatchEvent(messageEvent);
+
+      // Wait for async handling
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.findAssetByRelativePath).toHaveBeenCalledWith('', 'html/yyy.html');
+      expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledWith('linked-asset-id');
+      expect(mockSource.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'exe-html-link-resolved',
+          requestId: 'htmlResolve_1',
+          resolvedUrl: 'blob:resolved-html-url',
+        }),
+        '*'
+      );
+    });
+
+    it('should send error response when asset not found', async () => {
+      const mockAssetManager = {
+        findAssetByRelativePath: vi.fn().mockReturnValue(null),
+        resolveHtmlWithAssets: vi.fn(),
+        getAsset: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const mockSource = { postMessage: vi.fn() };
+
+      manager.bindEvents();
+      const messageEvent = new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link-forward',
+          requestId: 'htmlResolve_2',
+          href: 'nonexistent.html',
+          assetId: 'original-asset-id',
+          baseFolder: 'folder',
+        },
+        source: mockSource,
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.findAssetByRelativePath).toHaveBeenCalledWith('folder', 'nonexistent.html');
+      expect(mockAssetManager.resolveHtmlWithAssets).not.toHaveBeenCalled();
+      expect(mockSource.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'exe-html-link-resolved',
+          requestId: 'htmlResolve_2',
+          resolvedUrl: null,
+          error: expect.stringContaining('Asset not found'),
+        }),
+        '*'
+      );
+    });
+
+    it('should send error response when resolution fails', async () => {
+      const mockAssetManager = {
+        findAssetByRelativePath: vi.fn().mockReturnValue({ id: 'linked-asset-id' }),
+        resolveHtmlWithAssets: vi.fn().mockResolvedValue(null),
+        getAsset: vi.fn(),
+      };
+      mockBridge.assetManager = mockAssetManager;
+
+      const mockSource = { postMessage: vi.fn() };
+
+      manager.bindEvents();
+      const messageEvent = new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link-forward',
+          requestId: 'htmlResolve_3',
+          href: 'page.html',
+          assetId: 'original-asset-id',
+          baseFolder: '',
+        },
+        source: mockSource,
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockSource.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'exe-html-link-resolved',
+          requestId: 'htmlResolve_3',
+          resolvedUrl: null,
+          error: expect.stringContaining('Failed to resolve'),
+        }),
+        '*'
+      );
+    });
+
+    it('should send error response when AssetManager is not available', async () => {
+      mockBridge.assetManager = null;
+
+      const mockSource = { postMessage: vi.fn() };
+
+      manager.bindEvents();
+      const messageEvent = new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link-forward',
+          requestId: 'htmlResolve_4',
+          href: 'page.html',
+          assetId: 'original-asset-id',
+          baseFolder: '',
+        },
+        source: mockSource,
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockSource.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'exe-html-link-resolved',
+          requestId: 'htmlResolve_4',
+          resolvedUrl: null,
+          error: expect.stringContaining('AssetManager not available'),
+        }),
+        '*'
+      );
     });
   });
 

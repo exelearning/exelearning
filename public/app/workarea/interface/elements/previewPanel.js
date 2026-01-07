@@ -501,6 +501,10 @@ export default class PreviewPanelManager {
             html = window.simplifyMediaElements(html);
         }
 
+        // Resolve HTML iframes with their internal assets (CSS, JS, images) as data URLs
+        // This must happen BEFORE resolveAssetUrlsAsync so the HTML content is self-contained
+        html = await this.resolveHtmlIframeAssetsForStandalone(html);
+
         // For standalone preview, convert ALL assets to data URLs (including PDFs)
         // so the page works independently without needing the parent window
         if (typeof window.resolveAssetUrlsAsync === 'function') {
@@ -672,6 +676,75 @@ export default class PreviewPanelManager {
                 }
             } catch (error) {
                 Logger.warn(`[PreviewPanel] Failed to resolve HTML iframe ${assetId}:`, error);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Resolve HTML iframes for standalone preview (using data URLs instead of blob URLs).
+     *
+     * For standalone export (open in new tab), we need all assets as data URLs
+     * so the page works independently. This method resolves HTML iframes by:
+     * 1. Getting the HTML content with all internal assets (CSS, JS, images) resolved
+     * 2. Converting the resolved HTML to a data URL
+     * 3. Replacing the iframe src with the data URL
+     *
+     * @param {string} html - Preview HTML content
+     * @returns {Promise<string>} HTML with resolved iframe URLs as data URLs
+     */
+    async resolveHtmlIframeAssetsForStandalone(html) {
+        const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        if (!assetManager) {
+            Logger.warn('[PreviewPanel] AssetManager not available for standalone HTML iframe resolution');
+            return html;
+        }
+
+        // Find all iframes with asset:// URLs that point to HTML files
+        const iframePattern = /<iframe([^>]*)src=["'](asset:\/\/[^"']+)["']([^>]*)>/gi;
+        const matches = [...html.matchAll(iframePattern)];
+
+        if (matches.length === 0) {
+            return html;
+        }
+
+        let result = html;
+
+        for (const match of matches) {
+            const [fullMatch, beforeSrc, assetUrl, afterSrc] = match;
+
+            // Extract asset ID from URL: asset://uuid or asset://uuid.ext
+            const assetIdMatch = assetUrl.match(/asset:\/\/([a-f0-9-]+)/i);
+            if (!assetIdMatch) continue;
+
+            const assetId = assetIdMatch[1];
+
+            // Check if this asset is an HTML file
+            const metadata = assetManager.getAssetMetadata(assetId);
+            if (!metadata) continue;
+
+            const isHtml = assetManager._isHtmlAsset(metadata.mime, metadata.filename);
+            if (!isHtml) continue;
+
+            // Resolve the HTML with all its relative URLs as data URLs
+            try {
+                const resolvedHtml = await assetManager.resolveHtmlWithAssetsAsDataUrls(assetId);
+                if (resolvedHtml) {
+                    // Use srcdoc instead of data URL to avoid Chrome's 2MB data URL limit
+                    // srcdoc has no size limit and works when the HTML is saved to disk
+                    // We need to escape the HTML for use in an attribute value
+                    const escapedHtml = resolvedHtml
+                        .replace(/&/g, '&amp;')
+                        .replace(/"/g, '&quot;');
+
+                    // Replace the iframe src with srcdoc - remove the src attribute and add srcdoc
+                    const newIframe = `<iframe${beforeSrc}srcdoc="${escapedHtml}"${afterSrc}>`;
+                    result = result.replace(fullMatch, newIframe);
+                    Logger.log(`[PreviewPanel] Resolved HTML iframe for standalone: ${assetId} -> srcdoc (${resolvedHtml.length} bytes)`);
+                }
+            } catch (error) {
+                Logger.warn(`[PreviewPanel] Failed to resolve HTML iframe for standalone ${assetId}:`, error);
             }
         }
 
