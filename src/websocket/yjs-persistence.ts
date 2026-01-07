@@ -166,20 +166,53 @@ export async function storeUpdate(projectId: number, updateData: Uint8Array, cli
  * Load document state for a project
  * Returns the combined state as a single Uint8Array
  *
+ * This function reads from both yjs_documents (snapshots) and yjs_updates (incremental)
+ * to reconstruct the full document state.
+ *
  * @param projectId - The project ID
  * @returns Document state or null if not found
  */
 export async function loadDocument(projectId: number): Promise<Uint8Array | null> {
     try {
-        const state = await deps.queries.loadDocumentState(deps.db, projectId);
+        const { snapshot, updates } = await deps.queries.loadDocumentWithUpdates(deps.db, projectId);
 
-        if (!state) {
+        // No data at all
+        if (!snapshot && updates.length === 0) {
             if (DEBUG) console.log(`[YjsPersistence] No document found for project ${projectId}`);
             return null;
         }
 
-        if (DEBUG) console.log(`[YjsPersistence] Loaded project ${projectId}: ${state.length} bytes`);
-        return state;
+        // Only snapshot, no updates - return directly
+        if (snapshot && updates.length === 0) {
+            if (DEBUG) {
+                console.log(
+                    `[YjsPersistence] Loaded project ${projectId} from snapshot (${snapshot.snapshot_data.length} bytes)`,
+                );
+            }
+            return new Uint8Array(snapshot.snapshot_data);
+        }
+
+        // Need to merge snapshot and updates
+        const doc = new Y.Doc();
+
+        if (snapshot?.snapshot_data) {
+            Y.applyUpdate(doc, new Uint8Array(snapshot.snapshot_data));
+        }
+
+        for (const update of updates) {
+            Y.applyUpdate(doc, new Uint8Array(update.update_data));
+        }
+
+        const mergedState = Y.encodeStateAsUpdate(doc);
+        doc.destroy();
+
+        if (DEBUG) {
+            console.log(
+                `[YjsPersistence] Loaded project ${projectId} (merged ${updates.length} updates + snapshot): ${mergedState.length} bytes`,
+            );
+        }
+
+        return mergedState;
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[YjsPersistence] Failed to load project ${projectId}:`, errorMessage);
