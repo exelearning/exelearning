@@ -16,6 +16,7 @@
 
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Epub3ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 
 /**
  * EPUB3 XML namespaces
@@ -171,6 +172,17 @@ export class Epub3Exporter extends BaseExporter {
                 const pageId = this.generateUniqueId(`page-${i}`);
                 this.addManifestItem(pageId, filename, 'application/xhtml+xml', 'scripted');
                 this.spineItems.push({ idref: pageId });
+            }
+
+            // 4b. Add content.xml and DTD (ODE format for re-import) - only if exportSource is enabled
+            // This allows EPUBs to be re-imported and edited in eXeLearning
+            if (meta.exportSource !== false) {
+                const contentXml = this.generateContentXml();
+                this.zip.addFile('EPUB/content.xml', contentXml);
+                this.addManifestItem('content-xml', 'content.xml', 'application/xml');
+
+                // Add DTD file for content.xml validation
+                this.zip.addFile(`EPUB/${ODE_DTD_FILENAME}`, ODE_DTD_CONTENT);
             }
 
             // 5. Add base CSS (fetch from content/css, then add EPUB-specific)

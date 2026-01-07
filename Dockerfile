@@ -1,6 +1,14 @@
 # syntax=docker/dockerfile:1
 ARG BUN_VERSION=1.3
-ARG VERSION=v0.0.0-alpha
+
+################################################################################
+# OCI Image Spec Build Arguments
+# These should be provided at build time for full compliance
+# See: https://github.com/opencontainers/image-spec/blob/main/annotations.md
+################################################################################
+ARG VERSION=0.0.0-alpha
+ARG VCS_REF=unknown
+ARG BUILD_DATE=unknown
 
 ################################################################################
 # Base image for reuse
@@ -41,11 +49,26 @@ RUN rm -rf node_modules && \
 ################################################################################
 FROM base
 
+# Re-declare ARGs after FROM to make them available in this stage
 ARG VERSION
-LABEL maintainer="INTEF <cedec@educacion.gob.es>" \
-      org.opencontainers.image.title="eXeLearning" \
+ARG VCS_REF
+ARG BUILD_DATE
+ARG BUN_VERSION
+
+# OCI Image Spec Annotations
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md
+LABEL org.opencontainers.image.title="eXeLearning" \
+      org.opencontainers.image.description="Open-source educational content authoring tool for creating interactive learning materials in SCORM, HTML5, EPUB3, and IMS formats" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.licenses="AGPL-3.0-or-later"
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.authors="INTEF <cedec@educacion.gob.es>" \
+      org.opencontainers.image.url="https://exelearning.net" \
+      org.opencontainers.image.documentation="https://exelearning.github.io/exelearning/" \
+      org.opencontainers.image.source="https://github.com/exelearning/exelearning" \
+      org.opencontainers.image.vendor="INTEF - Instituto Nacional de Tecnologías Educativas y de Formación del Profesorado" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later" \
+      org.opencontainers.image.base.name="docker.io/oven/bun:${BUN_VERSION}-alpine"
 
 RUN apk add --no-cache dumb-init
 
