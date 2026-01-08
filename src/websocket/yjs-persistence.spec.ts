@@ -333,14 +333,20 @@ describe('Yjs Persistence Service', () => {
             doc.destroy();
         });
 
-        it('should mark project as saved', async () => {
+        it('should NOT mark project as saved (auto-persistence is not explicit save)', async () => {
             const doc = new Y.Doc();
             const state = Y.encodeStateAsUpdate(doc);
 
+            // Project starts as unsaved
+            const projectBefore = mockProjects.get('project-uuid-1');
+            expect(projectBefore.saved_once).toBe(0);
+
             await saveFullStateByUuid('project-uuid-1', state);
 
-            const project = mockProjects.get('project-uuid-1');
-            expect(project.saved_once).toBe(1);
+            // Project should still be unsaved after Yjs persistence
+            // Only explicit user save or collaboration should mark as saved
+            const projectAfter = mockProjects.get('project-uuid-1');
+            expect(projectAfter.saved_once).toBe(0);
 
             doc.destroy();
         });

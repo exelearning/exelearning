@@ -1036,21 +1036,24 @@ export default class NavbarFile {
      */
     async newSession(odeSessionId) {
         let params = { odeSessionId: odeSessionId };
-        let data = {
-            title: _('New file'),
-            forceOpen: _('Create new file without saving'),
-            newFile: true,
-        };
 
-        eXeLearning.app.api
-            .postCheckCurrentOdeUsers(params)
-            .then((response) => {
-                if (response['leaveEmptySession']) {
-                    this.createSession(params);
-                } else {
-                    eXeLearning.app.modals.sessionlogout.show(data);
-                }
-            });
+        // Check for unsaved changes using Yjs mechanism
+        const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+        const hasUnsaved =
+            yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
+
+        if (hasUnsaved) {
+            // Show confirmation modal with save option
+            const data = {
+                title: _('New file'),
+                forceOpen: _('Create new file without saving'),
+                newFile: true,
+            };
+            eXeLearning.app.modals.sessionlogout.show(data);
+        } else {
+            // No unsaved changes, create new session directly
+            this.createSession(params);
+        }
     }
 
     /**
