@@ -206,18 +206,52 @@ export default class ModalSessionLogout extends Modal {
      * @param {*} odeParams
      */
     async saveSession(odeParams, data) {
-        // Handle Yjs project: save with Yjs then navigate
-        if (data.openYjsProject && data.projectUuid) {
+        // Handle Yjs-enabled projects: use SaveManager instead of legacy API
+        const isYjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
+        const saveManager = eXeLearning?.app?.project?._yjsBridge?.saveManager;
+
+        if (isYjsEnabled && saveManager) {
             try {
                 // Save current project using Yjs SaveManager
-                const saveManager =
-                    eXeLearning?.app?.project?._yjsBridge?.saveManager;
-                if (saveManager) {
-                    await saveManager.save();
+                await saveManager.save();
+
+                // Handle navigation based on action type
+                if (data.openYjsProject && data.projectUuid) {
+                    // Navigate to another Yjs project
+                    const basePath = window.eXeLearning?.config?.basePath || '';
+                    window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
+                } else if (data.newFile) {
+                    // Creating new file - reload to create new project
+                    window.onbeforeunload = null;
+                    const basePath = window.eXeLearning?.config?.basePath || '';
+                    window.location.href = `${basePath}/workarea`;
+                } else if (data.openOdeFile) {
+                    // Opening a file
+                    if (data.localOdeFile) {
+                        if (data.isLargeFile && data.odeFile) {
+                            eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
+                                data.odeFile,
+                                false,
+                                false,
+                                true,
+                                true
+                            );
+                        } else {
+                            eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
+                                data.odeFileName,
+                                data.odeFilePath
+                            );
+                        }
+                    } else {
+                        eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
+                            data.id
+                        );
+                    }
+                } else {
+                    // Default: close session
+                    window.onbeforeunload = null;
+                    this.closeSession(odeParams['odeSessionId'], data);
                 }
-                // Navigate to the new project
-                const basePath = window.eXeLearning?.config?.basePath || '';
-                window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
             } catch (error) {
                 console.error('[SessionLogout] Error saving Yjs project:', error);
                 eXeLearning.app.modals.alert.show({

@@ -898,4 +898,274 @@ describe('Modal', () => {
       expect(modalElement.getAttribute('data-open')).toBe('false');
     });
   });
+
+  describe('tableToCSV', () => {
+    it('converts a basic table to CSV', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr><th>Name</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Apple</td><td>100</td></tr>
+          <tr><td>Banana</td><td>200</td></tr>
+        </tbody>
+      `;
+
+      const csv = modal.tableToCSV(table);
+
+      expect(csv).toBe('Name,Value\r\nApple,100\r\nBanana,200');
+    });
+
+    it('skips specified columns', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr><th>Status</th><th>Name</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>OK</td><td>Apple</td><td>100</td></tr>
+        </tbody>
+      `;
+
+      const csv = modal.tableToCSV(table, { skipColumns: [0] });
+
+      expect(csv).toBe('Name,Value\r\nApple,100');
+    });
+
+    it('skips multiple columns', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr><th>A</th><th>B</th><th>C</th><th>D</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+        </tbody>
+      `;
+
+      const csv = modal.tableToCSV(table, { skipColumns: [0, 2] });
+
+      expect(csv).toBe('B,D\r\n2,4');
+    });
+
+    it('skips placeholder rows with colspan', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr><th>Name</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="2">No data found</td></tr>
+        </tbody>
+      `;
+
+      const csv = modal.tableToCSV(table);
+
+      expect(csv).toBe('Name,Value');
+    });
+
+    it('escapes values with commas', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr><th>Name</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Hello, World</td></tr>
+        </tbody>
+      `;
+
+      const csv = modal.tableToCSV(table);
+
+      expect(csv).toBe('Name\r\n"Hello, World"');
+    });
+
+    it('escapes values with quotes', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr><th>Name</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Say "Hello"</td></tr>
+        </tbody>
+      `;
+
+      const csv = modal.tableToCSV(table);
+
+      expect(csv).toBe('Name\r\n"Say ""Hello"""');
+    });
+
+    it('handles empty table', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr><th>Name</th></tr>
+        </thead>
+        <tbody></tbody>
+      `;
+
+      const csv = modal.tableToCSV(table);
+
+      expect(csv).toBe('Name');
+    });
+
+    it('handles table without thead', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <tbody>
+          <tr><td>Apple</td><td>100</td></tr>
+        </tbody>
+      `;
+
+      const csv = modal.tableToCSV(table);
+
+      expect(csv).toBe('Apple,100');
+    });
+
+    it('handles thead with th as direct children (programmatically created)', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      // Create table programmatically like modalOdeUsedFiles.makeTheadElements() does
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      ['File', 'Path', 'Size'].forEach((title) => {
+        const th = document.createElement('th');
+        th.textContent = title;
+        thead.appendChild(th);
+      });
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      const tr = document.createElement('tr');
+      ['image.png', '/files/image.png', '100KB'].forEach((value) => {
+        const td = document.createElement('td');
+        td.textContent = value;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+      table.appendChild(tbody);
+
+      const csv = modal.tableToCSV(table);
+
+      expect(csv).toBe('File,Path,Size\r\nimage.png,/files/image.png,100KB');
+    });
+  });
+
+  describe('_escapeCSVValue', () => {
+    it('returns empty string for null', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      expect(modal._escapeCSVValue(null)).toBe('');
+    });
+
+    it('returns empty string for undefined', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      expect(modal._escapeCSVValue(undefined)).toBe('');
+    });
+
+    it('returns value unchanged if no special characters', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      expect(modal._escapeCSVValue('Hello World')).toBe('Hello World');
+    });
+
+    it('wraps value in quotes if it contains a comma', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      expect(modal._escapeCSVValue('Hello, World')).toBe('"Hello, World"');
+    });
+
+    it('wraps value in quotes and doubles quotes if value contains quotes', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      expect(modal._escapeCSVValue('Say "Hi"')).toBe('"Say ""Hi"""');
+    });
+
+    it('wraps value in quotes if it contains a newline', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      expect(modal._escapeCSVValue('Line1\nLine2')).toBe('"Line1\nLine2"');
+    });
+
+    it('wraps value in quotes if it contains a carriage return', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      expect(modal._escapeCSVValue('Line1\rLine2')).toBe('"Line1\rLine2"');
+    });
+
+    it('converts numbers to strings', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      expect(modal._escapeCSVValue(42)).toBe('42');
+    });
+  });
+
+  describe('downloadCSVFile', () => {
+    let originalCreateObjectURL;
+    let originalRevokeObjectURL;
+
+    beforeEach(() => {
+      originalCreateObjectURL = URL.createObjectURL;
+      originalRevokeObjectURL = URL.revokeObjectURL;
+      URL.createObjectURL = vi.fn().mockReturnValue('blob:test-url');
+      URL.revokeObjectURL = vi.fn();
+    });
+
+    afterEach(() => {
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+    });
+
+    it('creates blob with UTF-8 BOM', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+      const blobSpy = vi.spyOn(window, 'Blob');
+
+      modal.downloadCSVFile('Name,Value\r\nApple,100', 'test.csv');
+
+      expect(blobSpy).toHaveBeenCalled();
+      const blobArgs = blobSpy.mock.calls[0][0];
+      expect(blobArgs[0]).toBe('\ufeff');
+    });
+
+    it('sets correct download filename and triggers click', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+
+      // Spy on the actual DOM operations
+      let capturedHref = null;
+      let capturedDownload = null;
+      let clickCalled = false;
+
+      const originalCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+        const el = originalCreateElement(tagName);
+        if (tagName === 'a') {
+          const originalClickFn = el.click.bind(el);
+          el.click = () => {
+            clickCalled = true;
+            capturedHref = el.href;
+            capturedDownload = el.download;
+          };
+        }
+        return el;
+      });
+
+      modal.downloadCSVFile('content', 'test-report.csv');
+
+      expect(clickCalled).toBe(true);
+      expect(capturedDownload).toBe('test-report.csv');
+      expect(capturedHref).toBe('blob:test-url');
+
+      vi.restoreAllMocks();
+    });
+
+    it('revokes blob URL after download', () => {
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);
+
+      modal.downloadCSVFile('content', 'test.csv');
+
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+    });
+  });
 });

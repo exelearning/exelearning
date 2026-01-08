@@ -43,6 +43,11 @@ import { HttpException, TranslatableException, getStatusText } from './exception
 import { MIME_TYPES } from './utils/mime-types';
 import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
 import { initializeCrossInstanceHandler } from './websocket/room-manager';
+import {
+    startScheduler as startCleanupScheduler,
+    stopScheduler as stopCleanupScheduler,
+    getConfigFromEnv as getCleanupConfigFromEnv,
+} from './services/cleanup-scheduler';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -574,6 +579,9 @@ async function bootstrap() {
     app.listen(PORT);
     initWebSocket();
 
+    // 7. Start cleanup scheduler (for unsaved and guest projects)
+    startCleanupScheduler(getCleanupConfigFromEnv());
+
     console.log(`Elysia server running at http://localhost:${PORT}`);
     console.log(`Pages: /login, /workarea`);
     console.log(`Auth endpoints: /api/auth/login, /api/auth/logout, /api/session/check`);
@@ -592,6 +600,7 @@ bootstrap().catch(err => {
 async function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down...`);
     stopWebSocket();
+    stopCleanupScheduler();
     await disconnectRedis();
     process.exit(0);
 }

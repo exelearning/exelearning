@@ -121,16 +121,18 @@ describe('ModalSessionLogout', () => {
   });
 
   describe('saveSession', () => {
-    it('should call api.postOdeSave and createSession on success with newFile', async () => {
+    it('should call api.postOdeSave and createSession on success with newFile (legacy mode)', async () => {
+      // Legacy mode: _yjsEnabled is not set
+      window.eXeLearning.app.project._yjsEnabled = false;
       const odeParams = { odeSessionId: 's', odeVersion: 'v', odeId: 'i' };
       await modal.saveSession(odeParams, { newFile: true });
-      expect(window.eXeLearning.app.api.postOdeSave).toHaveBeenCalled();
       expect(window.eXeLearning.app.api.postOdeSave).toHaveBeenCalled();
       expect(window.eXeLearning.app.menus.navbar.file.createSession).toHaveBeenCalled();
     });
 
     it('should save Yjs project and navigate when openYjsProject is set', async () => {
       const saveSpy = vi.fn().mockResolvedValue(true);
+      window.eXeLearning.app.project._yjsEnabled = true;
       window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
 
       await modal.saveSession({ odeSessionId: 's' }, { openYjsProject: true, projectUuid: 'uuid-1' });
@@ -139,8 +141,20 @@ describe('ModalSessionLogout', () => {
       expect(window.location.href).toBe('/base/workarea?project=uuid-1');
     });
 
+    it('should save Yjs project and navigate to workarea when newFile is true', async () => {
+      const saveSpy = vi.fn().mockResolvedValue(true);
+      window.eXeLearning.app.project._yjsEnabled = true;
+      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
+
+      await modal.saveSession({ odeSessionId: 's' }, { newFile: true });
+
+      expect(saveSpy).toHaveBeenCalled();
+      expect(window.location.href).toBe('/base/workarea');
+    });
+
     it('should show alert when Yjs save fails', async () => {
       const saveSpy = vi.fn().mockRejectedValue(new Error('fail'));
+      window.eXeLearning.app.project._yjsEnabled = true;
       window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
 
       await modal.saveSession({ odeSessionId: 's' }, { openYjsProject: true, projectUuid: 'uuid-1' });
@@ -150,6 +164,69 @@ describe('ModalSessionLogout', () => {
         body: 'An error occurred while saving the project',
         contentId: 'error',
       });
+    });
+
+    it('should save Yjs and open local file when openOdeFile with localOdeFile', async () => {
+      const saveSpy = vi.fn().mockResolvedValue(true);
+      window.eXeLearning.app.project._yjsEnabled = true;
+      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
+
+      await modal.saveSession(
+        { odeSessionId: 's' },
+        { openOdeFile: true, localOdeFile: true, odeFileName: 'test.elp', odeFilePath: '/path/to/test.elp' }
+      );
+
+      expect(saveSpy).toHaveBeenCalled();
+      expect(window.eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession).toHaveBeenCalledWith(
+        'test.elp',
+        '/path/to/test.elp'
+      );
+    });
+
+    it('should save Yjs and use large file upload when isLargeFile', async () => {
+      const saveSpy = vi.fn().mockResolvedValue(true);
+      window.eXeLearning.app.project._yjsEnabled = true;
+      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
+
+      await modal.saveSession(
+        { odeSessionId: 's' },
+        { openOdeFile: true, localOdeFile: true, isLargeFile: true, odeFile: 'large-file-data' }
+      );
+
+      expect(saveSpy).toHaveBeenCalled();
+      expect(window.eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledWith(
+        'large-file-data',
+        false,
+        false,
+        true,
+        true
+      );
+    });
+
+    it('should save Yjs and open remote ODE file', async () => {
+      const saveSpy = vi.fn().mockResolvedValue(true);
+      window.eXeLearning.app.project._yjsEnabled = true;
+      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
+
+      await modal.saveSession({ odeSessionId: 's' }, { openOdeFile: true, id: 'remote-file-id' });
+
+      expect(saveSpy).toHaveBeenCalled();
+      expect(window.eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession).toHaveBeenCalledWith(
+        'remote-file-id'
+      );
+    });
+
+    it('should save Yjs and close session for default case', async () => {
+      const saveSpy = vi.fn().mockResolvedValue(true);
+      const closeSessionSpy = vi.spyOn(modal, 'closeSession').mockResolvedValue();
+      window.eXeLearning.app.project._yjsEnabled = true;
+      window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
+
+      await modal.saveSession({ odeSessionId: 'session-123' }, {});
+
+      expect(saveSpy).toHaveBeenCalled();
+      expect(window.onbeforeunload).toBeNull();
+      expect(closeSessionSpy).toHaveBeenCalledWith('session-123', {});
     });
   });
 
