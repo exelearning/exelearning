@@ -514,7 +514,7 @@ describe('HTML5 Export Service', () => {
             expect(result.success).toBe(true);
         });
 
-        it('should copy theme files when they exist', async () => {
+        it('should copy theme files when they exist (preserving original names)', async () => {
             // Create theme files in the expected location
             const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
             await fs.ensureDir(themeDir);
@@ -533,18 +533,18 @@ describe('HTML5 Export Service', () => {
 
             const exportDir = result.filePath;
 
-            // Verify theme files were copied with renamed filenames
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'content.css'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'default.js'))).toBe(true);
+            // Verify theme files were copied preserving original filenames (issue #905)
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'style.css'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'style.js'))).toBe(true);
             expect(await fs.pathExists(path.join(exportDir, 'theme', 'config.xml'))).toBe(true);
             expect(await fs.pathExists(path.join(exportDir, 'theme', 'icons'))).toBe(true);
             expect(await fs.pathExists(path.join(exportDir, 'theme', 'img'))).toBe(true);
 
             // Verify content was copied correctly
-            const cssContent = await fs.readFile(path.join(exportDir, 'theme', 'content.css'), 'utf-8');
+            const cssContent = await fs.readFile(path.join(exportDir, 'theme', 'style.css'), 'utf-8');
             expect(cssContent).toBe('.theme-style { color: red; }');
 
-            const jsContent = await fs.readFile(path.join(exportDir, 'theme', 'default.js'), 'utf-8');
+            const jsContent = await fs.readFile(path.join(exportDir, 'theme', 'style.js'), 'utf-8');
             expect(jsContent).toBe('// theme javascript');
         });
 
@@ -562,9 +562,9 @@ describe('HTML5 Export Service', () => {
 
             const exportDir = result.filePath;
 
-            // Only style.css should be copied (as content.css)
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'content.css'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'default.js'))).toBe(false);
+            // Only style.css should be copied (preserving original name)
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'style.css'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'style.js'))).toBe(false);
             expect(await fs.pathExists(path.join(exportDir, 'theme', 'config.xml'))).toBe(false);
         });
     });

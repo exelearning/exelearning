@@ -14,11 +14,13 @@ describe('PreviewPanelManager', () => {
       previewsidenav: document.createElement('div'),
       'preview-sidenav-overlay': document.createElement('div'),
       previewsidenavclose: document.createElement('button'),
+      'preview-extract-button': document.createElement('button'),
       'preview-pin-button': document.createElement('button'),
       'preview-refresh-button': document.createElement('button'),
       'preview-iframe': document.createElement('iframe'),
       'preview-pinned-container': document.createElement('div'),
       'preview-pinned-iframe': document.createElement('iframe'),
+      'preview-pinned-extract-button': document.createElement('button'),
       'preview-unpin-button': document.createElement('button'),
       'preview-pinned-refresh-button': document.createElement('button'),
       workarea: document.createElement('div'),
@@ -208,6 +210,76 @@ describe('PreviewPanelManager', () => {
       // The PDF preview card script is always injected
       expect(result).toContain('Preview');
       expect(result).toContain('resolvePdfIframes');
+    });
+  });
+
+  describe('extractToNewTab', () => {
+    it('should generate standalone HTML and open in new tab', async () => {
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+      global.URL.createObjectURL = vi.fn(() => 'blob:standalone-url');
+
+      await manager.extractToNewTab();
+
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(mockOpen).toHaveBeenCalledWith('blob:standalone-url', '_blank');
+    });
+
+    it('should fallback to link click if popup is blocked', async () => {
+      global.open = vi.fn(() => null);
+      global.URL.createObjectURL = vi.fn(() => 'blob:standalone-url');
+
+      const mockClick = vi.fn();
+      vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+        if (tag === 'a') {
+          return { click: mockClick, href: '', target: '' };
+        }
+        return document.createElement(tag);
+      });
+
+      await manager.extractToNewTab();
+
+      expect(mockClick).toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully', async () => {
+      window.SharedExporters.generatePreview.mockRejectedValue(new Error('Generation failed'));
+
+      await expect(manager.extractToNewTab()).resolves.not.toThrow();
+    });
+  });
+
+  describe('generateStandalonePreviewHtml', () => {
+    it('should return null when document manager is missing', async () => {
+      window.eXeLearning.app.project._yjsBridge = null;
+      const result = await manager.generateStandalonePreviewHtml();
+      expect(result).toBeNull();
+    });
+
+    it('should return null when SharedExporters is missing', async () => {
+      delete window.SharedExporters;
+      const result = await manager.generateStandalonePreviewHtml();
+      expect(result).toBeNull();
+    });
+
+    it('should convert assets to data URLs for standalone preview', async () => {
+      window.resolveAssetUrlsAsync = vi.fn().mockImplementation(html => html);
+      await manager.generateStandalonePreviewHtml();
+
+      expect(window.resolveAssetUrlsAsync).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          convertBlobUrls: true,
+          convertIframeBlobUrls: true,
+          skipIframeSrc: false,
+        })
+      );
+    });
+
+    it('should handle resolveAssetUrlsAsync failure gracefully', async () => {
+      window.resolveAssetUrlsAsync = vi.fn().mockRejectedValue(new Error('fail'));
+      const result = await manager.generateStandalonePreviewHtml();
+      expect(result).toContain('Preview');
     });
   });
 

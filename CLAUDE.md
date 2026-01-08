@@ -444,6 +444,56 @@ eXeLearning's internal frontend code (`public/app/`) must **NEVER** call `/api/v
 ### Documentation
 
 Full API v1 documentation: `doc/development/rest-api.md`
+### Internationalization (i18n)
+
+All user-facing strings **MUST** be translated. Never hardcode English strings in UI elements.
+
+#### JavaScript (`public/app/`)
+
+Use the `_()` translation function (defined in `public/app/locate/locale.js`):
+- `_()` - GUI translations (buttons, labels, tooltips, messages)
+- `c_()` - Content translations (with special replacements)
+
+```javascript
+// BAD - Hardcoded English strings
+button.title = 'Undo (Ctrl+Z)';
+element.textContent = 'Loading...';
+
+// GOOD - Using translation function
+button.title = `${_('Undo')} (Ctrl+Z)`;
+element.textContent = _('Loading...');
+```
+
+#### Nunjucks Templates (`views/`)
+
+Use the `| trans` filter for all user-facing strings:
+
+```nunjucks
+{# BAD - Hardcoded English strings #}
+<h5 class="modal-title">Properties</h5>
+<button>Save</button>
+<span title="Close">×</span>
+
+{# GOOD - Using trans filter #}
+<h5 class="modal-title">{{ 'Properties' | trans }}</h5>
+<button>{{ 'Save' | trans }}</button>
+<span title="{{ 'Close' | trans }}">×</span>
+```
+
+**Translation files:** `translations/messages.{locale}.xlf` (ca, en, eo, es, eu, gl, pt, ro, va)
+
+#### What to translate
+- Button labels and tooltips (`title` attribute)
+- Modal titles and headings
+- Status messages, error messages, alerts
+- Placeholder text, form labels
+- Menu items and navigation labels
+
+#### What NOT to translate
+- Keyboard shortcuts (Ctrl+Z, Cmd+S)
+- Technical identifiers (CSS classes, IDs)
+- Console/debug messages
+- Brand names (eXeLearning, SCORM, etc.)
 
 ## Legacy File Support
 
@@ -471,6 +521,12 @@ The application MUST support importing legacy .elp files from pre-v3.0 eXeLearni
 - Yjs documents are client-side only (stateless relay)
 - Server forwards messages between clients
 - Asset coordination via JSON protocol
+
+### Frontend Styles
+- **NEVER use inline/online styles** via `document.createElement('style')` or `element.style.property = value` for UI components
+- All UI styles MUST go in the SCSS files under `assets/styles/`
+- Use `assets/styles/components/_collaborative.scss` for Yjs/collaboration-related styles
+- The only exception is dynamically loading external CSS files (themes, iDevices) at runtime via `loadStyleByInsertingIt()`
 
 ## E2E Testing with Playwright
 

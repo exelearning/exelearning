@@ -406,7 +406,7 @@ export default class MenuStructureBehaviour {
                             // Open eXe alert modal
                             eXeLearning.app.modals.alert.show({
                                 title: _('Broken links'),
-                                body: 'No broken links found.',
+                                body: _('No broken links found.'),
                             });
                         }
                     });

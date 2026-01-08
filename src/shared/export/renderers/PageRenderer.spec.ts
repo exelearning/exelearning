@@ -333,9 +333,10 @@ describe('PageRenderer', () => {
                 addPagination: true,
             });
 
-            // Use separate <header> elements for exe_export.js teacherMode selectors
-            expect(html).toContain('<header class="package-header');
-            expect(html).toContain('<header class="page-header"');
+            // Headers wrapped in main-header so theme JS can find and move title
+            expect(html).toContain('<header class="main-header">');
+            expect(html).toContain('<div class="package-header');
+            expect(html).toContain('<div class="page-header"');
             expect(html).toContain('class="page-counter"');
             expect(html).toContain('class="page-counter-current-page">3</strong>'); // 2 + 1
             expect(html).toContain('class="page-counter-total">10</strong>');
@@ -367,6 +368,45 @@ describe('PageRenderer', () => {
             });
 
             expect(html).toContain('Página');
+        });
+
+        it('should render package-subtitle when projectSubtitle is provided', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                projectSubtitle: 'My Subtitle',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).toContain('class="package-subtitle"');
+            expect(html).toContain('My Subtitle');
+        });
+
+        it('should NOT render package-subtitle when projectSubtitle is empty', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                projectSubtitle: '',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).not.toContain('class="package-subtitle"');
+        });
+
+        it('should NOT render package-subtitle when projectSubtitle is not provided', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'My Project',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+
+            expect(html).not.toContain('class="package-subtitle"');
         });
     });
 
@@ -966,17 +1006,27 @@ describe('PageRenderer', () => {
             expect(head).toContain('libs/exe_highlighter/exe_highlighter.css');
         });
 
-        it('should not duplicate exe_lightbox when detected', () => {
-            const head = renderer.renderHead({
+        it('should include exe_lightbox only when detected', () => {
+            // When exe_lightbox is detected, it should be included
+            const headWithLightbox = renderer.renderHead({
                 pageTitle: 'Test',
                 basePath: '',
                 usedIdevices: [],
                 detectedLibraries: ['exe_lightbox'],
             });
 
-            // exe_lightbox is already hardcoded, so should only appear once
-            const matches = head.match(/exe_lightbox\/exe_lightbox\.js/g) || [];
-            expect(matches.length).toBe(1);
+            expect(headWithLightbox).toContain('libs/exe_lightbox/exe_lightbox.js');
+            expect(headWithLightbox).toContain('libs/exe_lightbox/exe_lightbox.css');
+
+            // When exe_lightbox is NOT detected, it should NOT be included
+            const headWithoutLightbox = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                detectedLibraries: [],
+            });
+
+            expect(headWithoutLightbox).not.toContain('exe_lightbox');
         });
 
         it('should include multiple detected libraries', () => {

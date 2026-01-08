@@ -150,7 +150,7 @@ function setupConsole() {
     console.log = noOp;
     console.warn = noOp;
     console.error = function(s) {
-      window.alert("Error: " + s);
+      window.alert(_("Error") + ": " + s);
     };
   }
 

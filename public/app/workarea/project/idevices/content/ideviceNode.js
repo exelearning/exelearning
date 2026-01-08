@@ -1331,7 +1331,7 @@ export default class IdeviceNode {
                             // Open eXe alert modal
                             eXeLearning.app.modals.alert.show({
                                 title: _('Broken Links'),
-                                body: "There aren't broken links",
+                                body: _('No broken links found.'),
                             });
                         }
                     },

@@ -394,3 +394,27 @@ export const ExportFormatParam = t.Object({
 export const UserIdParam = t.Object({
     id: t.Number(),
 });
+
+// ============================================================================
+// ASSET SCHEMAS
+// ============================================================================
+
+export const AssetData = t.Object({
+    id: t.Number(),
+    clientId: t.Union([t.String(), t.Null()]),
+    filename: t.String(),
+    mimeType: t.Union([t.String(), t.Null()]),
+    size: t.Number(),
+    folderPath: t.String(),
+    createdAt: t.String(),
+    updatedAt: t.String(),
+});
+
+export const AssetIdParam = t.Object({
+    uuid: t.String(),
+    assetId: t.String(),
+});
+
+export const BulkDeleteAssetsBody = t.Object({
+    clientIds: t.Array(t.String()),
+});

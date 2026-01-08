@@ -189,15 +189,15 @@ describe('WebsitePreviewExporter', () => {
             expect(result.html).toContain('title="Next"');
         });
 
-        it('should render header elements as direct children of .page for exe_export.js teacherMode', async () => {
+        it('should render main-header wrapper with package/page headers', async () => {
             const result = await exporter.generatePreview();
-            // Headers should be direct children of main.page (not inside articles)
-            // exe_export.js teacherMode.init() uses $("header.package-header") and $("header.page-header") selectors
-            expect(result.html).toContain('<header class="package-header');
-            expect(result.html).toContain('<header class="page-header"');
+            // Headers wrapped in main-header so theme JS (e.g., flux movePageTitle) can find them
+            expect(result.html).toContain('<header class="main-header">');
+            expect(result.html).toContain('<div class="package-header');
+            expect(result.html).toContain('<div class="page-header"');
             // Headers should be outside articles (inside main.page)
             const htmlAfterMain = result.html!.split('<main class="page">')[1];
-            const headerPos = htmlAfterMain.indexOf('<header class="package-header');
+            const headerPos = htmlAfterMain.indexOf('<header class="main-header">');
             const articlePos = htmlAfterMain.indexOf('<article');
             // Header should come before articles
             expect(headerPos).toBeGreaterThan(-1);
@@ -205,11 +205,11 @@ describe('WebsitePreviewExporter', () => {
             expect(headerPos).toBeLessThan(articlePos);
         });
 
-        it('should render header elements (not divs) for exe_export.js teacherMode to find', async () => {
+        it('should render header structure for theme JS to find and move title', async () => {
             const result = await exporter.generatePreview();
-            // Must be <header> elements, NOT <div>, for exe_export.js selectors to work
-            expect(result.html).toContain('<header class="package-header package-node">');
-            expect(result.html).toContain('<header class="page-header"');
+            // main-header wraps div elements (not header), theme JS looks for '.main-header .page-header'
+            expect(result.html).toContain('<header class="main-header">');
+            expect(result.html).toContain('<div class="package-header package-node">');
             expect(result.html).toContain('class="package-title"');
             expect(result.html).toContain('class="page-title"');
         });
@@ -233,7 +233,7 @@ describe('WebsitePreviewExporter', () => {
         it('should hide shared header since page headers are inside articles', async () => {
             const result = await exporter.generatePreview();
             // Shared header is hidden (page headers are now inside each article)
-            expect(result.html).toContain('<header class="page-header" style="display:none">');
+            expect(result.html).toContain('<div class="page-header" style="display:none">');
             expect(result.html).toContain('id="page-title" class="page-title"></h2>');
         });
 
