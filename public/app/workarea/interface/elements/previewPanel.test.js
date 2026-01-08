@@ -790,6 +790,32 @@ describe('PreviewPanelManager', () => {
 
       delete window._;
     });
+
+    it('should check for data-asset-url with .html extension pattern', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      // Should use regex for HTML detection
+      expect(result).toContain('\\.html?$');
+      expect(result).toContain('/i.test(dataAssetUrl)');
+    });
+
+    it('should return early when link is not found', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      // Should check for link and return early
+      expect(result).toContain("if (!link) return");
+    });
+
+    it('should get both href and data-asset-url attributes', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      // Should get both attributes from the link
+      expect(result).toContain("link.getAttribute('href')");
+      expect(result).toContain("link.getAttribute('data-asset-url')");
+    });
   });
 
   describe('postMessage handling for HTML link resolution', () => {

@@ -835,6 +835,83 @@ describe('AssetManager', () => {
       const matches = result.match(/data-asset-url/g);
       expect(matches).toHaveLength(1);
     });
+
+    it('handles multiple HTML anchor links in the same HTML', async () => {
+      const uuid1 = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      const uuid2 = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+
+      let callCount = 0;
+      assetManager.resolveAssetURL = mock(() => undefined).mockImplementation(() => {
+        callCount++;
+        return Promise.resolve(`blob:http://localhost/resolved-${callCount}`);
+      });
+
+      const html = `<p><a href="asset://${uuid1}.html">Link 1</a></p><p><a href="asset://${uuid2}.html">Link 2</a></p>`;
+      const result = await assetManager.resolveHTMLAssets(html);
+
+      expect(result).toContain(`data-asset-url="asset://${uuid1}.html"`);
+      expect(result).toContain(`data-asset-url="asset://${uuid2}.html"`);
+      const matches = result.match(/data-asset-url/g);
+      expect(matches).toHaveLength(2);
+    });
+
+    it('handles mixed anchor elements (HTML and non-HTML)', async () => {
+      const htmlUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      const pdfUuid = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+
+      let callCount = 0;
+      assetManager.resolveAssetURL = mock(() => undefined).mockImplementation(() => {
+        callCount++;
+        return Promise.resolve(`blob:http://localhost/resolved-${callCount}`);
+      });
+
+      const html = `<a href="asset://${htmlUuid}.html">HTML</a><a href="asset://${pdfUuid}.pdf">PDF</a>`;
+      const result = await assetManager.resolveHTMLAssets(html);
+
+      // Only HTML link should have data-asset-url
+      expect(result).toContain(`data-asset-url="asset://${htmlUuid}.html"`);
+      expect(result).not.toContain(`data-asset-url="asset://${pdfUuid}.pdf"`);
+      const matches = result.match(/data-asset-url/g);
+      expect(matches).toHaveLength(1);
+    });
+
+    it('handles .htm extension (case insensitive)', async () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.resolveAssetURL = mock(() => undefined).mockResolvedValue(
+        'blob:http://localhost/resolved-blob'
+      );
+
+      const html = `<a href="asset://${uuid}.HTM">Click here</a>`;
+      const result = await assetManager.resolveHTMLAssets(html);
+
+      expect(result).toContain(`data-asset-url="asset://${uuid}.HTM"`);
+    });
+
+    it('skips anchor when blobURL resolution returns null', async () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.resolveAssetURL = mock(() => undefined).mockResolvedValue(null);
+
+      const html = `<a href="asset://${uuid}.html">Click here</a>`;
+      const result = await assetManager.resolveHTMLAssets(html);
+
+      // Should not add data-asset-url since blobURL is null
+      expect(result).not.toContain('data-asset-url');
+    });
+
+    it('preserves anchor attributes when adding data-asset-url', async () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.resolveAssetURL = mock(() => undefined).mockResolvedValue(
+        'blob:http://localhost/resolved-blob'
+      );
+
+      const html = `<a href="asset://${uuid}.html" class="my-link" id="link1" target="_blank">Click</a>`;
+      const result = await assetManager.resolveHTMLAssets(html);
+
+      expect(result).toContain('class="my-link"');
+      expect(result).toContain('id="link1"');
+      expect(result).toContain('target="_blank"');
+      expect(result).toContain(`data-asset-url="asset://${uuid}.html"`);
+    });
   });
 
   describe('resolveHTMLAssetsSync', () => {

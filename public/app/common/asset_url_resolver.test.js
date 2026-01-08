@@ -1283,6 +1283,80 @@ describe('AssetUrlResolver', () => {
       document.body.removeChild(link);
     });
 
+    it('handles clicks on nested elements inside HTML asset links', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      const span = document.createElement('span');
+      span.textContent = 'Click me';
+      link.appendChild(span);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      span.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('ignores clicks on non-link elements', () => {
+      const div = document.createElement('div');
+      div.textContent = 'Not a link';
+      document.body.appendChild(div);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      div.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(div);
+    });
+
+    it('handles case insensitive HTML extension matching', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.HTML');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on links with external URLs even if they end in .html', () => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/page.html';
+      // No data-asset-url attribute - this is an external link
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
     it('uses translation function when available', async () => {
       // Need to reload module with translation function
       vi.resetModules();
