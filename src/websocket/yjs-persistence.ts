@@ -308,14 +308,11 @@ export async function saveFullStateByUuid(projectUuid: string, state: Uint8Array
 
     await saveFullState(project.id, state, clientId);
 
-    // Mark project as saved so it appears in project list
-    if (!project.saved_once) {
-        await deps.queries.markProjectAsSaved(deps.db, project.id);
-
-        if (DEBUG) {
-            console.log(`[YjsPersistence] Marked project ${projectUuid} as savedOnce=true`);
-        }
-    }
+    // NOTE: We do NOT mark project as saved here.
+    // Auto-persistence of Yjs documents is not the same as explicit user save.
+    // Projects are marked as saved only when:
+    // 1. User explicitly clicks "Save" button
+    // 2. Collaboration starts (handled in yjs-websocket.ts)
 
     return true;
 }
@@ -426,13 +423,11 @@ export async function saveIncrementalUpdateByUuid(
 
     const result = await saveIncrementalUpdate(project.id, update, clientId);
 
-    // Mark project as saved if first save
-    if (result.success && !project.saved_once) {
-        await deps.queries.markProjectAsSaved(deps.db, project.id);
-        if (DEBUG) {
-            console.log(`[YjsPersistence] Marked project ${projectUuid} as savedOnce=true`);
-        }
-    }
+    // NOTE: We do NOT mark project as saved here.
+    // Auto-persistence of Yjs updates is not the same as explicit user save.
+    // Projects are marked as saved only when:
+    // 1. User explicitly clicks "Save" button
+    // 2. Collaboration starts (handled in yjs-websocket.ts)
 
     return result;
 }
