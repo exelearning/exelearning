@@ -1,7 +1,8 @@
 /**
  * Collaborative Editing iDevice - Edition Mode
  *
- * Uses Lexical with @lexical/yjs for real-time collaborative editing.
+ * Uses Lexical Playground (React) with @lexical/yjs for real-time collaborative editing.
+ * Features the full playground toolbar, insert menu, floating toolbar, etc.
  */
 /* global $exeDevice:true */
 var $exeDevice = {
@@ -22,20 +23,14 @@ var $exeDevice = {
 	// Default values
 	feedbackInputValue: c_('Show Feedback'),
 
-	// Editor instances
+	// Editor handles (React-based Lexical Playground)
 	mainEditor: null,
-	mainToolbar: null,
 	feedbackEditor: null,
-	feedbackToolbar: null,
-
-	// Yjs bindings
-	mainBinding: null,
-	feedbackBinding: null,
 
 	// State
 	ideviceBody: null,
 	idevicePreviousData: null,
-	_lexicalLoaded: false,
+	_lexicalPlaygroundLoaded: false,
 	_clickOutsideHandler: null,
 	_autoSaveTimeout: null,
 	_ideviceNode: null,
@@ -60,10 +55,7 @@ var $exeDevice = {
 				<!-- Main Content Section -->
 				<div class="exe-field">
 					<label for="${this.mainEditorId}">${this.textareaTitle}</label>
-					<div class="lexical-editor-container">
-						<div id="${this.mainEditorId}-toolbar" class="lexical-toolbar-container"></div>
-						<div id="${this.mainEditorId}" class="lexical-editor"></div>
-					</div>
+					<div id="${this.mainEditorId}" class="lexical-playground-container"></div>
 				</div>
 
 				<!-- Feedback Section (collapsible) -->
@@ -79,10 +71,7 @@ var $exeDevice = {
 						</div>
 						<div class="exe-field">
 							<label>${this.feedbackTitle}</label>
-							<div class="lexical-editor-container">
-								<div id="${this.feedbackEditorId}-toolbar" class="lexical-toolbar-container"></div>
-								<div id="${this.feedbackEditorId}" class="lexical-editor"></div>
-							</div>
+							<div id="${this.feedbackEditorId}" class="lexical-playground-container"></div>
 						</div>
 					</div>
 				</fieldset>
@@ -205,28 +194,25 @@ var $exeDevice = {
 	},
 
 	/**
-	 * Initialize Lexical editors
+	 * Initialize Lexical Playground editors (React-based)
 	 */
 	initLexicalEditors: async function () {
 		try {
-			// Load Lexical if not already loaded
-			await this.ensureLexicalLoaded();
+			// Load Lexical Playground if not already loaded
+			await this.ensureLexicalPlaygroundLoaded();
+
+			const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
 
 			// Create main editor
 			const mainContainer = document.getElementById(this.mainEditorId);
-			const mainToolbarContainer = document.getElementById(this.mainEditorId + '-toolbar');
-
 			if (mainContainer) {
-				this.mainEditor = new window.LexicalEditor({
-					container: mainContainer,
+				this.mainEditor = window.LexicalPlayground.mount(mainContainer, {
+					editorId: this.mainEditorId,
 					placeholder: this.placeholderText,
-					content: this.idevicePreviousData.htmlContent || '',
-				});
-
-				this.mainToolbar = new window.LexicalToolbar({
-					editor: this.mainEditor,
-					container: mainToolbarContainer,
-					onMediaLibrary: this.handleMediaLibrary.bind(this, 'main'),
+					initialHTML: this.idevicePreviousData.htmlContent || '',
+					editable: true,
+					onMediaLibraryOpen: this.handleMediaLibrary.bind(this, 'main'),
+					assetManager: assetManager,
 				});
 
 				// Bind to Yjs
@@ -235,19 +221,14 @@ var $exeDevice = {
 
 			// Create feedback editor
 			const feedbackContainer = document.getElementById(this.feedbackEditorId);
-			const feedbackToolbarContainer = document.getElementById(this.feedbackEditorId + '-toolbar');
-
 			if (feedbackContainer) {
-				this.feedbackEditor = new window.LexicalEditor({
-					container: feedbackContainer,
+				this.feedbackEditor = window.LexicalPlayground.mount(feedbackContainer, {
+					editorId: this.feedbackEditorId,
 					placeholder: _('Enter feedback...'),
-					content: this.idevicePreviousData.feedbackContent || '',
-				});
-
-				this.feedbackToolbar = new window.LexicalToolbar({
-					editor: this.feedbackEditor,
-					container: feedbackToolbarContainer,
-					onMediaLibrary: this.handleMediaLibrary.bind(this, 'feedback'),
+					initialHTML: this.idevicePreviousData.feedbackContent || '',
+					editable: true,
+					onMediaLibraryOpen: this.handleMediaLibrary.bind(this, 'feedback'),
+					assetManager: assetManager,
 				});
 
 				// Bind to Yjs
@@ -257,22 +238,22 @@ var $exeDevice = {
 			// Load previous values
 			this.loadPreviousValues();
 		} catch (error) {
-			console.error('[CollaborativeEditing] Failed to initialize Lexical:', error);
+			console.error('[CollaborativeEditing] Failed to initialize Lexical Playground:', error);
 			eXe.app.alert(_('Failed to initialize collaborative editor'));
 		}
 	},
 
 	/**
-	 * Ensure Lexical is loaded
+	 * Ensure Lexical Playground (React) is loaded
 	 */
-	ensureLexicalLoaded: async function () {
-		if (this._lexicalLoaded && window.LexicalBundle) {
+	ensureLexicalPlaygroundLoaded: async function () {
+		if (this._lexicalPlaygroundLoaded && window.LexicalPlayground) {
 			return;
 		}
 
 		if (window.YjsLoader) {
-			await window.YjsLoader.loadLexical();
-			this._lexicalLoaded = true;
+			await window.YjsLoader.loadLexicalPlayground();
+			this._lexicalPlaygroundLoaded = true;
 		} else {
 			throw new Error('YjsLoader not available');
 		}
@@ -289,12 +270,11 @@ var $exeDevice = {
 			hasProject: !!project,
 			yjsEnabled: project?._yjsEnabled,
 			hasBridge: !!project?._yjsBridge,
-			hasYjsModules: !!window.YjsModules,
-			hasYjsLexicalBinding: !!window.YjsLexicalBinding,
+			hasMainEditor: !!this.mainEditor,
 		});
 
-		if (!project?._yjsEnabled || !window.YjsModules) {
-			Logger.warn('[CollaborativeEditing] Yjs not enabled or YjsModules not available');
+		if (!project?._yjsEnabled || !project?._yjsBridge?.documentManager?.wsProvider) {
+			Logger.warn('[CollaborativeEditing] Yjs not enabled or WebSocket provider not available');
 			return;
 		}
 
@@ -305,11 +285,20 @@ var $exeDevice = {
 			return;
 		}
 
-		this.mainBinding = window.YjsModules.bindLexical(this.mainEditor, ids.pageId, ids.blockId, ids.componentId, 'htmlContent');
-		Logger.log('[CollaborativeEditing] Main binding created:', {
-			hasBinding: !!this.mainBinding,
-			bindingId: ids.componentId + '-htmlContent',
-		});
+		// Use the new setYjsBinding API from the React editor
+		if (this.mainEditor && typeof this.mainEditor.setYjsBinding === 'function') {
+			const userId = project._yjsBridge.app?.user?.id;
+			this.mainEditor.setYjsBinding({
+				provider: project._yjsBridge.documentManager.wsProvider,
+				docId: `${ids.componentId}-htmlContent`,
+				userId: String(userId || 'unknown'),
+				userName: project._yjsBridge.app?.user?.name || 'User',
+				userColor: this.getUserColor(),
+			});
+			Logger.log('[CollaborativeEditing] Main editor Yjs binding set:', {
+				docId: `${ids.componentId}-htmlContent`,
+			});
+		}
 	},
 
 	/**
@@ -317,7 +306,7 @@ var $exeDevice = {
 	 */
 	bindFeedbackEditorToYjs: function () {
 		const project = window.eXeLearning?.app?.project;
-		if (!project?._yjsEnabled || !window.YjsModules) {
+		if (!project?._yjsEnabled || !project?._yjsBridge?.documentManager?.wsProvider) {
 			return;
 		}
 
@@ -326,7 +315,34 @@ var $exeDevice = {
 			return;
 		}
 
-		this.feedbackBinding = window.YjsModules.bindLexical(this.feedbackEditor, ids.pageId, ids.blockId, ids.componentId, 'feedbackContent');
+		// Use the new setYjsBinding API from the React editor
+		if (this.feedbackEditor && typeof this.feedbackEditor.setYjsBinding === 'function') {
+			const userId = project._yjsBridge.app?.user?.id;
+			this.feedbackEditor.setYjsBinding({
+				provider: project._yjsBridge.documentManager.wsProvider,
+				docId: `${ids.componentId}-feedbackContent`,
+				userId: String(userId || 'unknown'),
+				userName: project._yjsBridge.app?.user?.name || 'User',
+				userColor: this.getUserColor(),
+			});
+		}
+	},
+
+	/**
+	 * Get a user color for collaboration cursors
+	 * @returns {string} - Hex color
+	 */
+	getUserColor: function () {
+		const colors = [
+			'#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+			'#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+			'#BB8FCE', '#85C1E9', '#F8B500', '#00CED1',
+		];
+		const userId = window.eXeLearning?.app?.project?._yjsBridge?.app?.user?.id;
+		// Convert userId to string (it may be a number or undefined)
+		const userIdStr = String(userId || 'user');
+		const hash = userIdStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+		return colors[hash % colors.length];
 	},
 
 	/**
@@ -372,14 +388,13 @@ var $exeDevice = {
 
 	/**
 	 * Handle Media Library callback
+	 * Called from the React editor's onMediaLibraryOpen callback
 	 * @param {string} editorType - 'main' or 'feedback'
-	 * @param {string} mediaType - 'image' or 'media'
+	 * @param {string} mediaType - 'image', 'video', 'audio', or 'file'
 	 */
 	handleMediaLibrary: function (editorType, mediaType) {
-		const editor = editorType === 'main' ? this.mainEditor : this.feedbackEditor;
-		const toolbar = editorType === 'main' ? this.mainToolbar : this.feedbackToolbar;
-
-		if (!editor || !toolbar) return;
+		const editorHandle = editorType === 'main' ? this.mainEditor : this.feedbackEditor;
+		if (!editorHandle) return;
 
 		// Open Media Library modal
 		const filemanager = window.eXeLearning?.app?.modals?.filemanager;
@@ -399,93 +414,35 @@ var $exeDevice = {
 						}
 					}
 
+					// Use the editor handle's insert methods
+					const editor = editorHandle.getEditor();
+					if (!editor) return;
+
 					if (mediaType === 'image') {
-						editor.insertImage({
+						editorHandle.insertImage?.({
 							src: result.blobUrl,
 							altText: result.asset.filename || '',
 							dataAssetId: result.asset.id,
 							dataAssetSrc: result.assetUrl,
 						});
-					} else if (mediaType === 'media' || mediaType === 'audio') {
-						// For video/audio, insert the appropriate node
-						const isAudio = result.asset.mime?.startsWith('audio/') || mediaType === 'audio';
-						const isVideo = result.asset.mime?.startsWith('video/');
-
-						if (isAudio) {
-							this._insertAudio(editor, result.blobUrl, result.asset);
-						} else if (isVideo) {
-							this._insertVideo(editor, result.blobUrl, result.asset);
-						} else {
-							// Generic media - try to insert as iframe
-							this._insertMedia(editor, result.blobUrl, result.asset);
-						}
+					} else if (mediaType === 'video') {
+						editorHandle.insertVideo?.({
+							src: result.blobUrl,
+							dataAssetId: result.asset.id,
+							dataAssetSrc: result.assetUrl,
+						});
+					} else if (mediaType === 'audio') {
+						editorHandle.insertAudio?.({
+							src: result.blobUrl,
+							dataAssetId: result.asset.id,
+							dataAssetSrc: result.assetUrl,
+						});
 					}
 				},
 			});
 		} else {
 			console.warn('[CollaborativeEditing] Media Library not available');
 		}
-	},
-
-	/**
-	 * Insert audio element
-	 * @private
-	 */
-	_insertAudio: function (editor, blobUrl, asset) {
-		if (!window.LexicalNodes?.$createAudioNode) {
-			console.warn('[CollaborativeEditing] AudioNode not available');
-			return;
-		}
-
-		editor.update(() => {
-			const audioNode = window.LexicalNodes.$createAudioNode({
-				src: blobUrl,
-				dataAssetId: asset.id,
-				dataAssetSrc: `asset://${asset.id}/${asset.filename}`,
-				controls: true,
-			});
-			window.LexicalBundle.$insertNodes([audioNode]);
-		});
-	},
-
-	/**
-	 * Insert video element
-	 * @private
-	 */
-	_insertVideo: function (editor, blobUrl, asset) {
-		if (!window.LexicalNodes?.$createVideoNode) {
-			console.warn('[CollaborativeEditing] VideoNode not available');
-			return;
-		}
-
-		editor.update(() => {
-			const videoNode = window.LexicalNodes.$createVideoNode({
-				src: blobUrl,
-				dataAssetId: asset.id,
-				dataAssetSrc: `asset://${asset.id}/${asset.filename}`,
-				controls: true,
-			});
-			window.LexicalBundle.$insertNodes([videoNode]);
-		});
-	},
-
-	/**
-	 * Insert generic media (iframe)
-	 * @private
-	 */
-	_insertMedia: function (editor, blobUrl, asset) {
-		if (!window.LexicalNodes?.$createIframeNode) {
-			console.warn('[CollaborativeEditing] IframeNode not available');
-			return;
-		}
-
-		editor.update(() => {
-			const iframeNode = window.LexicalNodes.$createIframeNode({
-				src: blobUrl,
-				dataAssetId: asset.id,
-			});
-			window.LexicalBundle.$insertNodes([iframeNode]);
-		});
 	},
 
 	/**
@@ -592,27 +549,7 @@ var $exeDevice = {
 			this._clickOutsideHandler = null;
 		}
 
-		// Destroy bindings
-		if (this.mainBinding) {
-			this.mainBinding.destroy();
-			this.mainBinding = null;
-		}
-		if (this.feedbackBinding) {
-			this.feedbackBinding.destroy();
-			this.feedbackBinding = null;
-		}
-
-		// Destroy toolbars
-		if (this.mainToolbar) {
-			this.mainToolbar.destroy();
-			this.mainToolbar = null;
-		}
-		if (this.feedbackToolbar) {
-			this.feedbackToolbar.destroy();
-			this.feedbackToolbar = null;
-		}
-
-		// Destroy editors
+		// Destroy editors (React-based - handles unmount and cleanup)
 		if (this.mainEditor) {
 			this.mainEditor.destroy();
 			this.mainEditor = null;

@@ -55,6 +55,13 @@
   // Lexical bundle path (lazy loaded when needed)
   const getLexicalBundlePath = () => assetPath('/libs/lexical/lexical.bundle.js');
 
+  // Lexical Playground bundle path (lazy loaded when needed)
+  const getLexicalPlaygroundBundlePath = () => assetPath('/libs/lexical/lexical-playground.bundle.js');
+
+  // React paths (lazy loaded when needed for Lexical Playground)
+  const getReactPath = () => assetPath('/libs/react/react.production.min.js');
+  const getReactDOMPath = () => assetPath('/libs/react/react-dom.production.min.js');
+
   // Local modules organized in parallel-loadable groups
   // Each group is loaded in parallel, groups are loaded sequentially
   const LOCAL_MODULE_GROUPS = [
@@ -329,6 +336,8 @@
         modulesAvailable: areModulesLoaded(),
         prosemirrorAvailable: isProseMirrorLoaded(),
         lexicalAvailable: isLexicalLoaded(),
+        lexicalPlaygroundAvailable: isLexicalPlaygroundLoaded(),
+        reactAvailable: isReactLoaded(),
       };
     },
 
@@ -418,6 +427,46 @@
 
       Logger.log('[YjsLoader] Lexical loaded successfully');
     },
+
+    /**
+     * Load Lexical Playground (React-based) bundle (lazy loading)
+     * Includes full playground with all plugins: toolbar, floating toolbar, insert menu, etc.
+     * @returns {Promise<void>}
+     */
+    async loadLexicalPlayground() {
+      if (isLexicalPlaygroundLoaded()) {
+        Logger.log('[YjsLoader] Lexical Playground already loaded');
+        return;
+      }
+
+      // First, load React if not already present
+      if (!isReactLoaded()) {
+        Logger.log('[YjsLoader] Loading React...');
+        await loadScript(getReactPath());
+        await loadScript(getReactDOMPath());
+
+        if (!isReactLoaded()) {
+          throw new Error('React failed to load');
+        }
+        Logger.log('[YjsLoader] React loaded');
+      }
+
+      // Also need Yjs loaded for collaboration
+      if (!isYjsLoaded()) {
+        Logger.log('[YjsLoader] Loading Yjs dependencies for Lexical Playground...');
+        await loadScriptsSequentially(getYJS_DEPENDENCIES());
+      }
+
+      Logger.log('[YjsLoader] Loading Lexical Playground bundle...');
+      await loadScript(getLexicalPlaygroundBundlePath());
+
+      if (!isLexicalPlaygroundLoaded()) {
+        throw new Error('Lexical Playground bundle failed to load');
+      }
+
+      Logger.log('[YjsLoader] Lexical Playground loaded successfully');
+      return window.LexicalPlayground;
+    },
   };
 
   /**
@@ -434,6 +483,22 @@
    */
   function isLexicalLoaded() {
     return typeof window.LexicalBundle !== 'undefined';
+  }
+
+  /**
+   * Check if Lexical Playground is loaded
+   * @returns {boolean}
+   */
+  function isLexicalPlaygroundLoaded() {
+    return typeof window.LexicalPlayground !== 'undefined';
+  }
+
+  /**
+   * Check if React is loaded
+   * @returns {boolean}
+   */
+  function isReactLoaded() {
+    return typeof window.React !== 'undefined' && typeof window.ReactDOM !== 'undefined';
   }
 
   // Auto-load if data attribute is present
