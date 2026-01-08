@@ -353,6 +353,61 @@ describe('FileSystemResourceProvider', () => {
             expect(files.has('imscp_v1p1.xsd')).toBe(true);
             expect(files.has('common/dataTypes.xsd')).toBe(true);
         });
+
+        it('should fetch all standard IMS CP schema files', async () => {
+            // Create IMS schema directory with all standard files
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'ims'));
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'imscp_v1p1.xsd'), '<!-- IMS CP -->');
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'imsmd_rootv1p2p1.xsd'), '<!-- IMS MD -->');
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'lom.xsd'), '<!-- LOM -->');
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'lomCustom.xsd'), '<!-- LOM Custom -->');
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'ims_xml.xsd'), '<!-- IMS XML -->');
+
+            const files = await provider.fetchImsSchemas();
+            expect(files.size).toBe(5);
+            expect(files.has('imscp_v1p1.xsd')).toBe(true);
+            expect(files.has('imsmd_rootv1p2p1.xsd')).toBe(true);
+            expect(files.has('lom.xsd')).toBe(true);
+            expect(files.has('lomCustom.xsd')).toBe(true);
+            expect(files.has('ims_xml.xsd')).toBe(true);
+        });
+
+        it('should fetch files from all IMS subdirectories', async () => {
+            // Create IMS schema directory with all subdirectories
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'ims', 'common'));
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'ims', 'extend'));
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'ims', 'unique'));
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'ims', 'vocab'));
+
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'imscp_v1p1.xsd'), '<!-- root -->');
+            await fs.writeFile(
+                path.join(testDir, 'app', 'schemas', 'ims', 'common', 'dataTypes.xsd'),
+                '<!-- common -->',
+            );
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'extend', 'strict.xsd'), '<!-- extend -->');
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'unique', 'strict.xsd'), '<!-- unique -->');
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'vocab', 'custom.xsd'), '<!-- vocab -->');
+
+            const files = await provider.fetchImsSchemas();
+            expect(files.size).toBe(5);
+            expect(files.has('imscp_v1p1.xsd')).toBe(true);
+            expect(files.has('common/dataTypes.xsd')).toBe(true);
+            expect(files.has('extend/strict.xsd')).toBe(true);
+            expect(files.has('unique/strict.xsd')).toBe(true);
+            expect(files.has('vocab/custom.xsd')).toBe(true);
+        });
+
+        it('should return file content as Buffer', async () => {
+            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'ims'));
+            const xsdContent = '<?xml version="1.0"?><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"/>';
+            await fs.writeFile(path.join(testDir, 'app', 'schemas', 'ims', 'test.xsd'), xsdContent);
+
+            const files = await provider.fetchImsSchemas();
+            const content = files.get('test.xsd');
+
+            expect(content).toBeInstanceOf(Buffer);
+            expect(content?.toString()).toBe(xsdContent);
+        });
     });
 
     describe('fetchContentCss', () => {
