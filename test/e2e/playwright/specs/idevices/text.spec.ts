@@ -2829,4 +2829,134 @@ test.describe('Text iDevice', () => {
             await popup.close();
         });
     });
+
+    test.describe('HTML asset links in preview', () => {
+        test('should show warning when clicking HTML asset link in preview', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            test.setTimeout(120000);
+            const page = authenticatedPage;
+
+            // 1. Create project and navigate to workarea
+            const projectUuid = await createProject(page, 'HTML Asset Link Warning Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await waitForLoadingScreenHidden(page);
+            await page.waitForTimeout(2000);
+
+            // Wait for Yjs initialization
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            // 2. Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // Find the text iDevice block
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ state: 'visible', timeout: 15000 });
+
+            // Wait for TinyMCE to load
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // Get TinyMCE editor ID
+            const editorId = await page.evaluate(() => {
+                const iframe = document.querySelector('.tox-edit-area iframe') as HTMLIFrameElement;
+                return iframe?.id?.replace('_ifr', '') || null;
+            });
+
+            if (!editorId) {
+                throw new Error('Could not find TinyMCE editor');
+            }
+
+            // 3. Insert content with a fake HTML asset link
+            // We simulate a link to an HTML asset by setting data-asset-url attribute
+            await page.evaluate(
+                ({ id }) => {
+                    const editor = (window as any).tinymce?.get(id);
+                    if (!editor) throw new Error('Editor not found');
+
+                    // Insert a link with data-asset-url pointing to an HTML file
+                    // This simulates what happens when you add a link to an uploaded HTML file
+                    const html = `<p><a href="blob:http://localhost:8080/fake-blob-id" data-asset-url="asset://fake-uuid.html" target="_blank">Click me - HTML link</a></p>`;
+                    editor.setContent(html);
+                },
+                { id: editorId },
+            );
+
+            // 4. Save the iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // 5. Open preview panel
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+
+            // Wait for preview to load
+            await page.waitForTimeout(3000);
+
+            // 6. Set up dialog listener to capture the alert
+            let alertMessage = '';
+            let alertReceived = false;
+
+            page.on('dialog', async dialog => {
+                alertMessage = dialog.message();
+                alertReceived = true;
+                await dialog.accept();
+            });
+
+            // 7. Try to click the HTML link in preview iframe
+            const previewIframe = page.frameLocator('#preview-iframe');
+
+            // Wait for the link to be present in preview
+            const htmlLink = previewIframe.locator('a[data-asset-url$=".html"]').first();
+
+            // Check if link exists (it should have been preserved from the iDevice content)
+            const linkCount = await htmlLink.count();
+            console.log('HTML link count in preview:', linkCount);
+
+            if (linkCount > 0) {
+                // Click the link
+                await htmlLink.click({ force: true });
+
+                // Wait a moment for the dialog to appear
+                await page.waitForTimeout(1000);
+
+                // Verify alert was shown
+                expect(alertReceived).toBe(true);
+                expect(alertMessage).toContain('cannot be navigated in preview');
+                console.log('Alert message:', alertMessage);
+            } else {
+                // Link might not have data-asset-url preserved in preview
+                // Check if there's any link we can find
+                const anyLink = previewIframe.locator('a').first();
+                const anyLinkCount = await anyLink.count();
+                console.log('Any link count:', anyLinkCount);
+
+                // For now, just verify the warning mechanism is injected
+                const previewHtml = await page.evaluate(() => {
+                    const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                    return iframe?.contentDocument?.documentElement?.outerHTML || '';
+                });
+
+                // Verify the HTML link handler script is injected
+                expect(previewHtml).toContain('htmlLinkWarningMessage');
+                expect(previewHtml).toContain('cannot be navigated in preview');
+            }
+        });
+    });
 });

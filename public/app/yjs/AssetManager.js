@@ -2105,6 +2105,31 @@ class AssetManager {
       }
     }
 
+    // Preserve data-asset-url for anchor elements linking to HTML assets
+    // This allows the preview panel to detect HTML links and show a warning
+    // Look for <a> tags with href pointing to blob:// URLs that were originally HTML assets
+    for (const { assetUrl, blobURL } of resolutions) {
+      if (!blobURL) continue;
+      // Check if this was an HTML asset by looking at the original URL
+      if (/\.html?$/i.test(assetUrl)) {
+        // Find anchor elements with this blob URL and add data-asset-url if not present
+        const escapedBlobUrl = blobURL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match: <a ... href="blob:..." ...> but NOT already having data-asset-url
+        const anchorRegex = new RegExp(
+          `(<a\\s[^>]*href=["'])${escapedBlobUrl}(["'][^>]*)(>)`,
+          'gi'
+        );
+        resolvedHTML = resolvedHTML.replace(anchorRegex, (fullMatch, before, afterHref, closeTag) => {
+          // Check if already has data-asset-url
+          if (fullMatch.includes('data-asset-url')) {
+            return fullMatch;
+          }
+          // Add data-asset-url attribute before closing >
+          return `${before}${blobURL}${afterHref} data-asset-url="${assetUrl}"${closeTag}`;
+        });
+      }
+    }
+
     return resolvedHTML;
   }
 

@@ -696,7 +696,6 @@ describe('PreviewPanelManager', () => {
 
       expect(result).toContain("event.data?.type === 'exe-html-link-resolved'");
       expect(result).toContain('iframe.src = resolvedUrl');
-      expect(result).toContain('[PreviewPanel] Updated iframe src for navigation');
     });
 
     it('should track pending resolves by request ID', () => {
@@ -710,11 +709,86 @@ describe('PreviewPanelManager', () => {
       expect(result).toContain('delete pendingResolves[reqId]');
     });
 
-    it('should log initialization message', () => {
+    it('should include click handler for HTML asset links', () => {
       const html = '<html><body></body></html>';
       const result = manager.injectHtmlLinkHandler(html);
 
-      expect(result).toContain("[PreviewPanel] HTML link handler initialized");
+      // Should have click listener in capture phase
+      expect(result).toContain("document.addEventListener('click'");
+      expect(result).toContain('true); // Use capture phase');
+    });
+
+    it('should detect HTML links by data-asset-url attribute', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain("var dataAssetUrl = link.getAttribute('data-asset-url')");
+      expect(result).toContain('/\\.html?$/i.test(dataAssetUrl)');
+    });
+
+    it('should block ALL HTML asset links in preview (not just new window)', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      // Should block all HTML links, not check for new window
+      expect(result).toContain('if (isHtmlLink) {');
+      expect(result).not.toContain('opensInNewWindow');
+    });
+
+    it('should block navigation and show alert for HTML asset links', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain('e.preventDefault()');
+      expect(result).toContain('e.stopPropagation()');
+      expect(result).toContain('alert(htmlLinkWarningMessage)');
+    });
+
+    it('should include warning message variable from translation', () => {
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(result).toContain('var htmlLinkWarningMessage =');
+      // Should contain the actual warning message
+      expect(result).toContain('cannot be navigated in preview');
+    });
+
+    it('should use translated message when _() function is available', () => {
+      const translatedMessage = 'Mensaje traducido para pruebas';
+      window._ = vi.fn().mockReturnValue(translatedMessage);
+
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      expect(window._).toHaveBeenCalledWith(expect.stringContaining('HTML websites from the Resources folder'));
+      expect(result).toContain(translatedMessage);
+
+      delete window._;
+    });
+
+    it('should use fallback message when _() function is not available', () => {
+      // Ensure _() is not defined
+      delete window._;
+
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      // Should use the hardcoded English fallback
+      expect(result).toContain('HTML websites from the Resources folder cannot be navigated in preview');
+    });
+
+    it('should escape special characters in warning message', () => {
+      const messageWithQuotes = "Test's message with 'quotes'";
+      window._ = vi.fn().mockReturnValue(messageWithQuotes);
+
+      const html = '<html><body></body></html>';
+      const result = manager.injectHtmlLinkHandler(html);
+
+      // Single quotes should be escaped
+      expect(result).toContain("\\'");
+      expect(result).not.toContain("'quotes'"); // Raw quotes should be escaped
+
+      delete window._;
     });
   });
 

@@ -795,6 +795,46 @@ describe('AssetManager', () => {
 
       expect(result).toBe('<img src="blob:resolved">');
     });
+
+    it('preserves data-asset-url attribute for anchor elements linking to HTML assets', async () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.resolveAssetURL = mock(() => undefined).mockResolvedValue(
+        'blob:http://localhost/resolved-blob'
+      );
+
+      const html = `<a href="asset://${uuid}.html">Click here</a>`;
+      const result = await assetManager.resolveHTMLAssets(html);
+
+      expect(result).toContain('href="blob:http://localhost/resolved-blob"');
+      expect(result).toContain(`data-asset-url="asset://${uuid}.html"`);
+    });
+
+    it('does not add data-asset-url to non-HTML anchor elements', async () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.resolveAssetURL = mock(() => undefined).mockResolvedValue(
+        'blob:http://localhost/resolved-blob'
+      );
+
+      const html = `<a href="asset://${uuid}.pdf">Download PDF</a>`;
+      const result = await assetManager.resolveHTMLAssets(html);
+
+      expect(result).toContain('href="blob:http://localhost/resolved-blob"');
+      expect(result).not.toContain('data-asset-url');
+    });
+
+    it('does not duplicate data-asset-url if already present on anchor element', async () => {
+      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+      assetManager.resolveAssetURL = mock(() => undefined).mockResolvedValue(
+        'blob:http://localhost/resolved-blob'
+      );
+
+      const html = `<a href="asset://${uuid}.html" data-asset-url="asset://${uuid}.html">Click here</a>`;
+      const result = await assetManager.resolveHTMLAssets(html);
+
+      // Should have exactly one data-asset-url attribute
+      const matches = result.match(/data-asset-url/g);
+      expect(matches).toHaveLength(1);
+    });
   });
 
   describe('resolveHTMLAssetsSync', () => {

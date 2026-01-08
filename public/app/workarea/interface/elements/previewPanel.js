@@ -1321,12 +1321,47 @@ export default class PreviewPanelManager {
      * @returns {string} HTML with injected handler
      */
     injectHtmlLinkHandler(html) {
+        // Get translated warning message for HTML asset links in preview
+        // Using typeof check since _() may not be available in all contexts
+        const warningMessage = typeof window._ === 'function'
+            ? window._('HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.')
+            : 'HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.';
+
+        // Escape the message for safe embedding in JavaScript string
+        const escapedWarningMessage = warningMessage.replace(/'/g, "\\'").replace(/\n/g, '\\n');
+
         const handlerScript = `
 <script>
 (function() {
     // Map to track pending resolve requests
     var pendingResolves = {};
     var resolveIdCounter = 0;
+
+    // Warning message for HTML asset links in preview (translated from main window)
+    var htmlLinkWarningMessage = '${escapedWarningMessage}';
+
+    // Intercept clicks on ALL HTML asset links in preview
+    // Internal navigation won't work because blob URLs can't resolve relative paths
+    // Use capture phase to intercept before navigation happens
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+
+        var href = link.getAttribute('href');
+        var dataAssetUrl = link.getAttribute('data-asset-url');
+
+        // Check if it's an HTML asset link
+        // In preview, asset:// URLs are resolved to blob:// URLs
+        // We detect HTML links by checking the data-asset-url attribute for .html extension
+        var isHtmlLink = dataAssetUrl && /\\.html?$/i.test(dataAssetUrl);
+
+        // Block ALL HTML asset links - internal navigation won't work in preview
+        if (isHtmlLink) {
+            e.preventDefault();
+            e.stopPropagation();
+            alert(htmlLinkWarningMessage);
+        }
+    }, true); // Use capture phase
 
     // Listen for messages from embedded HTML iframes
     window.addEventListener('message', function(event) {
@@ -1349,8 +1384,6 @@ export default class PreviewPanelManager {
                 assetId: event.data.assetId,
                 baseFolder: event.data.baseFolder
             }, '*');
-
-            console.log('[PreviewPanel] Forwarded HTML link request:', event.data.href);
             return;
         }
 
@@ -1375,15 +1408,12 @@ export default class PreviewPanelManager {
                 var iframe = iframes[i];
                 if (iframe.contentWindow === pending.source) {
                     iframe.src = resolvedUrl;
-                    console.log('[PreviewPanel] Updated iframe src for navigation');
                     break;
                 }
             }
             return;
         }
     });
-
-    console.log('[PreviewPanel] HTML link handler initialized');
 })();
 </script>`;
 

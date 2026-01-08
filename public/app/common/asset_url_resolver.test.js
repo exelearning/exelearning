@@ -1156,4 +1156,184 @@ describe('AssetUrlResolver', () => {
       expect(audio.getAttribute('data-asset-url')).toBeNull();
     });
   });
+
+  describe('HTML asset link click interception', () => {
+    let resolver;
+    let originalAttrFn;
+    let originalPropFn;
+    let alertMock;
+
+    beforeEach(async () => {
+      vi.resetModules();
+
+      // Set up alert mock before loading module
+      window.alert = vi.fn();
+      alertMock = window.alert;
+
+      originalAttrFn = vi.fn(function() { return this; });
+      originalPropFn = vi.fn(function() { return this; });
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+
+      window.jQuery.fn = {
+        attr: originalAttrFn,
+        prop: originalPropFn,
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                resolveAssetURL: vi.fn(),
+              },
+            },
+          },
+        },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+      resolver = window.eXeLearningAssetResolver;
+    });
+
+    afterEach(() => {
+      delete window.alert;
+    });
+
+    it('blocks clicks on anchor elements with HTML asset URLs', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+      expect(alertMock.mock.calls[0][0]).toContain('HTML websites');
+
+      document.body.removeChild(link);
+    });
+
+    it('blocks clicks on anchor elements with .htm extension', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.htm');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on anchor elements with non-HTML asset URLs', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.pdf');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on anchor elements without data-asset-url', () => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/page.html';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('uses translation function when available', async () => {
+      // Need to reload module with translation function
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+
+      const translatedMessage = 'Mensaje traducido de prueba';
+      window._ = vi.fn(() => translatedMessage);
+      window.alert = vi.fn();
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: { resolveAssetURL: vi.fn() },
+            },
+          },
+        },
+      };
+
+      await import('./asset_url_resolver.js');
+
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(window.alert).toHaveBeenCalledWith(translatedMessage);
+
+      document.body.removeChild(link);
+      delete window._;
+    });
+  });
 });

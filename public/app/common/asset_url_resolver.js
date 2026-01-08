@@ -478,6 +478,36 @@
     };
 
     /**
+     * Intercept clicks on HTML asset links in the editor/workarea
+     * HTML websites from the Resources folder cannot be navigated - they need to be exported.
+     * This handler blocks clicks on anchor elements linking to HTML assets.
+     */
+    function getHtmlLinkWarningMessage() {
+        // Use translation if available
+        if (typeof window._ === 'function') {
+            return window._('HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.');
+        }
+        return 'HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.';
+    }
+
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a[href]');
+        if (!link) return;
+
+        const dataAssetUrl = link.getAttribute('data-asset-url');
+
+        // Check if it's an HTML asset link by data-asset-url attribute
+        const isHtmlLink = dataAssetUrl && /\.html?$/i.test(dataAssetUrl);
+
+        // Block HTML asset link navigation
+        if (isHtmlLink) {
+            e.preventDefault();
+            e.stopPropagation();
+            alert(getHtmlLinkWarningMessage());
+        }
+    }, true); // Use capture phase to intercept before navigation
+
+    /**
      * Listen for link resolution requests from HTML iframes
      * When a user clicks a relative link inside an HTML iframe, the injected script
      * sends a postMessage to request the parent resolve the linked HTML file.
