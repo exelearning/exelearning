@@ -1,0 +1,124 @@
+/* Root layout */
+.digcompedu-editor { font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #0f172a; }
+.digcompedu-layout { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; align-items: start; }
+.digcompedu-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08); }
+.digcompedu-panel h3 { margin: 0 0 4px; font-size: 1.1rem; }
+.digcompedu-table-header { margin-bottom: 8px; }
+
+/* Table - Normal Mode (5 visible columns) */
+.digcompedu-table-wrapper { position: relative; max-height: 70vh; overflow: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #f8fafc; }
+.digcompedu-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.9rem; background: #fff; }
+.digcompedu-table th, .digcompedu-table td { border: 1px solid #e5e7eb; padding: 8px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
+.digcompedu-table thead th { background: #f8fafc; position: sticky; top: 0; z-index: 1; text-align: left; }
+
+/* Normal mode column widths (5 columns, performance hidden) */
+.digcompedu-col-area { width: 10%; }
+.digcompedu-col-competence { width: 12%; }
+.digcompedu-col-stage { width: 18%; }
+.digcompedu-col-level { width: 15%; }
+.digcompedu-col-indicator { width: 45%; }
+
+/* Indicator cell content - must allow text wrapping in fixed-width cells */
+.digcompedu-indicator { display: flex; gap: 0.5rem; align-items: flex-start; min-width: 0; width: 100%; }
+.digcompedu-indicator input[type="checkbox"] { flex-shrink: 0; margin-top: 4px; }
+/* Higher specificity to override main.css rule: article.box.idevice-element-in-content .idevice_node[mode="edition"] label */
+.digcompedu-editor .digcompedu-table .digcompedu-indicator label,
+article.box .idevice_node .digcompedu-table .digcompedu-indicator label { flex: 1 1 0% !important; min-width: 0 !important; display: block; line-height: 1.45; word-wrap: break-word !important; overflow-wrap: break-word !important; white-space: normal !important; }
+.digcompedu-editor .digcompedu-table .digcompedu-indicator label span,
+article.box .idevice_node .digcompedu-table .digcompedu-indicator label span { display: inline; white-space: normal !important; }
+.digcompedu-indicator strong { margin-right: 0.35rem; }
+
+/* Performance column content */
+.digcompedu-performance { overflow: hidden; }
+.digcompedu-performance p { margin: 0 0 4px; }
+.digcompedu-performance ul { margin: 4px 0 0 18px; padding: 0; list-style-type: disc; }
+.digcompedu-performance li { margin-bottom: 2px; }
+.digcompedu-performance strong { display: inline-block; margin-right: 4px; }
+
+/* Filters & actions */
+.digcompedu-filters { display: flex; flex-direction: column; gap: 12px; }
+.digcompedu-filter-group { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.digcompedu-filters label, .digcompedu-actions button { display: inline-flex; gap: .5rem; align-items: center; margin: 4px 8px 4px 0; cursor: pointer; }
+.digcompedu-selector-group { display: flex; flex-direction: column; gap: 4px; }
+.digcompedu-selector-group label { margin: 0; cursor: default; font-weight: 600; }
+.digcompedu-selector-group select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; background-color: #fff; }
+.digcompedu-granularity label { margin: 0 12px 0 0; }
+.digcompedu-granularity input[type="radio"] { margin-right: 4px; }
+.digcompedu-search input[type="search"] { width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+.digcompedu-search label { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.digcompedu-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 12px; }
+.digcompedu-actions button { background: #2563eb; color: #fff; border: 1px solid #1d4ed8; border-radius: 6px; padding: 6px 12px; font-weight: 600; transition: background 0.2s ease, border-color 0.2s ease; }
+.digcompedu-actions button.secondary { background: #475569; border-color: #475569; }
+.digcompedu-actions button:hover { background: #1d4ed8; border-color: #1e40af; }
+.digcompedu-actions button.secondary:hover { background: #334155; border-color: #1e293b; }
+.digcompedu-flash { margin-top: 8px; color: #0f766e; }
+
+/* Fullscreen overlay */
+.digcompedu-fullscreen-overlay { position: fixed; inset: 0; background: #0b1220cc; display: grid; grid-template-rows: auto 1fr; padding: 16px; z-index: 9999; }
+.digcompedu-fullscreen-overlay[aria-hidden="true"] { display: none !important; }
+.digcompedu-fullscreen-header { display: flex; justify-content: space-between; align-items: center; color: #fff; }
+.digcompedu-fullscreen-content { background: #fff; border-radius: 8px; padding: 12px; overflow: auto; display: flex; flex-direction: column; }
+.digcompedu-fullscreen-close { background: #fff; border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.digcompedu-overlay-open { overflow: hidden; }
+.digcompedu-fullscreen-content > .digcompedu-layout { flex: 1 1 auto; }
+
+/* Modal */
+.digcompedu-modal { position: fixed; inset: 0; display: grid; place-items: center; background: #0b122080; z-index: 9998; }
+.digcompedu-modal[aria-hidden="true"] { display: none !important; }
+.digcompedu-modal-dialog { width: min(100% - 24px, 980px); background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.35); }
+.digcompedu-modal-header, .digcompedu-modal-footer { padding: 12px; background: #f8fafc; display: flex; justify-content: space-between; align-items: center; }
+.digcompedu-modal-body { padding: 12px; display: grid; gap: 12px; }
+.digcompedu-summary-table-container { overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; background: #fff; }
+.digcompedu-text-summary { margin-top: 8px; line-height: 1.45; }
+.digcompedu-modal-title { margin: 0; font-size: 1rem; }
+.digcompedu-modal-footer button { margin-left: auto; }
+
+/* Summary table visuals */
+.digcompedu-summary-table { width: 100%; border-collapse: collapse; }
+.digcompedu-summary-table th, .digcompedu-summary-table td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: center; }
+.cell-level { font-weight: 600; }
+.digcompedu-text-summary h6 { margin: 12px 0 6px; font-size: 0.95rem; }
+.digcompedu-text-summary ul { margin: 0 0 8px 18px; padding: 0; }
+.digcompedu-text-summary li { margin-bottom: 6px; }
+
+/* Utility */
+.digcompedu-hidden { display: none !important; }
+.digcompedu-table-caption { font-weight: 600; margin-bottom: 0.5rem; }
+.digcompedu-toolbar-tip { font-size: 0.85rem; color: #475569; margin: 0; }
+.digcompedu-error { color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; padding: 12px; border-radius: 6px; }
+.digcompedu-fullscreen-overlay .digcompedu-table-wrapper { max-height: unset; }
+
+/* Column widths - Normal mode (5 visible columns) */
+.digcompedu-col-performance { width: 0; visibility: collapse; }
+.digcompedu-performance-col,
+.digcompedu-table .digcompedu-performance { display: none; }
+
+/* Fullscreen mode - show performance column with proper layout */
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-col-performance { width: auto; visibility: visible; }
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-performance-col,
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-table .digcompedu-performance { display: table-cell; }
+
+/* Fullscreen table - fixed layout with explicit column widths */
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-table { table-layout: fixed; }
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-col-area { width: 8%; }
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-col-competence { width: 10%; }
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-col-stage { width: 14%; }
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-col-level { width: 12%; }
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-col-indicator { width: 28%; }
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-col-performance { width: 28%; }
+
+/* Area color helpers */
+.area1 { background-color: #f9d2bf; }
+.area2 { background-color: #9dd3b3; }
+.area3 { background-color: #9fb9e7; }
+.area4 { background-color: #7adad0; }
+.area5 { background-color: #c8a6c2; }
+.area6 { background-color: #eda8b6; }
+
+/* Responsive */
+@media (max-width: 960px) {
+  .digcompedu-layout { grid-template-columns: 1fr; }
+  .digcompedu-actions { flex-direction: column; align-items: stretch; }
+  .digcompedu-actions button { justify-content: center; width: 100%; }
+  .digcompedu-table-wrapper { max-height: none; }
+}
