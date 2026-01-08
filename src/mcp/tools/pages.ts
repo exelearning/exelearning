@@ -4,7 +4,7 @@
  * Tools for creating, listing, updating, and deleting pages in a project.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import type { McpDependencies } from '../types';
 import { db } from '../../db/client';
 import { findProjectByUuid } from '../../db/queries';

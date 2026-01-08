@@ -4,7 +4,7 @@
  * Pre-defined prompt templates for common workflows.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 // ============================================================================
 // PROMPT REGISTRATION

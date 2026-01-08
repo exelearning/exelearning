@@ -168,7 +168,7 @@ describe('MCP Routes', () => {
                 data: {
                     name: string;
                     version: string;
-                    transport: string;
+                    transports: string[];
                     tools: string[];
                     resources: string[];
                     prompts: string[];
@@ -178,7 +178,8 @@ describe('MCP Routes', () => {
             expect(data.success).toBe(true);
             expect(data.data.name).toBe('exelearning-mcp-server');
             expect(data.data.version).toBe('1.0.0');
-            expect(data.data.transport).toBe('streamable-http');
+            expect(data.data.transports).toContain('streamable-http');
+            expect(data.data.transports).toContain('websocket');
         });
 
         it('should list available tools', async () => {
@@ -190,13 +191,13 @@ describe('MCP Routes', () => {
 
             const data = (await response.json()) as { data: { tools: string[] } };
 
-            expect(data.data.tools).toContain('projects/list');
-            expect(data.data.tools).toContain('projects/create');
-            expect(data.data.tools).toContain('pages/list');
-            expect(data.data.tools).toContain('blocks/list');
-            expect(data.data.tools).toContain('components/list');
-            expect(data.data.tools).toContain('metadata/get');
-            expect(data.data.tools).toContain('export/formats');
+            expect(data.data.tools).toContain('projects.list');
+            expect(data.data.tools).toContain('projects.create');
+            expect(data.data.tools).toContain('pages.list');
+            expect(data.data.tools).toContain('blocks.list');
+            expect(data.data.tools).toContain('components.list');
+            expect(data.data.tools).toContain('metadata.get');
+            expect(data.data.tools).toContain('export.formats');
         });
 
         it('should list available resources', async () => {

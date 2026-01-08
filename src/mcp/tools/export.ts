@@ -4,7 +4,7 @@
  * Tools for exporting projects to various formats.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import type { McpDependencies, ExportFormat, ExportFormatInfo } from '../types';
 import { db } from '../../db/client';
 import { findProjectByUuid } from '../../db/queries';

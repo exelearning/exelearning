@@ -2,21 +2,29 @@
  * MCP HTTP Routes
  *
  * HTTP endpoints for MCP (Model Context Protocol) server.
- * Uses Streamable HTTP transport for AI agent integration.
+ * Supports both HTTP Streamable and WebSocket transports.
  */
 import { Elysia } from 'elysia';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { createMcpServer, closeSession } from '../mcp/server';
 import { authenticateRequest, errorResponse } from './api/v1/types';
+import { verifyToken } from './auth';
+import { WebSocketServerTransport, type McpWebSocketData } from '../mcp/websocket-transport';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 // ============================================================================
 // SESSION MANAGEMENT
 // ============================================================================
 
 /**
- * Map of session ID to transport for managing persistent connections.
+ * Map of session ID to HTTP transport for managing persistent HTTP connections.
  */
 const sessionTransports = new Map<string, WebStandardStreamableHTTPServerTransport>();
+
+/**
+ * Map of session ID to WebSocket transport for managing persistent WS connections.
+ */
+const wsTransports = new Map<string, { transport: WebSocketServerTransport; server: McpServer }>();
 
 // ============================================================================
 // ROUTES
@@ -117,9 +125,10 @@ export const mcpRoutes = new Elysia({ prefix: '/mcp' })
             data: {
                 name: 'exelearning-mcp-server',
                 version: '1.0.0',
-                transport: 'streamable-http',
+                transports: ['streamable-http', 'websocket'],
                 endpoints: {
-                    mcp: '/mcp',
+                    http: '/mcp',
+                    websocket: '/mcp/ws',
                     info: '/mcp/info',
                 },
                 tools: [
@@ -172,8 +181,107 @@ export const mcpRoutes = new Elysia({ prefix: '/mcp' })
         data: {
             status: 'healthy',
             activeSessions: sessionTransports.size,
+            wsActiveSessions: wsTransports.size,
         },
-    }));
+    }))
+
+    /**
+     * MCP WebSocket endpoint.
+     *
+     * Allows MCP clients to connect via WebSocket instead of HTTP Streamable.
+     * This is useful for clients like LM Studio that prefer WebSocket connections.
+     *
+     * Connect to: ws://localhost:8081/mcp/ws?token=<jwt>
+     * Authentication is required via query string token.
+     */
+    .ws('/ws', {
+        async open(ws) {
+            const sessionId = crypto.randomUUID();
+
+            // Extract token from query string
+            const url = new URL(ws.data?.url || '', 'http://localhost');
+            const token = url.searchParams.get('token');
+
+            if (!token) {
+                ws.close(4001, 'Authentication required: token query parameter missing');
+                return;
+            }
+
+            // Verify token
+            const payload = await verifyToken(token);
+            if (!payload) {
+                ws.close(4001, 'Invalid or expired token');
+                return;
+            }
+
+            // Guests are not allowed
+            if (payload.isGuest) {
+                ws.close(4003, 'Guest users are not allowed to use MCP');
+                return;
+            }
+
+            // Create transport
+            const transport = new WebSocketServerTransport(sessionId);
+            transport.attachWebSocket(ws as unknown as import('bun').ServerWebSocket<McpWebSocketData>);
+
+            // Create MCP server for this session
+            const server = createMcpServer({
+                authToken: token,
+                user: {
+                    userId: payload.sub,
+                    email: payload.email,
+                    roles: payload.roles || [],
+                },
+            });
+
+            // Store transport and server
+            wsTransports.set(sessionId, { transport, server });
+
+            // Update WebSocket data
+            ws.data = { sessionId, transport };
+
+            // Connect server to transport
+            server
+                .connect(transport)
+                .then(() => {
+                    console.log(`[MCP-WS] Session initialized: ${sessionId}`);
+                })
+                .catch(err => {
+                    console.error('[MCP-WS] Failed to connect server:', err);
+                    ws.close(1011, 'Failed to initialize MCP server');
+                });
+        },
+
+        message(ws, message) {
+            const { transport } = ws.data;
+            if (transport) {
+                const data = typeof message === 'string' ? message : Buffer.from(message).toString('utf-8');
+                transport.handleMessage(data);
+            }
+        },
+
+        close(ws) {
+            const { sessionId, transport } = ws.data;
+            if (transport) {
+                transport.handleClose();
+            }
+            if (sessionId) {
+                const session = wsTransports.get(sessionId);
+                if (session) {
+                    session.server.close().catch(() => {});
+                }
+                wsTransports.delete(sessionId);
+                console.log(`[MCP-WS] Session closed: ${sessionId}`);
+            }
+        },
+
+        error(ws, error) {
+            const { transport } = ws.data;
+            if (transport) {
+                transport.handleError(error instanceof Error ? error : new Error(String(error)));
+            }
+        },
+    });
 
 // ============================================================================
 // CLEANUP
@@ -183,7 +291,8 @@ export const mcpRoutes = new Elysia({ prefix: '/mcp' })
  * Close all MCP sessions (call on server shutdown).
  */
 export async function closeMcpSessions(): Promise<void> {
-    const promises = Array.from(sessionTransports.keys()).map(async sessionId => {
+    // Close HTTP sessions
+    const httpPromises = Array.from(sessionTransports.keys()).map(async sessionId => {
         try {
             const transport = sessionTransports.get(sessionId);
             if (transport) {
@@ -194,6 +303,21 @@ export async function closeMcpSessions(): Promise<void> {
             // Ignore errors during cleanup
         }
     });
-    await Promise.all(promises);
+
+    // Close WebSocket sessions
+    const wsPromises = Array.from(wsTransports.keys()).map(async sessionId => {
+        try {
+            const session = wsTransports.get(sessionId);
+            if (session) {
+                await session.transport.close();
+                await session.server.close();
+            }
+        } catch {
+            // Ignore errors during cleanup
+        }
+    });
+
+    await Promise.all([...httpPromises, ...wsPromises]);
     sessionTransports.clear();
+    wsTransports.clear();
 }
