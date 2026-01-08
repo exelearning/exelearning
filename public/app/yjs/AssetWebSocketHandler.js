@@ -223,6 +223,11 @@ class AssetWebSocketHandler {
             this._handleAssetMessage(parsed);
             return;
           }
+          // Handle server request to sync state (triggered when collaboration starts on unsaved project)
+          if (parsed.type === 'request-sync-state') {
+            this._handleRequestSyncState(parsed);
+            return;
+          }
           Logger.log('[AssetWebSocketHandler] Ignoring unknown JSON message:', parsed.type || 'no type');
         } catch {
           Logger.log('[AssetWebSocketHandler] Ignoring non-JSON string message');
@@ -458,6 +463,41 @@ class AssetWebSocketHandler {
 
       default:
         console.warn(`[AssetWebSocketHandler] Unknown message type: ${type}`);
+    }
+  }
+
+  /**
+   * Handle server request to sync state (triggered when collaboration starts on unsaved project)
+   * This ensures the project is persisted before multiple users start editing
+   * @param {Object} message - The request message
+   * @param {string} message.reason - Why sync is requested (e.g., 'collaboration-started')
+   * @param {string} message.projectUuid - Project UUID to sync
+   */
+  async _handleRequestSyncState(message) {
+    const { reason, projectUuid } = message;
+    Logger.log(`[AssetWebSocketHandler] Server requested sync-state, reason: ${reason}`);
+
+    // Get the save manager from the bridge
+    const saveManager = eXeLearning?.app?.project?._yjsBridge?.saveManager;
+    if (!saveManager) {
+      console.warn('[AssetWebSocketHandler] Cannot sync state: SaveManager not available');
+      return;
+    }
+
+    // Get the document manager from the bridge
+    const documentManager = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+    if (!documentManager) {
+      console.warn('[AssetWebSocketHandler] Cannot sync state: DocumentManager not available');
+      return;
+    }
+
+    try {
+      // Save the Yjs state to the server
+      // This will also mark the project as saved_once=1
+      await saveManager.saveYjsState(projectUuid, documentManager);
+      Logger.log('[AssetWebSocketHandler] Project state synced due to collaboration');
+    } catch (error) {
+      console.error('[AssetWebSocketHandler] Failed to sync project state:', error);
     }
   }
 

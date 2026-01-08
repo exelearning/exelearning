@@ -93,6 +93,7 @@ export async function seedTestProject(
         description: string;
         status?: string;
         visibility?: string;
+        saved_once?: number;
     }> = {},
 ): Promise<number> {
     const now = Date.now();
@@ -105,7 +106,7 @@ export async function seedTestProject(
             owner_id: ownerId,
             status: overrides.status ?? 'active',
             visibility: overrides.visibility ?? 'private',
-            saved_once: 0,
+            saved_once: overrides.saved_once ?? 1, // Default to saved for tests
             created_at: now,
             updated_at: now,
         })
