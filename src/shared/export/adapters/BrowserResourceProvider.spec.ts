@@ -325,9 +325,7 @@ describe('BrowserResourceProvider', () => {
             dirFiles.set('styles.css', createMockBlob('/* styles */'));
             mockFetcher.setLibraryDirectory('exe_atools', dirFiles);
 
-            const patterns = [
-                { name: 'exe_atools', files: ['exe_atools/exe_atools.js'], isDirectory: true },
-            ];
+            const patterns = [{ name: 'exe_atools', files: ['exe_atools/exe_atools.js'], isDirectory: true }];
 
             const result = await provider.fetchLibraryFiles(['exe_atools/exe_atools.js'], patterns);
 
@@ -364,10 +362,7 @@ describe('BrowserResourceProvider', () => {
 
             const patterns = [{ name: 'myplugin', files: ['myplugin/plugin.js'], isDirectory: true }];
 
-            const result = await provider.fetchLibraryFiles(
-                ['jquery.min.js', 'myplugin/plugin.js'],
-                patterns,
-            );
+            const result = await provider.fetchLibraryFiles(['jquery.min.js', 'myplugin/plugin.js'], patterns);
 
             expect(result.has('jquery.min.js')).toBe(true);
             expect(result.has('plugin.js')).toBe(true);
