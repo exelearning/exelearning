@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<idevice>
+    <name>digcompedu</name>
+    <title>DigCompEdu</title>
+    <css-class>digcompedu</css-class>
+    <category>Assessment and tracking</category>
+    <icon>
+        <name>digcompedu-icon</name>
+        <url>digcompedu-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <location>location</location>
+    <location-type>location type</location-type>
+    <edition-js>
+        <filename>digcompedu.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>digcompedu.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>digcompedu.js</filename>
+    </export-js>
+    <export-css>
+        <filename>digcompedu.css</filename>
+    </export-css>
+    <export-template-filename>digcompedu.html</export-template-filename>
+    <export-object>$Digcompedu</export-object>
+    <author>erseco</author>
+    <author-url>https://github.com/erseco</author-url>
+    <license>AGPL-3.0-or-later</license>
+    <license-url>https://www.gnu.org/licenses/agpl-3.0.html</license-url>
+    <description>Digital Competence framework manager for DigCompEdu</description>
+    <downloadable>0</downloadable>
+</idevice>
