@@ -84,6 +84,7 @@ To deploy eXeLearning in a production environment, see:
 
 - Overview: [doc/deployment.md](./doc/deployment.md)
 - Sample Compose files: [doc/deploy/README.md](./doc/deploy/README.md)
+- Upgrading from previous versions: [UPGRADE.md](./UPGRADE.md)
 
 ## Development Environment
 
