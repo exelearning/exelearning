@@ -549,6 +549,118 @@ export default class Modal {
     }
 
     /*******************************************************************************
+     * CSV EXPORT
+     *******************************************************************************/
+
+    /**
+     * Convert an HTML table to CSV format
+     * Parses the visible table in the modal and generates a CSV string
+     *
+     * @param {HTMLTableElement} tableElement - The table element to convert
+     * @param {Object} options - Options for CSV generation
+     * @param {number[]} [options.skipColumns=[]] - Column indices to skip (0-based)
+     * @returns {string} CSV string with UTF-8 BOM prefix
+     */
+    tableToCSV(tableElement, options = {}) {
+        const skipColumns = options.skipColumns || [];
+        const rows = [];
+
+        // Get headers from thead
+        const thead = tableElement.querySelector('thead');
+        if (thead) {
+            const headers = [];
+            // Try to find th elements inside tr first, fallback to direct children
+            let ths = thead.querySelectorAll('tr th');
+            if (ths.length === 0) {
+                // Handle non-standard structure where th is direct child of thead
+                ths = thead.querySelectorAll('th');
+            }
+            ths.forEach((th, index) => {
+                if (!skipColumns.includes(index)) {
+                    headers.push(this._escapeCSVValue(th.textContent.trim()));
+                }
+            });
+            if (headers.length > 0) {
+                rows.push(headers.join(','));
+            }
+        }
+
+        // Get data from tbody
+        const tbody = tableElement.querySelector('tbody');
+        if (tbody) {
+            const trs = tbody.querySelectorAll('tr');
+            trs.forEach((tr) => {
+                const cells = [];
+                const tds = tr.querySelectorAll('td');
+
+                // Skip empty or placeholder rows (e.g., "No links found")
+                if (tds.length === 1 && tds[0].colSpan > 1) {
+                    return;
+                }
+
+                tds.forEach((td, index) => {
+                    if (!skipColumns.includes(index)) {
+                        // Get text content, handling links specially
+                        let value = td.textContent.trim();
+                        cells.push(this._escapeCSVValue(value));
+                    }
+                });
+
+                if (cells.length > 0) {
+                    rows.push(cells.join(','));
+                }
+            });
+        }
+
+        return rows.join('\r\n');
+    }
+
+    /**
+     * Escape a value for CSV format
+     * Handles commas, quotes, and newlines
+     *
+     * @param {string} value - The value to escape
+     * @returns {string} Escaped value
+     * @private
+     */
+    _escapeCSVValue(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        const str = String(value);
+
+        // If value contains comma, quote, or newline, wrap in quotes
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+            // Escape quotes by doubling them
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+
+        return str;
+    }
+
+    /**
+     * Download content as a CSV file
+     *
+     * @param {string} csvContent - The CSV content (without BOM)
+     * @param {string} filename - The filename for the download
+     */
+    downloadCSVFile(csvContent, filename) {
+        const blob = new Blob(['\ufeff', csvContent], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = filename;
+
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+
+        URL.revokeObjectURL(url);
+    }
+
+    /*******************************************************************************
      * FILTER TABLE
      *******************************************************************************/
 

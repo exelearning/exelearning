@@ -208,42 +208,33 @@ export default class ModalOdeUsedFiles extends Modal {
     }
 
     /**
-     *
+     * Download resources as CSV by parsing the visible table
+     * No server call needed - data is already in the rendered table
      */
-    async downloadCsv() {
+    downloadCsv() {
         this.preventCloseModal = true;
-        let sessionId = eXeLearning.app.project.odeSession;
-        let params = {
-            csv: true,
-            odeSessionId: sessionId,
-            resourceReport: true,
-        };
-        await eXeLearning.app.api
-            .getOdeSessionUsedFiles(params)
-            .then(function (data) {
-                var headerTitles = [
-                    _('File'),
-                    _('Path'),
-                    _('Size'),
-                    _('Page name'),
-                    _('Block name'),
-                    _('iDevice'),
-                    _('Position'),
-                ];
-                var csv =
-                    eXeLearning.app.api.app.menus.navbar.utilities.json2Csv(
-                        data['usedFiles'],
-                        headerTitles
-                    );
-                var downloadLink = document.createElement('a');
-                var blob = new Blob(['\ufeff', csv]);
-                var url = URL.createObjectURL(blob);
-                downloadLink.href = url;
-                downloadLink.download = 'ResourceReport.csv';
 
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
+        // Find the table in the modal body
+        const table = this.modalElement.querySelector('table');
+        if (!table) {
+            console.warn('[ModalOdeUsedFiles] No table found for CSV export');
+            return;
+        }
+
+        // Check if there are any data rows
+        const dataRows = table.querySelectorAll('tbody tr');
+        if (dataRows.length === 0) {
+            eXeLearning.app.alerts.showToast({
+                type: 'info',
+                message: _('No resources to export'),
             });
+            return;
+        }
+
+        // Convert table to CSV (no columns to skip)
+        const csv = this.tableToCSV(table);
+
+        // Download the CSV file
+        this.downloadCSVFile(csv, 'ResourceReport.csv');
     }
 }

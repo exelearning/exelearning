@@ -19,6 +19,7 @@ import * as elpConvert from './commands/elp-convert';
 import * as elpExport from './commands/elp-export';
 import * as checkQuota from './commands/check-quota';
 import * as projectsPurge from './commands/projects-purge';
+import * as projectsCleanup from './commands/projects-cleanup';
 
 // Command registry
 interface CommandModule {
@@ -40,6 +41,7 @@ const COMMANDS: Record<string, CommandModule> = {
     'elp:export': elpExport,
     'check-quota': checkQuota,
     'projects:purge': projectsPurge,
+    'projects:cleanup': projectsCleanup,
 };
 
 // Command aliases
@@ -162,6 +164,7 @@ ${colors.cyan('Maintenance:')}
   tmp:cleanup [--max-age=86400]              Clean temporary files
   translations [--locale=en]                  Extract/clean translations
   projects:purge --yes                        Delete all projects and assets
+  projects:cleanup [--unsaved-age=24]        Clean unsaved/guest projects
 
 ${colors.cyan('ELPX Processing:')}
   elp:convert <input> <output>               Convert ELP v2.x to v3.0 (elpx)
@@ -186,6 +189,8 @@ ${colors.cyan('Examples:')}
   bun cli tmp:cleanup --max-age=3600 --dry-run
   bun cli translations --locale=es
   bun cli projects:purge --dry-run
+  bun cli projects:cleanup --dry-run
+  bun cli projects:cleanup --unsaved-age 48 --guest-age 14 --yes
 
 ${colors.cyan('Help:')}
   bun cli <command> --help   Show help for specific command

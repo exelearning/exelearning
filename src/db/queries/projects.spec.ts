@@ -24,6 +24,8 @@ import {
     updateProject,
     updateProjectByUuid,
     markProjectAsSaved,
+    updateProjectTitle,
+    updateProjectTitleAndSave,
     updateLastAccessed,
     softDeleteProject,
     hardDeleteProject,
@@ -307,6 +309,40 @@ describe('Project Queries', () => {
 
             const found = await findProjectById(db, project.id);
             expect(found?.saved_once).toBe(1);
+        });
+    });
+
+    describe('updateProjectTitle', () => {
+        it('should update title without changing saved_once', async () => {
+            const project = await createProject(db, {
+                title: 'Original Title',
+                owner_id: testUser.id,
+            });
+
+            expect(project.saved_once).toBe(0);
+
+            await updateProjectTitle(db, project.id, 'New Title');
+
+            const found = await findProjectById(db, project.id);
+            expect(found?.title).toBe('New Title');
+            expect(found?.saved_once).toBe(0); // Should NOT be marked as saved
+        });
+    });
+
+    describe('updateProjectTitleAndSave', () => {
+        it('should update title AND set saved_once to 1', async () => {
+            const project = await createProject(db, {
+                title: 'Original Title',
+                owner_id: testUser.id,
+            });
+
+            expect(project.saved_once).toBe(0);
+
+            await updateProjectTitleAndSave(db, project.id, 'Saved Title');
+
+            const found = await findProjectById(db, project.id);
+            expect(found?.title).toBe('Saved Title');
+            expect(found?.saved_once).toBe(1); // Should be marked as saved
         });
     });
 

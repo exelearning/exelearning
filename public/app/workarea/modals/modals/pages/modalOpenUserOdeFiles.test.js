@@ -1378,7 +1378,9 @@ describe('modalOpenUserOdeFiles', () => {
   });
 
   describe('openUserOdeFilesEvent', () => {
-    it('should close modal and redirect to project', async () => {
+    it('should close modal and redirect to project when no unsaved changes', async () => {
+      // No unsaved changes (no yjsBridge)
+      window.eXeLearning.app.project._yjsBridge = null;
       const closeSpy = vi.spyOn(modal, 'close');
       Object.defineProperty(window, 'location', {
         value: { href: '' },
@@ -1389,6 +1391,40 @@ describe('modalOpenUserOdeFiles', () => {
       expect(closeSpy).toHaveBeenCalled();
       expect(window.onbeforeunload).toBeNull();
       expect(window.location.href).toContain('/workarea?project=proj-1');
+    });
+
+    it('should redirect when hasUnsavedChanges returns false', async () => {
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
+      const closeSpy = vi.spyOn(modal, 'close');
+      Object.defineProperty(window, 'location', {
+        value: { href: '' },
+        writable: true,
+      });
+      await modal.openUserOdeFilesEvent('proj-1');
+      expect(closeSpy).toHaveBeenCalled();
+      expect(window.location.href).toContain('/workarea?project=proj-1');
+      expect(window.eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
+    });
+
+    it('should show session logout when hasUnsavedChanges returns true', async () => {
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
+      const closeSpy = vi.spyOn(modal, 'close');
+      await modal.openUserOdeFilesEvent('proj-1');
+      expect(closeSpy).toHaveBeenCalled();
+      expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith({
+        title: 'Open project',
+        forceOpen: 'Open without saving',
+        openYjsProject: true,
+        projectUuid: 'proj-1',
+      });
     });
   });
 
@@ -1454,12 +1490,32 @@ describe('modalOpenUserOdeFiles', () => {
     });
 
     it('should show session logout when unsaved changes detected', async () => {
-      window.eXeLearning.app.api.postCheckCurrentOdeUsers.mockResolvedValueOnce({
-        leaveSession: true,
-      });
+      // Setup Yjs bridge with unsaved changes
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
       const file = new File(['x'], 'sample.elp', { type: 'application/zip' });
       await modal.largeFilesUpload(file);
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
+    });
+
+    it('should not show session logout when no unsaved changes', async () => {
+      // Setup Yjs bridge without unsaved changes
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
+      window.history.pushState = vi.fn();
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: vi.fn().mockResolvedValue(JSON.stringify({ uuid: 'proj-1' })),
+      });
+      const file = new File(['x'], 'sample.elp', { type: 'application/zip' });
+      await modal.largeFilesUpload(file);
+      expect(window.eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
     });
 
     it('should process in-memory import and refresh UI', async () => {
@@ -1560,16 +1616,33 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
     });
 
-    it('should request session check and open when empty session', async () => {
+    it('should open directly when no unsaved changes', async () => {
       window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
         responseMessage: 'ERROR',
       });
-      window.eXeLearning.app.api.postCheckCurrentOdeUsers.mockResolvedValueOnce({
-        leaveEmptySession: true,
-      });
+      // Setup Yjs bridge without unsaved changes
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
       const openSpy = vi.spyOn(modal, 'openUserLocalOdeFilesWithOpenSession').mockResolvedValue();
       await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
       expect(openSpy).toHaveBeenCalledWith('a.elp', '/tmp/a.elp');
+    });
+
+    it('should show session logout when unsaved changes exist', async () => {
+      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+      });
+      // Setup Yjs bridge with unsaved changes
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
+      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
+      expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
     });
   });
 

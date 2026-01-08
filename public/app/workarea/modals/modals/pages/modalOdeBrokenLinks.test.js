@@ -343,19 +343,26 @@ describe('ModalOdeBrokenLinks', () => {
     });
 
     describe('downloadCsv', () => {
-        it('should warn when no link manager', () => {
+        it('should warn when no table found', () => {
             const consoleSpy = vi.spyOn(console, 'warn');
-            modal.linkManager = null;
+            // Clear modal body to have no table
+            modal.modalElement.querySelector('.modal-body').innerHTML = '';
             modal.downloadCsv();
             expect(consoleSpy).toHaveBeenCalledWith(
-                '[ModalOdeBrokenLinks] No link manager available for CSV export'
+                '[ModalOdeBrokenLinks] No table found for CSV export'
             );
         });
 
-        it('should show toast when no broken links', () => {
-            modal.linkManager = {
-                toExportFormat: vi.fn().mockReturnValue([]),
-            };
+        it('should show toast when no broken links in table', () => {
+            // Create table with no broken links (no table-danger rows)
+            modal.modalElement.querySelector('.modal-body').innerHTML = `
+                <table>
+                    <thead><tr><th>Status</th><th>Link</th></tr></thead>
+                    <tbody>
+                        <tr><td>OK</td><td>https://valid.com</td></tr>
+                    </tbody>
+                </table>
+            `;
             modal.downloadCsv();
             expect(eXeLearning.app.alerts.showToast).toHaveBeenCalledWith({
                 type: 'info',
@@ -363,17 +370,28 @@ describe('ModalOdeBrokenLinks', () => {
             });
         });
 
-        it('should create and trigger download', () => {
-            const brokenLinks = [
-                {
-                    brokenLinks: 'http://bad.link',
-                    brokenLinksError: '404',
-                    nTimesBrokenLinks: 1,
-                },
-            ];
-            modal.linkManager = {
-                toExportFormat: vi.fn().mockReturnValue(brokenLinks),
-            };
+        it('should create and trigger download for broken links', () => {
+            // Create table with broken links (table-danger rows)
+            modal.modalElement.querySelector('.modal-body').innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Link</th>
+                            <th>Error</th>
+                            <th>Times</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="table-danger">
+                            <td>X</td>
+                            <td>http://broken.link</td>
+                            <td>404</td>
+                            <td>1</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
 
             // Store original createElement
             const originalCreateElement = document.createElement.bind(document);
@@ -390,11 +408,65 @@ describe('ModalOdeBrokenLinks', () => {
 
             modal.downloadCsv();
 
-            expect(window.eXeLearning.app.api.app.menus.navbar.utilities.json2Csv).toHaveBeenCalled();
             expect(clickSpy).toHaveBeenCalled();
 
             // Restore original
             document.createElement = originalCreateElement;
+        });
+
+        it('should skip the status column in CSV export', () => {
+            // Create table with broken links
+            modal.modalElement.querySelector('.modal-body').innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Link</th>
+                            <th>Error</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="table-danger">
+                            <td>X</td>
+                            <td>http://broken.link</td>
+                            <td>404</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+
+            const tableToCSVSpy = vi.spyOn(modal, 'tableToCSV');
+            modal.downloadCsv();
+
+            expect(tableToCSVSpy).toHaveBeenCalled();
+            const options = tableToCSVSpy.mock.calls[0][1];
+            expect(options.skipColumns).toEqual([0]);
+        });
+
+        it('should only include broken link rows in CSV', () => {
+            // Create table with mixed valid and broken links
+            modal.modalElement.querySelector('.modal-body').innerHTML = `
+                <table>
+                    <thead>
+                        <tr><th>Status</th><th>Link</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>OK</td><td>https://valid.com</td></tr>
+                        <tr class="table-danger"><td>X</td><td>http://broken.com</td></tr>
+                        <tr><td>OK</td><td>https://also-valid.com</td></tr>
+                    </tbody>
+                </table>
+            `;
+
+            const tableToCSVSpy = vi.spyOn(modal, 'tableToCSV');
+            modal.downloadCsv();
+
+            expect(tableToCSVSpy).toHaveBeenCalled();
+            // Check that the filtered table was passed
+            const filteredTable = tableToCSVSpy.mock.calls[0][0];
+            const rows = filteredTable.querySelectorAll('tbody tr');
+            expect(rows.length).toBe(1);
+            expect(rows[0].classList.contains('table-danger')).toBe(true);
         });
     });
 
