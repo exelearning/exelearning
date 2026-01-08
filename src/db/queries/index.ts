@@ -40,6 +40,7 @@ export {
     updateProject,
     updateProjectByUuid,
     markProjectAsSaved,
+    updateProjectTitle,
     updateProjectTitleAndSave,
     updateLastAccessed,
     softDeleteProject,
@@ -52,6 +53,10 @@ export {
     transferOwnershipByUuid,
     updateProjectVisibility,
     updateProjectVisibilityByUuid,
+    // Cleanup queries
+    findUnsavedProjectsOlderThan,
+    findGuestProjectsOlderThan,
+    deleteProjectWithRelatedData,
 } from './projects';
 
 // Asset queries

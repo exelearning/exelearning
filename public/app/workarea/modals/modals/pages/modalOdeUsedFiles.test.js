@@ -532,43 +532,121 @@ describe('ModalOdeUsedFiles', () => {
   });
 
   describe('downloadCsv', () => {
-    it('should call api and trigger download', async () => {
-      await modal.downloadCsv();
-      expect(window.eXeLearning.app.api.getOdeSessionUsedFiles).toHaveBeenCalled();
-      expect(window.eXeLearning.app.api.app.menus.navbar.utilities.json2Csv).toHaveBeenCalled();
+    beforeEach(() => {
+      // Mock alerts
+      window.eXeLearning.app.alerts = {
+        showToast: vi.fn(),
+      };
     });
 
-    it('should set preventCloseModal to true', async () => {
-      expect(modal.preventCloseModal).toBeFalsy();
-      await modal.downloadCsv();
-      expect(modal.preventCloseModal).toBe(true);
+    it('should warn when no table found', () => {
+      const consoleSpy = vi.spyOn(console, 'warn');
+      // Clear modal body to have no table
+      modal.modalElementBody.innerHTML = '';
+      modal.downloadCsv();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[ModalOdeUsedFiles] No table found for CSV export'
+      );
     });
 
-    it('should pass correct params to API', async () => {
-      await modal.downloadCsv();
-      expect(window.eXeLearning.app.api.getOdeSessionUsedFiles).toHaveBeenCalledWith({
-        csv: true,
-        odeSessionId: 'test-session',
-        resourceReport: true,
+    it('should show toast when no data rows in table', () => {
+      // Create table with no data rows
+      modal.modalElementBody.innerHTML = `
+        <table>
+          <thead><tr><th>File</th><th>Path</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      `;
+      modal.downloadCsv();
+      expect(window.eXeLearning.app.alerts.showToast).toHaveBeenCalledWith({
+        type: 'info',
+        message: 'No resources to export',
       });
     });
 
-    it('should create download link with correct filename', async () => {
-      const createElementSpy = vi.spyOn(document, 'createElement');
-      await modal.downloadCsv();
-
-      // Find the anchor element that was created
-      const anchorCalls = createElementSpy.mock.calls.filter(call => call[0] === 'a');
-      expect(anchorCalls.length).toBeGreaterThan(0);
+    it('should set preventCloseModal to true', () => {
+      modal.modalElementBody.innerHTML = `
+        <table>
+          <thead><tr><th>File</th></tr></thead>
+          <tbody><tr><td>test.png</td></tr></tbody>
+        </table>
+      `;
+      expect(modal.preventCloseModal).toBeFalsy();
+      modal.downloadCsv();
+      expect(modal.preventCloseModal).toBe(true);
     });
 
-    it('should create blob with BOM for Excel compatibility', async () => {
+    it('should not call server API (parses table directly)', () => {
+      modal.modalElementBody.innerHTML = `
+        <table>
+          <thead><tr><th>File</th><th>Path</th></tr></thead>
+          <tbody><tr><td>image.png</td><td>/files/image.png</td></tr></tbody>
+        </table>
+      `;
+      modal.downloadCsv();
+      // Should NOT call the API since we parse the table directly
+      expect(window.eXeLearning.app.api.getOdeSessionUsedFiles).not.toHaveBeenCalled();
+    });
+
+    it('should create and trigger download', () => {
+      modal.modalElementBody.innerHTML = `
+        <table>
+          <thead><tr><th>File</th><th>Path</th></tr></thead>
+          <tbody><tr><td>image.png</td><td>/files/image.png</td></tr></tbody>
+        </table>
+      `;
+
+      // Store original createElement
+      const originalCreateElement = document.createElement.bind(document);
+      const clickSpy = vi.fn();
+
+      // Mock createElement to intercept anchor creation
+      document.createElement = vi.fn((tag) => {
+        const el = originalCreateElement(tag);
+        if (tag === 'a') {
+          el.click = clickSpy;
+        }
+        return el;
+      });
+
+      modal.downloadCsv();
+
+      expect(clickSpy).toHaveBeenCalled();
+
+      // Restore original
+      document.createElement = originalCreateElement;
+    });
+
+    it('should create blob with BOM for Excel compatibility', () => {
+      modal.modalElementBody.innerHTML = `
+        <table>
+          <thead><tr><th>File</th></tr></thead>
+          <tbody><tr><td>test.png</td></tr></tbody>
+        </table>
+      `;
+
       const blobConstructorSpy = vi.spyOn(window, 'Blob');
-      await modal.downloadCsv();
+      modal.downloadCsv();
 
       expect(blobConstructorSpy).toHaveBeenCalled();
       const blobArgs = blobConstructorSpy.mock.calls[0][0];
       expect(blobArgs[0]).toBe('\ufeff'); // BOM
+    });
+
+    it('should use tableToCSV method', () => {
+      modal.modalElementBody.innerHTML = `
+        <table>
+          <thead><tr><th>File</th><th>Size</th></tr></thead>
+          <tbody><tr><td>image.png</td><td>100KB</td></tr></tbody>
+        </table>
+      `;
+
+      const tableToCSVSpy = vi.spyOn(modal, 'tableToCSV');
+      modal.downloadCsv();
+
+      expect(tableToCSVSpy).toHaveBeenCalled();
+      const table = tableToCSVSpy.mock.calls[0][0];
+      expect(table.tagName).toBe('TABLE');
     });
   });
 

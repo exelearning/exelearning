@@ -359,8 +359,23 @@ export async function markProjectAsSaved(db: Kysely<Database>, projectId: number
 }
 
 /**
+ * Update project title only (without marking as saved)
+ * Used for auto-persistence of Yjs documents when user navigates away
+ */
+export async function updateProjectTitle(db: Kysely<Database>, projectId: number, title: string): Promise<void> {
+    await db
+        .updateTable('projects')
+        .set({
+            title,
+            updated_at: now(),
+        })
+        .where('id', '=', projectId)
+        .execute();
+}
+
+/**
  * Update project title and mark as saved in a single operation
- * Used when saving Yjs document to sync title from metadata to database
+ * Used when user explicitly saves the project
  */
 export async function updateProjectTitleAndSave(db: Kysely<Database>, projectId: number, title: string): Promise<void> {
     await db
@@ -605,4 +620,64 @@ export async function updateProjectVisibilityByUuid(
         })
         .where('uuid', '=', uuid)
         .execute();
+}
+
+// ============================================================================
+// CLEANUP QUERIES
+// ============================================================================
+
+/**
+ * Find unsaved projects older than specified age
+ * Used for cleanup of abandoned projects that were never saved
+ *
+ * @param db - Kysely database instance
+ * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
+ * @returns Array of projects with saved_once = 0 older than maxAgeMs
+ */
+export async function findUnsavedProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
+    const cutoffTime = now() - maxAgeMs;
+    return db
+        .selectFrom('projects')
+        .selectAll()
+        .where('saved_once', '=', 0)
+        .where('created_at', '<', cutoffTime)
+        .execute();
+}
+
+/**
+ * Find projects owned by guest users older than specified age
+ * Guest users have email pattern: guest_*@guest.local
+ *
+ * @param db - Kysely database instance
+ * @param maxAgeMs - Maximum age in milliseconds (projects older than this will be returned)
+ * @returns Array of projects owned by guest users older than maxAgeMs
+ */
+export async function findGuestProjectsOlderThan(db: Kysely<Database>, maxAgeMs: number): Promise<Project[]> {
+    const cutoffTime = now() - maxAgeMs;
+    return db
+        .selectFrom('projects')
+        .innerJoin('users', 'projects.owner_id', 'users.id')
+        .selectAll('projects')
+        .where('users.email', 'like', 'guest_%@guest.local')
+        .where('projects.updated_at', '<', cutoffTime)
+        .execute();
+}
+
+/**
+ * Delete project and all related data in a transaction
+ * Handles foreign key constraints by deleting in correct order
+ *
+ * @param db - Kysely database instance
+ * @param projectId - Project ID to delete
+ */
+export async function deleteProjectWithRelatedData(db: Kysely<Database>, projectId: number): Promise<void> {
+    await db.transaction().execute(async trx => {
+        // Delete in order respecting foreign keys
+        await trx.deleteFrom('yjs_version_history').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('yjs_updates').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('yjs_documents').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('assets').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('project_collaborators').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('projects').where('id', '=', projectId).execute();
+    });
 }

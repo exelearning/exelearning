@@ -388,6 +388,7 @@ class SaveManager {
 
   /**
    * Save Yjs document state to server
+   * This is an explicit save (user clicked Save), so we mark the project as saved.
    * @param {string} projectId - Project UUID
    * @param {YjsDocumentManager} documentManager
    */
@@ -398,8 +399,9 @@ class SaveManager {
 
     Logger.log(`[SaveManager] Yjs state size: ${state.length} bytes`);
 
-    // Send to server
-    const response = await fetch(`${this.apiUrl}/projects/uuid/${projectId}/yjs-document`, {
+    // Send to server with markSaved=true to indicate this is an explicit user save
+    // (as opposed to auto-persistence on page unload which should NOT mark as saved)
+    const response = await fetch(`${this.apiUrl}/projects/uuid/${projectId}/yjs-document?markSaved=true`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/octet-stream',

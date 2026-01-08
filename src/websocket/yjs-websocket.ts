@@ -31,6 +31,7 @@ import { verifyToken as verifyTokenDefault } from '../routes/auth';
 import {
     findProjectByUuid as findProjectByUuidDefault,
     checkProjectAccess as checkProjectAccessDefault,
+    markProjectAsSaved as markProjectAsSavedDefault,
 } from '../db/queries';
 import { db as defaultDb } from '../db/client';
 import { getSession as getSessionDefault } from '../services/session-manager';
@@ -53,6 +54,7 @@ import { parseMessage } from './message-parser';
 export interface YjsWebSocketQueries {
     findProjectByUuid: typeof findProjectByUuidDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
+    markProjectAsSaved: typeof markProjectAsSavedDefault;
 }
 
 /**
@@ -97,6 +99,7 @@ const defaultDependencies: YjsWebSocketDependencies = {
     queries: {
         findProjectByUuid: findProjectByUuidDefault,
         checkProjectAccess: checkProjectAccessDefault,
+        markProjectAsSaved: markProjectAsSavedDefault,
     },
     sessionManager: {
         getSession: getSessionDefault,
@@ -287,6 +290,35 @@ export async function handleWebSocketOpen(
     // Detect collaboration and trigger asset prefetch
     if (clientCount > 1) {
         console.log(`[YjsWebSocket] Collaboration detected in ${projectUuid}`);
+
+        // Auto-save unsaved projects when collaboration starts
+        // This ensures documents aren't lost when multiple users work together
+        (async () => {
+            try {
+                const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
+                if (project && !project.saved_once) {
+                    console.log(
+                        `[YjsWebSocket] Project ${projectUuid} not saved yet, requesting sync from first client`,
+                    );
+
+                    // Find the first (oldest) client in the room to request state
+                    const firstClient = Array.from(room.conns)[0];
+                    if (firstClient) {
+                        // Send JSON message to request sync-state
+                        const syncRequestMsg = JSON.stringify({
+                            type: 'request-sync-state',
+                            reason: 'collaboration-started',
+                            projectUuid,
+                        });
+                        firstClient.send(syncRequestMsg);
+                        console.log(`[YjsWebSocket] Sent request-sync-state to first client for ${projectUuid}`);
+                    }
+                }
+            } catch (err) {
+                console.error('[YjsWebSocket] Error checking project save status:', err);
+            }
+        })();
+
         deps.assetCoordinator.onCollaborationDetected(projectUuid).catch(err => {
             console.error('[YjsWebSocket] Error in collaboration detection:', err);
         });

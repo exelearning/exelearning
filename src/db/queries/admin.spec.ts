@@ -269,7 +269,7 @@ describe('Admin Queries', () => {
                     owner_id: userId,
                     status: 'archived',
                     visibility: 'private',
-                    saved_once: 0,
+                    saved_once: 1,
                     created_at: now,
                     updated_at: now,
                 })
@@ -295,7 +295,7 @@ describe('Admin Queries', () => {
                     owner_id: userId,
                     status: 'active',
                     visibility: 'public',
-                    saved_once: 0,
+                    saved_once: 1,
                     created_at: now,
                     updated_at: now,
                 })
@@ -368,6 +368,29 @@ describe('Admin Queries', () => {
             expect(result.projects).toHaveLength(1);
             expect(result.projects[0].title).toBe('Alice Test');
             expect(result.total).toBe(1);
+        });
+
+        it('should filter out unsaved projects by default (savedOnly=true)', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Saved Project', uuid: 'proj-saved', saved_once: 1 });
+            await seedTestProject(db, userId, { title: 'Unsaved Project', uuid: 'proj-unsaved', saved_once: 0 });
+
+            const result = await findProjectsPaginated(db);
+
+            expect(result.projects).toHaveLength(1);
+            expect(result.projects[0].title).toBe('Saved Project');
+            expect(result.total).toBe(1);
+        });
+
+        it('should include unsaved projects when savedOnly=false', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+            await seedTestProject(db, userId, { title: 'Saved Project', uuid: 'proj-saved-2', saved_once: 1 });
+            await seedTestProject(db, userId, { title: 'Unsaved Project', uuid: 'proj-unsaved-2', saved_once: 0 });
+
+            const result = await findProjectsPaginated(db, { savedOnly: false });
+
+            expect(result.projects).toHaveLength(2);
+            expect(result.total).toBe(2);
         });
     });
 
