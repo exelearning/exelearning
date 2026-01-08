@@ -737,6 +737,27 @@ export default class modalOpenUserOdeFiles extends Modal {
      * @param {string} projectUuid - The project UUID
      */
     async openUserOdeFilesEvent(projectUuid) {
+        // Check for unsaved changes using Yjs mechanism
+        const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+        const hasUnsaved =
+            yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
+
+        if (hasUnsaved) {
+            // Close the open files modal first
+            this.close();
+
+            // Show confirmation modal with save option
+            const data = {
+                title: _('Open project'),
+                forceOpen: _('Open without saving'),
+                openYjsProject: true,
+                projectUuid: projectUuid,
+            };
+            eXeLearning.app.modals.sessionlogout.show(data);
+            return;
+        }
+
+        // No unsaved changes, proceed with navigation
         // Close modal
         this.close();
 
@@ -1332,49 +1353,31 @@ export default class modalOpenUserOdeFiles extends Modal {
         }
 
         // Check for unsaved changes BEFORE uploading (only for large files and not imports)
-        // Skip session check if Yjs is enabled (auto-saves to IndexedDB)
-        const yjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
-        if (!skipSessionCheck && !isImportIdevices && !isImportProperties && !yjsEnabled) {
-            const odeParams = {
-                odeSessionId: eXeLearning.app.project.odeSession,
-                odeVersion: eXeLearning.app.project.odeVersion,
-                odeId: eXeLearning.app.project.odeId,
-            };
+        if (!skipSessionCheck && !isImportIdevices && !isImportProperties) {
+            // Check for unsaved changes using Yjs mechanism
+            const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+            const hasUnsaved =
+                yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
-            try {
-                const sessionCheck =
-                    await eXeLearning.app.api.postCheckCurrentOdeUsers(
-                        odeParams
-                    );
+            if (hasUnsaved) {
+                // There are unsaved changes - show confirmation modal
+                const data = {
+                    title: _('Open project'),
+                    forceOpen: _('Open without saving'),
+                    openOdeFile: true,
+                    localOdeFile: true,
+                    odeFile: odeFile, // Pass the file object
+                    isLargeFile: true,
+                };
 
-                if (
-                    sessionCheck['leaveSession'] ||
-                    sessionCheck['askSave'] ||
-                    sessionCheck['leaveEmptySession']
-                ) {
-                    // There are unsaved changes - show confirmation modal
-                    const data = {
-                        title: _('Open project'),
-                        forceOpen: _('Open without saving'),
-                        openOdeFile: true,
-                        localOdeFile: true,
-                        odeFile: odeFile, // Pass the file object
-                        isLargeFile: true,
-                    };
-
-                    // Close open files modal
-                    if (this.modal && this.modal._isShown) {
-                        this.close();
-                    }
-
-                    // Show session logout modal and return (don't upload yet)
-                    eXeLearning.app.modals.sessionlogout.show(data);
-                    return;
+                // Close open files modal
+                if (this.modal && this.modal._isShown) {
+                    this.close();
                 }
-                // If leaveEmptySession or no issues, continue with upload
-            } catch (error) {
-                console.error('Error checking session:', error);
-                // Continue with upload even if check fails
+
+                // Show session logout modal and return (don't upload yet)
+                eXeLearning.app.modals.sessionlogout.show(data);
+                return;
             }
         }
 
@@ -1808,22 +1811,19 @@ export default class modalOpenUserOdeFiles extends Modal {
                         });
                     }, this.timeMax);
                 } else {
-                    // For regular files, check session before showing confirmation
-                    eXeLearning.app.api
-                        .postCheckCurrentOdeUsers(odeParams)
-                        .then((response2) => {
-                            if (
-                                response2['leaveSession'] ||
-                                response2['askSave']
-                            ) {
-                                eXeLearning.app.modals.sessionlogout.show(data);
-                            } else if (response2['leaveEmptySession']) {
-                                this.openUserLocalOdeFilesWithOpenSession(
-                                    odeFileName,
-                                    odeFilePath
-                                );
-                            }
-                        });
+                    // For regular files, check for unsaved changes using Yjs mechanism
+                    const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
+                    const hasUnsaved =
+                        yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
+
+                    if (hasUnsaved) {
+                        eXeLearning.app.modals.sessionlogout.show(data);
+                    } else {
+                        this.openUserLocalOdeFilesWithOpenSession(
+                            odeFileName,
+                            odeFilePath
+                        );
+                    }
                 }
             }
         }

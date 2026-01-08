@@ -788,23 +788,9 @@ describe('NavbarFile', () => {
             navbarFile = new NavbarFile(mockMenu);
         });
 
-        it('should check current ODE users', async () => {
-            eXeLearning.app.api.postCheckCurrentOdeUsers.mockResolvedValue({
-                leaveEmptySession: true,
-            });
-            vi.spyOn(navbarFile, 'createSession');
-
-            await navbarFile.newSession('session-123');
-
-            expect(eXeLearning.app.api.postCheckCurrentOdeUsers).toHaveBeenCalledWith({
-                odeSessionId: 'session-123',
-            });
-        });
-
-        it('should create session if allowed', async () => {
-            eXeLearning.app.api.postCheckCurrentOdeUsers.mockResolvedValue({
-                leaveEmptySession: true,
-            });
+        it('should create session directly when no unsaved changes', async () => {
+            // No yjsBridge means no unsaved changes
+            eXeLearning.app.project._yjsBridge = null;
             vi.spyOn(navbarFile, 'createSession');
 
             await navbarFile.newSession('session-123');
@@ -812,12 +798,32 @@ describe('NavbarFile', () => {
             expect(navbarFile.createSession).toHaveBeenCalledWith({
                 odeSessionId: 'session-123',
             });
+            expect(eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
         });
 
-        it('should show session logout modal if not allowed', async () => {
-            eXeLearning.app.api.postCheckCurrentOdeUsers.mockResolvedValue({
-                leaveEmptySession: false,
+        it('should create session when hasUnsavedChanges returns false', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: {
+                    hasUnsavedChanges: vi.fn(() => false),
+                },
+            };
+            vi.spyOn(navbarFile, 'createSession');
+
+            await navbarFile.newSession('session-123');
+
+            expect(navbarFile.createSession).toHaveBeenCalledWith({
+                odeSessionId: 'session-123',
             });
+            expect(eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
+        });
+
+        it('should show session logout modal when hasUnsavedChanges returns true', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: {
+                    hasUnsavedChanges: vi.fn(() => true),
+                },
+            };
+            vi.spyOn(navbarFile, 'createSession');
 
             await navbarFile.newSession('session-123');
 
@@ -826,6 +832,7 @@ describe('NavbarFile', () => {
                 forceOpen: 'Create new file without saving',
                 newFile: true,
             });
+            expect(navbarFile.createSession).not.toHaveBeenCalled();
         });
     });
 

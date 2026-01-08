@@ -57,6 +57,9 @@ describe('Yjs Document Routes', () => {
                         version,
                     });
                 },
+                updateProjectTitle: async (_db: any, _projectId: number, _title: string) => {
+                    // Just update title, don't mark as saved
+                },
                 updateProjectTitleAndSave: async (_db: any, _projectId: number, _title: string) => {
                     projectSavedFlag = true;
                 },
@@ -143,10 +146,10 @@ describe('Yjs Document Routes', () => {
             expect(body.version).toBeDefined();
         });
 
-        it('should mark project as saved after saving document', async () => {
+        it('should NOT mark project as saved without markSaved parameter (auto-persistence)', async () => {
             const testData = new Uint8Array([1, 2, 3]);
 
-            await app.handle(
+            const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: testData,
@@ -156,6 +159,26 @@ describe('Yjs Document Routes', () => {
                 }),
             );
 
+            const body = await res.json();
+            expect(body.markedAsSaved).toBe(false);
+            expect(projectSavedFlag).toBe(false);
+        });
+
+        it('should mark project as saved with markSaved=true (explicit save)', async () => {
+            const testData = new Uint8Array([1, 2, 3]);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document?markSaved=true', {
+                    method: 'POST',
+                    body: testData,
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                    },
+                }),
+            );
+
+            const body = await res.json();
+            expect(body.markedAsSaved).toBe(true);
             expect(projectSavedFlag).toBe(true);
         });
 

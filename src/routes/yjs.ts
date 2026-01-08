@@ -4,7 +4,13 @@
  */
 import { Elysia } from 'elysia';
 import * as Y from 'yjs';
-import { findProjectByUuid, upsertSnapshot, findSnapshotByProjectId, updateProjectTitleAndSave } from '../db/queries';
+import {
+    findProjectByUuid,
+    upsertSnapshot,
+    findSnapshotByProjectId,
+    updateProjectTitle,
+    updateProjectTitleAndSave,
+} from '../db/queries';
 import { fromBinaryData } from '../db/helpers';
 import { db } from '../db/client';
 import type { Kysely } from 'kysely';
@@ -17,6 +23,7 @@ export interface YjsQueries {
     findProjectByUuid: typeof findProjectByUuid;
     findSnapshotByProjectId: typeof findSnapshotByProjectId;
     upsertSnapshot: typeof upsertSnapshot;
+    updateProjectTitle: typeof updateProjectTitle;
     updateProjectTitleAndSave: typeof updateProjectTitleAndSave;
 }
 
@@ -37,6 +44,7 @@ const defaultDependencies: YjsDependencies = {
         findProjectByUuid,
         findSnapshotByProjectId,
         upsertSnapshot,
+        updateProjectTitle,
         updateProjectTitleAndSave,
     },
 };
@@ -82,7 +90,9 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
             })
 
             // POST - Save Yjs document state
-            .post('/uuid/:uuid/yjs-document', async ({ params, body, set }) => {
+            // Use ?markSaved=true to also mark the project as saved (for explicit user save)
+            // Without this parameter, only persists data (for auto-save on page unload)
+            .post('/uuid/:uuid/yjs-document', async ({ params, body, set, query }) => {
                 const project = await queries.findProjectByUuid(database, params.uuid);
                 if (!project) {
                     set.status = 404;
@@ -109,10 +119,16 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
 
                 await queries.upsertSnapshot(database, project.id, binaryData, version);
 
-                // Update project title (from Yjs metadata) and mark as saved
-                await queries.updateProjectTitleAndSave(database, project.id, title);
+                // Only mark as saved if explicitly requested (user clicked Save)
+                // Auto-persistence (beforeunload) should NOT mark as saved
+                const markSaved = query.markSaved === 'true';
+                if (markSaved) {
+                    await queries.updateProjectTitleAndSave(database, project.id, title);
+                } else {
+                    await queries.updateProjectTitle(database, project.id, title);
+                }
 
-                return { success: true, message: 'Document saved', version };
+                return { success: true, message: 'Document saved', version, markedAsSaved: markSaved };
             })
     );
 }

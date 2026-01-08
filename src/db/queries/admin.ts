@@ -79,17 +79,33 @@ export async function findProjectsPaginated(
         title?: string;
         status?: string;
         visibility?: string;
+        savedOnly?: boolean;
         sortBy?: 'id' | 'title' | 'created_at';
         sortOrder?: 'asc' | 'desc';
     } = {},
 ): Promise<{ projects: AdminProjectListItem[]; total: number }> {
-    const { limit = 50, offset = 0, owner, title, status, visibility, sortBy = 'id', sortOrder = 'desc' } = options;
+    const {
+        limit = 50,
+        offset = 0,
+        owner,
+        title,
+        status,
+        visibility,
+        savedOnly = true,
+        sortBy = 'id',
+        sortOrder = 'desc',
+    } = options;
 
     let query = db
         .selectFrom('projects')
         .innerJoin('users', 'projects.owner_id', 'users.id')
         .selectAll('projects')
         .select(['users.email as owner_email', 'users.user_id as owner_user_id']);
+
+    // Filter by saved_once (exclude unsaved projects by default)
+    if (savedOnly) {
+        query = query.where('projects.saved_once', '=', 1);
+    }
 
     if (owner) {
         const ownerId = parseInt(owner, 10);
@@ -124,6 +140,11 @@ export async function findProjectsPaginated(
         .selectFrom('projects')
         .innerJoin('users', 'projects.owner_id', 'users.id')
         .select(sql<number>`count(projects.id)`.as('count'));
+
+    // Filter by saved_once (exclude unsaved projects by default)
+    if (savedOnly) {
+        countQuery = countQuery.where('projects.saved_once', '=', 1);
+    }
 
     if (owner) {
         const ownerId = parseInt(owner, 10);

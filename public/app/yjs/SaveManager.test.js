@@ -432,12 +432,12 @@ describe('SaveManager', () => {
       expect(fetchCall[1].body).toBeInstanceOf(Uint8Array);
     });
 
-    it('sends state to server', async () => {
+    it('sends state to server with markSaved=true (explicit save)', async () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
       await manager.saveYjsState('project-123', mockBridge.documentManager);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://test.com/api/projects/uuid/project-123/yjs-document',
+        'http://test.com/api/projects/uuid/project-123/yjs-document?markSaved=true',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
