@@ -14,6 +14,10 @@ import {
     getNavigation,
     getMetadata,
     getAssets,
+    getAssetMetadata,
+    setAssetMetadata,
+    deleteAssetMetadata,
+    getAllAssetsMetadata,
     findPageMap,
     findBlockMap,
     findBlockMapInPage,
@@ -91,6 +95,185 @@ describe('structure-binding', () => {
         it('should return the assets Y.Map', () => {
             const assets = getAssets(ydoc);
             expect(assets).toBeInstanceOf(Y.Map);
+        });
+    });
+
+    // =========================================================================
+    // ASSET OPERATIONS
+    // =========================================================================
+
+    describe('Asset Operations', () => {
+        describe('getAssetMetadata', () => {
+            it('should return null for non-existent asset', () => {
+                const result = getAssetMetadata(ydoc, 'non-existent-id');
+                expect(result).toBeNull();
+            });
+
+            it('should return asset metadata when it exists', () => {
+                const metadata = {
+                    filename: 'test.jpg',
+                    folderPath: 'images',
+                    mime: 'image/jpeg',
+                    size: 1024,
+                    uploaded: true,
+                    createdAt: '2024-01-01T00:00:00Z',
+                };
+                setAssetMetadata(ydoc, 'test-asset-id', metadata);
+
+                const result = getAssetMetadata(ydoc, 'test-asset-id');
+                expect(result).not.toBeNull();
+                expect(result?.filename).toBe('test.jpg');
+                expect(result?.folderPath).toBe('images');
+                expect(result?.mime).toBe('image/jpeg');
+                expect(result?.size).toBe(1024);
+                expect(result?.uploaded).toBe(true);
+            });
+        });
+
+        describe('setAssetMetadata', () => {
+            it('should set asset metadata successfully', () => {
+                const metadata = {
+                    filename: 'document.pdf',
+                    folderPath: 'docs',
+                    mime: 'application/pdf',
+                    size: 2048,
+                    uploaded: false,
+                    createdAt: '2024-01-15T10:30:00Z',
+                };
+
+                const result = setAssetMetadata(ydoc, 'new-asset-id', metadata);
+
+                expect(result.success).toBe(true);
+                expect(result.data).toEqual(metadata);
+
+                // Verify it was actually stored
+                const stored = getAssetMetadata(ydoc, 'new-asset-id');
+                expect(stored?.filename).toBe('document.pdf');
+            });
+
+            it('should update existing asset metadata', () => {
+                const initialMetadata = {
+                    filename: 'old.txt',
+                    folderPath: '',
+                    mime: 'text/plain',
+                    size: 100,
+                    uploaded: false,
+                    createdAt: '2024-01-01T00:00:00Z',
+                };
+                setAssetMetadata(ydoc, 'update-asset-id', initialMetadata);
+
+                const updatedMetadata = {
+                    filename: 'new.txt',
+                    folderPath: 'files',
+                    mime: 'text/plain',
+                    size: 200,
+                    uploaded: true,
+                    createdAt: '2024-01-01T00:00:00Z',
+                };
+                const result = setAssetMetadata(ydoc, 'update-asset-id', updatedMetadata);
+
+                expect(result.success).toBe(true);
+                const stored = getAssetMetadata(ydoc, 'update-asset-id');
+                expect(stored?.filename).toBe('new.txt');
+                expect(stored?.size).toBe(200);
+                expect(stored?.uploaded).toBe(true);
+            });
+
+            it('should store optional hash field', () => {
+                const metadata = {
+                    filename: 'hashed.bin',
+                    folderPath: '',
+                    mime: 'application/octet-stream',
+                    size: 512,
+                    hash: 'sha256-abc123',
+                    uploaded: true,
+                    createdAt: '2024-01-20T12:00:00Z',
+                };
+
+                setAssetMetadata(ydoc, 'hashed-asset-id', metadata);
+                const stored = getAssetMetadata(ydoc, 'hashed-asset-id');
+                expect(stored?.hash).toBe('sha256-abc123');
+            });
+        });
+
+        describe('deleteAssetMetadata', () => {
+            it('should delete existing asset metadata', () => {
+                const metadata = {
+                    filename: 'to-delete.txt',
+                    folderPath: '',
+                    mime: 'text/plain',
+                    size: 50,
+                    uploaded: true,
+                    createdAt: '2024-01-01T00:00:00Z',
+                };
+                setAssetMetadata(ydoc, 'delete-me-id', metadata);
+
+                // Verify it exists
+                expect(getAssetMetadata(ydoc, 'delete-me-id')).not.toBeNull();
+
+                // Delete it
+                const result = deleteAssetMetadata(ydoc, 'delete-me-id');
+                expect(result.success).toBe(true);
+                expect(result.data.deleted).toBe(true);
+
+                // Verify it's gone
+                expect(getAssetMetadata(ydoc, 'delete-me-id')).toBeNull();
+            });
+
+            it('should return deleted: false for non-existent asset', () => {
+                const result = deleteAssetMetadata(ydoc, 'never-existed-id');
+                expect(result.success).toBe(true);
+                expect(result.data.deleted).toBe(false);
+            });
+        });
+
+        describe('getAllAssetsMetadata', () => {
+            it('should return empty array when no assets', () => {
+                // Create a fresh ydoc for this test
+                const freshYdoc = new Y.Doc();
+                const result = getAllAssetsMetadata(freshYdoc);
+                expect(result).toEqual([]);
+                freshYdoc.destroy();
+            });
+
+            it('should return all assets with their IDs', () => {
+                // Create a fresh ydoc for this test
+                const freshYdoc = new Y.Doc();
+
+                const asset1 = {
+                    filename: 'image1.jpg',
+                    folderPath: 'images',
+                    mime: 'image/jpeg',
+                    size: 1000,
+                    uploaded: true,
+                    createdAt: '2024-01-01T00:00:00Z',
+                };
+                const asset2 = {
+                    filename: 'doc.pdf',
+                    folderPath: 'docs',
+                    mime: 'application/pdf',
+                    size: 2000,
+                    uploaded: false,
+                    createdAt: '2024-01-02T00:00:00Z',
+                };
+
+                setAssetMetadata(freshYdoc, 'asset-1', asset1);
+                setAssetMetadata(freshYdoc, 'asset-2', asset2);
+
+                const result = getAllAssetsMetadata(freshYdoc);
+
+                expect(result.length).toBe(2);
+
+                const ids = result.map(a => a.id);
+                expect(ids).toContain('asset-1');
+                expect(ids).toContain('asset-2');
+
+                const img = result.find(a => a.id === 'asset-1');
+                expect(img?.filename).toBe('image1.jpg');
+                expect(img?.folderPath).toBe('images');
+
+                freshYdoc.destroy();
+            });
         });
     });
 

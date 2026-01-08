@@ -63,6 +63,65 @@ export function getAssets(ydoc: Y.Doc): Y.Map<unknown> {
 }
 
 /**
+ * Asset metadata stored in Y.Doc
+ */
+export interface AssetMetadata {
+    filename: string;
+    folderPath: string;
+    mime: string;
+    size: number;
+    hash?: string;
+    uploaded: boolean;
+    createdAt: string;
+}
+
+/**
+ * Get asset metadata from Y.Doc
+ */
+export function getAssetMetadata(ydoc: Y.Doc, assetId: string): AssetMetadata | null {
+    const assetsMap = getAssets(ydoc);
+    const meta = assetsMap.get(assetId) as AssetMetadata | undefined;
+    return meta || null;
+}
+
+/**
+ * Set asset metadata in Y.Doc
+ */
+export function setAssetMetadata(
+    ydoc: Y.Doc,
+    assetId: string,
+    metadata: AssetMetadata,
+): OperationResult<AssetMetadata> {
+    const assetsMap = getAssets(ydoc);
+    assetsMap.set(assetId, metadata);
+    return { success: true, data: metadata };
+}
+
+/**
+ * Delete asset metadata from Y.Doc
+ */
+export function deleteAssetMetadata(ydoc: Y.Doc, assetId: string): OperationResult<{ deleted: boolean }> {
+    const assetsMap = getAssets(ydoc);
+    const existed = assetsMap.has(assetId);
+    if (existed) {
+        assetsMap.delete(assetId);
+    }
+    return { success: true, data: { deleted: existed } };
+}
+
+/**
+ * Get all assets metadata from Y.Doc
+ */
+export function getAllAssetsMetadata(ydoc: Y.Doc): Array<AssetMetadata & { id: string }> {
+    const assetsMap = getAssets(ydoc);
+    const result: Array<AssetMetadata & { id: string }> = [];
+    assetsMap.forEach((meta, id) => {
+        result.push({ ...(meta as AssetMetadata), id: id as string });
+    });
+    return result;
+}
+
+/**
  * Find a page Y.Map by ID
  */
 export function findPageMap(ydoc: Y.Doc, pageId: string): Y.Map<unknown> | null {

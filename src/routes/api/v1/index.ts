@@ -20,6 +20,7 @@ import { componentsRoutes } from './components';
 import { metadataRoutes } from './metadata';
 import { exportRoutes } from './export';
 import { usersRoutes } from './users';
+import { assetsRoutes } from './assets';
 
 /**
  * Create the API v1 router with all endpoints and Swagger documentation
@@ -117,6 +118,10 @@ All responses follow a consistent format:
                         name: 'Users',
                         description: 'User management (admin only)',
                     },
+                    {
+                        name: 'Assets',
+                        description: 'Asset file management (images, media, documents)',
+                    },
                 ],
                 components: {
                     securitySchemes: {
@@ -148,6 +153,7 @@ All responses follow a consistent format:
                 components: '/api/v1/projects/:uuid/components',
                 metadata: '/api/v1/projects/:uuid/metadata',
                 export: '/api/v1/projects/:uuid/export',
+                assets: '/api/v1/projects/:uuid/assets',
                 users: '/api/v1/users',
             },
         }),
@@ -166,4 +172,5 @@ All responses follow a consistent format:
     .use(componentsRoutes)
     .use(metadataRoutes)
     .use(exportRoutes)
-    .use(usersRoutes);
+    .use(usersRoutes)
+    .use(assetsRoutes);

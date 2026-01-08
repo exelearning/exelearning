@@ -87,6 +87,11 @@ export {
     getNavigation,
     getMetadata,
     getAssets,
+    // Asset operations
+    getAssetMetadata,
+    setAssetMetadata,
+    deleteAssetMetadata,
+    getAllAssetsMetadata,
     // Page operations
     getPages,
     getPage,
@@ -115,6 +120,8 @@ export {
     findPageMap,
     findBlockMap,
     findComponentMap,
+    // Asset type
+    type AssetMetadata,
 } from './structure-binding';
 
 // ============================================================================

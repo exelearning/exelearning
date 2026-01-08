@@ -438,6 +438,116 @@ GET /api/v1/export/formats
 
 ---
 
+## Assets
+
+Manage project assets (images, media files, documents).
+
+**Note:** Changes are automatically broadcast to connected WebSocket clients via Yjs.
+
+### List Assets
+
+```
+GET /api/v1/projects/:uuid/assets
+```
+
+Returns all assets in the project.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "clientId": "abc-123-uuid",
+      "filename": "image.jpg",
+      "mimeType": "image/jpeg",
+      "size": 102400,
+      "folderPath": "images",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-16T14:20:00Z"
+    }
+  ]
+}
+```
+
+### Upload Asset
+
+```
+POST /api/v1/projects/:uuid/assets
+Content-Type: multipart/form-data
+
+file: <binary>
+clientId: (optional) UUID for the asset
+folderPath: (optional) Virtual folder path
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "clientId": "generated-uuid",
+    "filename": "image.jpg",
+    "mimeType": "image/jpeg",
+    "size": 102400,
+    "folderPath": "",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Download Asset
+
+```
+GET /api/v1/projects/:uuid/assets/:assetId
+```
+
+Returns the asset file with appropriate Content-Type header.
+
+### Get Asset Metadata
+
+```
+GET /api/v1/projects/:uuid/assets/:assetId/metadata
+```
+
+Returns asset metadata without downloading the file.
+
+### Delete Asset
+
+```
+DELETE /api/v1/projects/:uuid/assets/:assetId
+```
+
+Deletes the asset from disk and database.
+
+### Bulk Delete Assets
+
+```
+POST /api/v1/projects/:uuid/assets/bulk-delete
+Content-Type: application/json
+
+{
+  "clientIds": ["uuid-1", "uuid-2", "uuid-3"]
+}
+```
+
+Deletes multiple assets by their client IDs.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "deleted": 3
+  }
+}
+```
+
+---
+
 ## Users (Admin Only)
 
 These endpoints require `ROLE_ADMIN`.
