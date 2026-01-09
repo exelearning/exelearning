@@ -22,6 +22,7 @@ import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
 import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
 import ModalShare from './modals/pages/modalShare.js';
 import ModalPrintPreview from './modals/pages/modalPrintPreview.js';
+import ModalImageOptimizer from './modals/pages/modalImageOptimizer.js';
 
 // Mock all modal classes
 vi.mock('./modals/generic/modalAlert.js');
@@ -47,6 +48,7 @@ vi.mock('./modals/pages/modalSessionLogout.js');
 vi.mock('./modals/pages/modalUploadProgress.js');
 vi.mock('./modals/pages/modalShare.js');
 vi.mock('./modals/pages/modalPrintPreview.js');
+vi.mock('./modals/pages/modalImageOptimizer.js');
 
 describe('ModalsManagement', () => {
   let modalsManager;
@@ -100,6 +102,7 @@ describe('ModalsManagement', () => {
       expect(ModalUploadProgress).toHaveBeenCalledWith(document.body);
       expect(ModalShare).toHaveBeenCalledWith(modalsManager);
       expect(ModalPrintPreview).toHaveBeenCalledWith(modalsManager);
+      expect(ModalImageOptimizer).toHaveBeenCalledWith(modalsManager);
     });
   });
 
@@ -118,10 +121,11 @@ describe('ModalsManagement', () => {
     it('should return an array of all modals', () => {
       modalsManager.init();
       const list = modalsManager.list();
-      expect(list).toHaveLength(22); // PrintPreview is 22nd
+      expect(list).toHaveLength(23); // ImageOptimizer is 23rd
       expect(list).toContain(modalsManager.alert);
       expect(list).toContain(modalsManager.share);
       expect(list).toContain(modalsManager.printpreview);
+      expect(list).toContain(modalsManager.imageoptimizer);
     });
   });
 
