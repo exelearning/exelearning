@@ -2788,7 +2788,9 @@ describe('IdeviceNode', () => {
             const result = await idevice.moveToBlockViaYjs();
 
             expect(result).toEqual({ responseMessage: 'OK' });
-            expect(mockEngine.setParentsAndChildrenIdevicesBlocks).toHaveBeenCalledWith(true);
+            // Caller (dropIdeviceContentInContent) handles empty block check
+            // Function is called without arguments (uses default null)
+            expect(mockEngine.setParentsAndChildrenIdevicesBlocks).toHaveBeenCalled();
         });
 
         it('returns ERROR when structureBinding is not available', async () => {
@@ -2832,6 +2834,68 @@ describe('IdeviceNode', () => {
             const result = await idevice.moveToPageViaYjs('new-page-id');
 
             expect(result).toEqual({ responseMessage: 'ERROR' });
+        });
+
+        it('passes previous blockId to setParentsAndChildrenIdevicesBlocks for empty block check', async () => {
+            // Set up initial block ID
+            idevice.blockId = 'old-block-id';
+
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveComponentToPage: vi.fn().mockReturnValue({ blockId: 'new-block-id' }),
+                },
+            };
+
+            await idevice.moveToPageViaYjs('new-page-id');
+
+            // Should pass the OLD block ID (before the move) to check if it became empty
+            expect(mockEngine.setParentsAndChildrenIdevicesBlocks).toHaveBeenCalledWith('old-block-id');
+        });
+
+        it('calls remove() to clean up idevice view after successful move', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveComponentToPage: vi.fn().mockReturnValue({ blockId: 'new-block' }),
+                },
+            };
+
+            await idevice.moveToPageViaYjs('new-page-id');
+
+            expect(idevice.remove).toHaveBeenCalled();
+        });
+
+        it('returns ERROR when moveComponentToPage returns null', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveComponentToPage: vi.fn().mockReturnValue(null),
+                },
+            };
+
+            const result = await idevice.moveToPageViaYjs('new-page-id');
+
+            expect(result).toEqual({ responseMessage: 'ERROR' });
+            expect(mockEngine.setParentsAndChildrenIdevicesBlocks).not.toHaveBeenCalled();
+        });
+
+        it('tries multiple component IDs when first one fails', async () => {
+            idevice.yjsComponentId = 'yjs-id';
+            idevice.odeIdeviceId = 'ode-id';
+            idevice.id = 'fallback-id';
+
+            const mockMoveToPage = vi.fn()
+                .mockReturnValueOnce(null) // First call fails
+                .mockReturnValueOnce({ blockId: 'new-block' }); // Second succeeds
+
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    moveComponentToPage: mockMoveToPage,
+                },
+            };
+
+            const result = await idevice.moveToPageViaYjs('new-page-id');
+
+            expect(result).toEqual({ responseMessage: 'OK' });
+            expect(mockMoveToPage).toHaveBeenCalledTimes(2);
         });
     });
 
