@@ -262,22 +262,63 @@
                     if (!assetUrl) return;
 
                     // Store the original asset URL as data attribute for reference
-                    el.setAttribute('data-asset-url', assetUrl);
+                    if (el.tagName === 'IFRAME') {
+                        el.setAttribute('data-asset-src', assetUrl);
+                    } else {
+                        el.setAttribute('data-asset-url', assetUrl);
+                    }
 
                     // Clear the invalid src immediately to prevent error events
                     // Use a transparent 1x1 GIF as placeholder for images, about:blank for iframes
                     if (el.tagName === 'IFRAME') {
                         el.src = 'about:blank';
+
+                        // For iframes, check if it's an HTML file and resolve with relative URLs
+                        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                        if (assetManager) {
+                            // Extract asset ID from URL
+                            const assetIdMatch = assetUrl.match(/asset:\/\/([a-f0-9-]+)/i);
+                            if (assetIdMatch) {
+                                const assetId = assetIdMatch[1];
+                                const metadata = assetManager.getAssetMetadata(assetId);
+                                if (metadata && assetManager._isHtmlAsset(metadata.mime, metadata.filename)) {
+                                    // Resolve HTML with all its relative URLs
+                                    assetManager.resolveHtmlWithAssets(assetId).then(resolved => {
+                                        if (resolved) {
+                                            el.src = resolved;
+                                        } else {
+                                            // Fallback to regular resolution
+                                            resolveAssetUrl(assetUrl).then(fallback => {
+                                                if (fallback) el.src = fallback;
+                                            });
+                                        }
+                                    }).catch(() => {
+                                        // Fallback on error
+                                        resolveAssetUrl(assetUrl).then(fallback => {
+                                            if (fallback) el.src = fallback;
+                                        });
+                                    });
+                                    return; // Early return, already handled
+                                }
+                            }
+                        }
+
+                        // For non-HTML iframes (PDFs, etc.), use regular resolution
+                        resolveAssetUrl(assetUrl).then(resolved => {
+                            if (resolved) {
+                                el.src = resolved;
+                            }
+                        });
                     } else {
                         el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                    }
 
-                    // Resolve asynchronously and set the real src
-                    resolveAssetUrl(assetUrl).then(resolved => {
-                        if (resolved) {
-                            el.src = resolved;
-                        }
-                    });
+                        // Resolve asynchronously and set the real src
+                        resolveAssetUrl(assetUrl).then(resolved => {
+                            if (resolved) {
+                                el.src = resolved;
+                            }
+                        });
+                    }
                 });
 
                 // Also handle images with asset:// in the 'origin' attribute (used by image-gallery)
@@ -435,6 +476,76 @@
             observer.disconnect();
         }
     };
+
+    /**
+     * Intercept clicks on HTML asset links in the editor/workarea
+     * HTML websites from the Resources folder cannot be navigated - they need to be exported.
+     * This handler blocks clicks on anchor elements linking to HTML assets.
+     */
+    function getHtmlLinkWarningMessage() {
+        // Use translation if available
+        if (typeof window._ === 'function') {
+            return window._('HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.');
+        }
+        return 'HTML websites from the Resources folder cannot be navigated in preview. Please export the project to view this content correctly.';
+    }
+
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('a[href]');
+        if (!link) return;
+
+        const dataAssetUrl = link.getAttribute('data-asset-url');
+
+        // Check if it's an HTML asset link by data-asset-url attribute
+        const isHtmlLink = dataAssetUrl && /\.html?$/i.test(dataAssetUrl);
+
+        // Block HTML asset link navigation
+        if (isHtmlLink) {
+            e.preventDefault();
+            e.stopPropagation();
+            alert(getHtmlLinkWarningMessage());
+        }
+    }, true); // Use capture phase to intercept before navigation
+
+    /**
+     * Listen for link resolution requests from HTML iframes
+     * When a user clicks a relative link inside an HTML iframe, the injected script
+     * sends a postMessage to request the parent resolve the linked HTML file.
+     */
+    window.addEventListener('message', async function(event) {
+        if (event.data?.type !== 'exe-resolve-html-link') return;
+
+        const { href, baseFolder } = event.data;
+        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        if (!assetManager) {
+            console.warn('[AssetResolver] Cannot resolve HTML link - assetManager not available');
+            return;
+        }
+
+        // Find the linked HTML asset by relative path
+        const linkedAsset = assetManager.findAssetByRelativePath(baseFolder, href);
+        if (!linkedAsset) {
+            console.warn('[AssetResolver] Could not find linked asset:', href, 'from baseFolder:', baseFolder);
+            return;
+        }
+
+        // Resolve the linked HTML with all its internal assets
+        const resolvedUrl = await assetManager.resolveHtmlWithAssets(linkedAsset.id);
+        if (!resolvedUrl) {
+            console.warn('[AssetResolver] Failed to resolve HTML asset:', linkedAsset.id);
+            return;
+        }
+
+        // Find the iframe that sent the message and update its src
+        // event.source is the contentWindow of the iframe
+        const iframes = document.querySelectorAll('iframe[data-asset-src], iframe[data-mce-html]');
+        for (const iframe of iframes) {
+            if (iframe.contentWindow === event.source) {
+                iframe.src = resolvedUrl;
+                break;
+            }
+        }
+    });
 
     console.log('[AssetResolver] Initialized - asset:// URLs will be auto-resolved (with MutationObserver)');
 })();

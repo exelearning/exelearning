@@ -7,7 +7,6 @@ eXeLearning uses **Bun** as the runtime and **Elysia** as the web framework. The
 ## Prerequisites
 
 - **Bun** (v1.0+) - [Install Bun](https://bun.sh/docs/installation)
-- **Node.js** (v18+) - For some tooling (Playwright, electron-builder)
 - **Git**
 
 Supported operating systems:
