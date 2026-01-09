@@ -88,7 +88,7 @@
     Common iDevice types include:
     - text, form, matching, sort, classify, guess, checklist
     - crossword, image-gallery, magnifier, casestudy
-    - external-website, attached-files, etc.
+    - external-website, casestudy, etc.
 -->
 <!ELEMENT odeComponents (odeComponent*)>
 <!ELEMENT odeComponent (odePageId, odeBlockId, odeIdeviceId, odeIdeviceTypeName, htmlView?, jsonProperties?, odeComponentsOrder, odeComponentsProperties?)>
