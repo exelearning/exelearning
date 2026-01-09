@@ -87,7 +87,6 @@ This configures your system to receive eXeLearning updates automatically with `d
 ### Prerequisites
 
 * **Bun** – [bun.sh](https://bun.sh/)
-* **Node.js** – [nodejs.org](https://nodejs.org/) (for electron-builder)
 
 ```bash
 # Install dependencies
