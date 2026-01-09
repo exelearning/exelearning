@@ -31,6 +31,10 @@ eXeLearning is an open-source educational content authoring tool (AGPL-3.0) that
 ```
 src/
 ├── index.ts              # Elysia entry point
+├── contexts/             # Dependency injection contexts
+│   ├── config.context.ts # Centralized configuration (env vars)
+│   ├── logger.context.ts # Structured logging abstraction
+│   └── ...
 ├── routes/               # API routes (Elysia plugins)
 │   ├── auth.ts           # JWT authentication
 │   ├── project.ts        # Project CRUD, session management
@@ -54,7 +58,8 @@ src/
 ├── websocket/            # WebSocket handlers
 │   ├── yjs-websocket.ts  # Yjs collaboration
 │   ├── room-manager.ts   # Connection management
-│   └── asset-coordinator.ts # Asset sync
+│   ├── asset-coordinator.ts # Asset sync
+│   └── collaboration.context.ts # WebSocket DI context
 ├── cli/                  # CLI commands
 │   └── commands/
 └── utils/                # Utility functions
@@ -238,6 +243,41 @@ describe('MyService', () => {
 });
 ```
 
+#### WebSocket Module Testing with CollaborationContext
+
+For WebSocket modules (room-manager, yjs-persistence, yjs-websocket), use `CollaborationContext` to configure all dependencies at once:
+
+```typescript
+import {
+    createTestCollaborationContext,
+    configureAllModules,
+    resetAllModules,
+} from './collaboration.context';
+import { createTestDb, destroyTestDb } from '../../test/helpers/test-db';
+import { silentLogger } from '../contexts/logger.context';
+
+describe('WebSocketFeature', () => {
+    let testDb: Kysely<Database>;
+
+    beforeEach(async () => {
+        testDb = await createTestDb();
+        const ctx = createTestCollaborationContext({
+            db: testDb,
+            // Override specific queries or services as needed
+            queries: { findProjectByUuid: mockFindProject },
+        });
+        configureAllModules(ctx);
+    });
+
+    afterEach(async () => {
+        resetAllModules();
+        await destroyTestDb(testDb);
+    });
+});
+```
+
+This replaces the need to call `configure()` on each module individually.
+
 ### Test Structure
 
 ```
@@ -406,6 +446,113 @@ export const myFeatureRoutes = new Elysia({ prefix: '/api/my-feature' })
 // Register in src/index.ts
 app.use(myFeatureRoutes);
 ```
+
+### Context System (Dependency Injection)
+
+The codebase uses a **Context per Domain** architecture for cross-cutting concerns. Contexts provide centralized, typed, and testable access to infrastructure and domain services.
+
+#### ConfigContext (`src/contexts/config.context.ts`)
+
+Centralized configuration from environment variables with validation:
+
+```typescript
+import { getConfig, createConfigContext } from '../contexts/config.context';
+
+// Use singleton (reads from process.env)
+const config = getConfig();
+console.log(config.port);        // Typed: number
+console.log(config.db.dialect);  // 'sqlite' | 'postgres' | 'mysql'
+console.log(config.redis.enabled); // boolean
+
+// For testing with custom config
+const testConfig = createConfigContext({
+    APP_PORT: '3000',
+    DB_DRIVER: 'pdo_sqlite',
+    DB_PATH: ':memory:',
+});
+```
+
+**Key properties:** `env`, `debug`, `port`, `basePath`, `filesDir`, `publicDir`, `db.*`, `redis.*`, `auth.*`, `cas.*`, `oidc.*`, `storage.*`, `autosave.*`, `cleanup.*`, `features.*`
+
+#### LoggerContext (`src/contexts/logger.context.ts`)
+
+Structured logging abstraction replacing direct `console.*` calls:
+
+```typescript
+import { getLogger, silentLogger, CapturingLogger } from '../contexts/logger.context';
+
+// Production usage
+const logger = getLogger().child({ component: 'my-service' });
+logger.info('Operation completed', { userId: 123, duration: 45 });
+logger.error('Operation failed', error, { context: 'details' });
+
+// In tests - silent logger (no output)
+configure({ logger: silentLogger });
+
+// In tests - capturing logger (for assertions)
+const capturingLogger = new CapturingLogger();
+configure({ logger: capturingLogger });
+// ... run code ...
+expect(capturingLogger.logs).toHaveLength(1);
+expect(capturingLogger.logs[0].level).toBe('error');
+```
+
+**Log levels:** `debug`, `info`, `warn`, `error`
+**Output formats:** JSON (production), legacy format (development)
+
+#### CollaborationContext (`src/websocket/collaboration.context.ts`)
+
+Unified context for WebSocket/collaboration modules:
+
+```typescript
+import {
+    createTestCollaborationContext,
+    configureAllModules,
+    resetAllModules,
+    createMockPubSub,
+    createMockPriorityQueue,
+} from '../websocket/collaboration.context';
+
+// In tests - configure all WebSocket modules at once
+describe('MyWebSocketTest', () => {
+    beforeEach(async () => {
+        const testDb = await createTestDb();
+        const ctx = createTestCollaborationContext({
+            db: testDb,
+            logger: silentLogger,
+            queries: { findProjectByUuid: mockFindProject },
+        });
+        configureAllModules(ctx);
+    });
+
+    afterEach(() => {
+        resetAllModules();
+    });
+});
+```
+
+**Configures:** `room-manager`, `yjs-persistence`, `yjs-websocket`
+**Mock utilities:** `createMockPubSub()`, `createMockPriorityQueue()`
+
+#### Lint Rule: noConsole
+
+Biome warns on `console.*` usage in server code. Use LoggerContext instead:
+
+```typescript
+// BAD - triggers lint warning
+console.log('Something happened');
+console.error('Error:', err);
+
+// GOOD - use LoggerContext
+logger.info('Something happened');
+logger.error('Error occurred', err);
+```
+
+**Exceptions (console allowed):**
+- `src/cli/**/*.ts` - CLI tools (terminal output)
+- `src/db/migrations/**/*.ts` - Migration CLI
+- `src/shared/export/browser/**/*.ts` - Browser code
+- `**/*.spec.ts` - Test files
 
 ### Internationalization (i18n)
 

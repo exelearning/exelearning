@@ -396,6 +396,65 @@ configure({
 afterEach(() => resetDependencies());
 ```
 
+### 8.3 Context System
+
+The codebase uses a **Context per Domain** architecture for cross-cutting concerns:
+
+| Context | Purpose | Location |
+|---------|---------|----------|
+| **ConfigContext** | Centralized env configuration | `src/contexts/config.context.ts` |
+| **LoggerContext** | Structured logging abstraction | `src/contexts/logger.context.ts` |
+| **CollaborationContext** | WebSocket module dependencies | `src/websocket/collaboration.context.ts` |
+
+#### ConfigContext
+
+Provides validated, typed access to all environment variables:
+
+```typescript
+import { getConfig, createConfigContext } from '../contexts/config.context';
+
+const config = getConfig();
+config.port          // number
+config.db.dialect    // 'sqlite' | 'postgres' | 'mysql'
+config.redis.enabled // boolean
+
+// For testing with custom config
+const testConfig = createConfigContext({ APP_PORT: '3000' });
+```
+
+#### LoggerContext
+
+Structured logging replacing `console.*`:
+
+```typescript
+import { getLogger, silentLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'my-service' });
+logger.info('Operation completed', { duration: 45 });
+logger.error('Failed', error, { context: 'details' });
+
+// In tests: use silentLogger to suppress output
+```
+
+#### CollaborationContext
+
+Unified dependency injection for WebSocket modules:
+
+```typescript
+import {
+    createTestCollaborationContext,
+    configureAllModules,
+    resetAllModules,
+} from '../websocket/collaboration.context';
+
+// Configure all WebSocket modules at once
+const ctx = createTestCollaborationContext({ db: testDb });
+configureAllModules(ctx);
+
+// Reset after tests
+afterEach(() => resetAllModules());
+```
+
 ## 9. Configuration
 
 ### 9.1 Environment Variables
@@ -437,11 +496,14 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `src/index.ts` | Elysia entry point |
 | `src/routes/` | REST API routes |
 | `src/services/` | Business logic |
+| `src/contexts/config.context.ts` | Centralized configuration |
+| `src/contexts/logger.context.ts` | Structured logging |
 | `src/db/client.ts` | Kysely instance |
 | `src/db/queries/` | Database queries |
 | `src/websocket/yjs-websocket.ts` | WebSocket handler |
 | `src/websocket/room-manager.ts` | Room lifecycle |
 | `src/websocket/asset-coordinator.ts` | P2P coordination |
+| `src/websocket/collaboration.context.ts` | WebSocket DI context |
 
 ### Frontend (public/app/)
 
@@ -489,7 +551,7 @@ DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/test bun test src/path/to/file.spec.ts
 Never use `mock.module()`. Use dependency injection:
 
 ```typescript
-// Configure mocks
+// Configure mocks for individual modules
 configure({
     db: testDb,
     queries: { findById: mockFindById }
@@ -497,6 +559,34 @@ configure({
 
 // Reset after test
 afterEach(() => resetDependencies());
+```
+
+### Testing with CollaborationContext
+
+For WebSocket/collaboration tests, use `CollaborationContext` to configure all modules at once:
+
+```typescript
+import {
+    createTestCollaborationContext,
+    configureAllModules,
+    resetAllModules,
+} from './collaboration.context';
+import { silentLogger } from '../contexts/logger.context';
+
+describe('WebSocketFeature', () => {
+    beforeEach(async () => {
+        const testDb = await createTestDb();
+        const ctx = createTestCollaborationContext({
+            db: testDb,
+            queries: { findProjectByUuid: mockFindProject },
+        });
+        configureAllModules(ctx);
+    });
+
+    afterEach(() => {
+        resetAllModules();
+    });
+});
 ```
 
 ## 12. Security
