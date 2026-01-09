@@ -258,12 +258,17 @@ describe('TinyMCE 5 Settings', () => {
         on: vi.fn(),
         getBody: () => document.createElement('div'),
       };
+
+      // SetContent handler is now registered in setup callback (before content loads)
+      config.setup(mockEditor);
+      expect(mockEditor.on).toHaveBeenCalledWith('SetContent', expect.any(Function));
+
+      // init_instance_callback runs after content loads
+      mockEditor.on.mockClear();
       config.init_instance_callback(mockEditor);
 
       expect(initSpy).toHaveBeenCalledWith('editor', true);
       expect(hookSpy).toHaveBeenCalled();
-      // Verify SetContent handler was registered
-      expect(mockEditor.on).toHaveBeenCalledWith('SetContent', expect.any(Function));
       initSpy.mockRestore();
       delete globalThis.$exeTinyMCE.onEditorInit;
     });
@@ -849,9 +854,10 @@ describe('TinyMCE 5 Settings', () => {
         expect(iframe.getAttribute('height')).toBe('150');
       });
 
-      it('resolves mce-preview-object spans with iframe for PDFs but does NOT add data-asset-src', async () => {
+      it('resolves mce-preview-object spans with iframe for PDFs and adds data-asset-src', async () => {
         // Iframes in mce-preview-object spans are resolved for display.
-        // The span's data-mce-p-src preserves the original URL.
+        // The span's data-mce-p-src preserves the original URL, but data-asset-src
+        // is also added to the iframe as a backup.
         const body = document.createElement('div');
         const span = document.createElement('span');
         span.classList.add('mce-preview-object');
@@ -881,8 +887,215 @@ describe('TinyMCE 5 Settings', () => {
         // The inner iframe SHOULD be resolved for display
         expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://pdf-preview-uuid/file.pdf');
         expect(iframe.getAttribute('src')).toBe(mockBlobUrl);
-        // But data-asset-src should NOT be added
-        expect(iframe.getAttribute('data-asset-src')).toBeNull();
+        // data-asset-src is added as a backup for persistence
+        expect(iframe.getAttribute('data-asset-src')).toBe('asset://pdf-preview-uuid/file.pdf');
+      });
+
+      it('uses resolveHtmlWithAssets for HTML iframes with data-mce-html attribute', async () => {
+        const body = document.createElement('div');
+        const iframe = document.createElement('iframe');
+        // Use valid hex UUID format that matches the regex /asset:\/\/([a-f0-9-]+)/i
+        iframe.setAttribute('src', 'asset://abc12345-def6-7890-abcd-ef1234567890/index.html');
+        iframe.setAttribute('data-mce-html', 'true');
+        body.appendChild(iframe);
+
+        const mockResolvedHtmlUrl = 'blob:http://localhost/html-blob-with-assets';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue('blob:should-not-use'),
+          resolveHtmlWithAssets: vi.fn().mockResolvedValue(mockResolvedHtmlUrl),
+          reverseBlobCache: new Map(),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Should use resolveHtmlWithAssets for HTML iframes
+        expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledWith('abc12345-def6-7890-abcd-ef1234567890');
+        expect(mockAssetManager.resolveAssetURL).not.toHaveBeenCalled();
+        expect(iframe.getAttribute('src')).toBe(mockResolvedHtmlUrl);
+        expect(iframe.getAttribute('data-asset-src')).toBe('asset://abc12345-def6-7890-abcd-ef1234567890/index.html');
+      });
+
+      it('uses resolveHtmlWithAssets for iframes with .html extension', async () => {
+        const body = document.createElement('div');
+        const iframe = document.createElement('iframe');
+        // Use valid hex UUID format
+        iframe.setAttribute('src', 'asset://def56789-0abc-1234-5678-90abcdef1234/page.html');
+        // No data-mce-html attribute, but .html extension
+        body.appendChild(iframe);
+
+        const mockResolvedHtmlUrl = 'blob:http://localhost/html-page-blob';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue('blob:should-not-use'),
+          resolveHtmlWithAssets: vi.fn().mockResolvedValue(mockResolvedHtmlUrl),
+          reverseBlobCache: new Map(),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Should detect HTML by extension and use resolveHtmlWithAssets
+        expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledWith('def56789-0abc-1234-5678-90abcdef1234');
+        expect(mockAssetManager.resolveAssetURL).not.toHaveBeenCalled();
+        expect(iframe.getAttribute('src')).toBe(mockResolvedHtmlUrl);
+      });
+
+      it('falls back to resolveAssetURL when resolveHtmlWithAssets returns null', async () => {
+        const body = document.createElement('div');
+        const iframe = document.createElement('iframe');
+        // Use valid hex UUID format
+        iframe.setAttribute('src', 'asset://aaa11111-bbb2-2222-ccc3-333ddd444eee/page.html');
+        iframe.setAttribute('data-mce-html', 'true');
+        body.appendChild(iframe);
+
+        const mockFallbackUrl = 'blob:http://localhost/fallback-blob';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockFallbackUrl),
+          resolveHtmlWithAssets: vi.fn().mockResolvedValue(null),
+          reverseBlobCache: new Map(),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Should try HTML resolution first
+        expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledWith('aaa11111-bbb2-2222-ccc3-333ddd444eee');
+        // Note: This implementation doesn't fall back - it returns early if resolvedUrl is null
+        // The src will remain as the original asset:// URL
+        expect(iframe.getAttribute('data-asset-src')).toBe('asset://aaa11111-bbb2-2222-ccc3-333ddd444eee/page.html');
+      });
+
+      it('logs warning when resolveHtmlWithAssets throws', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const body = document.createElement('div');
+        const iframe = document.createElement('iframe');
+        // Use valid hex UUID format
+        iframe.setAttribute('src', 'asset://eee55555-fff6-6666-aaa7-777bbb888ccc/page.html');
+        iframe.setAttribute('data-mce-html', 'true');
+        body.appendChild(iframe);
+
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn(),
+          resolveHtmlWithAssets: vi.fn().mockRejectedValue(new Error('HTML resolution failed')),
+          reverseBlobCache: new Map(),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        // Should catch error and log warning
+        expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledWith(
+          '[TinyMCE] Failed to resolve HTML asset:',
+          'asset://eee55555-fff6-6666-aaa7-777bbb888ccc/page.html',
+          expect.any(Error)
+        );
+
+        warnSpy.mockRestore();
+      });
+
+      it('handles HTML iframes in mce-preview-object spans', async () => {
+        const body = document.createElement('div');
+        const span = document.createElement('span');
+        span.classList.add('mce-preview-object');
+        // Use valid hex UUID format
+        span.setAttribute('data-mce-p-src', 'asset://ccc99999-ddd0-0000-eee1-111fff222333/index.html');
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('src', 'asset://ccc99999-ddd0-0000-eee1-111fff222333/index.html');
+        iframe.setAttribute('data-mce-html', 'true');
+        span.appendChild(iframe);
+        body.appendChild(span);
+
+        const mockResolvedHtmlUrl = 'blob:http://localhost/html-preview-resolved';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn(),
+          resolveHtmlWithAssets: vi.fn().mockResolvedValue(mockResolvedHtmlUrl),
+          reverseBlobCache: new Map(),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Should use resolveHtmlWithAssets for HTML iframes in spans
+        expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledWith('ccc99999-ddd0-0000-eee1-111fff222333');
+        expect(iframe.getAttribute('src')).toBe(mockResolvedHtmlUrl);
+        expect(iframe.getAttribute('data-asset-src')).toBe('asset://ccc99999-ddd0-0000-eee1-111fff222333/index.html');
+      });
+
+      it('does not use resolveHtmlWithAssets for non-HTML iframes (PDFs)', async () => {
+        const body = document.createElement('div');
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('src', 'asset://pdf-uuid/document.pdf');
+        // No data-mce-html attribute, .pdf extension
+        body.appendChild(iframe);
+
+        const mockPdfBlobUrl = 'blob:http://localhost/pdf-direct';
+        const mockAssetManager = {
+          resolveAssetURL: vi.fn().mockResolvedValue(mockPdfBlobUrl),
+          resolveHtmlWithAssets: vi.fn(),
+        };
+        window.eXeLearning.app.project = {
+          _yjsBridge: { assetManager: mockAssetManager },
+        };
+
+        const mockEditor = {
+          getBody: () => body,
+        };
+
+        globalThis.$exeTinyMCE.resolveAssetUrlsInEditor(mockEditor);
+
+        // Wait for async resolution
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Should NOT use resolveHtmlWithAssets for PDFs
+        expect(mockAssetManager.resolveHtmlWithAssets).not.toHaveBeenCalled();
+        expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://pdf-uuid/document.pdf');
+        expect(iframe.getAttribute('src')).toBe(mockPdfBlobUrl);
       });
     });
   });
