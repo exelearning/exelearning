@@ -459,7 +459,7 @@ endif
 
 .PHONY: test-frontend-legacy
 test-frontend-legacy: check-node check-env ## Run frontend tests with Node.js (Vitest) + coverage (CI) - for systems without Bun
-	npm run test:frontend:node
+	npm run test:frontend:legacy
 
 .PHONY: lint-legacy
 lint-legacy: check-node
@@ -519,18 +519,18 @@ test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov covera
 
 .PHONY: test-e2e-chromium
 test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
-	npx playwright test --project=chromium
+	bunx playwright test --project=chromium
 
 .PHONY: test-e2e
 test-e2e: test-e2e-chromium ## Run Playwright E2E tests (alias for test-e2e-chromium)
 
 .PHONY: test-e2e-ui
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
-	npx playwright test --ui
+	bunx playwright test --ui
 
 .PHONY: test-e2e-firefox
 test-e2e-firefox: check-env ## Run Playwright E2E tests with Firefox
-	npx playwright test --project=firefox
+	bunx playwright test --project=firefox
 
 
 # =============================================================================
@@ -581,7 +581,7 @@ test-e2e-mariadb: check-docker check-env ## Run E2E tests with MariaDB backend
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bunx playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -616,7 +616,7 @@ test-e2e-postgres: check-docker check-env ## Run E2E tests with PostgreSQL backe
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bunx playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -651,7 +651,7 @@ test-e2e-sqlite: check-docker check-env ## Run E2E tests with SQLite backend
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 npx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bunx playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
