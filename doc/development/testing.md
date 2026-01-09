@@ -264,7 +264,7 @@ make test-e2e
 make test-e2e-ui
 
 # Run specific test file
-npx playwright test test/e2e/playwright/specs/login.spec.ts
+bunx playwright test test/e2e/playwright/specs/login.spec.ts
 ```
 
 ### Structure
