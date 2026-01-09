@@ -37,7 +37,7 @@
         "test:integration": "bun test ./test/integration",
         "test:frontend": "vitest run --config vitest.config.mts --coverage --reporter=default --reporter=junit --outputFile=coverage/vitest/junit.xml",
         "test:frontend:ui": "vitest --ui --config vitest.config.mts",
-        "test:frontend:node": "npx vitest run --config vitest.config.mts --coverage",
+        "test:frontend:legacy": "npx vitest run --config vitest.config.mts --coverage",
         "test:e2e": "playwright test",
         "test:e2e:ui": "playwright test --ui",
         "electron": "electron .",
@@ -207,7 +207,7 @@
                     ]
                 },
                 {
-                    "target": "msiWrapped",
+                    "target": "msi",
                     "arch": [
                         "x64"
                     ]
@@ -241,10 +241,12 @@
                 ".xz"
             ]
         },
-        "msiWrapped": {
-            "oneClick": true,
-            "runAfterFinish": true,
-            "perMachine": false
+        "msi": {
+            "oneClick": false,
+            "perMachine": true,
+            "runAfterFinish": false,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
         },
         "linux": {
             "executableName": "exelearning",

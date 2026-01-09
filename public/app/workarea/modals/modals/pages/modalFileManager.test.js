@@ -849,7 +849,68 @@ describe('ModalFilemanager', () => {
       modal.insertSelectedAsset();
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('asset://1.txt');
     });
+
+    it('should insert HTML as iframe with data-mce-html attribute', () => {
+      window.tinymce = { activeEditor: { insertContent: vi.fn() } };
+      modal.selectedAsset = {
+        id: 'abc12345-def6-7890-abcd-ef1234567890',
+        filename: 'index.html',
+        mime: 'text/html',
+        blob: new Blob(['<html><body>Test</body></html>'], { type: 'text/html' }),
+      };
+
+      modal.insertSelectedAsset();
+
+      // HTML files should be inserted as iframe with data-mce-html attribute
+      expect(window.tinymce.activeEditor.insertContent).toHaveBeenCalledWith(
+        expect.stringContaining('data-mce-html="true"')
+      );
+      expect(window.tinymce.activeEditor.insertContent).toHaveBeenCalledWith(
+        expect.stringContaining('<iframe')
+      );
+      expect(window.tinymce.activeEditor.insertContent).toHaveBeenCalledWith(
+        expect.stringContaining('asset://abc12345-def6-7890-abcd-ef1234567890')
+      );
+    });
+
+    it('should detect HTML by file extension for .htm files', () => {
+      window.tinymce = { activeEditor: { insertContent: vi.fn() } };
+      modal.selectedAsset = {
+        id: 'def56789-0abc-1234-5678-90abcdef1234',
+        filename: 'page.htm',
+        mime: 'text/html',
+        blob: new Blob(['<html><body>HTM file</body></html>'], { type: 'text/html' }),
+      };
+
+      modal.insertSelectedAsset();
+
+      expect(window.tinymce.activeEditor.insertContent).toHaveBeenCalledWith(
+        expect.stringContaining('data-mce-html="true"')
+      );
+    });
+
+    it('should not add data-mce-html for non-HTML files', () => {
+      window.tinymce = { activeEditor: { insertContent: vi.fn() } };
+      modal.selectedAsset = {
+        id: 'pdf-uuid-1234',
+        filename: 'document.pdf',
+        mime: 'application/pdf',
+        blob: new Blob(['PDF content'], { type: 'application/pdf' }),
+      };
+
+      modal.insertSelectedAsset();
+
+      // PDF files should not have data-mce-html attribute
+      expect(window.tinymce.activeEditor.insertContent).not.toHaveBeenCalledWith(
+        expect.stringContaining('data-mce-html="true"')
+      );
+    });
   });
+
+  // Note: selectAsset HTML resolution with resolveHtmlWithAssets is tested
+  // via E2E tests in text.spec.ts which covers the full ZIP extraction and
+  // HTML insertion flow with proper CSS resolution. The insertSelectedAsset
+  // tests above verify the data-mce-html attribute is added for HTML files.
 
   describe('close', () => {
     it('should reset preview and state', () => {
