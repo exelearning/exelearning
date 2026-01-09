@@ -962,6 +962,712 @@ class AssetManager {
   }
 
   // =========================================================================
+  // HTML Asset Resolution (for iframe preview with relative URLs)
+  // =========================================================================
+
+  /**
+   * Normalize a relative path against a base folder
+   * Handles: ./path, ../path, and bare paths
+   *
+   * @param {string} baseFolder - Base folder path (e.g., "mywebsite")
+   * @param {string} relativePath - Relative path (e.g., "./libs/jquery.min.js")
+   * @returns {string} Normalized full path
+   * @private
+   */
+  _normalizeRelativePath(baseFolder, relativePath) {
+    // Skip absolute URLs and data URLs
+    if (/^(https?:|data:|blob:|asset:|\/\/)/i.test(relativePath)) {
+      return relativePath;
+    }
+
+    // Remove leading ./ if present
+    let cleanPath = relativePath.replace(/^\.\//, '');
+
+    // Combine with base folder
+    let fullPath = baseFolder ? `${baseFolder}/${cleanPath}` : cleanPath;
+
+    // Handle ../ by resolving path segments
+    const segments = fullPath.split('/');
+    const resolved = [];
+
+    for (const segment of segments) {
+      if (segment === '..') {
+        // Go up one level (remove last segment)
+        if (resolved.length > 0) {
+          resolved.pop();
+        }
+      } else if (segment !== '.' && segment !== '') {
+        resolved.push(segment);
+      }
+    }
+
+    return resolved.join('/');
+  }
+
+  /**
+   * Find asset by relative path within folder structure
+   *
+   * @param {string} baseFolder - Base folder path (e.g., "mywebsite")
+   * @param {string} relativePath - Relative path (e.g., "./libs/jquery.min.js")
+   * @returns {Object|null} Asset metadata with id, or null if not found
+   */
+  findAssetByRelativePath(baseFolder, relativePath) {
+    // Skip absolute URLs and data URLs
+    if (/^(https?:|data:|blob:|asset:|\/\/)/i.test(relativePath)) {
+      return null;
+    }
+
+    const normalizedPath = this._normalizeRelativePath(baseFolder, relativePath);
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap) return null;
+
+    for (const [id, meta] of assetsMap.entries()) {
+      // Build full path for comparison
+      const assetFullPath = meta.folderPath
+        ? `${meta.folderPath}/${meta.filename}`
+        : meta.filename;
+
+      if (assetFullPath === normalizedPath) {
+        return { id, ...meta };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if a MIME type or filename indicates HTML content
+   * @param {string} mimeType - MIME type
+   * @param {string} filename - Filename
+   * @returns {boolean} True if HTML
+   * @private
+   */
+  _isHtmlAsset(mimeType, filename) {
+    if (mimeType === 'text/html') return true;
+    if (filename) {
+      const ext = filename.toLowerCase().split('.').pop();
+      return ext === 'html' || ext === 'htm';
+    }
+    return false;
+  }
+
+  /**
+   * Resolve an HTML asset with all its internal relative URLs converted to blob URLs
+   *
+   * This method:
+   * 1. Fetches the HTML content from the asset
+   * 2. Parses it and finds all relative URLs (src, href)
+   * 3. Resolves each to a blob URL
+   * 4. Returns a new blob URL with the resolved HTML
+   *
+   * @param {string} assetId - HTML asset UUID
+   * @returns {Promise<string>} Blob URL of resolved HTML
+   */
+  async resolveHtmlWithAssets(assetId) {
+    // 1. Get HTML asset metadata
+    const metadata = this.getAssetMetadata(assetId);
+    if (!metadata) {
+      Logger.log(`[AssetManager] resolveHtmlWithAssets: Asset ${assetId} not found`);
+      return null;
+    }
+
+    // 2. Fetch HTML blob and read as text
+    const blob = await this.getBlob(assetId);
+    if (!blob) {
+      Logger.log(`[AssetManager] resolveHtmlWithAssets: No blob for ${assetId}`);
+      return null;
+    }
+
+    const htmlText = await blob.text();
+    const baseFolder = metadata.folderPath || '';
+
+    // 3. Parse HTML and collect all relative URLs
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, 'text/html');
+
+    // Elements and attributes to process
+    const urlAttributes = [
+      { selector: '[src]', attr: 'src' },
+      { selector: 'link[href]', attr: 'href' },
+      { selector: 'a[href]', attr: 'href' },
+    ];
+
+    // Collect all relative URLs and their elements
+    const urlsToResolve = [];
+
+    for (const { selector, attr } of urlAttributes) {
+      const elements = doc.querySelectorAll(selector);
+      for (const el of elements) {
+        const url = el.getAttribute(attr);
+        if (url && !url.match(/^(https?:|data:|blob:|asset:|javascript:|#|\/\/)/i)) {
+          urlsToResolve.push({ element: el, attr, url });
+        }
+      }
+    }
+
+    // Also handle inline style url() references
+    const styleElements = doc.querySelectorAll('style');
+    const inlineStyleElements = doc.querySelectorAll('[style]');
+
+    // 4. Batch resolve all URLs
+    const resolvedUrls = new Map();
+
+    await Promise.all(
+      urlsToResolve.map(async ({ url }) => {
+        if (resolvedUrls.has(url)) return;
+
+        const asset = this.findAssetByRelativePath(baseFolder, url);
+        if (asset) {
+          const blobUrl = await this.resolveAssetURL(`asset://${asset.id}`);
+          if (blobUrl) {
+            resolvedUrls.set(url, blobUrl);
+          }
+        }
+      })
+    );
+
+    // 4.5 Process external CSS files BEFORE replacing URLs
+    // This must happen BEFORE step 5 because once URLs are replaced with blob://,
+    // we can't resolve relative url() references inside the CSS files.
+    // External CSS files loaded via <link> can't resolve relative url() from blob:// URLs
+    // So we fetch them, resolve internal URLs, and convert to inline <style>
+    const processedCssLinks = new Set();
+    for (const { element, attr, url } of urlsToResolve) {
+      // Only process <link rel="stylesheet"> elements
+      if (element.tagName !== 'LINK' || attr !== 'href') continue;
+      if (element.getAttribute('rel') !== 'stylesheet') continue;
+      if (!url.match(/\.css$/i)) continue;
+
+      const cssAsset = this.findAssetByRelativePath(baseFolder, url);
+      if (!cssAsset) continue;
+
+      try {
+        // Get CSS content
+        const cssBlob = await this.getBlob(cssAsset.id);
+        if (!cssBlob) continue;
+
+        const cssText = await cssBlob.text();
+
+        // Calculate the CSS file's folder for resolving its internal relative URLs
+        const cssFolder = cssAsset.folderPath || '';
+
+        // Resolve url() references in the CSS content
+        const resolvedCss = await this._resolveUrlsInCss(cssText, cssFolder, new Map());
+
+        // Replace <link> with <style> containing resolved CSS
+        const styleEl = doc.createElement('style');
+        styleEl.textContent = resolvedCss;
+        // Copy media attribute if present
+        const media = element.getAttribute('media');
+        if (media) styleEl.setAttribute('media', media);
+        element.parentNode.replaceChild(styleEl, element);
+        processedCssLinks.add(element);
+      } catch (e) {
+        Logger.log(`[AssetManager] resolveHtmlWithAssets: Error processing CSS ${url}: ${e.message}`);
+        // Keep original link on error - will be resolved to blob URL in step 5
+      }
+    }
+
+    // 5. Replace URLs in the document (skip processed CSS links and HTML anchor links)
+    for (const { element, attr, url } of urlsToResolve) {
+      // Skip CSS links that were already converted to inline <style>
+      if (processedCssLinks.has(element)) continue;
+
+      // Skip <a href> links to HTML files - let the link handler manage navigation
+      // This allows the injected script to intercept clicks and use postMessage
+      if (element.tagName === 'A' && attr === 'href' && url.match(/\.html?$/i)) {
+        continue;
+      }
+
+      const blobUrl = resolvedUrls.get(url);
+      if (blobUrl) {
+        element.setAttribute(attr, blobUrl);
+      }
+    }
+
+    // 5.5 Add target="_blank" to external links
+    const externalLinks = doc.querySelectorAll('a[href^="http://"], a[href^="https://"]');
+    for (const link of externalLinks) {
+      if (!link.getAttribute('target')) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    }
+
+    // Process inline styles with url() references
+    for (const styleEl of styleElements) {
+      styleEl.textContent = await this._resolveUrlsInCss(styleEl.textContent, baseFolder, resolvedUrls);
+    }
+
+    for (const el of inlineStyleElements) {
+      const style = el.getAttribute('style');
+      if (style && style.includes('url(')) {
+        el.setAttribute('style', await this._resolveUrlsInCss(style, baseFolder, resolvedUrls));
+      }
+    }
+
+    // 6. Inject link handler script for internal navigation
+    const linkHandlerScript = this._generateLinkHandlerScript(assetId, baseFolder);
+    const bodyEl = doc.body;
+    if (bodyEl) {
+      // Insert script before </body>
+      const scriptContainer = doc.createElement('div');
+      scriptContainer.innerHTML = linkHandlerScript;
+      const scriptEl = scriptContainer.querySelector('script');
+      if (scriptEl) {
+        bodyEl.appendChild(scriptEl);
+      }
+    }
+
+    // 7. Create new blob with resolved HTML (preserving DOCTYPE)
+    // DOMParser loses the DOCTYPE when we get outerHTML, so we need to add it back
+    let resolvedHtml = '';
+    if (doc.doctype) {
+      resolvedHtml = new XMLSerializer().serializeToString(doc.doctype) + '\n';
+    } else {
+      // Default to HTML5 DOCTYPE if original didn't have one
+      resolvedHtml = '<!DOCTYPE html>\n';
+    }
+    resolvedHtml += doc.documentElement.outerHTML;
+    const resolvedBlob = new Blob([resolvedHtml], { type: 'text/html' });
+    const resolvedBlobUrl = URL.createObjectURL(resolvedBlob);
+
+    Logger.log(`[AssetManager] resolveHtmlWithAssets: Resolved ${resolvedUrls.size} URLs for ${assetId}`);
+
+    return resolvedBlobUrl;
+  }
+
+  /**
+   * Resolve HTML asset with all internal assets as DATA URLs (for standalone/export use).
+   *
+   * Similar to resolveHtmlWithAssets but returns HTML string with data URLs instead of blob URLs.
+   * This is needed for standalone preview (open in new tab) where the page must work
+   * independently without access to the parent window or IndexedDB.
+   *
+   * @param {string} assetId - HTML asset UUID
+   * @param {Set<string>} [resolvedHtmlAssetsSet] - Set of already-resolved HTML asset IDs (for recursive calls to avoid infinite loops)
+   * @returns {Promise<string|null>} Resolved HTML string with data URLs
+   */
+  async resolveHtmlWithAssetsAsDataUrls(assetId, resolvedHtmlAssetsSet) {
+    // 1. Get HTML asset metadata
+    const metadata = this.getAssetMetadata(assetId);
+    if (!metadata) {
+      Logger.log(`[AssetManager] resolveHtmlWithAssetsAsDataUrls: Asset ${assetId} not found`);
+      return null;
+    }
+
+    // 2. Fetch HTML blob and read as text
+    const blob = await this.getBlob(assetId);
+    if (!blob) {
+      Logger.log(`[AssetManager] resolveHtmlWithAssetsAsDataUrls: No blob for ${assetId}`);
+      return null;
+    }
+
+    const htmlText = await blob.text();
+    const baseFolder = metadata.folderPath || '';
+
+    // 3. Parse HTML and collect all relative URLs
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlText, 'text/html');
+
+    // Elements and attributes to process
+    const urlAttributes = [
+      { selector: '[src]', attr: 'src' },
+      { selector: 'link[href]', attr: 'href' },
+      { selector: 'a[href]', attr: 'href' },
+    ];
+
+    // Collect all relative URLs and their elements
+    const urlsToResolve = [];
+
+    for (const { selector, attr } of urlAttributes) {
+      const elements = doc.querySelectorAll(selector);
+      for (const el of elements) {
+        const url = el.getAttribute(attr);
+        if (url && !url.match(/^(https?:|data:|blob:|asset:|javascript:|#|\/\/)/i)) {
+          urlsToResolve.push({ element: el, attr, url });
+        }
+      }
+    }
+
+    // Also handle inline style url() references
+    const styleElements = doc.querySelectorAll('style');
+    const inlineStyleElements = doc.querySelectorAll('[style]');
+
+    // 4. Batch resolve all URLs to DATA URLs (for non-HTML assets)
+    // For HTML links, we store the resolved content in a map and inject a navigation handler
+    // (to avoid Chrome's 2MB limit on data URLs in href attributes)
+    //
+    // Track resolved HTML assets to avoid infinite loops (for circular references)
+    const resolvedHtmlAssets = resolvedHtmlAssetsSet || new Set();
+    resolvedHtmlAssets.add(assetId); // Mark current asset as being processed
+
+    const resolvedUrls = new Map();
+    const resolvedHtmlPages = new Map(); // Map<relativeUrl, resolvedHtmlContent>
+
+    await Promise.all(
+      urlsToResolve.map(async ({ url }) => {
+        if (resolvedUrls.has(url) || resolvedHtmlPages.has(url)) return;
+
+        const asset = this.findAssetByRelativePath(baseFolder, url);
+        if (asset) {
+          // Check if this is an HTML file that needs recursive resolution
+          const assetMeta = this.getAssetMetadata(asset.id);
+          const isHtmlLink = assetMeta && this._isHtmlAsset(assetMeta.mime, assetMeta.filename);
+
+          if (isHtmlLink && !resolvedHtmlAssets.has(asset.id)) {
+            // Recursively resolve HTML with all its assets
+            // Store as HTML content (not data URL) to avoid Chrome's 2MB limit
+            const resolvedHtml = await this.resolveHtmlWithAssetsAsDataUrls(asset.id, resolvedHtmlAssets);
+            if (resolvedHtml) {
+              resolvedHtmlPages.set(url, resolvedHtml);
+            }
+          } else {
+            // Non-HTML asset or already processed HTML - use simple data URL
+            const dataUrl = await this._getAssetAsDataUrl(asset.id);
+            if (dataUrl) {
+              resolvedUrls.set(url, dataUrl);
+            }
+          }
+        }
+      })
+    );
+
+    // 4.5 Process external CSS files - convert to inline <style> with data URLs
+    const processedCssLinks = new Set();
+    for (const { element, attr, url } of urlsToResolve) {
+      if (element.tagName !== 'LINK' || attr !== 'href') continue;
+      if (element.getAttribute('rel') !== 'stylesheet') continue;
+      if (!url.match(/\.css$/i)) continue;
+
+      const cssAsset = this.findAssetByRelativePath(baseFolder, url);
+      if (!cssAsset) continue;
+
+      try {
+        const cssBlob = await this.getBlob(cssAsset.id);
+        if (!cssBlob) continue;
+
+        const cssText = await cssBlob.text();
+        const cssFolder = cssAsset.folderPath || '';
+
+        // Resolve url() references using data URLs
+        const resolvedCss = await this._resolveUrlsInCssAsDataUrls(cssText, cssFolder);
+
+        const styleEl = doc.createElement('style');
+        styleEl.textContent = resolvedCss;
+        const media = element.getAttribute('media');
+        if (media) styleEl.setAttribute('media', media);
+        element.parentNode.replaceChild(styleEl, element);
+        processedCssLinks.add(element);
+      } catch (e) {
+        Logger.log(`[AssetManager] resolveHtmlWithAssetsAsDataUrls: Error processing CSS ${url}: ${e.message}`);
+      }
+    }
+
+    // 5. Replace URLs in the document
+    // For HTML links, mark them with data-exe-nav attribute (will be handled by injected script)
+    // For other assets, use data URLs directly
+    const htmlNavPages = []; // Array of {index, url, content} for the navigation handler
+
+    for (const { element, attr, url } of urlsToResolve) {
+      if (processedCssLinks.has(element)) continue;
+
+      // Check if this is an HTML link with pre-resolved content
+      const htmlContent = resolvedHtmlPages.get(url);
+      if (htmlContent && element.tagName === 'A' && attr === 'href') {
+        // Store the page content and set up navigation marker
+        const pageIndex = htmlNavPages.length;
+        htmlNavPages.push({ index: pageIndex, url, content: htmlContent });
+
+        // Set href to a special navigation marker
+        element.setAttribute('href', `#exe-nav-${pageIndex}`);
+        element.setAttribute('data-exe-nav', String(pageIndex));
+        continue;
+      }
+
+      // For non-HTML assets, use data URLs directly
+      const dataUrl = resolvedUrls.get(url);
+      if (dataUrl) {
+        element.setAttribute(attr, dataUrl);
+      }
+    }
+
+    // 5.5 Add target="_blank" to external links
+    const externalLinks = doc.querySelectorAll('a[href^="http://"], a[href^="https://"]');
+    for (const link of externalLinks) {
+      if (!link.getAttribute('target')) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+      }
+    }
+
+    // Process inline styles with url() references (using data URLs)
+    for (const styleEl of styleElements) {
+      styleEl.textContent = await this._resolveUrlsInCssAsDataUrls(styleEl.textContent, baseFolder);
+    }
+
+    for (const el of inlineStyleElements) {
+      const style = el.getAttribute('style');
+      if (style && style.includes('url(')) {
+        el.setAttribute('style', await this._resolveUrlsInCssAsDataUrls(style, baseFolder));
+      }
+    }
+
+    // 6. Return resolved HTML string with DOCTYPE preserved
+    // DOMParser loses the DOCTYPE when we get outerHTML, so we need to add it back
+    let resolvedHtml = '';
+    if (doc.doctype) {
+      resolvedHtml = new XMLSerializer().serializeToString(doc.doctype) + '\n';
+    } else {
+      // Default to HTML5 DOCTYPE if original didn't have one
+      resolvedHtml = '<!DOCTYPE html>\n';
+    }
+    resolvedHtml += doc.documentElement.outerHTML;
+
+    // 7. Inject navigation handler script if there are HTML links
+    // This script handles clicks on internal HTML links by replacing the document content
+    // with the pre-resolved HTML (avoiding Chrome's 2MB data URL limit)
+    if (htmlNavPages.length > 0) {
+      resolvedHtml = this._injectStandaloneNavigationHandler(resolvedHtml, htmlNavPages);
+    }
+
+    Logger.log(`[AssetManager] resolveHtmlWithAssetsAsDataUrls: Resolved ${resolvedUrls.size} URLs, ${htmlNavPages.length} HTML pages for ${assetId}`);
+
+    return resolvedHtml;
+  }
+
+  /**
+   * Get an asset as a data URL
+   * @param {string} assetId - Asset UUID
+   * @returns {Promise<string|null>} Data URL or null
+   * @private
+   */
+  async _getAssetAsDataUrl(assetId) {
+    const blob = await this.getBlob(assetId);
+    if (!blob) return null;
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /**
+   * Resolve url() references in CSS content to data URLs (for standalone/export use)
+   * @param {string} cssText - CSS text content
+   * @param {string} baseFolder - Base folder for resolution
+   * @returns {Promise<string>} CSS with resolved data URLs
+   * @private
+   */
+  async _resolveUrlsInCssAsDataUrls(cssText, baseFolder) {
+    const urlPattern = /url\(["']?([^"')]+)["']?\)/g;
+    let result = cssText;
+    let match;
+
+    // Collect all matches first (to avoid issues with lastIndex during replacement)
+    const matches = [];
+    while ((match = urlPattern.exec(cssText)) !== null) {
+      matches.push({ fullMatch: match[0], url: match[1] });
+    }
+
+    for (const { fullMatch, url } of matches) {
+      // Skip absolute URLs, data URLs, etc.
+      if (url.match(/^(https?:|data:|blob:|asset:|\/\/)/i)) continue;
+
+      const asset = this.findAssetByRelativePath(baseFolder, url);
+      if (asset) {
+        const dataUrl = await this._getAssetAsDataUrl(asset.id);
+        if (dataUrl) {
+          result = result.replace(fullMatch, `url("${dataUrl}")`);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Generate a link handler script for HTML iframes to enable internal navigation
+   * @param {string} assetId - Current HTML asset ID
+   * @param {string} baseFolder - Base folder path for relative URL resolution
+   * @returns {string} Script tag to inject into HTML
+   * @private
+   */
+  _generateLinkHandlerScript(assetId, baseFolder) {
+    // Escape special characters for safe embedding in script
+    const escapedAssetId = assetId.replace(/'/g, "\\'");
+    const escapedBaseFolder = baseFolder.replace(/'/g, "\\'");
+
+    return `
+<script>
+(function() {
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    var href = link.getAttribute('href');
+    if (!href) return;
+
+    // Skip external links, asset://, blob:// and data:// URLs
+    if (/^(https?:|mailto:|javascript:|data:|asset:|blob:)/i.test(href)) return;
+
+    // Handle anchor links within same page (scroll to element)
+    if (href.charAt(0) === '#') {
+      var target = document.querySelector(href);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+
+    // Handle relative HTML links - request parent to resolve
+    e.preventDefault();
+    window.parent.postMessage({
+      type: 'exe-resolve-html-link',
+      href: href,
+      assetId: '${escapedAssetId}',
+      baseFolder: '${escapedBaseFolder}'
+    }, '*');
+  });
+})();
+</script>`;
+  }
+
+  /**
+   * Inject a standalone navigation handler for HTML pages.
+   * Used in standalone preview (new tab) where the page must work independently.
+   *
+   * This stores pre-resolved HTML pages in a JavaScript variable and handles
+   * navigation by replacing the entire document content when internal links are clicked.
+   * This avoids Chrome's 2MB limit on data URLs in href attributes.
+   *
+   * @param {string} html - HTML content to inject script into
+   * @param {Array<{index: number, url: string, content: string}>} htmlPages - Pre-resolved HTML pages
+   * @returns {string} HTML with injected navigation handler
+   * @private
+   */
+  _injectStandaloneNavigationHandler(html, htmlPages) {
+    // Serialize pages as JSON for embedding in script
+    // Use base64 encoding to avoid issues with quotes/escaping in HTML content
+    const pagesData = htmlPages.map(p => ({
+      index: p.index,
+      url: p.url,
+      // Base64 encode the content to avoid escaping issues
+      contentBase64: btoa(unescape(encodeURIComponent(p.content)))
+    }));
+
+    const pagesJson = JSON.stringify(pagesData);
+
+    const navScript = `
+<script>
+(function() {
+  // Pre-resolved HTML pages (base64 encoded to avoid escaping issues)
+  var exeNavPages = ${pagesJson};
+
+  // Decode base64 content
+  function decodeContent(base64) {
+    return decodeURIComponent(escape(atob(base64)));
+  }
+
+  // Navigate to a pre-resolved page by replacing document content
+  function navigateToPage(pageIndex) {
+    var page = exeNavPages.find(function(p) { return p.index === pageIndex; });
+    if (!page) {
+      console.warn('[StandaloneNav] Page not found:', pageIndex);
+      return false;
+    }
+
+    var content = decodeContent(page.contentBase64);
+    console.log('[StandaloneNav] Navigating to:', page.url);
+
+    // Replace the entire document with the new content
+    // Using document.open/write/close to completely replace the page
+    document.open();
+    document.write(content);
+    document.close();
+
+    return true;
+  }
+
+  // Handle clicks on internal navigation links
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('a[data-exe-nav]');
+    if (!link) return;
+
+    var pageIndex = parseInt(link.getAttribute('data-exe-nav'), 10);
+    if (isNaN(pageIndex)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    navigateToPage(pageIndex);
+  });
+
+  // Handle hash-based navigation (for back button support)
+  window.addEventListener('hashchange', function() {
+    var hash = window.location.hash;
+    var match = hash.match(/^#exe-nav-(\\d+)$/);
+    if (match) {
+      var pageIndex = parseInt(match[1], 10);
+      navigateToPage(pageIndex);
+    }
+  });
+
+  console.log('[StandaloneNav] Navigation handler initialized with', exeNavPages.length, 'pages');
+})();
+</script>`;
+
+    // Inject before </body> or at the end
+    if (html.includes('</body>')) {
+      return html.replace('</body>', navScript + '</body>');
+    }
+    return html + navScript;
+  }
+
+  /**
+   * Resolve url() references in CSS content
+   * @param {string} cssText - CSS text content
+   * @param {string} baseFolder - Base folder for resolution
+   * @param {Map} resolvedUrls - Map of already resolved URLs
+   * @returns {Promise<string>} CSS with resolved URLs
+   * @private
+   */
+  async _resolveUrlsInCss(cssText, baseFolder, resolvedUrls) {
+    const urlPattern = /url\(["']?([^"')]+)["']?\)/g;
+    let result = cssText;
+    let match;
+
+    while ((match = urlPattern.exec(cssText)) !== null) {
+      const url = match[1];
+
+      // Skip absolute URLs and data URLs
+      if (url.match(/^(https?:|data:|blob:|asset:|\/\/)/i)) {
+        continue;
+      }
+
+      let blobUrl = resolvedUrls.get(url);
+
+      if (!blobUrl) {
+        const asset = this.findAssetByRelativePath(baseFolder, url);
+        if (asset) {
+          blobUrl = await this.resolveAssetURL(`asset://${asset.id}`);
+          if (blobUrl) {
+            resolvedUrls.set(url, blobUrl);
+          }
+        }
+      }
+
+      if (blobUrl) {
+        result = result.replace(match[0], `url("${blobUrl}")`);
+      }
+    }
+
+    return result;
+  }
+
+  // =========================================================================
   // Hash and Deduplication
   // =========================================================================
 
@@ -1399,6 +2105,31 @@ class AssetManager {
       }
     }
 
+    // Preserve data-asset-url for anchor elements linking to HTML assets
+    // This allows the preview panel to detect HTML links and show a warning
+    // Look for <a> tags with href pointing to blob:// URLs that were originally HTML assets
+    for (const { assetUrl, blobURL } of resolutions) {
+      if (!blobURL) continue;
+      // Check if this was an HTML asset by looking at the original URL
+      if (/\.html?$/i.test(assetUrl)) {
+        // Find anchor elements with this blob URL and add data-asset-url if not present
+        const escapedBlobUrl = blobURL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match: <a ... href="blob:..." ...> but NOT already having data-asset-url
+        const anchorRegex = new RegExp(
+          `(<a\\s[^>]*href=["'])${escapedBlobUrl}(["'][^>]*)(>)`,
+          'gi'
+        );
+        resolvedHTML = resolvedHTML.replace(anchorRegex, (fullMatch, before, afterHref, closeTag) => {
+          // Check if already has data-asset-url
+          if (fullMatch.includes('data-asset-url')) {
+            return fullMatch;
+          }
+          // Add data-asset-url attribute before closing >
+          return `${before}${blobURL}${afterHref} data-asset-url="${assetUrl}"${closeTag}`;
+        });
+      }
+    }
+
     return resolvedHTML;
   }
 
@@ -1475,6 +2206,32 @@ class AssetManager {
       return fullMatch;
     });
 
+    // Phase 1.5: Handle iframe HTML assets specially
+    // HTML iframes need resolveHtmlWithAssets() to resolve internal CSS/JS/images.
+    // Since this is a sync method and resolveHtmlWithAssets() is async, we mark them
+    // with data-mce-html and keep the asset:// URL for MutationObserver to handle.
+    // Pattern: <iframe ... src="asset://uuid.html" ...>
+    const iframeHtmlRegex = /(<iframe[^>]*?)src=(["'])(asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.html?)(?:\/[^"'&]+)?)\2([^>]*>)/gi;
+
+    resolvedHTML = resolvedHTML.replace(iframeHtmlRegex, (fullMatch, beforeSrc, quote, assetUrl, assetId, afterSrc) => {
+      // Check if this is really an HTML asset
+      const metadata = this.getAssetMetadata(assetId);
+      const isHtml = metadata && this._isHtmlAsset(metadata.mime, metadata.filename);
+
+      if (isHtml) {
+        // Keep asset:// URL - MutationObserver in asset_url_resolver.js will handle it
+        // Add data-mce-html attribute to signal it's an HTML iframe
+        const hasHtmlAttr = beforeSrc.includes('data-mce-html') || afterSrc.includes('data-mce-html');
+        if (!hasHtmlAttr) {
+          return `${beforeSrc}src=${quote}${assetUrl}${quote} data-mce-html="true"${afterSrc}`;
+        }
+        return fullMatch; // Already marked, keep as-is
+      }
+
+      // Not HTML, let Phase 2 handle it
+      return fullMatch;
+    });
+
     // Phase 2: Handle any remaining asset:// URLs (video, audio, background-image, etc.)
     // These won't have img-specific tracking but will still be resolved
     // Also handles corrupted URLs like asset://asset//uuid/filename
@@ -1483,6 +2240,14 @@ class AssetManager {
     const assetRegex = /asset:\/\/(?:asset\/+)?([a-f0-9-]+)(?:\.[a-z0-9]+)?(\/[^"'\\]+)?/gi;
 
     resolvedHTML = resolvedHTML.replace(assetRegex, (fullMatch, assetId) => {
+      // Skip if this URL was already handled in Phase 1.5 (HTML iframe)
+      // Check if it's part of a preserved iframe src attribute
+      const metadata = this.getAssetMetadata(assetId);
+      if (metadata && this._isHtmlAsset(metadata.mime, metadata.filename)) {
+        // This is an HTML asset - keep asset:// URL for MutationObserver
+        return fullMatch;
+      }
+
       const blobURL = this.blobURLCache.get(assetId);
       if (blobURL) {
         return blobURL;

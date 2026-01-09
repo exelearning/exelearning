@@ -51,6 +51,7 @@ This version is built with modern technologies (Bun, Elysia, Kysely) and provide
 * [![TypeScript][TypeScript.badge]][TypeScript-url]
 * [![Bun][Bun.badge]][Bun-url]
 * [![Elysia][Elysia.badge]][Elysia-url]
+* [![Kysely][Kysely.badge]][Kysely-url]
 
 ## Quick Start
 
@@ -83,6 +84,7 @@ To deploy eXeLearning in a production environment, see:
 
 - Overview: [doc/deployment.md](./doc/deployment.md)
 - Sample Compose files: [doc/deploy/README.md](./doc/deploy/README.md)
+- Upgrading from previous versions: [UPGRADE.md](./UPGRADE.md)
 
 ## Development Environment
 
@@ -133,7 +135,7 @@ eXeLearning enables educators to:
 
 ## Internationalization
 
-The project supports multiple languages and uses Symfony's Translation component. Currently available:
+The project supports multiple languages using [i18n](https://www.npmjs.com/package/i18n). Currently available:
 
 * English (default)
 * Español
@@ -168,7 +170,7 @@ make test-unit        # Run unit tests
 make test-coverage    # Run tests with coverage report
 make build            # Build for production
 make package          # Build Electron installers for all platforms
-make lint             # Run ESLint
+make lint             # Run Biome linter
 make fix              # Automatically fix linting issues
 ```
 
@@ -204,3 +206,5 @@ Distributed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0. See `LICENSE` for 
 [Bun-url]: https://bun.sh/
 [Elysia.badge]: https://img.shields.io/badge/Elysia-7C3AED?style=for-the-badge
 [Elysia-url]: https://elysiajs.com/
+[Kysely.badge]: https://img.shields.io/badge/Kysely-0D9488?style=for-the-badge
+[Kysely-url]: https://kysely.dev/
