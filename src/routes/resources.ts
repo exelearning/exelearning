@@ -7,6 +7,9 @@ import { Elysia } from 'elysia';
 import * as fs from 'fs';
 import * as path from 'path';
 import { LEGACY_IDEVICE_MAPPING } from '../shared/export/constants';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'resources-routes' });
 
 // Base paths for resources
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -108,7 +111,7 @@ function scanDirectory(dirPath: string, basePath: string = ''): string[] {
             }
         }
     } catch (e) {
-        console.warn(`[Resources] Error scanning directory ${dirPath}:`, e);
+        logger.warn('Error scanning directory', { dirPath, error: e instanceof Error ? e.message : String(e) });
     }
 
     return files;

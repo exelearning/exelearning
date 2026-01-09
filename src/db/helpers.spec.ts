@@ -24,6 +24,7 @@ import {
     deleteByColumnAndReturn,
     deleteByIdAndReturn,
 } from './helpers';
+import { resetConfigContext } from '../contexts/config.context';
 
 describe('Database Helpers', () => {
     let db: Kysely<Database>;
@@ -45,10 +46,12 @@ describe('Database Helpers', () => {
         const originalDriver = process.env.DB_DRIVER;
         try {
             process.env.DB_DRIVER = driver;
+            resetConfigContext(); // Reset ConfigContext cache to pick up new DB_DRIVER
             resetDialectCache();
             return await fn();
         } finally {
             process.env.DB_DRIVER = originalDriver;
+            resetConfigContext(); // Reset ConfigContext cache to restore original
             resetDialectCache();
         }
     }
@@ -109,6 +112,7 @@ describe('Database Helpers', () => {
             const originalDriver = process.env.DB_DRIVER;
             try {
                 process.env.DB_DRIVER = 'mysql';
+                resetConfigContext(); // Reset ConfigContext cache to pick up new DB_DRIVER
                 resetDialectCache();
                 const input = new Uint8Array([9, 8, 7]);
                 const result = toBinaryData(input);
@@ -116,6 +120,7 @@ describe('Database Helpers', () => {
                 expect([...result]).toEqual([9, 8, 7]);
             } finally {
                 process.env.DB_DRIVER = originalDriver;
+                resetConfigContext(); // Reset ConfigContext cache to restore original
                 resetDialectCache();
             }
         });

@@ -11,8 +11,9 @@ import {
     RealOdeNavStructure,
 } from './interfaces';
 import { generateId } from '../../utils/id-generator.util';
+import { getLogger } from '../../contexts/logger.context';
 
-const DEBUG = process.env.APP_DEBUG === '1';
+const logger = getLogger().child({ component: 'legacy-xml-parser' });
 
 // State for current parsing session
 let _xmlContent = '';
@@ -28,7 +29,7 @@ export function parse(
     rawXmlContent?: string,
     currentSessionId?: string,
 ): ParsedOdeStructure {
-    if (DEBUG) console.log('[LegacyParser] Parsing legacy instance format');
+    logger.debug('Parsing legacy instance format');
 
     _xmlContent = rawXmlContent || '';
     _sessionId = currentSessionId || '';
@@ -40,7 +41,7 @@ export function parse(
 
     // Find all nodes
     const allNodes = findAllNodes(parsed.instance);
-    if (DEBUG) console.log(`[LegacyParser] Found ${allNodes.length} legacy nodes`);
+    logger.debug('Found legacy nodes', { count: allNodes.length });
 
     // Extract metadata
     const meta = extractMetadata(parsed.instance);
@@ -67,7 +68,7 @@ export function parse(
 
     const navigation = { page: pages };
 
-    if (DEBUG) console.log(`[LegacyParser] Collected ${srcRoutes.length} resource paths`);
+    logger.debug('Collected resource paths', { count: srcRoutes.length });
 
     return {
         meta,
@@ -374,7 +375,7 @@ function buildPageHierarchy(nodes: LegacyInstanceNode[]): NormalizedPage[] {
     // This is INTENTIONAL behavior for legacy imports. See doc/conventions.md.
     const { shouldFlatten, rootRef } = shouldFlattenRootChildren();
     if (shouldFlatten && rootRef) {
-        if (DEBUG) console.log('[LegacyParser] Applying root node flattening convention for v2.x import');
+        logger.debug('Applying root node flattening convention for v2.x import');
         return flattenRootChildren(pages, rootRef);
     }
 
@@ -680,7 +681,7 @@ function mapIdeviceType(className: string): string {
     // Check if this is a text-based iDevice that should convert to 'text'
     for (const textType of textBasedIdevices) {
         if (className.includes(textType)) {
-            if (DEBUG) console.log(`[LegacyParser] Converting ${textType} to 'text' for editability`);
+            logger.debug('Converting text-based iDevice to text for editability', { textType });
             return 'text';
         }
     }
@@ -717,7 +718,7 @@ function mapIdeviceType(className: string): string {
     // Check for interactive iDevice mappings
     for (const [legacyType, modernType] of Object.entries(interactiveTypeMap)) {
         if (className.includes(legacyType)) {
-            if (DEBUG) console.log(`[LegacyParser] Mapping ${legacyType} to '${modernType}'`);
+            logger.debug('Mapping legacy iDevice to modern type', { legacyType, modernType });
             return modernType;
         }
     }
@@ -726,7 +727,7 @@ function mapIdeviceType(className: string): string {
     // JsIdevice is the modern JSON-based iDevice system. The actual type
     // is stored within the iDevice's JSON properties.
     if (className.includes('JsIdevice')) {
-        if (DEBUG) console.log(`[LegacyParser] Detected JsIdevice (modern format)`);
+        logger.debug('Detected JsIdevice (modern format)');
         // Return 'js' to indicate this needs special handling to extract the actual type
         return 'js';
     }
@@ -738,7 +739,7 @@ function mapIdeviceType(className: string): string {
     const match = className.match(/(\w+)Idevice/);
     const extractedType = match ? match[1].toLowerCase() : 'unknown';
 
-    if (DEBUG) console.log(`[LegacyParser] Unknown iDevice '${extractedType}' → converting to 'text' for editability`);
+    logger.debug('Unknown iDevice, converting to text for editability', { extractedType });
 
     // Convert unknown types to 'text' to ensure editability
     return 'text';

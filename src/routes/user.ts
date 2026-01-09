@@ -16,6 +16,9 @@ import {
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import type { JwtPayload, UserPreferencesRequest } from './types/request-payloads';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'user-routes' });
 
 /**
  * Preference value wrapper type expected by frontend
@@ -123,7 +126,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
         try {
             await queries.setPreference(database, userId, key, stringValue);
         } catch (error) {
-            console.error('[User] Failed to save preference:', error);
+            logger.error('Failed to save preference', error instanceof Error ? error : null);
         }
     }
 
@@ -223,7 +226,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
 
                     return { responseMessage: 'OK' };
                 } catch (error) {
-                    console.error('[User] Failed to save preferences:', error);
+                    logger.error('Failed to save preferences', error instanceof Error ? error : null);
                     set.status = 500;
                     return { error: 'Internal Error', message: 'Failed to save preferences' };
                 }
@@ -248,7 +251,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
 
                     return { responseMessage: 'OK' };
                 } catch (error) {
-                    console.error('[User] Failed to save preferences:', error);
+                    logger.error('Failed to save preferences', error instanceof Error ? error : null);
                     set.status = 500;
                     return { error: 'Internal Error', message: 'Failed to save preferences' };
                 }
@@ -269,7 +272,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                     await saveUserPreference(userId, 'lopdAcceptedAt', new Date().toISOString());
                     return { success: true, message: 'LOPD accepted' };
                 } catch (error) {
-                    console.error('[User] Failed to save LOPD acceptance:', error);
+                    logger.error('Failed to save LOPD acceptance', error instanceof Error ? error : null);
                     set.status = 500;
                     return { error: 'Internal Error', message: 'Failed to save LOPD acceptance' };
                 }

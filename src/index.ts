@@ -40,6 +40,7 @@ import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
 import { getBasePath } from './utils/basepath.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
+import { getLogger } from './contexts/logger.context';
 import { MIME_TYPES } from './utils/mime-types';
 import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
 import { initializeCrossInstanceHandler } from './websocket/room-manager';
@@ -55,6 +56,9 @@ import * as path from 'path';
 // APP_PORT is used by Electron, PORT is standard convention
 const PORT = parseInt(process.env.APP_PORT || process.env.PORT || '8080', 10);
 
+// Create logger for the application
+const logger = getLogger().child({ component: 'http' });
+
 const app = new Elysia()
     // === GLOBAL ERROR HANDLER ===
     .onError(({ code, error, request, set }) => {
@@ -69,12 +73,18 @@ const app = new Elysia()
         const url = new URL(request.url);
         const pathname = url.pathname;
 
-        // Log error (5xx = error, 4xx = warning)
-        const logLevel = statusCode >= 500 ? 'error' : 'warn';
-        console[logLevel](
-            `[${logLevel.toUpperCase()}] ${request.method} ${pathname} - ${statusCode}: ${error.message}`,
-        );
-        if (statusCode >= 500) console.error(error.stack);
+        // Log error using LoggerContext (5xx = error, 4xx = warning)
+        const logContext = {
+            method: request.method,
+            path: pathname,
+            statusCode,
+        };
+
+        if (statusCode >= 500) {
+            logger.error(`${request.method} ${pathname} - ${statusCode}: ${error.message}`, error, logContext);
+        } else {
+            logger.warn(`${request.method} ${pathname} - ${statusCode}: ${error.message}`, logContext);
+        }
 
         // Detect if API request
         const isApi =
@@ -117,7 +127,7 @@ const app = new Elysia()
             });
         } catch (renderErr) {
             // Fallback HTML if template fails
-            console.error('[Error] Template render failed:', renderErr);
+            logger.error('Template render failed', renderErr instanceof Error ? renderErr : null, { template });
             const basePath = getBasePath();
             return `<!DOCTYPE html>
 <html><head><title>Error ${statusCode}</title></head>
@@ -208,7 +218,7 @@ const app = new Elysia()
                         });
                     }
                 } catch (err) {
-                    console.error('[StaticFiles] Error serving file:', filePath, err);
+                    logger.error('Error serving file', err instanceof Error ? err : null, { filePath });
                 }
             }
             // File not found - let it fall through to 404
@@ -521,6 +531,11 @@ if (routePrefix) {
     );
 }
 
+// Create loggers for different components
+const themesLogger = getLogger().child({ component: 'themes' });
+const dbLogger = getLogger().child({ component: 'db' });
+const redisLogger = getLogger().child({ component: 'redis' });
+
 /**
  * Sync builtin themes from filesystem to database
  * Scans public/files/perm/themes/base/ and registers each theme in the DB
@@ -529,14 +544,14 @@ async function syncBuiltinThemes() {
     const baseThemesPath = path.join(process.cwd(), 'public', 'files', 'perm', 'themes', 'base');
 
     if (!fs.existsSync(baseThemesPath)) {
-        console.log('[Themes] Base themes directory not found, skipping sync');
+        themesLogger.info('Base themes directory not found, skipping sync');
         return;
     }
 
     const entries = fs.readdirSync(baseThemesPath, { withFileTypes: true });
     const themeDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
 
-    console.log(`[Themes] Syncing ${themeDirs.length} base themes...`);
+    themesLogger.info('Syncing base themes', { count: themeDirs.length });
 
     for (const dirName of themeDirs) {
         const configPath = path.join(baseThemesPath, dirName, 'config.xml');
@@ -581,27 +596,27 @@ async function syncBuiltinThemes() {
     // Remove themes that no longer exist in filesystem
     await removeOrphanedBaseThemes(db, themeDirs);
 
-    console.log(`[Themes] Base themes synced`);
+    themesLogger.info('Base themes synced');
 }
 
 // Bootstrap: run migrations, seed, and start server
 async function bootstrap() {
     // 1. Run migrations
-    console.log('[DB] Running migrations...');
+    dbLogger.info('Running migrations...');
     const migrationResult = await migrateToLatest(db);
     if (!migrationResult.success) {
-        console.error('[DB] Migration failed:', migrationResult.error);
+        dbLogger.error('Migration failed', migrationResult.error instanceof Error ? migrationResult.error : null);
         process.exit(1);
     }
 
     // 2. Initialize Redis for high availability (if configured)
     if (isRedisEnabled()) {
-        console.log('[Redis] REDIS_HOST is set, enabling multi-instance mode...');
+        redisLogger.info('REDIS_HOST is set, enabling multi-instance mode...');
         const connected = await connectRedis();
         if (connected) {
             initializeCrossInstanceHandler();
         } else {
-            console.warn('[Redis] Failed to connect, falling back to single-instance mode');
+            redisLogger.warn('Failed to connect, falling back to single-instance mode');
         }
     }
 
@@ -614,7 +629,7 @@ async function bootstrap() {
 
     const existingUser = await findUserByEmail(db, testEmail);
     if (!existingUser) {
-        console.log('[DB] Creating test user...');
+        dbLogger.info('Creating test user...');
         const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
         const defaultQuota = await getSettingNumber(
             db,
@@ -630,7 +645,7 @@ async function bootstrap() {
             quota_mb: defaultQuota,
             is_active: 1,
         });
-        console.log(`[DB] Test user created: ${testEmail}`);
+        dbLogger.info('Test user created', { email: testEmail });
     }
 
     // 6. Start server
@@ -640,23 +655,27 @@ async function bootstrap() {
     // 7. Start cleanup scheduler (for unsaved and guest projects)
     startCleanupScheduler(getCleanupConfigFromEnv());
 
-    console.log(`Elysia server running at http://localhost:${PORT}`);
-    console.log(`Pages: /login, /workarea`);
-    console.log(`Auth endpoints: /api/auth/login, /api/auth/logout, /api/session/check`);
-    console.log(`Project endpoints: /api/project/*, /api/export/*`);
-    console.log(`Filemanager endpoints: /filemanager/*`);
-    console.log(`WebSocket (Yjs): ws://localhost:${PORT}/yjs/project-<uuid>?token=<jwt>`);
-    console.log(`Static files: /public/*`);
+    logger.info('Elysia server started', {
+        port: PORT,
+        endpoints: {
+            pages: '/login, /workarea',
+            auth: '/api/auth/login, /api/auth/logout, /api/session/check',
+            project: '/api/project/*, /api/export/*',
+            filemanager: '/filemanager/*',
+            websocket: `ws://localhost:${PORT}/yjs/project-<uuid>?token=<jwt>`,
+            static: '/public/*',
+        },
+    });
 }
 
 bootstrap().catch(err => {
-    console.error('[FATAL] Bootstrap failed:', err);
+    logger.error('Bootstrap failed', err instanceof Error ? err : new Error(String(err)));
     process.exit(1);
 });
 
 // Graceful shutdown
 async function gracefulShutdown(signal: string) {
-    console.log(`${signal} received, shutting down...`);
+    logger.info('Shutting down', { signal });
     stopWebSocket();
     stopCleanupScheduler();
     await disconnectRedis();

@@ -13,20 +13,24 @@ import {
     getRedisStatus,
     resetRedisState,
 } from './client';
+import { resetConfigContext } from '../contexts/config.context';
 
 describe('Redis Client', () => {
     const originalEnv = { ...process.env };
 
     beforeEach(() => {
-        resetRedisState();
-        // Clear Redis-related env vars
+        // Clear Redis-related env vars first
         delete process.env.REDIS_HOST;
         delete process.env.REDIS_PORT;
         delete process.env.REDIS_PASSWORD;
+        // Reset state AFTER clearing env so config reads fresh values
+        resetRedisState();
+        resetConfigContext();
     });
 
     afterEach(() => {
         resetRedisState();
+        resetConfigContext();
         // Restore original env
         process.env = { ...originalEnv };
     });
@@ -203,6 +207,7 @@ describe('Redis Client', () => {
             getRedisConfig();
 
             resetRedisState();
+            resetConfigContext(); // Also reset ConfigContext to clear cached config
 
             // After reset, getPublisher should create new instances
             process.env.REDIS_HOST = 'redis2';

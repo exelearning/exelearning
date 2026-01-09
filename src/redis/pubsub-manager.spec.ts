@@ -15,6 +15,7 @@ import {
     getSubscribedChannels,
 } from './pubsub-manager';
 import { resetRedisState } from './client';
+import { resetConfigContext } from '../contexts/config.context';
 
 describe('PubSub Manager', () => {
     const originalEnv = { ...process.env };
@@ -26,6 +27,7 @@ describe('PubSub Manager', () => {
         delete process.env.REDIS_HOST;
         delete process.env.REDIS_PORT;
         delete process.env.REDIS_PASSWORD;
+        resetConfigContext(); // Reset to pick up env changes
     });
 
     afterEach(() => {
@@ -33,6 +35,7 @@ describe('PubSub Manager', () => {
         resetRedisState();
         // Restore original env
         process.env = { ...originalEnv };
+        resetConfigContext(); // Reset to restore original environment
     });
 
     describe('getInstanceId', () => {
@@ -79,6 +82,7 @@ describe('PubSub Manager', () => {
 
         test('returns enabled but not connected when configured', () => {
             process.env.REDIS_HOST = 'redis';
+            resetConfigContext(); // Reset to pick up new REDIS_HOST
             const stats = getPubSubStats();
 
             expect(stats.enabled).toBe(true);

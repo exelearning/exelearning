@@ -4,12 +4,20 @@
  * Lazy initialization pattern (like db/client.ts).
  * Uses separate clients for pub/sub (ioredis requirement).
  *
- * Configuration via environment variables:
+ * Now supports ConfigContext for centralized configuration.
+ * Falls back to getConfig() singleton for backward compatibility.
+ *
+ * Configuration via ConfigContext or environment variables:
  * - REDIS_HOST: Redis server hostname (empty = disabled)
  * - REDIS_PORT: Redis server port (default: 6379)
  * - REDIS_PASSWORD: Redis password (optional)
  */
 import Redis from 'ioredis';
+import { getConfig, type ConfigContext } from '../contexts/config.context';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for Redis module
+const logger = getLogger().child({ component: 'redis' });
 
 // ============================================================================
 // TYPES
@@ -35,27 +43,32 @@ let _connected = false;
 // ============================================================================
 
 /**
- * Check if Redis is enabled (REDIS_HOST is set)
+ * Check if Redis is enabled
+ *
+ * @param config - Optional ConfigContext. If not provided, uses getConfig() singleton.
  */
-export function isRedisEnabled(): boolean {
-    const host = process.env.REDIS_HOST?.trim();
-    return !!host && host.length > 0;
+export function isRedisEnabled(config?: ConfigContext): boolean {
+    const cfg = config ?? getConfig();
+    return cfg.redis.enabled;
 }
 
 /**
- * Get Redis configuration from environment
+ * Get Redis configuration from ConfigContext or environment
+ *
+ * @param config - Optional ConfigContext. If not provided, uses getConfig() singleton.
  */
-export function getRedisConfig(): RedisConfig | null {
+export function getRedisConfig(config?: ConfigContext): RedisConfig | null {
     if (_config) return _config;
 
-    if (!isRedisEnabled()) {
+    const cfg = config ?? getConfig();
+    if (!cfg.redis.enabled) {
         return null;
     }
 
     _config = {
-        host: process.env.REDIS_HOST!.trim(),
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-        password: process.env.REDIS_PASSWORD?.trim() || undefined,
+        host: cfg.redis.host,
+        port: cfg.redis.port,
+        password: cfg.redis.password || undefined,
     };
 
     return _config;
@@ -69,17 +82,18 @@ export function getRedisConfig(): RedisConfig | null {
  * Create a Redis client with standard options
  */
 function createRedisClient(role: 'pub' | 'sub'): Redis | null {
-    const config = getRedisConfig();
-    if (!config) return null;
+    const redisConfig = getRedisConfig();
+    if (!redisConfig) return null;
 
+    const appConfig = getConfig();
     const client = new Redis({
-        host: config.host,
-        port: config.port,
-        password: config.password,
+        host: redisConfig.host,
+        port: redisConfig.port,
+        password: redisConfig.password,
         lazyConnect: true,
         retryStrategy: (times: number) => {
             if (times > 10) {
-                console.error(`[Redis-${role}] Max retries reached, giving up`);
+                logger.error('Max retries reached, giving up', null, { role });
                 return null; // Stop retrying
             }
             const delay = Math.min(times * 100, 3000);
@@ -87,27 +101,27 @@ function createRedisClient(role: 'pub' | 'sub'): Redis | null {
         },
         maxRetriesPerRequest: 3,
         enableReadyCheck: true,
-        showFriendlyErrorStack: process.env.APP_ENV !== 'prod',
+        showFriendlyErrorStack: appConfig.env !== 'prod',
     });
 
     client.on('error', err => {
-        console.error(`[Redis-${role}] Error:`, err.message);
+        logger.error('Connection error', err, { role });
     });
 
     client.on('connect', () => {
-        console.log(`[Redis-${role}] Connected to ${config.host}:${config.port}`);
+        logger.info('Connected', { role, host: redisConfig.host, port: redisConfig.port });
     });
 
     client.on('ready', () => {
-        console.log(`[Redis-${role}] Ready`);
+        logger.debug('Ready', { role });
     });
 
     client.on('reconnecting', () => {
-        console.log(`[Redis-${role}] Reconnecting...`);
+        logger.info('Reconnecting', { role });
     });
 
     client.on('close', () => {
-        console.log(`[Redis-${role}] Connection closed`);
+        logger.info('Connection closed', { role });
     });
 
     return client;
@@ -148,7 +162,7 @@ export function getSubscriber(): Redis | null {
  */
 export async function connectRedis(): Promise<boolean> {
     if (!isRedisEnabled()) {
-        console.log('[Redis] REDIS_HOST not set, running in single-instance mode');
+        logger.debug('REDIS_HOST not set, running in single-instance mode');
         return false;
     }
 
@@ -157,7 +171,7 @@ export async function connectRedis(): Promise<boolean> {
         const subscriber = getSubscriber();
 
         if (!publisher || !subscriber) {
-            console.error('[Redis] Failed to create clients');
+            logger.error('Failed to create clients');
             return false;
         }
 
@@ -165,11 +179,10 @@ export async function connectRedis(): Promise<boolean> {
         await Promise.all([publisher.connect(), subscriber.connect()]);
 
         _connected = true;
-        console.log('[Redis] Pub/sub clients connected successfully');
+        logger.info('Pub/sub clients connected successfully');
         return true;
     } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        console.error('[Redis] Failed to connect:', message);
+        logger.error('Failed to connect', err instanceof Error ? err : new Error(String(err)));
         _connected = false;
         return false;
     }
@@ -199,7 +212,7 @@ export async function disconnectRedis(): Promise<void> {
 
     _connected = false;
     _config = null;
-    console.log('[Redis] Disconnected');
+    logger.debug('Disconnected');
 }
 
 /**

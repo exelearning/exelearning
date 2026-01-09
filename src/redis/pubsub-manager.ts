@@ -11,6 +11,9 @@
  */
 import { randomUUID } from 'crypto';
 import { getPublisher, getSubscriber, isRedisEnabled, isRedisConnected } from './client';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'pubsub-manager' });
 
 // ============================================================================
 // TYPES
@@ -127,7 +130,7 @@ function initializeListener(): void {
                 });
             }
         } catch (err) {
-            console.error('[PubSubManager] Failed to parse message:', err);
+            logger.error('Failed to parse message', err instanceof Error ? err : null);
         }
     });
 
@@ -193,7 +196,7 @@ export async function publish(docName: string, message: Buffer | string, meta?: 
     try {
         await publisher.publish(channel, JSON.stringify(crossMsg));
     } catch (err) {
-        console.error(`[PubSubManager] Failed to publish to ${channel}:`, err);
+        logger.error('Failed to publish', err instanceof Error ? err : null, { channel });
     }
 }
 
@@ -219,9 +222,9 @@ export async function subscribe(docName: string): Promise<void> {
     try {
         await subscriber.subscribe(channel);
         subscribedChannels.add(channel);
-        console.log(`[PubSubManager] Subscribed to ${channel}`);
+        logger.debug('Subscribed to channel', { channel });
     } catch (err) {
-        console.error(`[PubSubManager] Failed to subscribe to ${channel}:`, err);
+        logger.error('Failed to subscribe', err instanceof Error ? err : null, { channel });
     }
 }
 
@@ -247,9 +250,9 @@ export async function unsubscribe(docName: string): Promise<void> {
     try {
         await subscriber.unsubscribe(channel);
         subscribedChannels.delete(channel);
-        console.log(`[PubSubManager] Unsubscribed from ${channel}`);
+        logger.debug('Unsubscribed from channel', { channel });
     } catch (err) {
-        console.error(`[PubSubManager] Failed to unsubscribe from ${channel}:`, err);
+        logger.error('Failed to unsubscribe', err instanceof Error ? err : null, { channel });
     }
 }
 

@@ -4,6 +4,7 @@
  */
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import * as fs from 'fs-extra';
+import { getLogger } from '../../contexts/logger.context';
 import {
     OdeXmlDocument,
     OdeXmlMeta,
@@ -43,13 +44,15 @@ const parser = new XMLParser({
     allowBooleanAttributes: true,
 });
 
+// Create logger for XML parser
+const logger = getLogger().child({ component: 'xml-parser' });
 const DEBUG = process.env.APP_DEBUG === '1';
 
 /**
  * Parse ODE XML from file
  */
 export async function parseFromFile(xmlPath: string, sessionId?: string): Promise<ParsedOdeStructure> {
-    if (DEBUG) console.log(`[XmlParser] Parsing XML file: ${xmlPath}`);
+    if (DEBUG) logger.debug('Parsing XML file', { xmlPath });
 
     if (!(await fs.pathExists(xmlPath))) {
         throw new Error(`XML file not found: ${xmlPath}`);
@@ -73,15 +76,17 @@ export interface ParseOptions {
  * Parse ODE XML from string
  */
 export function parseFromString(xmlContent: string, sessionId?: string, options?: ParseOptions): ParsedOdeStructure {
-    if (DEBUG) console.log('[XmlParser] Parsing XML from string');
+    if (DEBUG) logger.debug('Parsing XML from string');
 
     const parsed = parser.parse(xmlContent);
 
     if (DEBUG) {
-        console.log(`[XmlParser] Parsed object keys: ${JSON.stringify(Object.keys(parsed))}`);
-        console.log(
-            `[XmlParser] Has ode: ${!!parsed.ode}, Has exe_document: ${!!parsed.exe_document}, Has instance: ${!!parsed.instance}`,
-        );
+        logger.debug('Parsed object', {
+            keys: Object.keys(parsed),
+            hasOde: !!parsed.ode,
+            hasExeDocument: !!parsed.exe_document,
+            hasInstance: !!parsed.instance,
+        });
     }
 
     // Validate ODE XML structure (for real ODE format)
@@ -89,32 +94,32 @@ export function parseFromString(xmlContent: string, sessionId?: string, options?
         const validation = validateOdeXml(parsed);
         if (!validation.valid) {
             const errorMsg = formatValidationErrors(validation);
-            console.error(`[XmlParser] XML validation failed:\n${errorMsg}`);
+            logger.error('XML validation failed', null, { errors: errorMsg });
             throw new Error(`Invalid ODE XML structure:\n${errorMsg}`);
         }
         if (validation.warnings.length > 0 && options?.strictValidation) {
             const errorMsg = formatValidationErrors(validation);
-            console.warn(`[XmlParser] XML validation warnings:\n${errorMsg}`);
+            logger.warn('XML validation warnings (strict mode)', { warnings: errorMsg });
             throw new Error(`ODE XML has validation warnings:\n${errorMsg}`);
         }
         if (validation.warnings.length > 0 && DEBUG) {
-            console.warn(`[XmlParser] XML validation warnings:\n${formatValidationErrors(validation)}`);
+            logger.warn('XML validation warnings', { warnings: formatValidationErrors(validation) });
         }
     }
 
     // Check format and parse accordingly
     if (parsed.ode) {
-        if (DEBUG) console.log('[XmlParser] Detected real ODE XML format');
+        if (DEBUG) logger.debug('Detected real ODE XML format');
         return parseRealOdeFormat(parsed as RealOdeXmlDocument);
     }
 
     if (parsed.exe_document) {
-        if (DEBUG) console.log('[XmlParser] Detected exe_document XML format');
+        if (DEBUG) logger.debug('Detected exe_document XML format');
         return parseExeDocumentFormat(parsed as OdeXmlDocument);
     }
 
     if (parsed.instance) {
-        if (DEBUG) console.log('[XmlParser] Detected legacy instance XML format');
+        if (DEBUG) logger.debug('Detected legacy instance XML format');
         return legacyParser.parse(parsed as LegacyInstanceXmlDocument, xmlContent, sessionId);
     }
 
@@ -141,7 +146,7 @@ function parseExeDocumentFormat(parsed: OdeXmlDocument): ParsedOdeStructure {
     const meta = extractMetadata(parsed.exe_document.meta || {});
     const pages = normalizePagesFromNavigation(parsed.exe_document.navigation);
 
-    console.log(`[XmlParser] Parsed ${pages.length} pages from exe_document XML`);
+    logger.info('Parsed exe_document XML', { pageCount: pages.length });
 
     const raw: RealOdeXmlDocument = { ode: {} };
 
@@ -172,7 +177,7 @@ function parseRealOdeFormat(parsed: RealOdeXmlDocument): ParsedOdeStructure {
 
     const pages = normalizePagesFromOdeNavStructures(parsed.ode.odeNavStructures?.odeNavStructure || []);
 
-    console.log(`[XmlParser] Parsed ${pages.length} pages from real ODE XML`);
+    logger.info('Parsed real ODE XML', { pageCount: pages.length });
 
     const navigation: OdeXmlNavigation = { page: [] };
 

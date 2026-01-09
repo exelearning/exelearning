@@ -61,7 +61,8 @@
                 "noGlobalIsFinite": "off",
                 "noAssignInExpressions": "off",
                 "noAsyncPromiseExecutor": "off",
-                "useIterableCallbackReturn": "off"
+                "useIterableCallbackReturn": "off",
+                "noConsole": "warn"
             },
             "style": {
                 "useConst": "error",
@@ -93,10 +94,31 @@
             "linter": {
                 "rules": {
                     "suspicious": {
-                        "noExplicitAny": "off"
+                        "noExplicitAny": "off",
+                        "noConsole": "off"
                     },
                     "correctness": {
                         "noEmptyPattern": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": [
+                "src/cli/**/*.ts",
+                "src/db/migrations/**/*.ts",
+                "src/contexts/logger.context.ts",
+                "src/index-node.ts",
+                "src/shared/export/browser/**/*.ts",
+                "src/shared/export/exporters/**/*.ts",
+                "src/shared/export/adapters/BrowserAssetProvider.ts",
+                "src/shared/export/providers/DatabaseAssetProvider.ts",
+                "src/shared/export/providers/CombinedAssetProvider.ts"
+            ],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noConsole": "off"
                     }
                 }
             }

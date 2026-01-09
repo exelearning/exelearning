@@ -40,6 +40,9 @@ import {
     ElpxExporter,
     type ExportResult,
 } from '../shared/export';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'convert-routes' });
 
 // =============================================================================
 // Types and Interfaces
@@ -228,7 +231,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
             return result;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`[Convert] Error during ${exportType} export:`, error);
+            logger.error('Export error', error instanceof Error ? error : null, { exportType });
             return { success: false, error: errorMessage };
         }
     }

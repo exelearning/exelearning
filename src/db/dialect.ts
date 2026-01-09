@@ -1,10 +1,14 @@
 /**
  * Kysely Dialect Factory
  * Supports SQLite, PostgreSQL, and MySQL using Bun's native drivers
+ *
+ * Now supports ConfigContext for centralized configuration.
+ * Falls back to process.env for backward compatibility.
  */
 import type { Dialect } from 'kysely';
 import { resolve, dirname } from 'path';
 import { mkdirSync, existsSync } from 'fs';
+import { getConfig, type ConfigContext } from '../contexts/config.context';
 
 // ============================================================================
 // RUNTIME DETECTION
@@ -115,58 +119,60 @@ function mapDriverToDialect(driver: string): DbDialect {
 }
 
 /**
- * Get database configuration from environment variables
+ * Get database configuration from ConfigContext or environment variables
+ *
+ * @param config - Optional ConfigContext. If not provided, uses getConfig() singleton.
  */
-export function getDbConfig(): DbConfig {
-    const driver = process.env.DB_DRIVER || 'pdo_sqlite';
-    const dialect = mapDriverToDialect(driver);
+export function getDbConfig(config?: ConfigContext): DbConfig {
+    // Use ConfigContext if available, otherwise fall back to singleton
+    const cfg = config ?? getConfig();
+    const dbConfig = cfg.db;
 
-    const poolMin = Number.parseInt(process.env.DB_POOL_MIN || '0', 10);
-    const poolMax = Number.parseInt(process.env.DB_POOL_MAX || '10', 10);
-
-    if (dialect === 'sqlite') {
+    if (dbConfig.dialect === 'sqlite') {
         return {
             dialect: 'sqlite',
-            sqlitePath: process.env.DB_PATH || 'data/exelearning.db',
-            poolMin,
-            poolMax,
+            sqlitePath: dbConfig.path || 'data/exelearning.db',
+            poolMin: dbConfig.poolMin,
+            poolMax: dbConfig.poolMax,
         };
     }
 
-    if (dialect === 'postgres') {
+    if (dbConfig.dialect === 'postgres') {
         return {
             dialect: 'postgres',
-            host: process.env.DB_HOST || 'localhost',
-            port: Number.parseInt(process.env.DB_PORT || '5432', 10),
-            database: process.env.DB_NAME || 'exelearning',
-            user: process.env.DB_USER || 'exelearning',
-            password: process.env.DB_PASSWORD || '',
-            charset: process.env.DB_CHARSET || 'utf8',
-            poolMin,
-            poolMax,
+            host: dbConfig.host,
+            port: dbConfig.port,
+            database: dbConfig.name,
+            user: dbConfig.user,
+            password: dbConfig.password,
+            charset: dbConfig.charset,
+            poolMin: dbConfig.poolMin,
+            poolMax: dbConfig.poolMax,
         };
     }
 
     // MySQL
     return {
         dialect: 'mysql',
-        host: process.env.DB_HOST || 'localhost',
-        port: Number.parseInt(process.env.DB_PORT || '3306', 10),
-        database: process.env.DB_NAME || 'exelearning',
-        user: process.env.DB_USER || 'exelearning',
-        password: process.env.DB_PASSWORD || '',
-        charset: process.env.DB_CHARSET || 'utf8mb4',
-        poolMin,
-        poolMax,
+        host: dbConfig.host,
+        port: dbConfig.port,
+        database: dbConfig.name,
+        user: dbConfig.user,
+        password: dbConfig.password,
+        charset: dbConfig.charset,
+        poolMin: dbConfig.poolMin,
+        poolMax: dbConfig.poolMax,
     };
 }
 
 /**
- * Get the dialect type from environment
+ * Get the dialect type from ConfigContext or environment
+ *
+ * @param config - Optional ConfigContext. If not provided, uses getConfig() singleton.
  */
-export function getDialectFromEnv(): DbDialect {
-    const driver = process.env.DB_DRIVER || 'pdo_sqlite';
-    return mapDriverToDialect(driver);
+export function getDialectFromEnv(config?: ConfigContext): DbDialect {
+    const cfg = config ?? getConfig();
+    return cfg.db.dialect;
 }
 
 // ============================================================================

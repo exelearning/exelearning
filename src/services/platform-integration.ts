@@ -18,6 +18,7 @@ import * as path from 'path';
 import * as os from 'os';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
+import { getLogger } from '../contexts/logger.context';
 
 // Centralized export system
 import {
@@ -32,6 +33,8 @@ import {
     Html5Exporter,
     type ExportResult,
 } from '../shared/export';
+
+const logger = getLogger().child({ component: 'platform-integration' });
 
 /**
  * Response from platform when fetching an ELP file
@@ -149,7 +152,7 @@ export async function platformPetitionGet(payload: PlatformJWTPayload, jwtToken:
         return content;
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error('[PlatformIntegration] Error fetching ELP from platform:', message);
+        logger.error('Error fetching ELP from platform', error instanceof Error ? error : null, { message });
         throw new Error(`Failed to fetch ELP from platform: ${message}`);
     }
 }
@@ -321,7 +324,7 @@ export async function platformPetitionSet(
         };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error('[PlatformIntegration] Error uploading to platform:', message);
+        logger.error('Error uploading to platform', error instanceof Error ? error : null, { message });
         return {
             success: false,
             error: `Failed to upload to platform: ${message}`,

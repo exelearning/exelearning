@@ -6,6 +6,9 @@ import { XMLBuilder } from 'fast-xml-parser';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { OdeXmlDocument, OdeXmlMeta, OdeXmlNavigation, NormalizedPage, ParsedOdeStructure } from './interfaces';
+import { getLogger } from '../../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'xml-builder' });
 
 export interface XmlBuildOptions {
     format?: boolean;
@@ -32,7 +35,7 @@ const DEBUG = process.env.APP_DEBUG === '1';
  * Build ODE XML from parsed structure
  */
 export function buildFromStructure(structure: ParsedOdeStructure): string {
-    if (DEBUG) console.log('[XmlBuilder] Building XML from structure');
+    logger.debug('Building XML from structure');
 
     // Build navigation tree from flat pages array
     const navigation = buildNavigationFromPages(structure.pages);
@@ -51,7 +54,7 @@ export function buildFromStructure(structure: ParsedOdeStructure): string {
     // Add XML declaration
     const xmlWithDeclaration = `<?xml version="1.0" encoding="UTF-8"?>\n${xml}`;
 
-    console.log('[XmlBuilder] Successfully built XML document');
+    logger.debug('Successfully built XML document');
     return xmlWithDeclaration;
 }
 
@@ -124,7 +127,7 @@ function buildPageTree(page: NormalizedPage, allPages: NormalizedPage[]): XmlPag
  * Write XML to file
  */
 export async function writeToFile(structure: ParsedOdeStructure, outputPath: string): Promise<string> {
-    if (DEBUG) console.log(`[XmlBuilder] Writing XML to file: ${outputPath}`);
+    logger.debug('Writing XML to file', { outputPath });
 
     const xml = buildFromStructure(structure);
 
@@ -135,7 +138,7 @@ export async function writeToFile(structure: ParsedOdeStructure, outputPath: str
     // Write file
     await fs.writeFile(outputPath, xml, 'utf-8');
 
-    console.log(`[XmlBuilder] Successfully wrote XML to ${outputPath}`);
+    logger.debug('Successfully wrote XML', { outputPath });
     return outputPath;
 }
 

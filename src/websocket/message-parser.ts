@@ -9,6 +9,10 @@
  */
 import type { AssetMessage, AssetMessageType } from './types';
 import { DEBUG } from './config';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for message parser
+const logger = getLogger().child({ component: 'message-parser' });
 
 /**
  * All valid asset message types
@@ -84,7 +88,7 @@ function parseJsonString(message: string): ParsedMessage {
 
         // Valid JSON but not an asset message
         if (DEBUG) {
-            console.log(`[MessageParser] Unknown JSON message type: ${parsed.type}`);
+            logger.debug('Unknown JSON message type', { type: parsed.type });
         }
         return { kind: 'unknown', raw: message };
     } catch {
@@ -126,13 +130,13 @@ function parseBuffer(message: Buffer): ParsedMessage {
 
             // Valid JSON but not asset message - treat as unknown
             if (DEBUG) {
-                console.log(`[MessageParser] Unknown JSON message type in 0xFF message: ${parsed.type}`);
+                logger.debug('Unknown JSON message type in 0xFF message', { type: parsed.type });
             }
             return { kind: 'unknown', raw: message };
         } catch {
             // Not valid JSON after 0xFF prefix - treat as unknown
             if (DEBUG) {
-                console.log('[MessageParser] Invalid JSON after 0xFF prefix');
+                logger.debug('Invalid JSON after 0xFF prefix');
             }
             return { kind: 'unknown', raw: message };
         }
@@ -153,7 +157,7 @@ function parseBuffer(message: Buffer): ParsedMessage {
             }
 
             if (DEBUG) {
-                console.log(`[MessageParser] Unknown JSON message type in buffer: ${parsed.type}`);
+                logger.debug('Unknown JSON message type in buffer', { type: parsed.type });
             }
             return { kind: 'unknown', raw: message };
         } catch {

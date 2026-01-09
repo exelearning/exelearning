@@ -61,6 +61,10 @@ import type {
     StructureSaveRequest,
     ProjectMetadataRequest,
 } from './types/request-payloads';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for project routes
+const logger = getLogger().child({ component: 'routes/project' });
 
 // ============================================================================
 // Types and Interfaces for Dependency Injection
@@ -534,7 +538,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                         theme: themeDirName,
                     });
                     await upsertSnapshot(db, projectRecord.id, initialYjsData, '1.0');
-                    console.log(`[Project] Created initial Yjs document for project ${projectRecord.uuid}`);
+                    logger.info('Created initial Yjs document', { projectUuid: projectRecord.uuid });
                 }
 
                 // Use project UUID as session ID
@@ -549,7 +553,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     userId,
                 });
 
-                console.log(`[Project] Created new project ${projectRecord.uuid} with title "${title}"`);
+                logger.info('Created new project', { projectUuid: projectRecord.uuid, title });
 
                 // Get global default theme (can be base or site)
                 let defaultTheme: { dirName: string; displayName: string; url: string; type: 'base' | 'site' } | null =
@@ -639,24 +643,24 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     const allowedBase = path.resolve(path.join(filesDir, 'tmp'));
 
                     if (!resolvedPath.startsWith(allowedBase)) {
-                        console.warn(`[Project] Cleanup blocked: path outside allowed directory: ${resolvedPath}`);
+                        logger.warn('Cleanup blocked: path outside allowed directory', { resolvedPath });
                         return { success: false, message: 'Invalid path' };
                     }
 
                     // Only delete .elp/.elpx files
                     if (!resolvedPath.endsWith('.elp') && !resolvedPath.endsWith('.elpx')) {
-                        console.warn(`[Project] Cleanup blocked: not an ELP file: ${resolvedPath}`);
+                        logger.warn('Cleanup blocked: not an ELP file', { resolvedPath });
                         return { success: false, message: 'Invalid file type' };
                     }
 
                     if (await fileExists(fullPath)) {
                         await fs.remove(fullPath);
-                        console.log(`[Project] Cleaned up import file: ${fullPath}`);
+                        logger.debug('Cleaned up import file', { fullPath });
                     }
 
                     return { success: true, message: 'File cleaned up' };
                 } catch (error: unknown) {
-                    console.warn(`[Project] Cleanup error:`, error);
+                    logger.warn('Cleanup error', { error: error instanceof Error ? error.message : String(error) });
                     const errorMessage = error instanceof Error ? error.message : String(error);
                     return { success: false, message: errorMessage };
                 }
@@ -1135,7 +1139,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                         saved_once: 0,
                     });
 
-                    console.log(`[Project] Created project ${uuid} for user ${currentUser.id} via sharing endpoint`);
+                    logger.info('Created project via sharing endpoint', { projectUuid: uuid, userId: currentUser.id });
                 }
 
                 const owner = await findUserById(db, project.owner_id);
@@ -1382,10 +1386,15 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                                         content_hash: asset.content_hash,
                                     });
                                 } else {
-                                    console.warn(`[Project Duplicate] Asset file not found: ${asset.storage_path}`);
+                                    logger.warn('Asset file not found during duplicate', {
+                                        storagePath: asset.storage_path,
+                                    });
                                 }
                             } catch (err) {
-                                console.warn(`[Project Duplicate] Failed to copy asset ${asset.id}:`, err);
+                                logger.warn('Failed to copy asset during duplicate', {
+                                    assetId: asset.id,
+                                    error: err instanceof Error ? err.message : String(err),
+                                });
                             }
                         }
                     }
@@ -1732,7 +1741,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 // Clean up session resources if needed
                 // In stateless mode, sessions are managed by IndexedDB on client
-                console.log(`[Project] Closing session: ${odeSessionId || 'unknown'}`);
+                logger.debug('Closing session', { odeSessionId: odeSessionId || 'unknown' });
 
                 return {
                     success: true,
@@ -1991,12 +2000,15 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const filesDir = getFilesDir();
 
                 // Debug: log received data
-                console.log(`[UsedFiles] Raw body keys:`, Object.keys(data));
-                console.log(`[UsedFiles] idevices type:`, typeof data.idevices, Array.isArray(data.idevices));
-                console.log(`[UsedFiles] Received ${idevices.length} idevices`);
-                console.log(`[UsedFiles] Received metadata for ${Object.keys(assetMetadata).length} assets`);
+                logger.debug('UsedFiles request received', {
+                    bodyKeys: Object.keys(data),
+                    idevicesType: typeof data.idevices,
+                    isArray: Array.isArray(data.idevices),
+                    ideviceCount: idevices.length,
+                    assetMetadataCount: Object.keys(assetMetadata).length,
+                });
                 if (idevices.length > 0) {
-                    console.log('[UsedFiles] First idevice HTML sample:', idevices[0].html?.substring(0, 500));
+                    logger.debug('First idevice HTML sample', { sample: idevices[0].html?.substring(0, 500) });
                 }
 
                 interface UsedFileInfo {
@@ -2044,7 +2056,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                     // Debug: log found links
                     if (links.length > 0) {
-                        console.log('[UsedFiles] Found links:', links);
+                        logger.debug('Found links in idevice', { linkCount: links.length });
                     }
 
                     return links;
@@ -2178,7 +2190,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 // This endpoint acknowledges the request and returns a new UUID
                 const newNavStructureId = crypto.randomUUID();
 
-                console.log(`[Project] Clone nav-structure request: ${navStructureId} -> ${newNavStructureId}`);
+                logger.debug('Clone nav-structure request', { navStructureId, newNavStructureId });
 
                 return {
                     responseMessage: 'OK',
@@ -2201,7 +2213,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const { odeSessionId, order: _order } = data;
 
                 // In stateless Yjs mode, reordering is handled client-side
-                console.log(`[Project] Reorder nav-structures request`);
+                logger.debug('Reorder nav-structures request');
 
                 return {
                     responseMessage: 'OK',
@@ -2217,7 +2229,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const { odeSessionId, pageId, order: _order } = data;
 
                 // In stateless Yjs mode, reordering is handled client-side
-                console.log(`[Project] Reorder pag-structures request for page ${pageId}`);
+                logger.debug('Reorder pag-structures request', { pageId });
 
                 return {
                     responseMessage: 'OK',
@@ -2234,7 +2246,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const { odeSessionId, blockId, order: _order } = data;
 
                 // In stateless Yjs mode, reordering is handled client-side
-                console.log(`[Project] Reorder idevices request for block ${blockId}`);
+                logger.debug('Reorder idevices request', { blockId });
 
                 return {
                     responseMessage: 'OK',
@@ -2254,7 +2266,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const { id } = params;
 
                 // In stateless Yjs mode, deletion is handled client-side
-                console.log(`[Project] Delete nav-structure request: ${id}`);
+                logger.debug('Delete nav-structure request', { id });
 
                 return {
                     responseMessage: 'OK',
@@ -2269,7 +2281,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const { id } = params;
 
                 // In stateless Yjs mode, deletion is handled client-side
-                console.log(`[Project] Delete pag-structure request: ${id}`);
+                logger.debug('Delete pag-structure request', { id });
 
                 return {
                     responseMessage: 'OK',
@@ -2284,7 +2296,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const { id } = params;
 
                 // In stateless Yjs mode, deletion is handled client-side
-                console.log(`[Project] Delete idevice request: ${id}`);
+                logger.debug('Delete idevice request', { id });
 
                 return {
                     responseMessage: 'OK',

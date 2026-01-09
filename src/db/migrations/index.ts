@@ -4,6 +4,10 @@
  */
 import { Kysely, Migrator, sql, type Migration, type MigrationProvider } from 'kysely';
 import { tableExists as tableExistsHelper, getDialect } from '../helpers';
+import { getLogger } from '../../contexts/logger.context';
+
+// Create logger for migrations
+const logger = getLogger().child({ component: 'db/migrations' });
 
 // Import all migrations
 import * as migration000 from './000_legacy_symfony';
@@ -87,7 +91,7 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
     // 000_legacy_symfony will clean up old Symfony schema
     // 001_initial will create new tables (uses ifNotExists)
     if (usersTableExists && !projectsTableExists) {
-        console.log('[DB] Detected Symfony legacy database...');
+        logger.info('Detected Symfony legacy database');
 
         if (!migrationTableExists) {
             // Create migration tracking tables
@@ -129,7 +133,7 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
 
         // Let migrations run normally - 000_legacy_symfony will clean up Symfony,
         // 001_initial will create missing tables
-        console.log('[DB] Migration tracking created, will run schema updates');
+        logger.info('Migration tracking created, will run schema updates');
         return;
     }
 
@@ -147,7 +151,7 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
 async function areAllMigrationsExecuted(db: Kysely<unknown>): Promise<boolean> {
     const migrationTableExists = await tableExists(db, 'kysely_migration');
     const dialect = getDialect();
-    console.log('[Migration] Migration table exists:', migrationTableExists);
+    logger.debug('Migration table exists', { migrationTableExists });
     if (!migrationTableExists && dialect !== 'mysql') {
         return false; // No tracking table = need to run migrations
     }
@@ -162,18 +166,18 @@ async function areAllMigrationsExecuted(db: Kysely<unknown>): Promise<boolean> {
         const executedNames = new Set(result.rows.map(r => r.name));
         const allMigrationNames = Object.keys(migrations);
 
-        console.log('[Migration] Executed migrations:', [...executedNames]);
-        console.log('[Migration] Required migrations:', allMigrationNames);
+        logger.debug('Executed migrations', { executedMigrations: [...executedNames] });
+        logger.debug('Required migrations', { allMigrationNames });
 
         // Check if all migrations are executed
         const allDone = allMigrationNames.every(name => executedNames.has(name));
-        console.log('[Migration] All migrations done:', allDone);
+        logger.debug('All migrations done', { allDone });
         return allDone;
     } catch (err) {
         if (!migrationTableExists) {
             return false; // Table genuinely missing (or not visible) = need to run migrations
         }
-        console.log('[Migration] Error checking migrations:', err);
+        logger.warn('Error checking migrations', { error: err instanceof Error ? err.message : String(err) });
         return false; // Error = need to run migrations to be safe
     }
 }
@@ -188,10 +192,10 @@ async function cleanStaleLocks(db: Kysely<unknown>): Promise<void> {
         // Delete any existing lock rows - they're stale since we're just starting
         // We try unconditionally because tableExists() might fail for some databases
         await sql`DELETE FROM kysely_migration_lock WHERE id = 'migration_lock'`.execute(db);
-        console.log('[Migration] Cleaned stale locks');
+        logger.debug('Cleaned stale locks');
     } catch (err) {
         // Ignore errors - table might not exist yet or be empty
-        console.log('[Migration] No stale locks to clean (or table does not exist)');
+        logger.debug('No stale locks to clean (or table does not exist)');
     }
 }
 
@@ -212,7 +216,7 @@ export async function migrateToLatest(
     // If all migrations are already executed, skip the migrator entirely
     // This avoids Kysely's lock acquisition which can fail on MySQL with stale locks
     if (await areAllMigrationsExecuted(db)) {
-        console.log('No pending migrations');
+        logger.info('No pending migrations');
         return { success: true, executedMigrations: [] };
     }
 
@@ -225,14 +229,14 @@ export async function migrateToLatest(
     const executedMigrations = results?.filter(r => r.status === 'Success').map(r => r.migrationName) || [];
 
     if (error) {
-        console.error('Migration failed:', error);
+        logger.error('Migration failed', error);
         return { success: false, executedMigrations, error };
     }
 
     if (executedMigrations.length > 0) {
-        console.log('Migrations executed:', executedMigrations.join(', '));
+        logger.info('Migrations executed', { migrations: executedMigrations });
     } else {
-        console.log('No pending migrations');
+        logger.info('No pending migrations');
     }
 
     return { success: true, executedMigrations };
@@ -255,14 +259,14 @@ export async function migrateDown(
     const rolledBack = results?.find(r => r.status === 'Success')?.migrationName;
 
     if (error) {
-        console.error('Rollback failed:', error);
+        logger.error('Rollback failed', error);
         return { success: false, error };
     }
 
     if (rolledBack) {
-        console.log('Rolled back:', rolledBack);
+        logger.info('Rolled back migration', { migration: rolledBack });
     } else {
-        console.log('No migrations to rollback');
+        logger.info('No migrations to rollback');
     }
 
     return { success: true, rolledBack };

@@ -11,6 +11,9 @@
  *   25  - LOW: Background prefetch
  *   0   - IDLE: Normal upload during save
  */
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'priority-queue' });
 
 export const PRIORITY = {
     CRITICAL: 100,
@@ -115,10 +118,12 @@ class ServerPriorityQueue {
             this.sortQueue(projectId);
         }
 
-        console.log(
-            `[PriorityQueue] Registered: ${assetId.substring(0, 8)}... ` +
-                `project=${projectId.substring(0, 8)}... priority=${priority} reason=${item.reason}`,
-        );
+        logger.debug('Registered priority item', {
+            assetId: assetId.substring(0, 8),
+            projectId: projectId.substring(0, 8),
+            priority,
+            reason: item.reason,
+        });
     }
 
     /**
@@ -212,10 +217,11 @@ class ServerPriorityQueue {
 
         slots.push(slot);
 
-        console.log(
-            `[PriorityQueue] Active slot: ${slot.assetId.substring(0, 8)}... ` +
-                `client=${slot.clientId.substring(0, 8)}... priority=${slot.priority}`,
-        );
+        logger.debug('Active slot', {
+            assetId: slot.assetId.substring(0, 8),
+            clientId: slot.clientId.substring(0, 8),
+            priority: slot.priority,
+        });
     }
 
     /**
@@ -231,7 +237,7 @@ class ServerPriorityQueue {
         const idx = slots.findIndex(s => s.assetId === assetId);
         if (idx >= 0) {
             const [slot] = slots.splice(idx, 1);
-            console.log(`[PriorityQueue] Released slot: ${assetId.substring(0, 8)}...`);
+            logger.debug('Released slot', { assetId: assetId.substring(0, 8) });
             return slot;
         }
         return undefined;
@@ -377,7 +383,7 @@ class ServerPriorityQueue {
     clearProject(projectId: string): void {
         this.queues.delete(projectId);
         this.activeSlots.delete(projectId);
-        console.log(`[PriorityQueue] Cleared project: ${projectId.substring(0, 8)}...`);
+        logger.debug('Cleared project', { projectId: projectId.substring(0, 8) });
     }
 
     /**
@@ -441,10 +447,10 @@ class ServerPriorityQueue {
             const staleSlots = slots.filter(s => now - s.startTime > maxAge);
 
             for (const slot of staleSlots) {
-                console.log(
-                    `[PriorityQueue] Cleaning stale slot: ${slot.assetId.substring(0, 8)}... ` +
-                        `age=${Math.round((now - slot.startTime) / 1000)}s`,
-                );
+                logger.debug('Cleaning stale slot', {
+                    assetId: slot.assetId.substring(0, 8),
+                    ageSeconds: Math.round((now - slot.startTime) / 1000),
+                });
                 this.releaseSlot(projectId, slot.assetId);
             }
         }

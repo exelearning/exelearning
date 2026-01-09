@@ -6,8 +6,9 @@
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as mime from 'mime-types';
+import { getLogger } from '../../contexts/logger.context';
 
-const DEBUG = process.env.APP_DEBUG === '1';
+const logger = getLogger().child({ component: 'preview' });
 
 /**
  * Generate random temp path for preview isolation
@@ -34,13 +35,13 @@ export function buildPreviewUrl(sessionId: string, tempPath: string, filePath: s
         const month = sessionId.substring(4, 6);
         const day = sessionId.substring(6, 8);
         const urlPath = `/files/tmp/${year}/${month}/${day}/${sessionId}/export/${tempPath}${filePath}`;
-        if (DEBUG) console.log(`[Preview] Built date-based preview URL: ${urlPath}`);
+        logger.debug('Built date-based preview URL', { urlPath });
         return urlPath;
     }
 
     // Fallback URL for non-date session IDs
     const urlPath = `/files/tmp/${sessionId}/export/${tempPath}${filePath}`;
-    if (DEBUG) console.log(`[Preview] Built fallback preview URL: ${urlPath}`);
+    logger.debug('Built fallback preview URL', { urlPath });
     return urlPath;
 }
 
@@ -94,19 +95,19 @@ export function getMimeType(filePath: string): string {
 export function validateUrlParams(year: string, month: string, day: string): boolean {
     // Validate year (4 digits)
     if (!/^\d{4}$/.test(year)) {
-        if (DEBUG) console.warn(`[Preview] Invalid year format: ${year}`);
+        logger.debug('Invalid year format', { year });
         return false;
     }
 
     // Validate month (2 digits)
     if (!/^\d{2}$/.test(month)) {
-        if (DEBUG) console.warn(`[Preview] Invalid month format: ${month}`);
+        logger.debug('Invalid month format', { month });
         return false;
     }
 
     // Validate day (2 digits)
     if (!/^\d{2}$/.test(day)) {
-        if (DEBUG) console.warn(`[Preview] Invalid day format: ${day}`);
+        logger.debug('Invalid day format', { day });
         return false;
     }
 
@@ -158,6 +159,6 @@ export function extractSessionPathComponents(sessionPath: string): SessionPathCo
         }
     }
 
-    console.error(`[Preview] Invalid session path format: ${sessionPath}`);
+    logger.error('Invalid session path format', null, { sessionPath });
     return null;
 }

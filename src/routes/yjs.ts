@@ -15,6 +15,9 @@ import { fromBinaryData } from '../db/helpers';
 import { db } from '../db/client';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'yjs-routes' });
 
 /**
  * Query dependencies for Yjs routes
@@ -62,7 +65,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
             .get('/uuid/:uuid/yjs-document', async ({ params }) => {
                 const project = await queries.findProjectByUuid(database, params.uuid);
                 if (!project) {
-                    console.log(`[Yjs GET] Project not found: ${params.uuid}`);
+                    logger.debug('Project not found', { uuid: params.uuid });
                     return new Response(JSON.stringify({ error: 'Not Found', message: 'Project not found' }), {
                         status: 404,
                         headers: { 'Content-Type': 'application/json' },
@@ -71,7 +74,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
 
                 const snapshot = await queries.findSnapshotByProjectId(database, project.id);
                 if (!snapshot) {
-                    console.log(`[Yjs GET] No snapshot for project ${project.id} (uuid: ${params.uuid})`);
+                    logger.debug('No snapshot for project', { projectId: project.id, uuid: params.uuid });
                     return new Response(JSON.stringify({ error: 'Not Found', message: 'No document saved' }), {
                         status: 404,
                         headers: { 'Content-Type': 'application/json' },

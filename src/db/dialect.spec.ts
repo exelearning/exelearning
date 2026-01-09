@@ -13,6 +13,7 @@ import {
     type PostgresConfig,
     type MysqlConfig,
 } from './dialect';
+import { resetConfigContext } from '../contexts/config.context';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -21,6 +22,8 @@ describe('Kysely Dialect Factory', () => {
     const testDbDir = path.join(process.cwd(), 'test', 'temp', 'dialect-test');
 
     beforeEach(() => {
+        // Reset ConfigContext so each test gets fresh config from modified process.env
+        resetConfigContext();
         // Ensure test directory exists
         if (!fs.existsSync(testDbDir)) {
             fs.mkdirSync(testDbDir, { recursive: true });
@@ -30,6 +33,7 @@ describe('Kysely Dialect Factory', () => {
     afterEach(() => {
         process.env = { ...originalEnv };
         resetDependencies();
+        resetConfigContext(); // Reset ConfigContext singleton so next test gets fresh config
         // Clean up test directory
         if (fs.existsSync(testDbDir)) {
             fs.rmSync(testDbDir, { recursive: true, force: true });
@@ -182,10 +186,12 @@ describe('Kysely Dialect Factory', () => {
             expect(dialect).toBe('mysql');
         });
 
-        it('should be case insensitive', () => {
+        it('should be case insensitive for postgres', () => {
             process.env.DB_DRIVER = 'POSTGRES';
             expect(getDialectFromEnv()).toBe('postgres');
+        });
 
+        it('should be case insensitive for mysql', () => {
             process.env.DB_DRIVER = 'MySQL';
             expect(getDialectFromEnv()).toBe('mysql');
         });

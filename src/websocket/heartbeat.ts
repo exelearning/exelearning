@@ -9,6 +9,10 @@
  */
 import type { ServerWebSocket } from 'bun';
 import { getConfig, isDebugEnabled } from './config';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for heartbeat module
+const logger = getLogger().child({ component: 'heartbeat' });
 
 /**
  * WebSocket data interface (must match yjs-websocket.ts)
@@ -64,7 +68,7 @@ export function startHeartbeat(clientId: string, ws: ServerWebSocket<WsData>): v
         const timeSinceLastPong = Date.now() - state.lastPong;
         if (timeSinceLastPong > config.pingInterval + config.pongTimeout) {
             if (isDebugEnabled()) {
-                console.log(`[Heartbeat] Client ${clientId} timed out (${timeSinceLastPong}ms since last pong)`);
+                logger.debug('Client timed out', { clientId, timeSinceLastPong });
             }
             ws.close(4008, 'Heartbeat timeout');
             stopHeartbeat(clientId);
@@ -75,11 +79,11 @@ export function startHeartbeat(clientId: string, ws: ServerWebSocket<WsData>): v
         try {
             ws.ping();
             if (isDebugEnabled()) {
-                console.log(`[Heartbeat] Sent ping to ${clientId}`);
+                logger.debug('Sent ping', { clientId });
             }
         } catch (err) {
             if (isDebugEnabled()) {
-                console.error(`[Heartbeat] Failed to send ping to ${clientId}:`, err);
+                logger.error('Failed to send ping', err instanceof Error ? err : null, { clientId });
             }
             // Connection likely closed, cleanup will happen via close handler
         }
@@ -93,7 +97,7 @@ export function startHeartbeat(clientId: string, ws: ServerWebSocket<WsData>): v
     });
 
     if (isDebugEnabled()) {
-        console.log(`[Heartbeat] Started for ${clientId} (interval: ${config.pingInterval}ms)`);
+        logger.debug('Started', { clientId, interval: config.pingInterval });
     }
 }
 
@@ -108,7 +112,7 @@ export function onPong(clientId: string): void {
     if (state) {
         state.lastPong = Date.now();
         if (isDebugEnabled()) {
-            console.log(`[Heartbeat] Received pong from ${clientId}`);
+            logger.debug('Received pong', { clientId });
         }
     }
 }
@@ -130,7 +134,7 @@ export function stopHeartbeat(clientId: string): void {
         heartbeats.delete(clientId);
 
         if (isDebugEnabled()) {
-            console.log(`[Heartbeat] Stopped for ${clientId}`);
+            logger.debug('Stopped', { clientId });
         }
     }
 }
@@ -153,6 +157,6 @@ export function stopAllHeartbeats(): void {
         stopHeartbeat(clientId);
     }
     if (isDebugEnabled()) {
-        console.log('[Heartbeat] Stopped all heartbeats');
+        logger.debug('Stopped all heartbeats');
     }
 }

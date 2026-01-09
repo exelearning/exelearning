@@ -2,10 +2,15 @@
  * File Helper Service for Elysia
  * Provides file system path utilities and directory management
  *
- * Uses Dependency Injection pattern for testability
+ * Uses Dependency Injection pattern for testability.
+ * Now supports ConfigContext for centralized configuration.
  */
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
+import { getConfig, type ConfigContext } from '../contexts/config.context';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'file-helper' });
 
 // Re-export utilities from the shared utils
 export {
@@ -33,6 +38,7 @@ export interface FileHelperDeps {
     path?: typeof pathModule;
     getEnv?: (key: string) => string | undefined;
     getCwd?: () => string;
+    config?: ConfigContext;
 }
 
 /**
@@ -72,15 +78,29 @@ export interface FileHelper {
 
 /**
  * Create a FileHelper instance with injected dependencies
+ *
+ * @param deps - Optional dependencies. If config is provided, uses it for paths.
+ *               Falls back to getConfig() singleton when neither config nor getEnv is provided.
  */
 export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
     const fs = deps.fs ?? fsExtra;
     const path = deps.path ?? pathModule;
+
+    // If custom getEnv/getCwd provided, use those (backward compatibility for tests)
+    // Otherwise, use ConfigContext
+    const hasCustomEnv = deps.getEnv !== undefined || deps.getCwd !== undefined;
+
     const getEnv = deps.getEnv ?? ((key: string) => process.env[key]);
     const getCwd = deps.getCwd ?? (() => process.cwd());
 
+    // Get ConfigContext (either provided or singleton)
+    const getConfigContext = (): ConfigContext => deps.config ?? getConfig();
+
     // Internal helper for public directory
     const getPublicDir = (): string => {
+        if (!hasCustomEnv) {
+            return getConfigContext().publicDir;
+        }
         return getEnv('PUBLIC_DIR') || path.join(getCwd(), 'public');
     };
 
@@ -89,6 +109,12 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
     // ========================================================================
 
     const getFilesDir = (): string => {
+        // Use ConfigContext when no custom env functions are provided
+        if (!hasCustomEnv) {
+            return getConfigContext().filesDir;
+        }
+
+        // Legacy behavior: check individual env vars (for backward compatibility)
         // ELYSIA_FILES_DIR takes priority (used by tests)
         const elysiaFilesDir = getEnv('ELYSIA_FILES_DIR');
         if (elysiaFilesDir) {
@@ -114,7 +140,7 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
         const sessionPath = getOdeSessionPath(odeSessionId, filesDir);
 
         if (!sessionPath) {
-            console.warn(`Invalid session ID format: ${odeSessionId}. Using fallback directory structure.`);
+            logger.warn('Invalid session ID format, using fallback directory structure', { odeSessionId });
             return path.join(filesDir, 'tmp', odeSessionId);
         }
 
@@ -131,7 +157,7 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
         const filesDir = getFilesDir();
 
         if (!dateComponents) {
-            console.warn(`Invalid session ID format: ${odeSessionId}. Using fallback directory structure.`);
+            logger.warn('Invalid session ID format, using fallback directory structure', { odeSessionId });
             return path.join(filesDir, 'dist', odeSessionId);
         }
 

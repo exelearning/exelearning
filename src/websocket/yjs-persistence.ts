@@ -38,6 +38,10 @@ import { db as defaultDb } from '../db/client';
 import { getConfig, DEBUG } from './config';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for Yjs persistence
+const logger = getLogger().child({ component: 'yjs-persistence' });
 
 // ============================================================================
 // DEPENDENCY INJECTION INTERFACES
@@ -143,11 +147,10 @@ export async function saveFullState(projectId: number, state: Uint8Array, client
         await deps.queries.saveFullState(deps.db, projectId, buffer, clientId);
 
         if (DEBUG) {
-            console.log(`[YjsPersistence] Saved full state for project ${projectId} (${buffer.length} bytes)`);
+            logger.debug('Saved full state', { projectId, bytes: buffer.length });
         }
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[YjsPersistence] Failed to save for project ${projectId}:`, errorMessage);
+        logger.error('Failed to save', error instanceof Error ? error : null, { projectId });
         throw error;
     }
 }
@@ -174,15 +177,14 @@ export async function loadDocument(projectId: number): Promise<Uint8Array | null
         const state = await deps.queries.loadDocumentState(deps.db, projectId);
 
         if (!state) {
-            if (DEBUG) console.log(`[YjsPersistence] No document found for project ${projectId}`);
+            if (DEBUG) logger.debug('No document found', { projectId });
             return null;
         }
 
-        if (DEBUG) console.log(`[YjsPersistence] Loaded project ${projectId}: ${state.length} bytes`);
+        if (DEBUG) logger.debug('Loaded project', { projectId, bytes: state.length });
         return state;
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[YjsPersistence] Failed to load project ${projectId}:`, errorMessage);
+        logger.error('Failed to load project', error instanceof Error ? error : null, { projectId });
         return null;
     }
 }
@@ -199,15 +201,12 @@ export async function loadUpdatesSince(projectId: number, sinceVersion: string =
         const updates = await deps.queries.findUpdatesSince(deps.db, projectId, sinceVersion);
 
         if (DEBUG) {
-            console.log(
-                `[YjsPersistence] Loaded ${updates.length} updates for project ${projectId} since v${sinceVersion}`,
-            );
+            logger.debug('Loaded updates', { projectId, count: updates.length, sinceVersion });
         }
 
         return updates.map(update => new Uint8Array(update.update_data));
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[YjsPersistence] Failed to load updates for project ${projectId}:`, errorMessage);
+        logger.error('Failed to load updates', error instanceof Error ? error : null, { projectId });
         throw error;
     }
 }
@@ -239,7 +238,7 @@ export async function reconstructDocument(projectId: number): Promise<Y.Doc> {
 
     if (state) {
         Y.applyUpdate(ydoc, state);
-        if (DEBUG) console.log(`[YjsPersistence] Reconstructed Y.Doc for project ${projectId}`);
+        if (DEBUG) logger.debug('Reconstructed Y.Doc', { projectId });
     }
 
     return ydoc;
@@ -255,11 +254,10 @@ export async function deleteAllUpdates(projectId: number): Promise<number> {
     try {
         await deps.queries.deleteAllUpdates(deps.db, projectId);
         const deletedCount = 1; // Kysely doesn't return changes count easily
-        if (DEBUG) console.log(`[YjsPersistence] Deleted updates for project ${projectId}`);
+        if (DEBUG) logger.debug('Deleted updates', { projectId });
         return deletedCount;
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[YjsPersistence] Failed to delete for project ${projectId}:`, errorMessage);
+        logger.error('Failed to delete updates', error instanceof Error ? error : null, { projectId });
         throw error;
     }
 }
@@ -283,13 +281,12 @@ export async function pruneUpdatesBefore(projectId: number, beforeVersion: strin
         await deps.queries.deleteUpdatesBefore(deps.db, projectId, beforeVersion);
 
         if (DEBUG) {
-            console.log(`[YjsPersistence] Pruned updates for project ${projectId} before v${beforeVersion}`);
+            logger.debug('Pruned updates', { projectId, beforeVersion });
         }
 
         return 1; // Kysely doesn't return changes count easily
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[YjsPersistence] Failed to prune for project ${projectId}:`, errorMessage);
+        logger.error('Failed to prune', error instanceof Error ? error : null, { projectId });
         throw error;
     }
 }
@@ -302,7 +299,7 @@ export async function saveFullStateByUuid(projectUuid: string, state: Uint8Array
     const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
 
     if (!project) {
-        console.error(`[YjsPersistence] Project not found: ${projectUuid}`);
+        logger.warn('Project not found', { projectUuid });
         return false;
     }
 
@@ -324,7 +321,7 @@ export async function loadDocumentByUuid(projectUuid: string): Promise<Uint8Arra
     const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
 
     if (!project) {
-        console.error(`[YjsPersistence] Project not found: ${projectUuid}`);
+        logger.warn('Project not found', { projectUuid });
         return null;
     }
 
@@ -380,17 +377,18 @@ export async function saveIncrementalUpdate(
         );
 
         if (DEBUG) {
-            console.log(
-                `[YjsPersistence] Saved incremental update for project ${projectId} ` +
-                    `(${update.length} bytes, ${result.stats.count} total updates)`,
-            );
+            logger.debug('Saved incremental update', {
+                projectId,
+                bytes: update.length,
+                totalUpdates: result.stats.count,
+            });
         }
 
         // If compaction is needed, do it now
         if (result.compacted) {
             await compactToSnapshot(projectId);
             if (DEBUG) {
-                console.log(`[YjsPersistence] Compacted project ${projectId} to snapshot`);
+                logger.debug('Compacted to snapshot', { projectId });
             }
         }
 
@@ -400,8 +398,7 @@ export async function saveIncrementalUpdate(
             bytesStored: update.length,
         };
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[YjsPersistence] Failed to save incremental update for project ${projectId}:`, errorMessage);
+        logger.error('Failed to save incremental update', error instanceof Error ? error : null, { projectId });
         throw error;
     }
 }
@@ -417,7 +414,7 @@ export async function saveIncrementalUpdateByUuid(
     const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
 
     if (!project) {
-        console.error(`[YjsPersistence] Project not found: ${projectUuid}`);
+        logger.warn('Project not found', { projectUuid });
         return null;
     }
 
@@ -444,7 +441,7 @@ export async function compactToSnapshot(projectId: number): Promise<void> {
         const { snapshot, updates } = await deps.queries.loadDocumentWithUpdates(deps.db, projectId);
 
         if (updates.length === 0 && !snapshot) {
-            if (DEBUG) console.log(`[YjsPersistence] Nothing to compact for project ${projectId}`);
+            if (DEBUG) logger.debug('Nothing to compact', { projectId });
             return;
         }
 
@@ -478,14 +475,14 @@ export async function compactToSnapshot(projectId: number): Promise<void> {
         doc.destroy();
 
         if (DEBUG) {
-            console.log(
-                `[YjsPersistence] Compacted ${updates.length} updates into snapshot ` +
-                    `for project ${projectId} (${fullState.length} bytes)`,
-            );
+            logger.debug('Compacted updates into snapshot', {
+                projectId,
+                updatesCount: updates.length,
+                bytes: fullState.length,
+            });
         }
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[YjsPersistence] Failed to compact project ${projectId}:`, errorMessage);
+        logger.error('Failed to compact', error instanceof Error ? error : null, { projectId });
         throw error;
     }
 }
@@ -503,17 +500,14 @@ export async function loadDocumentEfficient(projectId: number): Promise<Uint8Arr
 
         // No data at all
         if (!snapshot && updates.length === 0) {
-            if (DEBUG) console.log(`[YjsPersistence] No document found for project ${projectId}`);
+            if (DEBUG) logger.debug('No document found', { projectId });
             return null;
         }
 
         // Only snapshot, no updates - return directly
         if (snapshot && updates.length === 0) {
             if (DEBUG) {
-                console.log(
-                    `[YjsPersistence] Loaded project ${projectId} from snapshot ` +
-                        `(${snapshot.snapshot_data.length} bytes)`,
-                );
+                logger.debug('Loaded from snapshot', { projectId, bytes: snapshot.snapshot_data.length });
             }
             return new Uint8Array(snapshot.snapshot_data);
         }
@@ -533,16 +527,16 @@ export async function loadDocumentEfficient(projectId: number): Promise<Uint8Arr
         doc.destroy();
 
         if (DEBUG) {
-            console.log(
-                `[YjsPersistence] Loaded project ${projectId}: merged snapshot + ${updates.length} updates ` +
-                    `(${state.length} bytes)`,
-            );
+            logger.debug('Loaded merged snapshot + updates', {
+                projectId,
+                updatesCount: updates.length,
+                bytes: state.length,
+            });
         }
 
         return state;
     } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`[YjsPersistence] Failed to load project ${projectId}:`, errorMessage);
+        logger.error('Failed to load project', error instanceof Error ? error : null, { projectId });
         return null;
     }
 }
@@ -554,7 +548,7 @@ export async function loadDocumentEfficientByUuid(projectUuid: string): Promise<
     const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
 
     if (!project) {
-        console.error(`[YjsPersistence] Project not found: ${projectUuid}`);
+        logger.warn('Project not found', { projectUuid });
         return null;
     }
 

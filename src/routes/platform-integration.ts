@@ -9,6 +9,9 @@ import { Elysia, t } from 'elysia';
 import { getBasePath } from '../utils/basepath.util';
 import { decodePlatformJWT, getPlatformIntegrationParams } from '../utils/platform-jwt';
 import { platformPetitionGet, platformPetitionSet } from '../services/platform-integration';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'platform-integration-routes' });
 
 /**
  * Platform integration routes
@@ -120,7 +123,7 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
                 };
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
-                console.error('[PlatformIntegration] openPlatformElp error:', message);
+                logger.error('openPlatformElp error', error instanceof Error ? error : null, { message });
 
                 set.status = 500;
                 return {
@@ -181,7 +184,7 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
                 };
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
-                console.error('[PlatformIntegration] set_platform_new_ode error:', message);
+                logger.error('set_platform_new_ode error', error instanceof Error ? error : null, { message });
 
                 set.status = 500;
                 // Return format expected by frontend

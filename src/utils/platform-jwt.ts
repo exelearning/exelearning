@@ -8,6 +8,9 @@
  * - Platform JWT: signed with APP_SECRET or PROVIDER_TOKENS[i], payload {userid, cmid, returnurl, pkgtype}
  */
 import { jwtVerify } from 'jose';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'platform-jwt' });
 
 /**
  * Payload structure for platform JWT tokens
@@ -157,7 +160,7 @@ export async function decodePlatformJWT(token: string, providerId?: string): Pro
         const secret = getProviderSecret(providerId);
 
         if (!secret) {
-            console.error('[PlatformJWT] No secret available for JWT verification');
+            logger.error('No secret available for JWT verification', null);
             return null;
         }
 
@@ -172,14 +175,13 @@ export async function decodePlatformJWT(token: string, providerId?: string): Pro
 
         // Validate required fields
         if (!platformPayload.returnurl) {
-            console.error('[PlatformJWT] Missing required field: returnurl');
+            logger.error('Missing required field: returnurl', null);
             return null;
         }
 
         return platformPayload;
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        console.error('[PlatformJWT] JWT decode error:', message);
+        logger.error('JWT decode error', error instanceof Error ? error : null);
         return null;
     }
 }
@@ -231,13 +233,13 @@ export async function getPlatformIntegrationParams(
     // Extract and validate provider
     const providerId = extractProviderId(payload);
     if (providerId && !isValidProvider(providerId)) {
-        console.warn(`[PlatformJWT] Invalid provider ID in JWT: ${providerId}`);
+        logger.warn('Invalid provider ID in JWT', { providerId });
         return null;
     }
 
     // Validate return URL against allowed providers
     if (!isAllowedProviderUrl(payload.returnurl)) {
-        console.warn(`[PlatformJWT] Return URL not in allowed providers: ${payload.returnurl}`);
+        logger.warn('Return URL not in allowed providers', { returnurl: payload.returnurl });
         return null;
     }
 

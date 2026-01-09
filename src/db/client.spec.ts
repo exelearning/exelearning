@@ -18,6 +18,7 @@ import {
     resetClientCacheForTesting,
     getDialect,
 } from './client';
+import { resetConfigContext } from '../contexts/config.context';
 
 describe('Kysely ORM Client', () => {
     describe('db instance', () => {
@@ -115,6 +116,7 @@ describe('Kysely ORM Client', () => {
                 // Set up postgres config with password
                 process.env.DB_DRIVER = 'pdo_pgsql';
                 process.env.DB_PASSWORD = 'secret123';
+                resetConfigContext(); // Reset ConfigContext cache to pick up new env
 
                 const info = getDbInfo();
 
@@ -124,6 +126,7 @@ describe('Kysely ORM Client', () => {
                 // Restore original env
                 process.env.DB_DRIVER = originalDriver;
                 process.env.DB_PASSWORD = originalPassword;
+                resetConfigContext(); // Reset ConfigContext cache to restore original
             }
         });
 
@@ -136,6 +139,7 @@ describe('Kysely ORM Client', () => {
                 // Set up postgres config without password
                 process.env.DB_DRIVER = 'pdo_pgsql';
                 process.env.DB_PASSWORD = '';
+                resetConfigContext(); // Reset ConfigContext cache to pick up new env
 
                 const info = getDbInfo();
 
@@ -145,6 +149,7 @@ describe('Kysely ORM Client', () => {
                 // Restore original env
                 process.env.DB_DRIVER = originalDriver;
                 process.env.DB_PASSWORD = originalPassword;
+                resetConfigContext(); // Reset ConfigContext cache to restore original
             }
         });
 

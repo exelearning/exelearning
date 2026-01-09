@@ -6,6 +6,9 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { XMLParser } from 'fast-xml-parser';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'idevice-config' });
 
 export interface IdeviceConfigCache {
     cssClass: string;
@@ -50,7 +53,7 @@ export function loadIdeviceConfigs(customBasePath?: string): void {
     configCache = new Map();
 
     if (!fs.existsSync(basePath)) {
-        console.warn(`[IdeviceConfig] iDevices path not found: ${basePath}`);
+        logger.warn('iDevices path not found', { basePath });
         return;
     }
 
@@ -89,11 +92,14 @@ export function loadIdeviceConfigs(customBasePath?: string): void {
             configCache.set(entry.name, config);
             configCache.set(entry.name.toLowerCase(), config);
         } catch (err) {
-            console.warn(`[IdeviceConfig] Failed to parse ${configPath}:`, err);
+            logger.warn('Failed to parse iDevice config', {
+                configPath,
+                error: err instanceof Error ? err.message : String(err),
+            });
         }
     }
 
-    console.log(`[IdeviceConfig] Loaded ${configCache.size} iDevice configs`);
+    logger.info('Loaded iDevice configs', { count: configCache.size });
 }
 
 /**

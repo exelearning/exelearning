@@ -20,6 +20,9 @@ import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validato
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
 import { getAuthMethods, getSettingString } from '../services/app-settings';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'auth-routes' });
 
 /**
  * Dependency types for auth routes
@@ -538,7 +541,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         ],
                     });
                 } catch (error) {
-                    console.error('CAS authentication error:', error);
+                    logger.error('CAS authentication error', error instanceof Error ? error : null);
                     set.status = 500;
                     return { error: 'Server Error', message: 'CAS authentication failed. Please try again later.' };
                 }
@@ -822,7 +825,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         ],
                     });
                 } catch (error) {
-                    console.error('OpenID authentication error:', error);
+                    logger.error('OpenID authentication error', error instanceof Error ? error : null);
                     set.status = 500;
                     return { error: 'Server Error', message: 'OpenID authentication failed. Please try again later.' };
                 }

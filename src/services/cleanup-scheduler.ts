@@ -18,6 +18,10 @@ import { getFilesDir, remove, fileExists } from './file-helper';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import * as path from 'path';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for cleanup scheduler
+const logger = getLogger().child({ component: 'cleanup-scheduler' });
 
 /**
  * Configuration for the cleanup scheduler
@@ -153,13 +157,13 @@ export async function runCleanup(
     config: CleanupSchedulerConfig = state.config,
 ): Promise<CleanupResult> {
     if (state.isRunning) {
-        console.log('[CleanupScheduler] Cleanup already in progress, skipping');
+        logger.debug('Cleanup already in progress, skipping');
         return { success: true, unsavedDeleted: 0, guestDeleted: 0, diskCleaned: 0, errors: [] };
     }
 
     state.isRunning = true;
     const startTime = Date.now();
-    console.log('[CleanupScheduler] Starting cleanup...');
+    logger.info('Starting cleanup');
 
     const result: CleanupResult = {
         success: true,
@@ -181,9 +185,10 @@ export async function runCleanup(
         const unsavedIds = new Set(unsavedProjects.map(p => p.id));
         const uniqueGuestProjects = guestProjects.filter(p => !unsavedIds.has(p.id));
 
-        console.log(
-            `[CleanupScheduler] Found ${unsavedProjects.length} unsaved and ${uniqueGuestProjects.length} guest projects to delete`,
-        );
+        logger.info('Found projects to delete', {
+            unsavedCount: unsavedProjects.length,
+            guestCount: uniqueGuestProjects.length,
+        });
 
         // Delete unsaved projects
         for (const project of unsavedProjects) {
@@ -227,17 +232,18 @@ export async function runCleanup(
 
         state.lastRun = new Date();
         const elapsed = Date.now() - startTime;
-        console.log(
-            `[CleanupScheduler] Cleanup completed in ${elapsed}ms: ` +
-                `${result.unsavedDeleted} unsaved, ${result.guestDeleted} guest deleted, ` +
-                `${result.diskCleaned} asset dirs cleaned` +
-                (result.errors.length ? `, ${result.errors.length} errors` : ''),
-        );
+        logger.info('Cleanup completed', {
+            elapsedMs: elapsed,
+            unsavedDeleted: result.unsavedDeleted,
+            guestDeleted: result.guestDeleted,
+            diskCleaned: result.diskCleaned,
+            errorCount: result.errors.length,
+        });
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         result.success = false;
         result.errors.push(`Cleanup failed: ${message}`);
-        console.error('[CleanupScheduler] Cleanup failed:', err);
+        logger.error('Cleanup failed', err instanceof Error ? err : null);
     } finally {
         state.isRunning = false;
     }
@@ -259,30 +265,31 @@ export function startScheduler(
     state.deps = { ...defaultDeps, ...deps };
 
     if (!state.config.enabled) {
-        console.log('[CleanupScheduler] Scheduler is disabled');
+        logger.info('Scheduler is disabled');
         return;
     }
 
     const timers = state.deps.timers || { setInterval, clearInterval };
 
-    console.log(
-        `[CleanupScheduler] Starting scheduler with interval ${state.config.intervalMs}ms ` +
-            `(unsaved: ${state.config.unsavedAgeHours}h, guest: ${state.config.guestAgeDays}d)`,
-    );
+    logger.info('Starting scheduler', {
+        intervalMs: state.config.intervalMs,
+        unsavedAgeHours: state.config.unsavedAgeHours,
+        guestAgeDays: state.config.guestAgeDays,
+    });
 
     // Run immediately on startup
     runCleanup(state.deps, state.config).catch(err => {
-        console.error('[CleanupScheduler] Initial cleanup failed:', err);
+        logger.error('Initial cleanup failed', err instanceof Error ? err : null);
     });
 
     // Schedule periodic runs
     state.timer = timers.setInterval(() => {
         runCleanup(state.deps, state.config).catch(err => {
-            console.error('[CleanupScheduler] Scheduled cleanup failed:', err);
+            logger.error('Scheduled cleanup failed', err instanceof Error ? err : null);
         });
     }, state.config.intervalMs);
 
-    console.log('[CleanupScheduler] Scheduler started');
+    logger.info('Scheduler started');
 }
 
 /**
@@ -293,7 +300,7 @@ export function stopScheduler(): void {
         const timers = state.deps.timers || { setInterval, clearInterval };
         timers.clearInterval(state.timer);
         state.timer = null;
-        console.log('[CleanupScheduler] Scheduler stopped');
+        logger.info('Scheduler stopped');
     }
 }
 

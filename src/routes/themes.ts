@@ -12,6 +12,9 @@ import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
 import type { Theme } from '../db/types';
 import { validateThemeZip, extractTheme, slugify, BASE_THEME_NAMES } from '../services/admin-upload-validator';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'themes-routes' });
 
 // Base path for themes
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -373,7 +376,9 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
             siteThemes = siteThemesDb.map(siteThemeToConfig);
         } catch (error) {
             // Silently ignore if themes table doesn't exist yet (migration pending)
-            console.warn('[themes] Could not load site themes:', error instanceof Error ? error.message : error);
+            logger.warn('Could not load site themes', {
+                error: error instanceof Error ? error.message : String(error),
+            });
         }
 
         try {
@@ -381,7 +386,9 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
             baseThemesFromDb = await getBaseThemes(db);
         } catch (error) {
             // Silently ignore if themes table doesn't exist yet (migration pending)
-            console.warn('[themes] Could not load theme settings:', error instanceof Error ? error.message : error);
+            logger.warn('Could not load theme settings', {
+                error: error instanceof Error ? error.message : String(error),
+            });
         }
 
         // Create a map of disabled base themes (is_enabled=0)
@@ -603,7 +610,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
                     },
                 };
             } catch (error) {
-                console.error('[themes] Theme import error:', error);
+                logger.error('Theme import error', error instanceof Error ? error : null);
                 set.status = 500;
                 const message = error instanceof Error ? error.message : 'Unknown error';
                 return { responseMessage: 'ERROR', error: message };
@@ -768,7 +775,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
                     theme: themeConfig,
                 };
             } catch (error) {
-                console.error('[Themes] Upload error:', error);
+                logger.error('Theme upload error', error instanceof Error ? error : null);
                 set.status = 500;
                 return {
                     responseMessage: 'ERROR',
@@ -840,7 +847,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
                 deleted: { name: themeId },
             };
         } catch (error) {
-            console.error('[Themes] Delete error:', error);
+            logger.error('Theme delete error', error instanceof Error ? error : null);
             set.status = 500;
             return {
                 responseMessage: 'ERROR',

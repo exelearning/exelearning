@@ -7,6 +7,9 @@
  */
 import { Elysia, t } from 'elysia';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'games-routes' });
 
 // ============================================================================
 // DEPENDENCY INJECTION
@@ -383,7 +386,7 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
             if (!session) {
                 // Session not found - return empty data (not an error)
                 // This can happen if the session expired or was never created
-                console.log(`[Games] Session not found: ${odeSessionId}`);
+                logger.debug('Session not found', { odeSessionId });
                 return {
                     success: true,
                     data: [],
@@ -393,7 +396,7 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
             // Extract iDevices from session structure
             const data = extractIdevicesFromStructure(odeSessionId, session.structure);
 
-            console.log(`[Games] Returning ${data.length} items for session ${odeSessionId}`);
+            logger.debug('Returning items for session', { odeSessionId, count: data.length });
 
             return {
                 success: true,

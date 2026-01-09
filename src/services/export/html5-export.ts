@@ -17,8 +17,9 @@ import * as previewModule from './preview';
 import * as htmlGeneratorModule from './html-generator';
 import { ExportResult, ExportFormat, Html5ExportOptions } from './interfaces';
 import { ParsedOdeStructure, NormalizedPage } from '../xml/interfaces';
+import { getLogger } from '../../contexts/logger.context';
 
-const DEBUG = process.env.APP_DEBUG === '1';
+const logger = getLogger().child({ component: 'html5-export' });
 
 // ============================================================================
 // Types and Interfaces
@@ -150,7 +151,7 @@ export function createHtml5ExportService(deps: Html5ExportDeps = {}): Html5Expor
         const themeSourceDir = path.join(getCwd(), 'public', 'files', 'perm', 'themes', 'base', themeName);
         const themeDestDir = path.join(exportDir, 'theme');
 
-        if (DEBUG) console.log(`[Html5Export] Copying theme "${themeName}" from ${themeSourceDir}`);
+        logger.debug('Copying theme', { themeName, themeSourceDir });
 
         await fs.ensureDir(themeDestDir);
 
@@ -176,9 +177,9 @@ export function createHtml5ExportService(deps: Html5ExportDeps = {}): Html5Expor
                 }
             }
 
-            if (DEBUG) console.log(`[Html5Export] Theme "${themeName}" copied successfully`);
+            logger.debug('Theme copied successfully', { themeName });
         } else {
-            console.warn(`[Html5Export] Theme not found: ${themeSourceDir}, using fallback styles`);
+            logger.warn('Theme not found, using fallback styles', { themeSourceDir });
         }
     }
 
@@ -239,11 +240,10 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
     async function exportToHtml5(odeSessionId: string, options: Html5ExportOptions = {}): Promise<ExportResult> {
         try {
             const isPreviewMode = options.preview === true;
-            if (DEBUG) {
-                console.log(
-                    `[Html5Export] Exporting session ${odeSessionId} to HTML5 (${isPreviewMode ? 'preview' : 'download'} mode)`,
-                );
-            }
+            logger.debug('Exporting session to HTML5', {
+                odeSessionId,
+                mode: isPreviewMode ? 'preview' : 'download',
+            });
 
             // Get session
             const session = getSession(odeSessionId);
@@ -258,11 +258,11 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                 // Preview mode: use session temp directory with random subdirectory
                 const tempPath = options.tempPath || preview.generateRandomTempPath();
                 exportDir = getPreviewExportPath(odeSessionId, tempPath);
-                if (DEBUG) console.log(`[Html5Export] Preview export directory: ${exportDir}`);
+                logger.debug('Preview export directory', { exportDir });
             } else {
                 // Download mode: use temp path for ZIP creation
                 exportDir = getTempPath(`html5-export-${odeSessionId}`);
-                if (DEBUG) console.log(`[Html5Export] Download export directory: ${exportDir}`);
+                logger.debug('Download export directory', { exportDir });
             }
 
             await fs.ensureDir(exportDir);
@@ -280,7 +280,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
 
                     const previewUrl = preview.buildPreviewUrl(odeSessionId, options.tempPath || '', 'index.html');
 
-                    console.log(`[Html5Export] Successfully generated preview at ${previewUrl}`);
+                    logger.info('Successfully generated preview', { previewUrl });
 
                     return {
                         filePath: exportDir,
@@ -300,7 +300,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                     // Get file size
                     const stats = await fs.stat(zipPath);
 
-                    console.log(`[Html5Export] Successfully exported HTML5 to ${zipPath}`);
+                    logger.info('Successfully exported HTML5', { zipPath, fileSize: stats.size });
 
                     return {
                         filePath: zipPath,
@@ -317,8 +317,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                 }
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`[Html5Export] Failed to export HTML5: ${errorMessage}`);
+            logger.error('Failed to export HTML5', error instanceof Error ? error : null, { odeSessionId });
             throw error;
         }
     }

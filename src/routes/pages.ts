@@ -52,6 +52,10 @@ import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/trans
 import { decodePlatformJWT } from '../utils/platform-jwt';
 import type { JwtPayload } from './types/request-payloads';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for pages routes
+const logger = getLogger().child({ component: 'routes/pages' });
 
 /**
  * Login page query parameters
@@ -426,16 +430,17 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     if (!existingProject) {
                         existingProject = await findProjectByPlatformId(db, odeId);
                         if (existingProject) {
-                            console.log(
-                                `[Pages] Platform integration: Found project by platform_id ${odeId} -> ${existingProject.uuid}`,
-                            );
+                            logger.debug('Platform integration: Found project by platform_id', {
+                                platformId: odeId,
+                                projectUuid: existingProject.uuid,
+                            });
                         }
                     }
 
                     if (existingProject) {
                         // Found existing project - use it
                         projectUuid = existingProject.uuid;
-                        console.log(`[Pages] Platform integration: Using existing project ${projectUuid}`);
+                        logger.debug('Platform integration: Using existing project', { projectUuid });
                     } else {
                         // odeId is not a valid project UUID or platform_id (new content from Moodle)
                         // Create a new project and redirect, preserving jwt_token
@@ -458,9 +463,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 userId: currentUser.id,
                             });
 
-                            console.log(
-                                `[Pages] Platform integration: Created new project ${newSessionId} for Moodle cmid ${odeId}`,
-                            );
+                            logger.info('Platform integration: Created new project', {
+                                projectUuid: newSessionId,
+                                moodleCmid: odeId,
+                            });
 
                             // Redirect with jwt_token preserved
                             const basePath = getBasePath();
@@ -470,7 +476,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             }
                             return Response.redirect(redirectUrl, 302);
                         } catch (error) {
-                            console.error('[Pages] Platform integration: Failed to create new project:', error);
+                            logger.error(
+                                'Platform integration: Failed to create new project',
+                                error instanceof Error ? error : null,
+                            );
                             // Continue - will fall through to normal flow
                         }
                     }
@@ -490,9 +499,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             // Project saved in DB - verify access via DB (owner or collaborator)
                             const accessCheck = await checkProjectAccess(db, project, currentUser.id);
                             if (!accessCheck.hasAccess) {
-                                console.log(
-                                    `[Pages] Access denied to project ${projectUuid} for user ${currentUser.id}: ${accessCheck.reason}`,
-                                );
+                                logger.debug('Access denied to project', {
+                                    projectUuid,
+                                    userId: currentUser.id,
+                                    reason: accessCheck.reason,
+                                });
                                 const html = renderTemplate('workarea/access-denied', {
                                     basePath,
                                     projectId: projectUuid,
@@ -506,9 +517,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             }
                         } else if (session.userId && session.userId !== currentUser.id) {
                             // Session in memory from ANOTHER user - deny access
-                            console.log(
-                                `[Pages] Access denied to in-memory session ${projectUuid}: created by user ${session.userId}, accessed by ${currentUser.id}`,
-                            );
+                            logger.debug('Access denied to in-memory session', {
+                                projectUuid,
+                                sessionUserId: session.userId,
+                                accessingUserId: currentUser.id,
+                            });
                             const html = renderTemplate('workarea/access-denied', {
                                 basePath,
                                 projectId: projectUuid,
@@ -527,9 +540,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             // Project exists in DB - verify access
                             const accessCheck = await checkProjectAccess(db, project, currentUser.id);
                             if (!accessCheck.hasAccess) {
-                                console.log(
-                                    `[Pages] Access denied to project ${projectUuid} for user ${currentUser.id}: ${accessCheck.reason}`,
-                                );
+                                logger.debug('Access denied to project', {
+                                    projectUuid,
+                                    userId: currentUser.id,
+                                    reason: accessCheck.reason,
+                                });
                                 const html = renderTemplate('workarea/access-denied', {
                                     basePath,
                                     projectId: projectUuid,
@@ -543,7 +558,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             }
                         } else {
                             // Project doesn't exist in DB nor in session - 404
-                            console.log(`[Pages] Project not found: ${projectUuid}`);
+                            logger.debug('Project not found', { projectUuid });
                             const html = renderTemplate('security/error', {
                                 basePath,
                                 error: 'Project Not Found',
@@ -583,7 +598,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             userId: currentUser.id,
                         });
 
-                        console.log(`[Pages] Created ephemeral session ${newSessionId} for offline mode`);
+                        logger.debug('Created ephemeral session for offline mode', { sessionId: newSessionId });
 
                         return Response.redirect(buildRedirectUrl(newSessionId), 302);
                     }
@@ -608,11 +623,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             userId: currentUser.id,
                         });
 
-                        console.log(`[Pages] Created new project ${newSessionId} for user ${currentUser.id}`);
+                        logger.info('Created new project', { projectUuid: newSessionId, userId: currentUser.id });
 
                         return Response.redirect(buildRedirectUrl(newSessionId), 302);
                     } catch (error) {
-                        console.error('[Pages] Failed to create new project:', error);
+                        logger.error('Failed to create new project', error instanceof Error ? error : null);
                         // Continue without project if creation fails
                     }
                 }
@@ -1056,7 +1071,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         target[mapping.path[mapping.path.length - 1]] = parsedValue;
                     }
                 } catch (error) {
-                    console.warn('[Admin] Failed to load stored settings:', error);
+                    logger.warn('Failed to load stored settings', {
+                        error: error instanceof Error ? error.message : String(error),
+                    });
                 }
                 defaultQuota = parseNumber(adminSettings.storage.default_quota, defaultQuota);
 

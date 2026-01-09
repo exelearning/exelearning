@@ -7,8 +7,9 @@
 import { XMLParser } from 'fast-xml-parser';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getLogger } from '../contexts/logger.context';
 
-const DEBUG = process.env.APP_DEBUG === '1';
+const logger = getLogger().child({ component: 'translation' });
 
 /**
  * Interface translations - locales with XLF files
@@ -212,7 +213,7 @@ function getTranslationsDir(): string {
 export function loadAllTranslations(): void {
     const translationsDir = getTranslationsDir();
 
-    if (DEBUG) console.log(`[Translation] Loading translations from: ${translationsDir}`);
+    logger.debug('Loading translations', { translationsDir });
 
     for (const locale of Object.keys(LOCALES)) {
         const filePath = path.join(translationsDir, `messages.${locale}.xlf`);
@@ -222,19 +223,21 @@ export function loadAllTranslations(): void {
                 const content = fs.readFileSync(filePath, 'utf-8');
                 const result = parseXlfContent(content);
                 catalogues.set(locale, result.translations);
-                if (DEBUG)
-                    console.log(`[Translation] Loaded ${result.translations.size} translations for locale: ${locale}`);
+                logger.debug('Loaded translations for locale', {
+                    locale,
+                    count: result.translations.size,
+                });
             } else {
-                if (DEBUG) console.log(`[Translation] Translation file not found: ${filePath}`);
+                logger.debug('Translation file not found', { filePath });
                 catalogues.set(locale, new Map());
             }
         } catch (error) {
-            console.error(`[Translation] Error loading translations for ${locale}:`, error);
+            logger.error('Error loading translations', error instanceof Error ? error : null, { locale });
             catalogues.set(locale, new Map());
         }
     }
 
-    console.log(`[Translation] Loaded ${catalogues.size} locales`);
+    logger.info('Loaded translation locales', { count: catalogues.size });
 }
 
 /**

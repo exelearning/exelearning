@@ -10,6 +10,9 @@ import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
 import type { IdeviceFileUploadRequest } from './types/request-payloads';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'idevices-routes' });
 
 /**
  * Response data for file upload
@@ -387,10 +390,12 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     // POST /api/idevices/upload/file/resources - Upload file resource (base64)
     .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, request }) => {
         // Debug: log what we're receiving
-        console.log('[idevices/upload] Content-Type:', request.headers.get('content-type'));
-        console.log('[idevices/upload] Body type:', typeof body);
         const bodyObj = body as Record<string, unknown> | null;
-        console.log('[idevices/upload] Body keys:', bodyObj ? Object.keys(bodyObj) : 'null');
+        logger.debug('Upload request received', {
+            contentType: request.headers.get('content-type'),
+            bodyType: typeof body,
+            bodyKeys: bodyObj ? Object.keys(bodyObj) : null,
+        });
 
         const data = body as IdeviceFileUploadRequest;
         const odeIdeviceId = data?.odeIdeviceId;
@@ -407,10 +412,10 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
         // Validate required parameters
         if (!odeIdeviceId || !base64String || !filename) {
             set.status = 400;
-            console.log('[idevices/upload] Missing params:', {
-                odeIdeviceId: !!odeIdeviceId,
-                file: !!base64String,
-                filename: !!filename,
+            logger.debug('Missing upload params', {
+                hasOdeIdeviceId: !!odeIdeviceId,
+                hasFile: !!base64String,
+                hasFilename: !!filename,
             });
             return {
                 code: 'error: invalid data',

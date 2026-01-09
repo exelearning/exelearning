@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { execute, printHelp, runCli, type TmpCleanupDependencies } from './tmp-cleanup';
+import { resetConfigContext } from '../../contexts/config.context';
 
 describe('Tmp Cleanup Command', () => {
     const testDir = path.join(process.cwd(), 'test', 'temp', 'tmp-cleanup-test');
@@ -14,6 +15,7 @@ describe('Tmp Cleanup Command', () => {
         await fs.ensureDir(testDir);
         // Set files dir to test directory
         process.env.ELYSIA_FILES_DIR = testDir;
+        resetConfigContext(); // Reset to pick up new ELYSIA_FILES_DIR
         // Create tmp subdirectory
         await fs.ensureDir(path.join(testDir, 'tmp'));
     });
@@ -21,6 +23,7 @@ describe('Tmp Cleanup Command', () => {
     afterEach(async () => {
         await fs.remove(testDir);
         process.env = { ...originalEnv };
+        resetConfigContext(); // Reset to restore original environment
     });
 
     describe('execute', () => {

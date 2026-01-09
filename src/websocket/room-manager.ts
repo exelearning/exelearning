@@ -12,6 +12,10 @@ import type { ServerWebSocket } from 'bun';
 import { getConfig, DEBUG } from './config';
 import * as assetCoordinatorDefault from './asset-coordinator';
 import * as pubSubDefault from '../redis/pubsub-manager';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for room manager
+const logger = getLogger().child({ component: 'room-manager' });
 
 // ============================================================================
 // DEPENDENCY INJECTION INTERFACES
@@ -141,7 +145,7 @@ export function getOrCreateRoom(docName: string, projectUuid?: string): Room {
         rooms.set(docName, room);
 
         if (DEBUG) {
-            console.log(`[RoomManager] Created room: ${docName} (project: ${uuid})`);
+            logger.debug('Created room', { docName, projectUuid: uuid });
         }
     } else {
         // Cancel any pending cleanup since room is being accessed
@@ -172,12 +176,12 @@ export function addConnection(docName: string, ws: ServerWebSocket<WsData>, proj
     // Subscribe to Redis channel when first client joins
     if (wasEmpty && deps.pubSub.isPubSubEnabled()) {
         deps.pubSub.subscribe(docName).catch(err => {
-            console.error(`[RoomManager] Failed to subscribe to Redis channel ${docName}:`, err);
+            logger.error('Failed to subscribe to Redis channel', err instanceof Error ? err : null, { docName });
         });
     }
 
     if (DEBUG) {
-        console.log(`[RoomManager] Added connection to ${docName} (${room.conns.size} total)`);
+        logger.debug('Added connection', { docName, total: room.conns.size });
     }
 
     return room;
@@ -194,7 +198,7 @@ export function removeConnection(docName: string, ws: ServerWebSocket<WsData>): 
     room.conns.delete(ws);
 
     if (DEBUG) {
-        console.log(`[RoomManager] Removed connection from ${docName} (${room.conns.size} remaining)`);
+        logger.debug('Removed connection', { docName, remaining: room.conns.size });
     }
 
     // Schedule cleanup if empty
@@ -225,14 +229,14 @@ export function scheduleCleanup(docName: string): void {
     const cleanupDelay = deps.cleanupDelayOverride ?? config.cleanupDelay;
 
     if (DEBUG) {
-        console.log(`[RoomManager] Scheduled cleanup for ${docName} in ${cleanupDelay}ms`);
+        logger.debug('Scheduled cleanup', { docName, cleanupDelay });
     }
 
     setTimeout(() => {
         // Check if cleanup was aborted (client reconnected)
         if (controller.signal.aborted) {
             if (DEBUG) {
-                console.log(`[RoomManager] Cleanup cancelled for ${docName} (client reconnected)`);
+                logger.debug('Cleanup cancelled (client reconnected)', { docName });
             }
             return;
         }
@@ -247,7 +251,7 @@ export function scheduleCleanup(docName: string): void {
         rooms.delete(docName);
 
         if (DEBUG) {
-            console.log(`[RoomManager] Cleaned up room ${docName}`);
+            logger.debug('Cleaned up room', { docName });
         }
 
         // Unsubscribe from Redis channel
@@ -275,7 +279,7 @@ export function cancelCleanup(docName: string): void {
         room.cleanupController = undefined;
 
         if (DEBUG) {
-            console.log(`[RoomManager] Cancelled pending cleanup for ${docName}`);
+            logger.debug('Cancelled pending cleanup', { docName });
         }
     }
 }
@@ -294,7 +298,7 @@ export function relayMessage(sender: ServerWebSocket<WsData>, docName: string, m
                 conn.send(message);
             } catch (err) {
                 if (DEBUG) {
-                    console.error(`[RoomManager] Error relaying message:`, err);
+                    logger.error('Error relaying message', err instanceof Error ? err : null, { docName });
                 }
             }
         }
@@ -315,7 +319,7 @@ export function broadcastToRoom(docName: string, message: Buffer | string): void
                 conn.send(message);
             } catch (err) {
                 if (DEBUG) {
-                    console.error(`[RoomManager] Error broadcasting:`, err);
+                    logger.error('Error broadcasting', err instanceof Error ? err : null, { docName });
                 }
             }
         }
@@ -418,7 +422,7 @@ export function closeAllRooms(): void {
     rooms.clear();
 
     if (DEBUG) {
-        console.log('[RoomManager] Closed all rooms');
+        logger.debug('Closed all rooms');
     }
 }
 
@@ -460,9 +464,9 @@ export function initializeCrossInstanceHandler(): void {
         broadcastToRoom(docName, message);
 
         if (DEBUG) {
-            console.log(`[RoomManager] Received cross-instance message for ${docName} (isAsset: ${meta.isAsset})`);
+            logger.debug('Received cross-instance message', { docName, isAsset: meta.isAsset });
         }
     });
 
-    console.log('[RoomManager] Cross-instance handler initialized');
+    logger.info('Cross-instance handler initialized');
 }

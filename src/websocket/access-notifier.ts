@@ -8,8 +8,12 @@
  */
 import type { ServerWebSocket } from 'bun';
 import * as roomManagerDefault from './room-manager';
+import { getLogger } from '../contexts/logger.context';
 
 const DEBUG = process.env.APP_DEBUG === '1';
+
+// Create logger for access notifier
+const logger = getLogger().child({ component: 'access-notifier' });
 
 /**
  * Asset message prefix byte (0xFF)
@@ -133,7 +137,7 @@ function sendAndClose(ws: ServerWebSocket<unknown>, message: Uint8Array, reason:
         }, 100);
     } catch (err) {
         if (DEBUG) {
-            console.error('[AccessNotifier] Error sending message:', err);
+            logger.error('Error sending message', err instanceof Error ? err : null);
         }
         // Try to close anyway
         try {
@@ -161,7 +165,7 @@ export function notifyVisibilityChanged(projectUuid: string, ownerId: number, co
 
     if (connectedUserIds.length === 0) {
         if (DEBUG) {
-            console.log(`[AccessNotifier] No users connected to project ${projectUuid}`);
+            logger.debug('No users connected to project', { projectUuid });
         }
         return 0;
     }
@@ -174,7 +178,7 @@ export function notifyVisibilityChanged(projectUuid: string, ownerId: number, co
 
     if (usersToKick.length === 0) {
         if (DEBUG) {
-            console.log(`[AccessNotifier] All connected users are authorized for project ${projectUuid}`);
+            logger.debug('All connected users are authorized', { projectUuid });
         }
         return 0;
     }
@@ -193,16 +197,16 @@ export function notifyVisibilityChanged(projectUuid: string, ownerId: number, co
         }
 
         if (DEBUG) {
-            console.log(
-                `[AccessNotifier] Kicked user ${userId} from project ${projectUuid} (${connections.length} connections)`,
-            );
+            logger.debug('Kicked user from project', { userId, projectUuid, connections: connections.length });
         }
     }
 
     if (DEBUG) {
-        console.log(
-            `[AccessNotifier] Visibility change: kicked ${usersToKick.length} users (${kickedCount} connections) from project ${projectUuid}`,
-        );
+        logger.info('Visibility change: kicked users', {
+            projectUuid,
+            usersKicked: usersToKick.length,
+            connectionsKicked: kickedCount,
+        });
     }
 
     return usersToKick.length;
@@ -223,7 +227,7 @@ export function notifyCollaboratorRemoved(projectUuid: string, removedUserId: nu
 
     if (connections.length === 0) {
         if (DEBUG) {
-            console.log(`[AccessNotifier] User ${removedUserId} not connected to project ${projectUuid}`);
+            logger.debug('User not connected to project', { userId: removedUserId, projectUuid });
         }
         return 0;
     }
@@ -238,9 +242,11 @@ export function notifyCollaboratorRemoved(projectUuid: string, removedUserId: nu
     }
 
     if (DEBUG) {
-        console.log(
-            `[AccessNotifier] Collaborator removed: kicked user ${removedUserId} from project ${projectUuid} (${connections.length} connections)`,
-        );
+        logger.info('Collaborator removed: kicked user', {
+            userId: removedUserId,
+            projectUuid,
+            connections: connections.length,
+        });
     }
 
     return connections.length;

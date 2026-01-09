@@ -13,6 +13,9 @@ import type { Kysely, Insertable, Updateable, ColumnDefinitionBuilder, DataTypeE
 import { sql } from 'kysely';
 import type { Database } from './types';
 import { getDialectFromEnv, type DbDialect } from './dialect';
+import { getLogger } from '../contexts/logger.context';
+
+const logger = getLogger().child({ component: 'db-helpers' });
 
 // Cache the dialect to avoid repeated environment lookups
 let cachedDialect: DbDialect | null = null;
@@ -66,7 +69,7 @@ export function fromBinaryData(data: unknown): Uint8Array {
     if (Buffer.isBuffer(data)) {
         return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
     }
-    console.warn(`[fromBinaryData] Unknown data type: ${typeof data}`);
+    logger.warn('Unknown data type in fromBinaryData', { dataType: typeof data });
     return new Uint8Array(0);
 }
 

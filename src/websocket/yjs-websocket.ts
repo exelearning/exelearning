@@ -43,6 +43,10 @@ import { DEBUG } from './config';
 import { startHeartbeat, stopHeartbeat, onPong, stopAllHeartbeats, getHeartbeatStats } from './heartbeat';
 import * as roomManager from './room-manager';
 import { parseMessage } from './message-parser';
+import { getLogger } from '../contexts/logger.context';
+
+// Create logger for WebSocket module
+const logger = getLogger().child({ component: 'yjs-websocket' });
 
 // ============================================================================
 // DEPENDENCY INJECTION INTERFACES
@@ -201,7 +205,7 @@ export async function checkWebSocketProjectAccess(
     const session = deps.sessionManager.getSession(projectUuid);
     if (session) {
         // Session exists in memory - allow access
-        if (DEBUG) console.log(`[YjsWebSocket] Access granted via in-memory session: ${projectUuid}`);
+        if (DEBUG) logger.debug('Access granted via in-memory session', { projectUuid });
         return { hasAccess: true };
     }
 
@@ -210,8 +214,7 @@ export async function checkWebSocketProjectAccess(
 
     if (!project) {
         // Neither in session nor in database - deny access
-        if (DEBUG)
-            console.log(`[YjsWebSocket] Project ${projectUuid} not found in session or database, denying access`);
+        if (DEBUG) logger.debug('Project not found in session or database, denying access', { projectUuid });
         return { hasAccess: false, reason: 'Project not found' };
     }
 
@@ -231,7 +234,7 @@ export async function handleWebSocketOpen(
     // Extract project UUID from document name
     const projectUuid = roomManager.extractProjectUuid(docName);
     if (!projectUuid) {
-        console.error(`[YjsWebSocket] Invalid document name format: ${docName}`);
+        logger.warn('Invalid document name format', { docName });
         return {
             success: false,
             error: { code: 4000, reason: 'Invalid document name format. Expected: project-<uuid>' },
@@ -240,20 +243,20 @@ export async function handleWebSocketOpen(
 
     // Validate JWT token
     if (!token) {
-        console.error('[YjsWebSocket] Token required');
+        logger.warn('Token required');
         return { success: false, error: { code: 4001, reason: 'Token required' } };
     }
 
     const user = await deps.auth.verifyToken(token);
     if (!user) {
-        console.error('[YjsWebSocket] Invalid token');
+        logger.warn('Invalid token');
         return { success: false, error: { code: 4001, reason: 'Invalid token' } };
     }
 
     // Check project access
     const access = await checkWebSocketProjectAccess(projectUuid, user.sub);
     if (!access.hasAccess) {
-        console.error(`[YjsWebSocket] Access denied: ${access.reason}`);
+        logger.warn('Access denied', { projectUuid, reason: access.reason });
         return { success: false, error: { code: 4003, reason: access.reason || 'Access denied' } };
     }
 
@@ -285,11 +288,11 @@ export async function handleWebSocketOpen(
     deps.assetCoordinator.registerClient(projectUuid, clientId, ws as unknown as WsWebSocket);
 
     const clientCount = room.conns.size;
-    console.log(`[YjsWebSocket] Client ${clientId} (user ${userId}) connected to ${docName} (${clientCount} total)`);
+    logger.info('Client connected', { clientId, userId, docName, clientCount });
 
     // Detect collaboration and trigger asset prefetch
     if (clientCount > 1) {
-        console.log(`[YjsWebSocket] Collaboration detected in ${projectUuid}`);
+        logger.info('Collaboration detected', { projectUuid });
 
         // Auto-save unsaved projects when collaboration starts
         // This ensures documents aren't lost when multiple users work together
@@ -297,9 +300,7 @@ export async function handleWebSocketOpen(
             try {
                 const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
                 if (project && !project.saved_once) {
-                    console.log(
-                        `[YjsWebSocket] Project ${projectUuid} not saved yet, requesting sync from first client`,
-                    );
+                    logger.info('Project not saved yet, requesting sync from first client', { projectUuid });
 
                     // Find the first (oldest) client in the room to request state
                     const firstClient = Array.from(room.conns)[0];
@@ -311,16 +312,16 @@ export async function handleWebSocketOpen(
                             projectUuid,
                         });
                         firstClient.send(syncRequestMsg);
-                        console.log(`[YjsWebSocket] Sent request-sync-state to first client for ${projectUuid}`);
+                        logger.debug('Sent request-sync-state to first client', { projectUuid });
                     }
                 }
             } catch (err) {
-                console.error('[YjsWebSocket] Error checking project save status:', err);
+                logger.error('Error checking project save status', err instanceof Error ? err : null, { projectUuid });
             }
         })();
 
         deps.assetCoordinator.onCollaborationDetected(projectUuid).catch(err => {
-            console.error('[YjsWebSocket] Error in collaboration detection:', err);
+            logger.error('Error in collaboration detection', err instanceof Error ? err : null, { projectUuid });
         });
     }
 
@@ -352,7 +353,9 @@ export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData
         case 'asset':
             // Handle asset coordination message
             deps.assetCoordinator.handleMessage(data.projectUuid, data.clientId, parsed.message).catch(err => {
-                console.error('[YjsWebSocket] Error handling asset message:', err);
+                logger.error('Error handling asset message', err instanceof Error ? err : null, {
+                    clientId: data.clientId,
+                });
             });
 
             // Relay asset message to other instances via Redis
@@ -386,7 +389,7 @@ export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData
         case 'unknown':
             // Unknown message type - log and ignore
             if (DEBUG) {
-                console.log(`[YjsWebSocket] Unknown message type from ${data.clientId}`);
+                logger.debug('Unknown message type', { clientId: data.clientId });
             }
             break;
     }
@@ -414,9 +417,7 @@ export function handleWebSocketClose(ws: ServerWebSocket<WsData>, data: WsData |
 
     if (DEBUG) {
         const room = docName !== 'unknown' ? roomManager.getRoom(docName) : null;
-        console.log(
-            `[YjsWebSocket] Client ${clientId} disconnected from ${docName} ` + `(${room?.conns.size ?? 0} remaining)`,
-        );
+        logger.debug('Client disconnected', { clientId, docName, remaining: room?.conns.size ?? 0 });
     }
 
     // Unregister from asset coordinator
@@ -465,22 +466,24 @@ export function createWebSocketRoutes() {
  */
 export function initialize(_httpServer?: unknown): void {
     if (initialized) {
-        console.warn('[YjsWebSocket] Already initialized');
+        logger.warn('Already initialized');
         return;
     }
 
     initialized = true;
     const port = parseInt(process.env.ELYSIA_PORT || process.env.PORT || '3002', 10);
-    console.log(`[YjsWebSocket] WebSocket routes ready on port ${port}`);
-    console.log(`[YjsWebSocket] Connect to: ws://localhost:${port}/yjs/project-<uuid>?token=<jwt>`);
-    console.log('[YjsWebSocket] Mode: stateless-relay with heartbeat');
+    logger.info('WebSocket routes ready', {
+        port,
+        endpoint: `ws://localhost:${port}/yjs/project-<uuid>?token=<jwt>`,
+        mode: 'stateless-relay with heartbeat',
+    });
 }
 
 /**
  * Stop the WebSocket server
  */
 export function stop(): void {
-    console.log('[YjsWebSocket] Stopping server...');
+    logger.info('Stopping server');
 
     // Stop all heartbeats
     stopAllHeartbeats();
@@ -492,7 +495,7 @@ export function stop(): void {
     clientMetaMap.clear();
     initialized = false;
 
-    console.log('[YjsWebSocket] Server stopped');
+    logger.info('Server stopped');
 }
 
 /**
