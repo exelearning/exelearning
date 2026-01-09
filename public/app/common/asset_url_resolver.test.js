@@ -731,4 +731,683 @@ describe('AssetUrlResolver', () => {
     // 'when jQuery is available' describe block's resolve tests. The getAttribute
     // interception for cached URLs is verified through the combined test flow.
   });
+
+  describe('MutationObserver iframe handling', () => {
+    // Note: These tests verify the logic using divs with data attributes since
+    // happy-dom doesn't support asset:// or blob:// URL schemes for iframes.
+    // The actual iframe handling is tested via E2E tests.
+
+    let mockAssetManager;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Create mock AssetManager with HTML resolution methods
+      mockAssetManager = {
+        resolveAssetURL: vi.fn(),
+        resolveHtmlWithAssets: vi.fn(),
+        getAssetMetadata: vi.fn(),
+        _isHtmlAsset: vi.fn(),
+      };
+
+      // Setup jQuery mock
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+
+      // Set up eXeLearning with AssetManager
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      // Clear and reload module
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+    });
+
+    afterEach(() => {
+      window.eXeLearningAssetResolver?.disconnect();
+      delete window.eXeLearningAssetResolver;
+      delete window.jQuery;
+      delete window.eXeLearning;
+      vi.restoreAllMocks();
+    });
+
+    it('MutationObserver handles img elements with asset:// src', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/img-resolved');
+
+      // Create an img with asset:// URL - MutationObserver should process it
+      const img = document.createElement('img');
+      img.setAttribute('src', 'asset://img-uuid-123/photo.jpg');
+      document.body.appendChild(img);
+
+      // Wait for MutationObserver to process
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Should store original asset URL
+      expect(img.getAttribute('data-asset-url')).toBe('asset://img-uuid-123/photo.jpg');
+
+      document.body.removeChild(img);
+    });
+
+    it('MutationObserver handles origin attribute with asset:// URL', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/origin-resolved');
+
+      const img = document.createElement('img');
+      img.setAttribute('origin', 'asset://origin-uuid/fullsize.jpg');
+      document.body.appendChild(img);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Should store original asset origin URL
+      expect(img.getAttribute('data-asset-origin')).toBe('asset://origin-uuid/fullsize.jpg');
+
+      document.body.removeChild(img);
+    });
+
+    it('MutationObserver handles anchor elements with asset:// href', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/anchor-resolved');
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://anchor-uuid/image.jpg');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Should store original asset URL
+      expect(anchor.getAttribute('data-asset-url')).toBe('asset://anchor-uuid/image.jpg');
+
+      document.body.removeChild(anchor);
+    });
+
+    it('MutationObserver processes nested elements', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/nested');
+
+      const container = document.createElement('div');
+      container.innerHTML = '<img src="asset://nested-uuid/nested.jpg">';
+      document.body.appendChild(container);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const img = container.querySelector('img');
+      expect(img.getAttribute('data-asset-url')).toBe('asset://nested-uuid/nested.jpg');
+
+      document.body.removeChild(container);
+    });
+  });
+
+  describe('postMessage listener for exe-resolve-html-link', () => {
+    let mockAssetManager;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Create mock AssetManager
+      mockAssetManager = {
+        resolveAssetURL: vi.fn(),
+        resolveHtmlWithAssets: vi.fn(),
+        findAssetByRelativePath: vi.fn(),
+      };
+
+      // Setup jQuery mock
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn(function() { return this; }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+
+      // Set up eXeLearning with AssetManager
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+    });
+
+    afterEach(() => {
+      window.eXeLearningAssetResolver?.disconnect();
+      delete window.eXeLearningAssetResolver;
+      delete window.jQuery;
+      delete window.eXeLearning;
+      vi.restoreAllMocks();
+    });
+
+    it('ignores messages with wrong type', async () => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'some-other-type', href: 'page2.html' }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(mockAssetManager.findAssetByRelativePath).not.toHaveBeenCalled();
+    });
+
+    it('handles exe-resolve-html-link message', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue({ id: 'linked-asset-uuid' });
+      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue('blob:http://localhost/linked-resolved');
+
+      // Create an iframe that would match the source
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('data-asset-src', 'asset://original-uuid/index.html');
+      document.body.appendChild(iframe);
+
+      // We can't easily mock event.source === iframe.contentWindow in jsdom
+      // So we test that the handler processes the message correctly
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './page2.html',
+          baseFolder: 'aaa_web',
+          assetId: 'original-uuid'
+        }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockAssetManager.findAssetByRelativePath).toHaveBeenCalledWith('aaa_web', './page2.html');
+      expect(mockAssetManager.resolveHtmlWithAssets).toHaveBeenCalledWith('linked-asset-uuid');
+
+      document.body.removeChild(iframe);
+    });
+
+    it('logs warning when assetManager is not available', async () => {
+      window.eXeLearning = null;
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './page2.html',
+          baseFolder: 'folder'
+        }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[AssetResolver] Cannot resolve HTML link - assetManager not available'
+      );
+    });
+
+    it('logs warning when linked asset is not found', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue(null);
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './nonexistent.html',
+          baseFolder: 'folder'
+        }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[AssetResolver] Could not find linked asset:',
+        './nonexistent.html',
+        'from baseFolder:',
+        'folder'
+      );
+    });
+
+    it('logs warning when HTML resolution fails', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue({ id: 'found-uuid' });
+      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue(null);
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './page.html',
+          baseFolder: 'folder'
+        }
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[AssetResolver] Failed to resolve HTML asset:',
+        'found-uuid'
+      );
+    });
+
+    it('updates iframe src when source matches', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue({ id: 'page2-uuid' });
+      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue('blob:http://localhost/page2-resolved');
+
+      // Create iframe with data-asset-src
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('data-asset-src', 'asset://original/index.html');
+      iframe.src = 'blob:http://localhost/original';
+      document.body.appendChild(iframe);
+
+      // Create a mock contentWindow to simulate matching
+      const mockContentWindow = {};
+      Object.defineProperty(iframe, 'contentWindow', {
+        value: mockContentWindow,
+        writable: false,
+        configurable: true
+      });
+
+      // Dispatch message with source matching the iframe
+      const messageEvent = new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './page2.html',
+          baseFolder: 'folder'
+        },
+        source: mockContentWindow
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // The iframe src should be updated
+      expect(iframe.src).toBe('blob:http://localhost/page2-resolved');
+
+      document.body.removeChild(iframe);
+    });
+
+    it('also checks iframes with data-mce-html attribute', async () => {
+      mockAssetManager.findAssetByRelativePath.mockReturnValue({ id: 'mce-uuid' });
+      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue('blob:http://localhost/mce-resolved');
+
+      // Create iframe with data-mce-html attribute (set by TinyMCE)
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('data-mce-html', 'true');
+      iframe.src = 'blob:http://localhost/mce-original';
+      document.body.appendChild(iframe);
+
+      const mockContentWindow = {};
+      Object.defineProperty(iframe, 'contentWindow', {
+        value: mockContentWindow,
+        writable: false,
+        configurable: true
+      });
+
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'exe-resolve-html-link',
+          href: './linked.html',
+          baseFolder: 'base'
+        },
+        source: mockContentWindow
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(iframe.src).toBe('blob:http://localhost/mce-resolved');
+
+      document.body.removeChild(iframe);
+    });
+  });
+
+  describe('vanilla JS src property interception', () => {
+    // Note: happy-dom has its own src property implementations that override our
+    // custom property descriptors. The actual vanilla JS interception is tested via E2E.
+    // These tests verify that the module loads correctly and the resolver is available.
+
+    let mockAssetManager;
+
+    beforeEach(async () => {
+      vi.resetModules();
+      vi.clearAllMocks();
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      mockAssetManager = {
+        resolveAssetURL: vi.fn(),
+      };
+
+      window.jQuery = function() {
+        return { each: vi.fn(), length: 1 };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: mockAssetManager,
+            },
+          },
+        },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+    });
+
+    afterEach(() => {
+      window.eXeLearningAssetResolver?.disconnect();
+      delete window.eXeLearningAssetResolver;
+      delete window.jQuery;
+      delete window.eXeLearning;
+      vi.restoreAllMocks();
+    });
+
+    it('exposes resolve function for programmatic resolution', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/resolved');
+
+      const result = await window.eXeLearningAssetResolver.resolve('asset://test-uuid/file.jpg');
+
+      expect(result).toBe('blob:http://localhost/resolved');
+      expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://test-uuid/file.jpg');
+    });
+
+    it('img.src with non-asset URL is not intercepted', () => {
+      const img = document.createElement('img');
+      img.src = 'https://example.com/photo.jpg';
+
+      expect(img.src).toBe('https://example.com/photo.jpg');
+      expect(img.getAttribute('data-asset-url')).toBeNull();
+    });
+
+    it('video.src with non-asset URL is not intercepted', () => {
+      const video = document.createElement('video');
+      video.src = 'https://example.com/video.mp4';
+
+      expect(video.src).toBe('https://example.com/video.mp4');
+      expect(video.getAttribute('data-asset-url')).toBeNull();
+    });
+
+    it('audio.src with non-asset URL is not intercepted', () => {
+      const audio = document.createElement('audio');
+      audio.src = 'https://example.com/audio.mp3';
+
+      expect(audio.src).toBe('https://example.com/audio.mp3');
+      expect(audio.getAttribute('data-asset-url')).toBeNull();
+    });
+  });
+
+  describe('HTML asset link click interception', () => {
+    let resolver;
+    let originalAttrFn;
+    let originalPropFn;
+    let alertMock;
+
+    beforeEach(async () => {
+      vi.resetModules();
+
+      // Set up alert mock before loading module
+      window.alert = vi.fn();
+      alertMock = window.alert;
+
+      originalAttrFn = vi.fn(function() { return this; });
+      originalPropFn = vi.fn(function() { return this; });
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+
+      window.jQuery.fn = {
+        attr: originalAttrFn,
+        prop: originalPropFn,
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                resolveAssetURL: vi.fn(),
+              },
+            },
+          },
+        },
+      };
+
+      delete window.eXeLearningAssetResolver;
+      await import('./asset_url_resolver.js');
+      resolver = window.eXeLearningAssetResolver;
+    });
+
+    afterEach(() => {
+      delete window.alert;
+    });
+
+    it('blocks clicks on anchor elements with HTML asset URLs', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+      expect(alertMock.mock.calls[0][0]).toContain('HTML websites');
+
+      document.body.removeChild(link);
+    });
+
+    it('blocks clicks on anchor elements with .htm extension', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.htm');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on anchor elements with non-HTML asset URLs', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.pdf');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on anchor elements without data-asset-url', () => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/page.html';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('handles clicks on nested elements inside HTML asset links', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      const span = document.createElement('span');
+      span.textContent = 'Click me';
+      link.appendChild(span);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      span.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('ignores clicks on non-link elements', () => {
+      const div = document.createElement('div');
+      div.textContent = 'Not a link';
+      document.body.appendChild(div);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      div.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(div);
+    });
+
+    it('handles case insensitive HTML extension matching', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.HTML');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(alertMock).toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('allows clicks on links with external URLs even if they end in .html', () => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/page.html';
+      // No data-asset-url attribute - this is an external link
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(alertMock).not.toHaveBeenCalled();
+
+      document.body.removeChild(link);
+    });
+
+    it('uses translation function when available', async () => {
+      // Need to reload module with translation function
+      vi.resetModules();
+      delete window.eXeLearningAssetResolver;
+
+      const translatedMessage = 'Mensaje traducido de prueba';
+      window._ = vi.fn(() => translatedMessage);
+      window.alert = vi.fn();
+
+      window.jQuery = function(selector) {
+        return {
+          each: vi.fn((callback) => {
+            if (selector?.tagName) {
+              callback.call(selector, 0, selector);
+            }
+            return window.jQuery(selector);
+          }),
+          length: 1,
+        };
+      };
+      window.jQuery.fn = {
+        attr: vi.fn(function() { return this; }),
+        prop: vi.fn(function() { return this; }),
+      };
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: { resolveAssetURL: vi.fn() },
+            },
+          },
+        },
+      };
+
+      await import('./asset_url_resolver.js');
+
+      const link = document.createElement('a');
+      link.href = 'blob:http://localhost/test';
+      link.setAttribute('data-asset-url', 'asset://abc123.html');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(window.alert).toHaveBeenCalledWith(translatedMessage);
+
+      document.body.removeChild(link);
+      delete window._;
+    });
+  });
 });
