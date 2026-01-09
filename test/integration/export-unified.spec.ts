@@ -327,21 +327,6 @@ describe('Unified Export System Integration', () => {
             expect(zipFile['libs/SCOFunctions.js']).toBeDefined();
         });
 
-        it('should include XSD schema files', async () => {
-            const exporter = new Scorm12Exporter(document, resources, assets, zip);
-            const result = await exporter.export();
-
-            const zipFile = unzipSync(result.data!);
-            const files = Object.keys(zipFile);
-
-            // Check that some XSD files are included
-            const xsdFiles = files.filter(f => f.endsWith('.xsd'));
-            expect(xsdFiles.length).toBeGreaterThan(0);
-
-            // Should have core SCORM 1.2 schemas
-            expect(files.some(f => f.includes('imscp'))).toBe(true);
-        });
-
         it('should include imslrm.xml (LOM metadata)', async () => {
             const exporter = new Scorm12Exporter(document, resources, assets, zip);
             const result = await exporter.export();
@@ -401,18 +386,6 @@ describe('Unified Export System Integration', () => {
 
             expect(zipFile['libs/SCORM_API_wrapper.js']).toBeDefined();
             expect(zipFile['libs/SCOFunctions.js']).toBeDefined();
-        });
-
-        it('should include XSD schema files for SCORM 2004', async () => {
-            const exporter = new Scorm2004Exporter(document, resources, assets, zip);
-            const result = await exporter.export();
-
-            const zipFile = unzipSync(result.data!);
-            const files = Object.keys(zipFile);
-
-            // Check that XSD files are included
-            const xsdFiles = files.filter(f => f.endsWith('.xsd'));
-            expect(xsdFiles.length).toBeGreaterThan(0);
         });
 
         it('should have correct SCORM 2004 manifest structure', async () => {

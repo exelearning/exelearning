@@ -82,21 +82,6 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
-
-    async fetchScormSchemas(_version: '1.2' | '2004'): Promise<Map<string, Buffer>> {
-        return new Map();
-    }
-
-    async fetchImsSchemas(): Promise<Map<string, Buffer>> {
-        const files = new Map<string, Buffer>();
-        files.set('imscp_v1p1.xsd', Buffer.from('<!-- IMS CP schema -->'));
-        files.set('imsmd_rootv1p2p1.xsd', Buffer.from('<!-- IMS MD schema -->'));
-        files.set('lom.xsd', Buffer.from('<!-- LOM schema -->'));
-        files.set('lomCustom.xsd', Buffer.from('<!-- LOM Custom schema -->'));
-        files.set('ims_xml.xsd', Buffer.from('<!-- IMS XML schema -->'));
-        files.set('common/dataTypes.xsd', Buffer.from('<!-- Common data types -->'));
-        return files;
-    }
 }
 
 // Mock asset provider
@@ -415,7 +400,7 @@ describe('ImsExporter', () => {
         });
     });
 
-    describe('ODE XML and Schemas', () => {
+    describe('ODE XML', () => {
         it('should include content.xml in IMS package with DOCTYPE', async () => {
             await exporter.export();
 
@@ -432,39 +417,12 @@ describe('ImsExporter', () => {
             expect(zip.files.has('content.dtd')).toBe(true);
         });
 
-        it('should include IMS schema XSD files', async () => {
-            await exporter.export();
-
-            // Root level XSD files
-            expect(zip.files.has('imscp_v1p1.xsd')).toBe(true);
-            expect(zip.files.has('imsmd_rootv1p2p1.xsd')).toBe(true);
-            expect(zip.files.has('lom.xsd')).toBe(true);
-            expect(zip.files.has('lomCustom.xsd')).toBe(true);
-            expect(zip.files.has('ims_xml.xsd')).toBe(true);
-            // Subdirectory files
-            expect(zip.files.has('common/dataTypes.xsd')).toBe(true);
-        });
-
-        it('should include XSD files in manifest COMMON_FILES', async () => {
+        it('should include content.xml and content.dtd in manifest COMMON_FILES', async () => {
             await exporter.export();
 
             const manifest = zip.files.get('imsmanifest.xml') as string;
-            expect(manifest).toContain('<file href="imscp_v1p1.xsd"/>');
             expect(manifest).toContain('<file href="content.xml"/>');
             expect(manifest).toContain('<file href="content.dtd"/>');
-        });
-
-        it('should handle schema fetch failure gracefully', async () => {
-            resources.fetchImsSchemas = async () => {
-                throw new Error('Schema not found');
-            };
-
-            const result = await exporter.export();
-
-            // Should succeed without schemas
-            expect(result.success).toBe(true);
-            // But should still have content.xml
-            expect(zip.files.has('content.xml')).toBe(true);
         });
     });
 });

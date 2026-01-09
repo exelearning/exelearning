@@ -13,7 +13,6 @@ interface MockResourceFetcherInterface {
     fetchScormFiles(): Promise<Map<string, Blob>>;
     fetchLibraryFiles(paths: string[]): Promise<Map<string, Blob>>;
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
-    fetchSchemas(format: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
 }
@@ -34,7 +33,6 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
     private scormFiles: Map<string, Blob> = new Map();
     private libraryFiles: Map<string, Blob> = new Map();
     private libraryDirectories: Map<string, Map<string, Blob>> = new Map();
-    private schemas: Map<string, Map<string, Blob>> = new Map();
     private exeLogo: Blob | null = null;
     private contentCss: Map<string, Blob> = new Map();
 
@@ -67,10 +65,6 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
         this.libraryDirectories.set(name, files);
     }
 
-    setSchemas(format: string, files: Map<string, Blob>): void {
-        this.schemas.set(format, files);
-    }
-
     setContentCss(files: Map<string, Blob>): void {
         this.contentCss = files;
     }
@@ -98,10 +92,6 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
 
     async fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>> {
         return this.libraryDirectories.get(libraryName) || new Map();
-    }
-
-    async fetchSchemas(format: string): Promise<Map<string, Blob>> {
-        return this.schemas.get(format) || new Map();
     }
 
     async fetchExeLogo(): Promise<Blob | null> {
@@ -272,38 +262,6 @@ describe('BrowserResourceProvider', () => {
         });
     });
 
-    describe('fetchScormSchemas', () => {
-        it('should return SCORM 1.2 schemas', async () => {
-            const schemas = new Map<string, Blob>();
-            schemas.set('imscp_rootv1p1p2.xsd', createMockBlob('<?xml?>'));
-            schemas.set('adlcp_rootv1p2.xsd', createMockBlob('<?xml?>'));
-            mockFetcher.setSchemas('scorm12', schemas);
-
-            const result = await provider.fetchScormSchemas('1.2');
-
-            expect(result.has('imscp_rootv1p1p2.xsd')).toBe(true);
-            expect(result.has('adlcp_rootv1p2.xsd')).toBe(true);
-        });
-
-        it('should return SCORM 2004 schemas', async () => {
-            const schemas = new Map<string, Blob>();
-            schemas.set('imscp_v1p1.xsd', createMockBlob('<?xml?>'));
-            schemas.set('adlcp_v1p3.xsd', createMockBlob('<?xml?>'));
-            mockFetcher.setSchemas('scorm2004', schemas);
-
-            const result = await provider.fetchScormSchemas('2004');
-
-            expect(result.has('imscp_v1p1.xsd')).toBe(true);
-            expect(result.has('adlcp_v1p3.xsd')).toBe(true);
-        });
-
-        it('should return empty map for missing schemas', async () => {
-            const result = await provider.fetchScormSchemas('1.2');
-
-            expect(result.size).toBe(0);
-        });
-    });
-
     describe('fetchLibraryFiles', () => {
         it('should return requested library files', async () => {
             const libFiles = new Map<string, Blob>();
@@ -396,77 +354,6 @@ describe('BrowserResourceProvider', () => {
 
             expect(result.has('lib.js')).toBe(true);
             expect(result.has('lib.css')).toBe(true);
-        });
-    });
-
-    describe('fetchSchemas', () => {
-        it('should return schema files for format', async () => {
-            const schemas = new Map<string, Blob>();
-            schemas.set('imscp.xsd', createMockBlob('<?xml?>'));
-            schemas.set('adlcp.xsd', createMockBlob('<?xml?>'));
-            mockFetcher.setSchemas('scorm12', schemas);
-
-            const result = await provider.fetchSchemas('scorm12');
-
-            expect(result.has('imscp.xsd')).toBe(true);
-            expect(result.has('adlcp.xsd')).toBe(true);
-        });
-    });
-
-    describe('fetchImsSchemas', () => {
-        it('should return IMS CP schema files', async () => {
-            const schemas = new Map<string, Blob>();
-            schemas.set('imscp_v1p1.xsd', createMockBlob('<!-- IMS CP schema -->'));
-            schemas.set('imsmd_rootv1p2p1.xsd', createMockBlob('<!-- IMS MD schema -->'));
-            schemas.set('lom.xsd', createMockBlob('<!-- LOM schema -->'));
-            schemas.set('lomCustom.xsd', createMockBlob('<!-- LOM Custom schema -->'));
-            schemas.set('ims_xml.xsd', createMockBlob('<!-- IMS XML schema -->'));
-            mockFetcher.setSchemas('ims', schemas);
-
-            const result = await provider.fetchImsSchemas();
-
-            expect(result).toBeInstanceOf(Map);
-            expect(result.has('imscp_v1p1.xsd')).toBe(true);
-            expect(result.has('imsmd_rootv1p2p1.xsd')).toBe(true);
-            expect(result.has('lom.xsd')).toBe(true);
-            expect(result.has('lomCustom.xsd')).toBe(true);
-            expect(result.has('ims_xml.xsd')).toBe(true);
-        });
-
-        it('should return files from subdirectories', async () => {
-            const schemas = new Map<string, Blob>();
-            schemas.set('common/dataTypes.xsd', createMockBlob('<!-- data types -->'));
-            schemas.set('extend/strict.xsd', createMockBlob('<!-- strict -->'));
-            schemas.set('unique/strict.xsd', createMockBlob('<!-- unique strict -->'));
-            schemas.set('vocab/custom.xsd', createMockBlob('<!-- vocab custom -->'));
-            mockFetcher.setSchemas('ims', schemas);
-
-            const result = await provider.fetchImsSchemas();
-
-            expect(result.has('common/dataTypes.xsd')).toBe(true);
-            expect(result.has('extend/strict.xsd')).toBe(true);
-            expect(result.has('unique/strict.xsd')).toBe(true);
-            expect(result.has('vocab/custom.xsd')).toBe(true);
-        });
-
-        it('should convert Blob content to Uint8Array', async () => {
-            const xsdContent = '<?xml version="1.0"?><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"/>';
-            const schemas = new Map<string, Blob>();
-            schemas.set('test.xsd', createMockBlob(xsdContent));
-            mockFetcher.setSchemas('ims', schemas);
-
-            const result = await provider.fetchImsSchemas();
-            const buffer = result.get('test.xsd');
-
-            expect(buffer).toBeInstanceOf(Uint8Array);
-            expect(new TextDecoder().decode(buffer!)).toBe(xsdContent);
-        });
-
-        it('should return empty map when no schemas available', async () => {
-            const result = await provider.fetchImsSchemas();
-
-            expect(result).toBeInstanceOf(Map);
-            expect(result.size).toBe(0);
         });
     });
 

@@ -135,10 +135,7 @@ export class ImsManifestGenerator {
     generateManifestOpen(): string {
         return `<manifest identifier="eXe-MANIFEST-${this.escapeXml(this.projectId)}"
   xmlns="${IMS_NAMESPACES.imscp}"
-  xmlns:imsmd="${IMS_NAMESPACES.imsmd}"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="${IMS_NAMESPACES.imscp} imscp_v1p1.xsd
-    ${IMS_NAMESPACES.imsmd} imsmd_v1p2p2.xsd">
+  xmlns:imsmd="${IMS_NAMESPACES.imsmd}">
 `;
     }
 

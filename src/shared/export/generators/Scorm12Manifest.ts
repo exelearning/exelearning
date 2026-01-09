@@ -141,11 +141,7 @@ export class Scorm12ManifestGenerator {
         return `<manifest identifier="eXe-MANIFEST-${this.escapeXml(this.projectId)}"
   xmlns="${SCORM_12_NAMESPACES.imscp}"
   xmlns:adlcp="${SCORM_12_NAMESPACES.adlcp}"
-  xmlns:imsmd="${SCORM_12_NAMESPACES.imsmd}"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="${SCORM_12_NAMESPACES.imscp} imscp_rootv1p1p2.xsd
-    ${SCORM_12_NAMESPACES.imsmd} imsmd_v1p2p2.xsd
-    ${SCORM_12_NAMESPACES.adlcp} adlcp_rootv1p2.xsd">
+  xmlns:imsmd="${SCORM_12_NAMESPACES.imsmd}">
 `;
     }
 

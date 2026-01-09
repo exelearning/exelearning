@@ -7,7 +7,6 @@
  * - imsmanifest.xml (IMS CP manifest with LOM metadata)
  * - content.xml (ODE format for re-editing)
  * - content.dtd (DTD for XML validation)
- * - *.xsd (IMS schema files for validation)
  * - index.html (first page)
  * - html/*.html (other pages)
  * - libs/ (JavaScript libraries)
@@ -84,7 +83,7 @@ export class ImsExporter extends Html5Exporter {
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                let html = this.generateImsPageHtml(page, pages, meta, isIndex, themeRootFiles);
+                let html = this.generateImsPageHtml(page, pages, meta, isIndex, themeRootFiles, i);
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
@@ -112,12 +111,8 @@ export class ImsExporter extends Html5Exporter {
                 };
             }
 
-            // 1b. Add search_index.js if search box is enabled
-            if (meta.addSearchBox) {
-                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
-                this.zip.addFile('search_index.js', searchIndexContent);
-                commonFiles.push('search_index.js');
-            }
+            // Note: IMS exports do NOT include search_index.js
+            // The LMS handles navigation, so client-side search is not needed
 
             // 2. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -176,18 +171,7 @@ export class ImsExporter extends Html5Exporter {
             // 6. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
-            // 6b. Fetch IMS schema XSD files
-            try {
-                const schemaFiles = await this.resources.fetchImsSchemas();
-                for (const [filePath, content] of schemaFiles) {
-                    this.zip.addFile(filePath, content);
-                    commonFiles.push(filePath);
-                }
-            } catch {
-                // Schema files are optional for package to work
-            }
-
-            // 6c. Add content.xml (ODE format) and content.dtd for re-editing
+            // 6b. Add content.xml (ODE format) and content.dtd for re-editing
             const contentXml = generateOdeXml(meta, pages);
             this.zip.addFile('content.xml', contentXml);
             this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
@@ -233,6 +217,7 @@ export class ImsExporter extends Html5Exporter {
      * @param meta - Project metadata
      * @param isIndex - Whether this is the index page
      * @param themeFiles - List of root-level theme CSS/JS files
+     * @param pageIndex - Index of the current page (for page counter)
      */
     generateImsPageHtml(
         page: ExportPage,
@@ -240,6 +225,7 @@ export class ImsExporter extends Html5Exporter {
         meta: ExportMetadata,
         isIndex: boolean,
         themeFiles?: string[],
+        pageIndex?: number,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -258,9 +244,17 @@ export class ImsExporter extends Html5Exporter {
             license: meta.license || 'CC-BY-SA',
             description: meta.description || '',
             licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
-            // Export options
-            addSearchBox: meta.addSearchBox ?? false,
-            bodyClass: 'exe-web-site exe-ims',
+            // Export options - IMS specific overrides
+            // IMS exports don't use client-side search - LMS handles navigation
+            addSearchBox: false,
+            // Force page counter for IMS
+            addPagination: true,
+            totalPages: allPages.length,
+            currentPageIndex: pageIndex ?? 0,
+            bodyClass: 'exe-export exe-web-site exe-ims',
+            // Hide navigation elements - LMS handles navigation in IMS
+            hideNavigation: true,
+            hideNavButtons: true,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],
         });

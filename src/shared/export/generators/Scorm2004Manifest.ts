@@ -140,13 +140,7 @@ export class Scorm2004ManifestGenerator {
   xmlns:adlcp="${SCORM_2004_NAMESPACES.adlcp}"
   xmlns:adlseq="${SCORM_2004_NAMESPACES.adlseq}"
   xmlns:adlnav="${SCORM_2004_NAMESPACES.adlnav}"
-  xmlns:imsss="${SCORM_2004_NAMESPACES.imsss}"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="${SCORM_2004_NAMESPACES.imscp} imscp_v1p1.xsd
-    ${SCORM_2004_NAMESPACES.adlcp} adlcp_v1p3.xsd
-    ${SCORM_2004_NAMESPACES.adlseq} adlseq_v1p3.xsd
-    ${SCORM_2004_NAMESPACES.adlnav} adlnav_v1p3.xsd
-    ${SCORM_2004_NAMESPACES.imsss} imsss_v1p0.xsd">
+  xmlns:imsss="${SCORM_2004_NAMESPACES.imsss}">
 `;
     }
 

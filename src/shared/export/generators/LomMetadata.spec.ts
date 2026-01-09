@@ -31,7 +31,6 @@ describe('LomMetadataGenerator', () => {
             const xml = generator.generate();
 
             expect(xml).toContain('xmlns="http://ltsc.ieee.org/xsd/LOM"');
-            expect(xml).toContain('xsi:schemaLocation="http://ltsc.ieee.org/xsd/LOM lomCustom.xsd"');
         });
 
         it('should close with </lom>', () => {

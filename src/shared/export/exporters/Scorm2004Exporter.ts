@@ -91,7 +91,7 @@ export class Scorm2004Exporter extends Html5Exporter {
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                let html = this.generateScorm2004PageHtml(page, pages, meta, isIndex, themeRootFiles);
+                let html = this.generateScorm2004PageHtml(page, pages, meta, isIndex, themeRootFiles, i);
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
@@ -119,12 +119,8 @@ export class Scorm2004Exporter extends Html5Exporter {
                 };
             }
 
-            // 1b. Add search_index.js if search box is enabled
-            if (meta.addSearchBox) {
-                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
-                this.zip.addFile('search_index.js', searchIndexContent);
-                commonFiles.push('search_index.js');
-            }
+            // Note: SCORM exports do NOT include search_index.js
+            // The LMS handles navigation, so client-side search is not needed
 
             // 2. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -180,18 +176,7 @@ export class Scorm2004Exporter extends Html5Exporter {
                 commonFiles.push('libs/SCORM_API_wrapper.js', 'libs/SCOFunctions.js');
             }
 
-            // 5b. Fetch SCORM 2004 schema XSD files
-            try {
-                const schemaFiles = await this.resources.fetchScormSchemas('2004');
-                for (const [filePath, content] of schemaFiles) {
-                    this.zip.addFile(filePath, content);
-                    commonFiles.push(filePath);
-                }
-            } catch {
-                // Schema files are optional for package to work
-            }
-
-            // 5c. Copy content.xml and DTD (always include for re-editing capability)
+            // 5b. Copy content.xml and DTD (always include for re-editing capability)
             try {
                 const contentXml = await this.getContentXml();
                 if (contentXml) {
@@ -265,6 +250,7 @@ export class Scorm2004Exporter extends Html5Exporter {
      * @param meta - Project metadata
      * @param isIndex - Whether this is the index page
      * @param themeFiles - List of root-level theme CSS/JS files
+     * @param pageIndex - Index of the current page (for page counter)
      */
     generateScorm2004PageHtml(
         page: ExportPage,
@@ -272,6 +258,7 @@ export class Scorm2004Exporter extends Html5Exporter {
         meta: ExportMetadata,
         isIndex: boolean,
         themeFiles?: string[],
+        pageIndex?: number,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -290,15 +277,23 @@ export class Scorm2004Exporter extends Html5Exporter {
             license: meta.license || 'CC-BY-SA',
             description: meta.description || '',
             licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
-            // Export options
-            addSearchBox: meta.addSearchBox ?? false,
+            // Export options - SCORM specific overrides
+            // SCORM/IMS exports don't use client-side search - LMS handles navigation
+            addSearchBox: false,
+            // Force page counter for SCORM
+            addPagination: true,
+            totalPages: allPages.length,
+            currentPageIndex: pageIndex ?? 0,
             // SCORM 2004-specific options
             isScorm: true,
             scormVersion: '2004',
-            bodyClass: 'exe-scorm exe-scorm2004',
+            bodyClass: 'exe-export exe-scorm exe-scorm2004',
             extraHeadScripts: this.getScorm2004HeadScripts(basePath),
             onLoadScript: 'loadPage()',
             onUnloadScript: 'unloadPage()',
+            // Hide navigation elements - LMS handles navigation in SCORM
+            hideNavigation: true,
+            hideNavButtons: true,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],
         });

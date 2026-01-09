@@ -685,63 +685,6 @@ class ResourceFetcher {
   }
 
   // =========================================================================
-  // Schema Resources
-  // =========================================================================
-
-  /**
-   * Fetch XSD schema files for a specific format
-   * @param {string} format - 'scorm12', 'scorm2004', 'ims', or 'epub3'
-   * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
-   */
-  async fetchSchemas(format) {
-    const cacheKey = `schemas:${format}`;
-    if (this.cache.has(cacheKey)) {
-      Logger.log(`[ResourceFetcher] Schemas for '${format}' loaded from cache`);
-      return this.cache.get(cacheKey);
-    }
-
-    Logger.log(`[ResourceFetcher] Fetching schemas for '${format}' from server...`);
-
-    try {
-      const response = await fetch(`${this.apiBase}/schemas/${format}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch schemas list: ${response.status}`);
-      }
-
-      const fileList = await response.json();
-      const schemaFiles = new Map();
-
-      // Fetch all files in parallel
-      const fetchPromises = fileList.map(async file => {
-        try {
-          const fileResponse = await fetch(file.url);
-          if (fileResponse.ok) {
-            const blob = await fileResponse.blob();
-            return { path: file.path, blob };
-          }
-        } catch (e) {
-          console.warn(`[ResourceFetcher] Error fetching schema file ${file.url}:`, e);
-        }
-        return null;
-      });
-
-      const results = await Promise.all(fetchPromises);
-      for (const result of results) {
-        if (result) {
-          schemaFiles.set(result.path, result.blob);
-        }
-      }
-
-      this.cache.set(cacheKey, schemaFiles);
-      Logger.log(`[ResourceFetcher] Schemas for '${format}' loaded (${schemaFiles.size} files)`);
-      return schemaFiles;
-    } catch (e) {
-      console.error(`[ResourceFetcher] Failed to fetch schemas for '${format}':`, e);
-      return new Map();
-    }
-  }
-
-  // =========================================================================
   // Dynamic Library Resources
   // =========================================================================
 
