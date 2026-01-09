@@ -1824,6 +1824,144 @@ describe('IdevicesEngine', () => {
 
             expect(style.getAttribute('status')).toBe('edition');
         });
+
+        describe('CSS URL rewriting', () => {
+            it('rewrites relative URLs without quotes', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue('.icon { background: url(icon.svg); }');
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe('.icon { background: url(http://localhost/export/icon.svg); }');
+            });
+
+            it('rewrites relative URLs with single quotes', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue(".icon { background: url('icon.svg'); }");
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe(".icon { background: url('http://localhost/export/icon.svg'); }");
+            });
+
+            it('rewrites relative URLs with double quotes', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue('.icon { background: url("icon.svg"); }');
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe('.icon { background: url("http://localhost/export/icon.svg"); }');
+            });
+
+            it('rewrites paths with subdirectories', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue('.icon { background: url(images/icons/icon.svg); }');
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe('.icon { background: url(http://localhost/export/images/icons/icon.svg); }');
+            });
+
+            it('does not rewrite absolute HTTP URLs', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                const cssWithHttp = '.icon { background: url(http://example.com/icon.svg); }';
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue(cssWithHttp);
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe(cssWithHttp);
+            });
+
+            it('does not rewrite absolute HTTPS URLs', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                const cssWithHttps = '.icon { background: url(https://example.com/icon.svg); }';
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue(cssWithHttps);
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe(cssWithHttps);
+            });
+
+            it('does not rewrite data URLs', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                const cssWithDataUrl = '.icon { background: url(data:image/svg+xml;base64,PHN2Zz4=); }';
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue(cssWithDataUrl);
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe(cssWithDataUrl);
+            });
+
+            it('does not rewrite blob URLs', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                const cssWithBlobUrl = '.icon { background: url(blob:http://localhost/abc-123); }';
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue(cssWithBlobUrl);
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe(cssWithBlobUrl);
+            });
+
+            it('does not rewrite root-relative URLs (starting with /)', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                // This is the key test case - URLs rewritten by server to API endpoints start with /
+                const cssWithRootRelative = '.icon { background: url(/api/idevices/download-file-resources?resource=icon.svg); }';
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue(cssWithRootRelative);
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                // Should NOT be rewritten - URL already has server path
+                expect(style.innerHTML).toBe(cssWithRootRelative);
+            });
+
+            it('does not rewrite root-relative URLs with quotes', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                const cssWithQuotedRootRelative = ".icon { background: url('/api/idevices/resource.svg'); }";
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue(cssWithQuotedRootRelative);
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe(cssWithQuotedRootRelative);
+            });
+
+            it('handles multiple URLs in CSS', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                const cssWithMultipleUrls = `
+                    .icon1 { background: url(icon1.svg); }
+                    .icon2 { background: url('icon2.png'); }
+                    .icon3 { background: url("icon3.gif"); }
+                    .external { background: url(https://cdn.example.com/external.png); }
+                    .api { background: url(/api/resource); }
+                `;
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue(cssWithMultipleUrls);
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toContain('url(http://localhost/export/icon1.svg)');
+                expect(style.innerHTML).toContain("url('http://localhost/export/icon2.png')");
+                expect(style.innerHTML).toContain('url("http://localhost/export/icon3.gif")');
+                expect(style.innerHTML).toContain('url(https://cdn.example.com/external.png)');
+                expect(style.innerHTML).toContain('url(/api/resource)');
+            });
+
+            it('uses pathEdition for URL rewriting when status is edition', async () => {
+                const idevice = { id: 'text', pathEdition: 'http://localhost/edition/', pathExport: 'http://localhost/export/' };
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue('.icon { background: url(icon.svg); }');
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'edition');
+
+                expect(style.innerHTML).toBe('.icon { background: url(http://localhost/edition/icon.svg); }');
+            });
+
+            it('handles URLs with leading spaces', async () => {
+                const idevice = { id: 'text', pathEdition: '/path/edition/', pathExport: 'http://localhost/export/' };
+                eXeLearning.app.api.func.getText = vi.fn().mockResolvedValue('.icon { background: url(  icon.svg); }');
+
+                const style = await engine.loadStyleByInsertingIt('/path/to/style.css', idevice, 'export');
+
+                expect(style.innerHTML).toBe('.icon { background: url(http://localhost/export/icon.svg); }');
+            });
+        });
     });
 
     describe('renderRemoteIdevice', () => {

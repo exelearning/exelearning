@@ -532,6 +532,99 @@ ws.on('open', async () => {
 });
 ```
 
+## 13. Theme Architecture
+
+### 13.1 Theme Types
+
+eXeLearning supports three types of themes:
+
+| Type | Source | Storage | Served By |
+|------|--------|---------|-----------|
+| **Base** | Built-in with eXeLearning | Server `/perm/themes/base/` | Server |
+| **Site** | Admin-installed for all users | Server `/perm/themes/site/` | Server |
+| **User** | Imported by user or from .elpx | Client IndexedDB + Yjs | **Never server** |
+
+### 13.2 Server Themes (Base & Site)
+
+**Base themes** are included with eXeLearning and synchronized at startup:
+- Located in `/public/files/perm/themes/base/`
+- Cannot be modified by users
+- Served directly by the server
+
+**Site themes** are installed by administrators for all users:
+- Located in `/perm/themes/site/`
+- Admin can activate/deactivate themes
+- Admin can set a default theme for new projects
+- Served directly by the server
+
+### 13.3 User Themes (Client-Side Only)
+
+> **Important**: User themes are NEVER stored or served by the server.
+
+User themes are stored entirely on the client side:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     USER THEME STORAGE                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  IndexedDB (per-user isolation)                                     │
+│  └── user-themes store: key = "userId:themeName"                    │
+│      └── Each user's themes isolated by userId prefix               │
+│      └── User "alice" cannot see user "bob"'s themes                │
+│                                                                     │
+│  Yjs themeFiles (project document)                                  │
+│  └── Currently selected user theme (for collaboration/export)       │
+│                                                                     │
+│  .elpx export                                                       │
+│  └── Embedded theme files (for portability)                         │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.4 User Theme Flow
+
+```
+1. IMPORT THEME
+   User uploads ZIP → Stored in IndexedDB (local storage)
+
+2. SELECT THEME
+   User selects theme → Copied to Yjs themeFiles
+   (enables collaboration and export)
+
+3. CHANGE TO ANOTHER THEME
+   User selects different theme → Removed from Yjs
+   (but remains in IndexedDB for future use)
+
+4. EXPORT PROJECT (.elpx)
+   If user theme selected → Embedded in ZIP
+
+5. OPEN PROJECT WITH EMBEDDED THEME
+   Another user opens .elpx → Theme extracted to their IndexedDB
+   (if ONLINE_THEMES_INSTALL is enabled)
+```
+
+### 13.5 Admin Configuration
+
+```bash
+# Allow users to import/install styles
+ONLINE_THEMES_INSTALL=1    # 1 = enabled (default), 0 = disabled
+```
+
+When disabled (`ONLINE_THEMES_INSTALL=0`):
+- Users cannot import external themes via the interface
+- Users cannot open .elpx files with embedded themes
+
+### 13.6 Why User Themes Are Client-Side
+
+This design follows the same pattern as other user-specific data (like favorite iDevices):
+
+1. **Per-user storage**: Each user's themes are private to them
+2. **No server storage**: Themes don't consume server disk space
+3. **Collaboration via Yjs**: Selected theme is shared with collaborators in real-time
+4. **Portability**: Themes embedded in .elpx can be opened anywhere
+5. **Offline capability**: Themes work without server connectivity
+
 ---
 
 ## Further Reading
@@ -539,4 +632,5 @@ ws.on('open', async () => {
 - [Real-Time Collaboration](development/real-time.md) - WebSocket and Yjs details
 - [REST API](development/rest-api.md) - API endpoints
 - [Testing](development/testing.md) - Test patterns and coverage
+- [Creating Styles](development/styles.md) - How to create custom themes
 

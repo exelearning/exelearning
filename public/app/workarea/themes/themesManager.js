@@ -94,6 +94,74 @@ export default class ThemesManager {
     }
 
     /**
+     * Ensure user theme is copied to Yjs themeFiles for collaboration/export
+     * Only copies if the theme is not already in Yjs
+     * @param {string} themeId - Theme ID
+     * @param {Object} theme - Theme instance
+     * @private
+     */
+    async _ensureUserThemeInYjs(themeId, theme) {
+        const project = this.app.project;
+        if (!project?._yjsBridge) return;
+
+        const documentManager = project._yjsBridge.getDocumentManager();
+        if (!documentManager) return;
+
+        // Check if theme already exists in Yjs themeFiles
+        const themeFilesMap = documentManager.getThemeFiles();
+        if (themeFilesMap.has(themeId)) {
+            getLogger().log(`[ThemesManager] User theme '${themeId}' already in Yjs`);
+            return;
+        }
+
+        // Get theme files from ResourceCache (IndexedDB)
+        const resourceCache = project._yjsBridge.resourceCache;
+        if (!resourceCache) {
+            console.warn('[ThemesManager] ResourceCache not available for copying theme to Yjs');
+            return;
+        }
+
+        try {
+            // Get raw compressed data from IndexedDB
+            const rawTheme = await resourceCache.getUserThemeRaw(themeId);
+            if (!rawTheme) {
+                console.warn(`[ThemesManager] Theme '${themeId}' not found in IndexedDB`);
+                return;
+            }
+
+            // Convert compressed Uint8Array to base64 for Yjs storage
+            const base64Compressed = project._yjsBridge._uint8ArrayToBase64(rawTheme.compressedFiles);
+
+            // Store compressed theme in Yjs (single string, not Y.Map)
+            themeFilesMap.set(themeId, base64Compressed);
+            getLogger().log(`[ThemesManager] Copied user theme '${themeId}' to Yjs for collaboration`);
+        } catch (error) {
+            console.error(`[ThemesManager] Error copying theme '${themeId}' to Yjs:`, error);
+        }
+    }
+
+    /**
+     * Remove user theme from Yjs themeFiles (but keep in IndexedDB)
+     * Called when user selects a different theme.
+     * The theme remains in IndexedDB for the user to use in other projects.
+     * @param {string} themeId - Theme ID to remove from Yjs
+     * @private
+     */
+    async _removeUserThemeFromYjs(themeId) {
+        const project = this.app.project;
+        if (!project?._yjsBridge) return;
+
+        const documentManager = project._yjsBridge.getDocumentManager();
+        if (!documentManager) return;
+
+        const themeFilesMap = documentManager.getThemeFiles();
+        if (themeFilesMap.has(themeId)) {
+            themeFilesMap.delete(themeId);
+            getLogger().log(`[ThemesManager] Removed user theme '${themeId}' from Yjs (kept in IndexedDB)`);
+        }
+    }
+
+    /**
      * Select a theme
      * @param {string} id - Theme ID
      * @param {boolean} save - Save to Yjs
@@ -122,7 +190,21 @@ export default class ThemesManager {
                     await this.selected.select(true);
                 }
             }
-            // Save to Yjs instead of userPreferences
+
+            // If previous theme was a user theme and we're selecting a different theme,
+            // remove the previous theme from Yjs (but keep in IndexedDB)
+            if (save && prevThemeSelected && prevThemeSelected.id !== id) {
+                if (prevThemeSelected.isUserTheme || prevThemeSelected.type === 'user') {
+                    await this._removeUserThemeFromYjs(prevThemeSelected.id);
+                }
+            }
+
+            // If saving and this is a user theme, ensure it's in Yjs for collaboration
+            if (save && (themeSelected.isUserTheme || themeSelected.type === 'user')) {
+                await this._ensureUserThemeInYjs(themeSelected.id, themeSelected);
+            }
+
+            // Save to Yjs metadata
             if (save) {
                 this.saveThemeToYjs(id);
             }

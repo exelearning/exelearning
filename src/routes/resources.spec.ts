@@ -80,41 +80,14 @@ describe('Resources Routes', () => {
             expect(imgFiles.length).toBeGreaterThan(0);
         });
 
-        it('should check user themes first', async () => {
+        // Note: User themes are stored client-side in IndexedDB, not on server
+        // Tests for user themes have been removed - see themesManager.test.js for client-side tests
+
+        it('should return site themes from FILES_DIR', async () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/themes/users/custom-theme') return true;
-                        if (filePath === 'public/files/perm/themes/base/custom-theme') return false;
-                        return fs.existsSync(filePath);
-                    },
-                    readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('users/custom-theme')) {
-                            return [
-                                { name: 'style.css', isFile: () => true, isDirectory: () => false },
-                            ] as unknown as fs.Dirent[];
-                        }
-                        return fs.readdirSync(dirPath, options);
-                    },
-                    statSync: fs.statSync,
-                    readFileSync: fs.readFileSync,
-                },
-            });
-            app = new Elysia().use(resourcesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/resources/theme/custom-theme'));
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body[0].url).toContain('/themes/users/custom-theme');
-        });
-
-        it('should return admin themes from FILES_DIR', async () => {
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        // User and base themes don't exist
-                        if (filePath === 'public/files/perm/themes/users/site-custom-theme') return false;
+                        // Base theme doesn't exist
                         if (filePath === 'public/files/perm/themes/base/site-custom-theme') return false;
                         // Site theme exists
                         if (filePath === '/tmp/test-files/themes/site/site-custom-theme') return true;
@@ -512,7 +485,6 @@ describe('Resources Routes', () => {
                 fs: {
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/files/perm/themes/base/test-hidden') return true;
-                        if (filePath === 'public/files/perm/themes/users/test-hidden') return false;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
@@ -544,7 +516,6 @@ describe('Resources Routes', () => {
                 fs: {
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/files/perm/themes/base/test-recursive') return true;
-                        if (filePath === 'public/files/perm/themes/users/test-recursive') return false;
                         // Also need to say the img subdirectory exists for the recursive call
                         if (filePath.includes('test-recursive/img')) return true;
                         return fs.existsSync(filePath);
@@ -585,7 +556,6 @@ describe('Resources Routes', () => {
                 fs: {
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/files/perm/themes/base/error-theme') return true;
-                        if (filePath === 'public/files/perm/themes/users/error-theme') return false;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
@@ -814,7 +784,6 @@ describe('Resources Routes', () => {
                     fs: {
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles') && filePath.includes('.zip')) return false;
-                            if (filePath.includes('themes/users')) return false;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: fs.readdirSync,
@@ -831,22 +800,29 @@ describe('Resources Routes', () => {
                 expect(body.error).toBe('Not Found');
             });
 
-            it('should return 404 if user theme is empty', async () => {
+            // Note: User themes are stored client-side in IndexedDB, not on server
+            // Tests for user theme bundles have been converted to site theme tests
+
+            it('should return 404 if site theme is empty', async () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
-                            if (filePath === 'public/files/perm/themes/users/empty-theme') return true;
+                            if (filePath === '/tmp/test-files/themes/site/empty-theme') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('users/empty-theme')) {
+                            if (typeof dirPath === 'string' && dirPath.includes('site/empty-theme')) {
                                 return [] as unknown as fs.Dirent[];
                             }
                             return fs.readdirSync(dirPath, options);
                         },
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
+                    },
+                    getEnv: (key: string) => {
+                        if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
+                        return process.env[key];
                     },
                 });
                 app = new Elysia().use(resourcesRoutes);
@@ -858,16 +834,16 @@ describe('Resources Routes', () => {
                 expect(body.message).toContain('empty');
             });
 
-            it('should generate ZIP on-the-fly for user themes', async () => {
+            it('should generate ZIP on-the-fly for site themes', async () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
-                            if (filePath === 'public/files/perm/themes/users/user-theme') return true;
+                            if (filePath === '/tmp/test-files/themes/site/site-theme-test') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('users/user-theme')) {
+                            if (typeof dirPath === 'string' && dirPath.includes('site/site-theme-test')) {
                                 return [
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                 ] as unknown as fs.Dirent[];
@@ -876,28 +852,34 @@ describe('Resources Routes', () => {
                         },
                         statSync: fs.statSync,
                         readFileSync: (filePath: string) => {
-                            if (filePath.includes('user-theme/style.css')) {
+                            if (filePath.includes('site-theme-test/style.css')) {
                                 return Buffer.from('body { color: red; }');
                             }
                             return fs.readFileSync(filePath, 'utf-8');
                         },
                     },
+                    getEnv: (key: string) => {
+                        if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
+                        return process.env[key];
+                    },
                 });
                 app = new Elysia().use(resourcesRoutes);
 
-                const res = await app.handle(new Request('http://localhost/api/resources/bundle/theme/user-theme'));
+                const res = await app.handle(
+                    new Request('http://localhost/api/resources/bundle/theme/site-theme-test'),
+                );
 
                 expect(res.status).toBe(200);
                 expect(res.headers.get('content-type')).toBe('application/zip');
                 expect(res.headers.get('cache-control')).toContain('private');
             });
 
-            it('should skip files that cannot be read for user themes', async () => {
+            it('should skip files that cannot be read for site themes', async () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
-                            if (filePath === 'public/files/perm/themes/users/theme-with-error') return true;
+                            if (filePath === '/tmp/test-files/themes/site/theme-with-error') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
@@ -920,6 +902,10 @@ describe('Resources Routes', () => {
                             return fs.readFileSync(filePath, 'utf-8');
                         },
                     },
+                    getEnv: (key: string) => {
+                        if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
+                        return process.env[key];
+                    },
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -938,8 +924,6 @@ describe('Resources Routes', () => {
                         existsSync: (filePath: string) => {
                             // No prebuilt bundle
                             if (filePath.includes('bundles')) return false;
-                            // No user theme
-                            if (filePath.includes('themes/users')) return false;
                             // Site theme exists
                             if (filePath === '/tmp/test-files/themes/site/site-theme') return true;
                             return fs.existsSync(filePath);
@@ -978,12 +962,11 @@ describe('Resources Routes', () => {
                 expect(res.headers.get('cache-control')).toContain('private');
             });
 
-            it('should return 404 if site theme is empty', async () => {
+            it('should return 404 if admin/site theme is empty', async () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
-                            if (filePath.includes('themes/users')) return false;
                             if (filePath === '/tmp/test-files/themes/site/empty-site-theme') return true;
                             return fs.existsSync(filePath);
                         },

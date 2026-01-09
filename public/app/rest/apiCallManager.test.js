@@ -256,7 +256,7 @@ describe('ApiCallManager', () => {
 
   describe('theme and idevice helpers', () => {
     it('should replace theme dir in edit endpoint', async () => {
-      apiManager.endpoints.api_themes_edit = { path: 'http://localhost/themes/{themeDirName}' };
+      apiManager.endpoints.api_themes_edit = { path: 'http://localhost/themes/{themeId}' };
 
       await apiManager.putEditTheme('theme-1', { name: 'Theme' });
 

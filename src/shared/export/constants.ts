@@ -308,6 +308,13 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         pattern: 'exe-download-package-link',
         files: ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'],
     },
+    // ELPX download support for manual links using exe-package:elp protocol
+    {
+        name: 'exe_elpx_download_protocol',
+        type: 'regex',
+        pattern: /exe-package:elp/,
+        files: ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'],
+    },
 ];
 
 // =============================================================================

@@ -169,7 +169,21 @@ Common functionality found in built-in eXe styles:
 
 ---
 
+## Theme Types
+
+eXeLearning has three types of themes:
+
+| Type | Source | Storage | Served By |
+|------|--------|---------|-----------|
+| **Base** | Built-in with eXeLearning | Server `/perm/themes/base/` | Server |
+| **Site** | Admin-installed for all users | Server `/perm/themes/site/` | Server |
+| **User** | Imported by user or from .elpx | Client IndexedDB + Yjs | **Never server** |
+
+---
+
 ## Deployment Information
+
+### Base themes (built-in)
 
 The styles included by default in eXeLearning are located in:
 
@@ -177,13 +191,19 @@ The styles included by default in eXeLearning are located in:
 /public/files/perm/themes/base/
 ```
 
-If you are managing an online instance of eXeLearning, place the folder containing your new styles there and restart the service.
+These are synchronized at server startup and cannot be modified by users.
 
-User-installed styles (both in the online version, if allowed by the administrator, and in the desktop version) are stored, for each user, in:
+### Site themes (admin-installed)
+
+Administrators can install themes for all users by placing them in:
 
 ```
-/public/files/perm/themes/users/
+/perm/themes/site/
 ```
+
+Site themes can be:
+- Activated/deactivated by the administrator
+- Set as the default theme for new projects
 
 ### Using custom styles with Docker
 
@@ -200,14 +220,56 @@ This makes the style available to **all users**.
 
 This is required because eXeLearning recreates the entire `/base/` themes directory when restarting the server. Any style not bound as a volume would be overwritten during this process.
 
-### User styles
+---
 
-User styles are those imported through the application interface (**Styles → Imported**).
+## User Styles (Client-Side)
 
-Their final location on disk is:
+> **Important**: User themes are NEVER stored or served by the server.
+
+User styles are imported through the application interface (**Styles → Imported**) and stored entirely on the client side.
+
+### Storage locations
 
 ```
-/public/files/perm/themes/users/user
+IndexedDB (browser, per-user)
+└── user-themes store: key = "userId:themeName"
+    └── Each user's themes are isolated by userId prefix
+    └── Switching users shows only that user's themes
+
+Yjs themeFiles (project document)
+└── Currently selected user theme (for collaboration/export)
+
+.elpx export
+└── Embedded theme files (for portability)
 ```
 
-These styles are user-specific and are not affected by the regeneration of the base themes directory.
+**Per-user isolation**: When user "alice" logs in, she only sees her themes. If "bob" logs in on the same browser, he sees his own themes, not Alice's. This is achieved by storing themes with a composite key `userId:themeName` in IndexedDB.
+
+### How user themes work
+
+1. **Import**: User uploads ZIP → Stored in IndexedDB (local browser storage)
+2. **Select**: User selects theme → Copied to Yjs `themeFiles` (for collaboration/export)
+3. **Change**: User selects different theme → Removed from Yjs (but kept in IndexedDB)
+4. **Export**: If user theme is selected → Embedded in .elpx ZIP
+5. **Open**: Another user opens .elpx → Theme extracted to their IndexedDB
+
+### Admin configuration
+
+```bash
+# Allow users to import/install styles
+ONLINE_THEMES_INSTALL=1    # 1 = enabled (default), 0 = disabled
+```
+
+When disabled (`ONLINE_THEMES_INSTALL=0`):
+- Users **cannot** import external themes via the interface
+- Users **cannot** open .elpx files with embedded themes
+
+### Why user themes are client-side
+
+This design follows the same pattern as other user-specific data (like favorite iDevices):
+
+1. **Per-user storage**: Each user's themes are private to them
+2. **No server storage**: Themes don't consume server disk space
+3. **Collaboration via Yjs**: Selected theme is shared with collaborators in real-time
+4. **Portability**: Themes embedded in .elpx can be opened anywhere
+5. **Offline capability**: Themes work without server connectivity

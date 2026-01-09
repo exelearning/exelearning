@@ -495,9 +495,6 @@ export interface PageRenderOptions {
     onLoadScript?: string;
     onUnloadScript?: string;
 
-    // Detected libraries from content scanning (MathJax, Mermaid, etc.)
-    detectedLibraries?: LibraryDetectionResult;
-
     /**
      * Theme files to include in the HTML head.
      * Array of filenames (e.g., ['style.css', 'style.js']) from the theme root directory.
