@@ -207,7 +207,7 @@
                     ]
                 },
                 {
-                    "target": "msiWrapped",
+                    "target": "msi",
                     "arch": [
                         "x64"
                     ]
@@ -241,10 +241,12 @@
                 ".xz"
             ]
         },
-        "msiWrapped": {
-            "oneClick": true,
-            "runAfterFinish": true,
-            "perMachine": false
+        "msi": {
+            "oneClick": false,
+            "perMachine": true,
+            "runAfterFinish": false,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
         },
         "linux": {
             "executableName": "exelearning",
