@@ -1726,7 +1726,29 @@ export default class IdeviceNode {
                 response = await this.exportProcessIdeviceHtml();
                 break;
         }
+
+        // Typeset LaTeX in iDevice content after loading
+        this.typesetLatexInContent();
+
         return response;
+    }
+
+    /**
+     * Typeset LaTeX formulas in the iDevice content using MathJax
+     * Called after content is loaded into the DOM
+     */
+    typesetLatexInContent() {
+        if (!this.ideviceBody) return;
+
+        // Check if content contains LaTeX delimiters
+        const content = this.ideviceBody.textContent || '';
+        if (/(?:\\\(|\\\[|\\begin\{|\$\$)/.test(content)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([this.ideviceBody]).catch(err => {
+                    Logger.log('[IdeviceNode] MathJax typeset error:', err);
+                });
+            }
+        }
     }
 
     /**

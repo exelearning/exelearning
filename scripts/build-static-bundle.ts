@@ -873,8 +873,8 @@ function generateStaticHtml(bundleData: object): string {
         ];
         window.MathJax = {
             tex: {
-                inlineMath: [["\\(", "\\)"]],
-                displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+                inlineMath: [["\\\\(", "\\\\)"]],
+                displayMath: [["$$", "$$"], ["\\\\[", "\\\\]"]],
                 processEscapes: true,
                 tags: 'ams',
                 packages: { '[+]': externalExtensions }
