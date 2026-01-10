@@ -98,6 +98,12 @@ var $eXeListaCotejo = {
         const mOptions =
             $exeDevices.iDevice.gamification.helpers.isJsonString(json);
 
+        // Guard against invalid JSON data
+        if (!mOptions || typeof mOptions !== 'object') {
+            console.warn('[checklist] Invalid JSON data, returning empty options');
+            return { levels: [], urlCommunity: imglink, urlLogo: imglink1, urlDecorative: imglink2 };
+        }
+
         mOptions.urlCommunity = imglink;
         mOptions.urlLogo = imglink1;
         mOptions.urlDecorative = imglink2;
@@ -108,6 +114,9 @@ var $eXeListaCotejo = {
         mOptions.showCounter = true;
         mOptions.points = 0;
         mOptions.totalPoints = 0;
+
+        // Ensure levels array exists (legacy compatibility)
+        mOptions.levels = mOptions.levels || [];
 
         for (let i = 0; i < mOptions.levels.length; i++) {
             mOptions.levels[i].points =
