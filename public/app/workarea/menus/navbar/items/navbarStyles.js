@@ -16,16 +16,18 @@ export default class NavbarFile {
             )
         );
         this.updateThemes();
-        document
-            .querySelector('#exestylescontent-tab')
-            .addEventListener('click', () => {
+        const exeStylesTab = document.querySelector('#exestylescontent-tab');
+        if (exeStylesTab) {
+            exeStylesTab.addEventListener('click', () => {
                 this.buildBaseListThemes();
             });
-        document
-            .querySelector('#importedstylescontent-tab')
-            .addEventListener('click', () => {
+        }
+        const importedStylesTab = document.querySelector('#importedstylescontent-tab');
+        if (importedStylesTab) {
+            importedStylesTab.addEventListener('click', () => {
                 this.buildUserListThemes();
             });
+        }
     }
 
     updateThemes() {

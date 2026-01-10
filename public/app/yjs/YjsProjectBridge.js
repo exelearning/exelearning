@@ -1809,15 +1809,17 @@ class YjsProjectBridge {
     const stats = await importer.importFromFile(file, options);
 
     // Announce imported assets to server for peer-to-peer collaboration
-    if (stats && stats.assets > 0) {
+    // Skip in static mode (no WebSocket server)
+    if (stats && stats.assets > 0 && !window.__EXE_STATIC_MODE__) {
       Logger.log(`[YjsProjectBridge] Announcing ${stats.assets} imported assets to peers...`);
       await this.announceAssets();
     }
 
     // Check and handle theme from imported package
     // Only import theme when opening a file (clearExisting=true), not when importing into existing project
+    // Skip in static mode (no API server for theme import)
     const clearExisting = options.clearExisting !== false; // default is true
-    if (stats && stats.theme && clearExisting) {
+    if (stats && stats.theme && clearExisting && !window.__EXE_STATIC_MODE__) {
       await this._checkAndImportTheme(stats.theme, file);
     }
 

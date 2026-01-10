@@ -47,6 +47,62 @@ class ResourceFetcher {
     this.bundleManifest = null;
     // Whether bundles are available
     this.bundlesAvailable = false;
+    // Static mode detection (cached for performance)
+    this._isStaticMode = null;
+  }
+
+  /**
+   * Check if running in static (offline) mode
+   * @returns {boolean}
+   */
+  isStaticMode() {
+    if (this._isStaticMode === null) {
+      this._isStaticMode = window.__EXE_STATIC_MODE__ === true ||
+                           window.eXeLearning?.config?.isStaticMode === true;
+    }
+    return this._isStaticMode;
+  }
+
+  /**
+   * Get the URL for a bundle file, handling static mode
+   * @param {string} bundleType - Type of bundle (theme, idevices, libs, etc.)
+   * @param {string} [name] - Name for named bundles (e.g., theme name)
+   * @returns {string} Bundle URL
+   */
+  getBundleUrl(bundleType, name = null) {
+    if (this.isStaticMode()) {
+      // In static mode, bundles are in ./bundles/ folder
+      switch (bundleType) {
+        case 'theme':
+          return `${this.basePath}/bundles/themes/${name}.zip`;
+        case 'idevices':
+          return `${this.basePath}/bundles/idevices.zip`;
+        case 'libs':
+          return `${this.basePath}/bundles/libs.zip`;
+        case 'common':
+          return `${this.basePath}/bundles/common.zip`;
+        case 'content-css':
+          return `${this.basePath}/bundles/content-css.zip`;
+        default:
+          return `${this.basePath}/bundles/${bundleType}.zip`;
+      }
+    }
+
+    // Server mode: use API endpoints
+    switch (bundleType) {
+      case 'theme':
+        return `${this.apiBase}/bundle/theme/${name}`;
+      case 'idevices':
+        return `${this.apiBase}/bundle/idevices`;
+      case 'libs':
+        return `${this.apiBase}/bundle/libs`;
+      case 'common':
+        return `${this.apiBase}/bundle/common`;
+      case 'content-css':
+        return `${this.apiBase}/bundle/content-css`;
+      default:
+        return `${this.apiBase}/bundle/${bundleType}`;
+    }
   }
 
   /**
@@ -72,10 +128,43 @@ class ResourceFetcher {
   }
 
   /**
-   * Load bundle manifest from server
+   * Load bundle manifest from server or static data
    * @returns {Promise<void>}
    */
   async loadBundleManifest() {
+    // Check if running in static mode
+    const isStaticMode = window.__EXE_STATIC_MODE__ === true ||
+                         window.eXeLearning?.config?.isStaticMode === true;
+
+    if (isStaticMode) {
+      // In static mode, use manifest from bundled data
+      const staticData = window.__EXE_STATIC_DATA__;
+      if (staticData?.bundleManifest) {
+        this.bundleManifest = staticData.bundleManifest;
+        this.bundlesAvailable = true;
+        console.log('[ResourceFetcher] ✅ Using static bundle manifest');
+        return;
+      }
+
+      // Try to fetch from local bundles/manifest.json
+      try {
+        const response = await fetch(`${this.basePath}/bundles/manifest.json`);
+        if (response.ok) {
+          this.bundleManifest = await response.json();
+          this.bundlesAvailable = true;
+          console.log('[ResourceFetcher] ✅ Loaded manifest from bundles/manifest.json');
+          return;
+        }
+      } catch (e) {
+        console.log('[ResourceFetcher] Static mode: No local manifest.json');
+      }
+
+      this.bundlesAvailable = false;
+      console.log('[ResourceFetcher] Static mode: Using fallback (no bundles)');
+      return;
+    }
+
+    // Server mode: fetch from API
     try {
       const manifestUrl = `${this.apiBase}/bundle/manifest`;
       console.log('[ResourceFetcher] Loading bundle manifest from:', manifestUrl);
@@ -220,7 +309,7 @@ class ResourceFetcher {
 
     // 3. Try ZIP bundle (faster, single request)
     if (this.bundlesAvailable) {
-      const bundleUrl = `${this.apiBase}/bundle/theme/${themeName}`;
+      const bundleUrl = this.getBundleUrl('theme', themeName);
       console.log(`[ResourceFetcher] 📦 Fetching theme '${themeName}' via bundle:`, bundleUrl);
       themeFiles = await this.fetchBundle(bundleUrl);
       if (themeFiles && themeFiles.size > 0) {
@@ -362,7 +451,7 @@ class ResourceFetcher {
    * @returns {Promise<void>}
    */
   async loadIdevicesBundle() {
-    const bundleUrl = `${this.apiBase}/bundle/idevices`;
+    const bundleUrl = this.getBundleUrl('idevices');
     const allFiles = await this.fetchBundle(bundleUrl);
 
     if (!allFiles || allFiles.size === 0) {
@@ -506,7 +595,7 @@ class ResourceFetcher {
 
     // 3. Try ZIP bundle (faster, single request)
     if (this.bundlesAvailable) {
-      const bundleUrl = `${this.apiBase}/bundle/libs`;
+      const bundleUrl = this.getBundleUrl('libs');
       libFiles = await this.fetchBundle(bundleUrl);
     }
 
@@ -761,16 +850,32 @@ class ResourceFetcher {
     const firstDir = path.split('/')[0];
     const isThirdParty = THIRD_PARTY_LIBS.has(firstDir);
 
-    // Try the most likely path first (with version for cache busting)
-    const possiblePaths = isThirdParty
-      ? [
-          `${this.basePath}/${this.version}/libs/${path}`,
-          `${this.basePath}/${this.version}/app/common/${path}`,
-        ]
-      : [
-          `${this.basePath}/${this.version}/app/common/${path}`,
-          `${this.basePath}/${this.version}/libs/${path}`,
-        ];
+    // Build paths based on mode
+    let possiblePaths;
+    if (this.isStaticMode()) {
+      // Static mode: use relative paths without version prefix
+      const staticBase = this.basePath || '.';
+      possiblePaths = isThirdParty
+        ? [
+            `${staticBase}/libs/${path}`,
+            `${staticBase}/app/common/${path}`,
+          ]
+        : [
+            `${staticBase}/app/common/${path}`,
+            `${staticBase}/libs/${path}`,
+          ];
+    } else {
+      // Server mode: use versioned paths for cache busting
+      possiblePaths = isThirdParty
+        ? [
+            `${this.basePath}/${this.version}/libs/${path}`,
+            `${this.basePath}/${this.version}/app/common/${path}`,
+          ]
+        : [
+            `${this.basePath}/${this.version}/app/common/${path}`,
+            `${this.basePath}/${this.version}/libs/${path}`,
+          ];
+    }
 
     for (const url of possiblePaths) {
       try {
@@ -974,7 +1079,14 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
-    const logoUrl = `${this.basePath}/${this.version}/app/common/exe_powered_logo/exe_powered_logo.png`;
+    // Build path based on mode
+    let logoUrl;
+    if (this.isStaticMode()) {
+      const staticBase = this.basePath || '.';
+      logoUrl = `${staticBase}/app/common/exe_powered_logo/exe_powered_logo.png`;
+    } else {
+      logoUrl = `${this.basePath}/${this.version}/app/common/exe_powered_logo/exe_powered_logo.png`;
+    }
     try {
       const response = await fetch(logoUrl);
       if (response.ok) {
@@ -1026,7 +1138,7 @@ class ResourceFetcher {
 
     // 3. Try ZIP bundle
     if (this.bundlesAvailable) {
-      const bundleUrl = `${this.apiBase}/bundle/content-css`;
+      const bundleUrl = this.getBundleUrl('content-css');
       cssFiles = await this.fetchBundle(bundleUrl);
     }
 

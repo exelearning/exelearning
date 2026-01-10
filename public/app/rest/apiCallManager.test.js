@@ -30,6 +30,14 @@ describe('ApiCallManager', () => {
       common: {
         getVersionTimeStamp: vi.fn(() => '123456'),
       },
+      // Mock isStaticMode for static mode checks in apiCallManager
+      isStaticMode: vi.fn(() => false),
+      dataProvider: {
+        getApiParameters: vi.fn(),
+        getTranslations: vi.fn(),
+        getInstalledIdevices: vi.fn(),
+        getInstalledThemes: vi.fn(),
+      },
     };
 
     window.eXeLearning = mockApp.eXeLearning;
@@ -85,6 +93,26 @@ describe('ApiCallManager', () => {
       await apiManager.getChangelogText();
       expect(mockFunc.getText).toHaveBeenCalledWith(expect.stringContaining('version=123456'));
     });
+
+    it('should return empty string in static mode', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+
+      const result = await apiManager.getChangelogText();
+
+      expect(result).toBe('');
+      expect(mockFunc.getText).not.toHaveBeenCalled();
+    });
+
+    it('should return empty string when changelogURL is undefined', async () => {
+      mockApp.eXeLearning.config.changelogURL = undefined;
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await apiManager.getChangelogText();
+
+      expect(result).toBe('');
+      expect(warnSpy).toHaveBeenCalledWith('[apiCallManager] changelogURL not configured');
+      warnSpy.mockRestore();
+    });
   });
 
   describe('getThirdPartyCodeText / getLicensesList', () => {
@@ -95,11 +123,21 @@ describe('ApiCallManager', () => {
       await apiManager.getLicensesList();
 
       expect(mockFunc.getText).toHaveBeenCalledWith(
-        'http://localhost/exelearning/v9.9.9/libs/README'
+        'http://localhost/exelearning/v9.9.9/libs/README.md'
       );
       expect(mockFunc.getText).toHaveBeenCalledWith(
         'http://localhost/exelearning/v9.9.9/libs/LICENSES'
       );
+    });
+
+    it('should use direct paths in static mode', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+
+      await apiManager.getThirdPartyCodeText();
+      await apiManager.getLicensesList();
+
+      expect(mockFunc.getText).toHaveBeenCalledWith('./libs/README.md');
+      expect(mockFunc.getText).toHaveBeenCalledWith('./libs/LICENSES');
     });
   });
 
@@ -1348,6 +1386,108 @@ describe('ApiCallManager', () => {
       expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/lopd');
       expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/prefs');
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
+    });
+  });
+
+  describe('getUserPreferences static mode', () => {
+    it('should return bundled preferences in static mode', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+      apiManager.parameters = {
+        userPreferencesConfig: {
+          locale: { title: 'Language', value: 'en', type: 'select' },
+          advancedMode: { title: 'Advanced mode', value: 'true', type: 'checkbox' },
+        },
+      };
+
+      const result = await apiManager.getUserPreferences();
+
+      expect(result.userPreferences.locale.value).toBe('en');
+      expect(result.userPreferences.advancedMode.value).toBe('true');
+      expect(mockFunc.get).not.toHaveBeenCalled();
+    });
+
+    it('should merge localStorage preferences with defaults in static mode', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+      apiManager.parameters = {
+        userPreferencesConfig: {
+          locale: { title: 'Language', value: 'en', type: 'select' },
+          advancedMode: { title: 'Advanced mode', value: 'true', type: 'checkbox' },
+        },
+      };
+      localStorage.setItem('exelearning_user_preferences', JSON.stringify({
+        locale: 'es',
+      }));
+
+      const result = await apiManager.getUserPreferences();
+
+      expect(result.userPreferences.locale.value).toBe('es');
+      expect(result.userPreferences.advancedMode.value).toBe('true');
+    });
+
+    it('should handle invalid JSON in localStorage gracefully', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+      apiManager.parameters = {
+        userPreferencesConfig: {
+          locale: { title: 'Language', value: 'en', type: 'select' },
+        },
+      };
+      localStorage.setItem('exelearning_user_preferences', 'invalid json');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await apiManager.getUserPreferences();
+
+      expect(result.userPreferences.locale.value).toBe('en');
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('should return empty object when userPreferencesConfig is undefined', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+      apiManager.parameters = {};
+
+      const result = await apiManager.getUserPreferences();
+
+      expect(result.userPreferences).toEqual({});
+    });
+  });
+
+  describe('putSaveUserPreferences static mode', () => {
+    it('should save preferences to localStorage in static mode', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+
+      const result = await apiManager.putSaveUserPreferences({ locale: 'es', advancedMode: 'false' });
+
+      expect(result.success).toBe(true);
+      const stored = JSON.parse(localStorage.getItem('exelearning_user_preferences'));
+      expect(stored.locale).toBe('es');
+      expect(stored.advancedMode).toBe('false');
+      expect(mockFunc.put).not.toHaveBeenCalled();
+    });
+
+    it('should merge with existing localStorage preferences', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+      localStorage.setItem('exelearning_user_preferences', JSON.stringify({ locale: 'en' }));
+
+      await apiManager.putSaveUserPreferences({ advancedMode: 'false' });
+
+      const stored = JSON.parse(localStorage.getItem('exelearning_user_preferences'));
+      expect(stored.locale).toBe('en');
+      expect(stored.advancedMode).toBe('false');
+    });
+
+    it('should handle localStorage errors gracefully', async () => {
+      mockApp.isStaticMode.mockReturnValue(true);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      // Simulate localStorage error by making setItem throw
+      const originalSetItem = localStorage.setItem;
+      localStorage.setItem = vi.fn(() => { throw new Error('Storage full'); });
+
+      const result = await apiManager.putSaveUserPreferences({ locale: 'es' });
+
+      expect(result.success).toBe(false);
+      expect(warnSpy).toHaveBeenCalled();
+      localStorage.setItem = originalSetItem;
+      warnSpy.mockRestore();
     });
 
     it('should call structure and diagnostics endpoints', async () => {

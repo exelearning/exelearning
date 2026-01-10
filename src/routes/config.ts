@@ -140,6 +140,7 @@ const ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG = {
     },
     identifier: {
         title: `${TRANS_PREFIX}ID`,
+        value: '',
         type: 'text',
         category: null,
         heritable: false,
@@ -159,6 +160,7 @@ const ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG = {
 const ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG = {
     titleNode: {
         title: `${TRANS_PREFIX}Title`,
+        value: '',
         type: 'text',
         category: `${TRANS_PREFIX}General`,
         heritable: false,
@@ -172,6 +174,7 @@ const ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG = {
     },
     titleHtml: {
         title: `${TRANS_PREFIX}Title HTML`,
+        value: '',
         type: 'text',
         category: `${TRANS_PREFIX}Advanced (SEO)`,
         heritable: false,
@@ -185,6 +188,7 @@ const ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG = {
     },
     titlePage: {
         title: `${TRANS_PREFIX}Title in page`,
+        value: '',
         type: 'text',
         category: `${TRANS_PREFIX}General`,
         heritable: false,
@@ -205,6 +209,7 @@ const ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG = {
     },
     description: {
         title: `${TRANS_PREFIX}Description`,
+        value: '',
         type: 'textarea',
         category: `${TRANS_PREFIX}Advanced (SEO)`,
         heritable: false,
@@ -245,6 +250,7 @@ const ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG = {
     },
     identifier: {
         title: `${TRANS_PREFIX}ID`,
+        value: '',
         type: 'text',
         category: null,
         heritable: false,

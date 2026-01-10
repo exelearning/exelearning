@@ -663,6 +663,9 @@ describe('App utility methods', () => {
         info: ['Error 1', 'Error 2'],
       };
 
+      // Mock isStaticMode to return false so we test the normal check flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
+
       await appInstance.check();
 
       expect(showSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -1070,6 +1073,9 @@ describe('App utility methods', () => {
       const hideSpy = vi.fn();
       const loadModalsContentSpy = vi.fn();
 
+      // Mock isStaticMode to return false so we test the normal LOPD flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
+
       appInstance.project = { loadModalsContent: loadModalsContentSpy };
       appInstance.interface = { loadingScreen: { hide: hideSpy } };
       appInstance.modals = {
@@ -1090,6 +1096,9 @@ describe('App utility methods', () => {
       window.eXeLearning.user = { acceptedLopd: true };
       const loadSpy = vi.fn();
       const checkSpy = vi.spyOn(appInstance, 'check').mockImplementation(() => {});
+
+      // Mock isStaticMode to return false so we test the normal LOPD flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
 
       appInstance.project = { load: loadSpy };
 
@@ -1174,7 +1183,7 @@ describe('App utility methods', () => {
     it('sets up session monitor for online installation', () => {
       window.eXeLearning = {
         user: '{"id":1}',
-        config: '{"isOfflineInstallation":false,"basePath":""}',
+        config: '{"isOfflineInstallation":false,"basePath":"","fullURL":"http://localhost:8080"}',
       };
 
       const app = new App(window.eXeLearning);

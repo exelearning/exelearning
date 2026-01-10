@@ -1429,6 +1429,7 @@ export default class IdeviceNode {
                 break;
             case 'export':
                 this.restartExeIdeviceValue();
+                await this.loadExportIdevice();
                 await this.ideviceInitExport();
                 break;
         }
@@ -1437,6 +1438,16 @@ export default class IdeviceNode {
         setTimeout(() => {
             this.makeIdeviceButtonsElement();
         }, 100);
+    }
+
+    /**
+     * Load export scripts and styles for this iDevice
+     * Similar to loadEditionIdevice() but for export mode
+     */
+    async loadExportIdevice() {
+        // Load idevice export files (scripts and styles)
+        this.loadScriptsExport();
+        await this.loadStylesExport();
     }
 
     /*********************************

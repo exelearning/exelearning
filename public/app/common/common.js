@@ -1498,7 +1498,10 @@ var $exeDevices = {
                     }
                     if (!window.MathJax.loader) window.MathJax.loader = {};
                     if (!window.MathJax.loader.paths) window.MathJax.loader.paths = {};
-                    window.MathJax.loader.paths.mathjax = basePath;
+                    // In static mode, keep the pre-configured relative path
+                    if (!window.__EXE_STATIC_MODE__) {
+                        window.MathJax.loader.paths.mathjax = basePath;
+                    }
                     var script = document.createElement('script');
                     script.src = self.engine;
                     script.async = true;

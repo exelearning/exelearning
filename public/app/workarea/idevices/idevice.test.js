@@ -363,14 +363,15 @@ describe('Idevice', () => {
   });
 
   describe('getResourceServicePath', () => {
-    it('constructs service path with resource parameter', () => {
+    it('returns path as-is for static mode iDevice paths', () => {
+      // Static mode: paths containing /files/perm/idevices/ are served directly
       const idevice = new Idevice(mockManager, mockIdeviceData);
       const result = idevice.getResourceServicePath('/files/perm/idevices/test/style.css');
 
-      expect(result).toBe('/api/idevices/resources?resource=perm/idevices/test/style.css');
+      expect(result).toBe('/files/perm/idevices/test/style.css');
     });
 
-    it('handles paths without /files/ prefix', () => {
+    it('handles paths without /files/ prefix via API', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
       const result = idevice.getResourceServicePath('some/other/path.js');
 
@@ -380,12 +381,12 @@ describe('Idevice', () => {
     it('returns correct path for various inputs', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
 
-      // Test with /files/ prefix
+      // Test with /files/perm/idevices/ prefix - static mode returns as-is
       expect(idevice.getResourceServicePath('/files/perm/idevices/text/style.css')).toBe(
-        '/api/idevices/resources?resource=perm/idevices/text/style.css'
+        '/files/perm/idevices/text/style.css'
       );
 
-      // Test empty input
+      // Test empty input - goes through API
       expect(idevice.getResourceServicePath('')).toBe('/api/idevices/resources?resource=');
     });
   });

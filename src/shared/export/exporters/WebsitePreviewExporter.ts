@@ -33,6 +33,10 @@ export interface PreviewOptions {
     /** Base path for URLs (e.g., '/exelearning') */
     basePath?: string;
     /**
+     * Static mode: use relative paths without version prefix (for offline/static deployments)
+     */
+    isStaticMode?: boolean;
+    /**
      * Full theme URL from the themes manager (e.g., '/v1/site-files/themes/chiquito/')
      * When provided, this is used instead of constructing the path from theme name.
      * This is needed to correctly handle site themes vs base themes.
@@ -187,13 +191,21 @@ export class WebsitePreviewExporter {
      * Get versioned asset path for server resources
      * @param path - The resource path (e.g., '/libs/bootstrap.css')
      * @param options - Preview options with baseUrl and version
-     * @returns Versioned URL
+     * @returns Versioned URL (or relative path in static mode)
      */
     private getVersionedPath(path: string, options: PreviewOptions): string {
+        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+
+        // Static mode: use relative paths without version prefix
+        if (options.isStaticMode) {
+            const basePath = options.basePath || '.';
+            return `${basePath}/${cleanPath}`;
+        }
+
+        // Server mode: use versioned paths for cache busting
         const baseUrl = options.baseUrl || '';
         const basePath = options.basePath || '';
         const version = options.version || 'v1.0.0';
-        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
         return `${baseUrl}${basePath}/${version}/${cleanPath}`;
     }
 

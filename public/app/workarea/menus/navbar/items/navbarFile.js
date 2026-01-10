@@ -191,6 +191,11 @@ export default class NavbarFile {
      * and show the "New from Template" button if so
      */
     async checkAndShowNewFromTemplateButton() {
+        // Static mode: templates not supported (no server API)
+        if (window.__EXE_STATIC_MODE__) {
+            return;
+        }
+
         try {
             // Get current locale from eXeLearning config or default to 'en'
             const locale = eXeLearning?.config?.locale || 'en';
@@ -1463,6 +1468,12 @@ export default class NavbarFile {
      *
      */
     openUserOdeFilesEvent() {
+        // Static mode: use client-side file input directly
+        if (window.__EXE_STATIC_MODE__) {
+            this.openFileInputStatic();
+            return;
+        }
+
         if (eXeLearning.config.isOfflineInstallation === true) {
             // Electron offline: use native dialog so we know the real path
             if (
@@ -1525,6 +1536,77 @@ export default class NavbarFile {
                 eXeLearning.app.modals.openuserodefiles.show(response);
             });
         }
+    }
+
+    /**
+     * Opens file input for static mode (PWA/offline)
+     * Uses ElpxImporter directly without server APIs
+     */
+    openFileInputStatic() {
+        // Create or reuse a hidden file input
+        let fileInput = document.getElementById('static-open-file-input');
+        if (!fileInput) {
+            fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.id = 'static-open-file-input';
+            fileInput.accept = '.elpx,.elp';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                    try {
+                        // Show loading indicator
+                        if (eXeLearning.app.project?.showLoadingScreen) {
+                            eXeLearning.app.project.showLoadingScreen();
+                        }
+
+                        // Get the Yjs bridge - required for static mode
+                        const yjsBridge = eXeLearning.app.project._yjsBridge;
+                        if (!yjsBridge) {
+                            throw new Error(
+                                'Yjs bridge not initialized. Please wait for the editor to load.'
+                            );
+                        }
+
+                        // Use YjsBridge.importFromElpx directly (client-side, no server APIs)
+                        Logger.log('[Static] Importing file:', file.name);
+                        await yjsBridge.importFromElpx(file);
+
+                        // Refresh UI after import (without server calls)
+                        if (eXeLearning.app.project?.refreshAfterDirectImport) {
+                            await eXeLearning.app.project.refreshAfterDirectImport();
+                        }
+
+                        Logger.log('[Static] Import complete:', file.name);
+                    } catch (err) {
+                        console.error('[Static] Failed to import file:', err);
+                        if (eXeLearning.app.modals?.alert) {
+                            eXeLearning.app.modals.alert.show({
+                                title: _('Error opening'),
+                                body: err.message || String(err),
+                                contentId: 'error',
+                            });
+                        } else {
+                            alert(
+                                _('Failed to open project: ') +
+                                    (err.message || err)
+                            );
+                        }
+                    } finally {
+                        // Hide loading indicator
+                        if (eXeLearning.app.project?.hideLoadingScreen) {
+                            eXeLearning.app.project.hideLoadingScreen();
+                        }
+                    }
+                }
+                // Reset for next use
+                e.target.value = '';
+            });
+        }
+
+        fileInput.click();
     }
 
     /**

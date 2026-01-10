@@ -1399,6 +1399,29 @@ export default class modalOpenUserOdeFiles extends Modal {
             try {
                 progressModal.setProcessingPhase('extracting');
 
+                // Static mode: skip API call and use ElpxImporter directly
+                if (window.__EXE_STATIC_MODE__) {
+                    progressModal.hide();
+                    this.cleanupOrphanedBackdrops();
+
+                    // Use YjsBridge.importFromElpx directly (client-side, no server APIs)
+                    const yjsBridge = eXeLearning.app.project._yjsBridge;
+                    if (!yjsBridge) {
+                        throw new Error('Yjs bridge not initialized.');
+                    }
+
+                    Logger.log('[OpenFile] Static mode - importing file:', odeFileName);
+                    await yjsBridge.importFromElpx(odeFile);
+
+                    // Refresh UI after import (without server calls)
+                    if (eXeLearning.app.project?.refreshAfterDirectImport) {
+                        await eXeLearning.app.project.refreshAfterDirectImport();
+                    }
+
+                    Logger.log('[OpenFile] Static mode import complete:', odeFileName);
+                    return;
+                }
+
                 // Create a new project via API to get UUID
                 const projectTitle = odeFileName.replace(/\.(elp|elpx)$/i, '') || 'Imported Project';
                 const basePath = window.eXeLearning?.config?.basePath || '';

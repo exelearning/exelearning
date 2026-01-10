@@ -68,6 +68,17 @@ export default class projectManager {
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
+
+        // Static mode: check for pending file import
+        if (window.__EXE_STATIC_MODE__ && window.__pendingImportFile) {
+            Logger.log('[ProjectManager] Found pending import file, importing...');
+            const file = window.__pendingImportFile;
+            window.__pendingImportFile = null; // Clear it
+            this.importElp(file).catch(err => {
+                console.error('[ProjectManager] Failed to import pending file:', err);
+            });
+        }
+
         // Call the function to execute sorting and reordering
         //this.sortBlocksById(true);
         // Set offline atributtes

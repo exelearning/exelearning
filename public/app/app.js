@@ -18,11 +18,16 @@ import UserManager from './workarea/user/userManager.js';
 import Actions from './common/app_actions.js';
 import Shortcuts from './common/shortcuts.js';
 import SessionMonitor from './common/sessionMonitor.js';
+import DataProvider from './core/DataProvider.js';
 
 export default class App {
     constructor(eXeLearning) {
         this.eXeLearning = eXeLearning;
         this.parseExelearningConfig();
+
+        // Detect and initialize static/offline mode
+        this.initializeDataProvider();
+
         this.api = new ApiCallManager(this);
         this.locale = new Locale(this);
         this.common = new Common(this);
@@ -48,11 +53,14 @@ export default class App {
      *
      */
     async init() {
+        // Initialize DataProvider (load static data if in static mode)
+        await this.dataProvider.init();
+
         // Compose and initialized toasts
         this.initializedToasts();
         // Compose and initialized modals
         this.initializedModals();
-        // Load api routes
+        // Load api routes (uses DataProvider in static mode)
         await this.loadApiParameters();
         // Load locale strings
         await this.loadLocale();
@@ -186,6 +194,54 @@ export default class App {
         };
     }
 
+    /**
+     * Initialize DataProvider based on detected mode (static vs server)
+     * Called during constructor, before other managers are created
+     */
+    initializeDataProvider() {
+        // Detect mode using multiple signals
+        const isStaticMode = this.detectStaticMode();
+
+        // Store mode in config for other components to check
+        this.eXeLearning.config.isStaticMode = isStaticMode;
+
+        // Create DataProvider with detected mode
+        const mode = isStaticMode ? 'static' : 'server';
+        const basePath = this.eXeLearning.config.basePath || '';
+
+        this.dataProvider = new DataProvider(mode, { basePath });
+
+        if (isStaticMode) {
+            console.log('[App] Running in STATIC/OFFLINE mode');
+            // Ensure offline-related flags are set
+            this.eXeLearning.config.isOfflineInstallation = true;
+        }
+    }
+
+    /**
+     * Detect if the app should run in static (offline) mode
+     * @returns {boolean}
+     */
+    detectStaticMode() {
+        // Priority 1: Explicit static mode flag (set in static/index.html)
+        if (window.__EXE_STATIC_MODE__ === true) {
+            return true;
+        }
+
+        // Priority 2: File protocol (opened as local file)
+        if (window.location.protocol === 'file:') {
+            return true;
+        }
+
+        // Priority 3: No server URL configured
+        if (!this.eXeLearning.config.fullURL) {
+            return true;
+        }
+
+        // Default: server mode
+        return false;
+    }
+
     setupSessionMonitor() {
         const baseInterval = Number(
             this.eXeLearning.config.sessionCheckIntervalMs ||
@@ -310,6 +366,14 @@ export default class App {
     }
 
     /**
+     * Check if the app is running in static/offline mode
+     * @returns {boolean}
+     */
+    isStaticMode() {
+        return this.dataProvider?.isStaticMode() ?? false;
+    }
+
+    /**
      *
      */
     async loadApiParameters() {
@@ -393,25 +457,41 @@ export default class App {
      *
      */
     async check() {
+        // Static mode: no server-side checks needed
+        if (this.isStaticMode()) {
+            return;
+        }
+
         // Check FILES_DIR
-        if (!this.eXeLearning.config.filesDirPermission.checked) {
+        if (!this.eXeLearning.config?.filesDirPermission?.checked) {
             let htmlBody = '';
-            this.eXeLearning.config.filesDirPermission.info.forEach((text) => {
+            const info = this.eXeLearning.config?.filesDirPermission?.info || [];
+            info.forEach((text) => {
                 htmlBody += `<p>${text}</p>`;
             });
-            this.modals.alert.show({
-                title: _('Permissions error'),
-                body: htmlBody,
-                contentId: 'error',
-            });
+            if (htmlBody) {
+                this.modals.alert.show({
+                    title: _('Permissions error'),
+                    body: htmlBody,
+                    contentId: 'error',
+                });
+            }
         }
     }
 
     /**
      * Show LOPDGDD modal if necessary
+     * In static mode, LOPD is considered accepted
      *
      */
     async showModalLopd() {
+        // Static mode: skip LOPD modal, treat as accepted
+        if (this.isStaticMode()) {
+            await this.loadProject();
+            this.check();
+            return;
+        }
+
         if (!eXeLearning.user.acceptedLopd) {
             // Load modals content
             await this.project.loadModalsContent();
@@ -789,10 +869,23 @@ function __exeInstallBeforeUnloadOnce() {
 
 /**
  * Run eXe client on load
+ * In static mode, waits for project selection before initializing
  *
  */
 window.onload = function () {
     var eXeLearning = window.eXeLearning;
     eXeLearning.app = new App(eXeLearning);
+
+    // Static mode: wait for project selection (projectId will be set by welcome screen)
+    if (window.__EXE_STATIC_MODE__ && !eXeLearning.projectId) {
+        console.log('[App] Static mode: waiting for project selection...');
+        // Expose a function to start the app after project is selected
+        window.__startExeApp = function () {
+            console.log('[App] Starting app with project:', eXeLearning.projectId);
+            eXeLearning.app.init();
+        };
+        return;
+    }
+
     eXeLearning.app.init();
 };

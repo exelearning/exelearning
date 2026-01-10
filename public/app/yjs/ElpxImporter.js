@@ -1543,6 +1543,14 @@ class ElpxImporter {
         );
         str = str.replace(resourcesPattern, `$1asset://${assetId}/${fileName}`);
 
+        // 2b. Replace /resources/filename (with leading slash) when preceded by attribute quote
+        // This handles absolute-style resource paths like src="/resources/image.png"
+        const absoluteResourcesPattern = new RegExp(
+          `(["']|&quot;|&#39;|&apos;)/resources/${escapedFileName}`,
+          'g'
+        );
+        str = str.replace(absoluteResourcesPattern, `$1asset://${assetId}/${fileName}`);
+
         // 3. Replace bare resources/filename paths (for raw path properties like image gallery)
         // These are object values (not HTML attributes), so they don't have preceding quotes
         // The string itself IS the path, e.g., "resources/image.jpg"

@@ -13,9 +13,7 @@ on:
   workflow_dispatch: # Allows manually triggering
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 jobs:
   build-and-deploy:
@@ -275,15 +273,14 @@ jobs:
           [ -d site/rpm ] && generate_index "site/rpm" "rpm" || true
 
       # ---- Deploy to GitHub Pages ----
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: site
-
       - name: Deploy to GitHub Pages
         if: github.repository == 'exelearning/exelearning'
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: site
+          branch: gh-pages
+          clean-exclude: pr-preview
+          force: false
 
   publish-chocolatey:
     if: github.event_name == 'release' && github.event.action == 'released'

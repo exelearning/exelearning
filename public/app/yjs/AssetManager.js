@@ -239,14 +239,46 @@ class AssetManager {
 
   /**
    * Calculate SHA-256 hash of blob
+   * Falls back to a simple hash if crypto.subtle is not available
+   * (crypto.subtle requires secure context - HTTPS or localhost)
    * @param {Blob} blob
    * @returns {Promise<string>} Hex string hash
    */
   async calculateHash(blob) {
     const arrayBuffer = await blob.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // crypto.subtle is only available in secure contexts (HTTPS or localhost)
+    // In non-secure contexts (HTTP on IP address), use a fallback hash
+    if (crypto.subtle?.digest) {
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Fallback: Simple FNV-1a hash (32-bit) expanded to 64 chars
+    // Not cryptographically secure, but sufficient for asset deduplication
+    const data = new Uint8Array(arrayBuffer);
+    let hash = 2166136261; // FNV offset basis
+    for (let i = 0; i < data.length; i++) {
+      hash ^= data[i];
+      hash = (hash * 16777619) >>> 0; // FNV prime, keep as 32-bit unsigned
+    }
+    // Expand to 64 hex chars by combining hash with size and sampling
+    const sizeHash = (data.length * 2654435761) >>> 0;
+    const sample1 = data.length > 0 ? data[0] : 0;
+    const sample2 = data.length > 100 ? data[100] : 0;
+    const sample3 = data.length > 1000 ? data[1000] : 0;
+    const combined = [
+      hash.toString(16).padStart(8, '0'),
+      sizeHash.toString(16).padStart(8, '0'),
+      (hash ^ sizeHash).toString(16).padStart(8, '0'),
+      ((hash + sample1 + sample2 + sample3) >>> 0).toString(16).padStart(8, '0'),
+      data.length.toString(16).padStart(8, '0'),
+      ((hash * 31 + sizeHash) >>> 0).toString(16).padStart(8, '0'),
+      ((sizeHash ^ sample1 ^ sample2 ^ sample3) >>> 0).toString(16).padStart(8, '0'),
+      ((hash ^ data.length) >>> 0).toString(16).padStart(8, '0'),
+    ].join('');
+    return combined;
   }
 
   /**

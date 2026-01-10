@@ -548,16 +548,37 @@ export default class PreviewPanelManager {
         // Get theme URL from currently selected theme (handles admin vs builtin themes)
         // Ensure it's an absolute URL (blob: contexts don't resolve relative URLs correctly)
         const selectedTheme = eXeLearning.app?.themes?.selected;
+        const isStaticMode = window.__EXE_STATIC_MODE__ === true;
         let themeUrl = selectedTheme?.path || null;
-        if (themeUrl && !themeUrl.startsWith('http')) {
-            themeUrl = window.location.origin + themeUrl;
+
+        // For preview (loaded via blob URL), we ALWAYS need absolute URLs
+        // because blob URLs cannot resolve relative paths.
+        // In static mode:
+        //   - Files are served from root (e.g., /libs/bootstrap.min.css)
+        //   - We need baseUrl to be the origin (http://127.0.0.1:8090)
+        //   - basePath should be empty (files are at root, not /app/ or similar)
+        // In server mode:
+        //   - Files use versioned paths (/v1/libs/bootstrap.min.css)
+        //   - baseUrl is origin, basePath may be set
+
+        // Make theme URL absolute for blob URL context
+        if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:')) {
+            // Remove leading ./ if present and make absolute
+            const cleanThemeUrl = themeUrl.startsWith('./') ? themeUrl.slice(2) :
+                                  themeUrl.startsWith('/') ? themeUrl.slice(1) : themeUrl;
+            themeUrl = `${window.location.origin}/${cleanThemeUrl}`;
         }
 
         const previewOptions = {
+            // Always use absolute URLs for preview (blob URL context)
             baseUrl: window.location.origin,
-            basePath: eXeLearning.app.config?.basePath || '',
+            // basePath MUST start with '/' to trigger isPreviewMode=true in the exporter
+            // This ensures asset:// URLs are preserved (not converted to server paths)
+            // and will be resolved to blob URLs from IndexedDB by resolveAssetUrlsAsync
+            basePath: isStaticMode ? '/' : (eXeLearning.app.config?.basePath || '/'),
             version: eXeLearning.app.config?.version || 'v1',
-            themeUrl: themeUrl, // Full absolute theme URL (e.g., 'http://localhost:8081/v1/site-files/themes/chiquito/')
+            isStaticMode: isStaticMode,
+            themeUrl: themeUrl, // Absolute theme URL
         };
 
         // Generate preview
@@ -571,11 +592,32 @@ export default class PreviewPanelManager {
             throw new Error(result.error || 'Failed to generate preview');
         }
 
+        // In static mode, the exporter generates URLs with basePath='/'
+        // These need to be converted to absolute URLs for blob URL context
+        let generatedHtml = result.html;
+        if (isStaticMode) {
+            const origin = window.location.origin;
+            // Convert URLs starting with / to absolute URLs
+            // Matches: href="/path" or src="/path" (but not href="//..." or href="http...")
+            generatedHtml = generatedHtml.replace(
+                /((?:href|src)=["'])(\/(?!\/|[a-z]+:))([^"']+)(["'])/gi,
+                (match, prefix, slash, path, quote) => {
+                    // /v1/libs/... -> origin/libs/... (strip version prefix if present)
+                    // /libs/... -> origin/libs/...
+                    let cleanPath = path;
+                    // Remove version prefix if present (e.g., /v1/, /v0.0.0-alpha/)
+                    cleanPath = cleanPath.replace(/^v[^/]*\//, '');
+                    return `${prefix}${origin}/${cleanPath}${quote}`;
+                }
+            );
+            Logger.log('[PreviewPanel] Converted relative URLs to absolute for static mode');
+        }
+
         // Add MIME types to media elements BEFORE resolving URLs
         // (while asset:// URLs still contain filename with extension)
         let html = typeof window.addMediaTypes === 'function'
-            ? window.addMediaTypes(result.html)
-            : result.html;
+            ? window.addMediaTypes(generatedHtml)
+            : generatedHtml;
 
         // Simplify MediaElement.js structures to native HTML5 video/audio
         // (fixes playback issues with large videos)
