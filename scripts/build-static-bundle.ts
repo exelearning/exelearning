@@ -795,9 +795,15 @@ function generateStaticHtml(bundleData: object): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#00a99d">
+    <meta name="description" content="Create interactive educational content offline. Open source authoring tool for educators.">
     <title>eXeLearning - Static Editor</title>
     <link rel="icon" type="image/x-icon" href="./favicon.ico">
     <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./exelearning.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="eXeLearning">
 
     <!-- Styles -->
     <link rel="stylesheet" href="./libs/bootstrap/bootstrap.min.css">
@@ -1245,18 +1251,40 @@ function generateStaticHtml(bundleData: object): string {
 
 /**
  * Generate PWA manifest.json
+ * Creates a complete manifest for installable PWA
  */
 function generatePwaManifest(): string {
     return JSON.stringify({
-        name: 'eXeLearning Editor',
+        name: `eXeLearning Editor (${buildVersion})`,
         short_name: 'eXeLearning',
-        description: 'Create interactive educational content offline',
+        description: 'Create interactive educational content offline. Open source authoring tool for educators.',
         start_url: './index.html',
+        scope: './',
         display: 'standalone',
+        orientation: 'any',
         background_color: '#ffffff',
-        theme_color: '#1a73e8',
+        theme_color: '#00a99d',
+        categories: ['education', 'productivity'],
+        lang: 'en',
+        dir: 'ltr',
         icons: [
-            { src: './favicon.ico', sizes: '48x48', type: 'image/x-icon' },
+            {
+                src: './favicon.ico',
+                sizes: '48x48',
+                type: 'image/x-icon',
+            },
+            {
+                src: './exelearning.png',
+                sizes: '96x96',
+                type: 'image/png',
+                purpose: 'any',
+            },
+            {
+                src: './images/logo.svg',
+                sizes: 'any',
+                type: 'image/svg+xml',
+                purpose: 'any maskable',
+            },
         ],
         file_handlers: [
             {
@@ -1266,6 +1294,23 @@ function generatePwaManifest(): string {
                 },
             },
         ],
+        share_target: {
+            action: './index.html',
+            method: 'POST',
+            enctype: 'multipart/form-data',
+            params: {
+                files: [
+                    {
+                        name: 'file',
+                        accept: ['.elpx', '.elp', 'application/zip'],
+                    },
+                ],
+            },
+        },
+        launch_handler: {
+            client_mode: 'navigate-existing',
+        },
+        id: `exelearning-${buildVersion}`,
     }, null, 2);
 }
 
