@@ -64,7 +64,7 @@ test.describe('Static Mode - iDevice Loading', () => {
 
         // Set file via input
         const fileInput = page.locator('input[type="file"]').first();
-        if (await fileInput.count() > 0) {
+        if ((await fileInput.count()) > 0) {
             await fileInput.setInputFiles(testFilePath);
             console.log('[Test] File selected');
         } else {
@@ -76,10 +76,7 @@ test.describe('Static Mode - iDevice Loading', () => {
         await page.waitForTimeout(5000);
 
         // Check for import errors in console
-        const importErrors = consoleErrors.filter(e =>
-            e.includes('Failed to import') ||
-            e.includes('Error importing')
-        );
+        const importErrors = consoleErrors.filter(e => e.includes('Failed to import') || e.includes('Error importing'));
         console.log('[Test] Import errors:', importErrors);
 
         // Check if pages appeared in navigation
@@ -89,7 +86,7 @@ test.describe('Static Mode - iDevice Loading', () => {
         if (navElements > 1) {
             // Click on the first non-root page
             const firstPage = page.locator('.nav-element:not([nav-id="root"]) .nav-element-text').first();
-            if (await firstPage.count() > 0) {
+            if ((await firstPage.count()) > 0) {
                 console.log('[Test] Clicking first page...');
                 await firstPage.click();
 
@@ -97,16 +94,14 @@ test.describe('Static Mode - iDevice Loading', () => {
                 await page.waitForTimeout(3000);
 
                 // Check for iDevice loading errors
-                const ideviceErrors = consoleErrors.filter(e =>
-                    e.includes('iDevice') ||
-                    e.includes('Failed to load') ||
-                    e.includes('exportObject')
+                const ideviceErrors = consoleErrors.filter(
+                    e => e.includes('iDevice') || e.includes('Failed to load') || e.includes('exportObject'),
                 );
                 console.log('[Test] iDevice errors:', ideviceErrors);
 
                 // Check if modal error appeared
                 const alertModal = page.locator('.modal.show, [role="dialog"]');
-                const hasErrorModal = await alertModal.count() > 0;
+                const hasErrorModal = (await alertModal.count()) > 0;
                 if (hasErrorModal) {
                     const modalText = await alertModal.textContent();
                     console.log('[Test] Error modal appeared:', modalText);
