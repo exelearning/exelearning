@@ -3123,6 +3123,458 @@ describe('YjsProjectBridge', () => {
         // Should not throw
         expect(() => bridge.setupThemeFilesObserver()).not.toThrow();
       });
+
+      it('handles observer callback for added themes', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => 'base64themedata'),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        bridge.setupThemeFilesObserver();
+
+        // Simulate observer callback for 'add' action
+        await observerCallback({
+          changes: {
+            keys: [['new-theme', { action: 'add' }]],
+          },
+        });
+
+        expect(bridge._loadUserThemeFromYjs).toHaveBeenCalledWith('new-theme', 'base64themedata');
+      });
+
+      it('handles observer callback for deleted themes', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => null),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge.resourceFetcher = {
+          userThemeFiles: new Map([['deleted-theme', {}]]),
+          cache: new Map([['theme:deleted-theme', {}]]),
+        };
+
+        bridge.setupThemeFilesObserver();
+
+        // Simulate observer callback for 'delete' action
+        await observerCallback({
+          changes: {
+            keys: [['deleted-theme', { action: 'delete' }]],
+          },
+        });
+
+        expect(bridge.resourceFetcher.userThemeFiles.has('deleted-theme')).toBe(false);
+        expect(bridge.resourceFetcher.cache.has('theme:deleted-theme')).toBe(false);
+      });
+    });
+
+    describe('_loadUserThemeFromYjs - extended', () => {
+      it('returns early if theme already loaded in ResourceFetcher', async () => {
+        bridge.resourceFetcher.hasUserTheme = mock(() => true);
+        bridge._decompressThemeFromYjs = mock(() => {});
+
+        await bridge._loadUserThemeFromYjs('existing-theme', 'somedata');
+
+        expect(bridge._decompressThemeFromYjs).not.toHaveBeenCalled();
+      });
+
+      it('loads from IndexedDB when available', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(true));
+        bridge._loadUserThemeFromIndexedDB = mock(() => Promise.resolve());
+
+        await bridge._loadUserThemeFromYjs('idb-theme', 'somedata');
+
+        expect(bridge._loadUserThemeFromIndexedDB).toHaveBeenCalledWith('idb-theme');
+      });
+
+      it('handles IndexedDB check error gracefully', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.reject(new Error('IDB error')));
+        bridge._decompressThemeFromYjs = mock(() => ({ files: {}, configXml: null }));
+
+        // Should not throw
+        await expect(bridge._loadUserThemeFromYjs('theme', 'data')).resolves.not.toThrow();
+      });
+
+      it('handles legacy Y.Map format', async () => {
+        const legacyMap = {
+          entries: mock(() => [
+            ['config.xml', 'PGNvbmZpZz48L2NvbmZpZz4='], // <config></config>
+            ['style.css', 'Ym9keXt9'], // body{}
+          ]),
+        };
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._parseThemeConfigFromFiles = mock(() => ({ name: 'legacy' }));
+
+        await bridge._loadUserThemeFromYjs('legacy-theme', legacyMap);
+
+        expect(bridge._parseThemeConfigFromFiles).toHaveBeenCalled();
+      });
+
+      it('skips unknown theme data format', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._parseThemeConfigFromFiles = mock(() => ({}));
+
+        // Pass an object that is not a string and has no entries() function
+        await bridge._loadUserThemeFromYjs('unknown-theme', { someKey: 'someValue' });
+
+        expect(bridge._parseThemeConfigFromFiles).not.toHaveBeenCalled();
+      });
+
+      it('skips theme with no files', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({ files: {}, configXml: null }));
+        bridge._parseThemeConfigFromFiles = mock(() => ({}));
+
+        await bridge._loadUserThemeFromYjs('empty-theme', 'somedata');
+
+        expect(bridge._parseThemeConfigFromFiles).not.toHaveBeenCalled();
+      });
+
+      it('skips theme when config parsing fails', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: null,
+        }));
+        bridge._parseThemeConfigFromFiles = mock(() => null);
+
+        await bridge._loadUserThemeFromYjs('bad-config-theme', 'somedata');
+
+        expect(bridge.resourceCache.setUserTheme).not.toHaveBeenCalled();
+      });
+
+      it('saves to IndexedDB and registers with ResourceFetcher', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'good-theme',
+          type: 'user',
+          isUserTheme: true,
+        }));
+        global.eXeLearning.app.themes.list.installed = {};
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+
+        await bridge._loadUserThemeFromYjs('good-theme', 'somedata');
+
+        expect(bridge.resourceCache.setUserTheme).toHaveBeenCalled();
+        expect(bridge.resourceFetcher.setUserThemeFiles).toHaveBeenCalled();
+        expect(global.eXeLearning.app.themes.list.addUserTheme).toHaveBeenCalled();
+      });
+
+      it('handles error saving to IndexedDB', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceCache.setUserTheme = mock(() => Promise.reject(new Error('IDB save error')));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'test-theme',
+          type: 'user',
+        }));
+
+        // Should not throw
+        await expect(bridge._loadUserThemeFromYjs('test-theme', 'data')).resolves.not.toThrow();
+      });
+
+      it('skips adding to installed themes if already exists', async () => {
+        bridge.resourceCache.hasUserTheme = mock(() => Promise.resolve(false));
+        bridge.resourceFetcher.hasUserTheme = mock(() => false);
+        bridge._decompressThemeFromYjs = mock(() => ({
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Test</name></theme>',
+        }));
+        bridge._compressThemeFiles = mock(() => new Uint8Array([1, 2, 3]));
+        bridge._parseThemeConfigFromFiles = mock(() => ({
+          name: 'existing-theme',
+          type: 'user',
+        }));
+        global.eXeLearning.app.themes.list.installed = { 'existing-theme': {} };
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+
+        await bridge._loadUserThemeFromYjs('existing-theme', 'data');
+
+        expect(global.eXeLearning.app.themes.list.addUserTheme).not.toHaveBeenCalled();
+      });
+
+      it('handles top-level error', async () => {
+        bridge.resourceCache = null;
+        bridge.resourceFetcher = null;
+
+        // Should not throw even with null dependencies
+        await expect(bridge._loadUserThemeFromYjs('theme', 'data')).resolves.not.toThrow();
+      });
+    });
+  });
+
+  describe('disconnect', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('cleans up all resources', async () => {
+      const mockDocumentManagerDestroy = mock(() => Promise.resolve());
+      const mockAssetWSHandlerDestroy = mock(() => {});
+      const mockAssetManagerCleanup = mock(() => {});
+      const mockAssetCacheDestroy = mock(() => {});
+      const mockConnectionMonitorDestroy = mock(() => {});
+
+      bridge.documentManager = { destroy: mockDocumentManagerDestroy };
+      bridge.assetWebSocketHandler = { destroy: mockAssetWSHandlerDestroy };
+      bridge.assetManager = { cleanup: mockAssetManagerCleanup };
+      bridge.assetCache = { destroy: mockAssetCacheDestroy };
+      bridge.saveManager = { save: () => {} };
+      bridge.connectionMonitor = { destroy: mockConnectionMonitorDestroy };
+
+      await bridge.disconnect();
+
+      expect(mockDocumentManagerDestroy).toHaveBeenCalled();
+      expect(mockAssetWSHandlerDestroy).toHaveBeenCalled();
+      expect(mockAssetManagerCleanup).toHaveBeenCalled();
+      expect(mockAssetCacheDestroy).toHaveBeenCalled();
+      expect(mockConnectionMonitorDestroy).toHaveBeenCalled();
+      expect(bridge.initialized).toBe(false);
+      expect(bridge.saveManager).toBeNull();
+      expect(bridge.connectionMonitor).toBeNull();
+    });
+
+    it('handles disconnect without assetCache.destroy method', async () => {
+      bridge.documentManager = { destroy: mock(() => Promise.resolve()) };
+      bridge.assetCache = {}; // No destroy method
+      bridge.assetWebSocketHandler = null;
+      bridge.assetManager = null;
+      bridge.connectionMonitor = null;
+
+      await expect(bridge.disconnect()).resolves.not.toThrow();
+    });
+
+    it('handles disconnect with null resources', async () => {
+      bridge.documentManager = null;
+      bridge.assetWebSocketHandler = null;
+      bridge.assetManager = null;
+      bridge.assetCache = null;
+      bridge.connectionMonitor = null;
+
+      await expect(bridge.disconnect()).resolves.not.toThrow();
+      expect(bridge.initialized).toBe(false);
+    });
+  });
+
+  describe('importStructure', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('imports API structure via structureBinding', () => {
+      const mockImportFromApi = mock(() => {});
+      bridge.structureBinding = {
+        importFromApiStructure: mockImportFromApi,
+      };
+      bridge.updateUndoRedoButtons = mock(() => {});
+
+      const apiStructure = [{ id: 'page-1', pageName: 'Page 1' }];
+      bridge.importStructure(apiStructure);
+
+      expect(mockImportFromApi).toHaveBeenCalledWith(apiStructure);
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('handles missing structureBinding', () => {
+      bridge.structureBinding = null;
+
+      // Should not throw
+      expect(() => bridge.importStructure([])).not.toThrow();
+    });
+  });
+
+  describe('clearNavigation', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('clears navigation via structureBinding', () => {
+      const mockClearNav = mock(() => {});
+      bridge.structureBinding = {
+        clearNavigation: mockClearNav,
+      };
+
+      bridge.clearNavigation();
+
+      expect(mockClearNav).toHaveBeenCalled();
+    });
+
+    it('handles missing structureBinding', () => {
+      bridge.structureBinding = null;
+
+      // Should not throw
+      expect(() => bridge.clearNavigation()).not.toThrow();
+    });
+  });
+
+  describe('onStructureChange', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('registers callback and returns unsubscribe function', () => {
+      const callback = () => {};
+
+      const unsubscribe = bridge.onStructureChange(callback);
+
+      expect(bridge.structureObservers).toContain(callback);
+
+      unsubscribe();
+
+      expect(bridge.structureObservers).not.toContain(callback);
+    });
+  });
+
+  describe('onSaveStatus', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('registers callback and returns unsubscribe function', () => {
+      const callback = () => {};
+
+      const unsubscribe = bridge.onSaveStatus(callback);
+
+      expect(bridge.saveStatusCallbacks).toContain(callback);
+
+      unsubscribe();
+
+      expect(bridge.saveStatusCallbacks).not.toContain(callback);
+    });
+  });
+
+  describe('getAssetManager', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('returns assetManager instance', () => {
+      bridge.assetManager = { id: 'test-asset-manager' };
+
+      expect(bridge.getAssetManager()).toBe(bridge.assetManager);
+    });
+
+    it('returns null when not set', () => {
+      bridge.assetManager = null;
+
+      expect(bridge.getAssetManager()).toBeNull();
+    });
+  });
+
+  describe('getAssetWebSocketHandler', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('returns assetWebSocketHandler instance', () => {
+      bridge.assetWebSocketHandler = { id: 'test-ws-handler' };
+
+      expect(bridge.getAssetWebSocketHandler()).toBe(bridge.assetWebSocketHandler);
+    });
+
+    it('returns null when not set', () => {
+      bridge.assetWebSocketHandler = null;
+
+      expect(bridge.getAssetWebSocketHandler()).toBeNull();
+    });
+  });
+
+  describe('requestMissingAssets', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('delegates to assetWebSocketHandler', async () => {
+      const mockRequest = mock(() => Promise.resolve(['asset-1', 'asset-2']));
+      bridge.assetWebSocketHandler = {
+        requestMissingAssetsFromHTML: mockRequest,
+      };
+
+      const result = await bridge.requestMissingAssets('<img src="asset://asset-1">');
+
+      expect(mockRequest).toHaveBeenCalledWith('<img src="asset://asset-1">');
+      expect(result).toEqual(['asset-1', 'asset-2']);
+    });
+
+    it('returns empty array when handler not available', async () => {
+      bridge.assetWebSocketHandler = null;
+
+      const result = await bridge.requestMissingAssets('<html></html>');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('announceAssets', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('calls announceAssetAvailability on handler', async () => {
+      const mockAnnounce = mock(() => Promise.resolve());
+      bridge.assetWebSocketHandler = {
+        announceAssetAvailability: mockAnnounce,
+      };
+
+      await bridge.announceAssets();
+
+      expect(mockAnnounce).toHaveBeenCalled();
+    });
+
+    it('handles missing handler gracefully', async () => {
+      bridge.assetWebSocketHandler = null;
+
+      // Should not throw
+      await expect(bridge.announceAssets()).resolves.not.toThrow();
     });
   });
 });
