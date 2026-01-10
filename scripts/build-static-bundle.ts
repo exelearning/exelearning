@@ -476,7 +476,25 @@ function processNjkTemplate(filePath: string): string {
     // Replace other simple {{ variable }} patterns (remove them for static)
     content = content.replace(/\{\{[^}]+\}\}/g, '');
 
-    // Remove {% ... %} tags (conditionals, includes, etc.) - multiline support
+    // Process conditionals for isOfflineInstallation (true in static mode):
+    // KEEP content inside {% if config.isOfflineInstallation %}...{% endif %}
+    content = content.replace(
+        /\{%\s*if\s+config\.isOfflineInstallation\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g,
+        '$1'
+    );
+    // REMOVE content inside {% if not config.isOfflineInstallation %}...{% endif %}
+    content = content.replace(
+        /\{%\s*if\s+not\s+config\.isOfflineInstallation\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
+        ''
+    );
+    // Process conditionals for platformIntegration (false in static mode):
+    // REMOVE content inside {% if config.platformIntegration %}...{% endif %}
+    content = content.replace(
+        /\{%\s*if\s+config\.platformIntegration\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
+        ''
+    );
+
+    // Remove remaining {% ... %} tags (other conditionals, includes, etc.)
     content = content.replace(/\{%[\s\S]*?%\}/g, '');
 
     return content;
@@ -625,7 +643,7 @@ function buildApiParameters(): ApiParameters {
                 help: 'You can choose a different language for the current project.',
                 value: null,
                 type: 'select',
-                options: ['ca', 'en', 'eo', 'es', 'eu', 'gl', 'pt', 'ro', 'va'],
+                options: PACKAGE_LOCALES,
                 category: 'General settings',
             },
             advancedMode: {
@@ -640,7 +658,7 @@ function buildApiParameters(): ApiParameters {
                 help: 'You can choose a different licence for the current project.',
                 value: 'creative commons: attribution - share alike 4.0',
                 type: 'select',
-                options: [],
+                options: LICENSES,
                 category: 'General settings',
             },
             theme: {
@@ -882,8 +900,16 @@ function generateStaticHtml(bundleData: object): string {
         .exe-online { display: block !important; }
         li.exe-online { display: list-item !important; }
         /* Hide exe-online items that don't make sense in static mode (Save, Share) */
-        #navbar-button-save.exe-online,
-        #navbar-button-share { display: none !important; }
+        /* Note: exe-online class is on the parent <li>, not on the <a> element */
+        li.exe-online:has(#navbar-button-save),
+        li.exe-online:has(#navbar-button-share),
+        li.exe-online:has(#mobile-navbar-button-save) { display: none !important; }
+        /* Ensure icon sizes inside flex buttons */
+        #head-bottom-preview .small-icon {
+            min-width: 16px;
+            width: 16px;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body id="main">
@@ -900,6 +926,15 @@ function generateStaticHtml(bundleData: object): string {
         window.__APP_DEBUG__ = "0";
         window.__APP_ONLINE_MODE__ = false;
 
+        // Get saved locale from localStorage, fallback to browser language
+        function getSavedLocale() {
+            try {
+                const prefs = JSON.parse(localStorage.getItem('exelearning_user_preferences') || '{}');
+                if (prefs.locale) return prefs.locale;
+            } catch (e) {}
+            return navigator.language?.split('-')[0] || 'en';
+        }
+
         window.eXeLearning = {
             version: "${buildVersion}",
             expires: "",
@@ -913,7 +948,7 @@ function generateStaticHtml(bundleData: object): string {
             config: JSON.stringify({
                 isOfflineInstallation: true,
                 isStaticMode: true,
-                locale: navigator.language?.split('-')[0] || 'en',
+                locale: getSavedLocale(),
                 basePath: '.',
                 baseURL: '.',
                 fullURL: '.',

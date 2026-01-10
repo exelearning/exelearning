@@ -45,6 +45,116 @@ export default class Locale {
      */
     async loadTranslationsStrings() {
         this.strings = await this.app.api.getTranslations(this.lang);
+        // Re-translate static UI elements (menus, modals, buttons)
+        this.translateStaticUI();
+    }
+
+    /**
+     * Translate static UI elements that were baked into HTML at build time.
+     * This is needed for static mode where the HTML is pre-generated.
+     */
+    translateStaticUI() {
+        // Map of element selectors to their translation keys
+        const translations = {
+            // Main menu items
+            '#dropdownFile': 'File',
+            '#dropdownUtilities': 'Utilities',
+            '#dropdownHelp': 'Help',
+            // File menu
+            '#navbar-button-new': 'New',
+            '#navbar-button-new-from-template': 'New from Template...',
+            '#navbar-button-openuserodefiles': 'Open',
+            '#navbar-button-dropdown-recent-projects': 'Recent projects',
+            '#navbar-button-import-elp': 'Import (.elpx…)',
+            '#navbar-button-save': 'Save',
+            '#navbar-button-save-as': 'Save as',
+            '#dropdownExportAs': 'Download as...',
+            '#navbar-button-download-project': 'eXeLearning content (.elpx)',
+            '#navbar-button-export-html5': 'Website',
+            '#navbar-button-export-html5-sp': 'Single page',
+            '#navbar-button-settings': 'Settings',
+            '#navbar-button-share': 'Share',
+            '#navbar-button-open-offline': 'Open',
+            '#navbar-button-save-offline': 'Save',
+            '#navbar-button-save-as-offline': 'Save as',
+            '#dropdownExportAsOffline': 'Export as...',
+            '#navbar-button-exportas-html5': 'Website',
+            '#navbar-button-exportas-html5-folder': 'Export to Folder (Unzipped Website)',
+            '#navbar-button-exportas-html5-sp': 'Single page',
+            '#navbar-button-export-print': 'Print',
+            '#dropdownUploadTo': 'Upload to',
+            '#dropdownProperties': 'Metadata',
+            '#navbar-button-import-xml-properties': 'Import',
+            '#navbar-button-export-xml-properties': 'Export',
+            // Utilities menu
+            '#navbar-button-idevice-manager': 'iDevice manager',
+            '#navbar-button-odeusedfiles': 'Resources report',
+            '#navbar-button-odebrokenlinks': 'Link validation',
+            '#navbar-button-filemanager': 'File manager',
+            '#navbar-button-styles': 'Styles',
+            '#navbar-button-preview': 'Preview',
+            '#navbar-button-preferences': 'Preferences',
+            // Help menu
+            '#navbar-button-assistant': 'Assistant',
+            '#navbar-button-exe-tutorial': 'User manual',
+            '#navbar-button-api-docs': 'API Reference (Swagger)',
+            '#navbar-button-about-exe': 'About eXeLearning',
+            '#navbar-button-release-notes': 'Release notes',
+            '#navbar-button-legal-notes': 'Legal notes',
+            '#navbar-button-exe-web': 'eXeLearning website',
+            '#navbar-button-report-bug': 'Report a bug',
+            // Head buttons
+            '#head-top-save-button': 'Save',
+            '#head-bottom-preview': 'Preview',
+            // Modal buttons
+            '.btn-primary:not([data-no-translate])': 'Save',
+            '.btn-secondary.close:not([data-no-translate])': 'Cancel',
+        };
+
+        for (const [selector, key] of Object.entries(translations)) {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                // Get translated text
+                const translated = _(key);
+                // For menu items, preserve icons (spans with icon classes)
+                const iconSpan = el.querySelector('span[class*="icon"]');
+                if (iconSpan) {
+                    // Keep the icon, replace only the text after it
+                    const textNodes = Array.from(el.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
+                    textNodes.forEach(n => n.textContent = ' ' + translated);
+                    if (textNodes.length === 0) {
+                        el.appendChild(document.createTextNode(' ' + translated));
+                    }
+                } else if (el.tagName === 'A' || el.tagName === 'BUTTON') {
+                    // For links/buttons without icons, check for keyboard shortcuts
+                    const shortcut = el.querySelector('.shortcut, kbd');
+                    if (shortcut) {
+                        el.firstChild.textContent = translated;
+                    } else {
+                        // Simple text replacement, but preserve any child elements
+                        const firstTextNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+                        if (firstTextNode) {
+                            firstTextNode.textContent = translated;
+                        } else {
+                            el.textContent = translated;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Translate modal titles and common elements
+        const modalTitles = {
+            '#modalProperties .modal-title': 'Preferences',
+            '#modalAbout .modal-title': 'About eXeLearning',
+            '#modalReleaseNotes .modal-title': 'Release notes',
+            '#modalLegalNotes .modal-title': 'Legal notes',
+        };
+
+        for (const [selector, key] of Object.entries(modalTitles)) {
+            const el = document.querySelector(selector);
+            if (el) el.textContent = _(key);
+        }
     }
 
     getGUITranslation(string) {

@@ -47,11 +47,37 @@ describe('Locale translations', () => {
     expect(document.querySelector('body').getAttribute('lang')).toBe('fr');
   });
 
-  it('loadTranslationsStrings populates strings via API', async () => {
+  it('loadTranslationsStrings populates strings via API and calls translateStaticUI', async () => {
+    // Spy on translateStaticUI
+    const translateSpy = vi.spyOn(locale, 'translateStaticUI').mockImplementation(() => {});
+
     await locale.setLocaleLang('es');
     await locale.loadTranslationsStrings();
+
     expect(mockApp.api.getTranslations).toHaveBeenCalledWith('es');
     expect(locale.strings.translations.hello).toBe('~Hola');
+    expect(translateSpy).toHaveBeenCalled();
+  });
+
+  it('translateStaticUI translates menu elements using _() function', () => {
+    // Set up translations
+    locale.strings = {
+      translations: {
+        File: 'Archivo',
+        Utilities: 'Utilidades',
+      },
+    };
+
+    // Create mock DOM elements
+    document.body.innerHTML = `
+      <a id="dropdownFile">File</a>
+      <a id="dropdownUtilities">Utilities</a>
+    `;
+
+    locale.translateStaticUI();
+
+    expect(document.querySelector('#dropdownFile').textContent).toBe('Archivo');
+    expect(document.querySelector('#dropdownUtilities').textContent).toBe('Utilidades');
   });
 
   it('getGUITranslation returns cleaned translation with tilde removed', () => {

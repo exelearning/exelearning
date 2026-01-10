@@ -38,7 +38,7 @@ describe('UserPreferences', () => {
     mockManager = {
       reloadMode: vi.fn(),
       reloadVersionControl: vi.fn(),
-      reloadLang: vi.fn(),
+      reloadLang: vi.fn().mockResolvedValue(),
       app: globalThis.eXeLearning.app
     };
 
@@ -113,11 +113,8 @@ describe('UserPreferences', () => {
         advancedMode: 'true',
         locale: 'fr'
       });
-      
-      // Wait for promise resolution in then()
-      await new Promise(resolve => setTimeout(resolve, 0));
-      
       expect(mockManager.reloadMode).toHaveBeenCalledWith('true');
+      expect(mockManager.reloadLang).toHaveBeenCalledWith('fr');
       expect(window.location.reload).toHaveBeenCalled();
 
       window.location = originalLocation;

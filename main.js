@@ -1,19 +1,47 @@
-const { app, BrowserWindow, dialog, session, ipcMain, Menu, systemPreferences, shell } = require('electron');
+const { app, BrowserWindow, dialog, session, ipcMain, Menu, systemPreferences, shell, protocol, net } = require('electron');
 const { autoUpdater } = require('electron-updater');
 
 const log = require('electron-log');
 const path = require('path');
 const i18n = require('i18n');
-const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const fflate = require('fflate');
-const http = require('http'); // Import the http module to check server availability and downloads
 const https = require('https');
+const { pathToFileURL } = require('url');
 
 const { initAutoUpdater } = require('./update-manager');
 
+// Register exe:// protocol as privileged (must be done before app ready)
+// This allows the protocol to:
+// - Be treated as secure origin (like https)
+// - Support fetch, XHR, and other web APIs
+// - Bypass CORS restrictions for local files
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'exe',
+        privileges: {
+            standard: true,
+            secure: true,
+            supportFetchAPI: true,
+            corsEnabled: true,
+            stream: true,
+        },
+    },
+]);
+
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged ? process.resourcesPath : app.getAppPath();
+
+/**
+ * Get the path to the static files directory.
+ * In packaged mode, static files are in extraResources/static/.
+ * In dev mode, static files are in dist/static/.
+ */
+function getStaticPath() {
+    return app.isPackaged
+        ? path.join(process.resourcesPath, 'static')
+        : path.join(__dirname, 'dist', 'static');
+}
 
 // Optional: force a predictable path/name
 log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'logs', 'main.log');
@@ -65,14 +93,9 @@ i18n.configure({
 i18n.setLocale(defaultLocale);
 
 let appDataPath;
-let databasePath;
-
-let databaseUrl;
 
 let mainWindow;
-let loadingWindow;
 let isShuttingDown = false; // Flag to ensure the app only shuts down once
-let serverProcess = null; // Elysia server process handle
 let updaterInited = false; // guard
 
 // Environment variables container
@@ -288,44 +311,21 @@ function ensureAllDirectoriesWritable(env) {
 
 function initializePaths() {
     appDataPath = app.getPath('userData');
-    databasePath = path.join(appDataPath, 'exelearning.db');
-
     console.log(`APP data path: ${appDataPath}`);
-    console.log('Database path:', databasePath);
 }
 // Define environment variables after initializing paths
+// Note: In static mode, we only need directory paths for cache/cleanup
 function initializeEnv() {
     const isDev = determineDevMode();
     const appEnv = isDev ? 'dev' : 'prod';
-    // For Electron mode, use port 3001 for local development
-    const serverPort = '3001';
 
-    // Get the appropriate app data path based on platform
     customEnv = {
         APP_ENV: process.env.APP_ENV || appEnv,
         APP_DEBUG: process.env.APP_DEBUG ?? (isDev ? 1 : 0),
         EXELEARNING_DEBUG_MODE: (process.env.EXELEARNING_DEBUG_MODE ?? (isDev ? '1' : '0')).toString(),
-        APP_SECRET: process.env.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
-        APP_PORT: serverPort,
-        APP_ONLINE_MODE: process.env.APP_ONLINE_MODE ?? '0',
-        APP_AUTH_METHODS: process.env.APP_AUTH_METHODS || 'none',
-        TEST_USER_EMAIL: process.env.TEST_USER_EMAIL || 'user@exelearning.net',
-        TEST_USER_USERNAME: process.env.TEST_USER_USERNAME || 'user',
-        TEST_USER_PASSWORD: process.env.TEST_USER_PASSWORD || '1234',
-        TRUSTED_PROXIES: process.env.TRUSTED_PROXIES || '',
-        MAILER_DSN: process.env.MAILER_DSN || 'smtp://localhost',
-        CAS_URL: process.env.CAS_URL || '',
-        DB_DRIVER: process.env.DB_DRIVER || 'pdo_sqlite',
-        DB_CHARSET: process.env.DB_CHARSET || 'utf8',
-        DB_PATH: process.env.DB_PATH || databasePath,
-        DB_SERVER_VERSION: process.env.DB_SERVER_VERSION || '3.32',
         FILES_DIR: path.join(appDataPath, 'data'),
         CACHE_DIR: path.join(appDataPath, 'cache'),
         LOG_DIR: path.join(appDataPath, 'log'),
-        API_JWT_SECRET: process.env.API_JWT_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
-        ONLINE_THEMES_INSTALL: 1,
-        ONLINE_IDEVICES_INSTALL: 0, // To do (see #381)
-        BASE_PATH: process.env.BASE_PATH || '/',
     };
 }
 /**
@@ -372,13 +372,6 @@ function applyCombinedEnvToProcess() {
     Object.assign(process.env, env || {});
 }
 
-function getServerPort() {
-    try {
-        return Number(customEnv?.APP_PORT || process.env.APP_PORT || 3001);
-    } catch (_e) {
-        return 3001;
-    }
-}
 
 // Detecta si una URL es externa (debe abrirse en navegador del sistema)
 function isExternalUrl(url) {
@@ -483,310 +476,263 @@ function createWindow() {
     // Ensure all required directories exist and try to set permissions
     ensureAllDirectoriesWritable(env);
 
-    // Create the loading window
-    createLoadingWindow();
+    // Register exe:// protocol handler to serve static files
+    // This allows the app to load files with proper origin (exe://static)
+    // which enables fetch, CORS, and blob URL resolution in previews
+    const staticDir = getStaticPath();
+    protocol.handle('exe', (request) => {
+        // Parse the URL: exe://./path/to/file -> staticDir/path/to/file
+        const url = new URL(request.url);
+        // Remove leading ./ or / from pathname
+        let filePath = url.pathname.replace(/^\/+/, '');
+        const fullPath = path.join(staticDir, filePath);
 
-    // Start the Elysia server only in production (in dev, assume it's already running)
-    const isDev = determineDevMode();
-    if (!isDev) {
-        startElysiaServer();
-    } else {
-        console.log('Development mode: skipping server startup (assuming external server running)');
-    }
-
-    // Wait for the server to be available before loading the main window
-    waitForServer(() => {
-        // Close the loading window
-        if (loadingWindow) {
-            loadingWindow.close();
+        // Security: ensure the path is within staticDir
+        const normalizedPath = path.normalize(fullPath);
+        if (!normalizedPath.startsWith(staticDir)) {
+            return new Response('Forbidden', { status: 403 });
         }
 
-        const isDev = determineDevMode();
-
-        // Create the main window
-        mainWindow = new BrowserWindow({
-            width: 1250,
-            height: 800,
-            autoHideMenuBar: !isDev, // Windows / Linux
-            webPreferences: {
-                nodeIntegration: false,
-                contextIsolation: true,
-                preload: path.join(__dirname, 'preload.js'),
-            },
-            tabbingIdentifier: 'mainGroup',
-            show: true,
-            // titleBarStyle: 'customButtonsOnHover', // hidden title bar on macOS
-        });
-
-        // Show the menu bar in development mode, hide it in production
-        mainWindow.setMenuBarVisibility(isDev);
-
-        // Maximize the window and open it
-        mainWindow.maximize();
-        mainWindow.show();
-
-        // macOS: Show tab bar after window is visible
-        if (process.platform === 'darwin' && typeof mainWindow.toggleTabBar === 'function') {
-            // Small delay to ensure window is fully rendered
-            setTimeout(() => {
-                try {
-                    mainWindow.toggleTabBar();
-                } catch (e) {
-                    console.warn('Could not toggle tab bar:', e.message);
-                }
-            }, 100);
-        }
-
-        if (process.env.CI === '1' || process.env.CI === 'true') {
-            mainWindow.setAlwaysOnTop(true, 'screen-saver');
-            mainWindow.show();
-            mainWindow.focus();
-            setTimeout(() => mainWindow.setAlwaysOnTop(false), 2500);
-        }
-
-        // Allow the child windows to be created and ensure proper closing behavior
-        mainWindow.webContents.on('did-create-window', childWindow => {
-            console.log('Child window created');
-
-            // Adjust child window position slightly offset from the main window
-            const [mainWindowX, mainWindowY] = mainWindow.getPosition();
-            const x = mainWindowX + 10;
-            const y = mainWindowY + 10;
-            childWindow.setPosition(x, y);
-
-            // Remove preventDefault if you want the window to close when clicking the X button
-            childWindow.on('close', () => {
-                // Optional: Add any cleanup actions here if necessary
-                console.log('Child window closed');
-                childWindow.destroy();
-            });
-        });
-
-        mainWindow.loadURL(`http://localhost:${getServerPort()}`);
-
-        // Check for updates and flush pending files
-        mainWindow.webContents.on('did-finish-load', () => {
-            // Flush pending files (opened via double-click or command line)
-            // Delay to allow frontend JS to initialize and register IPC handlers
-            if (pendingOpenFiles.length > 0) {
-                const filesToOpen = [...pendingOpenFiles];
-                pendingOpenFiles = [];
-                console.log(`Flushing ${filesToOpen.length} pending file(s) to open:`, filesToOpen);
-
-                setTimeout(() => {
-                    if (mainWindow && !mainWindow.isDestroyed()) {
-                        // Open first file in main window
-                        const firstFile = filesToOpen.shift();
-                        if (firstFile) {
-                            console.log('[main] Sending file to main window:', firstFile);
-                            mainWindow.webContents.send('app:open-file', firstFile);
-                        }
-                        // Open remaining files in new windows/tabs
-                        for (const filePath of filesToOpen) {
-                            console.log('[main] Creating new window for file:', filePath);
-                            createNewProjectWindow(filePath);
-                        }
-                    }
-                }, 1500); // Wait for frontend to fully initialize
-            }
-
-            if (!updaterInited) {
-                try {
-                    const updater = initAutoUpdater({ mainWindow, autoUpdater, logger: log, streamToFile });
-                    // Init updater once
-                    updaterInited = true;
-                    void updater.checkForUpdatesAndNotify().catch(err => log.warn('update check failed', err));
-                } catch (e) {
-                    log.warn?.('Failed to init updater after load', e);
-                }
-            }
-        });
-
-        // Intercept downloads: first time ask path, then overwrite same path
-        session.defaultSession.on('will-download', async (event, item, webContents) => {
-            try {
-                // Use the filename from the request or our override
-                const wc =
-                    webContents && !webContents.isDestroyed?.()
-                        ? webContents
-                        : mainWindow
-                          ? mainWindow.webContents
-                          : null;
-                const wcId = wc && !wc.isDestroyed?.() ? wc.id : null;
-                // Deduplicate same-URL downloads triggered within a short window
-                try {
-                    const url = typeof item.getURL === 'function' ? item.getURL() : undefined;
-                    if (wcId && url) {
-                        const now = Date.now();
-                        const last = lastDownloadByWC.get(wcId);
-                        if (last && last.url === url && now - last.time < 1500) {
-                            // Cancel duplicate download attempt
-                            event.preventDefault();
-                            return;
-                        }
-                        lastDownloadByWC.set(wcId, { url, time: now });
-                    }
-                } catch (_e) {}
-                const overrideName = wcId ? nextDownloadNameByWC.get(wcId) : null;
-                if (wcId && nextDownloadNameByWC.has(wcId)) nextDownloadNameByWC.delete(wcId);
-                const suggestedName = overrideName || item.getFilename() || 'document.elpx';
-                // Determine a safe target WebContents (can be null in some cases)
-                // Allow renderer to define a project key (optional)
-                let projectKey = 'default';
-                if (wcId && nextDownloadKeyByWC.has(wcId)) {
-                    projectKey = nextDownloadKeyByWC.get(wcId) || 'default';
-                    nextDownloadKeyByWC.delete(wcId);
-                } else if (wc) {
-                    try {
-                        projectKey = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
-                    } catch (_e) {
-                        // ignore, fallback to default
-                    }
-                }
-
-                let targetPath = getSavedPath(projectKey);
-
-                if (!targetPath) {
-                    const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
-                    const { filePath, canceled } = await dialog.showSaveDialog(owner, {
-                        title: tOrDefault(
-                            'save.dialogTitle',
-                            defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project',
-                        ),
-                        defaultPath: suggestedName,
-                        buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
-                    });
-                    if (canceled || !filePath) {
-                        event.preventDefault();
-                        return;
-                    }
-                    targetPath = ensureExt(filePath, suggestedName);
-                    setSavedPath(projectKey, targetPath);
-                } else {
-                    // If remembered path has no extension, append inferred one
-                    const fixed = ensureExt(targetPath, suggestedName);
-                    if (fixed !== targetPath) {
-                        targetPath = fixed;
-                        setSavedPath(projectKey, targetPath);
-                    }
-                }
-
-                // Save directly (overwrite without prompting)
-                item.setSavePath(targetPath);
-
-                // Progress feedback and auto-resume on interruption
-                item.on('updated', (_e, state) => {
-                    if (state === 'progressing') {
-                        if (wc && !wc.isDestroyed?.())
-                            wc.send('download-progress', {
-                                received: item.getReceivedBytes(),
-                                total: item.getTotalBytes(),
-                            });
-                    } else if (state === 'interrupted') {
-                        try {
-                            if (item.canResume()) item.resume();
-                        } catch (_err) {}
-                    }
-                });
-
-                item.once('done', (_e, state) => {
-                    const send = payload => {
-                        if (wc && !wc.isDestroyed?.()) wc.send('download-done', payload);
-                        else if (mainWindow && !mainWindow.isDestroyed())
-                            mainWindow.webContents.send('download-done', payload);
-                    };
-                    if (state === 'completed') {
-                        send({ ok: true, path: targetPath });
-                        return;
-                    }
-                    if (state === 'interrupted') {
-                        try {
-                            const total = item.getTotalBytes() || 0;
-                            const exists = fs.existsSync(targetPath);
-                            const size = exists ? fs.statSync(targetPath).size : 0;
-                            if (exists && (total === 0 || size >= total)) {
-                                send({ ok: true, path: targetPath });
-                                return;
-                            }
-                        } catch (_err) {}
-                    }
-                    send({ ok: false, error: state });
-                });
-            } catch (err) {
-                event.preventDefault();
-                if (mainWindow && !mainWindow.isDestroyed()) {
-                    mainWindow.webContents.send('download-done', { ok: false, error: err.message });
-                }
-            }
-        });
-
-        // If any event blocks window closing, remove it
-        mainWindow.on('close', e => {
-            // This is to ensure any preventDefault() won't stop the closing
-            console.log('Window is being forced to close...');
-            e.preventDefault(); // Optional: Prevent default close event
-            mainWindow.destroy(); // Force destroy the window
-        });
-
-        mainWindow.on('closed', () => {
-            mainWindow = null;
-        });
-
-        // Listen for application exit events
-        handleAppExit();
+        // Use net.fetch to serve the file (handles MIME types automatically)
+        return net.fetch(pathToFileURL(normalizedPath).href);
     });
-}
+    console.log('Registered exe:// protocol handler for:', staticDir);
 
-function createLoadingWindow() {
-    loadingWindow = new BrowserWindow({
-        width: 400,
-        height: 300,
-        frame: false, // No title bar
-        transparent: true, // Make the window transparent
-        alwaysOnTop: true, // Always on top
+    const isDev = determineDevMode();
+
+    // Create the main window (no server needed - load static files directly)
+    mainWindow = new BrowserWindow({
+        width: 1250,
+        height: 800,
+        autoHideMenuBar: !isDev, // Windows / Linux
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js'),
         },
+        tabbingIdentifier: 'mainGroup',
+        show: true,
     });
 
-    // Load the loading.html file
-    loadingWindow.loadFile(path.join(basePath, 'public', 'loading.html'));
-}
+    // Show the menu bar in development mode, hide it in production
+    mainWindow.setMenuBarVisibility(isDev);
 
-function waitForServer(callback) {
-    // Use the BASE_PATH to check the correct healthcheck endpoint
-    // Handle both '/' and '/web/exelearning' style paths
-    const rawBasePath = customEnv?.BASE_PATH || '/';
-    const urlBasePath = rawBasePath === '/' ? '' : rawBasePath;
-    const options = {
-        host: 'localhost',
-        port: getServerPort(),
-        path: `${urlBasePath}/healthcheck`,
-        timeout: 1000, // 1-second timeout
-    };
+    // Maximize the window and open it
+    mainWindow.maximize();
+    mainWindow.show();
 
-    const checkServer = () => {
-        const req = http.request(options, res => {
-            if (res.statusCode >= 200 && res.statusCode <= 400) {
-                console.log('Application server available.');
-                callback(); // Call the callback to continue opening the window
-            } else {
-                console.log(`Server status: ${res.statusCode}. Retrying...`);
-                setTimeout(checkServer, 1000); // Try again in 1 second
+    // macOS: Show tab bar after window is visible
+    if (process.platform === 'darwin' && typeof mainWindow.toggleTabBar === 'function') {
+        // Small delay to ensure window is fully rendered
+        setTimeout(() => {
+            try {
+                mainWindow.toggleTabBar();
+            } catch (e) {
+                console.warn('Could not toggle tab bar:', e.message);
             }
+        }, 100);
+    }
+
+    if (process.env.CI === '1' || process.env.CI === 'true') {
+        mainWindow.setAlwaysOnTop(true, 'screen-saver');
+        mainWindow.show();
+        mainWindow.focus();
+        setTimeout(() => mainWindow.setAlwaysOnTop(false), 2500);
+    }
+
+    // Allow the child windows to be created and ensure proper closing behavior
+    mainWindow.webContents.on('did-create-window', childWindow => {
+        console.log('Child window created');
+
+        // Adjust child window position slightly offset from the main window
+        const [mainWindowX, mainWindowY] = mainWindow.getPosition();
+        const x = mainWindowX + 10;
+        const y = mainWindowY + 10;
+        childWindow.setPosition(x, y);
+
+        // Remove preventDefault if you want the window to close when clicking the X button
+        childWindow.on('close', () => {
+            // Optional: Add any cleanup actions here if necessary
+            console.log('Child window closed');
+            childWindow.destroy();
         });
+    });
 
-        req.on('error', () => {
-            console.log('Server not available, retrying...');
-            setTimeout(checkServer, 1000); // Try again in 1 second
-        });
+    // Load static HTML via exe:// protocol (enables proper origin for fetch/CORS)
+    mainWindow.loadURL('exe://./index.html');
 
-        req.end();
-    };
+    // Check for updates and flush pending files
+    mainWindow.webContents.on('did-finish-load', () => {
+        // Flush pending files (opened via double-click or command line)
+        // Delay to allow frontend JS to initialize and register IPC handlers
+        if (pendingOpenFiles.length > 0) {
+            const filesToOpen = [...pendingOpenFiles];
+            pendingOpenFiles = [];
+            console.log(`Flushing ${filesToOpen.length} pending file(s) to open:`, filesToOpen);
 
-    checkServer();
+            setTimeout(() => {
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    // Open first file in main window
+                    const firstFile = filesToOpen.shift();
+                    if (firstFile) {
+                        console.log('[main] Sending file to main window:', firstFile);
+                        mainWindow.webContents.send('app:open-file', firstFile);
+                    }
+                    // Open remaining files in new windows/tabs
+                    for (const filePath of filesToOpen) {
+                        console.log('[main] Creating new window for file:', filePath);
+                        createNewProjectWindow(filePath);
+                    }
+                }
+            }, 1500); // Wait for frontend to fully initialize
+        }
+
+        if (!updaterInited) {
+            try {
+                const updater = initAutoUpdater({ mainWindow, autoUpdater, logger: log, streamToFile });
+                // Init updater once
+                updaterInited = true;
+                void updater.checkForUpdatesAndNotify().catch(err => log.warn('update check failed', err));
+            } catch (e) {
+                log.warn?.('Failed to init updater after load', e);
+            }
+        }
+    });
+
+    // Intercept downloads: first time ask path, then overwrite same path
+    session.defaultSession.on('will-download', async (event, item, webContents) => {
+        try {
+            // Use the filename from the request or our override
+            const wc =
+                webContents && !webContents.isDestroyed?.()
+                    ? webContents
+                    : mainWindow
+                      ? mainWindow.webContents
+                      : null;
+            const wcId = wc && !wc.isDestroyed?.() ? wc.id : null;
+            // Deduplicate same-URL downloads triggered within a short window
+            try {
+                const url = typeof item.getURL === 'function' ? item.getURL() : undefined;
+                if (wcId && url) {
+                    const now = Date.now();
+                    const last = lastDownloadByWC.get(wcId);
+                    if (last && last.url === url && now - last.time < 1500) {
+                        // Cancel duplicate download attempt
+                        event.preventDefault();
+                        return;
+                    }
+                    lastDownloadByWC.set(wcId, { url, time: now });
+                }
+            } catch (_e) {}
+            const overrideName = wcId ? nextDownloadNameByWC.get(wcId) : null;
+            if (wcId && nextDownloadNameByWC.has(wcId)) nextDownloadNameByWC.delete(wcId);
+            const suggestedName = overrideName || item.getFilename() || 'document.elpx';
+            // Determine a safe target WebContents (can be null in some cases)
+            // Allow renderer to define a project key (optional)
+            let projectKey = 'default';
+            if (wcId && nextDownloadKeyByWC.has(wcId)) {
+                projectKey = nextDownloadKeyByWC.get(wcId) || 'default';
+                nextDownloadKeyByWC.delete(wcId);
+            } else if (wc) {
+                try {
+                    projectKey = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
+                } catch (_e) {
+                    // ignore, fallback to default
+                }
+            }
+
+            let targetPath = getSavedPath(projectKey);
+
+            if (!targetPath) {
+                const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
+                const { filePath, canceled } = await dialog.showSaveDialog(owner, {
+                    title: tOrDefault(
+                        'save.dialogTitle',
+                        defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project',
+                    ),
+                    defaultPath: suggestedName,
+                    buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
+                });
+                if (canceled || !filePath) {
+                    event.preventDefault();
+                    return;
+                }
+                targetPath = ensureExt(filePath, suggestedName);
+                setSavedPath(projectKey, targetPath);
+            } else {
+                // If remembered path has no extension, append inferred one
+                const fixed = ensureExt(targetPath, suggestedName);
+                if (fixed !== targetPath) {
+                    targetPath = fixed;
+                    setSavedPath(projectKey, targetPath);
+                }
+            }
+
+            // Save directly (overwrite without prompting)
+            item.setSavePath(targetPath);
+
+            // Progress feedback and auto-resume on interruption
+            item.on('updated', (_e, state) => {
+                if (state === 'progressing') {
+                    if (wc && !wc.isDestroyed?.())
+                        wc.send('download-progress', {
+                            received: item.getReceivedBytes(),
+                            total: item.getTotalBytes(),
+                        });
+                } else if (state === 'interrupted') {
+                    try {
+                        if (item.canResume()) item.resume();
+                    } catch (_err) {}
+                }
+            });
+
+            item.once('done', (_e, state) => {
+                const send = payload => {
+                    if (wc && !wc.isDestroyed?.()) wc.send('download-done', payload);
+                    else if (mainWindow && !mainWindow.isDestroyed())
+                        mainWindow.webContents.send('download-done', payload);
+                };
+                if (state === 'completed') {
+                    send({ ok: true, path: targetPath });
+                    return;
+                }
+                if (state === 'interrupted') {
+                    try {
+                        const total = item.getTotalBytes() || 0;
+                        const exists = fs.existsSync(targetPath);
+                        const size = exists ? fs.statSync(targetPath).size : 0;
+                        if (exists && (total === 0 || size >= total)) {
+                            send({ ok: true, path: targetPath });
+                            return;
+                        }
+                    } catch (_err) {}
+                }
+                send({ ok: false, error: state });
+            });
+        } catch (err) {
+            event.preventDefault();
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('download-done', { ok: false, error: err.message });
+            }
+        }
+    });
+
+    // If any event blocks window closing, remove it
+    mainWindow.on('close', e => {
+        // This is to ensure any preventDefault() won't stop the closing
+        console.log('Window is being forced to close...');
+        e.preventDefault(); // Optional: Prevent default close event
+        mainWindow.destroy(); // Force destroy the window
+    });
+
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
+
+    // Listen for application exit events
+    handleAppExit();
 }
+
 
 /**
  * Stream a URL to a file path using Node http/https, preserving Electron session cookies.
@@ -802,11 +748,14 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
     return new Promise(async resolve => {
         try {
             // Resolve absolute URL (support relative paths from renderer)
-            let baseOrigin = `http://localhost:${getServerPort() || 80}/`;
+            // In static mode, we only support absolute URLs (https://)
+            let baseOrigin = 'https://localhost/';
             try {
                 if (wc && !wc.isDestroyed?.()) {
                     const current = wc.getURL?.();
-                    if (current) baseOrigin = current;
+                    if (current && !current.startsWith('file://')) {
+                        baseOrigin = current;
+                    }
                 }
             } catch (_e) {}
             let urlObj;
@@ -815,6 +764,8 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
             } catch (_e) {
                 urlObj = new URL(downloadUrl, baseOrigin);
             }
+            // Select HTTP or HTTPS client based on URL protocol
+            const http = require('http');
             const client = urlObj.protocol === 'https:' ? https : http;
             // Build Cookie header from Electron session
             let cookieHeader = '';
@@ -1101,7 +1052,7 @@ app.on('new-window-for-tab', () => {
     });
 
     newWindow.setMenuBarVisibility(isDev);
-    newWindow.loadURL(`http://localhost:${getServerPort()}`);
+    newWindow.loadURL('exe://./index.html');
 
     attachOpenHandler(newWindow);
 
@@ -1131,13 +1082,6 @@ function handleAppExit() {
     const cleanup = () => {
         if (isShuttingDown) return;
         isShuttingDown = true;
-
-        // Kill the server process if it's running
-        if (serverProcess && !serverProcess.killed) {
-            console.log('Stopping Elysia server...');
-            serverProcess.kill('SIGTERM');
-            serverProcess = null;
-        }
 
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.destroy();
@@ -1332,98 +1276,6 @@ ipcMain.handle('app:saveBufferAs', async (e, { base64Data, projectKey, suggested
     }
 });
 
-function checkAndCreateDatabase() {
-    if (!fs.existsSync(databasePath)) {
-        console.log('The database does not exist. Creating the database...');
-        // Add code to create the database if necessary
-        fs.openSync(databasePath, 'w'); // Allow read and write for all users
-    } else {
-        console.log('The database already exists.');
-    }
-}
-
-/**
- * Starts the Elysia backend as a standalone executable (built with bun build --compile).
- * The server runs as an external process, not in-process.
- */
-function startElysiaServer() {
-    try {
-        const isWindows = process.platform === 'win32';
-        const isLinux = process.platform === 'linux';
-        const arch = process.arch; // 'arm64' or 'x64'
-
-        // Determine executable name based on platform and architecture
-        let execName;
-        if (isWindows) {
-            execName = 'exelearning-server.exe';
-        } else if (isLinux) {
-            execName = 'exelearning-server-linux';
-        } else {
-            // macOS - use architecture-specific executable for universal app support
-            execName = arch === 'arm64' ? 'exelearning-server-arm64' : 'exelearning-server-x64';
-        }
-
-        const candidates = [
-            // ExtraResources path (outside asar) - packaged app
-            path.join(process.resourcesPath, 'dist', execName),
-            // Dev path
-            path.join(__dirname, 'dist', execName),
-        ];
-
-        const serverBinary = candidates.find(p => fs.existsSync(p));
-        if (!serverBinary) {
-            showErrorDialog('Server executable not found. Run "bun run build:standalone" before packaging.');
-            app.quit();
-            return;
-        }
-
-        const port = getServerPort();
-        console.log(`Starting Elysia server from ${serverBinary} on port ${port}`);
-
-        // Build environment for the server process
-        const serverEnv = {
-            ...process.env,
-            APP_PORT: String(port),
-            DB_PATH: customEnv?.DB_PATH || databasePath,
-            FILES_DIR: customEnv?.FILES_DIR || path.join(appDataPath, 'data'),
-            APP_ONLINE_MODE: '0',
-            APP_SECRET: customEnv?.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
-            API_JWT_SECRET: customEnv?.API_JWT_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
-            APP_VERSION: `v${app.getVersion()}`,
-        };
-
-        serverProcess = spawn(serverBinary, [], {
-            env: serverEnv,
-            stdio: ['ignore', 'pipe', 'pipe'],
-            cwd: app.isPackaged ? process.resourcesPath : __dirname,
-        });
-
-        serverProcess.stdout.on('data', data => {
-            console.log(`[Server] ${data.toString().trim()}`);
-        });
-
-        serverProcess.stderr.on('data', data => {
-            console.error(`[Server] ${data.toString().trim()}`);
-        });
-
-        serverProcess.on('error', err => {
-            console.error('Failed to start server process:', err);
-            showErrorDialog(`Failed to start server: ${err.message}`);
-            app.quit();
-        });
-
-        serverProcess.on('close', code => {
-            if (code !== 0 && code !== null && !isShuttingDown) {
-                console.error(`Server process exited unexpectedly with code ${code}`);
-            }
-            serverProcess = null;
-        });
-    } catch (err) {
-        console.error('Error starting Elysia server:', err);
-        showErrorDialog(`Error starting server: ${err.message}`);
-        app.quit();
-    }
-}
 
 /**
  * Create a new window for a project file
@@ -1461,7 +1313,7 @@ function createNewProjectWindow(filePath) {
     });
 
     newWindow.setMenuBarVisibility(isDev);
-    newWindow.loadURL(`http://localhost:${getServerPort()}`);
+    newWindow.loadURL('exe://./index.html');
 
     // macOS: Show tab bar after window is visible
     if (process.platform === 'darwin' && typeof newWindow.toggleTabBar === 'function') {

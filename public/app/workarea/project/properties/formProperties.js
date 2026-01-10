@@ -179,7 +179,7 @@ export default class FormProperties {
             groupElementTitle.setAttribute('aria-controls', collapseId);
 
             let titleText =
-                "<span class='title-text'>" + topGroupTitle + '</span>';
+                "<span class='title-text'>" + _(topGroupTitle) + '</span>';
             const catKey = Object.keys(property.category || { '': '' })[0];
             if (catKey == this.cataloguingCategoryKey) {
                 if (property.required) {
@@ -377,7 +377,8 @@ export default class FormProperties {
 
     makeRowElementLabel(id, property) {
         const propertyTitle = document.createElement('label');
-        let propertyTitleText = property.title;
+        // Translate the property title
+        let propertyTitleText = _(property.title);
         if (property.required) propertyTitleText = '* ' + propertyTitleText;
         propertyTitle.innerHTML = propertyTitleText;
         propertyTitle.setAttribute('for', id);
@@ -528,7 +529,7 @@ export default class FormProperties {
 
             const helpSpanText = document.createElement('span');
             helpSpanText.classList.add('help-content', 'help-hidden');
-            helpSpanText.innerHTML = property.help;
+            helpSpanText.innerHTML = _(property.help);
 
             helpContainer.append(helpIcon, helpSpanText);
             return helpContainer;

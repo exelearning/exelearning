@@ -156,12 +156,13 @@ else
 	bun run dev:local
 endif
 
-# Start full app: Elysia backend + Electron
+# Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
 run-app: check-bun deps css bundle
-	@echo "Launching eXeLearning App (Electron + Elysia)..."
-	@bun run build:standalone
-	@bun run dev:app
+	@echo "Building static files..."
+	@bun scripts/build-static-bundle.ts
+	@echo "Launching eXeLearning App (Electron)..."
+	@bun run electron
 
 
 # =============================================================================
@@ -807,7 +808,7 @@ help:
 	@echo "Local:"
 	@echo "  make up-local              Start locally (web only, dev mode)"
 	@echo "  make up-local APP_ENV=prod Start locally (web only, prod mode)"
-	@echo "  make run-app               Start Electron + backend (desktop app)"
+	@echo "  make run-app               Start Electron app (static mode, no server)"
 	@echo "  make bundle                Build all assets (TS + CSS + JS bundle)"
 	@echo "  make deps                  Install dependencies"
 	@echo ""

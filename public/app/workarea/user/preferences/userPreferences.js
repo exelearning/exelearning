@@ -85,21 +85,22 @@ export default class UserPreferences {
         for (let [key, value] of Object.entries(preferences)) {
             params[key] = value;
         }
-        // Save in database
-        eXeLearning.app.api.putSaveUserPreferences(params).then((response) => {
-            // Update interface advanced class
-            if (preferences.advancedMode)
-                this.manager.reloadMode(preferences.advancedMode);
-            // Update interface versionControl class
-            if (preferences.versionControl)
-                this.manager.reloadVersionControl(preferences.versionControl);
-            // Update interface lang
-            if (preferences.locale) this.manager.reloadLang(preferences.locale);
-            // Reloading of the page so that it takes a possible change of language in the user preferences
-            if (params['locale'] !== undefined) {
-                window.onbeforeunload = null;
-                window.location.reload();
-            }
-        });
+        // Save in database/localStorage
+        await eXeLearning.app.api.putSaveUserPreferences(params);
+
+        // Update interface advanced class
+        if (preferences.advancedMode)
+            this.manager.reloadMode(preferences.advancedMode);
+        // Update interface versionControl class
+        if (preferences.versionControl)
+            this.manager.reloadVersionControl(preferences.versionControl);
+        // Update interface lang
+        if (preferences.locale) await this.manager.reloadLang(preferences.locale);
+
+        // Reloading of the page so that it takes a possible change of language in the user preferences
+        if (params['locale'] !== undefined) {
+            window.onbeforeunload = null;
+            window.location.reload();
+        }
     }
 }

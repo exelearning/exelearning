@@ -85,7 +85,8 @@ export default class UserManager {
      *
      * @param {*} lang
      */
-    reloadLang(lang) {
-        eXeLearning.app.locale.setLocaleLang(lang);
+    async reloadLang(lang) {
+        await eXeLearning.app.locale.setLocaleLang(lang);
+        await eXeLearning.app.locale.loadTranslationsStrings();
     }
 }

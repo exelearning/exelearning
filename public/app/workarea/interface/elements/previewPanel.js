@@ -480,7 +480,8 @@ export default class PreviewPanelManager {
         let themeUrl = selectedTheme?.path || null;
 
         // Make theme URL absolute for standalone preview (blob URL context)
-        if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:')) {
+        // Skip if already absolute (http, https, blob, exe protocols)
+        if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:') && !themeUrl.startsWith('exe:')) {
             const cleanThemeUrl = themeUrl.startsWith('./') ? themeUrl.slice(2) :
                                   themeUrl.startsWith('/') ? themeUrl.slice(1) : themeUrl;
             const base = isStaticMode
@@ -606,7 +607,8 @@ export default class PreviewPanelManager {
             : '';
 
         // Make theme URL absolute for blob URL context
-        if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:')) {
+        // Skip if already absolute (http, https, blob, exe protocols)
+        if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:') && !themeUrl.startsWith('exe:')) {
             // Remove leading ./ if present and make absolute
             const cleanThemeUrl = themeUrl.startsWith('./') ? themeUrl.slice(2) :
                                   themeUrl.startsWith('/') ? themeUrl.slice(1) : themeUrl;
