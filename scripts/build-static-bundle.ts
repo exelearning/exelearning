@@ -23,6 +23,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 import { XMLParser } from 'fast-xml-parser';
 
 const projectRoot = path.resolve(import.meta.dir, '..');
@@ -31,6 +32,15 @@ const outputDir = path.join(projectRoot, 'dist/static');
 // Read version from package.json
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
 const buildVersion = `v${packageJson.version}`;
+
+// Get git commit hash for cache busting (ensures cache invalidation on each deploy)
+let buildHash: string;
+try {
+    buildHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+} catch {
+    // Fallback to timestamp if git not available
+    buildHash = Date.now().toString(36);
+}
 
 // Supported locales (from translations/)
 const LOCALES = ['ca', 'en', 'eo', 'es', 'eu', 'gl', 'pt', 'ro', 'va'];
@@ -1310,7 +1320,7 @@ function generatePwaManifest(): string {
         launch_handler: {
             client_mode: 'navigate-existing',
         },
-        id: `exelearning-${buildVersion}`,
+        id: `exelearning-${buildVersion}-${buildHash}`,
     }, null, 2);
 }
 
@@ -1323,7 +1333,7 @@ function generateServiceWorker(): string {
  * Provides offline-first caching for PWA
  */
 
-const CACHE_NAME = 'exelearning-static-${buildVersion}';
+const CACHE_NAME = 'exelearning-static-${buildVersion}-${buildHash}';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -1434,7 +1444,7 @@ function copyDirRecursive(src: string, dest: string, exclude: string[] = []) {
 async function buildStaticBundle() {
     console.log('='.repeat(60));
     console.log('Building Static Distribution');
-    console.log(`Version: ${buildVersion}`);
+    console.log(`Version: ${buildVersion} (${buildHash})`);
     console.log('='.repeat(60));
 
     // Clean output directory
