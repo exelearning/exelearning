@@ -36,11 +36,18 @@ jobs:
         run: bun run build:static
 
       - name: Deploy preview
+        id: deploy
         uses: rossjrw/pr-preview-action@v1
         with:
           source-dir: ./dist/static/
           preview-branch: gh-pages
           umbrella-dir: pr-preview
           action: auto
-          comment: true
           qr-code: true
+
+      - name: Add preview URL to summary
+        if: github.event.action != 'closed'
+        run: |
+          echo "## 🚀 PR Preview Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Preview URL:** ${{ steps.deploy.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
