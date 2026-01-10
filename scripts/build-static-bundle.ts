@@ -856,7 +856,8 @@ function generateStaticHtml(bundleData: object): string {
                 defaultTheme: 'base',
                 themeBaseType: 'base',
                 themeTypeBase: 'base',
-                themeTypeUser: 'user'
+                themeTypeUser: 'user',
+                clientCallWaitingTime: 5000
             }),
             projectId: null
         };

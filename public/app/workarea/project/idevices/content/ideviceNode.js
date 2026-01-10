@@ -51,10 +51,9 @@ export default class IdeviceNode {
         this.checkDeviceLoadInterval = null;
         // Time (ms) of loop
         this.interval = 100;
-        // Number of loops
-        this.checkDeviceLoadNumMax = Math.round(
-            this.engine.clientCallWaitingTime / this.interval
-        );
+        // Number of loops (default to 5000ms / 100ms = 50 iterations if not configured)
+        const waitingTime = this.engine.clientCallWaitingTime || 5000;
+        this.checkDeviceLoadNumMax = Math.round(waitingTime / this.interval);
         // Check if is valid
         this.checkIsValid();
 
