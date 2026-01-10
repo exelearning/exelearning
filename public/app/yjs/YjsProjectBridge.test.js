@@ -169,6 +169,20 @@ describe('YjsProjectBridge', () => {
       ResourceCache: MockResourceCache,
       eXeLearning: {
         config: { basePath: '' },
+        app: {
+          themes: {
+            list: {
+              loadUserThemesFromIndexedDB: mock(async () => {}),
+            },
+          },
+          menus: {
+            navbar: {
+              styles: {
+                updateThemes: mock(() => {}),
+              },
+            },
+          },
+        },
       },
       location: {
         protocol: 'http:',
@@ -177,6 +191,8 @@ describe('YjsProjectBridge', () => {
         origin: 'http://localhost:3001',
       },
     };
+    // Also set eXeLearning globally since the code accesses it directly
+    global.eXeLearning = global.window.eXeLearning;
 
     global.document = {
       createElement: mock(() => ({
@@ -520,8 +536,8 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('unknown-theme', mockFile);
 
-      // selectTheme should be called with default theme (fallback)
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', false);
+      // selectTheme should be called with default theme (fallback) and save=true to update Yjs
+      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
     });
 
     it('should return early if themeName is empty', async () => {
@@ -563,8 +579,8 @@ describe('YjsProjectBridge', () => {
 
       await bridge._checkAndImportTheme('custom-theme', new Blob());
 
-      // Should use default theme immediately without prompting
-      expect(mockSelectTheme).toHaveBeenCalledWith('base', false);
+      // Should use default theme immediately without prompting, save=true to update Yjs
+      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
     });
 
     it('should allow theme import when userStyles is enabled', async () => {

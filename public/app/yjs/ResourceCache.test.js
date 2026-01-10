@@ -213,7 +213,7 @@ describe('ResourceCache', () => {
     it('opens IndexedDB database', async () => {
       await cache.init();
 
-      expect(global.indexedDB.open).toHaveBeenCalledWith('exelearning-resources-v1', 1);
+      expect(global.indexedDB.open).toHaveBeenCalledWith('exelearning-resources-v1', 3);
       expect(cache.db).toBe(mockDB);
     });
 
@@ -498,6 +498,370 @@ describe('ResourceCache', () => {
 
       const result = await cache.get('theme', 'base', 'v3.1.0');
       expect(result).toBeNull();
+    });
+  });
+
+  describe('per-user theme storage', () => {
+    describe('_getCurrentUserId', () => {
+      it('returns user name from eXeLearning app', () => {
+        global.window = {
+          eXeLearning: {
+            app: {
+              user: { name: 'testuser' },
+            },
+          },
+        };
+
+        expect(cache._getCurrentUserId()).toBe('testuser');
+      });
+
+      it('returns anonymous if user not available', () => {
+        global.window = {};
+
+        expect(cache._getCurrentUserId()).toBe('anonymous');
+      });
+
+      it('returns anonymous if eXeLearning not available', () => {
+        global.window = { eXeLearning: null };
+
+        expect(cache._getCurrentUserId()).toBe('anonymous');
+      });
+    });
+
+    describe('_buildUserThemeKey', () => {
+      beforeEach(() => {
+        global.window = {
+          eXeLearning: {
+            app: {
+              user: { name: 'user1' },
+            },
+          },
+        };
+      });
+
+      it('builds key with userId prefix', () => {
+        expect(cache._buildUserThemeKey('my-theme')).toBe('user1:my-theme');
+      });
+
+      it('uses anonymous for missing user', () => {
+        global.window = {};
+        expect(cache._buildUserThemeKey('my-theme')).toBe('anonymous:my-theme');
+      });
+    });
+
+    describe('user theme isolation', () => {
+      let userThemesStore;
+
+      beforeEach(async () => {
+        // Create separate store for user themes
+        userThemesStore = new Map();
+
+        // Mock user themes store operations
+        mockStore.put = mock((entry) => {
+          const request = { onsuccess: null, onerror: null };
+          setTimeout(() => {
+            // Use 'id' as key (composite key with userId)
+            const key = entry.id || entry.key;
+            if (entry.userId !== undefined) {
+              userThemesStore.set(key, entry);
+            } else {
+              storedResources.set(key, entry);
+            }
+            if (request.onsuccess) request.onsuccess();
+          }, 0);
+          return request;
+        });
+
+        mockStore.get = mock((key) => {
+          const request = {
+            result: userThemesStore.get(key) || storedResources.get(key) || null,
+            onsuccess: null,
+            onerror: null,
+          };
+          setTimeout(() => {
+            if (request.onsuccess) request.onsuccess();
+          }, 0);
+          return request;
+        });
+
+        mockStore.delete = mock((key) => {
+          const request = { onsuccess: null, onerror: null };
+          setTimeout(() => {
+            userThemesStore.delete(key);
+            storedResources.delete(key);
+            if (request.onsuccess) request.onsuccess();
+          }, 0);
+          return request;
+        });
+
+        mockStore.count = mock((range) => {
+          const key = range ? range._value : null;
+          const request = {
+            result: key ? (userThemesStore.has(key) ? 1 : 0) : userThemesStore.size,
+            onsuccess: null,
+            onerror: null,
+          };
+          setTimeout(() => {
+            if (request.onsuccess) request.onsuccess();
+          }, 0);
+          return request;
+        });
+
+        // Mock index for userId filtering
+        mockStore.index = mock((indexName) => ({
+          openCursor: mock((range) => {
+            const userId = range ? range._value : null;
+            const entries = [];
+            for (const [key, value] of userThemesStore.entries()) {
+              if (indexName === 'userId' && value.userId === userId) {
+                entries.push({ primaryKey: key, value });
+              }
+            }
+            let idx = 0;
+            const request = { onsuccess: null, onerror: null };
+            setTimeout(() => {
+              const emitNext = () => {
+                if (idx < entries.length) {
+                  const entry = entries[idx++];
+                  if (request.onsuccess) {
+                    request.onsuccess({
+                      target: {
+                        result: {
+                          primaryKey: entry.primaryKey,
+                          value: entry.value,
+                          continue: () => setTimeout(emitNext, 0),
+                        },
+                      },
+                    });
+                  }
+                } else {
+                  if (request.onsuccess) {
+                    request.onsuccess({ target: { result: null } });
+                  }
+                }
+              };
+              emitNext();
+            }, 0);
+            return request;
+          }),
+        }));
+
+        await cache.init();
+      });
+
+      afterEach(() => {
+        userThemesStore = null;
+        delete global.window;
+      });
+
+      it('stores theme with userId prefix in key', async () => {
+        global.window = {
+          eXeLearning: { app: { user: { name: 'alice' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+
+        const compressedFiles = new Uint8Array([1, 2, 3]);
+        const config = { displayName: 'Test Theme' };
+
+        await cache.setUserTheme('my-theme', compressedFiles, config);
+
+        expect(userThemesStore.has('alice:my-theme')).toBe(true);
+        const stored = userThemesStore.get('alice:my-theme');
+        expect(stored.userId).toBe('alice');
+        expect(stored.name).toBe('my-theme');
+      });
+
+      it('isolates themes between users', async () => {
+        const compressedFiles = new Uint8Array([1, 2, 3]);
+        const config = { displayName: 'Theme' };
+
+        // User alice stores a theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'alice' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        await cache.setUserTheme('shared-name', compressedFiles, config);
+
+        // User bob stores a theme with the same name
+        global.window = {
+          eXeLearning: { app: { user: { name: 'bob' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        await cache.setUserTheme('shared-name', compressedFiles, { displayName: 'Bob Theme' });
+
+        // Both themes exist with different keys
+        expect(userThemesStore.has('alice:shared-name')).toBe(true);
+        expect(userThemesStore.has('bob:shared-name')).toBe(true);
+
+        // Themes have correct data
+        expect(userThemesStore.get('alice:shared-name').config.displayName).toBe('Theme');
+        expect(userThemesStore.get('bob:shared-name').config.displayName).toBe('Bob Theme');
+      });
+
+      it('hasUserTheme only checks current user themes', async () => {
+        const compressedFiles = new Uint8Array([1, 2, 3]);
+        const config = { displayName: 'Theme' };
+
+        // Alice stores a theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'alice' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        await cache.setUserTheme('alice-theme', compressedFiles, config);
+
+        // Check as Alice - should find it
+        expect(await cache.hasUserTheme('alice-theme')).toBe(true);
+
+        // Check as Bob - should NOT find Alice's theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'bob' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        expect(await cache.hasUserTheme('alice-theme')).toBe(false);
+      });
+
+      it('listUserThemes only returns current user themes', async () => {
+        const compressedFiles = new Uint8Array([1, 2, 3]);
+
+        // Alice stores two themes
+        global.window = {
+          eXeLearning: { app: { user: { name: 'alice' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        await cache.setUserTheme('alice-theme-1', compressedFiles, { displayName: 'Alice 1' });
+        await cache.setUserTheme('alice-theme-2', compressedFiles, { displayName: 'Alice 2' });
+
+        // Bob stores one theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'bob' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        await cache.setUserTheme('bob-theme', compressedFiles, { displayName: 'Bob Theme' });
+
+        // List as Alice - should only see Alice's themes
+        global.window = {
+          eXeLearning: { app: { user: { name: 'alice' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        const aliceThemes = await cache.listUserThemes();
+        expect(aliceThemes.length).toBe(2);
+        expect(aliceThemes.map((t) => t.name)).toContain('alice-theme-1');
+        expect(aliceThemes.map((t) => t.name)).toContain('alice-theme-2');
+        expect(aliceThemes.map((t) => t.name)).not.toContain('bob-theme');
+
+        // List as Bob - should only see Bob's theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'bob' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        const bobThemes = await cache.listUserThemes();
+        expect(bobThemes.length).toBe(1);
+        expect(bobThemes[0].name).toBe('bob-theme');
+      });
+
+      it('deleteUserTheme only deletes current user theme', async () => {
+        const compressedFiles = new Uint8Array([1, 2, 3]);
+
+        // Alice stores a theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'alice' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        await cache.setUserTheme('my-theme', compressedFiles, { displayName: 'Alice' });
+
+        // Bob stores same-named theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'bob' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        await cache.setUserTheme('my-theme', compressedFiles, { displayName: 'Bob' });
+
+        // Bob deletes "my-theme"
+        await cache.deleteUserTheme('my-theme');
+
+        // Bob's theme is deleted
+        expect(userThemesStore.has('bob:my-theme')).toBe(false);
+
+        // Alice's theme is NOT affected
+        expect(userThemesStore.has('alice:my-theme')).toBe(true);
+      });
+
+      it('updateUserThemeConfig updates config while keeping files', async () => {
+        const compressedFiles = new Uint8Array([1, 2, 3, 4, 5]);
+        const originalConfig = {
+          displayName: 'Original Name',
+          version: '1.0',
+          author: 'Original Author',
+        };
+
+        global.window = {
+          eXeLearning: { app: { user: { name: 'testuser' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+
+        // Store theme
+        await cache.setUserTheme('test-theme', compressedFiles, originalConfig);
+
+        // Update config
+        await cache.updateUserThemeConfig('test-theme', {
+          displayName: 'Updated Name',
+          author: 'New Author',
+        });
+
+        // Verify the update
+        const stored = userThemesStore.get('testuser:test-theme');
+        expect(stored.config.displayName).toBe('Updated Name');
+        expect(stored.config.author).toBe('New Author');
+        expect(stored.config.version).toBe('1.0'); // unchanged
+        expect(stored.files).toEqual(compressedFiles); // files unchanged
+        expect(stored.modifiedAt).toBeDefined();
+      });
+
+      it('updateUserThemeConfig throws error if theme not found', async () => {
+        global.window = {
+          eXeLearning: { app: { user: { name: 'testuser' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+
+        await expect(
+          cache.updateUserThemeConfig('non-existent', { displayName: 'Test' })
+        ).rejects.toThrow("Theme 'non-existent' not found");
+      });
+
+      it('updateUserThemeConfig only updates current user theme', async () => {
+        const compressedFiles = new Uint8Array([1, 2, 3]);
+
+        // Store themes directly in the mock store to simulate pre-existing themes
+        userThemesStore.set('alice:shared-name', {
+          id: 'alice:shared-name',
+          userId: 'alice',
+          name: 'shared-name',
+          files: compressedFiles,
+          config: { displayName: 'Alice Theme' },
+        });
+        userThemesStore.set('bob:shared-name', {
+          id: 'bob:shared-name',
+          userId: 'bob',
+          name: 'shared-name',
+          files: compressedFiles,
+          config: { displayName: 'Bob Theme' },
+        });
+
+        // Set current user to Bob
+        global.window = {
+          eXeLearning: { app: { user: { name: 'bob' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+
+        // Bob updates his theme
+        await cache.updateUserThemeConfig('shared-name', { displayName: 'Bob Updated' });
+
+        // Bob's theme is updated
+        expect(userThemesStore.get('bob:shared-name').config.displayName).toBe('Bob Updated');
+
+        // Alice's theme is NOT affected
+        expect(userThemesStore.get('alice:shared-name').config.displayName).toBe('Alice Theme');
+      });
     });
   });
 });

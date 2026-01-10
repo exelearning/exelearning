@@ -718,7 +718,7 @@ export default class ApiCallManager {
         }
 
         let url = this.endpoints.api_themes_edit.path;
-        url = url.replace('{themeDirName}', themeDir);
+        url = url.replace('{themeId}', themeDir);
         return await this.func.put(url, params);
     }
 
