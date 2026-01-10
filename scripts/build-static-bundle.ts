@@ -867,6 +867,7 @@ function generateStaticHtml(bundleData: object): string {
     <link rel="stylesheet" href="./libs/bootstrap/bootstrap.min.css">
     <link rel="stylesheet" href="./style/workarea/main.css">
     <link rel="stylesheet" href="./style/workarea/base.css">
+    <link rel="stylesheet" href="./style/workarea/custom.css">
     <link rel="stylesheet" href="./app/common/exe_effects/exe_effects.css">
     <link rel="stylesheet" href="./app/common/exe_games/exe_games.css">
     <link rel="stylesheet" href="./app/common/exe_highlighter/exe_highlighter.css">
