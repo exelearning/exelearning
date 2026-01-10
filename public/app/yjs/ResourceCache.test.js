@@ -862,6 +862,180 @@ describe('ResourceCache', () => {
         // Alice's theme is NOT affected
         expect(userThemesStore.get('alice:shared-name').config.displayName).toBe('Alice Theme');
       });
+
+      it('getUserThemeRaw returns raw compressed data', async () => {
+        const compressedFiles = new Uint8Array([1, 2, 3, 4, 5]);
+        const config = { displayName: 'Raw Theme' };
+
+        global.window = {
+          eXeLearning: { app: { user: { name: 'testuser' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+
+        // Store theme
+        await cache.setUserTheme('raw-theme', compressedFiles, config);
+
+        // Get raw data
+        const result = await cache.getUserThemeRaw('raw-theme');
+
+        expect(result).not.toBeNull();
+        expect(result.compressedFiles).toEqual(compressedFiles);
+        expect(result.config).toEqual(config);
+      });
+
+      it('getUserThemeRaw returns null for non-existent theme', async () => {
+        global.window = {
+          eXeLearning: { app: { user: { name: 'testuser' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+
+        const result = await cache.getUserThemeRaw('non-existent');
+
+        expect(result).toBeNull();
+      });
+
+      it('getUserThemeRaw isolates themes between users', async () => {
+        const compressedFiles = new Uint8Array([1, 2, 3]);
+
+        // Alice stores a theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'alice' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        await cache.setUserTheme('private-theme', compressedFiles, { displayName: 'Alice Theme' });
+
+        // Bob tries to get Alice's theme
+        global.window = {
+          eXeLearning: { app: { user: { name: 'bob' } } },
+          fflate: { unzipSync: () => ({}) },
+        };
+        const result = await cache.getUserThemeRaw('private-theme');
+
+        // Bob should not get Alice's theme
+        expect(result).toBeNull();
+      });
+    });
+  });
+
+  describe('_getMimeType', () => {
+    beforeEach(async () => {
+      await cache.init();
+    });
+
+    it('returns text/css for .css files', () => {
+      expect(cache._getMimeType('style.css')).toBe('text/css');
+    });
+
+    it('returns application/javascript for .js files', () => {
+      expect(cache._getMimeType('script.js')).toBe('application/javascript');
+    });
+
+    it('returns text/html for .html files', () => {
+      expect(cache._getMimeType('page.html')).toBe('text/html');
+    });
+
+    it('returns application/xml for .xml files', () => {
+      expect(cache._getMimeType('config.xml')).toBe('application/xml');
+    });
+
+    it('returns application/json for .json files', () => {
+      expect(cache._getMimeType('data.json')).toBe('application/json');
+    });
+
+    it('returns image/png for .png files', () => {
+      expect(cache._getMimeType('image.png')).toBe('image/png');
+    });
+
+    it('returns image/jpeg for .jpg and .jpeg files', () => {
+      expect(cache._getMimeType('photo.jpg')).toBe('image/jpeg');
+      expect(cache._getMimeType('photo.jpeg')).toBe('image/jpeg');
+    });
+
+    it('returns image/gif for .gif files', () => {
+      expect(cache._getMimeType('anim.gif')).toBe('image/gif');
+    });
+
+    it('returns image/svg+xml for .svg files', () => {
+      expect(cache._getMimeType('icon.svg')).toBe('image/svg+xml');
+    });
+
+    it('returns font/woff for .woff files', () => {
+      expect(cache._getMimeType('font.woff')).toBe('font/woff');
+    });
+
+    it('returns font/woff2 for .woff2 files', () => {
+      expect(cache._getMimeType('font.woff2')).toBe('font/woff2');
+    });
+
+    it('returns font/ttf for .ttf files', () => {
+      expect(cache._getMimeType('font.ttf')).toBe('font/ttf');
+    });
+
+    it('returns application/vnd.ms-fontobject for .eot files', () => {
+      expect(cache._getMimeType('font.eot')).toBe('application/vnd.ms-fontobject');
+    });
+
+    it('returns application/octet-stream for unknown extensions', () => {
+      expect(cache._getMimeType('file.xyz')).toBe('application/octet-stream');
+      expect(cache._getMimeType('file.unknown')).toBe('application/octet-stream');
+    });
+
+    it('handles files with no extension', () => {
+      expect(cache._getMimeType('noextension')).toBe('application/octet-stream');
+    });
+
+    it('handles files with multiple dots', () => {
+      expect(cache._getMimeType('file.name.css')).toBe('text/css');
+      expect(cache._getMimeType('my.script.js')).toBe('application/javascript');
+    });
+  });
+
+  describe('_decompressThemeFiles', () => {
+    beforeEach(async () => {
+      await cache.init();
+    });
+
+    it('throws error when fflate is not loaded', () => {
+      global.window = {};
+
+      expect(() => cache._decompressThemeFiles(new Uint8Array([1]))).toThrow(
+        'fflate library not loaded'
+      );
+    });
+
+    it('decompresses ZIP and returns Map of files', () => {
+      global.window = {
+        fflate: {
+          unzipSync: mock(() => ({
+            'style.css': new Uint8Array([99, 115, 115]),
+            'script.js': new Uint8Array([106, 115]),
+          })),
+        },
+      };
+
+      const result = cache._decompressThemeFiles(new Uint8Array([1, 2, 3]));
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(2);
+      expect(result.has('style.css')).toBe(true);
+      expect(result.has('script.js')).toBe(true);
+    });
+
+    it('converts Uint8Array to Blob with correct MIME type', () => {
+      global.window = {
+        fflate: {
+          unzipSync: mock(() => ({
+            'style.css': new Uint8Array([99, 115, 115]),
+            'image.png': new Uint8Array([1, 2, 3]),
+          })),
+        },
+      };
+
+      const result = cache._decompressThemeFiles(new Uint8Array([1, 2, 3]));
+
+      expect(result.get('style.css')).toBeInstanceOf(Blob);
+      expect(result.get('style.css').type).toBe('text/css');
+      expect(result.get('image.png').type).toBe('image/png');
     });
   });
 });
