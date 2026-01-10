@@ -584,4 +584,228 @@ describe('NavbarStyles', () => {
         expect(editSpy).toHaveBeenCalled();
         expect(buildSpy).toHaveBeenCalled();
     });
+
+    describe('uploadThemeToIndexedDB', () => {
+        let mockResourceCache;
+        let mockResourceFetcher;
+
+        beforeEach(() => {
+            mockResourceCache = {
+                setUserTheme: vi.fn().mockResolvedValue(),
+            };
+            mockResourceFetcher = {
+                setUserThemeFiles: vi.fn().mockResolvedValue(),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                resourceCache: mockResourceCache,
+            };
+            eXeLearning.app.resourceFetcher = mockResourceFetcher;
+            eXeLearning.app.themes.list.addUserTheme = vi.fn();
+
+            // Mock fflate
+            window.fflate = {
+                unzipSync: vi.fn().mockReturnValue({
+                    'config.xml': new TextEncoder().encode('<theme><name>Test Theme</name><version>1.0</version></theme>'),
+                    'style.css': new Uint8Array([1, 2, 3]),
+                }),
+                zipSync: vi.fn().mockReturnValue(new Uint8Array([80, 75, 3, 4])),
+            };
+        });
+
+        afterEach(() => {
+            delete window.fflate;
+            delete eXeLearning.app.project._yjsBridge;
+            delete eXeLearning.app.resourceFetcher;
+        });
+
+        it('parses ZIP and stores theme in IndexedDB', async () => {
+            const arrayBuffer = new ArrayBuffer(10);
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', arrayBuffer);
+
+            expect(window.fflate.unzipSync).toHaveBeenCalled();
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'test_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({
+                    name: 'test_theme',
+                    type: 'user',
+                    isUserTheme: true,
+                })
+            );
+            expect(mockResourceFetcher.setUserThemeFiles).toHaveBeenCalledWith(
+                'test_theme',
+                expect.any(Object)
+            );
+            expect(eXeLearning.app.themes.list.addUserTheme).toHaveBeenCalled();
+        });
+
+        it('shows alert when fflate is not loaded', async () => {
+            delete window.fflate;
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to install'),
+                expect.objectContaining({ error: 'fflate library not loaded' })
+            );
+        });
+
+        it('shows alert when config.xml is missing', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'style.css': new Uint8Array([1, 2, 3]),
+            });
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Invalid style'),
+                expect.any(Object)
+            );
+        });
+
+        it('shows alert when theme already exists', async () => {
+            eXeLearning.app.themes.list.installed['test_theme'] = { id: 'test_theme' };
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('already exists'),
+                expect.any(Object)
+            );
+        });
+
+        it('shows alert when storage is not available', async () => {
+            delete eXeLearning.app.project._yjsBridge;
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to install'),
+                expect.objectContaining({ error: expect.stringContaining('Storage not available') })
+            );
+        });
+
+        it('detects CSS and JS files in theme', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'config.xml': new TextEncoder().encode('<theme><name>CSS Theme</name></theme>'),
+                'main.css': new Uint8Array([1]),
+                'extra.css': new Uint8Array([2]),
+                'script.js': new Uint8Array([3]),
+                'icons/icon1.png': new Uint8Array([4]),
+            });
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'css_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({
+                    cssFiles: ['main.css', 'extra.css'],
+                    js: ['script.js'],
+                    icons: { icon1: 'icons/icon1.png' },
+                })
+            );
+        });
+    });
+
+    describe('removeTheme for user themes', () => {
+        let mockResourceCache;
+        let mockResourceFetcher;
+
+        beforeEach(() => {
+            mockResourceCache = {
+                deleteUserTheme: vi.fn().mockResolvedValue(),
+            };
+            mockResourceFetcher = {
+                userThemeFiles: new Map(),
+                cache: new Map(),
+            };
+            eXeLearning.app.project._yjsBridge = {
+                resourceCache: mockResourceCache,
+            };
+            eXeLearning.app.resourceFetcher = mockResourceFetcher;
+
+            // Ensure the user-1 theme exists and is marked as user theme
+            eXeLearning.app.themes.list.installed['user-1'] = {
+                id: 'user-1',
+                type: 'user',
+                name: 'User Theme 1',
+                title: 'User 1',
+                manager: { selected: { name: 'User Theme 1' } },
+                dirName: 'user-1',
+                isUserTheme: true,
+            };
+        });
+
+        afterEach(() => {
+            delete eXeLearning.app.project._yjsBridge;
+            delete eXeLearning.app.resourceFetcher;
+        });
+
+        it('removes user theme from IndexedDB and caches', async () => {
+            mockResourceFetcher.userThemeFiles.set('user-1', {});
+            mockResourceFetcher.cache.set('theme:user-1', new Map());
+
+            const buildSpy = vi.spyOn(navbarStyles, 'buildUserListThemes');
+            await navbarStyles.removeTheme('user-1');
+
+            expect(mockResourceCache.deleteUserTheme).toHaveBeenCalledWith('user-1');
+            expect(mockResourceFetcher.userThemeFiles.has('user-1')).toBe(false);
+            expect(mockResourceFetcher.cache.has('theme:user-1')).toBe(false);
+            expect(eXeLearning.app.themes.list.removeTheme).toHaveBeenCalledWith('user-1');
+            expect(buildSpy).toHaveBeenCalled();
+        });
+
+        it('handles removal errors gracefully', async () => {
+            mockResourceCache.deleteUserTheme.mockRejectedValue(new Error('DB error'));
+
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+            await navbarStyles.removeTheme('user-1');
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to remove'),
+                expect.objectContaining({ error: 'DB error' })
+            );
+        });
+    });
+
+    describe('addNewReader', () => {
+        it('reads file as ArrayBuffer and calls uploadThemeToIndexedDB', async () => {
+            const uploadSpy = vi.spyOn(navbarStyles, 'uploadThemeToIndexedDB').mockResolvedValue();
+            const OriginalFileReader = global.FileReader;
+
+            let onloadCallback;
+            class MockFileReader {
+                constructor() {
+                    navbarStyles.readers.push(this);
+                }
+                readAsArrayBuffer(file) {
+                    setTimeout(() => {
+                        if (onloadCallback) {
+                            onloadCallback({ target: { result: new ArrayBuffer(10) } });
+                        }
+                    }, 0);
+                }
+                set onload(cb) {
+                    onloadCallback = cb;
+                }
+            }
+            global.FileReader = MockFileReader;
+
+            const file = new File(['content'], 'theme.zip', { type: 'application/zip' });
+            navbarStyles.addNewReader(file);
+
+            // Wait for async operation
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            expect(uploadSpy).toHaveBeenCalledWith('theme.zip', expect.any(ArrayBuffer));
+
+            global.FileReader = OriginalFileReader;
+            uploadSpy.mockRestore();
+        });
+    });
 });

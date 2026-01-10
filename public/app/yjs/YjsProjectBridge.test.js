@@ -2860,4 +2860,269 @@ describe('YjsProjectBridge', () => {
       expect(mockButton.addEventListener).toHaveBeenCalled();
     });
   });
+
+  describe('User Theme Methods', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      bridge.documentManager = new MockYjsDocumentManager('test-project', {});
+      bridge.resourceCache = {
+        setUserTheme: mock(() => Promise.resolve()),
+        hasUserTheme: mock(() => Promise.resolve(false)),
+        getUserTheme: mock(() => Promise.resolve(null)),
+        getUserThemeRaw: mock(() => Promise.resolve(null)),
+      };
+      bridge.resourceFetcher = {
+        setUserThemeFiles: mock(() => Promise.resolve()),
+        hasUserTheme: mock(() => false),
+      };
+
+      // Mock fflate
+      global.window.fflate = {
+        zipSync: mock(() => new Uint8Array([80, 75, 3, 4])),
+        unzipSync: mock(() => ({
+          'config.xml': new TextEncoder().encode('<theme><name>Test</name></theme>'),
+          'style.css': new Uint8Array([1, 2, 3]),
+        })),
+      };
+
+      // Store mock zip for _extractThemeFilesFromZip (correct property name)
+      bridge._pendingThemeZip = {
+        'theme/config.xml': new Uint8Array(new TextEncoder().encode('<theme><name>Test</name></theme>')),
+        'theme/style.css': new Uint8Array([1, 2, 3]),
+      };
+    });
+
+    describe('_uint8ArrayToBase64', () => {
+      it('converts Uint8Array to base64 string', () => {
+        const input = new Uint8Array([72, 101, 108, 108, 111]); // "Hello"
+        const result = bridge._uint8ArrayToBase64(input);
+        expect(result).toBe('SGVsbG8=');
+      });
+
+      it('handles empty array', () => {
+        const input = new Uint8Array([]);
+        const result = bridge._uint8ArrayToBase64(input);
+        expect(result).toBe('');
+      });
+    });
+
+    describe('_base64ToUint8Array', () => {
+      it('converts base64 string to Uint8Array', () => {
+        const input = 'SGVsbG8='; // "Hello"
+        const result = bridge._base64ToUint8Array(input);
+        expect(result).toEqual(new Uint8Array([72, 101, 108, 108, 111]));
+      });
+
+      it('handles empty string', () => {
+        const input = '';
+        const result = bridge._base64ToUint8Array(input);
+        expect(result).toEqual(new Uint8Array([]));
+      });
+    });
+
+    describe('_extractThemeFilesFromZip', () => {
+      it('extracts theme files from pending ZIP', () => {
+        const result = bridge._extractThemeFilesFromZip();
+
+        expect(result).not.toBeNull();
+        expect(result.files).toBeDefined();
+        expect(Object.keys(result.files)).toContain('config.xml');
+        expect(Object.keys(result.files)).toContain('style.css');
+      });
+
+      it('returns null when no pending ZIP', () => {
+        bridge._pendingThemeZip = null;
+        const result = bridge._extractThemeFilesFromZip();
+        expect(result).toBeNull();
+      });
+
+      it('returns null when no theme folder in ZIP', () => {
+        bridge._pendingThemeZip = {
+          'content.xml': new Uint8Array([1]),
+        };
+        const result = bridge._extractThemeFilesFromZip();
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('_parseThemeConfigFromFiles', () => {
+      it('parses config.xml and creates theme configuration', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'style.css': new Uint8Array([1]),
+          },
+          configXml: '<theme><name>My Theme</name><version>1.0</version></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('my-theme', themeFilesData);
+
+        expect(result).not.toBeNull();
+        expect(result.name).toBe('My Theme');
+        expect(result.type).toBe('user');
+        expect(result.isUserTheme).toBe(true);
+      });
+
+      it('uses default values when config.xml is missing', () => {
+        const themeFilesData = {
+          files: {
+            'style.css': new Uint8Array([1]),
+          },
+          configXml: null,
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('my-theme', themeFilesData);
+
+        // Should use themeName as default values
+        expect(result.name).toBe('my-theme');
+        expect(result.displayName).toBe('my-theme');
+        expect(result.type).toBe('user');
+      });
+
+      it('detects CSS and JS files', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'main.css': new Uint8Array([1]),
+            'extra.css': new Uint8Array([2]),
+            'script.js': new Uint8Array([3]),
+          },
+          configXml: '<theme><name>Test</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('test-theme', themeFilesData);
+
+        expect(result.cssFiles).toContain('main.css');
+        expect(result.cssFiles).toContain('extra.css');
+        expect(result.js).toContain('script.js');
+      });
+    });
+
+    describe('_compressThemeFiles', () => {
+      it('compresses files using fflate zipSync', () => {
+        const files = {
+          'style.css': new Uint8Array([1, 2, 3]),
+          'config.xml': new Uint8Array([4, 5, 6]),
+        };
+
+        const result = bridge._compressThemeFiles(files);
+
+        expect(global.window.fflate.zipSync).toHaveBeenCalled();
+        expect(result).toBeInstanceOf(Uint8Array);
+      });
+
+      it('throws when fflate not available', () => {
+        delete global.window.fflate;
+
+        expect(() => {
+          bridge._compressThemeFiles({ 'style.css': new Uint8Array([1]) });
+        }).toThrow('fflate library not loaded');
+      });
+    });
+
+    describe('_copyThemeToYjs', () => {
+      it('copies compressed theme to Yjs themeFiles map', async () => {
+        const mockThemeFilesMap = {
+          set: mock(() => {}),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+
+        await bridge._copyThemeToYjs('test-theme', { 'style.css': new Uint8Array([1]) });
+
+        expect(mockThemeFilesMap.set).toHaveBeenCalledWith(
+          'test-theme',
+          expect.any(String) // base64 compressed
+        );
+      });
+    });
+
+    describe('_loadUserThemeFromIndexedDB', () => {
+      it('calls resourceCache.getUserTheme with theme name', async () => {
+        const mockThemeData = {
+          files: new Map([['style.css', new Blob(['css'])]]),
+          config: { id: 'test-theme', name: 'test-theme', type: 'user', isUserTheme: true },
+        };
+        bridge.resourceCache.getUserTheme = mock(() => Promise.resolve(mockThemeData));
+        global.eXeLearning.app.themes.list.addUserTheme = mock(() => {});
+        global.eXeLearning.app.themes.list.installed = {};
+
+        await bridge._loadUserThemeFromIndexedDB('test-theme');
+
+        expect(bridge.resourceCache.getUserTheme).toHaveBeenCalledWith('test-theme');
+      });
+    });
+
+    describe('loadUserThemesFromYjs', () => {
+      it('loads themes from Yjs themeFiles map', async () => {
+        const mockThemeFilesMap = {
+          entries: mock(() => [
+            ['theme1', 'base64data1'],
+            ['theme2', 'base64data2'],
+          ]),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        await bridge.loadUserThemesFromYjs();
+
+        expect(bridge._loadUserThemeFromYjs).toHaveBeenCalledTimes(2);
+      });
+
+      it('handles empty themeFiles map', async () => {
+        const mockThemeFilesMap = {
+          entries: mock(() => []),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+
+        // Should not throw
+        await expect(bridge.loadUserThemesFromYjs()).resolves.not.toThrow();
+      });
+
+      it('handles missing documentManager', async () => {
+        bridge.documentManager = null;
+
+        // Should not throw
+        await expect(bridge.loadUserThemesFromYjs()).resolves.not.toThrow();
+      });
+    });
+
+    describe('_decompressThemeFromYjs', () => {
+      it('decompresses base64 theme data', () => {
+        const result = bridge._decompressThemeFromYjs('UEsDBBQ='); // Minimal base64
+
+        expect(global.window.fflate.unzipSync).toHaveBeenCalled();
+        expect(result).toBeDefined();
+      });
+    });
+
+    describe('setupThemeFilesObserver', () => {
+      it('sets up observer on themeFiles map', () => {
+        const mockObserve = mock(() => {});
+        const mockThemeFilesMap = {
+          observe: mockObserve,
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+
+        bridge.setupThemeFilesObserver();
+
+        expect(mockThemeFilesMap.observe).toHaveBeenCalled();
+      });
+
+      it('handles missing documentManager', () => {
+        bridge.documentManager = null;
+
+        // Should not throw
+        expect(() => bridge.setupThemeFilesObserver()).not.toThrow();
+      });
+
+      it('handles missing getThemeFiles method', () => {
+        bridge.documentManager.getThemeFiles = undefined;
+
+        // Should not throw
+        expect(() => bridge.setupThemeFilesObserver()).not.toThrow();
+      });
+    });
+  });
 });

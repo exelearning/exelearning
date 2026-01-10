@@ -1129,7 +1129,7 @@ describe('PreviewPanelManager', () => {
       manager.subscribeToChanges();
       const unsubscribeSpy = vi.fn();
       manager._unsubscribeStructure = unsubscribeSpy;
-      
+
       // Setup blobUrl to test revocation
       mockElements['preview-iframe']._blobUrl = 'blob:test-1';
       mockElements['preview-pinned-iframe']._blobUrl = 'blob:test-2';
@@ -1141,4 +1141,129 @@ describe('PreviewPanelManager', () => {
       expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('restorePinnedState', () => {
+    it('should restore pinned state from localStorage', async () => {
+      const mockLocalStorage = {
+        getItem: vi.fn(() => 'true'),
+      };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      const pinSpy = vi.spyOn(manager, 'pin').mockImplementation(() => Promise.resolve());
+      await manager.restorePinnedState();
+
+      expect(mockLocalStorage.getItem).toHaveBeenCalledWith('exe-preview-pinned');
+      expect(pinSpy).toHaveBeenCalled();
+    });
+
+    it('should not pin if localStorage value is not true', async () => {
+      const mockLocalStorage = {
+        getItem: vi.fn(() => 'false'),
+      };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      const pinSpy = vi.spyOn(manager, 'pin');
+      await manager.restorePinnedState();
+
+      expect(pinSpy).not.toHaveBeenCalled();
+    });
+
+    it('should handle localStorage errors gracefully', async () => {
+      const mockLocalStorage = {
+        getItem: vi.fn(() => {
+          throw new Error('localStorage error');
+        }),
+      };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      // Should not throw
+      await expect(manager.restorePinnedState()).resolves.not.toThrow();
+    });
+  });
+
+  describe('scheduleRefresh', () => {
+    it('should schedule refresh when open', () => {
+      vi.useFakeTimers();
+      manager.isOpen = true;
+      manager.isPinned = false;
+      const refreshSpy = vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
+
+      manager.scheduleRefresh();
+
+      expect(manager.refreshDebounceTimer).not.toBeNull();
+      vi.advanceTimersByTime(500);
+      expect(refreshSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('should debounce multiple rapid calls', () => {
+      vi.useFakeTimers();
+      manager.isOpen = true;
+      const refreshSpy = vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
+
+      manager.scheduleRefresh();
+      manager.scheduleRefresh();
+      manager.scheduleRefresh();
+
+      vi.advanceTimersByTime(500);
+
+      // Should only call refresh once due to debouncing
+      expect(refreshSpy).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+  });
+
+  describe('toggle', () => {
+    it('should open when closed', async () => {
+      manager.isOpen = false;
+      const openSpy = vi.spyOn(manager, 'open').mockImplementation(() => Promise.resolve());
+
+      await manager.toggle();
+
+      expect(openSpy).toHaveBeenCalled();
+    });
+
+    it('should close when open', async () => {
+      manager.isOpen = true;
+      const closeSpy = vi.spyOn(manager, 'close');
+
+      await manager.toggle();
+
+      expect(closeSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('keyboard shortcuts', () => {
+    it('should close on Escape key when open', () => {
+      manager.bindEvents();
+      manager.isOpen = true;
+      const closeSpy = vi.spyOn(manager, 'close');
+
+      const event = new KeyboardEvent('keydown', { key: 'Escape' });
+      document.dispatchEvent(event);
+
+      expect(closeSpy).toHaveBeenCalled();
+    });
+
+    it('should not close on Escape when not open', () => {
+      manager.bindEvents();
+      manager.isOpen = false;
+      const closeSpy = vi.spyOn(manager, 'close');
+
+      const event = new KeyboardEvent('keydown', { key: 'Escape' });
+      document.dispatchEvent(event);
+
+      expect(closeSpy).not.toHaveBeenCalled();
+    });
+  });
+
 });
