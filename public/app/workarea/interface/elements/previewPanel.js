@@ -466,17 +466,35 @@ export default class PreviewPanelManager {
         const documentManager = yjsBridge.documentManager;
         const resourceFetcher = yjsBridge.resourceFetcher || null;
 
+        // Check if we're in static mode
+        const isStaticMode = window.__EXE_STATIC_MODE__ === true;
+
+        // Get the static base path from current URL (handles subdirectory deployments)
+        // e.g., /exelearning/pr-preview/pr-17/ -> /exelearning/pr-preview/pr-17
+        const staticBasePath = isStaticMode
+            ? window.location.pathname.replace(/\/?(index\.html)?$/, '')
+            : '';
+
         // Get theme URL
         const selectedTheme = eXeLearning.app?.themes?.selected;
         let themeUrl = selectedTheme?.path || null;
-        if (themeUrl && !themeUrl.startsWith('http')) {
-            themeUrl = window.location.origin + themeUrl;
+
+        // Make theme URL absolute for standalone preview (blob URL context)
+        if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:')) {
+            const cleanThemeUrl = themeUrl.startsWith('./') ? themeUrl.slice(2) :
+                                  themeUrl.startsWith('/') ? themeUrl.slice(1) : themeUrl;
+            const base = isStaticMode
+                ? `${window.location.origin}${staticBasePath}`
+                : window.location.origin;
+            themeUrl = `${base}/${cleanThemeUrl}`;
         }
 
         const previewOptions = {
             baseUrl: window.location.origin,
-            basePath: eXeLearning.app.config?.basePath || '',
+            // basePath MUST start with '/' to trigger isPreviewMode=true in the exporter
+            basePath: isStaticMode ? '/' : (eXeLearning.app.config?.basePath || '/'),
             version: eXeLearning.app.config?.version || 'v1',
+            isStaticMode: isStaticMode,
             themeUrl: themeUrl,
         };
 
@@ -491,10 +509,30 @@ export default class PreviewPanelManager {
             throw new Error(result.error || 'Failed to generate preview');
         }
 
+        // In static mode, convert relative URLs to absolute URLs
+        // This is essential for standalone preview (new tab) to work correctly
+        // because blob URLs cannot resolve relative paths
+        let generatedHtml = result.html;
+        if (isStaticMode) {
+            const fullBase = `${window.location.origin}${staticBasePath}`;
+            // Convert URLs starting with / to absolute URLs
+            // Matches: href="/path" or src="/path" (but not href="//..." or href="http...")
+            generatedHtml = generatedHtml.replace(
+                /((?:href|src)=["'])(\/(?!\/|[a-z]+:))([^"']+)(["'])/gi,
+                (match, prefix, slash, path, quote) => {
+                    // /v1/libs/... -> fullBase/libs/... (strip version prefix if present)
+                    let cleanPath = path;
+                    cleanPath = cleanPath.replace(/^v[^/]*\//, '');
+                    return `${prefix}${fullBase}/${cleanPath}${quote}`;
+                }
+            );
+            Logger.log('[PreviewPanel] Converted relative URLs to absolute for standalone preview, base:', fullBase);
+        }
+
         // Add MIME types to media elements
         let html = typeof window.addMediaTypes === 'function'
-            ? window.addMediaTypes(result.html)
-            : result.html;
+            ? window.addMediaTypes(generatedHtml)
+            : generatedHtml;
 
         // Simplify MediaElement.js structures
         if (typeof window.simplifyMediaElements === 'function') {
