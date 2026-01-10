@@ -88,7 +88,11 @@ window.MathJax = window.MathJax || (function() {
             load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
         },
         options: {
-            // MathJax Configuration Options
+            // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
+            // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
+            ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
+            // Skip processing inside these HTML tags
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
         }
     };
 })();
