@@ -408,7 +408,8 @@ function buildThemesList(): { themes: Theme[] } {
 
             const themeName = dir.name;
             const themePath = path.join(themesDir, dir.name);
-            const themeUrl = `/files/perm/themes/base/${themeName}`;
+            // Use relative URL (./...) to work in subdirectory deployments like PR previews
+            const themeUrl = `./files/perm/themes/base/${themeName}`;
 
             // Parse more data from config.xml if available
             let title = themeName.charAt(0).toUpperCase() + themeName.slice(1);
