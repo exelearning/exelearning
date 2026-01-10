@@ -554,19 +554,28 @@ export default class PreviewPanelManager {
         // For preview (loaded via blob URL), we ALWAYS need absolute URLs
         // because blob URLs cannot resolve relative paths.
         // In static mode:
-        //   - Files are served from root (e.g., /libs/bootstrap.min.css)
-        //   - We need baseUrl to be the origin (http://127.0.0.1:8090)
-        //   - basePath should be empty (files are at root, not /app/ or similar)
+        //   - Files may be in a subdirectory (e.g., /exelearning/pr-preview/pr-17/)
+        //   - We need the full base including pathname, not just origin
+        //   - basePath should be the pathname directory
         // In server mode:
         //   - Files use versioned paths (/v1/libs/bootstrap.min.css)
         //   - baseUrl is origin, basePath may be set
+
+        // Get the static base path from current URL (handles subdirectory deployments)
+        // e.g., /exelearning/pr-preview/pr-17/ -> /exelearning/pr-preview/pr-17
+        const staticBasePath = isStaticMode
+            ? window.location.pathname.replace(/\/?(index\.html)?$/, '')
+            : '';
 
         // Make theme URL absolute for blob URL context
         if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:')) {
             // Remove leading ./ if present and make absolute
             const cleanThemeUrl = themeUrl.startsWith('./') ? themeUrl.slice(2) :
                                   themeUrl.startsWith('/') ? themeUrl.slice(1) : themeUrl;
-            themeUrl = `${window.location.origin}/${cleanThemeUrl}`;
+            const base = isStaticMode
+                ? `${window.location.origin}${staticBasePath}`
+                : window.location.origin;
+            themeUrl = `${base}/${cleanThemeUrl}`;
         }
 
         const previewOptions = {
@@ -594,23 +603,24 @@ export default class PreviewPanelManager {
 
         // In static mode, the exporter generates URLs with basePath='/'
         // These need to be converted to absolute URLs for blob URL context
+        // Important: Use full base path including pathname for subdirectory deployments
         let generatedHtml = result.html;
         if (isStaticMode) {
-            const origin = window.location.origin;
+            const fullBase = `${window.location.origin}${staticBasePath}`;
             // Convert URLs starting with / to absolute URLs
             // Matches: href="/path" or src="/path" (but not href="//..." or href="http...")
             generatedHtml = generatedHtml.replace(
                 /((?:href|src)=["'])(\/(?!\/|[a-z]+:))([^"']+)(["'])/gi,
                 (match, prefix, slash, path, quote) => {
-                    // /v1/libs/... -> origin/libs/... (strip version prefix if present)
-                    // /libs/... -> origin/libs/...
+                    // /v1/libs/... -> fullBase/libs/... (strip version prefix if present)
+                    // /libs/... -> fullBase/libs/...
                     let cleanPath = path;
                     // Remove version prefix if present (e.g., /v1/, /v0.0.0-alpha/)
                     cleanPath = cleanPath.replace(/^v[^/]*\//, '');
-                    return `${prefix}${origin}/${cleanPath}${quote}`;
+                    return `${prefix}${fullBase}/${cleanPath}${quote}`;
                 }
             );
-            Logger.log('[PreviewPanel] Converted relative URLs to absolute for static mode');
+            Logger.log('[PreviewPanel] Converted relative URLs to absolute for static mode, base:', fullBase);
         }
 
         // Add MIME types to media elements BEFORE resolving URLs
