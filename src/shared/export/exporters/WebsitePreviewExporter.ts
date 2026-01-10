@@ -199,6 +199,10 @@ export class WebsitePreviewExporter {
         // Static mode: use relative paths without version prefix
         if (options.isStaticMode) {
             const basePath = options.basePath || '.';
+            // Avoid double slashes when basePath ends with /
+            if (basePath.endsWith('/')) {
+                return `${basePath}${cleanPath}`;
+            }
             return `${basePath}/${cleanPath}`;
         }
 

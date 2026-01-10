@@ -278,6 +278,24 @@ describe('WebsitePreviewExporter', () => {
             });
             expect(result.html).toContain('/v1.0.0/files/perm/themes/base/base/style.css');
         });
+
+        it('should avoid double slashes when basePath ends with slash in static mode', async () => {
+            const result = await exporter.generatePreview({
+                isStaticMode: true,
+                basePath: '/',
+            });
+            // Should produce /libs/jquery/jquery.min.js, not //libs/jquery/jquery.min.js
+            expect(result.html).toContain('src="/libs/jquery/jquery.min.js"');
+            expect(result.html).not.toContain('src="//libs/');
+        });
+
+        it('should use relative paths in static mode with dot basePath', async () => {
+            const result = await exporter.generatePreview({
+                isStaticMode: true,
+                basePath: '.',
+            });
+            expect(result.html).toContain('src="./libs/jquery/jquery.min.js"');
+        });
     });
 
     describe('iDevice handling', () => {
