@@ -319,6 +319,16 @@ function buildIdevicesList(): { idevices: IdeviceConfig[] } {
 }
 
 /**
+ * Theme icon interface
+ */
+interface ThemeIcon {
+    id: string;
+    title: string;
+    type: 'img';
+    value: string; // URL path to the icon image
+}
+
+/**
  * Theme interface matching what navbarStyles.js expects
  */
 interface Theme {
@@ -332,6 +342,38 @@ interface Theme {
     valid: boolean;
     downloadable: string;
     cssFiles: string[]; // CSS files to load for the theme
+    icons: Record<string, ThemeIcon>; // Theme icons for block icon picker
+}
+
+/**
+ * Scan theme directory for icon files
+ */
+function scanThemeIcons(themePath: string, themeUrl: string): Record<string, ThemeIcon> {
+    const iconsPath = path.join(themePath, 'icons');
+    if (!fs.existsSync(iconsPath)) return {};
+
+    const icons: Record<string, ThemeIcon> = {};
+    const entries = fs.readdirSync(iconsPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+        if (
+            entry.isFile() &&
+            (entry.name.endsWith('.png') ||
+                entry.name.endsWith('.svg') ||
+                entry.name.endsWith('.gif') ||
+                entry.name.endsWith('.jpg') ||
+                entry.name.endsWith('.jpeg'))
+        ) {
+            const iconId = path.basename(entry.name, path.extname(entry.name));
+            icons[iconId] = {
+                id: iconId,
+                title: iconId,
+                type: 'img',
+                value: `${themeUrl}/icons/${entry.name}`,
+            };
+        }
+    }
+    return icons;
 }
 
 /**
@@ -365,6 +407,8 @@ function buildThemesList(): { themes: Theme[] } {
             }
 
             const themeName = dir.name;
+            const themePath = path.join(themesDir, dir.name);
+            const themeUrl = `/files/perm/themes/base/${themeName}`;
 
             // Parse more data from config.xml if available
             let title = themeName.charAt(0).toUpperCase() + themeName.slice(1);
@@ -381,17 +425,21 @@ function buildThemesList(): { themes: Theme[] } {
                 }
             }
 
+            // Scan theme icons
+            const icons = scanThemeIcons(themePath, themeUrl);
+
             themes.push({
                 id: themeName,
                 name: themeName,
                 dirName: themeName,
                 title: title,
                 type: 'base', // All themes in base/ folder are base themes
-                url: `/files/perm/themes/base/${themeName}`, // URL without leading ./ for Theme class
+                url: themeUrl,
                 description: description || `${title} theme`,
                 valid: hasConfig,
                 downloadable: downloadable,
                 cssFiles: ['style.css'], // Default CSS file
+                icons: icons,
             });
         }
     }
