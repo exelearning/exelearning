@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/collaboration.fixture';
+import { serverOnly } from '../../fixtures/mode.fixture';
 import { waitForYjsSync } from '../../helpers/sync-helpers';
 import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
@@ -8,6 +9,8 @@ import type { Page } from '@playwright/test';
  *
  * These tests verify that File Manager operations sync in real-time
  * between multiple clients connected to the same project via WebSocket.
+ *
+ * Note: These tests require a server with WebSocket support and are skipped in static mode.
  */
 
 /**
@@ -169,6 +172,8 @@ async function waitForYjsBridge(page: Page): Promise<void> {
 }
 
 test.describe('Collaborative File Manager', () => {
+    serverOnly(); // Skip in static mode - requires WebSocket
+
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(180000); // 3 minutes per test
 

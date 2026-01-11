@@ -1,4 +1,5 @@
 import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 import type { Page, Download } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -336,6 +337,8 @@ async function importComponentViaModal(page: Page, filePath: string): Promise<vo
 }
 
 test.describe('Component Export/Import', () => {
+    serverOnly(); // Requires server for file export/import
+
     // Temporary directory for downloaded files
     let tempDir: string;
 

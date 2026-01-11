@@ -32,12 +32,12 @@ export class ServerLinkValidationAdapter extends LinkValidationPort {
         const url = this._getEndpoint('api_odes_session_get_broken_links');
         if (!url) {
             const baseUrl = window.eXeLearning?.config?.baseURL || '';
-            return this.http.postJson(
+            return this.http.post(
                 `${baseUrl}${this.basePath}/api/ode-management/odes/session/brokenlinks`,
                 params
             );
         }
-        return this.http.postJson(url, params);
+        return this.http.post(url, params);
     }
 
     /**
@@ -46,7 +46,7 @@ export class ServerLinkValidationAdapter extends LinkValidationPort {
     async extractLinks(params) {
         const baseUrl = window.eXeLearning?.config?.baseURL || '';
         const url = `${baseUrl}${this.basePath}/api/ode-management/odes/session/brokenlinks/extract`;
-        return this.http.postJson(url, params);
+        return this.http.post(url, params);
     }
 
     /**

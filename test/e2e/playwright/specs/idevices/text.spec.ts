@@ -243,10 +243,7 @@ test.describe('Text iDevice', () => {
 
             // Open Tools menu (support both English and Spanish)
             // Use first() since there may be multiple TinyMCE editors (main text + feedback)
-            const toolsMenu = page
-                .locator('.tox-mbtn')
-                .filter({ hasText: /Tools|Herramientas/i })
-                .first();
+            const toolsMenu = page.locator('.tox-mbtn').filter({ hasText: /Tools/i }).first();
             await expect(toolsMenu).toBeVisible({ timeout: 10000 });
             await toolsMenu.click();
 
@@ -323,10 +320,7 @@ test.describe('Text iDevice', () => {
             await page.waitForSelector('.tox-menubar', { timeout: 15000 });
 
             // Open Tools menu (use first() since there may be multiple TinyMCE editors)
-            const toolsMenu = page
-                .locator('.tox-mbtn')
-                .filter({ hasText: /Tools|Herramientas/i })
-                .first();
+            const toolsMenu = page.locator('.tox-mbtn').filter({ hasText: 'Tools' }).first();
             await toolsMenu.click();
             await page.waitForTimeout(300);
 
@@ -448,9 +442,7 @@ test.describe('Text iDevice', () => {
             // The mindmap button is on the 4th toolbar row (buttons3), which is hidden by default
             // First, click the toggletoolbars button to expand all toolbars
             const toggleToolbarsButton = page
-                .locator(
-                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
-                )
+                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -502,6 +494,8 @@ test.describe('Text iDevice', () => {
                 .first();
             if ((await closeEditorButton.count()) > 0) {
                 await closeEditorButton.click();
+                // Wait for the editor dialog to close before trying to close the main dialog
+                await expect(editorDialog).not.toBeVisible({ timeout: 5000 });
             }
 
             // Then close the main mindmap dialog
@@ -657,9 +651,7 @@ test.describe('Text iDevice', () => {
             // The mermaid button is on the 4th toolbar row (buttons3), which is hidden by default
             // First, click the toggletoolbars button to expand all toolbars
             const toggleToolbarsButton = page
-                .locator(
-                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
-                )
+                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -697,7 +689,7 @@ test.describe('Text iDevice', () => {
             await textarea.fill(mermaidCode);
 
             // Click Save button to insert the mermaid code
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: 'Save' });
             await saveDialogBtn.click();
 
             // Wait for dialog to close
@@ -846,9 +838,7 @@ test.describe('Text iDevice', () => {
 
             // Expand toolbars
             const toggleToolbarsButton = page
-                .locator(
-                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
-                )
+                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -872,7 +862,7 @@ test.describe('Text iDevice', () => {
             const textarea = dialog.locator('textarea');
             await textarea.fill(initialCode);
 
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: 'Save' });
             await saveDialogBtn.click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
@@ -907,7 +897,7 @@ test.describe('Text iDevice', () => {
 
             await updateTextarea.fill(updatedCode);
 
-            const updateSaveBtn = updateDialog.locator('button').filter({ hasText: /Save|Guardar/i });
+            const updateSaveBtn = updateDialog.locator('button').filter({ hasText: 'Save' });
             await updateSaveBtn.click();
             await expect(updateDialog).not.toBeVisible({ timeout: 5000 });
 
@@ -982,9 +972,7 @@ test.describe('Text iDevice', () => {
 
             // Expand toolbars
             const toggleToolbarsButton = page
-                .locator(
-                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
-                )
+                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -1008,7 +996,7 @@ test.describe('Text iDevice', () => {
             const textarea = dialog.locator('textarea');
             await textarea.fill(mermaidCode);
 
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: 'Save' });
             await saveDialogBtn.click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
@@ -1139,9 +1127,7 @@ test.describe('Text iDevice', () => {
             // The audio recorder button is on the 4th toolbar row, which is hidden by default
             // First, click the toggletoolbars button to expand all toolbars
             const toggleToolbarsButton = page
-                .locator(
-                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
-                )
+                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();

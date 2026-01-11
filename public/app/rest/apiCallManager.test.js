@@ -95,7 +95,6 @@ describe('ApiCallManager', () => {
       getStructure: vi.fn().mockResolvedValue({ structure: null }),
       getProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK', properties: {} }),
       saveProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
-      getUsedFiles: vi.fn().mockResolvedValue({ responseMessage: 'OK', usedFiles: [] }),
       autoSave: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
       saveAs: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
     };
@@ -116,7 +115,6 @@ describe('ApiCallManager', () => {
 
     const mockLinkValidation = {
       getSessionBrokenLinks: vi.fn().mockResolvedValue({ responseMessage: 'OK', brokenLinks: [] }),
-      extractLinks: vi.fn().mockResolvedValue({ responseMessage: 'OK', links: [], totalLinks: 0 }),
       getValidationStreamUrl: vi.fn().mockReturnValue('http://localhost/validate-stream'),
       getPageBrokenLinks: vi.fn().mockResolvedValue({ brokenLinks: [] }),
       getBlockBrokenLinks: vi.fn().mockResolvedValue({ brokenLinks: [] }),
@@ -1394,7 +1392,6 @@ describe('ApiCallManager', () => {
       await apiManager.getOdeIdeviceBrokenLinks('idev-1');
       await apiManager.getOdeProperties('s1');
       await apiManager.putSaveOdeProperties({ id: 1 });
-      await apiManager.getOdeSessionUsedFiles({ id: 1 });
 
       expect(mockProjectRepo.getLastUpdated).toHaveBeenCalledWith('ode-1');
       expect(mockProjectRepo.getConcurrentUsers).toHaveBeenCalledWith('ode-1', 'v1', 's1');
@@ -1405,7 +1402,6 @@ describe('ApiCallManager', () => {
       expect(window._mockAdapters.linkValidation.getIdeviceBrokenLinks).toHaveBeenCalledWith('idev-1');
       expect(mockProjectRepo.getProperties).toHaveBeenCalledWith('s1');
       expect(mockProjectRepo.saveProperties).toHaveBeenCalledWith({ id: 1 });
-      expect(mockProjectRepo.getUsedFiles).toHaveBeenCalledWith({ id: 1 });
     });
 
     it('should call page, block, and file endpoints', async () => {
@@ -1542,6 +1538,211 @@ describe('ApiCallManager', () => {
 
       expect(result.responseMessage).toBe('ERROR');
       expect(result.error).toBe('Invalid theme');
+    });
+  });
+
+  describe('Yjs-based content extraction', () => {
+    let mockStructureBinding;
+
+    beforeEach(() => {
+      // Set up mock structureBinding for Yjs
+      // Note: _ymap contains raw content before URL resolution (asset:// URLs)
+      // while htmlContent is already resolved (blob:// URLs)
+      const mockYmap = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') {
+            return {
+              toString: () => '<p>Test content with <a href="https://example.com">link</a> and <img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890" /></p>',
+            };
+          }
+          if (key === 'jsonProperties') {
+            return '{}';
+          }
+          return null;
+        }),
+      };
+
+      mockStructureBinding = {
+        getPages: vi.fn().mockReturnValue([
+          { id: 'page-1', pageName: 'Test Page' },
+        ]),
+        getBlocks: vi.fn().mockReturnValue([
+          { id: 'block-1', blockName: 'Test Block' },
+        ]),
+        getComponents: vi.fn().mockReturnValue([
+          {
+            // htmlContent is resolved (blob URLs) - used by link extraction
+            htmlContent: '<p>Test content with <a href="https://example.com">link</a> and <img src="blob:http://localhost/uuid" /></p>',
+            ideviceType: 'textIdevice',
+            order: 1,
+            // _ymap contains raw content (asset:// URLs) - used by resource report
+            _ymap: mockYmap,
+          },
+        ]),
+      };
+    });
+
+    describe('getOdeSessionUsedFiles', () => {
+      it('should always use Yjs to extract assets', async () => {
+        // Set up Yjs active state
+        window.eXeLearning.app.project = {
+          _yjsEnabled: true,
+          _yjsBridge: {
+            structureBinding: mockStructureBinding,
+            assetManager: null,
+          },
+        };
+
+        const result = await apiManager.getOdeSessionUsedFiles({ id: 1 });
+
+        expect(mockStructureBinding.getPages).toHaveBeenCalled();
+        expect(result.responseMessage).toBe('OK');
+        expect(result.usedFiles).toBeDefined();
+        expect(Array.isArray(result.usedFiles)).toBe(true);
+        // Should find the asset:// URL in the htmlContent
+        expect(result.usedFiles.length).toBeGreaterThan(0);
+        expect(result.usedFiles[0].usedFilesPath).toContain('asset://');
+      });
+
+      it('should return empty array with OK response when structureBinding is not available', async () => {
+        window.eXeLearning.app.project = {
+          _yjsEnabled: true,
+          _yjsBridge: {
+            structureBinding: null,
+          },
+        };
+
+        const result = await apiManager.getOdeSessionUsedFiles({ id: 1 });
+
+        expect(result.responseMessage).toBe('OK');
+        expect(result.usedFiles).toEqual([]);
+      });
+
+      it('should use AssetManager.getAllAssetsMetadata and include usage location', async () => {
+        // Use UUID-like hex values that match the asset regex pattern: /asset:\/\/([a-f0-9-]+)/gi
+        const assetId1 = 'aabbccdd-1111-2222-3333-444455556666';
+        const assetId2 = 'eeff0011-5555-6666-7777-888899990000';
+
+        // Create a mock with content that includes asset references
+        const mockStructureBindingWithAssets = {
+          getPages: vi.fn().mockReturnValue([{ id: 'page-1', pageName: 'Test Page' }]),
+          getBlocks: vi.fn().mockReturnValue([{ id: 'block-1', blockName: 'Test Block' }]),
+          getComponents: vi.fn().mockReturnValue([{
+            ideviceType: 'textIdevice',
+            order: 1,
+            _ymap: {
+              get: (key) => key === 'htmlContent' ? `<img src="asset://${assetId1}"/>` : null,
+            },
+          }]),
+        };
+
+        const mockAssetManager = {
+          getAllAssetsMetadata: vi.fn().mockReturnValue([
+            { id: assetId1, name: 'test.jpg', size: 1024 },
+            { id: assetId2, name: 'test2.png', size: 2048 },
+          ]),
+          getAsset: vi.fn().mockResolvedValue(null),
+        };
+
+        window.eXeLearning.app.project = {
+          _yjsEnabled: true,
+          _yjsBridge: {
+            structureBinding: mockStructureBindingWithAssets,
+            assetManager: mockAssetManager,
+          },
+        };
+
+        const result = await apiManager.getOdeSessionUsedFiles({ id: 1 });
+
+        expect(result.responseMessage).toBe('OK');
+        expect(mockAssetManager.getAllAssetsMetadata).toHaveBeenCalled();
+        expect(result.usedFiles.length).toBe(2);
+
+        // First asset (assetId1) should have usage location since it's in content
+        const asset1File = result.usedFiles.find(f => f.usedFilesPath === `asset://${assetId1}`);
+        expect(asset1File.usedFiles).toBe('test.jpg');
+        expect(asset1File.pageNamesUsedFiles).toBe('Test Page');
+        expect(asset1File.blockNamesUsedFiles).toBe('Test Block');
+        expect(asset1File.typeComponentSyncUsedFiles).toBe('text');
+
+        // Second asset (assetId2) is not in content, so location should be '-'
+        const asset2File = result.usedFiles.find(f => f.usedFilesPath === `asset://${assetId2}`);
+        expect(asset2File.usedFiles).toBe('test2.png');
+        expect(asset2File.pageNamesUsedFiles).toBe('-');
+      });
+    });
+
+    describe('extractLinksForValidation', () => {
+      it('should always extract links from Yjs', async () => {
+        window.eXeLearning.app.project = {
+          _yjsEnabled: true,
+          _yjsBridge: {
+            structureBinding: mockStructureBinding,
+          },
+        };
+
+        const result = await apiManager.extractLinksForValidation({ odeSessionId: 's1', idevices: [] });
+
+        expect(mockStructureBinding.getPages).toHaveBeenCalled();
+        expect(result.links).toBeDefined();
+        expect(Array.isArray(result.links)).toBe(true);
+        // Should find the href URL in the htmlContent
+        expect(result.links.length).toBeGreaterThan(0);
+        expect(result.links[0].url).toBe('https://example.com');
+      });
+
+      it('should skip internal anchors and asset URLs', async () => {
+        mockStructureBinding.getComponents.mockReturnValue([
+          {
+            htmlContent: '<a href="#anchor">Anchor</a><a href="asset://uuid">Asset</a><a href="https://valid.com">Valid</a>',
+            ideviceType: 'textIdevice',
+            order: 1,
+          },
+        ]);
+
+        window.eXeLearning.app.project = {
+          _yjsEnabled: true,
+          _yjsBridge: {
+            structureBinding: mockStructureBinding,
+          },
+        };
+
+        const result = await apiManager.extractLinksForValidation({ odeSessionId: 's1', idevices: [] });
+
+        // Should only find the valid https link, not anchor or asset
+        expect(result.links.length).toBe(1);
+        expect(result.links[0].url).toBe('https://valid.com');
+      });
+
+      it('should return empty array when structureBinding is not available', async () => {
+        window.eXeLearning.app.project = {
+          _yjsEnabled: true,
+          _yjsBridge: {
+            structureBinding: null,
+          },
+        };
+
+        const result = await apiManager.extractLinksForValidation({ odeSessionId: 's1', idevices: [] });
+
+        expect(result.links).toEqual([]);
+        expect(result.totalLinks).toBe(0);
+      });
+    });
+
+    describe('_formatFileSize', () => {
+      it('should format bytes correctly', () => {
+        expect(apiManager._formatFileSize(0)).toBe('');
+        expect(apiManager._formatFileSize(512)).toBe('512.0 B');
+        expect(apiManager._formatFileSize(1024)).toBe('1.0 KB');
+        expect(apiManager._formatFileSize(1536)).toBe('1.5 KB');
+        expect(apiManager._formatFileSize(1048576)).toBe('1.0 MB');
+        expect(apiManager._formatFileSize(1073741824)).toBe('1.0 GB');
+      });
+
+      it('should return empty string for null/undefined', () => {
+        expect(apiManager._formatFileSize(null)).toBe('');
+        expect(apiManager._formatFileSize(undefined)).toBe('');
+      });
     });
   });
 });

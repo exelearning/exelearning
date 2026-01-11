@@ -1,4 +1,5 @@
 import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 import type { Page } from '@playwright/test';
 
 /**
@@ -374,6 +375,8 @@ async function clonePage(page: Page): Promise<void> {
 }
 
 test.describe('Cloning Functionality', () => {
+    serverOnly(); // Requires server for project creation and navigation
+
     test.describe('Clone iDevice', () => {
         test('should clone iDevice with text content preserved', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;

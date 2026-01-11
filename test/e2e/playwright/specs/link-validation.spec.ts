@@ -6,6 +6,7 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
+import { serverOnly } from '../fixtures/mode.fixture';
 
 /**
  * Helper to add a text iDevice to the current page
@@ -81,6 +82,8 @@ async function waitForWorkarea(page: Page): Promise<void> {
 }
 
 test.describe('Link Validation', () => {
+    serverOnly(); // Requires server for link validation API
+
     test.beforeEach(async ({ page }) => {
         // Login
         await page.goto('/login');
@@ -276,7 +279,7 @@ test.describe('Link Validation', () => {
         await modal.waitFor({ state: 'visible', timeout: 5000 });
 
         // Should show "No links found" message
-        await expect(modal.locator('text=No links found')).toBeVisible({ timeout: 10000 });
+        await expect(modal.locator('text=No links found in content')).toBeVisible({ timeout: 10000 });
     });
 
     test('should disable CSV button while validating', async ({ page }) => {

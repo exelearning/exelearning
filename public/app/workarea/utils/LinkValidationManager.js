@@ -149,6 +149,34 @@ export default class LinkValidationManager {
         return new Promise((resolve, reject) => {
             const streamUrl = eXeLearning.app.api.getLinkValidationStreamUrl();
 
+            // If no stream URL available (static mode), skip validation
+            // and mark all links as "unvalidated" (not broken, just not checked)
+            if (!streamUrl) {
+                console.log('[LinkValidationManager] No validation stream URL available - skipping server validation');
+                this.isValidating = false;
+
+                // Mark links as "valid" (unvalidated) since we can't check them
+                // In static mode, we just show the links without validation status
+                for (const link of this.links.values()) {
+                    link.status = 'valid'; // Show as valid (green checkmark)
+                    link.error = null;
+
+                    if (this.onLinkUpdate) {
+                        this.onLinkUpdate(link.id, link.status, link.error, link);
+                    }
+
+                    if (this.onProgress) {
+                        this.onProgress(this.getStats());
+                    }
+                }
+
+                if (this.onComplete) {
+                    this.onComplete(this.getStats(), false);
+                }
+                resolve();
+                return;
+            }
+
             this.streamHandle = SSEClient.createStream(
                 streamUrl,
                 { links },

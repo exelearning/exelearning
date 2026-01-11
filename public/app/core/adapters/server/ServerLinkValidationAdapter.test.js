@@ -9,7 +9,7 @@ describe('ServerLinkValidationAdapter', () => {
     beforeEach(() => {
         mockHttpClient = {
             get: vi.fn(),
-            postJson: vi.fn(),
+            post: vi.fn(),
         };
 
         mockEndpoints = {
@@ -63,11 +63,11 @@ describe('ServerLinkValidationAdapter', () => {
     describe('getSessionBrokenLinks', () => {
         it('should use endpoint if available', async () => {
             const params = { sessionId: '123' };
-            mockHttpClient.postJson.mockResolvedValue({ brokenLinks: [] });
+            mockHttpClient.post.mockResolvedValue({ brokenLinks: [] });
 
             const result = await adapter.getSessionBrokenLinks(params);
 
-            expect(mockHttpClient.postJson).toHaveBeenCalledWith(
+            expect(mockHttpClient.post).toHaveBeenCalledWith(
                 '/api/odes/session/brokenlinks',
                 params
             );
@@ -79,11 +79,11 @@ describe('ServerLinkValidationAdapter', () => {
                 mockHttpClient, {}, '/test'
             );
             const params = { sessionId: '123' };
-            mockHttpClient.postJson.mockResolvedValue({ brokenLinks: [] });
+            mockHttpClient.post.mockResolvedValue({ brokenLinks: [] });
 
             await adapterWithoutEndpoints.getSessionBrokenLinks(params);
 
-            expect(mockHttpClient.postJson).toHaveBeenCalledWith(
+            expect(mockHttpClient.post).toHaveBeenCalledWith(
                 'http://localhost:8083/test/api/ode-management/odes/session/brokenlinks',
                 params
             );
@@ -93,11 +93,11 @@ describe('ServerLinkValidationAdapter', () => {
     describe('extractLinks', () => {
         it('should call correct URL', async () => {
             const params = { sessionId: '123', content: '<a href="test">Test</a>' };
-            mockHttpClient.postJson.mockResolvedValue({ links: [], totalLinks: 0 });
+            mockHttpClient.post.mockResolvedValue({ links: [], totalLinks: 0 });
 
             const result = await adapter.extractLinks(params);
 
-            expect(mockHttpClient.postJson).toHaveBeenCalledWith(
+            expect(mockHttpClient.post).toHaveBeenCalledWith(
                 'http://localhost:8083/test/api/ode-management/odes/session/brokenlinks/extract',
                 params
             );

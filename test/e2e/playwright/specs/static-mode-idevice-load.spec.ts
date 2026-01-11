@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 /**
  * Test for static mode iDevice loading issue
@@ -55,9 +55,11 @@ test.describe('Static Mode - iDevice Loading', () => {
         await page.click('#dropdownFile');
         await page.waitForTimeout(500);
 
-        // Click Open option
-        const openButton = page.locator('text=Open').first();
-        await openButton.click();
+        // Click Import (.elpx...) option - works in both online and offline modes
+        // Note: #navbar-button-openuserodefiles (Open) is hidden in offline mode (exe-online class)
+        const importButton = page.locator('#navbar-button-import-elp');
+        await expect(importButton).toBeVisible({ timeout: 5000 });
+        await importButton.click();
 
         // Wait for file input to be ready
         await page.waitForTimeout(1000);
@@ -74,6 +76,24 @@ test.describe('Static Mode - iDevice Loading', () => {
 
         // Wait for import to complete
         await page.waitForTimeout(5000);
+
+        // Close any modals that may have appeared after import (e.g., confirmation dialogs)
+        const confirmModal = page.locator('#modalConfirm.show, #modalConfirm[data-open="true"]');
+        if ((await confirmModal.count()) > 0) {
+            console.log('[Test] Closing import confirmation modal...');
+            // Try clicking confirm/OK button
+            const confirmBtn = confirmModal.locator(
+                'button.confirm, button.btn-primary, .modal-footer button:first-child',
+            );
+            if ((await confirmBtn.count()) > 0) {
+                await confirmBtn.first().click();
+                await page.waitForTimeout(500);
+            } else {
+                // Press Escape to close
+                await page.keyboard.press('Escape');
+                await page.waitForTimeout(500);
+            }
+        }
 
         // Check for import errors in console
         const importErrors = consoleErrors.filter(e => e.includes('Failed to import') || e.includes('Error importing'));
@@ -99,11 +119,11 @@ test.describe('Static Mode - iDevice Loading', () => {
                 );
                 console.log('[Test] iDevice errors:', ideviceErrors);
 
-                // Check if modal error appeared
-                const alertModal = page.locator('.modal.show, [role="dialog"]');
+                // Check if error modal appeared (only visible modals with 'show' class or data-open="true")
+                const alertModal = page.locator('.modal.show[data-open="true"], #modalAlert.show');
                 const hasErrorModal = (await alertModal.count()) > 0;
                 if (hasErrorModal) {
-                    const modalText = await alertModal.textContent();
+                    const modalText = await alertModal.first().textContent();
                     console.log('[Test] Error modal appeared:', modalText);
                 }
 

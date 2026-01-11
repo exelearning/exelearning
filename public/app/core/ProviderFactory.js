@@ -246,14 +246,14 @@ export class ServerProviderFactory extends ProviderFactory {
      * @inheritdoc
      */
     createUserPreferencesAdapter() {
-        return new ServerUserPreferenceAdapter(this.httpClient, this._endpoints || {});
+        return new ServerUserPreferenceAdapter(this.httpClient, this._endpoints || {}, this.basePath);
     }
 
     /**
      * @inheritdoc
      */
     createLinkValidationAdapter() {
-        return new ServerLinkValidationAdapter(this.httpClient, this._endpoints || {});
+        return new ServerLinkValidationAdapter(this.httpClient, this._endpoints || {}, this.basePath);
     }
 
     /**
@@ -274,7 +274,7 @@ export class ServerProviderFactory extends ProviderFactory {
      * @inheritdoc
      */
     createSharingAdapter() {
-        return new ServerSharingAdapter(this.httpClient, this._endpoints || {});
+        return new ServerSharingAdapter(this.httpClient, this._endpoints || {}, this.basePath);
     }
 }
 

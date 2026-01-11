@@ -25,6 +25,7 @@
  *   - Edit button should be enabled
  */
 import { test, expect } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -170,6 +171,8 @@ async function getIdeviceDataFromYjs(page: Page, ideviceType: string) {
 }
 
 test.describe('home_is_where_art_is.elp Import Tests', () => {
+    serverOnly(); // Requires server for ELPX import
+
     test.describe('Image Gallery', () => {
         test('should show gallery images in preview', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;

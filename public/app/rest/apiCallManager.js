@@ -606,12 +606,99 @@ export default class ApiCallManager {
 
     /**
      * Extract links from iDevices for validation
-     * Uses injected link validation adapter (server or static mode)
+     * Extracts links from Yjs content (always available)
      * @param {Object} params - { odeSessionId, idevices }
      * @returns {Promise<Object>} - { responseMessage, links, totalLinks }
      */
     async extractLinksForValidation(params) {
-        return this._linkValidation.extractLinks(params);
+        return this._extractLinksFromYjs();
+    }
+
+    /**
+     * Extract links from Yjs document by scanning all content.
+     * @private
+     * @returns {Promise<{responseMessage: string, links: Array, totalLinks: number}>}
+     */
+    _extractLinksFromYjs() {
+        const projectManager = eXeLearning?.app?.project;
+        const bridge = projectManager?._yjsBridge;
+        const structureBinding = bridge?.structureBinding;
+
+        if (!structureBinding) {
+            console.warn('[apiCallManager] _extractLinksFromYjs: No structureBinding available');
+            return { responseMessage: 'OK', links: [], totalLinks: 0 };
+        }
+
+        const links = [];
+        const linkCounts = new Map(); // Track link occurrences by URL
+
+        // Regex to find URLs in HTML content
+        const urlRegex = /href=["']([^"']+)["']/gi;
+
+        // Get all pages
+        const pages = structureBinding.getPages() || [];
+
+        for (const page of pages) {
+            const pageId = page.id;
+            const pageName = page.pageName || 'Page';
+
+            // Get blocks for this page
+            const blocks = structureBinding.getBlocks(pageId) || [];
+
+            for (const block of blocks) {
+                const blockName = block.blockName || '';
+
+                // Get components for this block
+                const components = structureBinding.getComponents(pageId, block.id) || [];
+
+                for (const component of components) {
+                    const htmlContent = component.htmlContent || '';
+                    const ideviceType = component.ideviceType || '';
+                    const order = component.order || 0;
+
+                    // Find all href URLs
+                    let match;
+                    while ((match = urlRegex.exec(htmlContent)) !== null) {
+                        const url = match[1];
+
+                        // Skip internal anchors, asset URLs, and internal navigation links
+                        if (url.startsWith('#') || url.startsWith('asset://') ||
+                            url.startsWith('data:') || url.startsWith('blob:') ||
+                            url.startsWith('javascript:') || url.startsWith('exe-node:')) {
+                            continue;
+                        }
+
+                        // Track count for this URL
+                        const count = (linkCounts.get(url) || 0) + 1;
+                        linkCounts.set(url, count);
+
+                        // Generate unique ID
+                        const linkId = `link-${crypto.randomUUID().substring(0, 8)}`;
+
+                        links.push({
+                            id: linkId,
+                            url: url,
+                            count: count,
+                            pageName: pageName,
+                            blockName: blockName,
+                            ideviceType: ideviceType.replace('Idevice', ''),
+                            order: order,
+                        });
+                    }
+
+                    // Reset regex lastIndex for next iteration
+                    urlRegex.lastIndex = 0;
+                }
+            }
+        }
+
+        // Update counts in all links (same URL should show total count)
+        for (const link of links) {
+            link.count = linkCounts.get(link.url) || 1;
+        }
+
+        console.log('[apiCallManager] _extractLinksFromYjs: Found', links.length, 'links');
+        return { responseMessage: 'OK', links, totalLinks: links.length };
     }
 
     /**
@@ -675,12 +762,200 @@ export default class ApiCallManager {
 
     /**
      * Get ODE session used files
-     * Uses injected project repository (server or static mode)
+     * Gets assets from Yjs AssetManager (always available)
      * @param {*} params
-     * @returns
+     * @returns {Promise<{usedFiles: Array}>}
      */
     async getOdeSessionUsedFiles(params) {
-        return this._projectRepo.getUsedFiles(params);
+        return this._getUsedFilesFromYjs();
+    }
+
+    /**
+     * Extract used files from Yjs document by scanning all content.
+     * @private
+     * @returns {Promise<{responseMessage: string, usedFiles: Array}>}
+     */
+    async _getUsedFilesFromYjs() {
+        const projectManager = eXeLearning?.app?.project;
+        const bridge = projectManager?._yjsBridge;
+        const structureBinding = bridge?.structureBinding;
+        const assetManager = bridge?.assetManager;
+
+        if (!structureBinding) {
+            console.warn('[apiCallManager] _getUsedFilesFromYjs: No structureBinding available');
+            return { responseMessage: 'OK', usedFiles: [] };
+        }
+
+        const usedFiles = [];
+        const seenAssets = new Set(); // Track unique assets
+        const assetUsageMap = new Map(); // Track where each asset is used: assetId -> {pageName, blockName, ideviceType, order}
+
+        // Regex to find asset URLs in HTML content
+        const assetRegex = /asset:\/\/([a-f0-9-]+)/gi;
+
+        // Step 1: Scan all content to find where each asset is used
+        const pages = structureBinding.getPages() || [];
+        console.log('[apiCallManager] _getUsedFilesFromYjs: Scanning', pages.length, 'pages for asset usage');
+
+        for (const page of pages) {
+            const pageId = page.id;
+            const pageName = page.pageName || 'Page';
+
+            // Get blocks for this page
+            const blocks = structureBinding.getBlocks(pageId) || [];
+
+            for (const block of blocks) {
+                const blockName = block.blockName || '';
+
+                // Get components for this block
+                const components = structureBinding.getComponents(pageId, block.id) || [];
+
+                for (const component of components) {
+                    const ideviceType = component.ideviceType || '';
+                    const order = component.order || 0;
+
+                    // Access raw HTML content from Y.Map (before URL resolution)
+                    // component._ymap contains the original Y.Map with asset:// URLs
+                    let rawHtmlContent = '';
+                    let rawJsonProperties = '';
+
+                    if (component._ymap) {
+                        const rawHtml = component._ymap.get('htmlContent');
+                        if (rawHtml && typeof rawHtml.toString === 'function') {
+                            rawHtmlContent = rawHtml.toString();
+                        } else if (typeof rawHtml === 'string') {
+                            rawHtmlContent = rawHtml;
+                        }
+                        // Also check htmlView as fallback
+                        if (!rawHtmlContent) {
+                            const htmlView = component._ymap.get('htmlView');
+                            if (typeof htmlView === 'string') {
+                                rawHtmlContent = htmlView;
+                            }
+                        }
+                        // Check jsonProperties for assets too
+                        const jsonProps = component._ymap.get('jsonProperties');
+                        if (typeof jsonProps === 'string') {
+                            rawJsonProperties = jsonProps;
+                        }
+                    }
+
+                    // Combine htmlContent and jsonProperties for scanning
+                    const contentToScan = rawHtmlContent + ' ' + rawJsonProperties;
+
+                    // Find asset:// URLs and record their location
+                    let match;
+                    while ((match = assetRegex.exec(contentToScan)) !== null) {
+                        const assetId = match[1];
+                        // Only store first occurrence location
+                        if (!assetUsageMap.has(assetId)) {
+                            assetUsageMap.set(assetId, {
+                                pageName,
+                                blockName,
+                                ideviceType: ideviceType.replace('Idevice', ''),
+                                order,
+                            });
+                        }
+                    }
+
+                    // Reset regex lastIndex for next iteration
+                    assetRegex.lastIndex = 0;
+                }
+            }
+        }
+
+        console.log('[apiCallManager] _getUsedFilesFromYjs: Found', assetUsageMap.size, 'assets referenced in content');
+
+        // Step 2: Get all assets from AssetManager and combine with usage info
+        if (assetManager) {
+            try {
+                const allAssets = assetManager.getAllAssetsMetadata?.() || [];
+                console.log('[apiCallManager] _getUsedFilesFromYjs: Found', allAssets.length, 'total assets in AssetManager');
+
+                for (const asset of allAssets) {
+                    const assetId = asset.id || asset.uuid;
+                    if (!assetId) continue;
+
+                    const assetUrl = `asset://${assetId}`;
+                    if (seenAssets.has(assetUrl)) continue;
+                    seenAssets.add(assetUrl);
+
+                    const fileName = asset.name || asset.filename || assetId.substring(0, 8) + '...';
+                    const fileSize = asset.size ? this._formatFileSize(asset.size) : '';
+
+                    // Get usage location if available
+                    const usage = assetUsageMap.get(assetId);
+
+                    usedFiles.push({
+                        usedFiles: fileName,
+                        usedFilesPath: assetUrl,
+                        usedFilesSize: fileSize,
+                        pageNamesUsedFiles: usage?.pageName || '-',
+                        blockNamesUsedFiles: usage?.blockName || '-',
+                        typeComponentSyncUsedFiles: usage?.ideviceType || '-',
+                        orderComponentSyncUsedFiles: usage?.order || 0,
+                    });
+                }
+            } catch (e) {
+                console.debug('[apiCallManager] Could not get assets from AssetManager:', e);
+            }
+        }
+
+        // Step 3: Add any assets found in content but not in AssetManager (shouldn't happen normally)
+        for (const [assetId, usage] of assetUsageMap.entries()) {
+            const assetUrl = `asset://${assetId}`;
+            if (seenAssets.has(assetUrl)) continue;
+            seenAssets.add(assetUrl);
+
+            // Try to get metadata from AssetManager
+            let fileName = assetId.substring(0, 8) + '...';
+            let fileSize = '';
+
+            if (assetManager) {
+                try {
+                    const asset = await assetManager.getAsset(assetId);
+                    if (asset) {
+                        fileName = asset.name || asset.filename || fileName;
+                        if (asset.blob?.size) {
+                            fileSize = this._formatFileSize(asset.blob.size);
+                        } else if (asset.size) {
+                            fileSize = this._formatFileSize(asset.size);
+                        }
+                    }
+                } catch (e) {
+                    console.debug('[apiCallManager] Could not get asset metadata:', assetId, e);
+                }
+            }
+
+            usedFiles.push({
+                usedFiles: fileName,
+                usedFilesPath: assetUrl,
+                usedFilesSize: fileSize,
+                pageNamesUsedFiles: usage.pageName,
+                blockNamesUsedFiles: usage.blockName,
+                typeComponentSyncUsedFiles: usage.ideviceType,
+                orderComponentSyncUsedFiles: usage.order,
+            });
+        }
+
+        console.log('[apiCallManager] _getUsedFilesFromYjs: Returning', usedFiles.length, 'assets total');
+        return { responseMessage: 'OK', usedFiles };
+    }
+
+    /**
+     * Format file size in human-readable format.
+     * @private
+     */
+    _formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let unitIndex = 0;
+        let size = bytes;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        return `${size.toFixed(1)} ${units[unitIndex]}`;
     }
 
     /**

@@ -12,11 +12,14 @@
     (function() {
         var jqueryPath;
         try {
+            // Use 'top' to access main window (this iframe is inside TinyMCE dialog)
+            var mainWindow = top;
+
             // Check if we're in static mode using capabilities first, then fallback
-            var capabilities = parent && parent.eXeLearning && parent.eXeLearning.app && parent.eXeLearning.app.capabilities;
+            var capabilities = mainWindow && mainWindow.eXeLearning && mainWindow.eXeLearning.app && mainWindow.eXeLearning.app.capabilities;
             var isStaticMode = capabilities
                 ? !capabilities.storage.remote
-                : (parent && parent.__EXE_STATIC_MODE__);
+                : (mainWindow && mainWindow.__EXE_STATIC_MODE__);
 
             // In static mode, use relative path from codemagic.html's location
             // codemagic.html is at: libs/tinymce_5/js/tinymce/plugins/codemagic/
@@ -26,15 +29,15 @@
                 jqueryPath = '../../../../../jquery/jquery.min.js';
             } else {
                 // Server mode: use basePath from config (new) or symfony (legacy)
-                var config = parent && parent.eXeLearning && parent.eXeLearning.config;
+                var config = mainWindow && mainWindow.eXeLearning && mainWindow.eXeLearning.config;
                 var basePath = '';
                 if (config && typeof config === 'string') {
                     try { config = JSON.parse(config); } catch(e) { config = null; }
                 }
                 if (config && config.basePath) {
                     basePath = config.basePath;
-                } else if (parent && parent.eXeLearning && parent.eXeLearning.symfony && parent.eXeLearning.symfony.basePath) {
-                    basePath = parent.eXeLearning.symfony.basePath;
+                } else if (mainWindow && mainWindow.eXeLearning && mainWindow.eXeLearning.symfony && mainWindow.eXeLearning.symfony.basePath) {
+                    basePath = mainWindow.eXeLearning.symfony.basePath;
                 }
                 jqueryPath = basePath + '/libs/jquery/jquery.min.js';
             }
