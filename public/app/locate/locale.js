@@ -103,12 +103,8 @@ export default class Locale {
             '#navbar-button-legal-notes': 'Legal notes',
             '#navbar-button-exe-web': 'eXeLearning website',
             '#navbar-button-report-bug': 'Report a bug',
-            // Head buttons
-            '#head-top-save-button': 'Save',
-            '#head-bottom-preview': 'Preview',
-            // Modal buttons
-            '.btn-primary:not([data-no-translate])': 'Save',
-            '.btn-secondary.close:not([data-no-translate])': 'Cancel',
+            // Head buttons - only translate text inside span, not the whole button
+            '#head-top-save-button > span:not([class*="icon"])': 'Save',
         };
 
         for (const [selector, key] of Object.entries(translations)) {
@@ -117,28 +113,35 @@ export default class Locale {
                 // Get translated text
                 const translated = _(key);
                 // For menu items, preserve icons (spans with icon classes)
-                const iconSpan = el.querySelector('span[class*="icon"]');
+                const iconSpan = el.querySelector('span[class*="icon"], div[class*="icon"]');
                 if (iconSpan) {
-                    // Keep the icon, replace only the text after it
+                    // Clear all text nodes first, then add translated text after the icon
                     const textNodes = Array.from(el.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
-                    textNodes.forEach(n => n.textContent = ' ' + translated);
-                    if (textNodes.length === 0) {
-                        el.appendChild(document.createTextNode(' ' + translated));
+                    textNodes.forEach(n => n.remove());
+                    // Add text after the icon
+                    if (iconSpan.nextSibling && iconSpan.nextSibling.nodeType === Node.TEXT_NODE) {
+                        iconSpan.nextSibling.textContent = ' ' + translated;
+                    } else {
+                        iconSpan.after(document.createTextNode(' ' + translated));
                     }
                 } else if (el.tagName === 'A' || el.tagName === 'BUTTON') {
                     // For links/buttons without icons, check for keyboard shortcuts
                     const shortcut = el.querySelector('.shortcut, kbd');
                     if (shortcut) {
-                        el.firstChild.textContent = translated;
+                        const firstTextNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+                        if (firstTextNode) {
+                            firstTextNode.textContent = translated;
+                        }
                     } else {
                         // Simple text replacement, but preserve any child elements
                         const firstTextNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
                         if (firstTextNode) {
                             firstTextNode.textContent = translated;
-                        } else {
-                            el.textContent = translated;
                         }
                     }
+                } else {
+                    // For other elements (like spans), just set text content
+                    el.textContent = translated;
                 }
             });
         }

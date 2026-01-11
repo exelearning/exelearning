@@ -60,8 +60,16 @@ class SaveManager {
    */
   isStaticMode() {
     if (this._isStaticMode === null) {
-      this._isStaticMode = window.__EXE_STATIC_MODE__ === true ||
-                           window.eXeLearning?.config?.isStaticMode === true;
+      // Prefer capabilities check (new pattern)
+      const capabilities = window.eXeLearning?.app?.capabilities;
+      if (capabilities) {
+        // Static mode = no remote storage capability
+        this._isStaticMode = !capabilities.storage.remote;
+      } else {
+        // Fallback to direct detection for early initialization
+        this._isStaticMode = window.__EXE_STATIC_MODE__ === true ||
+                             window.eXeLearning?.config?.isStaticMode === true;
+      }
     }
     return this._isStaticMode;
   }

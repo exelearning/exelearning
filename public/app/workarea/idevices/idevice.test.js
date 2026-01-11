@@ -142,15 +142,15 @@ describe('Idevice', () => {
   });
 
   describe('configParamsTranslatables', () => {
-    it('contains category and title', () => {
+    it('contains only title (category is NOT translated for matching purposes)', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
-      expect(idevice.configParamsTranslatables).toContain('category');
       expect(idevice.configParamsTranslatables).toContain('title');
+      expect(idevice.configParamsTranslatables).not.toContain('category');
     });
 
-    it('has exactly 2 items', () => {
+    it('has exactly 1 item', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
-      expect(idevice.configParamsTranslatables).toHaveLength(2);
+      expect(idevice.configParamsTranslatables).toHaveLength(1);
     });
   });
 
@@ -212,23 +212,25 @@ describe('Idevice', () => {
       expect(idevice.version).toBe('2.0');
     });
 
-    it('translates translatable params', () => {
+    it('translates translatable params (only title, not category)', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
       expect(window._).toHaveBeenCalledWith('Text', 'text-idevice');
-      expect(window._).toHaveBeenCalledWith('Basic', 'text-idevice');
+      // Category is NOT translated - it stays in English for matching
+      expect(window._).not.toHaveBeenCalledWith('Basic', 'text-idevice');
     });
 
-    it('sets translated values for category and title', () => {
+    it('sets translated value for title but NOT for category', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
       expect(idevice.title).toBe('translated:Text');
-      expect(idevice.category).toBe('translated:Basic');
+      // Category stays in English for matching with known category keys
+      expect(idevice.category).toBe('Basic');
     });
   });
 
   describe('isTranslatable', () => {
-    it('returns true for category', () => {
+    it('returns false for category (kept in English for matching)', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
-      expect(idevice.isTranslatable('category')).toBe(true);
+      expect(idevice.isTranslatable('category')).toBe(false);
     });
 
     it('returns true for title', () => {

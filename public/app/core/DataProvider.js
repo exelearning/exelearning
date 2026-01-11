@@ -148,33 +148,37 @@ export default class DataProvider {
      * @returns {Promise<{translations: Object}>}
      */
     async getTranslations(locale) {
-        if (this.cache.translations[locale]) {
-            return this.cache.translations[locale];
+        // Default to 'en' if locale is null/undefined
+        const safeLocale = locale || 'en';
+
+        if (this.cache.translations[safeLocale]) {
+            return this.cache.translations[safeLocale];
         }
 
         if (this.mode === 'static') {
             // Try exact locale, then fall back to base language, then 'en'
+            const baseLocale = safeLocale.split('-')[0];
             const translations =
-                this.staticData?.translations?.[locale] ||
-                this.staticData?.translations?.[locale.split('-')[0]] ||
+                this.staticData?.translations?.[safeLocale] ||
+                this.staticData?.translations?.[baseLocale] ||
                 this.staticData?.translations?.en ||
                 { translations: {} };
 
-            this.cache.translations[locale] = translations;
+            this.cache.translations[safeLocale] = translations;
             return translations;
         }
 
         // Server mode: fetch from API
-        const url = `${this.basePath}/api/translations/${locale}`;
+        const url = `${this.basePath}/api/translations/${safeLocale}`;
         try {
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            this.cache.translations[locale] = await response.json();
-            return this.cache.translations[locale];
+            this.cache.translations[safeLocale] = await response.json();
+            return this.cache.translations[safeLocale];
         } catch (e) {
-            getLogger().error(`[DataProvider] Failed to fetch translations for ${locale}:`, e);
+            getLogger().error(`[DataProvider] Failed to fetch translations for ${safeLocale}:`, e);
             // Return empty translations to avoid breaking the app
             return { translations: {} };
         }
@@ -312,7 +316,15 @@ export default class DataProvider {
 }
 
 // Static helper to detect if static mode should be used
+// Prefer using RuntimeConfig.fromEnvironment() or app.capabilities instead
 DataProvider.detectMode = function () {
+    // Prefer capabilities check if app is initialized
+    const capabilities = window.eXeLearning?.app?.capabilities;
+    if (capabilities) {
+        return capabilities.storage.remote ? 'server' : 'static';
+    }
+
+    // Fallback to direct detection for early initialization
     // Explicit flag takes priority
     if (window.__EXE_STATIC_MODE__ === true) {
         return 'static';

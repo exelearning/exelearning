@@ -1400,7 +1400,9 @@ export default class modalOpenUserOdeFiles extends Modal {
                 progressModal.setProcessingPhase('extracting');
 
                 // Static mode: skip API call and use ElpxImporter directly
-                if (window.__EXE_STATIC_MODE__) {
+                // Note: Only trigger static mode if capabilities are available AND remote is explicitly false
+                const capabilities = eXeLearning?.app?.capabilities;
+                if (capabilities && !capabilities.storage.remote) {
                     progressModal.hide();
                     this.cleanupOrphanedBackdrops();
 

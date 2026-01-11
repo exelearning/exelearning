@@ -70,7 +70,8 @@ export default class projectManager {
         this.showScreen();
 
         // Static mode: check for pending file import
-        if (window.__EXE_STATIC_MODE__ && window.__pendingImportFile) {
+        const capabilities = this.app?.capabilities;
+        if (!capabilities?.storage?.remote && window.__pendingImportFile) {
             Logger.log('[ProjectManager] Found pending import file, importing...');
             const file = window.__pendingImportFile;
             window.__pendingImportFile = null; // Clear it

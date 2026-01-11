@@ -19,6 +19,10 @@ import Actions from './common/app_actions.js';
 import Shortcuts from './common/shortcuts.js';
 import SessionMonitor from './common/sessionMonitor.js';
 import DataProvider from './core/DataProvider.js';
+// Core infrastructure - ports/adapters pattern
+import { RuntimeConfig } from './core/RuntimeConfig.js';
+import { Capabilities } from './core/Capabilities.js';
+import { ProviderFactory } from './core/ProviderFactory.js';
 
 export default class App {
     constructor(eXeLearning) {
@@ -55,6 +59,10 @@ export default class App {
     async init() {
         // Initialize DataProvider (load static data if in static mode)
         await this.dataProvider.init();
+
+        // Create ProviderFactory and inject adapters (Ports & Adapters pattern)
+        // This is the ONLY place where mode detection happens for adapters
+        await this.initializeAdapters();
 
         // Compose and initialized toasts
         this.initializedToasts();
@@ -199,10 +207,12 @@ export default class App {
      * Called during constructor, before other managers are created
      */
     initializeDataProvider() {
-        // Detect mode using multiple signals
-        const isStaticMode = this.detectStaticMode();
+        // Use RuntimeConfig for mode detection (single source of truth)
+        this.runtimeConfig = RuntimeConfig.fromEnvironment();
+        this.capabilities = new Capabilities(this.runtimeConfig);
 
-        // Store mode in config for other components to check
+        // Backward compatibility: store mode flags in config
+        const isStaticMode = this.runtimeConfig.isStaticMode();
         this.eXeLearning.config.isStaticMode = isStaticMode;
 
         // Create DataProvider with detected mode
@@ -216,13 +226,58 @@ export default class App {
             // Ensure offline-related flags are set
             this.eXeLearning.config.isOfflineInstallation = true;
         }
+
+        // Log capabilities for debugging
+        console.log('[App] Capabilities:', {
+            collaboration: this.capabilities.collaboration.enabled,
+            remoteStorage: this.capabilities.storage.remote,
+            auth: this.capabilities.auth.required,
+        });
+    }
+
+    /**
+     * Initialize adapters using ProviderFactory (Ports & Adapters pattern).
+     * This is the ONLY place where adapters are created and injected.
+     * After this, all API calls go through the appropriate adapter based on mode.
+     */
+    async initializeAdapters() {
+        try {
+            // Create factory (mode detection happens inside)
+            const factory = await ProviderFactory.create();
+
+            // Create all adapters
+            const adapters = factory.createAllAdapters();
+
+            // Inject into ApiCallManager
+            this.api.setAdapters(adapters);
+
+            // Store factory and capabilities for other components
+            this.providerFactory = factory;
+            // Update capabilities from factory (in case they differ)
+            this.capabilities = factory.getCapabilities();
+
+            console.log('[App] Adapters injected successfully:', {
+                mode: factory.getConfig().mode,
+                adaptersInjected: Object.keys(adapters).length,
+            });
+        } catch (error) {
+            console.error('[App] Failed to initialize adapters:', error);
+            // Continue without adapters - legacy fallback code will handle it
+        }
     }
 
     /**
      * Detect if the app should run in static (offline) mode
+     * @deprecated Use this.runtimeConfig.isStaticMode() or this.capabilities.storage.remote instead
      * @returns {boolean}
      */
     detectStaticMode() {
+        // Use RuntimeConfig if available (new pattern)
+        if (this.runtimeConfig) {
+            return this.runtimeConfig.isStaticMode();
+        }
+
+        // Fallback for early initialization before RuntimeConfig is set
         // Priority 1: Explicit static mode flag (set in static/index.html)
         if (window.__EXE_STATIC_MODE__ === true) {
             return true;
@@ -366,10 +421,16 @@ export default class App {
     }
 
     /**
-     * Check if the app is running in static/offline mode
+     * Check if the app is running in static/offline mode.
+     * @deprecated Prefer using this.capabilities for feature checks
      * @returns {boolean}
      */
     isStaticMode() {
+        // Use RuntimeConfig as primary source
+        if (this.runtimeConfig) {
+            return this.runtimeConfig.isStaticMode();
+        }
+        // Fallback to DataProvider for backward compatibility
         return this.dataProvider?.isStaticMode() ?? false;
     }
 
@@ -457,8 +518,8 @@ export default class App {
      *
      */
     async check() {
-        // Static mode: no server-side checks needed
-        if (this.isStaticMode()) {
+        // No server-side checks needed when remote storage is unavailable
+        if (!this.capabilities?.storage?.remote) {
             return;
         }
 
@@ -481,12 +542,12 @@ export default class App {
 
     /**
      * Show LOPDGDD modal if necessary
-     * In static mode, LOPD is considered accepted
+     * Skip LOPD modal when auth is not required (guest access)
      *
      */
     async showModalLopd() {
-        // Static mode: skip LOPD modal, treat as accepted
-        if (this.isStaticMode()) {
+        // Skip LOPD modal when auth is not required (static/offline mode)
+        if (!this.capabilities?.auth?.required) {
             await this.loadProject();
             this.check();
             return;
@@ -877,7 +938,9 @@ window.onload = function () {
     eXeLearning.app = new App(eXeLearning);
 
     // Static mode: wait for project selection (projectId will be set by welcome screen)
-    if (window.__EXE_STATIC_MODE__ && !eXeLearning.projectId) {
+    // Use RuntimeConfig for early detection (before app.capabilities is available)
+    const runtimeConfig = RuntimeConfig.fromEnvironment();
+    if (runtimeConfig.isStaticMode() && !eXeLearning.projectId) {
         console.log('[App] Static mode: waiting for project selection...');
         // Expose a function to start the app after project is selected
         window.__startExeApp = function () {

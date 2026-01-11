@@ -7,6 +7,9 @@ describe('ApiCallManager', () => {
   let apiManager;
   let mockApp;
   let mockFunc;
+  let mockCatalog;
+  let mockProjectRepo;
+  let mockAssets;
 
   beforeEach(() => {
     // Mock localStorage
@@ -40,12 +43,150 @@ describe('ApiCallManager', () => {
       },
     };
 
+    // Mock adapters for the new ports/adapters pattern
+    mockCatalog = {
+      getApiParameters: vi.fn().mockResolvedValue({ routes: {} }),
+      getChangelog: vi.fn().mockResolvedValue('changelog content'),
+      getUploadLimits: vi.fn().mockResolvedValue({ maxFileSize: 1024 }),
+      getThirdPartyCode: vi.fn().mockResolvedValue('third party code'),
+      getLicensesList: vi.fn().mockResolvedValue('licenses'),
+      getIDevices: vi.fn().mockResolvedValue([]),
+      getThemes: vi.fn().mockResolvedValue([]),
+      getTemplates: vi.fn().mockResolvedValue({ templates: [] }),
+      getLocales: vi.fn().mockResolvedValue(['en', 'es']),
+      getTranslations: vi.fn().mockResolvedValue({}),
+      getComponentHtmlTemplate: vi.fn().mockResolvedValue({ responseMessage: 'OK', htmlTemplate: '' }),
+      getSaveHtmlView: vi.fn().mockResolvedValue({ responseMessage: 'OK', htmlView: '' }),
+      getIdevicesBySessionId: vi.fn().mockResolvedValue([]),
+      // Theme methods
+      uploadTheme: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      importTheme: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      deleteTheme: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      createTheme: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      updateTheme: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      getThemeZip: vi.fn().mockResolvedValue(new Blob(['theme'])),
+      // iDevice methods
+      uploadIdevice: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      deleteIdevice: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      getIdeviceZip: vi.fn().mockResolvedValue(new Blob(['idevice'])),
+    };
+
+    mockProjectRepo = {
+      list: vi.fn().mockResolvedValue([]),
+      getRecent: vi.fn().mockResolvedValue([]),
+      openFile: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      delete: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      save: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      joinSession: vi.fn().mockResolvedValue({ available: true }),
+      openLargeLocalFile: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      openLocalFile: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      getLocalProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK', properties: {} }),
+      importToRoot: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      importToRootFromLocal: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      getLocalComponents: vi.fn().mockResolvedValue({ responseMessage: 'OK', components: [] }),
+      openMultipleLocalFiles: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      importAsChild: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      deleteByDate: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      checkCurrentUsers: vi.fn().mockResolvedValue({ responseMessage: 'OK', currentUsers: 0 }),
+      cleanAutosaves: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      closeSession: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      getLastUpdated: vi.fn().mockResolvedValue({ lastUpdated: new Date().toISOString() }),
+      getConcurrentUsers: vi.fn().mockResolvedValue({ users: [] }),
+      getStructure: vi.fn().mockResolvedValue({ structure: null }),
+      getProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK', properties: {} }),
+      saveProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      getUsedFiles: vi.fn().mockResolvedValue({ responseMessage: 'OK', usedFiles: [] }),
+      autoSave: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      saveAs: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+    };
+
+    mockAssets = {
+      upload: vi.fn().mockResolvedValue({ url: '/test.png' }),
+      getUrl: vi.fn().mockResolvedValue('/asset.png'),
+      delete: vi.fn().mockResolvedValue({}),
+      getDownloadUrl: vi.fn().mockResolvedValue({ url: '/download.xml', responseMessage: 'OK' }),
+    };
+
+    // Additional mock adapters needed for complete coverage
+    const mockUserPreferences = {
+      acceptLopd: vi.fn().mockResolvedValue({ success: true }),
+      getPreferences: vi.fn().mockResolvedValue({ userPreferences: {} }),
+      savePreferences: vi.fn().mockResolvedValue({ success: true }),
+    };
+
+    const mockLinkValidation = {
+      getSessionBrokenLinks: vi.fn().mockResolvedValue({ responseMessage: 'OK', brokenLinks: [] }),
+      extractLinks: vi.fn().mockResolvedValue({ responseMessage: 'OK', links: [], totalLinks: 0 }),
+      getValidationStreamUrl: vi.fn().mockReturnValue('http://localhost/validate-stream'),
+      getPageBrokenLinks: vi.fn().mockResolvedValue({ brokenLinks: [] }),
+      getBlockBrokenLinks: vi.fn().mockResolvedValue({ brokenLinks: [] }),
+      getIdeviceBrokenLinks: vi.fn().mockResolvedValue({ brokenLinks: [] }),
+    };
+
+    const mockCloudStorage = {
+      getGoogleDriveLoginUrl: vi.fn().mockResolvedValue({ url: 'http://google.com/oauth' }),
+      getGoogleDriveFolders: vi.fn().mockResolvedValue({ folders: [] }),
+      uploadToGoogleDrive: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      getDropboxLoginUrl: vi.fn().mockResolvedValue({ url: 'http://dropbox.com/oauth' }),
+      getDropboxFolders: vi.fn().mockResolvedValue({ folders: [] }),
+      uploadToDropbox: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+    };
+
+    const mockCollaboration = {
+      obtainBlockSync: vi.fn().mockResolvedValue({ responseMessage: 'OK', block: null }),
+    };
+
+    const mockExportAdapter = {
+      downloadExport: vi.fn().mockResolvedValue(new Blob(['export'])),
+      getPreviewUrl: vi.fn().mockResolvedValue({ responseMessage: 'OK', url: '/preview' }),
+      downloadIDevice: vi.fn().mockResolvedValue({ url: '', response: '', responseMessage: 'OK' }),
+    };
+
+    const mockPlatformIntegration = {
+      uploadElp: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      openElp: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+    };
+
+    const mockSharing = {
+      getProject: vi.fn().mockResolvedValue({ responseMessage: 'OK', project: { id: 1 } }),
+      getSharingInfo: vi.fn().mockResolvedValue({ visibility: 'private', collaborators: [] }),
+      updateVisibility: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      addCollaborator: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      removeCollaborator: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      transferOwnership: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+    };
+
+    // Store references for use in tests
+    window._mockAdapters = {
+      userPreferences: mockUserPreferences,
+      linkValidation: mockLinkValidation,
+      cloudStorage: mockCloudStorage,
+      collaboration: mockCollaboration,
+      exportAdapter: mockExportAdapter,
+      platformIntegration: mockPlatformIntegration,
+      sharing: mockSharing,
+    };
+
     window.eXeLearning = mockApp.eXeLearning;
     window.eXeLearning.app = mockApp;
     global.eXeLearning = window.eXeLearning;
 
     apiManager = new ApiCallManager(mockApp);
     mockFunc = apiManager.func;
+
+    // Inject all mock adapters
+    apiManager.setAdapters({
+      catalog: mockCatalog,
+      projectRepo: mockProjectRepo,
+      assets: mockAssets,
+      userPreferences: window._mockAdapters.userPreferences,
+      linkValidation: window._mockAdapters.linkValidation,
+      cloudStorage: window._mockAdapters.cloudStorage,
+      collaboration: window._mockAdapters.collaboration,
+      exportAdapter: window._mockAdapters.exportAdapter,
+      platformIntegration: window._mockAdapters.platformIntegration,
+      sharing: window._mockAdapters.sharing,
+    });
   });
 
   afterEach(() => {
@@ -82,107 +223,57 @@ describe('ApiCallManager', () => {
   });
 
   describe('getApiParameters', () => {
-    it('should call func.get with correct URL', async () => {
+    it('should call catalog adapter getApiParameters', async () => {
       await apiManager.getApiParameters();
-      expect(mockFunc.get).toHaveBeenCalledWith(apiManager.apiUrlParameters);
+      expect(mockCatalog.getApiParameters).toHaveBeenCalled();
     });
   });
 
   describe('getChangelogText', () => {
-    it('should call func.getText with version timestamp', async () => {
-      await apiManager.getChangelogText();
-      expect(mockFunc.getText).toHaveBeenCalledWith(expect.stringContaining('version=123456'));
-    });
-
-    it('should return empty string in static mode', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-
+    it('should call catalog adapter getChangelog', async () => {
       const result = await apiManager.getChangelogText();
-
-      expect(result).toBe('');
-      expect(mockFunc.getText).not.toHaveBeenCalled();
-    });
-
-    it('should return empty string when changelogURL is undefined', async () => {
-      mockApp.eXeLearning.config.changelogURL = undefined;
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const result = await apiManager.getChangelogText();
-
-      expect(result).toBe('');
-      expect(warnSpy).toHaveBeenCalledWith('[apiCallManager] changelogURL not configured');
-      warnSpy.mockRestore();
+      expect(mockCatalog.getChangelog).toHaveBeenCalled();
+      expect(result).toBe('changelog content');
     });
   });
 
   describe('getThirdPartyCodeText / getLicensesList', () => {
-    it('should call func.getText with versioned paths', async () => {
-      global.eXeLearning.version = 'v9.9.9';
-
+    it('should call catalog adapter methods', async () => {
       await apiManager.getThirdPartyCodeText();
       await apiManager.getLicensesList();
 
-      expect(mockFunc.getText).toHaveBeenCalledWith(
-        'http://localhost/exelearning/v9.9.9/libs/README.md'
-      );
-      expect(mockFunc.getText).toHaveBeenCalledWith(
-        'http://localhost/exelearning/v9.9.9/libs/LICENSES'
-      );
-    });
-
-    it('should use direct paths in static mode', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-
-      await apiManager.getThirdPartyCodeText();
-      await apiManager.getLicensesList();
-
-      expect(mockFunc.getText).toHaveBeenCalledWith('./libs/README.md');
-      expect(mockFunc.getText).toHaveBeenCalledWith('./libs/LICENSES');
+      expect(mockCatalog.getThirdPartyCode).toHaveBeenCalled();
+      expect(mockCatalog.getLicensesList).toHaveBeenCalled();
     });
   });
 
   describe('getUploadLimits', () => {
-    it('should call func.get with upload limits endpoint', async () => {
-      await apiManager.getUploadLimits();
-      expect(mockFunc.get).toHaveBeenCalledWith(
-        'http://localhost/exelearning/api/config/upload-limits'
-      );
+    it('should call catalog adapter getUploadLimits', async () => {
+      const result = await apiManager.getUploadLimits();
+      expect(mockCatalog.getUploadLimits).toHaveBeenCalled();
+      expect(result).toEqual({ maxFileSize: 1024 });
     });
   });
 
   describe('getTemplates', () => {
-    it('should call func.get with locale param', async () => {
+    it('should call catalog adapter getTemplates with locale', async () => {
       await apiManager.getTemplates('es');
-      expect(mockFunc.get).toHaveBeenCalledWith(
-        'http://localhost/exelearning/api/templates?locale=es'
-      );
+      expect(mockCatalog.getTemplates).toHaveBeenCalledWith('es');
     });
   });
 
   describe('getRecentUserOdeFiles', () => {
-    it('should fetch recent projects with auth header', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue([{ id: 'p1' }]),
-      });
-      localStorage.setItem('authToken', 'recent-token');
+    it('should call projectRepo adapter getRecent', async () => {
+      mockProjectRepo.getRecent.mockResolvedValue([{ id: 'p1' }]);
 
       const result = await apiManager.getRecentUserOdeFiles();
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/projects/user/recent'),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: 'Bearer recent-token',
-          }),
-        })
-      );
+      expect(mockProjectRepo.getRecent).toHaveBeenCalled();
       expect(result).toEqual([{ id: 'p1' }]);
-      localStorage.removeItem('authToken');
     });
 
-    it('should return empty list on fetch error', async () => {
-      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    it('should return empty list on error', async () => {
+      mockProjectRepo.getRecent.mockRejectedValue(new Error('Network error'));
 
       const result = await apiManager.getRecentUserOdeFiles();
 
@@ -208,15 +299,12 @@ describe('ApiCallManager', () => {
   });
 
   describe('getIdevicesInstalled / getThemesInstalled', () => {
-    it('should call func.get with endpoints', async () => {
-      apiManager.endpoints.api_idevices_installed = { path: 'http://localhost/idevices' };
-      apiManager.endpoints.api_themes_installed = { path: 'http://localhost/themes' };
-
+    it('should call catalog adapter methods', async () => {
       await apiManager.getIdevicesInstalled();
       await apiManager.getThemesInstalled();
 
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/idevices');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/themes');
+      expect(mockCatalog.getIDevices).toHaveBeenCalled();
+      expect(mockCatalog.getThemes).toHaveBeenCalled();
     });
   });
 
@@ -253,107 +341,67 @@ describe('ApiCallManager', () => {
   });
 
   describe('getIdevicesBySessionId', () => {
-    it('should replace session id in endpoint path', async () => {
-      apiManager.endpoints.api_games_session_idevices = {
-        path: 'http://localhost/api/games/session/{odeSessionId}/idevices',
-      };
+    it('should call catalog adapter getIdevicesBySessionId', async () => {
+      mockCatalog.getIdevicesBySessionId.mockResolvedValue([{ id: 1 }]);
 
-      await apiManager.getIdevicesBySessionId('sess-1');
+      const result = await apiManager.getIdevicesBySessionId('sess-1');
 
-      expect(mockFunc.get).toHaveBeenCalledWith(
-        'http://localhost/api/games/session/sess-1/idevices'
-      );
+      expect(mockCatalog.getIdevicesBySessionId).toHaveBeenCalledWith('sess-1');
+      expect(result).toEqual([{ id: 1 }]);
     });
   });
 
   describe('upload/import helpers', () => {
-    it('should fall back to default URL when import route is missing', async () => {
-      apiManager.endpoints.api_odes_ode_local_elp_import_root_from_local = null;
+    it('should call projectRepo adapter importToRootFromLocal', async () => {
       const payload = { odeSessionId: 's1', odeFileName: 'f', odeFilePath: '/tmp' };
 
       await apiManager.postImportElpToRootFromLocal(payload);
 
-      expect(mockFunc.post).toHaveBeenCalledWith(
-        'http://localhost/exelearning/api/ode-management/odes/ode/import/local/root',
-        payload
-      );
+      expect(mockProjectRepo.importToRootFromLocal).toHaveBeenCalledWith(payload);
     });
 
-    it('should fall back and replace nav id for import child', async () => {
-      apiManager.endpoints.api_nav_structures_import_elp_child = null;
+    it('should call projectRepo adapter importAsChild with navId', async () => {
       const payload = { odeSessionId: 's1' };
 
       await apiManager.postImportElpAsChildFromLocal('nav-123', payload);
 
-      expect(mockFunc.post).toHaveBeenCalledWith(
-        'http://localhost/exelearning/api/nav-structure-management/nav-structures/nav-123/import-elp',
-        payload
-      );
+      expect(mockProjectRepo.importAsChild).toHaveBeenCalledWith('nav-123', payload);
     });
   });
 
   describe('theme and idevice helpers', () => {
-    it('should replace theme dir in edit endpoint', async () => {
-      apiManager.endpoints.api_themes_edit = { path: 'http://localhost/themes/{themeId}' };
-
+    it('should call catalog adapter updateTheme', async () => {
       await apiManager.putEditTheme('theme-1', { name: 'Theme' });
 
-      expect(mockFunc.put).toHaveBeenCalledWith(
-        'http://localhost/themes/theme-1',
-        { name: 'Theme' }
-      );
+      expect(mockCatalog.updateTheme).toHaveBeenCalledWith('theme-1', { name: 'Theme' });
     });
 
-    it('should replace params in theme zip download', async () => {
-      apiManager.endpoints.api_themes_download = {
-        path: 'http://localhost/themes/{odeSessionId}/{themeDirName}',
-      };
-
+    it('should call catalog adapter getThemeZip', async () => {
       await apiManager.getThemeZip('session-1', 'theme-1');
 
-      expect(mockFunc.get).toHaveBeenCalledWith(
-        'http://localhost/themes/session-1/theme-1'
-      );
+      expect(mockCatalog.getThemeZip).toHaveBeenCalledWith('session-1', 'theme-1');
     });
 
-    it('should replace params in idevice zip download', async () => {
-      apiManager.endpoints.api_idevices_installed_download = {
-        path: 'http://localhost/idevices/{odeSessionId}/{ideviceDirName}',
-      };
-
+    it('should call catalog adapter getIdeviceZip', async () => {
       await apiManager.getIdeviceInstalledZip('session-1', 'idevice-1');
 
-      expect(mockFunc.get).toHaveBeenCalledWith(
-        'http://localhost/idevices/session-1/idevice-1'
-      );
+      expect(mockCatalog.getIdeviceZip).toHaveBeenCalledWith('session-1', 'idevice-1');
     });
   });
 
   describe('getUserOdeFiles', () => {
-    it('should fetch user projects with auth header', async () => {
-      const mockProjects = { odeFiles: { odeFilesSync: [{ id: 1 }] } };
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue(mockProjects),
-      });
-      localStorage.setItem('authToken', 'test-token');
+    it('should call projectRepo adapter list and wrap in expected format', async () => {
+      const mockProjects = [{ id: 1 }, { id: 2 }];
+      mockProjectRepo.list.mockResolvedValue(mockProjects);
 
       const result = await apiManager.getUserOdeFiles();
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/projects/user/list'),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: 'Bearer test-token',
-          }),
-        })
-      );
-      expect(result).toEqual(mockProjects);
-      localStorage.removeItem('authToken');
+      expect(mockProjectRepo.list).toHaveBeenCalled();
+      expect(result).toEqual({ odeFiles: { odeFilesSync: mockProjects } });
     });
 
-    it('should return empty list on fetch error', async () => {
-      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    it('should return empty list on adapter error', async () => {
+      mockProjectRepo.list.mockRejectedValue(new Error('Database error'));
       const result = await apiManager.getUserOdeFiles();
       expect(result.odeFiles.odeFilesSync).toEqual([]);
     });
@@ -505,13 +553,13 @@ describe('ApiCallManager', () => {
   });
 
   describe('postOdeSave', () => {
-    it('should call func.post with correct endpoint', async () => {
-      apiManager.endpoints.api_odes_ode_save_manual = { path: 'http://localhost/save' };
+    it('should call projectRepo adapter save', async () => {
+      window.eXeLearning.odeSessionId = 'sess-1';
       const params = { data: 'test' };
-      
+
       await apiManager.postOdeSave(params);
-      
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/save', params);
+
+      expect(mockProjectRepo.save).toHaveBeenCalledWith('sess-1', params);
     });
   });
 
@@ -1072,61 +1120,30 @@ describe('ApiCallManager', () => {
   });
 
   describe('getProject', () => {
-    it('should build correct URL for numeric ID', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ id: 123 }),
-      });
-
+    it('should call sharing adapter getProject for numeric ID', async () => {
       await apiManager.getProject(123);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost/exelearning/api/projects/123/sharing',
-        expect.any(Object)
-      );
+      expect(window._mockAdapters.sharing.getProject).toHaveBeenCalledWith(123);
     });
 
-    it('should build correct URL for UUID', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ id: 'uuid-123' }),
-      });
-
+    it('should call sharing adapter getProject for UUID', async () => {
       await apiManager.getProject('uuid-123');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost/exelearning/api/projects/uuid/uuid-123/sharing',
-        expect.any(Object)
-      );
+      expect(window._mockAdapters.sharing.getProject).toHaveBeenCalledWith('uuid-123');
     });
   });
 
   describe('getOdeExportDownload', () => {
-    it('should post structure for Yjs sessions', async () => {
-      apiManager.endpoints.api_ode_export_download = {
-        path: 'http://localhost/export/{odeSessionId}/{exportType}',
-      };
-      vi.spyOn(apiManager, 'buildStructureFromYjs').mockReturnValue({ pages: [] });
-
+    it('should call exportAdapter downloadExport', async () => {
       await apiManager.getOdeExportDownload('yjs-123', 'html5');
 
-      expect(mockFunc.post).toHaveBeenCalledWith(
-        'http://localhost/export/yjs-123/html5',
-        { structure: { pages: [] } }
-      );
+      expect(window._mockAdapters.exportAdapter.downloadExport).toHaveBeenCalledWith('yjs-123', 'html5');
     });
 
-    it('should fallback to get when structure is unavailable', async () => {
-      apiManager.endpoints.api_ode_export_download = {
-        path: 'http://localhost/export/{odeSessionId}/{exportType}',
-      };
-      vi.spyOn(apiManager, 'buildStructureFromYjs').mockReturnValue(null);
+    it('should handle different export types', async () => {
+      await apiManager.getOdeExportDownload('sess-456', 'scorm2004');
 
-      await apiManager.getOdeExportDownload('yjs-456', 'html5');
-
-      expect(mockFunc.get).toHaveBeenCalledWith(
-        'http://localhost/export/yjs-456/html5'
-      );
+      expect(window._mockAdapters.exportAdapter.downloadExport).toHaveBeenCalledWith('sess-456', 'scorm2004');
     });
   });
 
@@ -1189,41 +1206,28 @@ describe('ApiCallManager', () => {
   });
 
   describe('getOdeIdevicesDownload', () => {
-    it('should build download response and call getText', async () => {
-      apiManager.endpoints.api_idevices_download_ode_components = {
-        path: 'http://localhost/idevices/{odeSessionId}/{odeBlockId}/{odeIdeviceId}',
-      };
-      mockFunc.getText.mockResolvedValue('payload');
+    it('should call exportAdapter downloadIDevice', async () => {
+      await apiManager.getOdeIdevicesDownload('s1', 'b1', 'i1');
 
-      const result = await apiManager.getOdeIdevicesDownload('s1', 'b1', 'i1');
-
-      expect(mockFunc.getText).toHaveBeenCalledWith(
-        'http://localhost/idevices/s1/b1/i1'
-      );
-      expect(result.url).toBe('http://localhost/idevices/s1/b1/i1');
-      expect(result.response).toBe('payload');
+      expect(window._mockAdapters.exportAdapter.downloadIDevice).toHaveBeenCalledWith('s1', 'b1', 'i1');
     });
   });
 
   describe('getFileResourcesForceDownload', () => {
-    it('should return url with resource param', async () => {
-      apiManager.endpoints.api_idevices_force_download_file_resources = {
-        path: 'http://localhost/resource',
-      };
+    it('should call assets adapter getDownloadUrl', async () => {
+      await apiManager.getFileResourcesForceDownload('file.xml');
 
-      const result = await apiManager.getFileResourcesForceDownload('file.xml');
-
-      expect(result.url).toBe('http://localhost/resource?resource=file.xml');
+      expect(mockAssets.getDownloadUrl).toHaveBeenCalledWith('file.xml');
     });
   });
 
   describe('postOdeAutosave', () => {
-    it('should call post for autosave', async () => {
-      apiManager.endpoints.api_odes_ode_save_auto = { path: 'http://localhost/autosave' };
+    it('should call projectRepo adapter autoSave', async () => {
+      window.eXeLearning.odeSessionId = 'sess-1';
 
       await apiManager.postOdeAutosave({ data: 'autosave' });
 
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/autosave', { data: 'autosave' });
+      expect(mockProjectRepo.autoSave).toHaveBeenCalledWith('sess-1', { data: 'autosave' });
     });
   });
 
@@ -1261,74 +1265,30 @@ describe('ApiCallManager', () => {
   });
 
   describe('project sharing api', () => {
-    it('should return error on visibility update failure', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: vi.fn().mockResolvedValue({ message: 'bad' }),
-      });
+    it('should call sharing adapter updateVisibility', async () => {
+      await apiManager.updateProjectVisibility(1, 'public');
 
-      const result = await apiManager.updateProjectVisibility(1, 'public');
-
-      expect(result.responseMessage).toBe('ERROR');
+      expect(window._mockAdapters.sharing.updateVisibility).toHaveBeenCalledWith(1, 'public');
     });
 
-    it('should map collaborator errors', async () => {
-      global.fetch = vi.fn()
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-          json: vi.fn().mockResolvedValue({ message: 'not found' }),
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 400,
-          json: vi.fn().mockResolvedValue({ message: 'already collaborator' }),
-        });
+    it('should call sharing adapter addCollaborator', async () => {
+      await apiManager.addProjectCollaborator(1, 'a@b.com', 'editor');
 
-      const notFound = await apiManager.addProjectCollaborator(1, 'a@b.com');
-      const already = await apiManager.addProjectCollaborator(1, 'a@b.com');
-
-      expect(notFound.responseMessage).toBe('USER_NOT_FOUND');
-      expect(already.responseMessage).toBe('ALREADY_COLLABORATOR');
+      expect(window._mockAdapters.sharing.addCollaborator).toHaveBeenCalledWith(1, 'a@b.com', 'editor');
     });
 
-    it('should handle collaborator removal and transfer', async () => {
-      global.fetch = vi.fn()
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ ok: true }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ ok: true }),
-        });
+    it('should call sharing adapter removeCollaborator and transferOwnership', async () => {
+      await apiManager.removeProjectCollaborator(1, 2);
+      await apiManager.transferProjectOwnership(1, 99);
 
-      const removeResult = await apiManager.removeProjectCollaborator(1, 2);
-      const transferResult = await apiManager.transferProjectOwnership(1, 99);
-
-      expect(removeResult).toEqual({ ok: true });
-      expect(transferResult).toEqual({ ok: true });
+      expect(window._mockAdapters.sharing.removeCollaborator).toHaveBeenCalledWith(1, 2);
+      expect(window._mockAdapters.sharing.transferOwnership).toHaveBeenCalledWith(1, 99);
     });
   });
 
-  describe('api wrapper calls', () => {
-    it('should call legacy session endpoints', async () => {
-      apiManager.endpoints.check_current_users_ode_session_id = { path: 'http://localhost/join' };
-      apiManager.endpoints.api_odes_ode_elp_open = { path: 'http://localhost/open' };
-      apiManager.endpoints.api_odes_ode_local_large_elp_open = { path: 'http://localhost/large' };
-      apiManager.endpoints.api_odes_ode_local_elp_open = { path: 'http://localhost/local' };
-      apiManager.endpoints.api_odes_ode_local_xml_properties_open = { path: 'http://localhost/xml' };
-      apiManager.endpoints.api_odes_ode_local_elp_import_root = { path: 'http://localhost/import-root' };
-      apiManager.endpoints.api_odes_ode_local_idevices_open = { path: 'http://localhost/idevices' };
-      apiManager.endpoints.api_odes_ode_multiple_local_elp_open = { path: 'http://localhost/multi' };
-      apiManager.endpoints.api_odes_remove_ode_file = { path: 'http://localhost/remove' };
-      apiManager.endpoints.api_odes_remove_date_ode_files = { path: 'http://localhost/remove-date' };
-      apiManager.endpoints.api_odes_check_before_leave_ode_session = { path: 'http://localhost/check' };
-      apiManager.endpoints.api_odes_clean_init_autosave_elp = { path: 'http://localhost/clean' };
-      apiManager.endpoints.api_odes_ode_session_close = { path: 'http://localhost/close' };
-
-      await apiManager.postJoinCurrentOdeSessionId({ id: 1 });
+  describe('api wrapper calls via adapters', () => {
+    it('should call projectRepo adapter for session operations', async () => {
+      await apiManager.postJoinCurrentOdeSessionId({ odeSessionId: 'sess-1' });
       await apiManager.postSelectedOdeFile({ name: 'file' });
       await apiManager.postLocalLargeOdeFile({ data: 'big' });
       await apiManager.postLocalOdeFile({ data: 'small' });
@@ -1342,34 +1302,23 @@ describe('ApiCallManager', () => {
       await apiManager.postCleanAutosavesByUser({ id: 1 });
       await apiManager.postCloseSession({ id: 1 });
 
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/join', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/open', { name: 'file' });
-      expect(mockFunc.fileSendPost).toHaveBeenCalledWith('http://localhost/large', { data: 'big' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/local', { data: 'small' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/xml', { data: 'xml' });
-      expect(mockFunc.fileSendPost).toHaveBeenCalledWith('http://localhost/import-root', { data: 'root' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevices', { data: 'components' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/multi', { data: 'multi' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/remove', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/remove-date', { from: '2020' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/check', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/clean', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/close', { id: 1 });
+      expect(mockProjectRepo.joinSession).toHaveBeenCalledWith('sess-1');
+      expect(mockProjectRepo.openFile).toHaveBeenCalledWith({ name: 'file' });
+      expect(mockProjectRepo.openLargeLocalFile).toHaveBeenCalledWith({ data: 'big' });
+      expect(mockProjectRepo.openLocalFile).toHaveBeenCalledWith({ data: 'small' });
+      expect(mockProjectRepo.getLocalProperties).toHaveBeenCalledWith({ data: 'xml' });
+      expect(mockProjectRepo.importToRoot).toHaveBeenCalledWith({ data: 'root' });
+      expect(mockProjectRepo.getLocalComponents).toHaveBeenCalledWith({ data: 'components' });
+      expect(mockProjectRepo.openMultipleLocalFiles).toHaveBeenCalledWith({ data: 'multi' });
+      expect(mockProjectRepo.delete).toHaveBeenCalledWith({ id: 1 });
+      expect(mockProjectRepo.deleteByDate).toHaveBeenCalledWith({ from: '2020' });
+      expect(mockProjectRepo.checkCurrentUsers).toHaveBeenCalledWith({ id: 1 });
+      expect(mockProjectRepo.cleanAutosaves).toHaveBeenCalledWith({ id: 1 });
+      expect(mockProjectRepo.closeSession).toHaveBeenCalledWith({ id: 1 });
     });
 
-    it('should call theme, idevice, and preference endpoints', async () => {
-      apiManager.endpoints.api_themes_upload = { path: 'http://localhost/theme/upload' };
-      apiManager.endpoints.api_ode_theme_import = { path: 'http://localhost/theme/import' };
-      apiManager.endpoints.api_themes_installed_delete = { path: 'http://localhost/theme/delete' };
-      apiManager.endpoints.api_themes_new = { path: 'http://localhost/theme/new' };
-      apiManager.endpoints.api_idevices_upload = { path: 'http://localhost/idevices/upload' };
-      apiManager.endpoints.api_idevices_installed_delete = { path: 'http://localhost/idevices/delete' };
-      apiManager.endpoints.api_user_set_lopd_accepted = { path: 'http://localhost/lopd' };
-      apiManager.endpoints.api_user_preferences_get = { path: 'http://localhost/prefs' };
-      apiManager.endpoints.api_user_preferences_save = { path: 'http://localhost/prefs/save' };
-
+    it('should call catalog and userPreferences adapters', async () => {
       await apiManager.postUploadTheme({ data: 'theme' });
-      // postOdeImportTheme uses fetch directly (not mockFunc), tested separately
       await apiManager.deleteTheme({ id: 1 });
       await apiManager.postNewTheme({ name: 'new' });
       await apiManager.postUploadIdevice({ data: 'idevice' });
@@ -1378,134 +1327,64 @@ describe('ApiCallManager', () => {
       await apiManager.getUserPreferences();
       await apiManager.putSaveUserPreferences({ mode: 'dark' });
 
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/upload', { data: 'theme' });
-      expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/theme/delete', { id: 1 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/theme/new', { name: 'new' });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/idevices/upload', { data: 'idevice' });
-      expect(mockFunc.delete).toHaveBeenCalledWith('http://localhost/idevices/delete', { id: 2 });
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/lopd');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/prefs');
-      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
+      expect(mockCatalog.uploadTheme).toHaveBeenCalledWith({ data: 'theme' });
+      expect(mockCatalog.deleteTheme).toHaveBeenCalledWith({ id: 1 });
+      expect(mockCatalog.createTheme).toHaveBeenCalledWith({ name: 'new' });
+      expect(mockCatalog.uploadIdevice).toHaveBeenCalledWith({ data: 'idevice' });
+      expect(mockCatalog.deleteIdevice).toHaveBeenCalledWith({ id: 2 });
+      expect(window._mockAdapters.userPreferences.acceptLopd).toHaveBeenCalled();
+      expect(window._mockAdapters.userPreferences.getPreferences).toHaveBeenCalled();
+      expect(window._mockAdapters.userPreferences.savePreferences).toHaveBeenCalledWith({ mode: 'dark' });
     });
   });
 
-  describe('getUserPreferences static mode', () => {
-    it('should return bundled preferences in static mode', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-      apiManager.parameters = {
-        userPreferencesConfig: {
-          locale: { title: 'Language', value: 'en', type: 'select' },
-          advancedMode: { title: 'Advanced mode', value: 'true', type: 'checkbox' },
-        },
-      };
-
+  describe('getUserPreferences', () => {
+    it('should call userPreferences adapter getPreferences', async () => {
       const result = await apiManager.getUserPreferences();
 
-      expect(result.userPreferences.locale.value).toBe('en');
-      expect(result.userPreferences.advancedMode.value).toBe('true');
-      expect(mockFunc.get).not.toHaveBeenCalled();
+      expect(window._mockAdapters.userPreferences.getPreferences).toHaveBeenCalled();
+      expect(result).toEqual({ userPreferences: {} });
     });
 
-    it('should merge localStorage preferences with defaults in static mode', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-      apiManager.parameters = {
-        userPreferencesConfig: {
-          locale: { title: 'Language', value: 'en', type: 'select' },
-          advancedMode: { title: 'Advanced mode', value: 'true', type: 'checkbox' },
+    it('should return adapter response', async () => {
+      window._mockAdapters.userPreferences.getPreferences.mockResolvedValueOnce({
+        userPreferences: {
+          locale: { value: 'es' },
+          advancedMode: { value: 'true' },
         },
-      };
-      localStorage.setItem('exelearning_user_preferences', JSON.stringify({
-        locale: 'es',
-      }));
+      });
 
       const result = await apiManager.getUserPreferences();
 
       expect(result.userPreferences.locale.value).toBe('es');
       expect(result.userPreferences.advancedMode.value).toBe('true');
     });
-
-    it('should handle invalid JSON in localStorage gracefully', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-      apiManager.parameters = {
-        userPreferencesConfig: {
-          locale: { title: 'Language', value: 'en', type: 'select' },
-        },
-      };
-      localStorage.setItem('exelearning_user_preferences', 'invalid json');
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const result = await apiManager.getUserPreferences();
-
-      expect(result.userPreferences.locale.value).toBe('en');
-      expect(warnSpy).toHaveBeenCalled();
-      warnSpy.mockRestore();
-    });
-
-    it('should return empty object when userPreferencesConfig is undefined', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-      apiManager.parameters = {};
-
-      const result = await apiManager.getUserPreferences();
-
-      expect(result.userPreferences).toEqual({});
-    });
   });
 
-  describe('putSaveUserPreferences static mode', () => {
-    it('should save preferences to localStorage in static mode', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-
+  describe('putSaveUserPreferences', () => {
+    it('should call userPreferences adapter savePreferences', async () => {
       const result = await apiManager.putSaveUserPreferences({ locale: 'es', advancedMode: 'false' });
 
+      expect(window._mockAdapters.userPreferences.savePreferences).toHaveBeenCalledWith({
+        locale: 'es',
+        advancedMode: 'false',
+      });
       expect(result.success).toBe(true);
-      const stored = JSON.parse(localStorage.getItem('exelearning_user_preferences'));
-      expect(stored.locale).toBe('es');
-      expect(stored.advancedMode).toBe('false');
-      expect(mockFunc.put).not.toHaveBeenCalled();
     });
 
-    it('should merge with existing localStorage preferences', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-      localStorage.setItem('exelearning_user_preferences', JSON.stringify({ locale: 'en' }));
-
-      await apiManager.putSaveUserPreferences({ advancedMode: 'false' });
-
-      const stored = JSON.parse(localStorage.getItem('exelearning_user_preferences'));
-      expect(stored.locale).toBe('en');
-      expect(stored.advancedMode).toBe('false');
-    });
-
-    it('should handle localStorage errors gracefully', async () => {
-      mockApp.isStaticMode.mockReturnValue(true);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      // Simulate localStorage error by making setItem throw
-      const originalSetItem = localStorage.setItem;
-      localStorage.setItem = vi.fn(() => { throw new Error('Storage full'); });
+    it('should return adapter error response', async () => {
+      window._mockAdapters.userPreferences.savePreferences.mockResolvedValueOnce({
+        success: false,
+        error: 'Storage full',
+      });
 
       const result = await apiManager.putSaveUserPreferences({ locale: 'es' });
 
       expect(result.success).toBe(false);
-      expect(warnSpy).toHaveBeenCalled();
-      localStorage.setItem = originalSetItem;
-      warnSpy.mockRestore();
+      expect(result.error).toBe('Storage full');
     });
 
-    it('should call structure and diagnostics endpoints', async () => {
-      apiManager.endpoints.api_odes_last_updated = { path: 'http://localhost/last/{odeId}' };
-      apiManager.endpoints.api_odes_current_users = {
-        path: 'http://localhost/users/{odeId}/{odeVersionId}/{odeSessionId}',
-      };
-      apiManager.endpoints.api_nav_structures_nav_structure_get = {
-        path: 'http://localhost/structure/{odeVersionId}/{odeSessionId}',
-      };
-      apiManager.endpoints.api_odes_session_get_broken_links = { path: 'http://localhost/broken/session' };
-      apiManager.endpoints.api_odes_pag_get_broken_links = { path: 'http://localhost/broken/page/{odePageId}' };
-      apiManager.endpoints.api_odes_block_get_broken_links = { path: 'http://localhost/broken/block/{odeBlockId}' };
-      apiManager.endpoints.api_odes_idevice_get_broken_links = { path: 'http://localhost/broken/idevice/{odeIdeviceId}' };
-      apiManager.endpoints.api_odes_properties_get = { path: 'http://localhost/properties/{odeSessionId}' };
-      apiManager.endpoints.api_odes_properties_save = { path: 'http://localhost/properties/save' };
-      apiManager.endpoints.api_odes_session_get_used_files = { path: 'http://localhost/used-files' };
-
+    it('should call structure and diagnostics endpoints via adapters', async () => {
       await apiManager.getOdeLastUpdated('ode-1');
       await apiManager.getOdeConcurrentUsers('ode-1', 'v1', 's1');
       await apiManager.getOdeStructure('v1', 's1');
@@ -1517,16 +1396,16 @@ describe('ApiCallManager', () => {
       await apiManager.putSaveOdeProperties({ id: 1 });
       await apiManager.getOdeSessionUsedFiles({ id: 1 });
 
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/last/ode-1');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/users/ode-1/v1/s1', null, false);
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/structure/v1/s1');
-      expect(mockFunc.postJson).toHaveBeenCalledWith('http://localhost/broken/session', { id: 1 });
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/broken/page/page-1');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/broken/block/block-1');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/broken/idevice/idev-1');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/properties/s1');
-      expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/properties/save', { id: 1 });
-      expect(mockFunc.postJson).toHaveBeenCalledWith('http://localhost/used-files', { id: 1 });
+      expect(mockProjectRepo.getLastUpdated).toHaveBeenCalledWith('ode-1');
+      expect(mockProjectRepo.getConcurrentUsers).toHaveBeenCalledWith('ode-1', 'v1', 's1');
+      expect(mockProjectRepo.getStructure).toHaveBeenCalledWith('v1', 's1');
+      expect(window._mockAdapters.linkValidation.getSessionBrokenLinks).toHaveBeenCalledWith({ id: 1 });
+      expect(window._mockAdapters.linkValidation.getPageBrokenLinks).toHaveBeenCalledWith('page-1');
+      expect(window._mockAdapters.linkValidation.getBlockBrokenLinks).toHaveBeenCalledWith('block-1');
+      expect(window._mockAdapters.linkValidation.getIdeviceBrokenLinks).toHaveBeenCalledWith('idev-1');
+      expect(mockProjectRepo.getProperties).toHaveBeenCalledWith('s1');
+      expect(mockProjectRepo.saveProperties).toHaveBeenCalledWith({ id: 1 });
+      expect(mockProjectRepo.getUsedFiles).toHaveBeenCalledWith({ id: 1 });
     });
 
     it('should call page, block, and file endpoints', async () => {
@@ -1563,16 +1442,7 @@ describe('ApiCallManager', () => {
       expect(mockFunc.fileSendPost).toHaveBeenCalledWith('http://localhost/file/large', { file: 'b' });
     });
 
-    it('should call translation and cloud endpoints', async () => {
-      apiManager.endpoints.api_translations_lists = { path: 'http://localhost/i18n' };
-      apiManager.endpoints.api_translations_list_by_locale = { path: 'http://localhost/i18n/{locale}' };
-      apiManager.endpoints.api_google_oauth_login_url_get = { path: 'http://localhost/google/login' };
-      apiManager.endpoints.api_google_drive_folders_list = { path: 'http://localhost/google/folders' };
-      apiManager.endpoints.api_google_drive_file_upload = { path: 'http://localhost/google/upload' };
-      apiManager.endpoints.api_dropbox_oauth_login_url_get = { path: 'http://localhost/dropbox/login' };
-      apiManager.endpoints.api_dropbox_folders_list = { path: 'http://localhost/dropbox/folders' };
-      apiManager.endpoints.api_dropbox_file_upload = { path: 'http://localhost/dropbox/upload' };
-
+    it('should call translation and cloud endpoints via adapters', async () => {
       await apiManager.getTranslationsAll();
       await apiManager.getTranslations('es');
       await apiManager.getUrlLoginGoogleDrive();
@@ -1582,122 +1452,87 @@ describe('ApiCallManager', () => {
       await apiManager.getFoldersDropbox();
       await apiManager.uploadFileDropbox({ file: 'b' });
 
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/i18n');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/i18n/es');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/google/login');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/google/folders');
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/google/upload', { file: 'a' });
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/dropbox/login');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/dropbox/folders');
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/dropbox/upload', { file: 'b' });
+      expect(mockCatalog.getLocales).toHaveBeenCalled();
+      expect(mockCatalog.getTranslations).toHaveBeenCalledWith('es');
+      expect(window._mockAdapters.cloudStorage.getGoogleDriveLoginUrl).toHaveBeenCalled();
+      expect(window._mockAdapters.cloudStorage.getGoogleDriveFolders).toHaveBeenCalled();
+      expect(window._mockAdapters.cloudStorage.uploadToGoogleDrive).toHaveBeenCalledWith({ file: 'a' });
+      expect(window._mockAdapters.cloudStorage.getDropboxLoginUrl).toHaveBeenCalled();
+      expect(window._mockAdapters.cloudStorage.getDropboxFolders).toHaveBeenCalled();
+      expect(window._mockAdapters.cloudStorage.uploadToDropbox).toHaveBeenCalledWith({ file: 'b' });
     });
 
-    it('should call component html endpoints', async () => {
-      apiManager.endpoints.api_idevices_html_template_get = {
-        path: 'http://localhost/html/{odeComponentsSyncId}',
-      };
-      apiManager.endpoints.api_idevices_html_view_get = {
-        path: 'http://localhost/html/view/{odeComponentsSyncId}',
-      };
-
+    it('should call component html endpoints via catalog adapter', async () => {
       await apiManager.getComponentHtmlTemplate('comp-1');
       await apiManager.getSaveHtmlView('comp-2');
 
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/html/comp-1');
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/html/view/{odeComponentsSyncId}');
+      expect(mockCatalog.getComponentHtmlTemplate).toHaveBeenCalledWith('comp-1');
+      expect(mockCatalog.getSaveHtmlView).toHaveBeenCalledWith('comp-2');
     });
 
-    it('should call idevice save and reorder endpoints', async () => {
+    it('should call idevice save/reorder and preview via adapters', async () => {
       apiManager.endpoints.api_idevices_idevice_data_save = { path: 'http://localhost/idevice/save' };
       apiManager.endpoints.api_idevices_idevice_reorder = { path: 'http://localhost/idevice/reorder' };
-      apiManager.endpoints.api_ode_export_preview = { path: 'http://localhost/preview/{odeSessionId}' };
 
       await apiManager.putSaveIdevice({ id: 1 });
       await apiManager.putReorderIdevice({ id: 1 });
       await apiManager.getOdePreviewUrl('sess-1');
 
+      // idevice save/reorder still use func for now
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/save', { id: 1 });
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/reorder', { id: 1 });
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/preview/sess-1');
+      // preview uses export adapter
+      expect(window._mockAdapters.exportAdapter.getPreviewUrl).toHaveBeenCalledWith('sess-1');
     });
 
-    it('should call block sync endpoint', async () => {
-      apiManager.endpoints.get_current_block_update = { path: 'http://localhost/block/sync' };
-
+    it('should call block sync via collaboration adapter', async () => {
       await apiManager.postObtainOdeBlockSync({ id: 1 });
 
-      expect(mockFunc.post).toHaveBeenCalledWith('http://localhost/block/sync', { id: 1 });
+      expect(window._mockAdapters.collaboration.obtainBlockSync).toHaveBeenCalledWith({ id: 1 });
     });
 
-    it('should call export download shortcut', async () => {
-      apiManager.endpoints.api_ode_export_download = {
-        path: 'http://localhost/export/{odeSessionId}/{exportType}',
-      };
+    it('should call export download via adapter', async () => {
       global.eXeLearning.extension = 'html5';
 
       await apiManager.getOdeDownload('sess-1');
 
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/export/sess-1/html5');
+      expect(window._mockAdapters.exportAdapter.downloadExport).toHaveBeenCalledWith('sess-1', 'html5');
     });
   });
 
   describe('postOdeImportTheme', () => {
-    it('should return error when themeZip is not provided', async () => {
-      const result = await apiManager.postOdeImportTheme({ themeDirname: 'test-theme' });
-      expect(result.responseMessage).toBe('ERROR');
-      expect(result.error).toContain('Theme import requires the theme files');
-    });
-
-    it('should return error when themeDirname is not provided', async () => {
+    it('should call catalog adapter importTheme method', async () => {
       const mockBlob = new Blob(['test'], { type: 'application/zip' });
-      const result = await apiManager.postOdeImportTheme({ themeZip: mockBlob });
-      expect(result.responseMessage).toBe('ERROR');
-      expect(result.error).toContain('Theme directory name is required');
-    });
-
-    it('should successfully upload theme with FormData', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/zip' });
-      const mockResponse = { responseMessage: 'OK', themes: { themes: [] } };
-
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
 
       const result = await apiManager.postOdeImportTheme({
         themeDirname: 'test-theme',
         themeZip: mockBlob,
       });
 
+      expect(mockCatalog.importTheme).toHaveBeenCalledWith({
+        themeDirname: 'test-theme',
+        themeZip: mockBlob,
+      });
       expect(result.responseMessage).toBe('OK');
-      expect(global.fetch).toHaveBeenCalled();
-      const fetchCall = global.fetch.mock.calls[0];
-      expect(fetchCall[0]).toBe('http://localhost/exelearning/api/themes/import');
-      expect(fetchCall[1].method).toBe('POST');
-      expect(fetchCall[1].body).toBeInstanceOf(FormData);
     });
 
-    it('should handle fetch errors gracefully', async () => {
+    it('should handle adapter errors gracefully', async () => {
       const mockBlob = new Blob(['test'], { type: 'application/zip' });
 
-      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      mockCatalog.importTheme.mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await apiManager.postOdeImportTheme({
+      await expect(apiManager.postOdeImportTheme({
         themeDirname: 'test-theme',
         themeZip: mockBlob,
-      });
-
-      expect(result.responseMessage).toBe('ERROR');
-      expect(result.error).toBe('Network error');
+      })).rejects.toThrow('Network error');
     });
 
-    it('should handle HTTP error responses', async () => {
+    it('should return error response from adapter', async () => {
       const mockBlob = new Blob(['test'], { type: 'application/zip' });
 
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 400,
-        json: () => Promise.resolve({ error: 'Invalid theme' }),
+      mockCatalog.importTheme.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+        error: 'Invalid theme',
       });
 
       const result = await apiManager.postOdeImportTheme({

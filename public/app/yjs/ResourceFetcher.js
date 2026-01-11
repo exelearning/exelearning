@@ -55,13 +55,21 @@ class ResourceFetcher {
   }
 
   /**
-   * Check if running in static (offline) mode
+   * Check if running in static (offline) mode.
+   * Prefers capabilities check, falls back to direct mode detection.
    * @returns {boolean}
    */
   isStaticMode() {
     if (this._isStaticMode === null) {
-      this._isStaticMode = window.__EXE_STATIC_MODE__ === true ||
-                           window.eXeLearning?.config?.isStaticMode === true;
+      // Prefer capabilities check (new pattern)
+      const capabilities = window.eXeLearning?.app?.capabilities;
+      if (capabilities) {
+        this._isStaticMode = !capabilities.storage.remote;
+      } else {
+        // Fallback to direct detection
+        this._isStaticMode = window.__EXE_STATIC_MODE__ === true ||
+                             window.eXeLearning?.config?.isStaticMode === true;
+      }
     }
     return this._isStaticMode;
   }
@@ -229,9 +237,11 @@ class ResourceFetcher {
    * @returns {Promise<void>}
    */
   async loadBundleManifest() {
-    // Check if running in static mode
-    const isStaticMode = window.__EXE_STATIC_MODE__ === true ||
-                         window.eXeLearning?.config?.isStaticMode === true;
+    // Check if running in static mode (prefer capabilities, fallback to direct check)
+    const capabilities = window.eXeLearning?.app?.capabilities;
+    const isStaticMode = capabilities
+      ? !capabilities.storage.remote
+      : (window.__EXE_STATIC_MODE__ === true || window.eXeLearning?.config?.isStaticMode === true);
 
     if (isStaticMode) {
       // In static mode, use manifest from bundled data

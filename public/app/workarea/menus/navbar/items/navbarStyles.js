@@ -90,6 +90,8 @@ export default class NavbarFile {
      *
      */
     styleManagerEvent() {
+        // Refresh themes list before building UI (themes may have loaded after constructor)
+        this.updateThemes();
         this.buildBaseListThemes();
         this.buildUserListThemes();
 

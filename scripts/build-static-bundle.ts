@@ -408,8 +408,9 @@ function buildThemesList(): { themes: Theme[] } {
 
             const themeName = dir.name;
             const themePath = path.join(themesDir, dir.name);
-            // Use relative URL (./...) to work in subdirectory deployments like PR previews
-            const themeUrl = `./files/perm/themes/base/${themeName}`;
+            // Use URL starting with / to work with basePath concatenation (basePath + /files/... = ./files/...)
+            // This is consistent with iDevice URLs which also start with /
+            const themeUrl = `/files/perm/themes/base/${themeName}`;
 
             // Parse more data from config.xml if available
             let title = themeName.charAt(0).toUpperCase() + themeName.slice(1);
@@ -1498,8 +1499,17 @@ self.addEventListener('fetch', (event) => {
 
 /**
  * Copy directory recursively
+ * @param src - Source directory
+ * @param dest - Destination directory
+ * @param exclude - Directory/file names to exclude (exact match)
+ * @param excludePatterns - File patterns to exclude (e.g., '.test.js', '.spec.js')
  */
-function copyDirRecursive(src: string, dest: string, exclude: string[] = []) {
+function copyDirRecursive(
+    src: string,
+    dest: string,
+    exclude: string[] = [],
+    excludePatterns: string[] = ['.test.js', '.spec.js']
+) {
     if (!fs.existsSync(src)) {
         console.warn(`Source not found: ${src}`);
         return;
@@ -1511,12 +1521,14 @@ function copyDirRecursive(src: string, dest: string, exclude: string[] = []) {
     for (const entry of entries) {
         if (entry.name.startsWith('.')) continue;
         if (exclude.includes(entry.name)) continue;
+        // Skip test files
+        if (excludePatterns.some((pattern) => entry.name.endsWith(pattern))) continue;
 
         const srcPath = path.join(src, entry.name);
         const destPath = path.join(dest, entry.name);
 
         if (entry.isDirectory()) {
-            copyDirRecursive(srcPath, destPath, exclude);
+            copyDirRecursive(srcPath, destPath, exclude, excludePatterns);
         } else {
             fs.copyFileSync(srcPath, destPath);
         }
@@ -1642,6 +1654,13 @@ async function buildStaticBundle() {
     if (fs.existsSync(faviconIco)) {
         fs.copyFileSync(faviconIco, path.join(outputDir, 'favicon.ico'));
         console.log('  Copied favicon.ico');
+    }
+
+    // Copy CHANGELOG.md
+    const changelogMd = path.join(projectRoot, 'public/CHANGELOG.md');
+    if (fs.existsSync(changelogMd)) {
+        fs.copyFileSync(changelogMd, path.join(outputDir, 'CHANGELOG.md'));
+        console.log('  Copied CHANGELOG.md');
     }
 
     console.log('\n' + '='.repeat(60));

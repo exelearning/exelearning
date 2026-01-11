@@ -558,8 +558,8 @@ export default class NavbarFile {
             // Build preview options
             const previewOptions = {
                 baseUrl: window.location.origin,
-                basePath: eXeLearning.app.config?.basePath || '',
-                version: eXeLearning.app.config?.version || 'v1',
+                basePath: window.eXeLearning?.config?.basePath || '',
+                version: window.eXeLearning?.config?.version || 'v1.0.0',
             };
 
             // Generate preview using SharedExporters (unified TypeScript pipeline)

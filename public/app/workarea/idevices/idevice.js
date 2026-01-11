@@ -48,8 +48,10 @@ export default class Idevice {
 
     /**
      * config.xml translatable params
+     * Note: 'category' is NOT translated here - it must stay in English for matching
+     * with known category keys. Translation happens at display time in menuIdevicesCompose.
      */
-    configParamsTranslatables = ['category', 'title'];
+    configParamsTranslatables = ['title'];
 
     /**
      * Default values of config.xml params

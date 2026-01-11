@@ -466,8 +466,9 @@ export default class PreviewPanelManager {
         const documentManager = yjsBridge.documentManager;
         const resourceFetcher = yjsBridge.resourceFetcher || null;
 
-        // Check if we're in static mode
-        const isStaticMode = window.__EXE_STATIC_MODE__ === true;
+        // Check if we're in static mode (no remote storage capability)
+        const capabilities = eXeLearning.app?.capabilities;
+        const isStaticMode = !capabilities?.storage?.remote;
 
         // Get the static base path from current URL (handles subdirectory deployments)
         // e.g., /exelearning/pr-preview/pr-17/ -> /exelearning/pr-preview/pr-17
@@ -530,7 +531,7 @@ export default class PreviewPanelManager {
             baseUrl: window.location.origin,
             // basePath MUST start with '/' to trigger isPreviewMode=true in the exporter
             basePath: isStaticMode ? '/' : (eXeLearning.app.config?.basePath || '/'),
-            version: eXeLearning.app.config?.version || 'v1',
+            version: window.eXeLearning?.config?.version || 'v1.0.0',
             isStaticMode: isStaticMode,
             themeUrl: themeUrl,
             userThemeCss: userThemeCss,
@@ -625,7 +626,9 @@ export default class PreviewPanelManager {
         // Get theme URL from currently selected theme (handles admin vs builtin themes)
         // Ensure it's an absolute URL (blob: contexts don't resolve relative URLs correctly)
         const selectedTheme = eXeLearning.app?.themes?.selected;
-        const isStaticMode = window.__EXE_STATIC_MODE__ === true;
+        // Check if we're in static mode (no remote storage capability)
+        const capabilities = eXeLearning.app?.capabilities;
+        const isStaticMode = !capabilities?.storage?.remote;
         let themeUrl = selectedTheme?.path || null;
         let userThemeCss = null;
         let userThemeJs = null;
@@ -710,7 +713,7 @@ export default class PreviewPanelManager {
             // This ensures asset:// URLs are preserved (not converted to server paths)
             // and will be resolved to blob URLs from IndexedDB by resolveAssetUrlsAsync
             basePath: isStaticMode ? '/' : (eXeLearning.app.config?.basePath || '/'),
-            version: eXeLearning.app.config?.version || 'v1',
+            version: window.eXeLearning?.config?.version || 'v1.0.0',
             isStaticMode: isStaticMode,
             themeUrl: themeUrl, // Absolute theme URL (e.g., 'http://localhost:8081/v1/site-files/themes/chiquito/')
             userThemeCss: userThemeCss, // Inline CSS for user themes (from IndexedDB)

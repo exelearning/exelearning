@@ -1834,17 +1834,20 @@ class YjsProjectBridge {
     const stats = await importer.importFromFile(file, options);
 
     // Announce imported assets to server for peer-to-peer collaboration
-    // Skip in static mode (no WebSocket server)
-    if (stats && stats.assets > 0 && !window.__EXE_STATIC_MODE__) {
+    // Skip only when collaboration is explicitly disabled (capabilities available and disabled)
+    const capabilities = window.eXeLearning?.app?.capabilities;
+    const collaborationEnabled = !capabilities || capabilities.collaboration?.enabled;
+    if (stats && stats.assets > 0 && collaborationEnabled) {
       Logger.log(`[YjsProjectBridge] Announcing ${stats.assets} imported assets to peers...`);
       await this.announceAssets();
     }
 
     // Check and handle theme from imported package
     // Only import theme when opening a file (clearExisting=true), not when importing into existing project
-    // Skip in static mode (no API server for theme import)
+    // Skip only when remote storage is explicitly disabled (capabilities available and disabled)
     const clearExisting = options.clearExisting !== false; // default is true
-    if (stats && stats.theme && clearExisting && !window.__EXE_STATIC_MODE__) {
+    const hasRemoteStorage = !capabilities || capabilities.storage?.remote;
+    if (stats && stats.theme && clearExisting && hasRemoteStorage) {
       await this._checkAndImportTheme(stats.theme, file);
     }
 

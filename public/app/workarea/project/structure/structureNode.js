@@ -47,6 +47,11 @@ export default class StructureNode {
      * @param {Array} data
      */
     setParams(data) {
+        // Guard against undefined/null data
+        if (!data) {
+            return;
+        }
+
         for (let [i, param] of Object.entries(this.params)) {
             let defaultValue = this.default[param] ? this.default[param] : null;
             this[param] = data[param] ? data[param] : defaultValue;

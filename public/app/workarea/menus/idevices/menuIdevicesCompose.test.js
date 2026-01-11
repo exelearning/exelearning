@@ -143,40 +143,50 @@ describe('MenuIdevicesCompose', () => {
         });
     });
 
-    describe('categoriesTitle', () => {
+    describe('categoryKeys', () => {
         it('should have information category', () => {
-            expect(menuIdevicesCompose.categoriesTitle.information).toBe('Information and presentation');
+            expect(menuIdevicesCompose.categoryKeys.information).toBe('Information and presentation');
         });
 
         it('should have evaluation category', () => {
-            expect(menuIdevicesCompose.categoriesTitle.evaluation).toBe('Assessment and tracking');
+            expect(menuIdevicesCompose.categoryKeys.evaluation).toBe('Assessment and tracking');
         });
 
         it('should have games category', () => {
-            expect(menuIdevicesCompose.categoriesTitle.games).toBe('Games');
+            expect(menuIdevicesCompose.categoryKeys.games).toBe('Games');
         });
 
         it('should have interactive category', () => {
-            expect(menuIdevicesCompose.categoriesTitle.interactive).toBe('Interactive activities');
+            expect(menuIdevicesCompose.categoryKeys.interactive).toBe('Interactive activities');
         });
 
         it('should have science category', () => {
-            expect(menuIdevicesCompose.categoriesTitle.science).toBe('Science');
+            expect(menuIdevicesCompose.categoryKeys.science).toBe('Science');
         });
 
         it('should have imported category', () => {
-            expect(menuIdevicesCompose.categoriesTitle.imported).toBe('Imported');
+            expect(menuIdevicesCompose.categoryKeys.imported).toBe('Imported');
         });
     });
 
-    describe('categoriesFirst', () => {
-        it('should have ordered categories', () => {
-            expect(menuIdevicesCompose.categoriesFirst).toHaveLength(5);
-            expect(menuIdevicesCompose.categoriesFirst[0]).toBe('Information and presentation');
-            expect(menuIdevicesCompose.categoriesFirst[1]).toBe('Assessment and tracking');
-            expect(menuIdevicesCompose.categoriesFirst[2]).toBe('Games');
-            expect(menuIdevicesCompose.categoriesFirst[3]).toBe('Interactive activities');
-            expect(menuIdevicesCompose.categoriesFirst[4]).toBe('Science');
+    describe('categoriesOrder', () => {
+        it('should have ordered category keys', () => {
+            expect(menuIdevicesCompose.categoriesOrder).toHaveLength(5);
+            expect(menuIdevicesCompose.categoriesOrder[0]).toBe('information');
+            expect(menuIdevicesCompose.categoriesOrder[1]).toBe('evaluation');
+            expect(menuIdevicesCompose.categoriesOrder[2]).toBe('games');
+            expect(menuIdevicesCompose.categoriesOrder[3]).toBe('interactive');
+            expect(menuIdevicesCompose.categoriesOrder[4]).toBe('science');
+        });
+    });
+
+    describe('getCategoryTitle', () => {
+        it('should return translated title for known category', () => {
+            expect(menuIdevicesCompose.getCategoryTitle('information')).toBe('Information and presentation');
+        });
+
+        it('should return the key itself for unknown category', () => {
+            expect(menuIdevicesCompose.getCategoryTitle('unknown')).toBe('unknown');
         });
     });
 
@@ -205,10 +215,11 @@ describe('MenuIdevicesCompose', () => {
             expect(spy).toHaveBeenCalled();
         });
 
-        it('should create ordered categories combining first and extra', () => {
+        it('should create category elements for all ordered categories', () => {
             menuIdevicesCompose.compose();
-            expect(menuIdevicesCompose.orderedCategories).toBeDefined();
-            expect(menuIdevicesCompose.orderedCategories.length).toBeGreaterThanOrEqual(5);
+            // Should have at least the 5 base categories rendered
+            const categories = mockMenuElement.querySelectorAll('.idevice_category');
+            expect(categories.length).toBeGreaterThanOrEqual(5);
         });
 
         it('should create category elements in menu', () => {
@@ -222,9 +233,9 @@ describe('MenuIdevicesCompose', () => {
         beforeEach(() => {
             menuIdevicesCompose.categoriesIdevices = {};
             menuIdevicesCompose.categoriesExtra = [];
-            // Initialize known categories
-            for (let [key, title] of Object.entries(menuIdevicesCompose.categoriesTitle)) {
-                menuIdevicesCompose.categoriesIdevices[title] = [];
+            // Initialize known categories using English category names
+            for (let [key, englishName] of Object.entries(menuIdevicesCompose.categoryKeys)) {
+                menuIdevicesCompose.categoriesIdevices[englishName] = [];
             }
         });
 

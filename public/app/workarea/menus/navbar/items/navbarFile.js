@@ -191,8 +191,10 @@ export default class NavbarFile {
      * and show the "New from Template" button if so
      */
     async checkAndShowNewFromTemplateButton() {
-        // Static mode: templates not supported (no server API)
-        if (window.__EXE_STATIC_MODE__) {
+        // Templates require server API - skip when no remote storage
+        // Note: Only skip if capabilities are available AND remote is explicitly false
+        const capabilities = eXeLearning?.app?.capabilities;
+        if (capabilities && !capabilities.storage.remote) {
             return;
         }
 
@@ -1468,8 +1470,10 @@ export default class NavbarFile {
      *
      */
     openUserOdeFilesEvent() {
-        // Static mode: use client-side file input directly
-        if (window.__EXE_STATIC_MODE__) {
+        // Static mode: use client-side file input directly (no server storage)
+        // Note: Only trigger static mode if capabilities are available AND remote is explicitly false
+        const capabilities = eXeLearning?.app?.capabilities;
+        if (capabilities && !capabilities.storage.remote) {
             this.openFileInputStatic();
             return;
         }
