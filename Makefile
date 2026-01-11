@@ -164,12 +164,18 @@ run-app: check-bun deps css bundle
 	@echo "Launching eXeLearning App (Electron)..."
 	@bun run electron
 
+# Build static distribution (PWA mode, no server required)
+# Usage: make build-static
+.PHONY: build-static
+build-static: check-bun deps css bundle
+	@echo "Building static distribution..."
+	@bun run build:static
+	@echo "Static distribution built at dist/static/"
+
 # Build static distribution and serve it
 # Usage: make up-static [PORT=8080]
 .PHONY: up-static
-up-static: check-bun deps css bundle
-	@echo "Building static distribution..."
-	@bun run build:static
+up-static: build-static
 	@echo ""
 	@echo "============================================================"
 	@echo "  Serving static distribution at http://localhost:$${PORT:-8080}"
@@ -829,6 +835,7 @@ help:
 	@echo "Local:"
 	@echo "  make up-local              Start locally (web only, dev mode)"
 	@echo "  make up-local APP_ENV=prod Start locally (web only, prod mode)"
+	@echo "  make build-static          Build static distribution (PWA mode)"
 	@echo "  make up-static             Build and serve static distribution (PWA mode)"
 	@echo "  make up-static PORT=3000   Same, but on custom port"
 	@echo "  make run-app               Start Electron app (static mode, no server)"

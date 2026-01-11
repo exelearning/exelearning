@@ -39,9 +39,26 @@ body[mode="advanced"] .exe-simplified {
     display: none !important;
 }
 
-/* eXe Mode */
-body[installation-type="offline"] .exe-online,
-body[installation-type="online"] .exe-offline {
+/* eXe Mode - installation type visibility */
+/* Online mode: hide offline and electron elements, show online elements */
+body[installation-type="online"] .exe-offline,
+body[installation-type="online"] .exe-electron {
+    display: none !important;
+}
+
+/* Static mode: hide online and electron elements, show offline elements (exe logo) */
+body[installation-type="static"] .exe-online,
+body[installation-type="static"] .exe-electron {
+    display: none !important;
+}
+
+/* Electron mode: hide online elements, show offline and electron elements */
+body[installation-type="electron"] .exe-online {
+    display: none !important;
+}
+
+/* Legacy support: "offline" value maps to electron behavior */
+body[installation-type="offline"] .exe-online {
     display: none !important;
 }
 

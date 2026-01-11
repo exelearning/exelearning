@@ -40,12 +40,13 @@
             </div>
             <div id="head-bottom-user-logged" class="dropdown" title="{{ user.username }}" data-testid="user-menu" data-user-email="{{ user.username }}">
                 <button class="btn btn-link" type="button" id="exeUserMenuToggler" data-bs-toggle="dropdown" aria-expanded="false" title="{{ t.user_menu or 'User menu' }}">
-                    {% if config.isOfflineInstallation %}
-                    <img class="exe-gravatar exe-gravatar--offline" src="{{ basePath }}/exelearning.png" alt="eXeLearning" width="50" height="50" data-testid="user-avatar">
-                    {% elif user.gravatarUrl %}
-                    <img class="exe-gravatar" src="{{ user.gravatarUrl }}" alt="{{ user.username }}" width="50" height="50" data-testid="user-avatar" onerror="this.onerror=null;this.src='{{ basePath }}/images/default-avatar.svg';this.classList.add('exe-gravatar--fallback');">
+                    {# Offline/Static/Electron: show eXeLearning logo #}
+                    <img class="exe-gravatar exe-gravatar--offline exe-offline" src="{{ basePath }}/exelearning.png" alt="eXeLearning" width="50" height="50" data-testid="user-avatar-offline">
+                    {# Online: show user gravatar or initial #}
+                    {% if user.gravatarUrl %}
+                    <img class="exe-gravatar exe-online" src="{{ user.gravatarUrl }}" alt="{{ user.username }}" width="50" height="50" data-testid="user-avatar" onerror="this.onerror=null;this.src='{{ basePath }}/images/default-avatar.svg';this.classList.add('exe-gravatar--fallback');">
                     {% else %}
-                    <span class="exe-avatar" title="{{ user.username }}" data-testid="user-avatar-initial">{{ user.usernameFirsLetter }}</span>
+                    <span class="exe-avatar exe-online" title="{{ user.username }}" data-testid="user-avatar-initial">{{ user.usernameFirsLetter }}</span>
                     {% endif %}
                 </button>
 
@@ -80,12 +81,9 @@
 
                     {# Items existentes #}
                     <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ t.preferences or 'Preferences' }}</a></li>
-                    <li class="dropdown-divider"></li>
-                    {% if config.isOfflineInstallation %}
-                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ t.exit or 'Exit' }}</a></li>
-                    {% else %}
-                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ t.logout or 'Logout' }}</a></li>
-                    {% endif %}
+                    <li class="dropdown-divider exe-online exe-electron"></li>
+                    <li class="exe-online"><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ t.logout or 'Logout' }}</a></li>
+                    <li class="exe-electron"><a class="dropdown-item" id="head-bottom-exit-button" href="#">{{ t.exit or 'Exit' }}</a></li>
                 </ul>
             </div>
         </div>

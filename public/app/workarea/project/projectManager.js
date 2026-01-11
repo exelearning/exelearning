@@ -1372,18 +1372,27 @@ export default class projectManager {
 
     /**
      * Set installation type attribute to body and elements
-     *
+     * Uses RuntimeConfig to differentiate between 'static', 'electron', and 'server' modes
      */
     setInstallationTypeAttribute() {
-        if (this.offlineInstallation == true) {
-            document
-                .querySelector('body')
-                .setAttribute('installation-type', 'offline');
-            /* To review (see #432)
-            document.querySelector(
-                '#navbar-button-download-project',
-            ).innerHTML = 'Save';
-            */
+        const runtimeConfig = this.app.runtimeConfig;
+        let installationType;
+
+        if (runtimeConfig?.isStaticMode()) {
+            installationType = 'static';
+        } else if (runtimeConfig?.isElectronMode()) {
+            installationType = 'electron';
+        } else if (this.offlineInstallation === true) {
+            // Fallback for legacy offline detection (shouldn't reach here normally)
+            installationType = 'electron';
+        } else {
+            installationType = 'online';
+        }
+
+        document.querySelector('body').setAttribute('installation-type', installationType);
+
+        // Offline/Static mode UI adjustments (save button label)
+        if (installationType === 'electron' || installationType === 'static') {
             document.querySelector('#head-top-download-button').innerHTML =
                 'save';
             document
@@ -1391,17 +1400,13 @@ export default class projectManager {
                 .setAttribute('title', _('Save'));
 
             // Expose a stable project key for Electron (per-project save path)
-            try {
-                window.__currentProjectId = this.odeId || 'default';
-            } catch (e) {
-                // Intentional: Electron global assignment may fail in browser
+            if (installationType === 'electron') {
+                try {
+                    window.__currentProjectId = this.odeId || 'default';
+                } catch (e) {
+                    // Intentional: Electron global assignment may fail in browser
+                }
             }
-
-            // Offline Save As is now provided by a dedicated menu item
-        } else {
-            document
-                .querySelector('body')
-                .setAttribute('installation-type', 'online');
         }
     }
 

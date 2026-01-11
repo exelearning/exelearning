@@ -3,6 +3,9 @@ export default class LogoutButton {
         this.logoutMenuHeadButton = document.querySelector(
             '#head-bottom-logout-button'
         );
+        this.exitMenuHeadButton = document.querySelector(
+            '#head-bottom-exit-button'
+        );
     }
     /**
      * Init element
@@ -16,45 +19,57 @@ export default class LogoutButton {
      *
      */
     addEventClick() {
-        this.logoutMenuHeadButton.addEventListener('click', (event) => {
-            // In offline mode (Electron), close the window instead of logging out
-            if (eXeLearning.config?.isOfflineInstallation) {
+        // Logout button handler (online mode only)
+        if (this.logoutMenuHeadButton) {
+            this.logoutMenuHeadButton.addEventListener('click', (event) => {
+                this.handleLogout();
+            });
+        }
+
+        // Exit button handler (Electron mode only)
+        if (this.exitMenuHeadButton) {
+            this.exitMenuHeadButton.addEventListener('click', (event) => {
                 this.handleOfflineExit();
-                return;
-            }
-            let odeSessionId = eXeLearning.app.project.odeSession;
-            let odeVersionId = eXeLearning.app.project.odeVersion;
-            let odeId = eXeLearning.app.project.odeId;
-            let params = {
-                odeSessionId: odeSessionId,
-                odeVersionId: odeVersionId,
-                odeId: odeId,
-            };
-            eXeLearning.app.api
-                .postCheckCurrentOdeUsers(params)
-                .then((response) => {
-                    if (response['leaveSession']) {
-                        eXeLearning.app.api
-                            .postCloseSession(params)
-                            .then((response) => {
-                                window.onbeforeunload = null;
-                                let pathname =
-                                    window.location.pathname.split('/');
-                                let basePathname = pathname
-                                    .splice(0, pathname.length - 1)
-                                    .join('/');
-                                window.location.href =
-                                    window.location.origin +
-                                    basePathname +
-                                    '/logout';
-                            });
-                    } else if (response['askSave']) {
-                        eXeLearning.app.modals.sessionlogout.show();
-                    } else if (response['leaveEmptySession']) {
-                        this.leaveEmptySession(params);
-                    }
-                });
-        });
+            });
+        }
+    }
+
+    /**
+     * Handle logout in online mode
+     */
+    handleLogout() {
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let odeVersionId = eXeLearning.app.project.odeVersion;
+        let odeId = eXeLearning.app.project.odeId;
+        let params = {
+            odeSessionId: odeSessionId,
+            odeVersionId: odeVersionId,
+            odeId: odeId,
+        };
+        eXeLearning.app.api
+            .postCheckCurrentOdeUsers(params)
+            .then((response) => {
+                if (response['leaveSession']) {
+                    eXeLearning.app.api
+                        .postCloseSession(params)
+                        .then((response) => {
+                            window.onbeforeunload = null;
+                            let pathname =
+                                window.location.pathname.split('/');
+                            let basePathname = pathname
+                                .splice(0, pathname.length - 1)
+                                .join('/');
+                            window.location.href =
+                                window.location.origin +
+                                basePathname +
+                                '/logout';
+                        });
+                } else if (response['askSave']) {
+                    eXeLearning.app.modals.sessionlogout.show();
+                } else if (response['leaveEmptySession']) {
+                    this.leaveEmptySession(params);
+                }
+            });
     }
     /**
      * Handle exit in offline mode (Electron)

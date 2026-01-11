@@ -474,6 +474,10 @@ function processNjkTemplate(filePath: string): string {
     // Replace {{ basePath }}/path with ./path (relative paths for static mode)
     content = content.replace(/\{\{\s*basePath\s*\}\}\//g, './');
 
+    // Replace {{ 'path' | asset }} with ./path (relative paths for static mode)
+    // Matches both single and double quotes
+    content = content.replace(/\{\{\s*['"]([^'"]+)['"]\s*\|\s*asset\s*\}\}/g, './$1');
+
     // Replace other simple {{ variable }} patterns (remove them for static)
     content = content.replace(/\{\{[^}]+\}\}/g, '');
 
@@ -492,6 +496,13 @@ function processNjkTemplate(filePath: string): string {
     // REMOVE content inside {% if config.platformIntegration %}...{% endif %}
     content = content.replace(
         /\{%\s*if\s+config\.platformIntegration\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
+        ''
+    );
+
+    // REMOVE user-related conditionals (no user in static mode)
+    // Matches {% if user.something %}...{% else %}...{% endif %} or {% if user.something %}...{% endif %}
+    content = content.replace(
+        /\{%\s*if\s+user\.\w+\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
         ''
     );
 
@@ -897,14 +908,19 @@ function generateStaticHtml(bundleData: object): string {
 
     <!-- Static mode overrides -->
     <style>
-        /* Show exe-online items in static mode (they contain Open and Recent Projects) */
-        .exe-online { display: block !important; }
+        /* Show exe-online menu items in static mode (they contain Open and Recent Projects) */
         li.exe-online { display: list-item !important; }
-        /* Hide exe-online items that don't make sense in static mode (Save, Share) */
-        /* Note: exe-online class is on the parent <li>, not on the <a> element */
+        /* Hide exe-online items that don't make sense in static mode (Save, Share, Logout) */
         li.exe-online:has(#navbar-button-save),
         li.exe-online:has(#navbar-button-share),
-        li.exe-online:has(#mobile-navbar-button-save) { display: none !important; }
+        li.exe-online:has(#mobile-navbar-button-save),
+        li.exe-online:has(#head-bottom-logout-button) { display: none !important; }
+        /* Hide Exit button (for Electron only) and its divider in static mode */
+        li.exe-electron { display: none !important; }
+        li.dropdown-divider.exe-online.exe-electron { display: none !important; }
+        /* Avatar: show exe logo (exe-offline), hide user avatar (exe-online) */
+        #exeUserMenuToggler .exe-offline { display: inline-block !important; }
+        #exeUserMenuToggler .exe-online { display: none !important; }
         /* Ensure icon sizes inside flex buttons */
         #head-bottom-preview .small-icon {
             min-width: 16px;
