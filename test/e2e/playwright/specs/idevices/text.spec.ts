@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
+import { isStaticMode } from '../../fixtures/mode.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -107,7 +108,7 @@ test.describe('Text iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Text iDevice Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -144,11 +145,12 @@ test.describe('Text iDevice', () => {
         });
 
         test('should save and persist text content', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -203,11 +205,12 @@ test.describe('Text iDevice', () => {
 
     test.describe('TinyMCE Advanced Editor (CodeMagic)', () => {
         test('should open advanced HTML editor without blank window', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'CodeMagic iframe requires server resources');
             const page = authenticatedPage;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'CodeMagic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -280,11 +283,12 @@ test.describe('Text iDevice', () => {
         });
 
         test('should edit HTML source and apply changes', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'CodeMagic iframe requires server resources');
             const page = authenticatedPage;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'CodeMagic Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -401,11 +405,12 @@ test.describe('Text iDevice', () => {
 
     test.describe('TinyMCE Mind Map Editor (exemindmap)', () => {
         test('should open mind map editor without blank window', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'MindMap iframe requires server resources');
             const page = authenticatedPage;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'MindMap Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -518,7 +523,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text Formatting Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -613,7 +618,7 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid Diagram Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -803,7 +808,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid Update Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -937,7 +942,7 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid PreRender Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1090,7 +1095,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Audio Recorder Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1213,7 +1218,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Audio Asset URL Resolution Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1359,7 +1364,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Asset URL Resolution Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1433,7 +1438,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1534,7 +1539,7 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1714,12 +1719,13 @@ test.describe('Text iDevice', () => {
 
     test.describe('Image Persistence', () => {
         test('should persist image after save and reload', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
             // 1. Create project
             const projectUuid = await createProject(page, 'Image Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -1865,7 +1871,7 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project
             const projectUuid = await createProject(page, 'Image Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -1986,7 +1992,7 @@ test.describe('Text iDevice', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Internal Link Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -2145,7 +2151,7 @@ test.describe('Text iDevice', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Editor Internal Link Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -2290,7 +2296,7 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text iDevice ELPX Link Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -2443,7 +2449,7 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'HTML Iframe Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -2582,7 +2588,7 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'ZIP HTML Embed Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -2969,7 +2975,7 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'HTML Asset Link Warning Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await waitForLoadingScreenHidden(page);
             await page.waitForTimeout(2000);
 

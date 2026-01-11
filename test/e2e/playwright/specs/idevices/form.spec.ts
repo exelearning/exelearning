@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
+import { isStaticMode } from '../../fixtures/mode.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -361,7 +362,7 @@ test.describe('Form iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Form Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -390,7 +391,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form TrueFalse Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -423,7 +424,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Selection Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -456,7 +457,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Multiple Questions Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -502,7 +503,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -553,7 +554,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Buttons Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -603,7 +604,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form TF Interaction Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -654,11 +655,12 @@ test.describe('Form iDevice', () => {
 
     test.describe('Persistence', () => {
         test('should persist after reload', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
+import { isStaticMode } from '../../fixtures/mode.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -269,7 +270,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -307,7 +308,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Save Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -332,11 +333,12 @@ test.describe('Download Source File iDevice', () => {
         });
 
         test('should persist after reload', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Persist Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -407,7 +409,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Custom Text Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -439,7 +441,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Custom Color Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -471,7 +473,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Font Size Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -506,7 +508,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -550,7 +552,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Manifest Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -608,7 +610,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Info Table Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -655,7 +657,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

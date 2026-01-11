@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 
 /**
  * E2E Tests for Preview Page Updates
@@ -11,6 +12,8 @@ import { test, expect } from '../fixtures/auth.fixture';
  * 2. Page reorder: Pages must be sorted by hierarchical 'order' field
  */
 test.describe('Preview Page Updates', () => {
+    serverOnly(); // Requires server for project creation
+
     test('should reflect page title changes in Preview via Yjs', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 

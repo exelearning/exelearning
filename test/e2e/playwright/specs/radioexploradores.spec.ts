@@ -10,6 +10,7 @@
  * - Edit button should be enabled
  */
 import { test, expect } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -151,6 +152,8 @@ async function getIdeviceDataFromYjs(page: Page, ideviceType: string) {
 }
 
 test.describe('radioexploradores.elp Import Tests', () => {
+    serverOnly(); // Requires server for ELP import operations
+
     test.describe('Relate (Relaciona) iDevice', () => {
         test('should import relate iDevice with correct type and cardsGame data', async ({
             authenticatedPage,

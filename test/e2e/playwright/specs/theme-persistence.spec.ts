@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -102,6 +103,8 @@ async function checkThemeInImportedTab(page: Page, themeName: string): Promise<b
 }
 
 test.describe('Theme Persistence Across Projects', () => {
+    serverOnly(); // Requires server for theme persistence and project creation
+
     /**
      * Test that uploaded themes persist across different projects
      * This is the key test case: upload theme in project A, verify it appears in project B

@@ -1,4 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -121,7 +121,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Image Gallery Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -161,7 +161,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Upload Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -237,7 +237,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Multiple Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -272,7 +272,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Controls Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -322,7 +322,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -396,7 +396,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Lightbox Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -478,7 +478,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Lightbox Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

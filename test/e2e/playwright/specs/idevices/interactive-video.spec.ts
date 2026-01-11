@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
+import { isStaticMode } from '../../fixtures/mode.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -438,7 +439,7 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -469,7 +470,7 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Upload Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -506,10 +507,11 @@ test.describe('Interactive Video iDevice', () => {
 
     test.describe('Editor Workflow', () => {
         test('should open editor, create cover, and save', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'Interactive video editor requires server resources');
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Editor Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -546,11 +548,12 @@ test.describe('Interactive Video iDevice', () => {
         });
 
         test('should persist editor changes after reload', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Interactive Video Persist Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -646,11 +649,12 @@ test.describe('Interactive Video iDevice', () => {
 
     test.describe('Preview Panel', () => {
         test('should display interactive video correctly in preview', async ({ authenticatedPage, createProject }) => {
+            test.skip(isStaticMode(), 'Preview requires blob URL resolution');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Interactive Video Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -703,7 +707,7 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Symfony Shim Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
+            await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

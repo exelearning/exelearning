@@ -111,16 +111,18 @@ export default defineConfig({
 
     /* Configure projects for major browsers */
     projects: [
-        // Server mode projects
+        // Server mode projects (exclude static-mode tests)
         {
             name: 'chromium',
+            testIgnore: /static-mode-.*\.spec\.ts/,
             use: { ...devices['Desktop Chrome'] },
         },
         {
             name: 'firefox',
+            testIgnore: /static-mode-.*\.spec\.ts/,
             use: { ...devices['Desktop Firefox'] },
         },
-        // Static mode project (Chromium only)
+        // Static mode project (Chromium only) - runs all tests that don't skip via serverOnly()
         {
             name: 'chromium-static',
             use: {

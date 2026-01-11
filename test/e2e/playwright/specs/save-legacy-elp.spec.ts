@@ -8,6 +8,7 @@
  * exposing issues early in the test suite.
  */
 import { test, expect } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 import * as path from 'path';
 import type { Page, ConsoleMessage } from '@playwright/test';
 
@@ -141,6 +142,8 @@ async function clickSaveButton(page: Page): Promise<void> {
 }
 
 test.describe('Save Legacy ELP - Database Compatibility', () => {
+    serverOnly(); // Requires server for ELP import and database operations
+
     test('should import and save old_manual_exe29_compressed.elp without console errors', async ({
         authenticatedPage,
         createProject,

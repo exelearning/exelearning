@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -85,6 +86,8 @@ async function uploadTheme(page: Page, fixtureName: string): Promise<string> {
 }
 
 test.describe('Theme Yjs Cleanup', () => {
+    serverOnly(); // Requires server for theme and project operations
+
     /**
      * Test that user themes are removed from Yjs when a different theme is selected
      * but remain in IndexedDB for the user

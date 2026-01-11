@@ -1,7 +1,10 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 import * as path from 'path';
 
 test.describe('Theme Selection on ELP Import', () => {
+    serverOnly(); // Requires server for ELP import operations
+
     /**
      * Test that theme from imported .elpx is correctly reflected in the styles panel UI
      * This ensures the fix for the bug where theme was applied but UI wasn't updated

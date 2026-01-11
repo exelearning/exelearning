@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { serverOnly } from '../fixtures/mode.fixture';
 
 /**
  * E2E Tests for Page Properties
@@ -10,6 +11,8 @@ import { test, expect } from '../fixtures/auth.fixture';
  * - editableInPage + titlePage: Shows a different title in the page content
  */
 test.describe('Page Properties', () => {
+    serverOnly(); // Requires server for project creation
+
     test('visibility property should hide page from navigation', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
