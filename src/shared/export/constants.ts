@@ -378,7 +378,6 @@ export function getExtensionFromMime(mime: string): string {
     return MIME_TO_EXTENSION[mime] || '.bin';
 }
 
-
 // =============================================================================
 // License Mappings
 // =============================================================================
