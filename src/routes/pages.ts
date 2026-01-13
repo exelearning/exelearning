@@ -11,7 +11,7 @@ import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
-import { renderTemplate as renderTemplateDefault } from '../services/template';
+import { renderTemplate as renderTemplateDefault, setRenderLocale } from '../services/template';
 import {
     findUserById as findUserByIdDefault,
     findUserByEmail as findUserByEmailDefault,
@@ -101,6 +101,7 @@ export interface PagesFileHelperDeps {
  */
 export interface PagesTemplateDeps {
     renderTemplate: typeof renderTemplateDefault;
+    setRenderLocale: typeof setRenderLocale;
 }
 
 /**
@@ -150,6 +151,7 @@ const defaultFileHelper: PagesFileHelperDeps = {
 // Default template
 const defaultTemplate: PagesTemplateDeps = {
     renderTemplate: renderTemplateDefault,
+    setRenderLocale,
 };
 
 // Default utils
@@ -196,7 +198,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         getDefaultTheme,
     } = deps.queries ?? defaultQueries;
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
-    const { renderTemplate } = deps.template ?? defaultTemplate;
+    const { renderTemplate, setRenderLocale: setLocale } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
 
     /**
@@ -800,6 +802,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     t,
                     basePath,
                 };
+
+                // Set locale for Nunjucks template rendering (fixes | trans filter)
+                setLocale(locale);
 
                 try {
                     const html = renderTemplate('workarea/workarea', viewModel);
