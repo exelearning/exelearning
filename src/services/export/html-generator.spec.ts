@@ -342,6 +342,32 @@ describe('HTML Generator Helper', () => {
             expect(html).toContain('class="license-label">Licencia: </span>');
         });
 
+        it('should generate correct CSS class for different licenses', () => {
+            const licenses = [
+                { name: 'creative commons: attribution 4.0', class: 'cc' },
+                { name: 'creative commons: attribution - share alike 4.0', class: 'cc cc-by-sa' },
+                { name: 'creative commons: attribution - non derived work 4.0', class: 'cc cc-by-nd' },
+                { name: 'creative commons: attribution - non commercial 4.0', class: 'cc cc-by-nc' },
+                { name: 'creative commons: attribution - non commercial - share alike 4.0', class: 'cc cc-by-nc-sa' },
+                {
+                    name: 'creative commons: attribution - non derived work - non commercial 4.0',
+                    class: 'cc cc-by-nc-nd',
+                },
+                { name: 'public domain', class: 'cc cc-0' },
+                { name: 'propietary license', class: 'propietary' },
+            ];
+
+            for (const lic of licenses) {
+                const page = createPage();
+                const structure = createMinimalStructure({
+                    pages: [page],
+                    meta: { ...createMinimalStructure().meta, license: lic.name },
+                });
+                const html = generatePageHtml(page, structure, {});
+                expect(html).toContain(`class="${lic.class}"`);
+            }
+        });
+
         it('should include made-with-eXe credit', () => {
             const page = createPage();
             const structure = createMinimalStructure({ pages: [page] });

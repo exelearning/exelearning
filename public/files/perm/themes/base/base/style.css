@@ -11,6 +11,7 @@ body.exe-web-site {
 .exe-content a {
     color: #d76b4a;
 }
+
 .exe-content a:hover,
 .exe-content a:focus {
     color: #993d28;
@@ -64,7 +65,7 @@ body.exe-web-site {
     top: -2.1em;
 }
 
-.exe-single-page main.page > section {
+.exe-single-page main.page>section {
     min-height: 4em;
 }
 
@@ -85,6 +86,7 @@ body.exe-web-site {
 #node-content-container.exe-content .box {
     border: 1px dotted #ddd;
 }
+
 #node-content-container.exe-content .box.hidden-idevices {
     border-style: solid;
 }
@@ -104,7 +106,7 @@ body.exe-web-site {
 
 .exe-web-site .page-content,
 #exe-client-search,
-.exe-web-site main > header,
+.exe-web-site main>header,
 .exe-web-site #siteFooterContent,
 .exe-export .exe-content {
     max-width: 1280px;
@@ -120,6 +122,7 @@ body.exe-web-site {
 .exe-export main {
     padding-top: 1.5em;
 }
+
 .exe-web-site main {
     padding-top: 4.5em;
 }
@@ -133,46 +136,57 @@ body.exe-web-site {
     padding-top: 66px;
     padding-left: 8px;
 }
+
 .exe-web-site .exe-content {
-    box-shadow: 
+    box-shadow:
         inset 300px 0 0 0 #f6f6f6,
         inset 301px 0 0 0 #f0f0f0;
 }
+
 #siteFooter {
     margin-bottom: 2em;
     color: #555;
     font-size: 0.95em;
 }
+
 #siteNav .other-section {
     display: none;
 }
+
 #sidebar-nav.fixed {
     position: fixed;
 }
+
 body.siteNav-off #siteNav {
     display: none;
 }
+
 body.siteNav-off .exe-content {
     box-shadow: none;
 }
+
 .exe-web-site main.page {
     padding-top: 4.5em;
     padding-left: 320px;
     padding-right: 20px;
     /* min-height: calc(100vh - 300px); */
 }
+
 .exe-web-site #siteFooter {
-    padding:  20px 20px 20px 320px;
+    padding: 20px 20px 20px 320px;
 }
+
 body.siteNav-off main.page,
 body.siteNav-off #siteFooter {
     padding-left: 20px;
 }
+
 #siteNav ul {
     margin: 0;
     padding: 0;
     list-style: none;
 }
+
 #siteNav ul ul {
     margin-top: 5px;
 }
@@ -225,6 +239,7 @@ body.siteNav-off #siteFooter {
 #siteNav ul ul ul ul a {
     padding-left: 75px;
 }
+
 /* pagination */
 .nav-buttons .nav-button,
 button.toggler {
@@ -241,16 +256,20 @@ button.toggler {
     border: 0;
     transition: background-color 0.5s ease;
 }
+
 .nav-buttons span.nav-button {
     cursor: not-allowed;
     background-color: #b7b7b7;
 }
+
 .nav-buttons .nav-button-left {
     background-position: -80px 0;
 }
+
 .nav-buttons .nav-button-right {
     background-position: -120px 0;
 }
+
 button#searchBarTogger {
     background-position: -40px 0;
     display: none;
@@ -263,15 +282,19 @@ button#searchBarTogger {
 button#siteNavToggler {
     left: 280px;
 }
+
 button#searchBarTogger {
     left: 330px;
 }
+
 body.siteNav-off button#siteNavToggler {
     left: 65px;
 }
+
 body.siteNav-off button#searchBarTogger {
     left: 115px;
 }
+
 .nav-buttons a:hover,
 .nav-buttons a:focus,
 button.toggler:hover,
@@ -279,28 +302,34 @@ button.toggler:focus {
     background-color: #066d6d;
     border-color: #066d6d;
 }
+
 .nav-buttons .nav-button span,
 .box-toggle span,
 #exe-client-search-reset span,
 #packageLicense .license-label {
     position: absolute;
-    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px 1px 1px 1px);
+    /* IE6, IE7 */
     clip: rect(1px, 1px, 1px, 1px);
 }
+
 .package-subtitle {
     font-size: .95em;
     color: #666;
     position: relative;
     top: -.15em;
 }
+
 .nav-buttons .nav-button-right {
     left: auto;
     right: 15px;
 }
+
 /* Box toggler */
 .exe-export .box {
     position: relative;
 }
+
 .exe-export .box-toggle {
     width: 40px;
     height: 40px;
@@ -313,6 +342,7 @@ button.toggler:focus {
     right: 0;
     opacity: 0.6;
 }
+
 .exe-export .box-head:hover .box-toggle,
 .exe-export .box-toggle:focus {
     opacity: 1;
@@ -372,16 +402,19 @@ button.toggler:focus {
     border: none;
     padding: 20px 0;
 }
+
 /* Search bar */
 #exe-client-search {
     display: none;
     margin-bottom: 30px;
 }
+
 #exe-client-search-text {
     max-width: 80%;
     max-width: calc(100% - 90px);
     display: inline;
 }
+
 #exe-client-search-submit {
     text-indent: -999em;
     background: #078e8e url(img/icons.png) no-repeat -41px -1px;
@@ -391,6 +424,7 @@ button.toggler:focus {
     border: none;
     border-radius: 4px;
 }
+
 #exe-client-search-reset.visible {
     background: url(img/icons.png) no-repeat -242px -1px;
     background-size: auto 40px;
@@ -404,23 +438,28 @@ button.toggler:focus {
     opacity: 0.6;
     border-radius: 4px;
 }
+
 #exe-client-search-reset:hover,
 #exe-client-search-reset:focus {
     opacity: 1;
 }
+
 #exe-client-search-submit:hover,
 #exe-client-search-submit:focus {
     background-color: #066d6d;
 }
+
 #exe-client-search-results-list ul,
 #exe-client-search-results-list li {
     margin: 2em 0;
     padding: 0;
     list-style: none;
 }
+
 #exe-client-search-results-list li {
     margin: 0 0 1em 0;
 }
+
 #exe-client-search-results-list p {
     margin-top: 2em;
 }
@@ -435,9 +474,11 @@ button.toggler:focus {
     border: 1px solid transparent;
     border-radius: 2px;
 }
+
 #packageLicense p {
     margin: 0;
 }
+
 #packageLicense a {
     color: #666;
     text-transform: capitalize;
@@ -448,36 +489,45 @@ button.toggler:focus {
     overflow: hidden;
     line-height: 15px;
 }
+
 #packageLicense a:hover,
 #packageLicense a:focus {
     text-decoration: none;
     color: #d76b4a;
 }
+
 #packageLicense.propietary {
     position: absolute;
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     height: 0;
 }
+
 #packageLicense.cc {
     padding: 0 20px 0 90px;
     background: url(img/licenses.gif) no-repeat 0 0;
 }
+
 #packageLicense.cc-by-sa {
     background-position: 0 -100px;
 }
-#packageLicensea.cc-by-nd {
+
+#packageLicense.cc-by-nd {
     background-position: 0 -200px;
 }
+
 #packageLicense.cc-by-nc {
     background-position: 0 -300px;
 }
+
 #packageLicense.cc-by-nc-sa {
     background-position: 0 -400px;
 }
+
 #packageLicense.cc-by-nc-nd {
     background-position: 0 -500px;
 }
+
 #packageLicense.cc-0 {
     background-position: 0 -600px;
 }
@@ -492,6 +542,7 @@ button.toggler:focus {
     border-radius: 4px;
     transition: 0.5s ease;
 }
+
 .exe-content .iDevice_buttons input:hover,
 .exe-content .iDevice_buttons input:focus,
 .exe-content .iDevice_buttons button:hover,
@@ -510,9 +561,11 @@ button.toggler:focus {
     color: #777;
     font-weight: 300;
 }
+
 .page-counter .page-counter-sep {
     margin: 0 0.1em;
 }
+
 .exe-web-site .page-counter {
     position: fixed;
     top: 18px;
@@ -530,12 +583,14 @@ button.toggler:focus {
     float: right;
     margin: 0 0 0 1em;
 }
+
 #teacher-mode-toggler.form-check-input:checked {
     background-color: #078e8e;
     border-color: #078e8e;
     font-size: 0.9em;
     margin-right: 0.6em;
 }
+
 label[for="teacher-mode-toggler"] {
     font-size: 0.9em;
     color: #777;
@@ -548,6 +603,7 @@ label[for="teacher-mode-toggler"] {
     background-color: #066d6d;
     border-color: #066d6d;
 }
+
 .exe-content .btn-primary:hover,
 .exe-content .btn-primary:focus {
     background-color: #078e8e;
@@ -559,20 +615,25 @@ label[for="teacher-mode-toggler"] {
     #siteNav {
         width: 251px;
     }
+
     .exe-web-site .exe-content {
-        box-shadow: 
+        box-shadow:
             inset 251px 0 0 0 #f6f6f6,
             inset 252px 0 0 0 #f0f0f0;
     }
+
     #siteNav a {
         max-width: 235px;
     }
+
     button#siteNavToggler {
         left: 232px;
     }
+
     button#searchBarTogger {
         left: 282px;
     }
+
     .exe-web-site main.page,
     .exe-web-site #siteFooter {
         padding-left: 270px;
@@ -587,58 +648,74 @@ label[for="teacher-mode-toggler"] {
         min-height: 0 !important;
         height: auto !important;
     }
+
     .exe-web-site .exe-content {
         box-shadow: none;
     }
+
     body.exe-web-site main.page {
         padding-top: 2.5em;
         padding-left: 0;
     }
+
     body.exe-web-site #siteFooter {
         padding-left: 0;
     }
+
     .exe-web-site.siteNav-off main.page {
         padding-top: 5.5em;
     }
+
     .nav-buttons .nav-button,
     button.toggler {
         position: absolute;
     }
+
     #siteNav a {
         max-width: 100%;
     }
+
     #sidebar-nav.fixed {
         position: relative;
     }
+
     button#siteNavToggler {
         left: 65px;
     }
+
     button#searchBarTogger {
         left: 115px;
     }
+
     .exe-web-site .page-counter {
         background: none;
         position: absolute;
     }
+
     .exe-web-site .page-counter .page-counter-label {
         position: absolute;
-        clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+        clip: rect(1px 1px 1px 1px);
+        /* IE6, IE7 */
         clip: rect(1px, 1px, 1px, 1px);
     }
 }
 
 @media print {
+
     /* Node in new page: section.package-node{page-break-after:always} */
     html body.exe-export {
         background: #fff;
     }
+
     .exe-content {
         color: #000;
         padding: 0;
     }
+
     @page {
         margin: 1.5cm;
     }
+
     /* Uncomment this to print URL after links:
     a{font-weight:bolder;text-decoration:none!important}
     a[href^=http]:after{content:" <" attr(href) "> "}
@@ -647,20 +724,24 @@ label[for="teacher-mode-toggler"] {
         background: none;
         padding-left: 0;
     }
+
     .exe-export .box-toggle {
         display: none;
     }
+
     /* Website */
     .exe-web-site #siteNav,
     .exe-web-site .nav-buttons,
     .exe-web-site button.toggler {
         display: none;
     }
+
     .exe-web-site #siteFooter,
     .exe-web-site main.page {
         padding-left: 0;
         padding-right: 0;
     }
+
     .exe-web-site main.page {
         padding-top: 1em;
     }

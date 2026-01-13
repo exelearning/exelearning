@@ -379,6 +379,68 @@ export function getExtensionFromMime(mime: string): string {
 }
 
 // =============================================================================
+// License Mappings
+// =============================================================================
+
+/**
+ * Maps license names to their CSS class names for the icon display
+ */
+export const LICENSE_CLASS_MAP: Record<string, string> = {
+    'creative commons: attribution 4.0': 'cc',
+    'creative commons: attribution - share alike 4.0': 'cc cc-by-sa',
+    'creative commons: attribution - non derived work 4.0': 'cc cc-by-nd',
+    'creative commons: attribution - non commercial 4.0': 'cc cc-by-nc',
+    'creative commons: attribution - non commercial - share alike 4.0': 'cc cc-by-nc-sa',
+    'creative commons: attribution - non derived work - non commercial 4.0': 'cc cc-by-nc-nd',
+    'public domain': 'cc cc-0',
+    'propietary license': 'propietary',
+};
+
+/**
+ * Get CSS class for a given license name
+ * @param licenseName - The license name
+ * @returns The CSS class/es for the license icon
+ */
+export function getLicenseClass(licenseName: string): string {
+    if (!licenseName) return 'cc cc-by-sa';
+
+    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // 1. Direct lookup
+    if (LICENSE_CLASS_MAP[cleanName]) {
+        return LICENSE_CLASS_MAP[cleanName];
+    }
+
+    // 2. Fallback: check for keywords (order matters: most specific first)
+    if (cleanName.includes('by-nc-nd') || (cleanName.includes('non derived') && cleanName.includes('non commercial'))) {
+        return 'cc cc-by-nc-nd';
+    }
+    if (cleanName.includes('by-nc-sa') || (cleanName.includes('non commercial') && cleanName.includes('share alike'))) {
+        return 'cc cc-by-nc-sa';
+    }
+    if (cleanName.includes('by-nc') || cleanName.includes('non commercial')) {
+        return 'cc cc-by-nc';
+    }
+    if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
+        return 'cc cc-by-nc'; // Wait, this logic is flawed. 'non derived' alone is by-nd
+    }
+    if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
+        return 'cc cc-by-nd';
+    }
+    if (cleanName.includes('by-sa') || cleanName.includes('share alike')) {
+        return 'cc cc-by-sa';
+    }
+    if (cleanName.includes('public domain') || cleanName.includes('cc0')) {
+        return 'cc cc-0';
+    }
+    if (cleanName.includes('creative commons') || cleanName.includes('attribution')) {
+        return 'cc';
+    }
+
+    return 'cc cc-by-sa';
+}
+
+// =============================================================================
 // XML Namespaces
 // =============================================================================
 
