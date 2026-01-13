@@ -257,39 +257,10 @@ const app = new Elysia()
             }
         }
 
-        // Match /v{version}/user-files/themes/* and serve from FILES_DIR
-        const versionedUserFilesMatch = pathname.match(/^\/v[\d.]+[^/]*\/user-files\/themes\/(.+)$/);
-        if (versionedUserFilesMatch) {
-            const relativePath = versionedUserFilesMatch[1];
-            const filesDir = getFilesDir();
-            const filePath = path.join(filesDir, 'themes', 'users', relativePath);
-
-            // Security check
-            const resolvedPath = path.resolve(filePath);
-            const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'users'));
-            if (resolvedPath.startsWith(resolvedBase) && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-                const content = fs.readFileSync(filePath);
-                const ext = path.extname(filePath).toLowerCase();
-                const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-                return new Response(content, {
-                    headers: {
-                        'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000',
-                    },
-                });
-            }
-        }
-
-        // Match /v{version}/* and rewrite to /* (except /libs, /admin-files, /user-files which are handled above)
+        // Match /v{version}/* and rewrite to /* (except /libs, /admin-files which are handled above)
         // This handles /app/*, /style/*, and other versioned static assets
         const versionedMatch = pathname.match(/^\/v[\d.]+[^/]*\/(.+)$/);
-        if (
-            versionedMatch &&
-            !versionedMatch[1].startsWith('libs/') &&
-            !versionedMatch[1].startsWith('admin-files/') &&
-            !versionedMatch[1].startsWith('user-files/')
-        ) {
+        if (versionedMatch && !versionedMatch[1].startsWith('libs/') && !versionedMatch[1].startsWith('admin-files/')) {
             const filePath = path.join(process.cwd(), 'public', versionedMatch[1]);
             if (fs.existsSync(filePath)) {
                 const content = fs.readFileSync(filePath);
@@ -394,35 +365,6 @@ const app = new Elysia()
         // Security: ensure path is within the themes/site directory
         const resolvedPath = path.resolve(filePath);
         const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'site'));
-        if (!resolvedPath.startsWith(resolvedBase)) {
-            set.status = 403;
-            return 'Forbidden';
-        }
-
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            const content = fs.readFileSync(filePath);
-            const ext = path.extname(filePath).toLowerCase();
-            const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-            set.headers['Content-Type'] = contentType;
-            set.headers['Content-Length'] = content.length.toString();
-            set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
-            return content;
-        }
-
-        set.status = 404;
-        return 'Not Found';
-    })
-    // Serve user theme files from FILES_DIR/themes/users/
-    // URL pattern: /user-files/themes/{dirName}/* or /{version}/user-files/themes/{dirName}/*
-    .get('/user-files/themes/*', ({ params, set }) => {
-        const relativePath = params['*'] || '';
-        const filesDir = getFilesDir();
-        const filePath = path.join(filesDir, 'themes', 'users', relativePath);
-
-        // Security: ensure path is within the themes/users directory
-        const resolvedPath = path.resolve(filePath);
-        const resolvedBase = path.resolve(path.join(filesDir, 'themes', 'users'));
         if (!resolvedPath.startsWith(resolvedBase)) {
             set.status = 403;
             return 'Forbidden';

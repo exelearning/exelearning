@@ -381,6 +381,21 @@ const ODE_PROJECT_SYNC_PROPERTIES_CONFIG = {
             category: 'properties',
             groups: { export: GROUPS_TITLE.export },
         },
+        pp_globalFont: {
+            title: `${TRANS_PREFIX}Global font`,
+            help: `${TRANS_PREFIX}Apply a global font to all content. Useful for accessibility and early literacy.`,
+            value: 'default',
+            type: 'select',
+            options: {
+                default: `${TRANS_PREFIX}Theme default`,
+                opendyslexic: 'OpenDyslexic',
+                andika: 'Andika',
+                nunito: 'Nunito',
+                'playwrite-es': 'Playwrite ES',
+            },
+            category: 'properties',
+            groups: { export: GROUPS_TITLE.export },
+        },
 
         // === GROUP: custom_code (Código personalizado) ===
         pp_extraHeadContent: {

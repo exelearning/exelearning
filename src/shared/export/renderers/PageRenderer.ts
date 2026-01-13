@@ -97,13 +97,20 @@ export class PageRenderer {
             onUnloadScript = '',
             // Theme files (CSS/JS from theme root directory)
             themeFiles = [],
+            // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
+            hideNavigation = false,
+            hideNavButtons = false,
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
 
-        // Detect content-based libraries from page content
-        const pageContent = this.renderPageContent(page, basePath);
-        const detectedLibraries = this.detectContentLibraries(pageContent);
+        // Detect libraries from ORIGINAL content (before transformation)
+        // This is important for exe-package:elp links which get transformed during rendering
+        const originalContent = this.collectPageContent(page);
+        const detectedLibraries = this.detectContentLibraries(originalContent);
+
+        // Render page content (includes exe-package:elp → onclick transformation)
+        const pageContent = this.renderPageContent(page, basePath, projectTitle);
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -133,6 +140,12 @@ export class PageRenderer {
         // Build "Made with eXeLearning" link (only if enabled)
         const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : '';
 
+        // Build navigation HTML (hidden for SCORM/IMS - LMS handles navigation)
+        const navHtml = hideNavigation ? '' : this.renderNavigation(allPages, page.id, basePath);
+
+        // Build nav buttons HTML (hidden for SCORM/IMS - LMS handles navigation)
+        const navButtonsHtml = hideNavButtons ? '' : this.renderNavButtons(page, allPages, basePath, language);
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
@@ -140,10 +153,10 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}<main id="${page.id}" class="page"> ${searchBoxHtml}
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${pageContent}
-</div></main>${this.renderNavButtons(page, allPages, basePath, language)}
+</div></main>${navButtonsHtml}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
 ${madeWithExeHtml}
@@ -541,9 +554,10 @@ ${madeWithExeHtml}
      * Render page content (blocks with iDevices)
      * @param page - Page
      * @param basePath - Base path
+     * @param projectTitle - Project title (for exe-package:elp transformation)
      * @returns Content HTML
      */
-    renderPageContent(page: ExportPage, basePath: string): string {
+    renderPageContent(page: ExportPage, basePath: string, projectTitle?: string): string {
         let html = '';
 
         for (const block of page.blocks || []) {
@@ -553,7 +567,56 @@ ${madeWithExeHtml}
             });
         }
 
+        // Transform exe-package:elp protocol to onclick handler (for download-source-file)
+        // This is done here at render time, not during preprocessing, so the XML keeps the original protocol
+        if (projectTitle) {
+            html = this.replaceElpxProtocol(html, projectTitle);
+        }
+
         return html;
+    }
+
+    /**
+     * Collect all content from a page's components (for library detection)
+     * @param page - Page to collect content from
+     * @returns Combined HTML content from all components
+     */
+    collectPageContent(page: ExportPage): string {
+        const parts: string[] = [];
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                if (component.content) {
+                    parts.push(component.content);
+                }
+            }
+        }
+        return parts.join('\n');
+    }
+
+    /**
+     * Replace exe-package:elp protocol with client-side download handler
+     * This enables the download-source-file iDevice to generate ELPX files on-the-fly
+     *
+     * @param content - HTML content
+     * @param projectTitle - Project title for the download filename
+     * @returns Content with exe-package:elp replaced with onclick handler
+     */
+    replaceElpxProtocol(content: string, projectTitle: string): string {
+        if (!content || !content.includes('exe-package:elp')) {
+            return content;
+        }
+
+        // Replace href="exe-package:elp" with onclick handler
+        let result = content.replace(
+            /href="exe-package:elp"/g,
+            'href="#" onclick="if(typeof downloadElpx===\'function\')downloadElpx();return false;"',
+        );
+
+        // Replace download="exe-package:elp-name" with actual filename
+        const safeTitle = this.escapeHtml(projectTitle);
+        result = result.replace(/download="exe-package:elp-name"/g, `download="${safeTitle}.elpx"`);
+
+        return result;
     }
 
     /**
@@ -756,7 +819,7 @@ ${userFooterHtml}</div></footer>`;
 <h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2>
 </header>
 <div class="page-content">
-${this.renderPageContent(page, '')}
+${this.renderPageContent(page, '', projectTitle)}
 </div>
 </section>\n`;
         }
@@ -892,6 +955,11 @@ ${this.renderLicense({ author, license })}
                 case 'data':
                     // Look for data-pattern or data-pattern="..."
                     found = html.includes(`data-${lib.pattern}`) || html.includes(`data-${lib.pattern}=`);
+                    break;
+
+                case 'regex':
+                    // Use provided regex pattern (e.g., for exe-package:elp protocol)
+                    found = (lib.pattern as RegExp).test(html);
                     break;
             }
 

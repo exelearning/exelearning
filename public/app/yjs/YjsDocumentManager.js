@@ -957,6 +957,21 @@ class YjsDocumentManager {
   }
 
   /**
+   * Get theme files map - stores user theme files imported from .elpx
+   * Structure: Map<themeName, Map<relativePath, base64FileContent>>
+   * Example: themeFiles.get('universal') -> Map { 'style.css' -> '...base64...', 'config.xml' -> '...' }
+   *
+   * User themes imported from .elpx files are stored client-side in Yjs,
+   * not on the server. This simplifies the architecture and allows
+   * themes to sync automatically between collaborators.
+   * @returns {Y.Map}
+   */
+  getThemeFiles() {
+    this._ensureInitialized();
+    return this.ydoc.getMap('themeFiles');
+  }
+
+  /**
    * Get the raw Y.Doc
    * @returns {Y.Doc}
    */

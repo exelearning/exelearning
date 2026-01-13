@@ -16,7 +16,7 @@
 
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Html5ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
-import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class Html5Exporter extends BaseExporter {
     /**
@@ -46,11 +46,12 @@ export class Html5Exporter extends BaseExporter {
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
             const themeName = html5Options?.theme || meta.theme || 'base';
 
-            // Pre-process pages: add filenames to asset URLs
-            pages = await this.preprocessPagesForExport(pages);
-
-            // Check if download-source-file iDevice is used (needs ELPX manifest for client-side ZIP)
+            // Check for ELPX download support (looks for exe-package:elp in content)
             const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // Pre-process pages: add filenames to asset URLs, convert internal links
+            // Note: exe-package:elp transformation now happens in PageRenderer.renderPageContent()
+            pages = await this.preprocessPagesForExport(pages);
 
             // File tracking for ELPX manifest (only when download-source-file is used)
             const fileList: string[] | null = needsElpxDownload ? [] : null;
@@ -156,11 +157,10 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 3. Add content.xml and DTD (ODE format for re-import) - only if exportSource is enabled
+            // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
             if (meta.exportSource !== false) {
                 const contentXml = this.generateContentXml();
                 addFile('content.xml', contentXml);
-                addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
             }
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
@@ -219,6 +219,7 @@ export class Html5Exporter extends BaseExporter {
             // 8. Detect and fetch additional required libraries based on content
             // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
             // Skip Mermaid if diagrams were pre-rendered to static SVG
+            // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,
@@ -266,6 +267,23 @@ export class Html5Exporter extends BaseExporter {
                 }
             }
 
+            // 9.5. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                        }
+                        console.log(
+                            `[Html5Exporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`,
+                        );
+                    }
+                } catch (e) {
+                    console.warn(`[Html5Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
             // 10. Add project assets (with tracking)
             await this.addAssetsToZipWithResourcePath(fileList);
 
@@ -288,7 +306,9 @@ export class Html5Exporter extends BaseExporter {
                 const filename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 let html = pageHtmlMap.get(filename) || '';
 
-                // Only add manifest script to pages that have download-source-file iDevice
+                // Only add manifest script to pages that have download-source-file iDevice or exe-package:elp link
+                // Note: pageHasDownloadSourceFile works correctly because exe-package:elp is not transformed
+                // in the pages data (transformation happens in PageRenderer during HTML rendering)
                 if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
                     const basePath = i === 0 ? '' : '../';
                     const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
@@ -334,12 +354,29 @@ export class Html5Exporter extends BaseExporter {
         const usedIdevices = this.getUsedIdevicesForPage(page);
         const currentPageIndex = pageIndex ?? allPages.findIndex(p => p.id === page.id);
 
+        // Generate global font CSS if a font is selected
+        let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-export exe-web-site';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
+            if (globalFontCss) {
+                // Prepend global font CSS to customStyles (font CSS should come first)
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+            // Add font-specific body class for CSS overrides
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
+            }
+        }
+
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
             projectSubtitle: meta.subtitle || '',
             language: meta.language || 'en',
             theme: meta.theme || 'base',
-            customStyles: meta.customStyles || '',
+            customStyles,
+            bodyClass,
             allPages,
             basePath,
             isIndex,
