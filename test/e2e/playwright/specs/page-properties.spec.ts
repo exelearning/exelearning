@@ -310,7 +310,8 @@ test.describe('Page Properties', () => {
         );
 
         // The page-header inside the article should be hidden (display:none) on first page
-        const activePageHeader = iframe.locator('article .page-header-spa');
+        // Multi-page export uses .page-header, not .page-header-spa
+        const activePageHeader = iframe.locator('.page-header');
         await expect(activePageHeader).toHaveCSS('display', 'none');
 
         // Navigate to the second page
@@ -322,7 +323,8 @@ test.describe('Page Properties', () => {
         await expect(activePageHeader).not.toHaveCSS('display', 'none');
 
         // The title should be visible and contain the correct text
-        const pageTitle = iframe.locator('article .page-title');
+        // Multi-page export uses .page-title in .page-header
+        const pageTitle = iframe.locator('.page-title');
         await expect(pageTitle).toContainText('Visible Title Page');
     });
 
@@ -414,7 +416,8 @@ test.describe('Page Properties', () => {
         );
 
         // The page title in header should show the custom title (titlePage), not the navigation title
-        const pageTitle = iframe.locator('article .page-title');
+        // Multi-page export uses .page-title in .page-header, not inside article
+        const pageTitle = iframe.locator('.page-title');
         await expect(pageTitle).toContainText('Custom Display Title');
         await expect(pageTitle).not.toContainText('Navigation Title');
 
@@ -423,7 +426,7 @@ test.describe('Page Properties', () => {
         await secondPageLink.click();
         await page.waitForTimeout(500);
 
-        // The title should be the normal page title (now in active article)
+        // The title should be the normal page title (multi-page navigation loads new page)
         await expect(pageTitle).toContainText('Normal Page');
     });
 
