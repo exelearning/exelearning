@@ -263,7 +263,7 @@ var $exeDevice = {
                     const stageTitle = stage.title || '';
 
                     (stage.levels || []).forEach((level) => {
-                        const levelCode = level.nivel;
+                        const levelCode = level.level;
                         const levelTitle = level.title || '';
                         const performanceStatement =
                             level.performance_statements || '';
@@ -676,14 +676,14 @@ var $exeDevice = {
                 <div class="digcompedu-modal-dialog">
                     <header class="digcompedu-modal-header">
                         <h5 class="digcompedu-modal-title">${_('Selection summary preview')}</h5>
-                        <button type="button" id="${this.modalCloseId}">${_('Close')}</button>
+                        <button type="button" id="${this.modalCloseId}" class="digcompedu-modal-close" aria-label="${_('Close')}">&times;</button>
                     </header>
                     <div class="digcompedu-modal-body">
                         <div id="${this.summaryTablePreviewId}" class="digcompedu-summary-table-container"></div>
                         <div id="${this.summaryTextPreviewId}" class="digcompedu-text-summary"></div>
                     </div>
                     <footer class="digcompedu-modal-footer">
-                        <button type="button" id="${this.modalDismissId}" class="secondary">${_('Dismiss')}</button>
+                        <button type="button" id="${this.modalDismissId}" class="secondary">${_('Close')}</button>
                     </footer>
                 </div>
             </div>
@@ -721,6 +721,7 @@ var $exeDevice = {
             input.addEventListener('change', () => {
                 this.summaryTableHtml = '';
                 this.summaryTextHtml = '';
+                this.updateSummaryPreview();
             });
         });
 
@@ -1381,11 +1382,18 @@ var $exeDevice = {
         const textPreview = this.ideviceBody.querySelector(
             `#${this.summaryTextPreviewId}`
         );
+        const displayMode = this.getDisplayModeValue();
         if (tablePreview) {
             tablePreview.innerHTML = this.summaryTableHtml || '';
         }
         if (textPreview) {
-            textPreview.innerHTML = this.summaryTextHtml || '';
+            if (displayMode === 'table+summary') {
+                textPreview.innerHTML = this.summaryTextHtml || '';
+                textPreview.style.display = '';
+            } else {
+                textPreview.innerHTML = '';
+                textPreview.style.display = 'none';
+            }
         }
     },
 

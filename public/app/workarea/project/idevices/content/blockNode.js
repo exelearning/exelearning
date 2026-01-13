@@ -1798,10 +1798,21 @@ export default class IdeviceBlockNode {
 
     /**
      * Remove idevices of block
-     *
+     * Only removes iDevices that actually belong to this block (matching blockId)
+     * This prevents cascading deletion when iDevices have moved to other blocks
      */
     removeIdevices() {
-        this.idevices.forEach((idevice) => {
+        // First, clean up stale references from the list
+        this.clearIdevicesOfList();
+
+        // Only delete iDevices that truly belong to this block
+        // This prevents cascading deletion when iDevice references are stale
+        const myIdevices = this.idevices.filter((idevice) => {
+            // Check if this iDevice still belongs to this block
+            return idevice.blockId === this.blockId;
+        });
+
+        myIdevices.forEach((idevice) => {
             idevice.remove(false);
         });
     }
@@ -1812,8 +1823,9 @@ export default class IdeviceBlockNode {
      */
     removeIdeviceOfListById(id) {
         this.clearIdevicesOfList();
+        // Filter by both id and odeIdeviceId for consistency
         this.idevices = this.idevices.filter((idevice, index, arr) => {
-            return idevice.id != id;
+            return idevice.id != id && idevice.odeIdeviceId != id;
         });
     }
 

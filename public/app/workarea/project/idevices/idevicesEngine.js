@@ -100,7 +100,8 @@ export default class IdevicesEngine {
         this.draggedElement.classList.add('idevice-content-block');
         this.draggedElement.classList.add('idevice-element-in-content');
         // Element after draggable element
-        let query = '.idevice-element-in-content.draggable:not(.dragging)';
+        // Exclude box-head elements - iDevices can only be placed after the header, not before it
+        let query = '.idevice-element-in-content.draggable:not(.dragging):not(.box-head)';
         let otherElements = [...container.querySelectorAll(query)];
         let afterElement = this.getDragAfterElement(ypos, otherElements);
         if (afterElement) {
@@ -127,7 +128,8 @@ export default class IdevicesEngine {
      */
     moveIdeviceContentToContent(container, ypos) {
         // Element after draggable element
-        let query = '.idevice-element-in-content.draggable:not(.dragging)';
+        // Exclude box-head elements - iDevices can only be placed after the header, not before it
+        let query = '.idevice-element-in-content.draggable:not(.dragging):not(.box-head)';
         let otherElements = [...container.querySelectorAll(query)];
         let afterElement = this.getDragAfterElement(ypos, otherElements);
         if (afterElement) {
@@ -523,8 +525,24 @@ export default class IdevicesEngine {
             if (ideviceNode) {
                 let ideviceNodePreviousBlockId = ideviceNode.blockId;
                 let idevicePreviousOrder = ideviceNode.order;
+
+                // IMPORTANT: Remove iDevice from source block's idevices array BEFORE moving
+                // This prevents stale references that cause cascading deletion bugs
+                const sourceBlock = this.getBlockById(ideviceNodePreviousBlockId);
+                if (sourceBlock) {
+                    sourceBlock.removeIdeviceOfListById(ideviceNode.odeIdeviceId);
+                }
+
                 // Add idevice content to container (main container or block)
                 this.addIdeviceNodeToContainer(ideviceNode, container);
+
+                // IMPORTANT: Add iDevice to target block's idevices array AFTER moving
+                // This ensures the block-iDevice relationship is properly maintained
+                const targetBlock = this.getBlockById(ideviceNode.blockId);
+                if (targetBlock && !targetBlock.idevices.includes(ideviceNode)) {
+                    targetBlock.idevices.push(ideviceNode);
+                }
+
                 // Add idevice to components list in case there isn't
                 if (!this.getIdeviceById(ideviceNode.odeIdeviceId)) {
                     this.addIdeviceToComponentsList(
@@ -544,12 +562,45 @@ export default class IdevicesEngine {
                 this.resetDragOverClasses();
                 // We add the class to generate movement effect
                 ideviceNode.ideviceContent.classList.add('moving');
-                // Update the order of the idevice (change the parent block if necessary)
-                ideviceNode.apiUpdateBlock().then((response) => {
+
+                // Calculate new order from DOM position after reordering
+                const calculateIdeviceOrderFromDOM = (ideviceContent) => {
+                    const parent = ideviceContent.parentElement;
+                    if (!parent) return 0;
+                    const siblings = Array.from(
+                        parent.querySelectorAll(':scope > .idevice_node')
+                    );
+                    return siblings.indexOf(ideviceContent);
+                };
+                const newOrder = calculateIdeviceOrderFromDOM(
+                    ideviceNode.ideviceContent
+                );
+                ideviceNode.order = newOrder;
+
+                // Determine if this is a same-block reorder or a block change
+                const isSameBlockReorder =
+                    ideviceNodePreviousBlockId === ideviceNode.blockId;
+
+                const handlePostMove = () => {
                     setTimeout(() => {
                         ideviceNode.ideviceContent.classList.remove('moving');
                     }, this.movingClassDuration);
-                });
+                    // Check if source block became empty after move
+                    // Only check the specific source block, not all blocks
+                    // Pass null for same-block reorder (no block became empty)
+                    const blockToCheck = isSameBlockReorder
+                        ? null
+                        : ideviceNodePreviousBlockId;
+                    this.setParentsAndChildrenIdevicesBlocks(blockToCheck);
+                };
+
+                if (isSameBlockReorder) {
+                    // Same block - call apiUpdateOrder to sync order to Yjs
+                    ideviceNode.apiUpdateOrder(false).then(handlePostMove);
+                } else {
+                    // Different block - call apiUpdateBlock to handle block change
+                    ideviceNode.apiUpdateBlock().then(handlePostMove);
+                }
             }
         }
     }
@@ -759,8 +810,22 @@ export default class IdevicesEngine {
                 // Reset dragged element
                 this.resetDragElement();
                 this.resetDragOverClasses();
-                // Update order in database
-                blockNode.apiUpdateOrder(true).then((response) => {
+
+                // Calculate new order directly from DOM position (more reliable than getCurrentOrder)
+                const calculateBlockOrderFromDOM = (blockContent) => {
+                    const parent = blockContent.parentElement;
+                    if (!parent) return 0;
+                    const siblings = Array.from(
+                        parent.querySelectorAll(':scope > article.box')
+                    );
+                    const blockArticle = blockContent.closest('article.box');
+                    return siblings.indexOf(blockArticle);
+                };
+                const newOrder = calculateBlockOrderFromDOM(blockNode.blockContent);
+                blockNode.order = newOrder;
+
+                // Update order in database with explicit order (not getCurrentOrder)
+                blockNode.apiUpdateOrder(false).then((response) => {
                     setTimeout(() => {
                         blockNode.blockContent.classList.remove('moving');
                     }, this.movingClassDuration);
@@ -807,6 +872,13 @@ export default class IdevicesEngine {
      */
     isDragableInside(element, container) {
         if (element && container && element != container) {
+            // Prevent drops on block headers and ANY element inside them
+            // The header (box-head) and all its children are NOT valid drop targets
+            // Only the block body should accept drops
+            if (this.isInsideBlockHeader(container)) {
+                return false;
+            }
+
             // In case the dragged element and the container are both boxes, it is not allowed to drop
             if (
                 !(
@@ -826,6 +898,27 @@ export default class IdevicesEngine {
                     return true;
                 }
             }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if an element is inside a block header (box-head)
+     * This includes the header itself and all its children (buttons, title, icons, etc.)
+     *
+     * @param {HTMLElement} element - The element to check
+     * @returns {boolean} True if the element is inside or is a block header
+     */
+    isInsideBlockHeader(element) {
+        if (!element) return false;
+
+        // Check the element itself and all its ancestors
+        let current = element;
+        while (current && current !== document.body) {
+            if (current.classList && current.classList.contains('box-head')) {
+                return true;
+            }
+            current = current.parentElement;
         }
         return false;
     }
@@ -1020,7 +1113,40 @@ export default class IdevicesEngine {
         if (container.id == 'node-content') {
             // It is necessary to add a block and idevice inside
             let iconName = ''; // The icons of the idevices will not be shown in the content
-            let blockData = { iconName, blockName: ideviceNode.idevice.title };
+            const blockName = ideviceNode.idevice?.title || '';
+
+            // Get Yjs bridge and page ID
+            const bridge = this.project._yjsBridge;
+            const pageId =
+                this.project.app.project.structure.getSelectNodePageId();
+
+            // Calculate block order from DOM position
+            const existingBlocks = container.querySelectorAll(
+                ':scope > article.box'
+            );
+            let blockOrder = existingBlocks.length;
+            if (this.draggedElement) {
+                const blocksArray = Array.from(existingBlocks);
+                for (let i = 0; i < blocksArray.length; i++) {
+                    const blockRect = blocksArray[i].getBoundingClientRect();
+                    const dragRect =
+                        this.draggedElement.getBoundingClientRect();
+                    if (dragRect.top < blockRect.top + blockRect.height / 2) {
+                        blockOrder = i;
+                        break;
+                    }
+                }
+            }
+
+            // Create block in Yjs FIRST if bridge available
+            // This ensures the block exists in Yjs before any move operations reference it
+            let yjsBlockId = null;
+            if (bridge && pageId) {
+                yjsBlockId = bridge.addBlock(pageId, blockName, null, blockOrder);
+            }
+
+            // Create DOM block with Yjs blockId (or generate local ID if no Yjs)
+            let blockData = { iconName, blockName, blockId: yjsBlockId };
             // Generate new block
             let ideviceBlockNode = this.newBlockNode(blockData, true);
             let ideviceBlockNodeContent = ideviceBlockNode.blockContent;
@@ -2243,7 +2369,7 @@ export default class IdevicesEngine {
      * Go through the list of components to assign the idevices to their respective blocks
      *
      */
-    setParentsAndChildrenIdevicesBlocks(checkEmptyBlock) {
+    setParentsAndChildrenIdevicesBlocks(blockIdToCheck = null) {
         this.components.blocks.forEach((block) => {
             block.idevices = [];
         });
@@ -2253,29 +2379,29 @@ export default class IdevicesEngine {
                 block.idevices.push(idevice);
             }
         });
-        // Check empty blocks if required
-        if (checkEmptyBlock) {
-            this.components.blocks.forEach((block) => {
+        // Check only the specific block that might have become empty
+        // This prevents showing dialogs for blocks that were already empty
+        if (blockIdToCheck) {
+            const block = this.getBlockById(blockIdToCheck);
+            if (block && block.idevices.length == 0) {
                 // Delete or ask if they want to delete the block
-                if (block.idevices.length == 0) {
-                    if (block.removeIfEmpty) {
-                        block.remove(true);
-                    } else if (block.askForRemoveIfEmpty) {
-                        setTimeout(() => {
-                            eXeLearning.app.modals.confirm.show({
-                                title: _('Delete box'),
-                                body: _(
-                                    'The box is empty. Do you want to delete it?'
-                                ),
-                                confirmButtonText: _('Yes'),
-                                confirmExec: () => {
-                                    block.remove(true);
-                                },
-                            });
-                        }, 300);
-                    }
+                if (block.removeIfEmpty) {
+                    block.remove(true);
+                } else if (block.askForRemoveIfEmpty) {
+                    setTimeout(() => {
+                        eXeLearning.app.modals.confirm.show({
+                            title: _('Delete box'),
+                            body: _(
+                                'The box is empty. Do you want to delete it?'
+                            ),
+                            confirmButtonText: _('Yes'),
+                            confirmExec: () => {
+                                block.remove(true);
+                            },
+                        });
+                    }, 300);
                 }
-            });
+            }
         }
     }
 
