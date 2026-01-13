@@ -1187,8 +1187,7 @@ class LegacyXmlParser {
             'text', 'casestudy', 'geogebra-activity', 'interactive-video',
             'scrambled-list', 'udl-content', 'image-gallery', 'beforeafter',
             'dragdrop', 'external-website', 'hidden-image', 'magnifier',
-            'periodic-table', 'attached-files', 'trueorfalse', 'example',
-            'collaborative-editing',
+            'periodic-table', 'trueorfalse', 'example',
           ];
           const allKnownTypes = [...Object.values(jsIdeviceTypeMap), ...knownModernTypes];
           if (!allKnownTypes.includes(ideviceType)) {
