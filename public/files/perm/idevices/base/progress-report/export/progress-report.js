@@ -10,6 +10,7 @@
 var $eXeInforme = {
     idevicePath: '',
     options: {},
+    instances: [],
     isInExe: false,
     data: null,
     dataIDevices: [],
@@ -59,7 +60,7 @@ var $eXeInforme = {
                 const pagesJson = this.parseOdeXmlToJson(xmlString);
                 const pagesHtml = this.generateHtmlFromJsonPages(pagesJson);
                 $eXeInforme.createTableIdevices(pagesHtml, idx);
-                $eXeInforme.updatePages($eXeInforme.options.dataIDevices, idx);
+                $eXeInforme.updatePages(mOption.dataIDevices, idx);
                 $eXeInforme.applyTypeShow(mOption.typeshow, idx);
             })
             .catch(() => {
@@ -344,17 +345,19 @@ var $eXeInforme = {
         const idevices = $eXeInforme.buildNestedPages(data);
         const pages = $eXeInforme.createPagesHtml(idevices);
         $eXeInforme.createTableIdevices(pages, idx);
-        $eXeInforme.updatePages($eXeInforme.options.dataIDevices, idx);
+        $eXeInforme.updatePages(mOption.dataIDevices, idx);
         $eXeInforme.applyTypeShow(mOption.typeshow, idx);
     },
 
     loadGame: function () {
+        $eXeInforme.instances = [];
         $eXeInforme.activities.each(function (i) {
             const $activity = $(this);
             const dl = $('.informe-DataGame', $activity);
             const mOption = $eXeInforme.loadDataGame(dl);
             
-            // Store this instance's options
+            // Store this instance's options in the instances array
+            $eXeInforme.instances[i] = mOption;
             $eXeInforme.options = mOption;
             
             const informe = $eXeInforme.createInterfaceinforme(i);
@@ -408,8 +411,8 @@ var $eXeInforme = {
         let idevices = $eXeInforme.buildNestedPages(data);
         const pages = $eXeInforme.createPagesHtml(idevices);
         $eXeInforme.createTableIdevices(pages, idx);
-        $eXeInforme.updatePages($eXeInforme.options.dataIDevices, idx);
-        $eXeInforme.applyTypeShow($eXeInforme.options.typeshow, idx);
+        $eXeInforme.updatePages(mOption.dataIDevices, idx);
+        $eXeInforme.applyTypeShow(mOption.typeshow, idx);
     },
 
     /**
@@ -1451,15 +1454,18 @@ var $eXeInforme = {
         $(document).on('click.informeReport', '.informeReboot', function (e) {
             e.preventDefault();
             const idx = $(this).data('instance') || 0;
-            if (confirm($eXeInforme.options.msgs.msgDelete)) {
+            const mOption = $eXeInforme.instances[idx] || $eXeInforme.options;
+            if (confirm(mOption.msgs.msgDelete)) {
                 localStorage.removeItem(
-                    'dataEvaluation-' + $eXeInforme.options.evaluationID
+                    'dataEvaluation-' + mOption.evaluationID
                 );
-                $eXeInforme.options.dataIDevices = [];
+                mOption.dataIDevices = [];
                 if (eXe.app.isInExe()) {
-                    $eXeInforme.getIdevicesBySessionId(false, $eXeInforme.options, idx);
+                    $eXeInforme.getIdevicesBySessionId(false, mOption, idx);
+                } else if ($eXeInforme.isPreviewMode()) {
+                    $eXeInforme.loadFromDom(mOption, idx);
                 } else {
-                    $eXeInforme.loadFromContentXml($eXeInforme.options, idx);
+                    $eXeInforme.loadFromContentXml(mOption, idx);
                 }
             }
         });
