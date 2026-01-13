@@ -25,8 +25,7 @@ import type {
     ExportComponentProperties,
 } from '../interfaces';
 
-import { buildFromStructure } from '../../../services/xml/xml-builder';
-import type { NormalizedPage, OdeXmlMeta, NormalizedComponent } from '../../../services/xml/interfaces';
+import { generateOdeXml } from '../generators/OdeXmlGenerator';
 
 /**
  * Type definitions for Yjs structures used by YjsDocumentManager
@@ -368,120 +367,13 @@ export class YjsDocumentAdapter implements ExportDocument {
     /**
      * Generate content.xml from Yjs document structure
      * This enables SCORM exports to include the ODE XML for re-editing
-     * @returns ODE-format XML string
+     * @returns ODE-format XML string with DOCTYPE declaration
      */
     async getContentXml(): Promise<string> {
         const metadata = this.getMetadata();
         const pages = this.getNavigation();
 
-        // Convert ExportMetadata → OdeXmlMeta
-        const meta: OdeXmlMeta = {
-            title: metadata.title,
-            subtitle: metadata.subtitle || '',
-            author: metadata.author,
-            description: metadata.description || '',
-            language: metadata.language,
-            license: metadata.license || '',
-            keywords: metadata.keywords || '',
-            theme: metadata.theme || 'base',
-            version: '3.0',
-            exelearning_version: metadata.exelearningVersion || '3.0',
-            created: metadata.createdAt || new Date().toISOString(),
-            modified: new Date().toISOString(),
-            // Export options
-            addExeLink: metadata.addExeLink,
-            addPagination: metadata.addPagination,
-            addSearchBox: metadata.addSearchBox,
-            addAccessibilityToolbar: metadata.addAccessibilityToolbar,
-            addMathJax: metadata.addMathJax,
-            exportSource: metadata.exportSource,
-            // Custom content
-            extraHeadContent: metadata.extraHeadContent,
-            footer: metadata.footer,
-        };
-
-        // Calculate page levels from parent hierarchy
-        const pageLevels = this.calculatePageLevels(pages);
-
-        // Convert ExportPage[] → NormalizedPage[]
-        const normalizedPages: NormalizedPage[] = pages.map((page, idx) => ({
-            id: page.id,
-            title: page.title,
-            level: pageLevels.get(page.id) || 0,
-            parent_id: page.parentId,
-            position: page.order ?? idx,
-            components: this.flattenBlocksToComponents(page.blocks),
-        }));
-
-        // Build ODE XML using existing builder
-        return buildFromStructure({
-            meta,
-            pages: normalizedPages,
-            navigation: { page: [] },
-            raw: { ode: {} },
-        });
-    }
-
-    /**
-     * Calculate page levels based on parent hierarchy
-     */
-    private calculatePageLevels(pages: ExportPage[]): Map<string, number> {
-        const levels = new Map<string, number>();
-        const pageMap = new Map<string, ExportPage>();
-
-        // Build page map
-        for (const page of pages) {
-            pageMap.set(page.id, page);
-        }
-
-        // Calculate level for each page
-        const getLevel = (pageId: string): number => {
-            if (levels.has(pageId)) {
-                return levels.get(pageId)!;
-            }
-
-            const page = pageMap.get(pageId);
-            if (!page || !page.parentId) {
-                levels.set(pageId, 0);
-                return 0;
-            }
-
-            const parentLevel = getLevel(page.parentId);
-            const level = parentLevel + 1;
-            levels.set(pageId, level);
-            return level;
-        };
-
-        for (const page of pages) {
-            getLevel(page.id);
-        }
-
-        return levels;
-    }
-
-    /**
-     * Flatten blocks and their components into NormalizedComponent array
-     */
-    private flattenBlocksToComponents(blocks: ExportBlock[]): NormalizedComponent[] {
-        const components: NormalizedComponent[] = [];
-
-        for (const block of blocks) {
-            for (const comp of block.components) {
-                components.push({
-                    id: comp.id,
-                    type: comp.type,
-                    content: comp.content,
-                    order: comp.order,
-                    blockId: block.id,
-                    blockName: block.name,
-                    blockIconName: block.iconName,
-                    blockProperties: block.properties as Record<string, string | number | boolean | null>,
-                    properties: comp.structureProperties as Record<string, string | number | boolean | null>,
-                    data: comp.properties,
-                });
-            }
-        }
-
-        return components;
+        // Use unified ODE XML generator
+        return generateOdeXml(metadata, pages);
     }
 }

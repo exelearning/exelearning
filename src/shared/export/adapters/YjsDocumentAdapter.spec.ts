@@ -851,7 +851,7 @@ describe('YjsDocumentAdapter', () => {
     });
 
     describe('getContentXml', () => {
-        it('should generate valid XML from document structure', async () => {
+        it('should generate valid ODE XML from document structure', async () => {
             const component = createMockComponent('c1', 'FreeTextIdevice', '<p>Test content</p>');
             const block = createMockBlock('b1', 'Test Block', [component]);
             const page = createMockPage('p1', 'Test Page', [block]);
@@ -869,13 +869,14 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            // Should be valid XML
+            // Should be valid ODE XML with DOCTYPE declaration
             expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-            expect(xml).toContain('<exe_document>');
-            expect(xml).toContain('</exe_document>');
+            expect(xml).toContain('<!DOCTYPE ode SYSTEM "content.dtd">');
+            expect(xml).toContain('<ode xmlns="http://www.intef.es/xsd/ode"');
+            expect(xml).toContain('</ode>');
         });
 
-        it('should include metadata in XML', async () => {
+        it('should include metadata in odeProperties section', async () => {
             const page = createMockPage('p1', 'Page');
 
             manager = new MockYjsDocumentManager(
@@ -894,12 +895,12 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            expect(xml).toContain('<meta>');
+            expect(xml).toContain('<odeProperties>');
             expect(xml).toContain('My Project');
             expect(xml).toContain('John Doe');
         });
 
-        it('should include navigation structure in XML', async () => {
+        it('should include navigation structure in odeNavStructures', async () => {
             const page1 = createMockPage('p1', 'First Page', [], null, 0);
             const page2 = createMockPage('p2', 'Second Page', [], null, 1);
 
@@ -908,7 +909,7 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            expect(xml).toContain('<navigation>');
+            expect(xml).toContain('<odeNavStructures>');
             expect(xml).toContain('First Page');
             expect(xml).toContain('Second Page');
         });
@@ -944,15 +945,17 @@ describe('YjsDocumentAdapter', () => {
             expect(xml).toContain('MultipleChoiceIdevice');
         });
 
-        it('should handle empty document', async () => {
+        it('should handle empty document with empty odeNavStructures', async () => {
             manager = new MockYjsDocumentManager({ title: 'Empty Project' }, []);
             adapter = new YjsDocumentAdapter(manager as any);
 
-            // Should throw because buildFromStructure requires at least one root page
-            await expect(adapter.getContentXml()).rejects.toThrow();
+            // With * cardinality, empty navigation is now valid
+            const xml = await adapter.getContentXml();
+            expect(xml).toContain('<odeNavStructures>');
+            expect(xml).toContain('</odeNavStructures>');
         });
 
-        it('should include export options in metadata', async () => {
+        it('should include export options in odeProperties', async () => {
             const page = createMockPage('p1', 'Page');
 
             manager = new MockYjsDocumentManager(
@@ -969,7 +972,7 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            expect(xml).toContain('<meta>');
+            expect(xml).toContain('<odeProperties>');
             // Export options should be in the XML
             expect(xml).toBeDefined();
         });
@@ -1001,9 +1004,10 @@ describe('YjsDocumentAdapter', () => {
 
             const xml = await adapter.getContentXml();
 
-            // Should still generate valid XML with defaults
+            // Should still generate valid ODE XML with defaults
             expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
-            expect(xml).toContain('<exe_document>');
+            expect(xml).toContain('<!DOCTYPE ode SYSTEM "content.dtd">');
+            expect(xml).toContain('<ode xmlns="http://www.intef.es/xsd/ode"');
         });
 
         it('should correctly calculate page levels for deep hierarchy', async () => {

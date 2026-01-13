@@ -27,7 +27,6 @@ interface ResourceFetcherInterface {
     fetchScormFiles(): Promise<Map<string, Blob>>;
     fetchLibraryFiles(paths: string[]): Promise<Map<string, Blob>>;
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
-    fetchSchemas(format: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
 }
@@ -90,17 +89,6 @@ export class BrowserResourceProvider implements ResourceProvider {
      */
     async fetchScormFiles(_version: '1.2' | '2004' = '1.2'): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchScormFiles();
-        return this.convertBlobMapToUint8ArrayMap(blobMap);
-    }
-
-    /**
-     * Fetch SCORM schema XSD files
-     * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of path -> content
-     */
-    async fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>> {
-        const format = version === '1.2' ? 'scorm12' : 'scorm2004';
-        const blobMap = await this.fetcher.fetchSchemas(format);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
@@ -171,16 +159,6 @@ export class BrowserResourceProvider implements ResourceProvider {
      */
     async fetchLibraryDirectory(libraryName: string): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchLibraryDirectory(libraryName);
-        return this.convertBlobMapToUint8ArrayMap(blobMap);
-    }
-
-    /**
-     * Fetch schema files for a format
-     * @param format - Format name (scorm12, scorm2004, ims, epub3)
-     * @returns Map of path -> content
-     */
-    async fetchSchemas(format: string): Promise<Map<string, Uint8Array>> {
-        const blobMap = await this.fetcher.fetchSchemas(format);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
