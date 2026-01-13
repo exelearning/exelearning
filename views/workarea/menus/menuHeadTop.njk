@@ -18,7 +18,7 @@
             <button id="dropdownStyles" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="{{ t.styles or 'Styles' }}">
                 <span class="medium-icon styles-icon"></span>
             </button>
-            <button id="head-top-settings-button" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="{{ t.settings or 'Settings' }}" data-testid="settings-button">
+            <button id="head-top-settings-button" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="{{ t.project_properties or 'Project Properties' }}" data-testid="settings-button">
                 <span class="medium-icon settings-icon"></span>
             </button>
             <button id="head-top-share-button"
@@ -62,7 +62,7 @@
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-scorm12" href="#">SCORM 1.2</a></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-epub3" href="#">ePub3</a></li>
                     <li class="dropdown-divider d-md-none"></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-settings" href="#">{{ t.settings or 'Settings' }}</a></li>
+                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-settings" href="#">{{ t.project_properties or 'Project Properties' }}</a></li>
                     <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-share" href="#">{{ t.share or 'Share' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
                     <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.utilities or 'Utilities' }}</small></li>
