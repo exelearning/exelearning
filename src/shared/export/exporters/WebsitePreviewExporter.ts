@@ -18,7 +18,7 @@ import type {
     MermaidPreRenderResult,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
-import { normalizeIdeviceType } from '../constants';
+import { normalizeIdeviceType, getLicenseClass } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { getIdeviceExportFiles } from '../../../services/idevice-config';
 
@@ -867,13 +867,14 @@ ${blockHtml}
      */
     private renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
         const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+        const licenseClass = getLicenseClass(license);
 
         let userFooterHtml = '';
         if (userFooterContent) {
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="cc cc-by-sa"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
