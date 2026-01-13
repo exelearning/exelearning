@@ -760,7 +760,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     report_bug: trans('Report a bug', {}, locale),
                     download: trans('Download', {}, locale),
                     styles: trans('Styles', {}, locale),
-                    settings: trans('Settings', {}, locale),
+                    project_properties: trans('Project Properties', {}, locale),
                     share: trans('Share', {}, locale),
                     private: trans('Private', {}, locale),
                     public: trans('Public', {}, locale),
