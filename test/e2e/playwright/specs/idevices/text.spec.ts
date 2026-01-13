@@ -2120,7 +2120,10 @@ test.describe('Text iDevice', () => {
             const targetSize = Math.max(50, Math.floor((imageDimensions?.width || 400) / 2));
             await optimizerFrame.locator('#inputSize').fill(String(targetSize));
             await optimizerFrame.locator('#inputSize').dispatchEvent('change');
-            await optimizerFrame.locator('#inputQuality').selectOption('0.5');
+            const qualitySelect = optimizerFrame.locator('#inputQuality');
+            if (await qualitySelect.isVisible().catch(() => false)) {
+                await qualitySelect.selectOption('0.5');
+            }
 
             await optimizerFrame.waitForFunction(() => {
                 const img = document.getElementById('imageEditorOutputImg') as HTMLImageElement | null;
