@@ -270,18 +270,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch SCORM schema XSD files
-     * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of file paths to content
-     */
-    async fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Buffer>> {
-        // Schema files are in app/schemas/scorm12/ or app/schemas/scorm2004/
-        const schemaDir = version === '1.2' ? 'scorm12' : 'scorm2004';
-        const schemaPath = path.join(this.publicDir, 'app', 'schemas', schemaDir);
-        return this.readDirectoryRecursive(schemaPath, '');
-    }
-
-    /**
      * Read all files from a directory recursively
      * @param dirPath - Directory path
      * @param prefix - Prefix for output paths (can be empty string)

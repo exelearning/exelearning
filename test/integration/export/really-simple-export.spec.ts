@@ -303,12 +303,6 @@ describe('Really Simple Export Tests', () => {
             expect(exists).toBe(true);
         });
 
-        it('should have XSD schema files', async () => {
-            expect(await fixtureFileExists(FORMAT, 'adlcp_rootv1p2.xsd')).toBe(true);
-            expect(await fixtureFileExists(FORMAT, 'imscp_rootv1p1p2.xsd')).toBe(true);
-            expect(await fixtureFileExists(FORMAT, 'imsmd_rootv1p2p1.xsd')).toBe(true);
-        });
-
         it('should have SCORM API wrapper library', async () => {
             expect(await fixtureFileExists(FORMAT, 'libs/SCORM_API_wrapper.js')).toBe(true);
             expect(await fixtureFileExists(FORMAT, 'libs/SCOFunctions.js')).toBe(true);

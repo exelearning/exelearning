@@ -49,7 +49,6 @@ export interface ExportMetadata {
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
-    globalFont?: string; // Global font: 'default' | 'opendyslexic' | 'andika' | 'nunito' | 'playwrite-es'
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>
@@ -189,20 +188,6 @@ export interface ResourceProvider {
      * @returns Map of relative path -> content buffer
      */
     fetchScormFiles(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
-
-    /**
-     * Fetch SCORM schema XSD files for validation
-     * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of relative path -> content buffer
-     */
-    fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
-
-    /**
-     * Fetch global font files for embedding in exports
-     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
-     * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
-     */
-    fetchGlobalFontFiles(fontId: string): Promise<Map<string, Uint8Array>>;
 }
 
 /**
@@ -281,6 +266,13 @@ export interface ZipArchive {
      * @returns True if file exists
      */
     hasFile(path: string): boolean;
+
+    /**
+     * Get all file paths in the archive
+     * Used for generating complete manifest listings
+     * @returns Array of file paths
+     */
+    getFilePaths(): string[];
 
     /**
      * Generate the ZIP archive
@@ -502,6 +494,12 @@ export interface PageRenderOptions {
     extraHeadScripts?: string;
     onLoadScript?: string;
     onUnloadScript?: string;
+
+    // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
+    /** Hide the navigation menu (default: false) */
+    hideNavigation?: boolean;
+    /** Hide the prev/next navigation buttons (default: false) */
+    hideNavButtons?: boolean;
 
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;
