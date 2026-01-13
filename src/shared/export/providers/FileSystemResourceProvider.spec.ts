@@ -350,4 +350,112 @@ describe('FileSystemResourceProvider', () => {
             expect(files.has('level1/level2/file3.css')).toBe(true);
         });
     });
+
+    describe('fetchGlobalFontFiles', () => {
+        beforeEach(async () => {
+            // Create font directory structure
+            await fs.ensureDir(path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic'));
+            await fs.ensureDir(path.join(testDir, 'files', 'perm', 'fonts', 'global', 'andika'));
+
+            // Create test font files for opendyslexic
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic', 'OpenDyslexic-Regular.woff'),
+                Buffer.from('WOFF_FONT_DATA'),
+            );
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic', 'OpenDyslexic-Bold.woff'),
+                Buffer.from('WOFF_FONT_DATA'),
+            );
+
+            // Create test font files for andika
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'andika', 'Andika-Regular.woff2'),
+                Buffer.from('WOFF2_FONT_DATA'),
+            );
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'andika', 'ATTRIBUTION.txt'),
+                'SIL Open Font License',
+            );
+        });
+
+        it('should return empty map for default font', async () => {
+            const files = await provider.fetchGlobalFontFiles('default');
+            expect(files.size).toBe(0);
+        });
+
+        it('should return empty map for empty font id', async () => {
+            const files = await provider.fetchGlobalFontFiles('');
+            expect(files.size).toBe(0);
+        });
+
+        it('should return empty map for non-existent font', async () => {
+            const files = await provider.fetchGlobalFontFiles('nonexistent');
+            expect(files.size).toBe(0);
+        });
+
+        it('should fetch font files for opendyslexic', async () => {
+            const files = await provider.fetchGlobalFontFiles('opendyslexic');
+
+            expect(files.size).toBe(2);
+            expect(files.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(true);
+            expect(files.has('fonts/global/opendyslexic/OpenDyslexic-Bold.woff')).toBe(true);
+        });
+
+        it('should fetch font files and attribution for andika', async () => {
+            const files = await provider.fetchGlobalFontFiles('andika');
+
+            expect(files.size).toBe(2);
+            expect(files.has('fonts/global/andika/Andika-Regular.woff2')).toBe(true);
+            expect(files.has('fonts/global/andika/ATTRIBUTION.txt')).toBe(true);
+        });
+
+        it('should only include font-related extensions', async () => {
+            // Add a non-font file
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic', 'readme.md'),
+                '# OpenDyslexic Font',
+            );
+            await fs.writeFile(
+                path.join(testDir, 'files', 'perm', 'fonts', 'global', 'opendyslexic', 'example.html'),
+                '<html></html>',
+            );
+
+            const files = await provider.fetchGlobalFontFiles('opendyslexic');
+
+            // Should still only have font files (woff, woff2, ttf, txt)
+            expect(files.size).toBe(2);
+            expect(files.has('fonts/global/opendyslexic/readme.md')).toBe(false);
+            expect(files.has('fonts/global/opendyslexic/example.html')).toBe(false);
+        });
+
+        it('should return Buffer content', async () => {
+            const files = await provider.fetchGlobalFontFiles('opendyslexic');
+            const fontContent = files.get('fonts/global/opendyslexic/OpenDyslexic-Regular.woff');
+
+            expect(fontContent).toBeInstanceOf(Buffer);
+            expect(fontContent?.toString()).toBe('WOFF_FONT_DATA');
+        });
+    });
+
+    describe('fetchExeLogo', () => {
+        it('should return null when logo does not exist', async () => {
+            const logo = await provider.fetchExeLogo();
+            expect(logo).toBeNull();
+        });
+
+        it('should fetch logo when it exists', async () => {
+            // Create the logo file
+            await fs.ensureDir(path.join(testDir, 'app', 'common', 'exe_powered_logo'));
+            const logoData = Buffer.from('PNG_IMAGE_DATA');
+            await fs.writeFile(
+                path.join(testDir, 'app', 'common', 'exe_powered_logo', 'exe_powered_logo.png'),
+                logoData,
+            );
+
+            const logo = await provider.fetchExeLogo();
+
+            expect(logo).not.toBeNull();
+            expect(logo?.toString()).toBe('PNG_IMAGE_DATA');
+        });
+    });
 });

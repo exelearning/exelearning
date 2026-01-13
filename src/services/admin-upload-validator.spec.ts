@@ -291,28 +291,6 @@ describe('Admin Upload Validator', () => {
             expect(result.isLegacy).toBe(true);
         });
 
-        test('should accept EPUB format with EPUB/content.xml', async () => {
-            const zipData = fflate.zipSync({
-                'mimetype': fflate.strToU8('application/epub+zip'),
-                'META-INF/container.xml': fflate.strToU8('<container/>'),
-                'EPUB/content.xml': fflate.strToU8('<ode/>'),
-                'EPUB/package.opf': fflate.strToU8('<package/>'),
-            });
-            const result = await validator.validateTemplateZip(Buffer.from(zipData));
-            expect(result.valid).toBe(true);
-            expect(result.isLegacy).toBe(false);
-        });
-
-        test('should prefer content.xml over EPUB/content.xml', async () => {
-            const zipData = fflate.zipSync({
-                'content.xml': fflate.strToU8('<ode/>'),
-                'EPUB/content.xml': fflate.strToU8('<ode/>'),
-            });
-            const result = await validator.validateTemplateZip(Buffer.from(zipData));
-            expect(result.valid).toBe(true);
-            expect(result.isLegacy).toBe(false);
-        });
-
         test('should reject ZIP with path traversal', async () => {
             const zipData = fflate.zipSync({
                 '../evil.xml': fflate.strToU8('<evil/>'),

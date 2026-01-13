@@ -337,4 +337,37 @@ export class FileSystemResourceProvider implements ResourceProvider {
         }
         return null;
     }
+
+    /**
+     * Fetch global font files for embedding in exports
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
+     * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
+     */
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer>> {
+        if (!fontId || fontId === 'default') {
+            return new Map();
+        }
+
+        // Global fonts are stored in public/files/perm/fonts/global/{fontId}/
+        const fontPath = path.join(this.publicDir, 'files', 'perm', 'fonts', 'global', fontId);
+
+        if (!(await fs.pathExists(fontPath))) {
+            console.warn(`[FileSystemResourceProvider] Global font not found: ${fontId}`);
+            return new Map();
+        }
+
+        // Read all font files from directory with proper prefix
+        const files = await this.readDirectoryRecursive(fontPath, `fonts/global/${fontId}`);
+
+        // Filter to only include font files (woff, woff2, ttf) and attribution
+        const fontFiles = new Map<string, Buffer>();
+        for (const [filePath, content] of files) {
+            const ext = path.extname(filePath).toLowerCase();
+            if (['.woff', '.woff2', '.ttf', '.txt'].includes(ext)) {
+                fontFiles.set(filePath, content);
+            }
+        }
+
+        return fontFiles;
+    }
 }

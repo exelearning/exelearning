@@ -15,6 +15,7 @@ interface MockResourceFetcherInterface {
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
+    fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
 }
 
 // Create a mock Blob
@@ -35,6 +36,7 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
     private libraryDirectories: Map<string, Map<string, Blob>> = new Map();
     private exeLogo: Blob | null = null;
     private contentCss: Map<string, Blob> = new Map();
+    private globalFonts: Map<string, Map<string, Blob>> = new Map();
 
     // Setup methods for testing
     setTheme(themeName: string, files: Map<string, Blob>): void {
@@ -69,6 +71,10 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
         this.contentCss = files;
     }
 
+    setGlobalFontFiles(fontId: string, files: Map<string, Blob>): void {
+        this.globalFonts.set(fontId, files);
+    }
+
     // Interface methods
     async fetchTheme(themeName: string): Promise<Map<string, Blob>> {
         return this.themes.get(themeName) || new Map();
@@ -100,6 +106,10 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
 
     async fetchContentCss(): Promise<Map<string, Blob>> {
         return this.contentCss;
+    }
+
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>> {
+        return this.globalFonts.get(fontId) || new Map();
     }
 }
 
@@ -529,6 +539,87 @@ describe('BrowserResourceProvider', () => {
         it('should handle empty string by returning text', () => {
             const result = provider.normalizeIdeviceType('');
             expect(result).toBe('text');
+        });
+    });
+
+    describe('fetchGlobalFontFiles', () => {
+        it('should return empty map for default font', async () => {
+            const result = await provider.fetchGlobalFontFiles('default');
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should return empty map for empty font id', async () => {
+            const result = await provider.fetchGlobalFontFiles('');
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should return font files as Uint8Array map', async () => {
+            const fontFiles = new Map<string, Blob>();
+            fontFiles.set('fonts/global/opendyslexic/OpenDyslexic-Regular.woff', createMockBlob('WOFF_FONT_DATA'));
+            fontFiles.set('fonts/global/opendyslexic/OpenDyslexic-Bold.woff', createMockBlob('WOFF_FONT_DATA_BOLD'));
+            mockFetcher.setGlobalFontFiles('opendyslexic', fontFiles);
+
+            const result = await provider.fetchGlobalFontFiles('opendyslexic');
+
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(2);
+            expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(true);
+            expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Bold.woff')).toBe(true);
+        });
+
+        it('should convert Blob to Uint8Array correctly', async () => {
+            const fontContent = 'MOCK_WOFF_CONTENT';
+            const fontFiles = new Map<string, Blob>();
+            fontFiles.set('fonts/global/nunito/Nunito-Regular.woff2', createMockBlob(fontContent));
+            mockFetcher.setGlobalFontFiles('nunito', fontFiles);
+
+            const result = await provider.fetchGlobalFontFiles('nunito');
+            const buffer = result.get('fonts/global/nunito/Nunito-Regular.woff2');
+
+            expect(buffer).toBeInstanceOf(Uint8Array);
+            expect(new TextDecoder().decode(buffer!)).toBe(fontContent);
+        });
+
+        it('should return empty map for non-existent font', async () => {
+            const result = await provider.fetchGlobalFontFiles('nonexistent');
+
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should handle font files with OFL license', async () => {
+            const fontFiles = new Map<string, Blob>();
+            fontFiles.set('fonts/global/playwrite-es/PlaywriteES-Regular.woff2', createMockBlob('PLAYWRITE_FONT_DATA'));
+            fontFiles.set('fonts/global/playwrite-es/OFL.txt', createMockBlob('SIL Open Font License'));
+            mockFetcher.setGlobalFontFiles('playwrite-es', fontFiles);
+
+            const result = await provider.fetchGlobalFontFiles('playwrite-es');
+
+            expect(result.size).toBe(2);
+            expect(result.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(true);
+            expect(result.has('fonts/global/playwrite-es/OFL.txt')).toBe(true);
+
+            const license = new TextDecoder().decode(result.get('fonts/global/playwrite-es/OFL.txt')!);
+            expect(license).toBe('SIL Open Font License');
+        });
+
+        it('should handle andika font with multiple weights', async () => {
+            const fontFiles = new Map<string, Blob>();
+            fontFiles.set('fonts/global/andika/Andika-Regular.woff2', createMockBlob('REGULAR'));
+            fontFiles.set('fonts/global/andika/Andika-Bold.woff2', createMockBlob('BOLD'));
+            fontFiles.set('fonts/global/andika/Andika-Italic.woff2', createMockBlob('ITALIC'));
+            fontFiles.set('fonts/global/andika/Andika-BoldItalic.woff2', createMockBlob('BOLDITALIC'));
+            mockFetcher.setGlobalFontFiles('andika', fontFiles);
+
+            const result = await provider.fetchGlobalFontFiles('andika');
+
+            expect(result.size).toBe(4);
+            expect(result.has('fonts/global/andika/Andika-Regular.woff2')).toBe(true);
+            expect(result.has('fonts/global/andika/Andika-Bold.woff2')).toBe(true);
+            expect(result.has('fonts/global/andika/Andika-Italic.woff2')).toBe(true);
+            expect(result.has('fonts/global/andika/Andika-BoldItalic.woff2')).toBe(true);
         });
     });
 });
