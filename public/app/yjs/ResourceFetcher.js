@@ -1035,6 +1035,84 @@ class ResourceFetcher {
 
     return cssFiles;
   }
+
+  /**
+   * Fetch global font files for embedding in exports
+   * Global fonts are stored in /files/perm/fonts/global/{fontId}/
+   * @param {string} fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
+   * @returns {Promise<Map<string, Blob>>} Map of file paths to blobs
+   */
+  async fetchGlobalFontFiles(fontId) {
+    const fontFiles = new Map();
+
+    if (!fontId || fontId === 'default') {
+      return fontFiles;
+    }
+
+    // Font configuration - matches GlobalFontGenerator.ts
+    const fontConfigs = {
+      opendyslexic: [
+        'OpenDyslexic-Regular.woff',
+        'OpenDyslexic-Bold.woff',
+        'OpenDyslexic-Italic.woff',
+        'OpenDyslexic-BoldItalic.woff',
+        'OFL.txt',
+      ],
+      andika: [
+        'Andika-Regular.woff2',
+        'Andika-Bold.woff2',
+        'Andika-Italic.woff2',
+        'Andika-BoldItalic.woff2',
+        'OFL.txt',
+      ],
+      nunito: [
+        'Nunito-Regular.woff2',
+        'Nunito-Bold.woff2',
+        'Nunito-Italic.woff2',
+        'Nunito-BoldItalic.woff2',
+        'OFL.txt',
+      ],
+      'playwrite-es': ['PlaywriteES-Regular.woff2', 'OFL.txt'],
+    };
+
+    const files = fontConfigs[fontId];
+    if (!files) {
+      console.warn(`[ResourceFetcher] Unknown global font: ${fontId}`);
+      return fontFiles;
+    }
+
+    const basePath = `${this.basePath}/files/perm/fonts/global/${fontId}`;
+
+    // Fetch all font files in parallel
+    const fetchPromises = files.map(async filename => {
+      const url = `${basePath}/${filename}`;
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const blob = await response.blob();
+          // Store with proper export path
+          return {
+            path: `fonts/global/${fontId}/${filename}`,
+            blob,
+          };
+        } else {
+          console.warn(`[ResourceFetcher] Font file not found: ${url}`);
+        }
+      } catch (e) {
+        console.warn(`[ResourceFetcher] Error fetching font file ${url}:`, e);
+      }
+      return null;
+    });
+
+    const results = await Promise.all(fetchPromises);
+    for (const result of results) {
+      if (result) {
+        fontFiles.set(result.path, result.blob);
+      }
+    }
+
+    return fontFiles;
+  }
 }
 
 // Export for use

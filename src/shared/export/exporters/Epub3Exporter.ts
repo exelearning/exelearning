@@ -16,7 +16,7 @@
 
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Epub3ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
-import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 /**
  * EPUB3 XML namespaces
@@ -174,17 +174,6 @@ export class Epub3Exporter extends BaseExporter {
                 this.spineItems.push({ idref: pageId });
             }
 
-            // 4b. Add content.xml and DTD (ODE format for re-import) - only if exportSource is enabled
-            // This allows EPUBs to be re-imported and edited in eXeLearning
-            if (meta.exportSource !== false) {
-                const contentXml = this.generateContentXml();
-                this.zip.addFile('EPUB/content.xml', contentXml);
-                this.addManifestItem('content-xml', 'content.xml', 'application/xml');
-
-                // Add DTD file for content.xml validation
-                this.zip.addFile(`EPUB/${ODE_DTD_FILENAME}`, ODE_DTD_CONTENT);
-            }
-
             // 5. Add base CSS (fetch from content/css, then add EPUB-specific)
             const contentCssFiles = await this.resources.fetchContentCss();
             const fetchedBaseCss = contentCssFiles.get('content/css/base.css');
@@ -279,6 +268,26 @@ export class Epub3Exporter extends BaseExporter {
                     }
                 } catch {
                     // Many iDevices don't have extra files
+                }
+            }
+
+            // 8.5. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            this.zip.addFile(`EPUB/${filePath}`, content);
+                            const ext = this.getFileExtensionFromPath(filePath);
+                            const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+                            this.addManifestItem(this.generateUniqueId(`font-${filePath}`), filePath, mimeType);
+                        }
+                        console.log(
+                            `[Epub3Exporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`,
+                        );
+                    }
+                } catch (e) {
+                    console.warn(`[Epub3Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
                 }
             }
 
@@ -505,13 +514,29 @@ export class Epub3Exporter extends BaseExporter {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
 
+        // Generate global font CSS if a font is selected
+        let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-export exe-epub';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
+            if (globalFontCss) {
+                // Prepend global font CSS to customStyles
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+            // Add font-specific body class for CSS overrides
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
+            }
+        }
+
         // Generate page content HTML then convert to XHTML
         const pageHtml = this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
             projectSubtitle: meta.subtitle || '',
             language: lang,
             theme: meta.theme || 'base',
-            customStyles: meta.customStyles || '',
+            customStyles,
             allPages,
             basePath,
             isIndex,
@@ -520,7 +545,7 @@ export class Epub3Exporter extends BaseExporter {
             license: meta.license || 'CC-BY-SA',
             description: meta.description || '',
             licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
-            bodyClass: 'exe-export exe-epub',
+            bodyClass,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],
         });

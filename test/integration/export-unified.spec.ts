@@ -216,17 +216,12 @@ describe('Unified Export System Integration', () => {
             expect(zipFile['index.html']).toBeDefined();
         });
 
-        it('HTML5 export includes content.xml and content.dtd for re-import', async () => {
+        it('HTML5 export includes content.xml for re-import', async () => {
             const exporter = new Html5Exporter(document, resources, assets, zip);
             const result = await exporter.export();
 
             const zipFile = unzipSync(result.data!);
             expect(zipFile['content.xml']).toBeDefined();
-            expect(zipFile['content.dtd']).toBeDefined();
-
-            // Verify DTD content
-            const dtdContent = new TextDecoder().decode(zipFile['content.dtd']);
-            expect(dtdContent).toContain('<!ELEMENT ode');
         });
 
         it('SCORM exports include required SCORM files', async () => {
@@ -445,7 +440,7 @@ describe('Unified Export System Integration', () => {
             expect(manifestContent).toContain('Test Project');
         });
 
-        it('Export includes content.xml and content.dtd for full round-trip', async () => {
+        it('Export includes content.xml for full round-trip', async () => {
             const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
@@ -462,11 +457,6 @@ describe('Unified Export System Integration', () => {
             const contentXml = new TextDecoder().decode(zipFile['content.xml']);
             expect(contentXml).toContain('Test Project'); // Title
             expect(contentXml).toContain('Introduction'); // Page title
-
-            // content.dtd should exist alongside content.xml
-            expect(zipFile['content.dtd']).toBeDefined();
-            const dtdContent = new TextDecoder().decode(zipFile['content.dtd']);
-            expect(dtdContent).toContain('<!ELEMENT ode');
         });
     });
 });

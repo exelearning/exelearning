@@ -16,7 +16,7 @@
 
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Html5ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
-import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class Html5Exporter extends BaseExporter {
     /**
@@ -156,11 +156,10 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 3. Add content.xml and DTD (ODE format for re-import) - only if exportSource is enabled
+            // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
             if (meta.exportSource !== false) {
                 const contentXml = this.generateContentXml();
                 addFile('content.xml', contentXml);
-                addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
             }
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
@@ -266,6 +265,23 @@ export class Html5Exporter extends BaseExporter {
                 }
             }
 
+            // 9.5. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                        }
+                        console.log(
+                            `[Html5Exporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`,
+                        );
+                    }
+                } catch (e) {
+                    console.warn(`[Html5Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
             // 10. Add project assets (with tracking)
             await this.addAssetsToZipWithResourcePath(fileList);
 
@@ -334,12 +350,29 @@ export class Html5Exporter extends BaseExporter {
         const usedIdevices = this.getUsedIdevicesForPage(page);
         const currentPageIndex = pageIndex ?? allPages.findIndex(p => p.id === page.id);
 
+        // Generate global font CSS if a font is selected
+        let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-export exe-web-site';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
+            if (globalFontCss) {
+                // Prepend global font CSS to customStyles (font CSS should come first)
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+            // Add font-specific body class for CSS overrides
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
+            }
+        }
+
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
             projectSubtitle: meta.subtitle || '',
             language: meta.language || 'en',
             theme: meta.theme || 'base',
-            customStyles: meta.customStyles || '',
+            customStyles,
+            bodyClass,
             allPages,
             basePath,
             isIndex,

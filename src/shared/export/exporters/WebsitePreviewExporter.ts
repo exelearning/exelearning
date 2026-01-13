@@ -21,6 +21,7 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { normalizeIdeviceType, getLicenseClass } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { getIdeviceExportFiles } from '../../../services/idevice-config';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 /**
  * Options for preview generation
@@ -241,10 +242,26 @@ export class WebsitePreviewExporter {
     ): Promise<string> {
         const lang = meta.language || 'en';
         const projectTitle = meta.title || 'eXeLearning';
-        const customStyles = meta.customStyles || '';
         const license = meta.license || 'CC-BY-SA';
         const themeName = meta.theme || 'base';
         const userFooterContent = meta.footer || '';
+
+        // Generate global font CSS if a font is selected (using preview paths)
+        let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-web-site exe-preview';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const serverBasePath = `${options.baseUrl || ''}${options.basePath || ''}/${options.version || 'v1'}/files/perm`;
+            const globalFontCss = GlobalFontGenerator.generatePreviewCss(meta.globalFont, serverBasePath);
+            if (globalFontCss) {
+                // Prepend global font CSS to customStyles (font CSS should come first)
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+            // Add font-specific body class for CSS overrides
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
+            }
+        }
 
         // Export options (with defaults)
         const addExeLink = meta.addExeLink ?? true;
@@ -392,7 +409,7 @@ ${madeWithExeHtml}`;
 <head>
 ${this.generateWebsitePreviewHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
 </head>
-<body class="exe-web-site exe-preview" lang="${lang}">
+<body class="${bodyClass}" lang="${lang}">
 <script>document.body.className+=" js"</script>
 ${finalBodyContent}
 ${searchDataScript}
