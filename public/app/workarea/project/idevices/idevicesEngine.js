@@ -2642,8 +2642,12 @@ export default class IdevicesEngine {
             status == 'edition' ? idevice.pathEdition : idevice.pathExport;
         // Get css
         let cssText = await eXeLearning.app.api.func.getText(path);
-        // Replace idevice style urls
-        cssText = cssText.replace(/url\((?:(?!http))/gm, `url(${idevicePath}`);
+        // Rewrite relative URLs to absolute, preserving quotes
+        // Skip absolute URLs (http:, https:, data:, blob:) and root-relative paths (/)
+        cssText = cssText.replace(
+            /url\(\s*(['"]?)(?!data:|http:|https:|blob:|\/)([^'")]+)\1\s*\)/g,
+            (match, quote, path) => `url(${quote}${idevicePath}${path}${quote})`
+        );
         style.innerHTML = cssText;
         document.querySelector('head').append(style);
         return style;

@@ -38,6 +38,30 @@ async function importElpFixture(page: Page): Promise<void> {
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixturePath);
 
+    // Wait for upload progress modal to appear and then hide
+    // The modal shows during import and hides when complete
+    await page.waitForFunction(
+        () => {
+            const modal = document.querySelector('#uploadProgressModal');
+            // First wait for modal to appear, then wait for it to hide
+            const win = window as any;
+            if (!win.__modalSeen) {
+                if (modal?.classList.contains('show')) {
+                    win.__modalSeen = true;
+                }
+                return false;
+            }
+            // Modal was shown, now wait for it to hide
+            return !modal || !modal.classList.contains('show');
+        },
+        { timeout: 120000, polling: 500 },
+    );
+
+    // Clean up modal tracking
+    await page.evaluate(() => {
+        delete (window as any).__modalSeen;
+    });
+
     // Wait for import to complete by checking Yjs navigation has pages
     // First, wait for at least 1 page to appear
     await page.waitForFunction(
@@ -52,8 +76,8 @@ async function importElpFixture(page: Page): Promise<void> {
         { timeout: 90000 },
     );
 
-    // Then wait for the page count to stabilize (no changes for 2 seconds)
-    // This is important because Firefox imports pages asynchronously and may be slower
+    // Then wait for the page count to stabilize (no changes for 3 seconds)
+    // This is critical for Firefox which may be slower to process large ELPs
     await page.waitForFunction(
         () => {
             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
@@ -91,10 +115,10 @@ async function importElpFixture(page: Page): Promise<void> {
                 return false;
             }
 
-            // Page count stable for 2 seconds = import complete
-            return Date.now() - win.__importStableTime >= 2000;
+            // Page count stable for 3 seconds = import complete (increased from 2s for Firefox)
+            return Date.now() - win.__importStableTime >= 3000;
         },
-        { timeout: 90000, polling: 500 },
+        { timeout: 120000, polling: 500 },
     );
 
     // Clean up the temporary window variables

@@ -40,6 +40,19 @@ export interface PreviewOptions {
      */
     themeUrl?: string;
     /**
+     * Inline CSS content for user themes (imported from ELPX, stored in IndexedDB).
+     * When provided, this CSS is injected as inline <style> instead of loading from themeUrl.
+     * User themes use the 'user-theme://' pseudo-protocol which isn't a valid HTTP URL,
+     * so we need to pass the CSS content directly.
+     */
+    userThemeCss?: string;
+    /**
+     * Inline JavaScript content for user themes (style.js from theme folder).
+     * When provided, this JS is injected as inline <script> instead of loading from themeUrl.
+     * Theme JS typically handles UI elements like menu togglers, search bar, dark mode, etc.
+     */
+    userThemeJs?: string;
+    /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
      * When provided and successful, MathJax library will NOT be included in the output.
      * The pre-renderer runs on the client using MathJax already loaded in the workarea.
@@ -124,6 +137,7 @@ export class WebsitePreviewExporter {
 
     /**
      * Check if any page contains the download-source-file iDevice
+     * or a manual link using exe-package:elp protocol
      * (needs special handling in preview - postMessage to parent)
      */
     private needsElpxDownloadSupport(pages: ExportPage[]): boolean {
@@ -135,8 +149,12 @@ export class WebsitePreviewExporter {
                     if (type.includes('download-source-file') || type.includes('downloadsourcefile')) {
                         return true;
                     }
-                    // Also check content for the CSS class (more reliable)
+                    // Check content for the CSS class (download-source-file iDevice)
                     if (component.content?.includes('exe-download-package-link')) {
+                        return true;
+                    }
+                    // Check for manual exe-package:elp links (in text iDevices, etc.)
+                    if (component.content?.includes('exe-package:elp')) {
                         return true;
                     }
                 }
@@ -485,6 +503,16 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
             }
         }
 
+        // Build theme CSS section: either inline CSS for user themes or link to server theme
+        let themeCssSection: string;
+        if (options.userThemeCss) {
+            // User theme: inject CSS inline (theme stored in IndexedDB, not accessible via URL)
+            themeCssSection = `<!-- User theme CSS (inline) -->\n<style>\n${options.userThemeCss}\n</style>`;
+        } else {
+            // Server theme: load via link tag with fallback
+            themeCssSection = `<!-- Theme from server (loads AFTER fallback, so theme wins) -->\n<link rel="stylesheet" href="${themeCss}" onerror="this.href='${fallbackCss}'">`;
+        }
+
         let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning 4.0 - exelearning.net (Preview)">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -511,8 +539,7 @@ ${this.generateWebsitePreviewScripts(themeName, usedIdevices, options, needsElpx
 ${this.getWebsitePreviewCss()}
 </style>
 
-<!-- Theme from server (loads AFTER fallback, so theme wins) -->
-<link rel="stylesheet" href="${themeCss}" onerror="this.href='${fallbackCss}'">`;
+${themeCssSection}`;
 
         // iDevice CSS from server
         // Scan export folder for ALL CSS files to include any additional styles
@@ -1074,6 +1101,16 @@ window.MathJax = {
             atoolsScript = `\n<script src="${atoolsJs}"></script>`;
         }
 
+        // Build theme JS section: either inline JS for user themes or script src for server themes
+        let themeJsSection: string;
+        if (options.userThemeJs) {
+            // User theme: inject JS inline (theme stored in IndexedDB, not accessible via URL)
+            themeJsSection = `<!-- User theme JS (inline) -->\n<script>\n${options.userThemeJs}\n</script>`;
+        } else {
+            // Server theme: load via script src with onerror fallback
+            themeJsSection = `<script src="${themeJs}" onerror="this.remove()"></script>`;
+        }
+
         return `<script src="${jqueryJs}"></script>
 <script>
 // Execute queued callbacks from jQuery shim (legacy inline scripts)
@@ -1086,7 +1123,7 @@ if (window.__jQueryShimQueue) {
 <script src="${commonJs}"></script>
 <script src="${commonI18nJs}"></script>
 <script src="${exeExportJs}"></script>${mathJaxScripts}${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
-<script src="${themeJs}" onerror="this.remove()"></script>
+${themeJsSection}
 <script>
 // Polyfill for confirm/alert/prompt in sandboxed iframes (preview mode)
 // These are blocked by default in blob: URLs, so we provide custom implementations

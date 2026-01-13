@@ -47,6 +47,9 @@ class ResourceFetcher {
     this.bundleManifest = null;
     // Whether bundles are available
     this.bundlesAvailable = false;
+    // User theme files (from .elpx imports, stored in Yjs)
+    // Map<themeName, Object<relativePath, Uint8Array>>
+    this.userThemeFiles = new Map();
   }
 
   /**
@@ -69,6 +72,100 @@ class ResourceFetcher {
    */
   setResourceCache(resourceCache) {
     this.resourceCache = resourceCache;
+  }
+
+  /**
+   * Set user theme files imported from .elpx
+   * User themes are stored client-side in Yjs and need to be registered
+   * with ResourceFetcher for export functionality.
+   * @param {string} themeName - Theme name/directory
+   * @param {Object<string, Uint8Array>} files - Map of relativePath -> file content
+   */
+  async setUserThemeFiles(themeName, files) {
+    this.userThemeFiles.set(themeName, files);
+    Logger.log(`[ResourceFetcher] Registered user theme '${themeName}' with ${Object.keys(files).length} files`);
+
+    // Also update the in-memory cache
+    const cacheKey = `theme:${themeName}`;
+    const themeFiles = new Map();
+
+    // Convert Uint8Array to Blob for consistency with other themes
+    for (const [relativePath, uint8Array] of Object.entries(files)) {
+      const ext = relativePath.split('.').pop()?.toLowerCase() || '';
+      const mimeTypes = {
+        css: 'text/css',
+        js: 'application/javascript',
+        json: 'application/json',
+        html: 'text/html',
+        xml: 'text/xml',
+        svg: 'image/svg+xml',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        woff: 'font/woff',
+        woff2: 'font/woff2',
+        ttf: 'font/ttf',
+      };
+      const mimeType = mimeTypes[ext] || 'application/octet-stream';
+      const blob = new Blob([uint8Array], { type: mimeType });
+      themeFiles.set(relativePath, blob);
+    }
+
+    this.cache.set(cacheKey, themeFiles);
+  }
+
+  /**
+   * Check if a theme is a user theme (stored in Yjs)
+   * @param {string} themeName - Theme name
+   * @returns {boolean}
+   */
+  hasUserTheme(themeName) {
+    return this.userThemeFiles.has(themeName);
+  }
+
+  /**
+   * Get user theme files (synchronous, from memory only)
+   * @param {string} themeName - Theme name
+   * @returns {Map<string, Blob>|null}
+   */
+  getUserTheme(themeName) {
+    const cacheKey = `theme:${themeName}`;
+    // Check if in memory cache (either from userThemeFiles registration or IndexedDB load)
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+    return null;
+  }
+
+  /**
+   * Get user theme files (async, fetches from IndexedDB if not in memory)
+   * @param {string} themeName - Theme name
+   * @returns {Promise<Map<string, Blob>|null>}
+   */
+  async getUserThemeAsync(themeName) {
+    // First try synchronous method
+    const cached = this.getUserTheme(themeName);
+    if (cached) {
+      return cached;
+    }
+
+    // Try to fetch from IndexedDB
+    if (this.resourceCache) {
+      try {
+        const userTheme = await this.resourceCache.getUserTheme(themeName);
+        if (userTheme) {
+          const cacheKey = `theme:${themeName}`;
+          this.cache.set(cacheKey, userTheme.files);
+          Logger.log(`[ResourceFetcher] User theme '${themeName}' loaded from IndexedDB via getUserThemeAsync`);
+          return userTheme.files;
+        }
+      } catch (e) {
+        console.warn('[ResourceFetcher] IndexedDB lookup failed:', e.message);
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -187,20 +284,58 @@ class ResourceFetcher {
 
   /**
    * Fetch all files for a theme
-   * Uses optimized bundle fetching when available, with fallback to individual files.
-   * @param {string} themeName - Theme name (e.g., 'base', 'blue', 'clean')
+   * Supports:
+   * - User themes (from .elpx imports, stored in Yjs via setUserThemeFiles or IndexedDB)
+   * - Server themes (base/site themes, fetched via bundle or individual files)
+   *
+   * Priority order:
+   * 1. Memory cache (includes user themes registered via setUserThemeFiles)
+   * 2. userThemeFiles (Yjs) - rebuild cache if needed
+   * 3. IndexedDB user themes - persistent local storage
+   * 4. IndexedDB server theme cache - version-based cache
+   * 5. Server bundles
+   * 6. Server fallback
+   *
+   * @param {string} themeName - Theme name (e.g., 'base', 'blue', 'clean', or user theme)
    * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
    */
   async fetchTheme(themeName) {
     const cacheKey = `theme:${themeName}`;
 
-    // 1. Check in-memory cache
+    // 1. Check in-memory cache (includes user themes registered via setUserThemeFiles)
     if (this.cache.has(cacheKey)) {
-      Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded from memory cache`);
+      const isUserTheme = this.userThemeFiles.has(themeName);
+      Logger.log(`[ResourceFetcher] Theme '${themeName}' loaded from memory cache${isUserTheme ? ' (user theme)' : ''}`);
       return this.cache.get(cacheKey);
     }
 
-    // 2. Check IndexedDB cache
+    // 2. User themes from Yjs (registered via setUserThemeFiles)
+    // If not found in cache at this point, it's not a user theme or hasn't been registered yet
+    if (this.userThemeFiles.has(themeName)) {
+      // This shouldn't happen normally - user themes are cached when registered
+      console.warn(`[ResourceFetcher] User theme '${themeName}' registered but not in cache - rebuilding cache`);
+      const files = this.userThemeFiles.get(themeName);
+      await this.setUserThemeFiles(themeName, files);
+      return this.cache.get(cacheKey);
+    }
+
+    // 3. Check IndexedDB for user themes (persistent local storage)
+    if (this.resourceCache) {
+      try {
+        const userTheme = await this.resourceCache.getUserTheme(themeName);
+        if (userTheme) {
+          // User theme found in IndexedDB
+          this.cache.set(cacheKey, userTheme.files);
+          Logger.log(`[ResourceFetcher] User theme '${themeName}' loaded from IndexedDB (${userTheme.files.size} files)`);
+          return userTheme.files;
+        }
+      } catch (e) {
+        // getUserTheme may throw if method doesn't exist or fails
+        console.warn('[ResourceFetcher] IndexedDB user theme lookup failed:', e.message);
+      }
+    }
+
+    // 4. Check IndexedDB cache for server themes (version-based)
     if (this.resourceCache) {
       try {
         const cached = await this.resourceCache.get('theme', themeName, this.version);
@@ -218,7 +353,7 @@ class ResourceFetcher {
 
     let themeFiles = null;
 
-    // 3. Try ZIP bundle (faster, single request)
+    // 5. Try ZIP bundle (faster, single request)
     if (this.bundlesAvailable) {
       const bundleUrl = `${this.apiBase}/bundle/theme/${themeName}`;
       console.log(`[ResourceFetcher] 📦 Fetching theme '${themeName}' via bundle:`, bundleUrl);
@@ -228,16 +363,16 @@ class ResourceFetcher {
       }
     }
 
-    // 4. Fallback to individual file fetches
+    // 6. Fallback to individual file fetches
     if (!themeFiles || themeFiles.size === 0) {
       console.log(`[ResourceFetcher] ⚠️ Falling back to individual file fetches for theme '${themeName}'`);
       themeFiles = await this.fetchThemeFallback(themeName);
     }
 
-    // 5. Cache the result (cache even if empty to avoid repeated fetches)
+    // 7. Cache the result (cache even if empty to avoid repeated fetches)
     this.cache.set(cacheKey, themeFiles);
 
-    // Store in IndexedDB for persistence (only if non-empty)
+    // Store in IndexedDB for persistence (only if non-empty, only for server themes)
     if (themeFiles.size > 0 && this.resourceCache) {
       try {
         await this.resourceCache.set('theme', themeName, this.version, themeFiles);

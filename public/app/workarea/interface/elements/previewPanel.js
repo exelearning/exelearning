@@ -466,10 +466,48 @@ export default class PreviewPanelManager {
         const documentManager = yjsBridge.documentManager;
         const resourceFetcher = yjsBridge.resourceFetcher || null;
 
-        // Get theme URL
+        // Get theme URL (same logic as generatePreviewHtml)
         const selectedTheme = eXeLearning.app?.themes?.selected;
         let themeUrl = selectedTheme?.path || null;
-        if (themeUrl && !themeUrl.startsWith('http')) {
+        let userThemeCss = null;
+        let userThemeJs = null;
+
+        // Check if it's a user theme (imported from ELPX, stored in IndexedDB)
+        const isUserTheme = selectedTheme?.isUserTheme || themeUrl?.startsWith('user-theme://');
+
+        if (isUserTheme) {
+            // For user themes, get the CSS and JS content directly from ResourceFetcher
+            try {
+                const themeName = selectedTheme?.id || themeUrl?.replace('user-theme://', '');
+                if (themeName && resourceFetcher) {
+                    let themeFiles = resourceFetcher.getUserTheme(themeName);
+                    if (!themeFiles && resourceFetcher.getUserThemeAsync) {
+                        themeFiles = await resourceFetcher.getUserThemeAsync(themeName);
+                    }
+
+                    if (themeFiles) {
+                        // Get CSS
+                        const styleCssBlob = themeFiles.get('style.css') || themeFiles.get(`${themeName}/style.css`);
+                        if (styleCssBlob) {
+                            let cssText = await styleCssBlob.text();
+                            cssText = await this.processUserThemeCssUrls(cssText, themeFiles, themeName);
+                            userThemeCss = cssText;
+                            Logger.log(`[PreviewPanel] Loaded user theme CSS for standalone preview (${userThemeCss.length} chars)`);
+                        }
+
+                        // Get JS
+                        const styleJsBlob = themeFiles.get('style.js') || themeFiles.get(`${themeName}/style.js`);
+                        if (styleJsBlob) {
+                            userThemeJs = await styleJsBlob.text();
+                            Logger.log(`[PreviewPanel] Loaded user theme JS for standalone preview (${userThemeJs.length} chars)`);
+                        }
+                    }
+                }
+            } catch (error) {
+                Logger.warn('[PreviewPanel] Failed to load user theme CSS/JS for standalone:', error);
+            }
+            themeUrl = null;
+        } else if (themeUrl && !themeUrl.startsWith('http')) {
             themeUrl = window.location.origin + themeUrl;
         }
 
@@ -478,6 +516,8 @@ export default class PreviewPanelManager {
             basePath: eXeLearning.app.config?.basePath || '',
             version: eXeLearning.app.config?.version || 'v1',
             themeUrl: themeUrl,
+            userThemeCss: userThemeCss,
+            userThemeJs: userThemeJs,
         };
 
         // Generate preview
@@ -549,7 +589,56 @@ export default class PreviewPanelManager {
         // Ensure it's an absolute URL (blob: contexts don't resolve relative URLs correctly)
         const selectedTheme = eXeLearning.app?.themes?.selected;
         let themeUrl = selectedTheme?.path || null;
-        if (themeUrl && !themeUrl.startsWith('http')) {
+        let userThemeCss = null;
+        let userThemeJs = null;
+
+        // Check if it's a user theme (imported from ELPX, stored in IndexedDB)
+        // User themes use the 'user-theme://' pseudo-protocol which isn't a valid HTTP URL
+        const isUserTheme = selectedTheme?.isUserTheme || themeUrl?.startsWith('user-theme://');
+
+        if (isUserTheme) {
+            // For user themes, get the CSS and JS content directly from ResourceFetcher
+            // and pass them as inline styles/scripts to the exporter
+            console.log(`[PreviewPanel] Detected USER THEME, loading CSS/JS inline...`);
+            try {
+                const themeName = selectedTheme?.id || themeUrl?.replace('user-theme://', '');
+                console.log(`[PreviewPanel] Theme name: ${themeName}, resourceFetcher available: ${!!resourceFetcher}`);
+                if (themeName && resourceFetcher) {
+                    // Try async method that fetches from IndexedDB if needed
+                    let themeFiles = resourceFetcher.getUserTheme(themeName);
+                    console.log(`[PreviewPanel] getUserTheme sync result: ${themeFiles ? themeFiles.size + ' files' : 'null'}`);
+                    if (!themeFiles && resourceFetcher.getUserThemeAsync) {
+                        themeFiles = await resourceFetcher.getUserThemeAsync(themeName);
+                        console.log(`[PreviewPanel] getUserThemeAsync result: ${themeFiles ? themeFiles.size + ' files' : 'null'}`);
+                    }
+
+                    if (themeFiles) {
+                        // Find style.css in theme files
+                        const styleCssBlob = themeFiles.get('style.css') || themeFiles.get(`${themeName}/style.css`);
+                        console.log(`[PreviewPanel] style.css found: ${!!styleCssBlob}`);
+                        if (styleCssBlob) {
+                            let cssText = await styleCssBlob.text();
+                            // Process CSS to convert url() references to data URLs
+                            // (fonts, icons, images referenced in CSS won't load without this)
+                            cssText = await this.processUserThemeCssUrls(cssText, themeFiles, themeName);
+                            userThemeCss = cssText;
+                            console.log(`[PreviewPanel] Loaded user theme CSS for '${themeName}' (${userThemeCss.length} chars)`);
+                        }
+
+                        // Find style.js in theme files (handles togglers, dark mode, etc.)
+                        const styleJsBlob = themeFiles.get('style.js') || themeFiles.get(`${themeName}/style.js`);
+                        console.log(`[PreviewPanel] style.js found: ${!!styleJsBlob}`);
+                        if (styleJsBlob) {
+                            userThemeJs = await styleJsBlob.text();
+                            console.log(`[PreviewPanel] Loaded user theme JS for '${themeName}' (${userThemeJs.length} chars)`);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('[PreviewPanel] Failed to load user theme CSS/JS:', error);
+            }
+            themeUrl = null; // Don't use invalid user-theme:// URL
+        } else if (themeUrl && !themeUrl.startsWith('http')) {
             themeUrl = window.location.origin + themeUrl;
         }
 
@@ -558,6 +647,8 @@ export default class PreviewPanelManager {
             basePath: eXeLearning.app.config?.basePath || '',
             version: eXeLearning.app.config?.version || 'v1',
             themeUrl: themeUrl, // Full absolute theme URL (e.g., 'http://localhost:8081/v1/site-files/themes/chiquito/')
+            userThemeCss: userThemeCss, // Inline CSS for user themes (from IndexedDB)
+            userThemeJs: userThemeJs, // Inline JS for user themes (from IndexedDB)
         };
 
         // Generate preview
@@ -1567,6 +1658,109 @@ export default class PreviewPanelManager {
     setAutoRefresh(enabled) {
         this.autoRefreshEnabled = enabled;
         Logger.log('[PreviewPanel] Auto-refresh:', enabled ? 'enabled' : 'disabled');
+    }
+
+    /**
+     * Process user theme CSS to convert url() references to data URLs.
+     * Theme assets (fonts, icons, images) are stored in IndexedDB and need to be
+     * embedded as data URLs for the inline CSS to work in the preview.
+     *
+     * @param {string} cssText - The CSS content
+     * @param {Map<string, Blob>} themeFiles - Map of theme file paths to Blobs
+     * @param {string} themeName - Theme directory name (for path resolution)
+     * @returns {Promise<string>} CSS with url() references converted to data URLs
+     */
+    async processUserThemeCssUrls(cssText, themeFiles, themeName) {
+        // Log available theme files for debugging (use console.log to always show)
+        const availableFiles = Array.from(themeFiles.keys());
+        console.log(`[PreviewPanel] Theme '${themeName}' files available (${availableFiles.length}):`, availableFiles);
+
+        // Find all url() references in the CSS
+        // Matches: url("path"), url('path'), url(path)
+        const urlRegex = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)/gi;
+
+        // Collect all unique URLs and their replacements
+        const urlReplacements = new Map();
+        let match;
+
+        while ((match = urlRegex.exec(cssText)) !== null) {
+            const originalUrl = match[0];
+            const urlPath = match[2];
+
+            // Skip if already processed, or if it's an absolute URL, data URL, or blob URL
+            if (urlReplacements.has(originalUrl)) continue;
+            if (urlPath.startsWith('http://') || urlPath.startsWith('https://')) continue;
+            if (urlPath.startsWith('data:') || urlPath.startsWith('blob:')) continue;
+            if (urlPath.startsWith('#')) continue; // SVG references
+
+            // Normalize the path (remove leading ./ or ../)
+            let normalizedPath = urlPath
+                .replace(/^\.\//, '')           // ./path -> path
+                .replace(/^\.\.\//, '');        // ../path -> path (relative to theme root)
+
+            // Try to find the file in themeFiles with various path combinations
+            // Theme CSS references like url(fonts/file.woff2), url(img/icons.png)
+            // Files are stored without theme/ prefix: fonts/file.woff2, img/icons.png
+            const pathsToTry = [
+                normalizedPath,                                    // Direct match: fonts/file.woff2
+                `${themeName}/${normalizedPath}`,                  // With theme prefix
+                normalizedPath.replace(/^fonts\//, 'fonts/'),      // Ensure fonts/ stays
+                normalizedPath.replace(/^img\//, 'img/'),          // Ensure img/ stays
+                normalizedPath.replace(/^icons\//, 'icons/'),      // Ensure icons/ stays
+                normalizedPath.replace(/^images\//, 'images/'),    // Alternative folder name
+            ];
+
+            let blob = null;
+            let foundPath = null;
+            for (const tryPath of pathsToTry) {
+                blob = themeFiles.get(tryPath);
+                if (blob) {
+                    foundPath = tryPath;
+                    break;
+                }
+            }
+
+            if (blob) {
+                try {
+                    // Convert blob to data URL
+                    const dataUrl = await this.blobToDataUrl(blob);
+                    urlReplacements.set(originalUrl, `url("${dataUrl}")`);
+                    console.log(`[PreviewPanel] ✓ Converted: ${foundPath}`);
+                } catch (error) {
+                    console.warn(`[PreviewPanel] ✗ Failed to convert ${urlPath}:`, error);
+                }
+            } else {
+                // Only warn for files that might exist (not external resources)
+                const isLikelyMissing = normalizedPath.match(/\.(woff2?|ttf|eot|svg|png|jpg|jpeg|gif|webp)$/i);
+                if (isLikelyMissing) {
+                    console.warn(`[PreviewPanel] ✗ NOT FOUND: "${urlPath}" (normalized: "${normalizedPath}")`);
+                }
+            }
+        }
+
+        // Apply all replacements
+        let processedCss = cssText;
+        for (const [original, replacement] of urlReplacements) {
+            // Use split/join for global replacement (escaping regex special chars)
+            processedCss = processedCss.split(original).join(replacement);
+        }
+
+        console.log(`[PreviewPanel] Processed ${urlReplacements.size} CSS url() references`);
+        return processedCss;
+    }
+
+    /**
+     * Convert a Blob to a data URL
+     * @param {Blob} blob - The blob to convert
+     * @returns {Promise<string>} Data URL
+     */
+    blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
     }
 
     /**

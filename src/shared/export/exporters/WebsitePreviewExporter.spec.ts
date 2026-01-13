@@ -593,6 +593,87 @@ describe('WebsitePreviewExporter', () => {
                 expect(result.html).toContain('exe_atools.js');
             });
         });
+
+        describe('userThemeCss', () => {
+            it('should use inline style tag when userThemeCss is provided', async () => {
+                const userCss = '.custom-theme { background: red; color: white; }';
+                const result = await exporter.generatePreview({
+                    userThemeCss: userCss,
+                });
+                // Should contain the inline CSS
+                expect(result.html).toContain('<!-- User theme CSS (inline) -->');
+                expect(result.html).toContain(userCss);
+                // Should NOT contain link tag for theme CSS (since using inline)
+                expect(result.html).not.toContain('<!-- Theme from server');
+            });
+
+            it('should use link tag when userThemeCss is not provided', async () => {
+                const result = await exporter.generatePreview({
+                    baseUrl: 'http://test.com',
+                    version: 'v1.0.0',
+                });
+                // Should contain link tag for theme CSS
+                expect(result.html).toContain('<!-- Theme from server');
+                expect(result.html).toContain('style.css');
+                // Should NOT contain user theme inline CSS
+                expect(result.html).not.toContain('<!-- User theme CSS (inline) -->');
+            });
+
+            it('should use link tag when userThemeCss is empty string', async () => {
+                const result = await exporter.generatePreview({
+                    userThemeCss: '',
+                });
+                // Empty string is falsy, so should fall back to link tag
+                expect(result.html).toContain('<!-- Theme from server');
+                expect(result.html).not.toContain('<!-- User theme CSS (inline) -->');
+            });
+
+            it('should preserve user theme CSS with special characters', async () => {
+                const userCss = '.theme { content: "Hello <world>"; background: url("image.png"); }';
+                const result = await exporter.generatePreview({
+                    userThemeCss: userCss,
+                });
+                expect(result.html).toContain(userCss);
+            });
+        });
+
+        describe('userThemeJs', () => {
+            it('should use inline script tag when userThemeJs is provided', async () => {
+                const userJs = 'var exampleStyle = { init: function() { console.log("loaded"); } };';
+                const result = await exporter.generatePreview({
+                    userThemeJs: userJs,
+                });
+                // Should contain the inline JS
+                expect(result.html).toContain('<!-- User theme JS (inline) -->');
+                expect(result.html).toContain(userJs);
+                // Should NOT contain script src for theme
+                expect(result.html).not.toContain('style.js" onerror');
+            });
+
+            it('should use script src when userThemeJs is not provided', async () => {
+                const result = await exporter.generatePreview({
+                    baseUrl: 'http://test.com',
+                    version: 'v1.0.0',
+                });
+                // Should contain script src for theme
+                expect(result.html).toContain('style.js" onerror="this.remove()');
+                // Should NOT contain user theme inline JS
+                expect(result.html).not.toContain('<!-- User theme JS (inline) -->');
+            });
+
+            it('should include both userThemeCss and userThemeJs when both provided', async () => {
+                const userCss = '.custom { color: red; }';
+                const userJs = 'var customTheme = {};';
+                const result = await exporter.generatePreview({
+                    userThemeCss: userCss,
+                    userThemeJs: userJs,
+                });
+                expect(result.html).toContain('<!-- User theme CSS (inline) -->');
+                expect(result.html).toContain(userCss);
+                expect(result.html).toContain('<!-- User theme JS (inline) -->');
+                expect(result.html).toContain(userJs);
+            });
+        });
     });
 
     describe('ELPX protocol handling', () => {
