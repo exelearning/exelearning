@@ -2263,6 +2263,178 @@ describe('LegacyXmlParser', () => {
       const map = parser.buildFullPathMap([]);
       expect(map.size).toBe(0);
     });
+
+    it('builds root-prefixed paths for promoted children after flattening', () => {
+      // Simulates the structure after LEGACY V2.X ROOT NODE FLATTENING CONVENTION:
+      // Original: Root -> Child A -> Grandchild A1
+      // After flattening: Root (parent_id=null), Child A (parent_id=null, promoted), Grandchild A1 (parent_id=Child A)
+      const pages = [
+        { id: 'page-root', title: 'My Project', parent_id: null, position: 0 },
+        { id: 'page-child', title: 'Chapter 1', parent_id: null, position: 1 }, // Promoted
+        { id: 'page-grandchild', title: 'Section A', parent_id: 'page-child', position: 2 },
+      ];
+
+      const map = parser.buildFullPathMap(pages);
+
+      // Standard paths (based on current parent_id structure)
+      expect(map.get('My Project')).toBe('page-root');
+      expect(map.get('Chapter 1')).toBe('page-child');
+      expect(map.get('Chapter 1:Section A')).toBe('page-grandchild');
+
+      // Root-prefixed paths (for links that still reference original hierarchy)
+      expect(map.get('My Project:Chapter 1')).toBe('page-child');
+      expect(map.get('My Project:Chapter 1:Section A')).toBe('page-grandchild');
+    });
+
+    it('handles titles with colons in root-prefixed paths', () => {
+      // Test case like "Dialecto, jerga y norma: diversidad del español"
+      const pages = [
+        { id: 'page-root', title: 'Dialecto, jerga y norma: diversidad del español', parent_id: null, position: 0 },
+        { id: 'page-child', title: 'Secuencia competencial', parent_id: null, position: 1 }, // Promoted
+        { id: 'page-grandchild', title: 'Norma y variedades lingüísticas', parent_id: 'page-child', position: 2 },
+      ];
+
+      const map = parser.buildFullPathMap(pages);
+
+      // The root-prefixed path should work even with colons in title
+      expect(map.get('Dialecto, jerga y norma: diversidad del español:Secuencia competencial')).toBe('page-child');
+      expect(map.get('Dialecto, jerga y norma: diversidad del español:Secuencia competencial:Norma y variedades lingüísticas')).toBe('page-grandchild');
+    });
+
+    it('handles multiple promoted children', () => {
+      const pages = [
+        { id: 'page-root', title: 'Root', parent_id: null, position: 0 },
+        { id: 'page-child1', title: 'Child 1', parent_id: null, position: 1 }, // Promoted
+        { id: 'page-child2', title: 'Child 2', parent_id: null, position: 2 }, // Promoted
+        { id: 'page-grandchild1', title: 'Grandchild 1', parent_id: 'page-child1', position: 3 },
+        { id: 'page-grandchild2', title: 'Grandchild 2', parent_id: 'page-child2', position: 4 },
+      ];
+
+      const map = parser.buildFullPathMap(pages);
+
+      // All root-prefixed paths should be present
+      expect(map.get('Root:Child 1')).toBe('page-child1');
+      expect(map.get('Root:Child 2')).toBe('page-child2');
+      expect(map.get('Root:Child 1:Grandchild 1')).toBe('page-grandchild1');
+      expect(map.get('Root:Child 2:Grandchild 2')).toBe('page-grandchild2');
+    });
+
+    it('handles deep nesting with promoted children', () => {
+      const pages = [
+        { id: 'page-root', title: 'Root', parent_id: null, position: 0 },
+        { id: 'page-child', title: 'Child', parent_id: null, position: 1 }, // Promoted
+        { id: 'page-grandchild', title: 'Grandchild', parent_id: 'page-child', position: 2 },
+        { id: 'page-great-grandchild', title: 'Great Grandchild', parent_id: 'page-grandchild', position: 3 },
+      ];
+
+      const map = parser.buildFullPathMap(pages);
+
+      // Deep nesting should work
+      expect(map.get('Root:Child:Grandchild:Great Grandchild')).toBe('page-great-grandchild');
+    });
+  });
+
+  describe('_isDescendantOf', () => {
+    it('returns true for direct child', () => {
+      const pageIdMap = new Map([
+        ['page-parent', { id: 'page-parent', name: 'Parent', parent_id: null }],
+        ['page-child', { id: 'page-child', name: 'Child', parent_id: 'page-parent' }],
+      ]);
+      const childPage = { id: 'page-child', parent_id: 'page-parent' };
+
+      expect(parser._isDescendantOf(childPage, 'page-parent', pageIdMap)).toBe(true);
+    });
+
+    it('returns true for deep descendant', () => {
+      const pageIdMap = new Map([
+        ['page-root', { id: 'page-root', name: 'Root', parent_id: null }],
+        ['page-child', { id: 'page-child', name: 'Child', parent_id: 'page-root' }],
+        ['page-grandchild', { id: 'page-grandchild', name: 'Grandchild', parent_id: 'page-child' }],
+      ]);
+      const grandchildPage = { id: 'page-grandchild', parent_id: 'page-child' };
+
+      expect(parser._isDescendantOf(grandchildPage, 'page-root', pageIdMap)).toBe(true);
+    });
+
+    it('returns false for non-descendant', () => {
+      const pageIdMap = new Map([
+        ['page-a', { id: 'page-a', name: 'A', parent_id: null }],
+        ['page-b', { id: 'page-b', name: 'B', parent_id: null }],
+      ]);
+      const pageB = { id: 'page-b', parent_id: null };
+
+      expect(parser._isDescendantOf(pageB, 'page-a', pageIdMap)).toBe(false);
+    });
+
+    it('returns false for root page', () => {
+      const pageIdMap = new Map([
+        ['page-root', { id: 'page-root', name: 'Root', parent_id: null }],
+      ]);
+      const rootPage = { id: 'page-root', parent_id: null };
+
+      expect(parser._isDescendantOf(rootPage, 'page-root', pageIdMap)).toBe(false);
+    });
+
+    it('returns false when ancestor not in chain', () => {
+      const pageIdMap = new Map([
+        ['page-a', { id: 'page-a', name: 'A', parent_id: null }],
+        ['page-b', { id: 'page-b', name: 'B', parent_id: 'page-a' }],
+        ['page-c', { id: 'page-c', name: 'C', parent_id: null }],
+      ]);
+      const pageB = { id: 'page-b', parent_id: 'page-a' };
+
+      expect(parser._isDescendantOf(pageB, 'page-c', pageIdMap)).toBe(false);
+    });
+  });
+
+  describe('_buildPathFromPromotedParent', () => {
+    it('builds path for direct child of promoted parent', () => {
+      const pageIdMap = new Map([
+        ['page-promoted', { id: 'page-promoted', name: 'Promoted', parent_id: null }],
+        ['page-child', { id: 'page-child', name: 'Child', parent_id: 'page-promoted' }],
+      ]);
+      const childPage = pageIdMap.get('page-child');
+
+      const result = parser._buildPathFromPromotedParent(childPage, 'page-promoted', pageIdMap);
+
+      expect(result).toBe('Promoted:Child');
+    });
+
+    it('builds path for deep descendant of promoted parent', () => {
+      const pageIdMap = new Map([
+        ['page-promoted', { id: 'page-promoted', name: 'Promoted', parent_id: null }],
+        ['page-child', { id: 'page-child', name: 'Child', parent_id: 'page-promoted' }],
+        ['page-grandchild', { id: 'page-grandchild', name: 'Grandchild', parent_id: 'page-child' }],
+      ]);
+      const grandchildPage = pageIdMap.get('page-grandchild');
+
+      const result = parser._buildPathFromPromotedParent(grandchildPage, 'page-promoted', pageIdMap);
+
+      expect(result).toBe('Promoted:Child:Grandchild');
+    });
+
+    it('handles titles with colons', () => {
+      const pageIdMap = new Map([
+        ['page-promoted', { id: 'page-promoted', name: 'Section: Introduction', parent_id: null }],
+        ['page-child', { id: 'page-child', name: 'Topic: Basics', parent_id: 'page-promoted' }],
+      ]);
+      const childPage = pageIdMap.get('page-child');
+
+      const result = parser._buildPathFromPromotedParent(childPage, 'page-promoted', pageIdMap);
+
+      expect(result).toBe('Section: Introduction:Topic: Basics');
+    });
+
+    it('returns just page name when parent not found', () => {
+      const pageIdMap = new Map([
+        ['page-orphan', { id: 'page-orphan', name: 'Orphan', parent_id: 'page-missing' }],
+      ]);
+      const orphanPage = pageIdMap.get('page-orphan');
+
+      const result = parser._buildPathFromPromotedParent(orphanPage, 'page-missing', pageIdMap);
+
+      expect(result).toBe('Orphan');
+    });
   });
 
   describe('convertInternalLinks', () => {
