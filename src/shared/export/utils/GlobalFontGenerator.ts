@@ -19,6 +19,7 @@ export interface GlobalFontConfig {
     fallback: string;
     files: GlobalFontFile[];
     attribution?: string;
+    lineHeight?: string;
 }
 
 /**
@@ -74,6 +75,7 @@ export const GLOBAL_FONTS: Record<string, GlobalFontConfig> = {
                 format: 'woff2',
             },
         ],
+        lineHeight: '2em',
     },
 };
 
@@ -96,9 +98,11 @@ function buildFontCss(fontConfig: GlobalFontConfig, fontPath: string, label: str
 }\n`;
     }
 
+    const lineHeightRule = fontConfig.lineHeight ? `\n    line-height: ${fontConfig.lineHeight} !important;` : '';
+
     css += `
 ${FONT_SELECTORS} {
-    font-family: '${fontConfig.fontFamily}', ${fontConfig.fallback} !important;
+    font-family: '${fontConfig.fontFamily}', ${fontConfig.fallback} !important;${lineHeightRule}
 }
 `;
 
@@ -191,5 +195,17 @@ export class GlobalFontGenerator {
      */
     static getAvailableFontIds(): string[] {
         return Object.keys(GLOBAL_FONTS);
+    }
+
+    /**
+     * Get CSS class name for body element based on font
+     * @param fontId - Font identifier
+     * @returns CSS class name (e.g., 'exe-global-font-playwrite-es') or empty string if default
+     */
+    static getBodyClassName(fontId: string): string {
+        if (!fontId || fontId === 'default') {
+            return '';
+        }
+        return `exe-global-font-${fontId}`;
     }
 }

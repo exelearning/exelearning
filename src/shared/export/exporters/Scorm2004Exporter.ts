@@ -291,11 +291,17 @@ export class Scorm2004Exporter extends Html5Exporter {
 
         // Generate global font CSS if a font is selected
         let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-scorm exe-scorm2004';
         if (meta.globalFont && meta.globalFont !== 'default') {
             const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
             if (globalFontCss) {
                 // Prepend global font CSS to customStyles (font CSS should come first)
                 customStyles = globalFontCss + '\n' + customStyles;
+            }
+            // Add font-specific body class for CSS overrides
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
             }
         }
 
@@ -318,7 +324,7 @@ export class Scorm2004Exporter extends Html5Exporter {
             // SCORM 2004-specific options
             isScorm: true,
             scormVersion: '2004',
-            bodyClass: 'exe-scorm exe-scorm2004',
+            bodyClass,
             extraHeadScripts: this.getScorm2004HeadScripts(basePath),
             onLoadScript: 'loadPage()',
             onUnloadScript: 'unloadPage()',

@@ -516,11 +516,17 @@ export class Epub3Exporter extends BaseExporter {
 
         // Generate global font CSS if a font is selected
         let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-export exe-epub';
         if (meta.globalFont && meta.globalFont !== 'default') {
             const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
             if (globalFontCss) {
                 // Prepend global font CSS to customStyles
                 customStyles = globalFontCss + '\n' + customStyles;
+            }
+            // Add font-specific body class for CSS overrides
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
             }
         }
 
@@ -539,7 +545,7 @@ export class Epub3Exporter extends BaseExporter {
             license: meta.license || 'CC-BY-SA',
             description: meta.description || '',
             licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
-            bodyClass: 'exe-export exe-epub',
+            bodyClass,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],
         });

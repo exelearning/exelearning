@@ -238,11 +238,17 @@ export class ImsExporter extends Html5Exporter {
 
         // Generate global font CSS if a font is selected
         let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-web-site exe-ims';
         if (meta.globalFont && meta.globalFont !== 'default') {
             const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
             if (globalFontCss) {
                 // Prepend global font CSS to customStyles (font CSS should come first)
                 customStyles = globalFontCss + '\n' + customStyles;
+            }
+            // Add font-specific body class for CSS overrides
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
             }
         }
 
@@ -262,7 +268,7 @@ export class ImsExporter extends Html5Exporter {
             licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
             // Export options
             addSearchBox: meta.addSearchBox ?? false,
-            bodyClass: 'exe-web-site exe-ims',
+            bodyClass,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],
         });

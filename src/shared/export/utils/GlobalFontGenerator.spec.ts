@@ -31,6 +31,16 @@ describe('GlobalFontGenerator', () => {
         test('playwrite-es should have cursive fallback', () => {
             expect(GLOBAL_FONTS['playwrite-es'].fallback).toContain('cursive');
         });
+
+        test('playwrite-es should have lineHeight defined', () => {
+            expect(GLOBAL_FONTS['playwrite-es'].lineHeight).toBe('2em');
+        });
+
+        test('other fonts should not have lineHeight defined', () => {
+            expect(GLOBAL_FONTS.opendyslexic.lineHeight).toBeUndefined();
+            expect(GLOBAL_FONTS.andika.lineHeight).toBeUndefined();
+            expect(GLOBAL_FONTS.nunito.lineHeight).toBeUndefined();
+        });
     });
 
     describe('generateCss', () => {
@@ -97,6 +107,18 @@ describe('GlobalFontGenerator', () => {
 
             expect(result).toContain("font-family: 'Playwrite ES'");
             expect(result).toContain('PlaywriteES-Regular.woff2');
+        });
+
+        test('should include line-height for fonts that have it defined', () => {
+            const result = GlobalFontGenerator.generateCss('playwrite-es');
+
+            expect(result).toContain('line-height: 2em !important');
+        });
+
+        test('should not include line-height for fonts without it defined', () => {
+            const result = GlobalFontGenerator.generateCss('opendyslexic');
+
+            expect(result).not.toContain('line-height');
         });
     });
 
@@ -221,6 +243,28 @@ describe('GlobalFontGenerator', () => {
         test('should not include default', () => {
             const ids = GlobalFontGenerator.getAvailableFontIds();
             expect(ids).not.toContain('default');
+        });
+    });
+
+    describe('getBodyClassName', () => {
+        test('should return correct class name for valid fonts', () => {
+            expect(GlobalFontGenerator.getBodyClassName('opendyslexic')).toBe('exe-global-font-opendyslexic');
+            expect(GlobalFontGenerator.getBodyClassName('andika')).toBe('exe-global-font-andika');
+            expect(GlobalFontGenerator.getBodyClassName('nunito')).toBe('exe-global-font-nunito');
+            expect(GlobalFontGenerator.getBodyClassName('playwrite-es')).toBe('exe-global-font-playwrite-es');
+        });
+
+        test('should return empty string for default font', () => {
+            expect(GlobalFontGenerator.getBodyClassName('default')).toBe('');
+        });
+
+        test('should return empty string for empty string', () => {
+            expect(GlobalFontGenerator.getBodyClassName('')).toBe('');
+        });
+
+        test('should return class name even for unknown fonts', () => {
+            // getBodyClassName doesn't validate font existence, it just generates the class name
+            expect(GlobalFontGenerator.getBodyClassName('unknown-font')).toBe('exe-global-font-unknown-font');
         });
     });
 });
